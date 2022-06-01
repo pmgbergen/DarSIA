@@ -10,14 +10,14 @@ pip install daria
 
 This might not be completely true (unless we upload to pypi). For now, I think that cloning from github and writing
 ```python
-pip install daria
+pip install .
 ```
 inside the directory is the correct approach.
 
 ## Usage
 
 ```python
-We should add sample code here at some point
+add some sample code here
 ```
 
 ## Developing DarIA
