@@ -1,4 +1,4 @@
-from helloworld import hello
+from daria import hello
 
 
 def test_helloworld_no_params():

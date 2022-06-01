@@ -8,9 +8,9 @@ setup(
     version="0.0.1",
     description="Darcy scale image analysis toolbox",
     keywords="darcy image analysis porous media flow",
-    py_modules={"helloworld"},
+    # py_modules={"helloworld"},
     package_dir={"": "src"},
-    packages=find_packages("src"),
+    packages=find_packages(where="src"),
     package_data={"daria": ["py.typed"]},
     classifiers=[
         "Development Status :: 3 - Alpha",
