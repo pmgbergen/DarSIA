@@ -30,11 +30,12 @@ jobs:
         architecture: x64
 
     - name: Install DarIA
-      run: |
-         pip install .
-    - name: black
-      if: ${{ always() }}
-      run: black --check src
+      run: pip install .[dev]
+
+
+    # - name: black
+    #   if: ${{ always() }}
+    #   run: black --check src
 
 #    - name: flake8
 #      if: ${{ always() }}
@@ -50,5 +51,4 @@ jobs:
 
     - name: pytest
       if: ${{always()}}
-      run: |
-        pytest
+      run: pytest

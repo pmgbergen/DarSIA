@@ -27,6 +27,7 @@ setup(
     extras_require={
         "dev": [
             "pytest>=7.1",
+            "wheel",
         ],
     },
     python_requires=">=3",
