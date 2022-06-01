@@ -1,6 +1,9 @@
+<!-- ![build](https://github.com/jhabriel/mixdim-estimates/workflows/Build%20test/badge.svg) -->
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![License: Apache v2](https://img.shields.io/hexpm/l/apa)](https://opensource.org/licenses/Apache-2.0)
+
 # DarIA
 Darcy scale image analysis toolbox
-
 
 ## Installation
 Run the following to install:
@@ -36,4 +39,6 @@ At some point I will modify and make testing better, but for now:
     </ul>
     <li> run $pytest in the project directory.
 <ul>
+
+Use black (version 22.3.0) for formatting.
 

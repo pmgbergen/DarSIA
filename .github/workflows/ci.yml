@@ -1,0 +1,54 @@
+name: Build test
+
+on: [push]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#specifying-a-python-version
+    strategy:
+      matrix:
+        # python-version:  ["3.7", "3.8", "3.9", "3.10"]
+        python-version:  ["3.10"]
+      # Complete all versions in matrix even if one fails.
+      fail-fast: false
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    - name: Setup Python ${{ matrix.python-version}}
+      uses: actions/setup-python@v2
+      with:
+        # Version range or exact version of a Python version to use, using SemVer's version range syntax.
+        python-version: ${{ matrix.python-version}}
+        architecture: x64
+
+    - name: Install DarIA
+      run: |
+         pip install .
+    - name: black
+      if: ${{ always() }}
+      run: black --check src
+
+#    - name: flake8
+#      if: ${{ always() }}
+#      run: flake8 src
+#
+#    - name: mypy
+#      if: ${{ always() }}
+#      run: mypy src
+#
+#    - name: isort
+#      if: ${{always()}}
+#      run: isort --check src
+
+    - name: pytest
+      if: ${{always()}}
+      run: |
+        pytest
