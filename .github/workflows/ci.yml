@@ -33,9 +33,9 @@ jobs:
       run: pip install .[dev]
 
 
-    # - name: black
-    #   if: ${{ always() }}
-    #   run: black --check src
+    - name: black
+      if: ${{ always() }}
+      run: black --check src
 
 #    - name: flake8
 #      if: ${{ always() }}

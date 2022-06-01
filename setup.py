@@ -23,11 +23,12 @@ setup(
     long_description_content_type="text/markdown",
     install_requires=[
         "numpy",
+        "opencv-python",
     ],
     extras_require={
         "dev": [
             "pytest>=7.1",
-            "wheel",
+            "black == 22.3.0",
         ],
     },
     python_requires=">=3",
