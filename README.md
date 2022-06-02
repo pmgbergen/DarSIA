@@ -1,4 +1,4 @@
-<!-- ![build](https://github.com/jhabriel/mixdim-estimates/workflows/Build%20test/badge.svg) -->
+![build](https://github.com/EStorvik/DarIA/workflows/Build%20test/badge.svg)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License: Apache v2](https://img.shields.io/hexpm/l/apa)](https://opensource.org/licenses/Apache-2.0)
 
