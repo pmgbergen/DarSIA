@@ -3,3 +3,5 @@ def hello(name=None) -> str:
         return "Hello world"
     else:
         return f"Hello {name}!"
+
+print(hello('Yay!'))
