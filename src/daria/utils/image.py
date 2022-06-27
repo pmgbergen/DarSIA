@@ -16,7 +16,6 @@ class Image:
         self.height = height
         self.shape = self.img.shape
         self.dim = dim
-        print(self.shape)
         self.dx = self.width / self.shape[1]
         self.dy = self.height / self.shape[0]
         if self.dim == 3:
@@ -26,4 +25,4 @@ class Image:
     # Write image to file. Here, the BGR-format is used. Image path, name and format can be changed by passing them as strings to the method.
     def write(self, name="img", path="images/modified/", format=".jpg"):
         cv2.imwrite(path + name + format, self.img)
-        print(path + name + format)
+        print("Image saved as: " + path + name + format)

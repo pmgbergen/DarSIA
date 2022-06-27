@@ -6,16 +6,11 @@
 Darcy scale image analysis toolbox
 
 ## Installation
-Run the following to install:
-```python
-pip install daria
-```
+Clone the repository from github and enter the DarIA folder. Then, run the following command to install:
 
-This might not be completely true (unless we upload to pypi). For now, I think that cloning from github and writing
-```python
+```bash
 pip install .
 ```
-inside the directory is the correct approach.
 
 ## Usage
 
@@ -40,5 +35,5 @@ At some point I will modify and make testing better, but for now:
     <li> run $pytest in the project directory.
 <ul>
 
-Use black (version 22.3.0) for formatting.
+Use black (version 22.3.0) for formatting, this can be run as as a post-processing step, or directly in the IDE (e.g., bound to save.)
 
