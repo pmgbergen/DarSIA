@@ -169,4 +169,4 @@ cython_debug/
 
 # Image files
 images/originals/Profilbilde.jpg
-images/modifies/*
+images/modified/*
