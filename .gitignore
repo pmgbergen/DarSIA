@@ -171,3 +171,4 @@ cython_debug/
 images/originals/Profilbilde.jpg
 images/modified/*.jpg
 images/modified/*.png
+images/metadata/*.txt

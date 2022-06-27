@@ -23,6 +23,20 @@ class Image:
             self.dz = self.depth / self.shape[2]
 
     # Write image to file. Here, the BGR-format is used. Image path, name and format can be changed by passing them as strings to the method.
-    def write(self, name="img", path="images/modified/", format=".jpg"):
+    def write(
+        self,
+        name="img",
+        path="images/modified/",
+        format=".jpg",
+        save_metadata=True,
+        metadata_path="images/metadata/",
+    ):
         cv2.imwrite(path + name + format, self.img)
         print("Image saved as: " + path + name + format)
+        if save_metadata:
+            f = open(metadata_path + name + ".txt", "w")
+            f.write("Origo: " + str(self.origo) + "\n")
+            f.write("Width: " + str(self.width) + "\n")
+            f.write("Height: " + str(self.height) + "\n")
+            f.write("Dimension: " + str(self.dim) + "\n")
+            f.close()
