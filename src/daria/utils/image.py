@@ -66,7 +66,7 @@ class Image:
         format=".jpg",
         save_metadata=True,
         metadata_path="images/metadata/",
-    ):
+    ) -> None:
         cv2.imwrite(path + name + format, self.img)
         print("Image saved as: " + path + name + format)
         if save_metadata:
@@ -76,3 +76,44 @@ class Image:
             f.write("Height: " + str(self.height) + "\n")
             f.write("Dimension: " + str(self.dim) + "\n")
             f.close()
+
+    # Draws a grid on the image and writes it.
+    def draw_grid(
+        self,
+        DX=100,
+        DY=100,
+        color=(0, 0, 125),
+        thickness=9,
+        name="img-grid",
+        path="images/modified/",
+        format=".jpg",
+    ) -> None:
+        num_h_lines = round((self.shape[0] + self.origo[1] / self.dy) / DY)
+        num_v_lines = round((self.shape[1] + self.origo[0] / self.dx) / DX)
+        gridimg = self.img
+        for l in range(num_h_lines):
+            gridimg = cv2.line(
+                gridimg,
+                (
+                    round(-self.origo[0] / self.dx),
+                    round(l * DY),
+                ),
+                (round(self.shape[1]), round(l * DY)),
+                color,
+                thickness,
+            )
+        for k in range(num_v_lines):
+            gridimg = cv2.line(
+                gridimg,
+                (
+                    round(k * DX - self.origo[0] / self.dx),
+                    round(0),
+                ),
+                (
+                    round(k * DX - self.origo[0] / self.dx),
+                    round(self.shape[0] + self.origo[1] / self.dy),
+                ),
+                color,
+                thickness,
+            )
+        cv2.imwrite(path + name + format, gridimg)
