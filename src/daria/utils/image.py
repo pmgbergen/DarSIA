@@ -16,7 +16,7 @@ class Image:
         dim=2,
         read_metadata_from_file=False,
         metadata_path="-",
-    ):
+    ) -> None:
         if type(img) == np.ndarray:
             self.img = img
         elif type(img) == str:
@@ -41,7 +41,7 @@ class Image:
             self.dz = self.depth / self.shape[2]
 
     # There might be a cleaner way to do this. Then again, it works.
-    def create_metadata_from_file(self, path):
+    def create_metadata_from_file(self, path) -> None:
         if path == "-":
             pl = self.imgpath.split("/")
             name = pl[2].split(".")[0]
