@@ -1,6 +1,17 @@
 name: Build test
 
-on: [push]
+on:
+  push:
+    branches:
+     - main
+     - development
+  pull_requests:
+    branches:
+     - main
+     - development
+  schedule:
+    # Do a nightly run of the tests
+    - cron: '0 1 * * *'
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -20,14 +31,35 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python ${{ matrix.python-version}}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         # Version range or exact version of a Python version to use, using SemVer's version range syntax.
         python-version: ${{ matrix.python-version}}
         architecture: x64
+        cache: 'pip'
+
+    # Cache pip dependencies
+    # Source: https://github.com/actions/cache/blob/main/examples.md#python---pip
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      id: cache
+      with:
+        # Cache the full python environment, this is more efficient than just caching pip
+        # https://blog.allenai.org/python-caching-in-github-actions-e9452698e98d
+        path: ${{ env.pythonLocation }}
+        key: ${{ env.pythonLocation }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Cache mypy
+      uses: actions/cache@v3
+      id: cache-mypy
+      with:
+        path: mypy-cache-${{ matrix.python-version}}
+        key: ${{ runner.os }}-mypy
 
     - name: Install DarIA
       run: pip install .[dev]
