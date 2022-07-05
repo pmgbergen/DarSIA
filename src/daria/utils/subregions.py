@@ -31,8 +31,8 @@ def extractROI(img: Image, x: list, y: list) -> Image:
     # TODO conversion of pixels
     img = img.img
     img = img[
-        (img.shape[0] - y_pix[1]): (img.shape[0] - y_pix[0]),
-        x_pix[0]: x_pix[1],
+        (img.shape[0] - y_pix[1]) : (img.shape[0] - y_pix[0]),
+        x_pix[0] : x_pix[1],
     ]
 
     # Define metadata
@@ -61,8 +61,8 @@ def extractROIPixel(img: Image, x: list, y: list) -> Image:
     # TODO conversion of pixels
     img = img.img
     img = img[
-        (img.shape[0] - y[1]): (img.shape[0] - y[0]),
-        x[0]: x[1],
+        (img.shape[0] - y[1]) : (img.shape[0] - y[0]),
+        x[0] : x[1],
     ]
 
     # Define metadata
