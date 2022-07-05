@@ -1,7 +1,8 @@
 from daria import Image
-import numpy as np
 
-# Extracts region based on physical coordinates
+
+# Extracts region based on physical coordinates. x is a list with two elements and containst the start and end pint in x-direction in physical coordinates, same for y.
+# The pixel values here start at (0,0) in the lower left corner and increases in x-value toward the right and increases in y-direction upward.
 def extractROI(img: Image, x: list, y: list) -> Image:
     im = img.img
     x_pix = [
@@ -22,7 +23,8 @@ def extractROI(img: Image, x: list, y: list) -> Image:
     return Image(im, o, w, h)
 
 
-# Extracts region based on pixels
+# Extracts region based on pixels. x is a list with two elements and containst the start and end pixel in x-direction, same for y.
+# The pixel values here start at (0,0) in the lower left corner and increases in x-value toward the right and increases in y-direction upward.
 def extractROIPixel(img: Image, x: list, y: list) -> Image:
     im = img.img
     im = im[

@@ -2,20 +2,30 @@
 import cv2
 import numpy as np
 
+# USE **kwargs in contructor
 
+# Base image class. Contains the actual image, as well as base properties such as position in global coordinates, width and height.
+# One can either pass in metadata (origo, width and height, amongst other entities) by passing them directly to the constructor
+# or through a metadata-file (default is to pass metadata diretly to the constructor, and if metadatafile is requires the "read_metadata_from_file"
+# variable has to be passed as True).
+# Image can either be passed in as numpy array or a path to a file (this is automatically detected through the input).
+# Base functionality such as saving to image-file, and drawing a grid is provided in the class.
 class Image:
 
-    # input img can either be a path to the image file or a numpy array.
+    # Input img can either be a path to the image file or a numpy array.
     def __init__(
         self,
         img,
-        origo=[0, 0],
-        width=1,
-        height=1,
-        depth=0,
-        dim=2,
-        read_metadata_from_file=False,
-        metadata_path="-",
+        origo=[
+            0,
+            0,
+        ],  # Origo is the position of the lower left corner of the image in the global picture.
+        width=1,  # Width of the image
+        height=1,  # Height of the image
+        depth=0,  # Depth of image if 3D is required
+        dim=2,  # Dimension of the image date
+        read_metadata_from_file=False,  # Needs to be passed as True is the metadata is read from file.
+        metadata_path="-",  # Path to metadata. Should be changed if metadata is not placed in the "images/metadata"-folder and taking the same name as the image. If image is not passed as a path one also needs to pass it as a path.
     ) -> None:
         if type(img) == np.ndarray:
             self.img = img
