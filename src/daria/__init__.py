@@ -2,9 +2,10 @@
 
 Includes:
 
-    utils: conversion, image class, subregions
+    utils: conversion, image class, subregions, coordinate system
 
 """
 from daria.utils.conversions import *
+from daria.utils.coordinatesystem import CoordinateSystem
 from daria.utils.image import Image
 from daria.utils.subregions import *
