@@ -94,13 +94,13 @@ class Image:
         self.shape = self.img.shape
 
         # Determine numbers of cells in each dimension and cell size
-        self.num_pixels_height, self.num_pixels_width = img.shape[:2]
+        self.num_pixels_height, self.num_pixels_width = self.shape[:2]
         self.dx = self.width / self.num_pixels_width
         self.dy = self.height / self.num_pixels_height
         # ... in 3d
         if self.dim == 3:
             self.depth = depth
-            self.num_pixels_depth = img.shape[2]
+            self.num_pixels_depth = self.shape[2]
             self.dz = self.depth / self.num_pixels_depth
 
         # Define the pixels in the corners of the image
@@ -293,7 +293,6 @@ class Image:
         path: str = "images/modified/",
         format: str = ".jpg",
     ) -> None:
-        # TODO add origin for the grid to allow for translating the grid arbitrarily
         """
         Draws a grid on the image and writes it to file.
 
