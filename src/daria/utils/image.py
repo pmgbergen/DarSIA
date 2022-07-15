@@ -75,9 +75,11 @@ class Image:
         # Fetch image
         if isinstance(img, np.ndarray):
             self.img = img
+            self.name = "Unnamed image"
         elif isinstance(img, str):
             self.img = cv2.imread(img)
             self.imgpath = img
+            self.name = img
         else:
             raise Exception(
                 "Invalid image data. Provide either a path to an image or an image array."
@@ -180,13 +182,13 @@ class Image:
             f.write("Dimension: " + str(self.dim) + "\n")
             f.close()
 
-    def show(self, name: Optional[str] = None, wait: Optional[int] = None) -> None:
+    def show(self, name: Optional[str] = None, wait: Optional[int] = 0) -> None:
         """Show image.
 
         Arguments:
             name (str, optional): name addressing the window for visualization
             wait (int, optional): waiting time in milliseconds, if not set
-                no waiting is applied (can be still set externally)
+                the window is open until any key is pressed.
         """
         if name is None:
             name = self.name
@@ -194,12 +196,14 @@ class Image:
         # Display image
         cv2.namedWindow(name, cv2.WINDOW_NORMAL)
         cv2.imshow(name, self.img)
-        if wait is not None:
-            cv2.waitKey(wait)
+        # if wait is not None:
+        #     cv2.waitKey(wait)
+        cv2.waitKey(wait)
+        cv2.destroyAllWindows()
 
     def add_grid(
         self,
-        origo: list[float] = [0, 0],
+        origo: list[float] = None,
         dx: float = 1,
         dy: float = 1,
         color: tuple = (0, 0, 125),
@@ -218,6 +222,10 @@ class Image:
         Returns:
             Image: original image with grid on top
         """
+        # Set origo if it was not provided
+        if origo is None:
+            origo = self.origo
+
         # Determine the number of grid lines required
         num_horizontal_lines: int = math.ceil(self.height / dy) + 1
         num_vertical_lines: int = math.ceil(self.width / dx) + 1
@@ -282,67 +290,3 @@ class Image:
             width=self.width,
             height=self.height,
         )
-
-    def draw_grid(
-        self,
-        DX: float = 100,
-        DY: float = 100,
-        color: tuple[int] = (0, 0, 125),
-        thickness: int = 9,
-        name: str = "img-grid",
-        path: str = "images/modified/",
-        format: str = ".jpg",
-    ) -> None:
-        """
-        Draws a grid on the image and writes it to file.
-
-        Arguments:
-            DX (float): grid size in x-direction, in physical units
-            DY (float): grid size in y-direction, in physical units
-            color (tuple of int): RGB color of the grid
-            thickness (int): thickness of the grid lines
-            name (str): name of the image file for exporting
-            path (str): path to file
-            format (str): file ending, defining the image format
-        """
-        # TODO conversion of pixels
-        # Determine the number of grid lines required for
-        num_h_lines: int = round((self.shape[0] + self.origo[1] / self.dy) / DY)
-        num_v_lines: int = round((self.shape[1] + self.origo[0] / self.dx) / DX)
-
-        # Start from original image
-        gridimg = self.img.copy()
-
-        # Add horizontal grid lines (line by line)
-        for row in range(num_h_lines):
-            gridimg = cv2.line(
-                gridimg,
-                (
-                    # TODO revisit: is the order correct here? conversion of pixels
-                    round(-self.origo[0] / self.dx),
-                    round(row * DY),
-                ),
-                (round(self.shape[1]), round(row * DY)),
-                color,
-                thickness,
-            )
-
-        # Add vertical grid lines (line by line)
-        for col in range(num_v_lines):
-            gridimg = cv2.line(
-                gridimg,
-                (
-                    # TODO revisit: is the order correct here? conversion of pixels
-                    round(col * DX - self.origo[0] / self.dx),
-                    round(0),
-                ),
-                (
-                    round(col * DX - self.origo[0] / self.dx),
-                    round(self.shape[0] + self.origo[1] / self.dy),
-                ),
-                color,
-                thickness,
-            )
-
-        # Write image with grid to file
-        cv2.imwrite(path + name + format, gridimg)
