@@ -24,6 +24,7 @@ setup(
     install_requires=[
         "numpy",
         "opencv-python",
+        "scipy",
     ],
     extras_require={
         "dev": [
