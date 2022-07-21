@@ -293,8 +293,8 @@ class Image:
             height=self.height,
         )
 
-    # Coarsen by using cv2's resize command
-    def coarsen(self, cx: float, cy: float) -> None:
+    # resize image by using cv2's resize command
+    def resize(self, cx: float, cy: float) -> None:
         """ "
         Coarsen the image object
 
@@ -310,3 +310,6 @@ class Image:
         self.dx *= 1 / cx
         self.dy *= 1 / cy
         self.coordinatesystem: da.CoordinateSystem = da.CoordinateSystem(self)
+
+    def copy(self) -> "Image":
+        return Image(self.img, self.origo, self.width, self.height)

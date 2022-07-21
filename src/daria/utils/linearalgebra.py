@@ -1,6 +1,6 @@
 import numpy as np
-import cv2
 from math import sqrt
+from typing import Callable
 
 
 # TODO: make proper stopping criteria
@@ -15,12 +15,12 @@ def frobenius_norm(im: np.ndarray) -> float:
 
 
 def richardson(
-    operator: function,
+    operator: Callable,
     rhs: np.ndarray,
     im0: np.ndarray,
     tol: float,
     omega: float,
-    norm: function,
+    norm: Callable,
     max_iter: int = 1000,
 ):
     res = rhs - operator(im0)
@@ -39,12 +39,13 @@ def richardson(
 
 
 def cg(
-    operator: function,
+    operator: Callable,
     rhs: np.ndarray,
     im0: np.ndarray,
     tol: float,
-    norm: function,
+    norm: Callable,
     max_iter: int = 1000,
+    verbose: bool = False,
 ):
     im = im0
     res = operator(im0) - rhs
@@ -56,7 +57,8 @@ def cg(
         res = operator(im) - rhs
         beta = im_product(res, po) / im_product(po, p)
         p = -res + beta * p
-        print(norm(res))
+        if verbose:
+            print(norm(res))
         if norm(res) < tol:
             break
     alpha = -im_product(res, p) / im_product(operator(p), p)
