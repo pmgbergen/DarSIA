@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import daria as da
 import numpy as np
+from typing import Callable
 
 
 class Solver:
@@ -25,23 +28,24 @@ class Solver:
         """
         self.stoppingCriterion = stoppingCriterion
 
-    def apply():
+    def apply() -> None:
         print("Please choose a solver!")
 
 
 class CG(Solver):
-    def apply(self, operator, rhs, im0):
+    def apply(self, operator, rhs, im0) -> np.ndarray:
         im = im0
         res = operator(im0) - rhs
         p = -res
-        iteration = 0
-        while not (self.stoppingCriterion.check(res, iteration)):
+        iterations = 0
+        while not (self.stoppingCriterion.check(res, iterations)):
             po = operator(p)
             alpha = -da.im_product(res, p) / da.im_product(po, p)
             im = im + alpha * p
             res = operator(im) - rhs
             beta = da.im_product(res, po) / da.im_product(po, p)
             p = -res + beta * p
+            iterations += 1
         alpha = -da.im_product(res, p) / da.im_product(operator(p), p)
         im = im + alpha * p
         return im

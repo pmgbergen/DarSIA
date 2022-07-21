@@ -12,5 +12,6 @@ from daria.utils.subregions import *
 from daria.utils.curvaturecorrection import *
 from daria.utils.derivatives import *
 from daria.utils.stoppingcriterion import *
+from daria.utils.solvers import *
 from daria.utils.linearalgebra import *
 from daria.utils.regularization import *
