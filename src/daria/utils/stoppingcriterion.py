@@ -1,8 +1,23 @@
+from __future__ import annotations
+
 import numpy as np
 from typing import Callable
 
 
 class StoppingCriterion:
+    """
+    Stopping criterion class.
+
+    Attributes:
+        tolerance (float): Tolerance for the stopping criterion.
+        max_iterations (int): Maximal allowed number of iterations.
+        norm (Callable): The norm that is to be used.
+        verbose (bool): Set to true to get output.
+        check (Callable): Returns true if the stopping criterion is satisfied.
+        check_residual (Callable): Returns true if the relative stopping criterion is satisfied.
+
+    """
+
     def __init__(
         self,
         tolerance: float,

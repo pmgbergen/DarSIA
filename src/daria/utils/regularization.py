@@ -4,7 +4,7 @@ from typing import Callable
 import daria as da
 import numpy as np
 
-from daria.utils.linearalgebra import frobenius_norm
+from daria.utils.norms import frobenius_norm
 
 
 def tv_denoising(
