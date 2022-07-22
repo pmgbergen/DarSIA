@@ -7,12 +7,13 @@ from typing import Callable
 
 class Solver:
     """
-    Solver base class
+    Solver base class. Contains an apply method.
+    All solvers that are implemented as subclasses should have their own apply method, and inherit the stopping criterion.
 
 
     Attributes:
-        apply: applies the solver method. Should be implemented in the specific solver subclass
-
+        stoppingCriterion (daria.StoppingCriterion): stopping criterion for the solver
+        verbose (bool): set to True to print output data
 
     """
 
@@ -23,53 +24,108 @@ class Solver:
         Constructor for solver class.
 
         Arguments:
-            stoppingCriterion: stopping criterion for the solver
-            verbose: set to True to print output data
+            stoppingCriterion (daria.StoppingCriterion): stopping criterion for the solver
+            verbose (bool): set to True to print output data
         """
         self.stoppingCriterion = stoppingCriterion
+        self.stoppingCriterion.verbose = verbose
 
     def apply() -> None:
         print("Please choose a solver!")
 
 
 class CG(Solver):
-    def apply(self, operator, rhs, im0) -> np.ndarray:
+    """
+    Conjugate Gradients solver.
+
+    Attributes:
+        apply: applies the solver method
+
+    """
+
+    def apply(self, operator: Callable, rhs: np.ndarray, im0: np.ndarray) -> np.ndarray:
+        """
+        Applies the conjugate gradients solver.
+
+        Arguments:
+            operator (Callable): The left hand side operator that is to be inverted.
+            rhs (np.ndarray): Right-hand side.
+            im0 (np.ndarray): Initial guess.
+        """
+
+        # Set im to initial guess and compute initial residual and conjugate matrix
         im = im0
         res = operator(im0) - rhs
         p = -res
+
+        # Define iteration counter
         iterations = 0
+
+        # Iterate as long as the stopping criterion is not satisfied
         while not (self.stoppingCriterion.check(res, iterations)):
+
+            # Compute the operator applied to the conjugate matrix (I think that it is more efficient to store this new matrix rather than doing the operation twice).
             po = operator(p)
+
+            # Compute step length
             alpha = -da.im_product(res, p) / da.im_product(po, p)
+
+            # Update the image and compute new residual and conjugate matrix
             im = im + alpha * p
             res = operator(im) - rhs
             beta = da.im_product(res, po) / da.im_product(po, p)
             p = -res + beta * p
+
+            # Update the iteration counter
             iterations += 1
+
+        # Jump once further in the search direction and return the solution image
         alpha = -da.im_product(res, p) / da.im_product(operator(p), p)
         im = im + alpha * p
         return im
 
 
-def richardson(
-    operator: Callable,
-    rhs: np.ndarray,
-    im0: np.ndarray,
-    tol: float,
-    omega: float,
-    norm: Callable,
-    max_iter: int = 1000,
-):
-    res = rhs - operator(im0)
-    im = im0
-    nr = norm(res)
-    iteration = 0
-    while nr > tol and iteration < max_iter:
-        im = im + omega * res
-        res = rhs - operator(im)
-        nr = norm(res)
-        print(nr)
-        iteration += 1
-    print(iteration)
+class ModifiedRichardson(Solver):
+    """
+    Modified Richardson solver.
 
-    return im
+    Attributes:
+        apply: applies the solver method
+
+    """
+
+    def apply(
+        self,
+        operator: Callable,
+        rhs: np.ndarray,
+        im0: np.ndarray,
+        omega: float,
+    ) -> np.ndarray:
+        """
+        Applies the modified Richardson solver.
+
+        Arguments:
+            operator (Callable): The left hand side operator that is to be inverted.
+            rhs (np.ndarray): Right-hand side.
+            im0 (np.ndarray): Initial guess.
+            omega (float): Update parameter.
+        """
+        # Set im to initial guess and compute initial residual
+        im = im0
+        res = rhs - operator(im)
+
+        # Define iteration counter
+        iteration = 0
+
+        # Iterate as long as the stopping criterion is not satisfied
+        while not (self.stoppingCriterion.check(res)):
+
+            # Update the image and compute new residual
+            im = im + omega * res
+            res = rhs - operator(im)
+
+            # Update the iteration counter
+            iteration += 1
+
+        # Return image
+        return im

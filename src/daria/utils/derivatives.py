@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 from daria import Image
 import numpy as np
 

@@ -312,4 +312,7 @@ class Image:
         self.coordinatesystem: da.CoordinateSystem = da.CoordinateSystem(self)
 
     def copy(self) -> "Image":
+        """
+        Returns a copy of the image object.
+        """
         return Image(self.img, self.origo, self.width, self.height)

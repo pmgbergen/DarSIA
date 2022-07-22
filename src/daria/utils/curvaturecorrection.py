@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cv2
 from scipy.ndimage import map_coordinates
 import numpy as np
