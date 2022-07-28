@@ -1,7 +1,8 @@
-f = open("images/metadata/ROI-test.txt")
+import daria as da
+import cv2
 
-dicti = {}
-for line in f:
-    key, value = line.split(":")
-    dicti[key] = value
-print(type(dicti["Width"]))
+im = cv2.imread("images/originals/Baseline.jpg", 0)
+
+img = da.Image(im)
+
+print(im)

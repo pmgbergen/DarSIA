@@ -21,14 +21,15 @@ class Image:
     position in global coordinates, width and height. One can either pass in metadata
     (origo, width and height, amongst other entities) by passing them directly to
     the constructor or through a metadata-file (default is to pass metadata diretly
-    to the constructor, and if metadatafile is requires the "read_metadata_from_file"
+    to the constructor. If a metadatafile is required, the "read_metadata_from_file"
     variable has to be passed as True). Image can either be passed in as numpy array
     or a path to a file (this is automatically detected through the input). Base
     functionality such as saving to image-file, and drawing a grid is provided in the class.
 
     Attributes:
-        img (np.ndarray): image array, with pixel access, using x,y ordering, such that the
-            lower left corner of the image corresponds to the (0,0) pixel.
+        img (np.ndarray): image array, with pixel access, using y, x ordering, such that the
+            top left corner of the image corresponds to the (0,0) pixel.
+        img (str): path to image, alternative way to feed the actual image.
         imgpath (str): path to image, also used to define source for metadata
         width (float): physical width of the image
         height (float): physical height of the image
@@ -201,6 +202,7 @@ class Image:
         cv2.waitKey(wait)
         cv2.destroyAllWindows()
 
+    # TODO: Should this be a part of the image class? Seems like something that should read an image and return a new one with grid.
     def add_grid(
         self,
         origo: list[float] = None,
@@ -290,3 +292,27 @@ class Image:
             width=self.width,
             height=self.height,
         )
+
+    # resize image by using cv2's resize command
+    def resize(self, cx: float, cy: float) -> None:
+        """ "
+        Coarsen the image object
+
+        Arguments:
+            cx: the amount of which to coarsen in x direction
+            cy: the amount of which to coarsen in y direction
+        """
+
+        # Coarsen image
+        self.img = cv2.resize(self.img, (0, 0), fx=cx, fy=cy)
+
+        # Update parameters and coordinate system
+        self.dx *= 1 / cx
+        self.dy *= 1 / cy
+        self.coordinatesystem: da.CoordinateSystem = da.CoordinateSystem(self)
+
+    def copy(self) -> "Image":
+        """
+        Returns a copy of the image object.
+        """
+        return Image(self.img, self.origo, self.width, self.height)
