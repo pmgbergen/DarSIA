@@ -5,6 +5,7 @@ import cv2
 import daria as da
 import numpy as np
 from colour_checker_detection import detect_colour_checkers_segmentation
+from daria.corrections.color.transferfunctions import EOTF
 
 # TODO 3: measure timing of all relevant components. what is the bottle neck and how bad is it?
 # Result: The bottleneck is the back and forth transformation between linear and nonlinear RGB formats.
@@ -32,6 +33,8 @@ def nlinRGB_to_linRGB(img_gamma_RGB: np.ndarray) -> np.ndarray:
 
     return img_RGB
 
+# Complex gamma transfer function
+eotf = EOTF()
 
 # -------- Define color corrections (simple and correct one)
 
@@ -61,7 +64,7 @@ def colour_correction_linRGB(img_lin_RGB: np.ndarray, roi_cc) -> np.ndarray:
 def colour_correction_nlinRGB(img_lin_RGB: np.ndarray, roi_cc) -> np.ndarray:
 
     # Convert input image to nonlinear RGB space
-    img_nlin_RGB = linRGB_to_nlinRGB(img_lin_RGB)
+    img_nlin_RGB = eotf.adjust(img_lin_RGB)
 
     # Apply ROI to (converted) img, containing the ColourChecker
     img_cc_nlin_RGB = img_nlin_RGB[roi_cc[0], roi_cc[1], :]
@@ -75,7 +78,7 @@ def colour_correction_nlinRGB(img_lin_RGB: np.ndarray, roi_cc) -> np.ndarray:
     )
 
     # Convert to linear RGB
-    corrected_img_lin_RGB = nlinRGB_to_linRGB(corrected_img_nlin_RGB)
+    corrected_img_lin_RGB = eotf.inverse_approx(corrected_img_nlin_RGB)
 
     return corrected_img_lin_RGB
 
