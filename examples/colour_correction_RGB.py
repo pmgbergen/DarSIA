@@ -23,10 +23,9 @@ from colour_checker_detection import detect_colour_checkers_segmentation
 def linRGB_to_nlinRGB(img_lin_RGB: np.ndarray) -> np.ndarray:
     return colour.cctf_decoding(img_lin_RGB / 255.0)
 
-
-def nlinRGB_to_linRGB(img_nlin_RGB: np.ndarray) -> np.ndarray:
+def nlinRGB_to_linRGB(img_gamma_RGB: np.ndarray) -> np.ndarray:
     # Convert to linear RGB (float)
-    img_lin_RGB = colour.cctf_encoding(img_nlin_RGB)
+    img_lin_RGB = colour.cctf_encoding(img_gamma_RGB)
 
     # Convert to RGB (uint)
     img_RGB = (255 * img_lin_RGB).astype(np.uint8)
@@ -37,42 +36,42 @@ def nlinRGB_to_linRGB(img_nlin_RGB: np.ndarray) -> np.ndarray:
 # -------- Define color corrections (simple and correct one)
 
 
-def colour_correction_linRGB(img_lin_RGB: np.ndarray, roi) -> np.ndarray:
+def colour_correction_linRGB(img_lin_RGB: np.ndarray, roi_cc) -> np.ndarray:
 
     # Apply ROI to img, containing the ColourChecker
-    img_cc_lin_RGB = img_lin_RGB[roi[0], roi[1], :]
+    img_cc_lin_RGB = img_lin_RGB[roi_cc[0], roi_cc[1], :]
 
     # Convert to nonlinear RGB space
     img_cc_nlin_RGB = linRGB_to_nlinRGB(img_cc_lin_RGB)
 
-    # Retrieve swatch colours
-    swatch_colours_nlin_RGB = detect_colour_checkers_segmentation(img_cc_nlin_RGB)[0]
+    # Retrieve swatch colors
+    swatch_colors_gamma_RGB = detect_colour_checkers_segmentation(img_cc_nlin_RGB)[0]
 
     # Convert to linear RGB space
-    swatch_colours_RGB = nlinRGB_to_linRGB(swatch_colours_nlin_RGB)
+    swatch_colors_RGB = nlinRGB_to_linRGB(swatch_colors_gamma_RGB)
 
     # Apply correction onto full image
     corrected_img_lin_RGB = (
-        colour.colour_correction(img_lin_RGB, swatch_colours_RGB, cc.colours_RGB)
+        colour.colour_correction(img_lin_RGB, swatch_colors_RGB, cc.colors_RGB)
     ).astype(np.uint8)
 
     return corrected_img_lin_RGB
 
 
-def colour_correction_nlinRGB(img_lin_RGB: np.ndarray, roi) -> np.ndarray:
+def colour_correction_nlinRGB(img_lin_RGB: np.ndarray, roi_cc) -> np.ndarray:
 
     # Convert input image to nonlinear RGB space
     img_nlin_RGB = linRGB_to_nlinRGB(img_lin_RGB)
 
     # Apply ROI to (converted) img, containing the ColourChecker
-    img_cc_nlin_RGB = img_nlin_RGB[roi[0], roi[1], :]
+    img_cc_nlin_RGB = img_nlin_RGB[roi_cc[0], roi_cc[1], :]
 
-    # Retrieve swatch colours
-    swatch_colours_nlin_RGB = detect_colour_checkers_segmentation(img_cc_nlin_RGB)[0]
+    # Retrieve swatch colors
+    swatch_colors_gamma_RGB = detect_colour_checkers_segmentation(img_cc_nlin_RGB)[0]
 
     # Apply correction onto full image
     corrected_img_nlin_RGB = colour.colour_correction(
-        img_nlin_RGB, swatch_colours_nlin_RGB, cc.colours_nlin_RGB
+        img_nlin_RGB, swatch_colors_gamma_RGB, cc.colors_gamma_RGB
     )
 
     # Convert to linear RGB
@@ -105,11 +104,11 @@ img_baseline = da.Image(
     width=width,
 )
 
-# -------- Convert the full picture into various colourspaces
+# -------- Convert the full picture into various colorspaces
 # Fetch image, in BGR
 img_BGR = img_baseline.img
 
-# Convert into linear (uint) and nonlinear (float) RGB
+# Convert to RGB (int)
 img_RGB = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2RGB)
 
 cv2.imwrite("colour-correction/baseline.jpg", img_BGR)
@@ -119,17 +118,17 @@ cv2.waitKey(0)
 
 # -------- Restrict image to a ROI closer to the ColourChecker
 
-roi = (slice(100, 600), slice(350, 600))
+roi_cc = (slice(100, 600), slice(350, 600))
 
-# -------- Match colours and apply correction to original picture using the nonlinear RGB colour space
+# -------- Match colors and apply correction to original picture using the nonlinear RGB colour space
 
 st = time.time()
 
 # Apply colour correction
-corrected_baseline_RGB = colour_correction_nlinRGB(img_RGB, roi)
+corrected_baseline_RGB = colour_correction_nlinRGB(img_RGB, roi_cc)
 
 end = time.time()
-print("match colours", end - st)
+print("match colors", end - st)
 
 # Convert to BGR - for plotting
 corrected_baseline_BGR = cv2.cvtColor(corrected_baseline_RGB, cv2.COLOR_RGB2BGR)
@@ -139,14 +138,15 @@ cv2.imshow("corrected baseline", corrected_baseline_BGR)
 cv2.waitKey(0)
 
 # -------- Simple colour correction based on linear RGB
+# TODO review and remove as most likely not relevant anymore - need to find a cheaper way to transform
 
 st = time.time()
 
 # Apply correction, and make sure that the result again has uint8 values
-tst_corrected_baseline_RGB = colour_correction_linRGB(img_RGB, roi)
+tst_corrected_baseline_RGB = colour_correction_linRGB(img_RGB, roi_cc)
 
 end = time.time()
-print("match colours simple", end - st)
+print("match colors simple", end - st)
 
 # Convert to BGR - for plotting
 tst_corrected_baseline_BGR = cv2.cvtColor(tst_corrected_baseline_RGB, cv2.COLOR_RGB2BGR)
