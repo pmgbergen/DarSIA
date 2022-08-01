@@ -9,48 +9,12 @@ from colour_checker_detection import detect_colour_checkers_segmentation
 # TODO 3: measure timing of all relevant components. what is the bottle neck and how bad is it?
 # Result: The bottleneck is the back and forth transformation between linear and nonlinear RGB formats.
 
-# TODO 4: Implement as object in src/daria/correction/ccc.py
-
 # TODO 5: what if we do this on the lin RGB scale? and not convert to nonlinear RGB (float)...
 # Result: This does not work satisfactorily. The final signal seems deterioarted (outside the interval?)
 # and there is a substantial difference to the 'correct' way of doing it.
 
-# ------- Colourchecker class
-
-
-class ClassicColourChecker:
-    def __init__(self):
-        # Fetch conventional illuminant, used to define the hardcoded sRGB values for the classic colourchecker
-        self.illuminant = colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"][
-            "D65"
-        ]
-
-        # Fetch reference colourchecker data published by the manufacturer (X-Rite), latest data
-        self.colourchecker = colour.CCS_COLOURCHECKERS[
-            "ColorChecker24 - After November 2014"
-        ]
-
-        # Fetch standard colour names
-        self.colour_names = self.colourchecker.data.keys()
-
-        # Reference colours in xyY format
-        self.colours_xyY = list(self.colourchecker.data.values())
-
-        # Convert reference colours to XYZ
-        self.colours_XYZ = colour.xyY_to_XYZ(self.colours_xyY)
-
-        # Convert reference colours to sRGB
-        self.colours_nlin_RGB = colour.XYZ_to_RGB(
-            XYZ=self.colours_XYZ,
-            illuminant_XYZ=self.colourchecker.illuminant,
-            illuminant_RGB=self.illuminant,
-            matrix_XYZ_to_RGB=colour.RGB_COLOURSPACES["sRGB"].matrix_XYZ_to_RGB,
-        )
-
-        # Convert reference colours to RGB (uint)
-        self.colours_RGB = (255 * colour.cctf_encoding(self.colours_nlin_RGB)).astype(
-            np.uint8
-        )
+# NOTE: For different colour spaces and gamma-correction, cf. https://en.wikipedia.org/wiki/CIE_1931_color_space
+# Another nice introductory web page: https://ninedegreesbelow.com/photography/xyz-rgb.html
 
 
 # -------- Define conversions between linear and nonlinear RGB
@@ -120,7 +84,7 @@ def colour_correction_nlinRGB(img_lin_RGB: np.ndarray, roi) -> np.ndarray:
 # ------- START of script - begin with defining the classic colour checker
 
 # Define Classic Colourchecker
-cc = ClassicColourChecker()
+cc = da.ClassicColorChecker()
 
 # ------- Read in baseline picture
 
