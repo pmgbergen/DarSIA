@@ -5,7 +5,6 @@ import cv2
 import daria as da
 import numpy as np
 from colour_checker_detection import detect_colour_checkers_segmentation
-from daria.corrections.color.transferfunctions import EOTF
 
 # TODO 3: measure timing of all relevant components. what is the bottle neck and how bad is it?
 # Result: The bottleneck is the back and forth transformation between linear and nonlinear RGB formats.
@@ -17,71 +16,8 @@ from daria.corrections.color.transferfunctions import EOTF
 # NOTE: For different colour spaces and gamma-correction, cf. https://en.wikipedia.org/wiki/CIE_1931_color_space
 # Another nice introductory web page: https://ninedegreesbelow.com/photography/xyz-rgb.html
 
-
-# -------- Define conversions between linear and nonlinear RGB
-
-
-def linRGB_to_nlinRGB(img_lin_RGB: np.ndarray) -> np.ndarray:
-    return colour.cctf_decoding(img_lin_RGB / 255.0)
-
-def nlinRGB_to_linRGB(img_gamma_RGB: np.ndarray) -> np.ndarray:
-    # Convert to linear RGB (float)
-    img_lin_RGB = colour.cctf_encoding(img_gamma_RGB)
-
-    # Convert to RGB (uint)
-    img_RGB = (255 * img_lin_RGB).astype(np.uint8)
-
-    return img_RGB
-
-# Complex gamma transfer function
-eotf = EOTF()
-
-# -------- Define color corrections (simple and correct one)
-
-
-def colour_correction_linRGB(img_lin_RGB: np.ndarray, roi_cc) -> np.ndarray:
-
-    # Apply ROI to img, containing the ColourChecker
-    img_cc_lin_RGB = img_lin_RGB[roi_cc[0], roi_cc[1], :]
-
-    # Convert to nonlinear RGB space
-    img_cc_nlin_RGB = linRGB_to_nlinRGB(img_cc_lin_RGB)
-
-    # Retrieve swatch colors
-    swatch_colors_gamma_RGB = detect_colour_checkers_segmentation(img_cc_nlin_RGB)[0]
-
-    # Convert to linear RGB space
-    swatch_colors_RGB = nlinRGB_to_linRGB(swatch_colors_gamma_RGB)
-
-    # Apply correction onto full image
-    corrected_img_lin_RGB = (
-        colour.colour_correction(img_lin_RGB, swatch_colors_RGB, cc.colors_RGB)
-    ).astype(np.uint8)
-
-    return corrected_img_lin_RGB
-
-
-def colour_correction_nlinRGB(img_lin_RGB: np.ndarray, roi_cc) -> np.ndarray:
-
-    # Convert input image to nonlinear RGB space
-    img_nlin_RGB = eotf.adjust(img_lin_RGB)
-
-    # Apply ROI to (converted) img, containing the ColourChecker
-    img_cc_nlin_RGB = img_nlin_RGB[roi_cc[0], roi_cc[1], :]
-
-    # Retrieve swatch colors
-    swatch_colors_gamma_RGB = detect_colour_checkers_segmentation(img_cc_nlin_RGB)[0]
-
-    # Apply correction onto full image
-    corrected_img_nlin_RGB = colour.colour_correction(
-        img_nlin_RGB, swatch_colors_gamma_RGB, cc.colors_gamma_RGB
-    )
-
-    # Convert to linear RGB
-    corrected_img_lin_RGB = eotf.inverse_approx(corrected_img_nlin_RGB)
-
-    return corrected_img_lin_RGB
-
+# TODO 6: Is it possible to identify the white tone of the lamps used to illuminate the FluidFlower? D50, D65?
+# OpenCV should work with D65.
 
 # ------- START of script - begin with defining the classic colour checker
 
@@ -127,8 +63,9 @@ roi_cc = (slice(100, 600), slice(350, 600))
 
 st = time.time()
 
-# Apply colour correction
-corrected_baseline_RGB = colour_correction_nlinRGB(img_RGB, roi_cc)
+# Apply colour correction based on color checker
+colorcorrection = da.corrections.color.colorchecker.ColorCorrection()
+corrected_baseline_RGB = colorcorrection.adjust(img_RGB, roi_cc)
 
 end = time.time()
 print("match colors", end - st)
@@ -142,6 +79,44 @@ cv2.waitKey(0)
 
 # -------- Simple colour correction based on linear RGB
 # TODO review and remove as most likely not relevant anymore - need to find a cheaper way to transform
+
+# -------- Define conversions between linear and nonlinear RGB
+
+def linRGB_to_nlinRGB(img_lin_RGB: np.ndarray) -> np.ndarray:
+    return colour.cctf_decoding(img_lin_RGB / 255.0)
+
+def nlinRGB_to_linRGB(img_gamma_RGB: np.ndarray) -> np.ndarray:
+    # Convert to linear RGB (float)
+    img_lin_RGB = colour.cctf_encoding(img_gamma_RGB)
+
+    # Convert to RGB (uint)
+    img_RGB = (255 * img_lin_RGB).astype(np.uint8)
+
+    return img_RGB
+
+# -------- Define color corrections (simple and correct one)
+
+
+def colour_correction_linRGB(img_lin_RGB: np.ndarray, roi_cc) -> np.ndarray:
+
+    # Apply ROI to img, containing the ColourChecker
+    img_cc_lin_RGB = img_lin_RGB[roi_cc[0], roi_cc[1], :]
+
+    # Convert to nonlinear RGB space
+    img_cc_nlin_RGB = linRGB_to_nlinRGB(img_cc_lin_RGB)
+
+    # Retrieve swatch colors
+    swatch_colors_gamma_RGB = detect_colour_checkers_segmentation(img_cc_nlin_RGB)[0]
+
+    # Convert to linear RGB space
+    swatch_colors_RGB = nlinRGB_to_linRGB(swatch_colors_gamma_RGB)
+
+    # Apply correction onto full image
+    corrected_img_lin_RGB = (
+        colour.colour_correction(img_lin_RGB, swatch_colors_RGB, cc.colors_RGB)
+    ).astype(np.uint8)
+
+    return corrected_img_lin_RGB
 
 st = time.time()
 
