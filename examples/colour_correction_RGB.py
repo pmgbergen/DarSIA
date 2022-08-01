@@ -1,15 +1,22 @@
-import cv2
-import numpy as np
-import colour
-import daria as da
-from colour_checker_detection import detect_colour_checkers_segmentation
 import time
 
+import colour
+import cv2
+import daria as da
+import numpy as np
+from colour_checker_detection import detect_colour_checkers_segmentation
+
 # TODO 3: measure timing of all relevant components. what is the bottle neck and how bad is it?
+# Result: The bottleneck is the back and forth transformation between linear and nonlinear RGB formats.
+
 # TODO 4: Implement as object in src/daria/correction/ccc.py
+
 # TODO 5: what if we do this on the lin RGB scale? and not convert to nonlinear RGB (float)...
+# Result: This does not work satisfactorily. The final signal seems deterioarted (outside the interval?)
+# and there is a substantial difference to the 'correct' way of doing it.
 
 # ------- Colourchecker class
+
 
 class ClassicColourChecker:
     def __init__(self):
@@ -41,12 +48,17 @@ class ClassicColourChecker:
         )
 
         # Convert reference colours to RGB (uint)
-        self.colours_RGB = (255 * colour.cctf_encoding(self.colours_nlin_RGB)).astype(np.uint8)
+        self.colours_RGB = (255 * colour.cctf_encoding(self.colours_nlin_RGB)).astype(
+            np.uint8
+        )
+
 
 # -------- Define conversions between linear and nonlinear RGB
 
+
 def linRGB_to_nlinRGB(img_lin_RGB: np.ndarray) -> np.ndarray:
-    return colour.cctf_decoding(img_lin_RGB / 255.)
+    return colour.cctf_decoding(img_lin_RGB / 255.0)
+
 
 def nlinRGB_to_linRGB(img_nlin_RGB: np.ndarray) -> np.ndarray:
     # Convert to linear RGB (float)
@@ -57,12 +69,14 @@ def nlinRGB_to_linRGB(img_nlin_RGB: np.ndarray) -> np.ndarray:
 
     return img_RGB
 
+
 # -------- Define color corrections (simple and correct one)
+
 
 def colour_correction_linRGB(img_lin_RGB: np.ndarray, roi) -> np.ndarray:
 
     # Apply ROI to img, containing the ColourChecker
-    img_cc_lin_RGB = img_lin_RGB[roi[0], roi[1],:]
+    img_cc_lin_RGB = img_lin_RGB[roi[0], roi[1], :]
 
     # Convert to nonlinear RGB space
     img_cc_nlin_RGB = linRGB_to_nlinRGB(img_cc_lin_RGB)
@@ -74,9 +88,12 @@ def colour_correction_linRGB(img_lin_RGB: np.ndarray, roi) -> np.ndarray:
     swatch_colours_RGB = nlinRGB_to_linRGB(swatch_colours_nlin_RGB)
 
     # Apply correction onto full image
-    corrected_img_lin_RGB = (colour.colour_correction(img_lin_RGB, swatch_colours_RGB, cc.colours_RGB)).astype(np.uint8)
+    corrected_img_lin_RGB = (
+        colour.colour_correction(img_lin_RGB, swatch_colours_RGB, cc.colours_RGB)
+    ).astype(np.uint8)
 
     return corrected_img_lin_RGB
+
 
 def colour_correction_nlinRGB(img_lin_RGB: np.ndarray, roi) -> np.ndarray:
 
@@ -84,18 +101,21 @@ def colour_correction_nlinRGB(img_lin_RGB: np.ndarray, roi) -> np.ndarray:
     img_nlin_RGB = linRGB_to_nlinRGB(img_lin_RGB)
 
     # Apply ROI to (converted) img, containing the ColourChecker
-    img_cc_nlin_RGB = img_nlin_RGB[roi[0], roi[1],:]
+    img_cc_nlin_RGB = img_nlin_RGB[roi[0], roi[1], :]
 
     # Retrieve swatch colours
     swatch_colours_nlin_RGB = detect_colour_checkers_segmentation(img_cc_nlin_RGB)[0]
 
     # Apply correction onto full image
-    corrected_img_nlin_RGB = colour.colour_correction(img_nlin_RGB, swatch_colours_nlin_RGB, cc.colours_nlin_RGB)
+    corrected_img_nlin_RGB = colour.colour_correction(
+        img_nlin_RGB, swatch_colours_nlin_RGB, cc.colours_nlin_RGB
+    )
 
     # Convert to linear RGB
     corrected_img_lin_RGB = nlinRGB_to_linRGB(corrected_img_nlin_RGB)
 
     return corrected_img_lin_RGB
+
 
 # ------- START of script - begin with defining the classic colour checker
 
@@ -135,7 +155,7 @@ cv2.waitKey(0)
 
 # -------- Restrict image to a ROI closer to the ColourChecker
 
-roi = (slice(100,600), slice(350,600))
+roi = (slice(100, 600), slice(350, 600))
 
 # -------- Match colours and apply correction to original picture using the nonlinear RGB colour space
 
@@ -145,7 +165,7 @@ st = time.time()
 corrected_baseline_RGB = colour_correction_nlinRGB(img_RGB, roi)
 
 end = time.time()
-print("match colours", end-st)
+print("match colours", end - st)
 
 # Convert to BGR - for plotting
 corrected_baseline_BGR = cv2.cvtColor(corrected_baseline_RGB, cv2.COLOR_RGB2BGR)
@@ -162,11 +182,13 @@ st = time.time()
 tst_corrected_baseline_RGB = colour_correction_linRGB(img_RGB, roi)
 
 end = time.time()
-print("match colours simple", end-st)
+print("match colours simple", end - st)
 
 # Convert to BGR - for plotting
 tst_corrected_baseline_BGR = cv2.cvtColor(tst_corrected_baseline_RGB, cv2.COLOR_RGB2BGR)
-cv2.imwrite("colour-correction/baseline_fast_correction.jpg", tst_corrected_baseline_BGR)
+cv2.imwrite(
+    "colour-correction/baseline_fast_correction.jpg", tst_corrected_baseline_BGR
+)
 cv2.namedWindow("tst corrected baseline", cv2.WINDOW_NORMAL)
 cv2.imshow("tst corrected baseline", tst_corrected_baseline_BGR)
 cv2.waitKey(0)

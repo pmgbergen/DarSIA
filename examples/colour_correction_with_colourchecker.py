@@ -104,8 +104,7 @@ corrected_baseline_nlin_RGB = colour.cctf_encoding(
 # -------- Convert the corrected image to standard format again
 
 # Convert from nonlinear RGB (float32) to linear RGB (unit8)
-corrected_baseline_RGB = 255 * corrected_baseline_nlin_RGB
-corrected_baseline_RGB = corrected_baseline_RGB.astype(np.uint8)
+corrected_baseline_RGB = (255 * corrected_baseline_nlin_RGB).astype(np.uint8)
 
 # Convert from RGB (uint8) to BGR (uint8)
 corrected_baseline_BGR = cv2.cvtColor(corrected_baseline_RGB, cv2.COLOR_RGB2BGR)
