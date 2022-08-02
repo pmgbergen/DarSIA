@@ -18,7 +18,7 @@ colorcorrection = da.corrections.color.colorchecker.ColorCorrection()
 roi_cc = (slice(100, 600), slice(350, 600))
 
 # Apply color correction
-corrected_baseline_RGB = colorcorrection.adjust(img_RGB, roi_cc)
+corrected_baseline_RGB = colorcorrection.adjust(img_RGB, roi_cc, verbosity=True, whitebalancing=True)
 
 # -------- Plot images pre and post correction, and store both images
 
