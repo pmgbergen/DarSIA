@@ -21,14 +21,15 @@ class Image:
     position in global coordinates, width and height. One can either pass in metadata
     (origo, width and height, amongst other entities) by passing them directly to
     the constructor or through a metadata-file (default is to pass metadata diretly
-    to the constructor, and if metadatafile is requires the "read_metadata_from_file"
+    to the constructor. If a metadatafile is required, the "read_metadata_from_file"
     variable has to be passed as True). Image can either be passed in as numpy array
     or a path to a file (this is automatically detected through the input). Base
     functionality such as saving to image-file, and drawing a grid is provided in the class.
 
     Attributes:
-        img (np.ndarray): image array, with pixel access, using x,y ordering, such that the
-            lower left corner of the image corresponds to the (0,0) pixel.
+        img (np.ndarray): image array, with pixel access, using y, x ordering, such that the
+            top left corner of the image corresponds to the (0,0) pixel.
+        img (str): path to image, alternative way to feed the actual image.
         imgpath (str): path to image, also used to define source for metadata
         width (float): physical width of the image
         height (float): physical height of the image
@@ -75,9 +76,11 @@ class Image:
         # Fetch image
         if isinstance(img, np.ndarray):
             self.img = img
+            self.name = "Unnamed image"
         elif isinstance(img, str):
             self.img = cv2.imread(img)
             self.imgpath = img
+            self.name = img
         else:
             raise Exception(
                 "Invalid image data. Provide either a path to an image or an image array."
@@ -180,13 +183,13 @@ class Image:
             f.write("Dimension: " + str(self.dim) + "\n")
             f.close()
 
-    def show(self, name: Optional[str] = None, wait: Optional[int] = None) -> None:
+    def show(self, name: Optional[str] = None, wait: Optional[int] = 0) -> None:
         """Show image.
 
         Arguments:
             name (str, optional): name addressing the window for visualization
             wait (int, optional): waiting time in milliseconds, if not set
-                no waiting is applied (can be still set externally)
+                the window is open until any key is pressed.
         """
         if name is None:
             name = self.name
@@ -194,12 +197,15 @@ class Image:
         # Display image
         cv2.namedWindow(name, cv2.WINDOW_NORMAL)
         cv2.imshow(name, self.img)
-        if wait is not None:
-            cv2.waitKey(wait)
+        # if wait is not None:
+        #     cv2.waitKey(wait)
+        cv2.waitKey(wait)
+        cv2.destroyAllWindows()
 
+    # TODO: Should this be a part of the image class? Seems like something that should read an image and return a new one with grid.
     def add_grid(
         self,
-        origo: list[float] = [0, 0],
+        origo: list[float] = None,
         dx: float = 1,
         dy: float = 1,
         color: tuple = (0, 0, 125),
@@ -218,6 +224,10 @@ class Image:
         Returns:
             Image: original image with grid on top
         """
+        # Set origo if it was not provided
+        if origo is None:
+            origo = self.origo
+
         # Determine the number of grid lines required
         num_horizontal_lines: int = math.ceil(self.height / dy) + 1
         num_vertical_lines: int = math.ceil(self.width / dx) + 1
@@ -283,66 +293,26 @@ class Image:
             height=self.height,
         )
 
-    def draw_grid(
-        self,
-        DX: float = 100,
-        DY: float = 100,
-        color: tuple[int] = (0, 0, 125),
-        thickness: int = 9,
-        name: str = "img-grid",
-        path: str = "images/modified/",
-        format: str = ".jpg",
-    ) -> None:
-        """
-        Draws a grid on the image and writes it to file.
+    # resize image by using cv2's resize command
+    def resize(self, cx: float, cy: float) -> None:
+        """ "
+        Coarsen the image object
 
         Arguments:
-            DX (float): grid size in x-direction, in physical units
-            DY (float): grid size in y-direction, in physical units
-            color (tuple of int): RGB color of the grid
-            thickness (int): thickness of the grid lines
-            name (str): name of the image file for exporting
-            path (str): path to file
-            format (str): file ending, defining the image format
+            cx: the amount of which to coarsen in x direction
+            cy: the amount of which to coarsen in y direction
         """
-        # TODO conversion of pixels
-        # Determine the number of grid lines required for
-        num_h_lines: int = round((self.shape[0] + self.origo[1] / self.dy) / DY)
-        num_v_lines: int = round((self.shape[1] + self.origo[0] / self.dx) / DX)
 
-        # Start from original image
-        gridimg = self.img.copy()
+        # Coarsen image
+        self.img = cv2.resize(self.img, (0, 0), fx=cx, fy=cy)
 
-        # Add horizontal grid lines (line by line)
-        for row in range(num_h_lines):
-            gridimg = cv2.line(
-                gridimg,
-                (
-                    # TODO revisit: is the order correct here? conversion of pixels
-                    round(-self.origo[0] / self.dx),
-                    round(row * DY),
-                ),
-                (round(self.shape[1]), round(row * DY)),
-                color,
-                thickness,
-            )
+        # Update parameters and coordinate system
+        self.dx *= 1 / cx
+        self.dy *= 1 / cy
+        self.coordinatesystem: da.CoordinateSystem = da.CoordinateSystem(self)
 
-        # Add vertical grid lines (line by line)
-        for col in range(num_v_lines):
-            gridimg = cv2.line(
-                gridimg,
-                (
-                    # TODO revisit: is the order correct here? conversion of pixels
-                    round(col * DX - self.origo[0] / self.dx),
-                    round(0),
-                ),
-                (
-                    round(col * DX - self.origo[0] / self.dx),
-                    round(self.shape[0] + self.origo[1] / self.dy),
-                ),
-                color,
-                thickness,
-            )
-
-        # Write image with grid to file
-        cv2.imwrite(path + name + format, gridimg)
+    def copy(self) -> "Image":
+        """
+        Returns a copy of the image object.
+        """
+        return Image(self.img, self.origo, self.width, self.height)
