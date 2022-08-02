@@ -40,15 +40,16 @@ class ColorCorrection:
         # Reference of the class color checker
         self.ccc = ClassicColorChecker()
 
-    def adjust(self, image: np.ndarray, roi_cc: tuple = None, verbosity: bool = False) -> np.ndarray:
+    def adjust(self, image: np.ndarray, roi_cc: tuple = None, verbosity: bool = False, whitebalancing: bool = True) -> np.ndarray:
         """
         Apply workflow from colour-science to match the colors of the color checker with the corresponding
         color values, cf. https://github.com/colour-science/colour-checker-detection/blob/master/colour_checker_detection/examples/examples_detection.ipynb
 
-        Arg#uments:
-           # image (np.ndarray): image with uint8 value in (linear) RGB color space
-           # roi_cc (tupe of slices): region of interest containing a colour checker
-           # verbosity (bool): displays corrected color checker on top of the reference one if True, default is False
+        Arguments:
+            image (np.ndarray): image with uint8 value in (linear) RGB color space
+            roi_cc (tupe of slices): region of interest containing a colour checker
+            verbosity (bool): displays corrected color checker on top of the reference one if True, default is False
+            whitebalancing (bool): apply white balancing based on the third bottom left swatch if True, default is True
 
         Returns:
             np.ndarray: image with uint8 values in (linear) RGB color space, with colors
@@ -67,6 +68,19 @@ class ColorCorrection:
         else:
             swatches = swatches[0]
 
+        # Apply color correction onto full image based on the swatch colors in comparison with the standard colors
+        corrected_decoded_image = colour.colour_correction(
+            decoded_image,
+            swatches,
+            self.ccc.reference_swatches,
+        )
+
+        # Apply white balancing, such that the third bottom left swatch of the color checker is exact
+        if whitebalancing:
+            corrected_colorchecker_image = corrected_decoded_image[roi_cc[0], roi_cc[1], :] if roi_cc is not None else corrected_decoded_image
+            swatches = detect_colour_checkers_segmentation(corrected_colorchecker_image)[0]
+            corrected_decoded_image *= self.ccc.reference_swatches[-4] / swatches[-4]
+
         # For debugging purposes (a pre/post analysis), the swatches are displayed on top of the reference color checker.
         if verbosity==True:
 
@@ -80,6 +94,8 @@ class ColorCorrection:
             corrected_swatches = colour.colour_correction(
                 swatches, swatches, self.ccc.reference_swatches
             )
+            if whitebalancing:
+                corrected_swatches *= self.ccc.reference_swatches[-4] / corrected_swatches[-4]
             corrected_swatches_xyY = colour.XYZ_to_xyY(colour.RGB_to_XYZ(corrected_swatches, D65, D65, colour.RGB_COLOURSPACES['sRGB'].matrix_RGB_to_XYZ))
 
             # Define color checkers using the swatches pre and post color correction
@@ -99,13 +115,6 @@ class ColorCorrection:
 
             colour.plotting.plot_multi_colour_checkers(
                 [self.ccc.colorchecker, colour_checker_post])
-
-        # Apply color correction onto full image based on the swatch colors in comparison with the standard colors
-        corrected_decoded_image = colour.colour_correction(
-            decoded_image,
-            swatches,
-            self.ccc.reference_swatches,
-        )
 
         # Convert to linear RGB by applying the inverse of the EOTF and return the corrected image
         return self.eotf.inverse_approx(corrected_decoded_image)
