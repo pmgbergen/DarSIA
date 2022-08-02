@@ -5,12 +5,9 @@ from daria.corrections.color.transferfunctions import EOTF
 
 class ClassicColorChecker:
     def __init__(self):
-        # Fetch conventional illuminant, used to define the hardcoded sRGB values for the classic colourchecker
-        self.illuminant = colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"][
-            "D65"
-        ]
 
-        # Fetch reference colourchecker data published by the manufacturer (X-Rite), latest data
+        # Fetch reference colourchecker data (in chromaticity coordinates),
+        # published by the manufacturer (X-Rite), latest data
         self.colorchecker = colour.CCS_COLOURCHECKERS[
             "ColorChecker24 - After November 2014"
         ]
@@ -19,27 +16,13 @@ class ClassicColorChecker:
         self.color_names = self.colorchecker.data.keys()
         self.colors_xyY = list(self.colorchecker.data.values())
 
-        # Reference colors in XYZ format / CIE 1973 colour space
-        self.colors_XYZ = colour.xyY_to_XYZ(self.colors_xyY)
-
-        # Reference colors in EOTF transformed sRGB (float) format
-        self.colors_eotf_RGB = (
-            colour.XYZ_to_sRGB(
-                XYZ = self.colors_XYZ,
-                illuminant = self.colorchecker.illuminant,
-                apply_cctf_encoding = False,
-            )
+        # Swatches of the Classic Colour Checker in RGB format, using the CIE standards
+        self.reference_swatches = colour.XYZ_to_RGB(
+            colour.xyY_to_XYZ(self.colors_xyY),
+            self.colorchecker.illuminant,
+            colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65'],
+            colour.RGB_COLOURSPACES['sRGB'].matrix_XYZ_to_RGB
         )
-
-        # Reference colors in linear sRGB (int) format
-        self.colors_RGB = (
-            colour.XYZ_to_sRGB(
-                XYZ = self.colors_XYZ,
-                illuminant = self.colorchecker.illuminant,
-                apply_cctf_encoding = True,
-            )
-            * 255
-        ).astype("uint8")
 
 class ColorCorrection:
 
@@ -57,34 +40,72 @@ class ColorCorrection:
         # Reference of the class color checker
         self.ccc = ClassicColorChecker()
 
-    def adjust(self, image: np.ndarray, roi_cc) -> np.ndarray:
+    def adjust(self, image: np.ndarray, roi_cc = None, verbosity: bool = False) -> np.ndarray:
         """
         Apply workflow from colour-science to match the colors of the color checker with the corresponding
-        color values, cf.
+        color values, cf. https://github.com/colour-science/colour-checker-detection/blob/master/colour_checker_detection/examples/examples_detection.ipynb
 
         Arguments:
             image (np.ndarray): image with uint8 value in (linear) RGB color space
             roi_cc: region of interest containing a colour checker
+            verbosity (bool): displays corrected color checker on top of the reference one if True, default is False
 
         Returns:
             np.ndarray: image with uint8 values in (linear) RGB color space, with colors
                 matched based on the color checker within the roi
         """
         # Apply transfer function and convert to nonlinear RGB color space
-        img_eotf_RGB = self.eotf.adjust(image)
+        decoded_image = self.eotf.adjust(image)
 
         # Extract part of the image containing a color checker.
-        img_cc = img_eotf_RGB[roi_cc[0], roi_cc[1], :]
+        colorchecker_image = decoded_image[roi_cc[0], roi_cc[1], :] if roi_cc is not None else decoded_image
 
-        # Retrieve swatch colors
-        swatch_colors_eotf_RGB = detect_colour_checkers_segmentation(img_cc)[0]
+        # Retrieve swatch colors in transfered RGB format
+        swatches = detect_colour_checkers_segmentation(colorchecker_image)
+        if len(swatches) == 0:
+            raise ValueError("Color checker not identified. Choose a better ROI.")
+        else:
+            swatches = swatches[0]
 
-        # TODO check whether empty and throw error if so
+        # For debugging purposes (a pre/post analysis), the swatches are displayed on top of the reference color checker.
+        if verbosity==True:
+
+            # Standard D65 illuminant
+            D65 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
+
+            # Convert swatches from RGB to xyY
+            swatches_xyY = colour.XYZ_to_xyY(colour.RGB_to_XYZ(swatches, D65, D65, colour.RGB_COLOURSPACES['sRGB'].matrix_RGB_to_XYZ))
+
+            # Color correct swatches and also convert to xyY
+            corrected_swatches = colour.colour_correction(
+                swatches, swatches, self.ccc.reference_swatches
+            )
+            corrected_swatches_xyY = colour.XYZ_to_xyY(colour.RGB_to_XYZ(corrected_swatches, D65, D65, colour.RGB_COLOURSPACES['sRGB'].matrix_RGB_to_XYZ))
+
+            # Define color checkers using the swatches pre and post color correction
+            colour_checker_pre = colour.characterisation.ColourChecker(
+                "pre",
+                dict(zip(self.ccc.color_names, swatches_xyY)),
+                D65)
+
+            colour_checker_post = colour.characterisation.ColourChecker(
+                "post",
+                dict(zip(self.ccc.color_names, corrected_swatches_xyY)),
+                D65)
+
+            # Plot the constructed color checkers on top of the reference classic color checker.
+            #colour.plotting.plot_multi_colour_checkers(
+            #    [self.ccc.colorchecker, colour_checker_pre])
+
+            colour.plotting.plot_multi_colour_checkers(
+                [self.ccc.colorchecker, colour_checker_post])
 
         # Apply color correction onto full image based on the swatch colors in comparison with the standard colors
-        corrected_img_eotf_RGB = colour.colour_correction(
-            img_eotf_RGB, swatch_colors_eotf_RGB, self.ccc.colors_eotf_RGB
+        corrected_decoded_image = colour.colour_correction(
+            decoded_image,
+            swatches,
+            self.ccc.reference_swatches,
         )
 
         # Convert to linear RGB by applying the inverse of the EOTF and return the corrected image
-        return self.eotf.inverse_approx(corrected_img_eotf_RGB)
+        return self.eotf.inverse_approx(corrected_decoded_image)
