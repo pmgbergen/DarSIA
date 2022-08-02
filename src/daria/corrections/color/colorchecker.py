@@ -1,7 +1,10 @@
+from typing import Optional
+
 import colour
 import numpy as np
 from colour_checker_detection import detect_colour_checkers_segmentation
 from daria.corrections.color.transferfunctions import EOTF
+
 
 class ClassicColorChecker:
     def __init__(self):
@@ -20,12 +23,12 @@ class ClassicColorChecker:
         self.reference_swatches = colour.XYZ_to_RGB(
             colour.xyY_to_XYZ(self.colors_xyY),
             self.colorchecker.illuminant,
-            colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65'],
-            colour.RGB_COLOURSPACES['sRGB'].matrix_XYZ_to_RGB
+            colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["D65"],
+            colour.RGB_COLOURSPACES["sRGB"].matrix_XYZ_to_RGB,
         )
 
-class ColorCorrection:
 
+class ColorCorrection:
     def __init__(self):
         """
         Constructor of converter, setting up a priori all data needed for fast conversion.
@@ -40,7 +43,13 @@ class ColorCorrection:
         # Reference of the class color checker
         self.ccc = ClassicColorChecker()
 
-    def adjust(self, image: np.ndarray, roi_cc: tuple = None, verbosity: bool = False, whitebalancing: bool = True) -> np.ndarray:
+    def adjust(
+        self,
+        image: np.ndarray,
+        roi_cc: Optional[tuple] = None,
+        verbosity: bool = False,
+        whitebalancing: bool = True,
+    ) -> np.ndarray:
         """
         Apply workflow from colour-science to match the colors of the color checker with the corresponding
         color values, cf. https://github.com/colour-science/colour-checker-detection/blob/master/colour_checker_detection/examples/examples_detection.ipynb
@@ -59,7 +68,11 @@ class ColorCorrection:
         decoded_image = self.eotf.adjust(image)
 
         # Extract part of the image containing a color checker.
-        colorchecker_image = decoded_image[roi_cc[0], roi_cc[1], :] if roi_cc is not None else decoded_image
+        colorchecker_image = (
+            decoded_image[roi_cc[0], roi_cc[1], :]
+            if roi_cc is not None
+            else decoded_image
+        )
 
         # Retrieve swatch colors in transfered RGB format
         swatches = detect_colour_checkers_segmentation(colorchecker_image)
@@ -77,44 +90,65 @@ class ColorCorrection:
 
         # Apply white balancing, such that the third bottom left swatch of the color checker is exact
         if whitebalancing:
-            corrected_colorchecker_image = corrected_decoded_image[roi_cc[0], roi_cc[1], :] if roi_cc is not None else corrected_decoded_image
-            swatches = detect_colour_checkers_segmentation(corrected_colorchecker_image)[0]
+            corrected_colorchecker_image = (
+                corrected_decoded_image[roi_cc[0], roi_cc[1], :]
+                if roi_cc is not None
+                else corrected_decoded_image
+            )
+            swatches = detect_colour_checkers_segmentation(
+                corrected_colorchecker_image
+            )[0]
             corrected_decoded_image *= self.ccc.reference_swatches[-4] / swatches[-4]
 
         # For debugging purposes (a pre/post analysis), the swatches are displayed on top of the reference color checker.
-        if verbosity==True:
+        if verbosity == True:
 
             # Standard D65 illuminant
-            D65 = colour.CCS_ILLUMINANTS['CIE 1931 2 Degree Standard Observer']['D65']
+            D65 = colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["D65"]
 
             # Convert swatches from RGB to xyY
-            swatches_xyY = colour.XYZ_to_xyY(colour.RGB_to_XYZ(swatches, D65, D65, colour.RGB_COLOURSPACES['sRGB'].matrix_RGB_to_XYZ))
+            swatches_xyY = colour.XYZ_to_xyY(
+                colour.RGB_to_XYZ(
+                    swatches,
+                    D65,
+                    D65,
+                    colour.RGB_COLOURSPACES["sRGB"].matrix_RGB_to_XYZ,
+                )
+            )
 
             # Color correct swatches and also convert to xyY
             corrected_swatches = colour.colour_correction(
                 swatches, swatches, self.ccc.reference_swatches
             )
             if whitebalancing:
-                corrected_swatches *= self.ccc.reference_swatches[-4] / corrected_swatches[-4]
-            corrected_swatches_xyY = colour.XYZ_to_xyY(colour.RGB_to_XYZ(corrected_swatches, D65, D65, colour.RGB_COLOURSPACES['sRGB'].matrix_RGB_to_XYZ))
+                corrected_swatches *= (
+                    self.ccc.reference_swatches[-4] / corrected_swatches[-4]
+                )
+            corrected_swatches_xyY = colour.XYZ_to_xyY(
+                colour.RGB_to_XYZ(
+                    corrected_swatches,
+                    D65,
+                    D65,
+                    colour.RGB_COLOURSPACES["sRGB"].matrix_RGB_to_XYZ,
+                )
+            )
 
             # Define color checkers using the swatches pre and post color correction
             colour_checker_pre = colour.characterisation.ColourChecker(
-                "pre",
-                dict(zip(self.ccc.color_names, swatches_xyY)),
-                D65)
+                "pre", dict(zip(self.ccc.color_names, swatches_xyY)), D65
+            )
 
             colour_checker_post = colour.characterisation.ColourChecker(
-                "post",
-                dict(zip(self.ccc.color_names, corrected_swatches_xyY)),
-                D65)
+                "post", dict(zip(self.ccc.color_names, corrected_swatches_xyY)), D65
+            )
 
             # Plot the constructed color checkers on top of the reference classic color checker.
-            #colour.plotting.plot_multi_colour_checkers(
+            # colour.plotting.plot_multi_colour_checkers(
             #    [self.ccc.colorchecker, colour_checker_pre])
 
             colour.plotting.plot_multi_colour_checkers(
-                [self.ccc.colorchecker, colour_checker_post])
+                [self.ccc.colorchecker, colour_checker_post]
+            )
 
         # Convert to linear RGB by applying the inverse of the EOTF and return the corrected image
         return self.eotf.inverse_approx(corrected_decoded_image)
