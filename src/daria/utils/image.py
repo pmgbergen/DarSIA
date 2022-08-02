@@ -40,6 +40,7 @@ class Image:
         dx (float): pixel size in x-direction
         dy (float): pixel size in y-direction
         dz (float): pixel size in z-direction
+        colourspace (str): identifying the colour space, e.g., BGR, RGB, xyY, XYZ.
     """
 
     def __init__(
@@ -85,6 +86,9 @@ class Image:
             raise Exception(
                 "Invalid image data. Provide either a path to an image or an image array."
             )
+
+        # OpenCV reads in images in BGR colourspace with uint8 values by default
+        self.colourspace = "BGR_uint8"
 
         # Read metadata from file or create from input arguments
         if read_metadata_from_file:
