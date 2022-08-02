@@ -75,7 +75,10 @@ def physicalToStandardPixelOrdering(img: np.ndarray) -> np.ndarray:
 
     return img
 
-def standardToPhysicalPixel(img: "Image", pixel: Union[tuple[int], list[int]]) -> tuple[int]:
+
+def standardToPhysicalPixel(
+    img: "Image", pixel: Union[tuple[int], list[int]]
+) -> tuple[int]:
     """Translate a standard to a physical pixel.
 
     The conversion is based on the width and height of the corresponding image.
@@ -90,7 +93,10 @@ def standardToPhysicalPixel(img: "Image", pixel: Union[tuple[int], list[int]]) -
     # TODO
     pass
 
-def physicalToStandardPixel(img: "Image", pixel: Union[tuple[int], Union[tuple[int], list[int]]]) -> tuple[int]:
+
+def physicalToStandardPixel(
+    img: "Image", pixel: Union[tuple[int], Union[tuple[int], list[int]]]
+) -> tuple[int]:
     """Translate a physica pixel to a standard pixel.
 
     Inversie of standardToPhysicalPixel.
