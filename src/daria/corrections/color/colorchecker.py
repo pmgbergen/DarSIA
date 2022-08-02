@@ -40,15 +40,15 @@ class ColorCorrection:
         # Reference of the class color checker
         self.ccc = ClassicColorChecker()
 
-    def adjust(self, image: np.ndarray, roi_cc = None, verbosity: bool = False) -> np.ndarray:
+    def adjust(self, image: np.ndarray, roi_cc: tuple = None, verbosity: bool = False) -> np.ndarray:
         """
         Apply workflow from colour-science to match the colors of the color checker with the corresponding
         color values, cf. https://github.com/colour-science/colour-checker-detection/blob/master/colour_checker_detection/examples/examples_detection.ipynb
 
-        Arguments:
-            image (np.ndarray): image with uint8 value in (linear) RGB color space
-            roi_cc: region of interest containing a colour checker
-            verbosity (bool): displays corrected color checker on top of the reference one if True, default is False
+        Arg#uments:
+           # image (np.ndarray): image with uint8 value in (linear) RGB color space
+           # roi_cc (tupe of slices): region of interest containing a colour checker
+           # verbosity (bool): displays corrected color checker on top of the reference one if True, default is False
 
         Returns:
             np.ndarray: image with uint8 values in (linear) RGB color space, with colors
