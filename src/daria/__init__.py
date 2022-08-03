@@ -15,3 +15,4 @@ from daria.utils.stoppingcriterion import *
 from daria.utils.solvers import *
 from daria.utils.norms import *
 from daria.utils.regularization import *
+from daria.corrections.color.colorchecker import *
