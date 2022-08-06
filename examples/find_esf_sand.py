@@ -2,6 +2,7 @@
 The objective of this example is to showcase how to use DaRIA to identify sandlayer
 in the FluidFlower Baseline image.
 """
+# Clustering, based on https://www.thepythoncode.com/article/kmeans-for-image-segmentation-opencv-python
 
 import daria as da
 import cv2
@@ -12,27 +13,19 @@ from skimage.restoration import denoise_tv_chambolle
 
 # Color image
 image_color = cv2.imread("../images/fluidflower/Baseline.jpg")
+image_color = cv2.cvtColor(image_color, cv2.COLOR_BGR2RGB)
 
-# Apply TV denoising as implemented in DaRIA
-if False:
-    img_blur = da.tv_denoising(preimage, 0.5, 1, verbose=True)
-
-    # TODO compare to cv2 tv denoising
-
-# Edge detection
-if False:
-    edges = cv2.Canny(image=img_blur.img, threshold1=10, threshold2=50)
-    cv2.imshow('Canny Edge Detection', edges)
-    cv2.waitKey(0)
-
-# Clustering, based on https://www.thepythoncode.com/article/kmeans-for-image-segmentation-opencv-python
-
-# Read image and convert to RGB
-#image = cv2.cvtColor(
-#    image_color,
-#    cv2.COLOR_BGR2GRAY,
-#)
-image = image_color[:,:,1] # the green channel
+# Consider 1d image, either gray or green channel (blue and red channels did not lead to any reasonable results in short time)
+gray = False
+if gray:
+    # Gray
+    image = cv2.cvtColor(
+        image_color,
+        cv2.COLOR_BGR2GRAY,
+    )
+else:
+    # Green
+    image = image_color[:,:,2]
 
 # Neutralize Color checker
 roi_cc = (slice(100, 600), slice(100, 600))
@@ -50,12 +43,12 @@ image[roi_cc[0], roi_cc[1]] = avg_color_boundary
 # Restrict the image to the visible reservoir.
 image = image[0:4400, 140:7850]
 
-# Make daria image
-da_image = da.Image(image, (0, 0), 250, 180)
-
 # Resize - do not require the high resolution for finding sand layers
-da_image.resize(0.1, 0.1)
+#da_image.resize(0.1, 0.1)
 image = cv2.resize(image, (0,0), fx = 0.1, fy = 0.1)
+
+# Make daria image - the coordinate system currently does not make sense
+da_image = da.Image(image, (0, 0), 250, 180)
 
 def single_iteration(img: np.ndarray, gamma: float, k: int, val: float, active_set: np.ndarray) -> np.ndarray:
 
@@ -64,7 +57,7 @@ def single_iteration(img: np.ndarray, gamma: float, k: int, val: float, active_s
     # TODO gamma before and after or only one of them?
 
     # Apply gamma correction
-    #img_work = skimage.exposure.adjust_gamma(img_work, gamma)
+    img_work = skimage.exposure.adjust_gamma(img_work, gamma)
 
     # Blur the image
     #img_work = np.uint8(255.0 * skimage.restoration.denoise_tv_chambolle(img_work, weight=0.05, channel_axis=-1))
@@ -124,31 +117,35 @@ def scale_field(f):
     return f
 
 # Workflow to determine the 
-val = np.max(image) # 165
 active_set = np.ones(image.shape, dtype=bool) # pixels which have not yet been assigned to any sand type
 facies = np.zeros(image.shape, dtype=int)
 
 # Define the image and apply some denoising as well as gamma correction
-if False:
+daria_denoising = False
+if daria_denoising:
     da_image = da.tv_denoising(da_image, 0.05, 1, verbose=True)
     image = da_image.img
 else:
-    image = np.uint8(255.0 * skimage.restoration.denoise_tv_chambolle(image, weight=0.05, channel_axis=-1))
+    #image = np.uint8(255.0 * skimage.restoration.denoise_tv_chambolle(image, weight=0.2, channel_axis=-1))
+    #image = np.uint8(255.0 * skimage.filters.median(image))
+    #image = np.uint8(255.0 * skimage.filters.gaussian(image, sigma=1))
+    image = np.uint8(255.0 * skimage.filters.rank.median(image, skimage.morphology.disk(5)))
 
-image = skimage.exposure.adjust_gamma(image, 0.05)
+# Gamma correction
+#image = skimage.exposure.adjust_gamma(image, 0.05)
 
 fig, ax = plt.subplots(3,3)
 
-image, image_work, segmented_image, active_set, marked_set = single_iteration(image, gamma=0.1, k=2, val=255, active_set = active_set)
-marked_set = skimage.restoration.denoise_tv_chambolle(255 * marked_set.astype("uint8"), weight=0.05, channel_axis=-1) > 0.5
+image, image_work, segmented_image, active_set, marked_set = single_iteration(image, gamma=3, k=4, val=255, active_set = active_set)
+#marked_set = skimage.restoration.denoise_tv_chambolle(255 * marked_set.astype("uint8"), weight=0.05, channel_axis=-1) > 0.9
 facies[marked_set] = 1
 
 ax[0,0].imshow(image)
 ax[1,0].imshow(scale_field(facies))
 ax[2,0].imshow(image_color)
 
-image, image_work, segmented_image, active_set, marked_set = single_iteration(image, gamma=0.1, k=2, val=255, active_set = active_set)
-marked_set = skimage.restoration.denoise_tv_chambolle(255 * marked_set.astype("uint8"), weight=1, channel_axis=-1) > 0.5
+image, image_work, segmented_image, active_set, marked_set = single_iteration(image, gamma=3, k=2, val=255, active_set = active_set)
+marked_set = skimage.restoration.denoise_tv_chambolle(255 * marked_set.astype("uint8"), weight=0.05, channel_axis=-1) > 0.5
 facies[marked_set] = 2
 
 ax[0,1].imshow(image)
@@ -159,13 +156,10 @@ image, image_work, segmented_image, active_set, marked_set = single_iteration(im
 marked_set = skimage.restoration.denoise_tv_chambolle(255 * marked_set.astype("uint8"), weight=0.05, channel_axis=-1) > 0.5
 facies[marked_set] = 3
 
-ax[0,2].imshow(image)
-ax[1,2].imshow(scale_field(facies))
-ax[2,2].imshow(image_color)
+plt.plot(np.histogram(image.flatten(), bins=256)[0])
 
-#plt.imshow(image)
-#plt.imshow(image_work)
-#plt.imshow(segmented_image)
-#plt.imshow(facies)
-#plt.imshow(np.uint8(255. * segmented_image.astype(float) / np.max(segmented_image.astype(float))))
+#ax[0,2].imshow(image)
+#ax[1,2].imshow(scale_field(facies))
+#ax[2,2].imshow(image_color)
+
 plt.show()
