@@ -7,7 +7,7 @@ from functools import partial
 import cv2
 
 # White sand mid rig image
-image = cv2.imread("../../images/fluidflower/whitesands/smallrig.jpg")
+image = cv2.imread("../../../images/fluidflower/whitesands/smallrig.jpg")
 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 # Remove boundary and color checker
