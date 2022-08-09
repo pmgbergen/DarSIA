@@ -16,7 +16,7 @@ import skimage
 from skimage.restoration import denoise_tv_chambolle
 
 # Color image of the baseline fluidflower (benchmark)
-image_color = cv2.imread("../../images/fluidflower/Baseline.jpg")
+image_color = cv2.imread("../../../images/fluidflower/Baseline.jpg")
 image_color = cv2.cvtColor(image_color, cv2.COLOR_BGR2RGB)
 
 # ------- Preprocessing

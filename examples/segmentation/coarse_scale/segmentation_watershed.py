@@ -12,7 +12,7 @@ from skimage.restoration import denoise_tv_chambolle
 from scipy import ndimage as ndi
 
 # Color image
-image_color = cv2.imread("../../images/fluidflower/Baseline.jpg")
+image_color = cv2.imread("../../../images/fluidflower/Baseline.jpg")
 
 # Consider 1d image, either gray or green channel (blue and red channels did not lead to any reasonable results in short time)
 image = cv2.cvtColor(image_color, cv2.COLOR_BGR2GRAY)

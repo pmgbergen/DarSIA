@@ -12,7 +12,7 @@ import skimage
 num = 0
 
 # Color image
-image_color = cv2.imread("../../images/fluidflower/whitesands/smallrig.jpg")
+image_color = cv2.imread("../../../images/fluidflower/whitesands/smallrig.jpg")
 
 # Consider 1d image, either gray or green channel (blue and red channels did not lead to any reasonable results in short time)
 image = cv2.cvtColor(image_color, cv2.COLOR_BGR2RGB)
