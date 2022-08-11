@@ -54,17 +54,17 @@ image = skimage.img_as_float(image)
 # General Gamma correction
 gamma = 0.5
 
-# TV Denoising from daria
-pre_im = da.Image(skimage.img_as_ubyte(image), (0, 0), 250, 180)
-#pre_im.resize(0.1, 0.1)
-for weight in [0.1]: #, 0.05, 0.1, 1]:
-    num += 1
-    reg_im = da.tv_denoising(pre_im, weight, 1, verbose=True)
-    fig, ax = plt.subplots(2,1, num=num)
-    ax[0].imshow(reg_im.img)
-    ax[1].plot(np.histogram(reg_im.img.flatten(), bins=256)[0])
-    plt.title(f"tv denoising weight {weight}", loc='left')
-plt.show()
+## TV Denoising from daria
+#pre_im = da.Image(skimage.img_as_ubyte(image), (0, 0), 250, 180)
+##pre_im.resize(0.1, 0.1)
+#for weight in [0.1]: #, 0.05, 0.1, 1]:
+#    num += 1
+#    reg_im = da.tv_denoising(pre_im, weight, 1, verbose=True)
+#    fig, ax = plt.subplots(2,1, num=num)
+#    ax[0].imshow(reg_im.img)
+#    ax[1].plot(np.histogram(reg_im.img.flatten(), bins=256)[0])
+#    plt.title(f"tv denoising weight {weight}", loc='left')
+#plt.show()
 
 # TV denoising from skimage
 for weight in [0.01, 0.1, 1]:
@@ -76,6 +76,17 @@ for weight in [0.01, 0.1, 1]:
     ax[0].imshow(image_blur)
     ax[1].plot(np.histogram(image_blur.flatten(), bins=256)[0])
     plt.title(f"tv denoising weight {weight}", loc='left')
+
+plt.show()
+
+# Bilateral mean
+for disk in [1,5,10,20,50]:
+    num+=1
+    image_blur = skimage.filters.rank.mean_bilateral(image, skimage.morphology.disk(disk))
+    fig, ax = plt.subplots(2,1, num=num)
+    ax[0].imshow(image_blur)
+    ax[1].plot(np.histogram(image_blur.flatten(), bins=256)[0])
+    plt.title(f"bilateral median disk {disk}", loc='left')
 
 plt.show()
 
