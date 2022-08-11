@@ -28,21 +28,21 @@ plt.show()
 # Make manual classification based on a set of 5 examples per class
 patchsize = 100
 num_classes = 4
-datasetsize = 10
+datasetsize = 5 #10
 
 # Seemed to work better with the smaller dataset2
 coords = {
     0: [(5000, 500), (5200, 500), (5300, 500), (5100, 600), (5300, 600), 
-        (500, 370), (1300, 430), (2300, 440), (750, 2950), (1880, 2840)
+      #  (500, 370), (1300, 430), (2300, 440), (750, 2950), (1880, 2840)
     ],
     1: [(4900, 750), (5150, 750), (5200, 750), (5200, 800), (5400, 750),
-        (2500, 870), (2900, 880), (370, 2150), (1020, 1920), (2280, 1800)
+      #  (2500, 870), (2900, 880), (370, 2150), (1020, 1920), (2280, 1800)
     ],
     2: [(4900, 1000), (4950, 1100), (5150, 1000), (5200, 1100), (5200, 1050),
-        (400, 1450), (1500, 1050), (400, 3450), (1750, 3500), (6950, 3880)
+      #  (400, 1450), (1500, 1050), (400, 3450), (1750, 3500), (6950, 3880)
     ],
     3: [(4000, 2700), (4600, 2600), (5000, 2600), (5300, 2800), (5500, 2600),
-        (400, 2500), (350, 2800), (1075, 2380), (2110, 2400), (3450, 2810)
+      #  (400, 2500), (350, 2800), (1075, 2380), (2110, 2400), (3450, 2810)
     ],
 }
 
@@ -102,6 +102,9 @@ def compute_feats(image, kernels):
     feats = np.zeros((len(kernels), 2), dtype=np.double)
     for k, kernel in enumerate(kernels):
         filtered = ndi.convolve(image, kernel, mode='wrap')
+        #print(k)
+        #plt.imshow(filtered)
+        #plt.show()
         feats[k, 0] = filtered.mean()
         feats[k, 1] = filtered.var()
         # TODO transform nonlinearly
@@ -118,14 +121,17 @@ def match_class(feats, ref_feats):
 # prepare filter bank kernels
 kernels = []
 # TODO test different ranges and sets of filters
-resolution_theta = 5.
+resolution_theta = 2.
+i = 0
 for theta in range(int(resolution_theta)):
     theta = theta / resolution_theta * np.pi
-    for sigma in np.linspace(0.1, 10, 5):
+    for sigma in np.linspace(0.2, 5, 5):
         for frequency in np.linspace(0.1, 0.3, 5):
             kernel = np.real(gabor_kernel(frequency, theta=theta,
                                           sigma_x=sigma, sigma_y=sigma))
             kernels.append(kernel)
+            #print(i, theta, sigma, frequency)
+            i +=1
 
 # prepare reference features
 ref_feats = np.zeros((num_classes, datasetsize, len(kernels), 2), dtype=np.double)
@@ -171,11 +177,11 @@ if True:
             #assert(i == match_class(feats[i,j], ref_feats))
 
 # Apply classification to a larger image
-test_image = image[500:1200, 4900:5500]
+#test_image = image[500:1200, 4900:5500]
 #test_image = image[500:2000, 4700:5500]
 #test_image = image[500:2000, 2000:5500]
 #test_image = image[400:3900, 2000:5400]
-#test_image = image[400:3900, 400:5400]
+test_image = image[400:3900, 400:5400]
 
 #ny = int(test_image.shape[0] / patchsize)
 #nx = int(test_image.shape[1] / patchsize)
@@ -186,7 +192,7 @@ test_image = image[500:1200, 4900:5500]
 #        feats = compute_feats(roi, kernels)
 #        test_classification[i,j] = match_class(feats, ref_feats)
 
-revsize = 50
+revsize = 100
 ny = int(test_image.shape[0] / revsize)
 nx = int(test_image.shape[1] / revsize)
 test_classification = np.zeros((ny,nx), dtype=float)
