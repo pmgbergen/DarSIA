@@ -25,6 +25,7 @@ setup(
         "numpy",
         "opencv-python",
         "scipy",
+        "matplotlib.pyplot",
     ],
     extras_require={
         "dev": [
