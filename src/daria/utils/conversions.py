@@ -1,7 +1,10 @@
 from __future__ import annotations
-import numpy as np
-import daria as da
+
 from typing import Union
+
+import numpy as np
+
+import daria as da
 
 
 def cv2ToSkimage(img: np.ndarray) -> np.ndarray:

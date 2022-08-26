@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-
-import numpy as np
 from math import sqrt
 
+import numpy as np
 
 """
 Contains norms and inner products. Might be natural to make a class of this at some point.
