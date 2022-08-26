@@ -22,7 +22,7 @@ class StoppingCriterion:
         self,
         tolerance: float,
         max_iterations: int,
-        norm: Callable,
+        norm: Callable = np.linalg.norm,
         verbose: bool = False,
     ) -> None:
         self.tolerance = tolerance
