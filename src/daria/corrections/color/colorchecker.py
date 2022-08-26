@@ -37,7 +37,8 @@ class ColorCorrection:
             eotf: LUTs for standard electro-optical transfer function
         """
 
-        # Define look up tables approximating the standard electro-optical transfer function for sRGB.
+        # Define look up tables approximating the standard electro-optical
+        # transfer function for sRGB.
         self.eotf = EOTF()
 
         # Reference of the class color checker
@@ -51,8 +52,9 @@ class ColorCorrection:
         whitebalancing: bool = True,
     ) -> np.ndarray:
         """
-        Apply workflow from colour-science to match the colors of the color checker with the corresponding
-        color values, cf. https://github.com/colour-science/colour-checker-detection/blob/master/colour_checker_detection/examples/examples_detection.ipynb
+        Apply workflow from colour-science to match the colors of the color checker with the
+        corresponding color values, cf.
+        https://github.com/colour-science/colour-checker-detection/blob/master/colour_checker_detection/examples/examples_detection.ipynb
 
         Arguments:
             image (np.ndarray): image with uint8 value in (linear) RGB color space
@@ -101,7 +103,7 @@ class ColorCorrection:
             corrected_decoded_image *= self.ccc.reference_swatches[-4] / swatches[-4]
 
         # For debugging purposes (a pre/post analysis), the swatches are displayed on top of the reference color checker.
-        if verbosity == True:
+        if verbosity:
 
             # Standard D65 illuminant
             D65 = colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["D65"]
