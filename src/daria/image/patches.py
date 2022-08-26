@@ -49,8 +49,3 @@ class Patches:
             height=self.baseImg.height,
         )
         return full_img
-
-
-# np.c_
-
-# og np.r_
