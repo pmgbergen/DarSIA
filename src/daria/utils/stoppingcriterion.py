@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import numpy as np
 from typing import Callable
+
+import numpy as np
 
 
 class StoppingCriterion:
@@ -14,7 +15,8 @@ class StoppingCriterion:
         norm (Callable): The norm that is to be used.
         verbose (bool): Set to true to get output.
         check (Callable): Returns true if the stopping criterion is satisfied.
-        check_residual (Callable): Returns true if the relative stopping criterion is satisfied.
+        check_residual (Callable): Returns true if the relative stopping criterion
+                                   is satisfied.
 
     """
 

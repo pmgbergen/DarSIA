@@ -3,6 +3,7 @@ from typing import Optional
 import colour
 import numpy as np
 from colour_checker_detection import detect_colour_checkers_segmentation
+
 from daria.corrections.color.transferfunctions import EOTF
 
 
@@ -59,8 +60,10 @@ class ColorCorrection:
         Arguments:
             image (np.ndarray): image with uint8 value in (linear) RGB color space
             roi_cc (tupe of slices): region of interest containing a colour checker
-            verbosity (bool): displays corrected color checker on top of the reference one if True, default is False
-            whitebalancing (bool): apply white balancing based on the third bottom left swatch if True, default is True
+            verbosity (bool): displays corrected color checker on top of the reference one if
+                              True, default is False
+            whitebalancing (bool): apply white balancing based on the third bottom left swatch
+                                   if True, default is True
 
         Returns:
             np.ndarray: image with uint8 values in (linear) RGB color space, with colors
@@ -83,14 +86,16 @@ class ColorCorrection:
         else:
             swatches = swatches[0]
 
-        # Apply color correction onto full image based on the swatch colors in comparison with the standard colors
+        # Apply color correction onto full image based on the swatch colors in comparison with
+        # the standard colors
         corrected_decoded_image = colour.colour_correction(
             decoded_image,
             swatches,
             self.ccc.reference_swatches,
         )
 
-        # Apply white balancing, such that the third bottom left swatch of the color checker is exact
+        # Apply white balancing, such that the third bottom left swatch of the color checker
+        # is exact
         if whitebalancing:
             corrected_colorchecker_image = (
                 corrected_decoded_image[roi_cc[0], roi_cc[1], :]
@@ -102,21 +107,22 @@ class ColorCorrection:
             )[0]
             corrected_decoded_image *= self.ccc.reference_swatches[-4] / swatches[-4]
 
-        # For debugging purposes (a pre/post analysis), the swatches are displayed on top of the reference color checker.
+        # For debugging purposes (a pre/post analysis), the swatches are displayed on top
+        # of the reference color checker.
         if verbosity:
 
             # Standard D65 illuminant
             D65 = colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["D65"]
 
             # Convert swatches from RGB to xyY
-            swatches_xyY = colour.XYZ_to_xyY(
-                colour.RGB_to_XYZ(
-                    swatches,
-                    D65,
-                    D65,
-                    colour.RGB_COLOURSPACES["sRGB"].matrix_RGB_to_XYZ,
-                )
-            )
+            # swatches_xyY = colour.XYZ_to_xyY(
+            #     colour.RGB_to_XYZ(
+            #         swatches,
+            #         D65,
+            #         D65,
+            #         colour.RGB_COLOURSPACES["sRGB"].matrix_RGB_to_XYZ,
+            #     )
+            # )
 
             # Color correct swatches and also convert to xyY
             corrected_swatches = colour.colour_correction(
@@ -136,15 +142,16 @@ class ColorCorrection:
             )
 
             # Define color checkers using the swatches pre and post color correction
-            colour_checker_pre = colour.characterisation.ColourChecker(
-                "pre", dict(zip(self.ccc.color_names, swatches_xyY)), D65
-            )
+            # colour_checker_pre = colour.characterisation.ColourChecker(
+            #     "pre", dict(zip(self.ccc.color_names, swatches_xyY)), D65
+            # )
 
             colour_checker_post = colour.characterisation.ColourChecker(
                 "post", dict(zip(self.ccc.color_names, corrected_swatches_xyY)), D65
             )
 
-            # Plot the constructed color checkers on top of the reference classic color checker.
+            # Plot the constructed color checkers on top of the reference classic
+            # color checker.
             # colour.plotting.plot_multi_colour_checkers(
             #    [self.ccc.colorchecker, colour_checker_pre])
 
@@ -152,5 +159,6 @@ class ColorCorrection:
                 [self.ccc.colorchecker, colour_checker_post]
             )
 
-        # Convert to linear RGB by applying the inverse of the EOTF and return the corrected image
+        # Convert to linear RGB by applying the inverse of the EOTF and return the
+        # corrected image
         return self.eotf.inverse_approx(corrected_decoded_image)

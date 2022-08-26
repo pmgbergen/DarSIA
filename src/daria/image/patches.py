@@ -1,6 +1,8 @@
-import daria as da
 from math import sqrt
+
 import numpy as np
+
+import daria as da
 
 
 class Patches:

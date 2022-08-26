@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-import daria as da
-import numpy as np
 from typing import Callable
+
+import numpy as np
+
+import daria as da
 
 
 class Solver:
     """
     Solver base class. Contains an apply method.
-    All solvers that are implemented as subclasses should have their own apply method, and inherit the stopping criterion.
+    All solvers that are implemented as subclasses should have their own
+    apply method, and inherit the stopping criterion.
 
 
     Attributes:
@@ -64,7 +67,9 @@ class CG(Solver):
         # Iterate as long as the stopping criterion is not satisfied
         while not (self.stoppingCriterion.check(res, iterations)):
 
-            # Compute the operator applied to the conjugate matrix (I think that it is more efficient to store this new matrix rather than doing the operation twice).
+            # Compute the operator applied to the conjugate matrix
+            # (I think that it is more efficient to store this new matrix
+            # rather than doing the operation twice).
             po = operator(p)
 
             # Compute step length
