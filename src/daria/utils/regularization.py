@@ -7,14 +7,15 @@ import scipy.sparse as sps
 from scipy.sparse.linalg import LinearOperator
 import skimage
 
-from daria.utils.norms import frobenius_norm
-
 def tv_denoising(
     img: da.Image,
     mu: float,
     l: float,
-    stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(
-        0.01, 100, da.frobenius_norm
+    tvd_stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(
+        1e-2, 100
+    ),
+    cg_stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(
+        1e-2, 100
     ),
     verbose: bool = False,
 ) -> da.Image:
@@ -25,12 +26,13 @@ def tv_denoising(
         img (daria.Image): Image that should be regularized
         mu (float): Regularization coefficient
         l (float): Penalty coefficient from Goldstein and Osher's algorithm
-        stoppingCriterion (daria.StoppingCriterion): stopping criterion containing information about tolerance, maximum number of iterations and norm
-        verbose (bool): Set to true
+        tvd_stoppingCriterion (daria.StoppingCriterion): stopping criterion for the Bregman split containing information about tolerance, maximum number of iterations and norm
+        cg_stoppingCriterion (daria.StoppingCriterion): stopping criterion for the inner CG solve containing information about tolerance, maximum number of iterations and norm
+        verbose (bool): Set to true for verbosity; default value is False
     """
 
     # Set verbosity of stopping criterion
-    stoppingCriterion.verbose = verbose
+    tvd_stoppingCriterion.verbose = verbose
 
     # Extract the two images
     rhs = skimage.util.img_as_float(img.img)
@@ -55,22 +57,22 @@ def tv_denoising(
         return mu * rhs + l * (da.forward_diff_x(dx - bx) + da.backward_diff_y(dy - by))
 
     def shrink(x):
-        n = da.frobenius_norm(x)
+        n = np.linalg.norm(x, ord='fro')
         return x / n * max(n - 1. / l, 0.)
 
     iterations: int = 0
     increment: np.ndarray = im.copy()
 
     # TVD algorithm from Goldstein and Osher, cf doi:10.1137/080725891
-    while not (stoppingCriterion.check_relative(increment, im, iterations)):
+    while not (tvd_stoppingCriterion.check_relative(increment, im, iterations)):
         im_old = np.ndarray.copy(im)
         im = np.reshape(
             sps.linalg.cg(
                 lhsoperator,
                 rhsoperator(rhs, dx, dy, bx, by).flatten(),
                 im.flatten(),
-                tol = 1e-2,
-                maxiter = 100
+                tol = cg_stoppingCriterion.tolerance,
+                maxiter = cg_stoppingCriterion.max_iterations,
             )[0],
             im.shape[:2]
         )
