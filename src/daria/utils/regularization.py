@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Callable
 import daria as da
 import numpy as np
 import scipy.sparse as sps
@@ -9,10 +8,11 @@ import skimage
 
 from daria.utils.norms import frobenius_norm
 
+
 def tv_denoising(
     img: da.Image,
     mu: float,
-    l: float,
+    ell: float,
     stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(
         0.01, 100, da.frobenius_norm
     ),
@@ -24,7 +24,7 @@ def tv_denoising(
     Arguments:
         img (daria.Image): Image that should be regularized
         mu (float): Regularization coefficient
-        l (float): Penalty coefficient from Goldstein and Osher's algorithm
+        ell (float): Penalty coefficient from Goldstein and Osher's algorithm
         stoppingCriterion (daria.StoppingCriterion): stopping criterion containing information about tolerance, maximum number of iterations and norm
         verbose (bool): Set to true
     """
@@ -46,17 +46,18 @@ def tv_denoising(
     def mv(x: np.ndarray) -> np.ndarray:
         # Since the Laplace operator acts on 2d images, need to reshape first # FIXME try to rewrite laplace?
         x = np.reshape(x, im.shape[:2])
-        return (mu * x - l * da.laplace(x)).flatten()
+        return (mu * x - ell * da.laplace(x)).flatten()
+
     im_size = im.shape[0] * im.shape[1]
-    lhsoperator = LinearOperator((im_size, im_size), matvec=mv) 
+    lhsoperator = LinearOperator((im_size, im_size), matvec=mv)
 
     # Right-hand-side operator
     def rhsoperator(rhs, dx, dy, bx, by):
-        return mu * rhs + l * (da.forward_diff_x(dx - bx) + da.backward_diff_y(dy - by))
+        return mu * rhs + ell * (da.forward_diff_x(dx - bx) + da.backward_diff_y(dy - by))
 
     def shrink(x):
         n = da.frobenius_norm(x)
-        return x / n * max(n - 1. / l, 0.)
+        return x / n * max(n - 1.0 / ell, 0.0)
 
     iterations: int = 0
     increment: np.ndarray = im.copy()
@@ -69,10 +70,10 @@ def tv_denoising(
                 lhsoperator,
                 rhsoperator(rhs, dx, dy, bx, by).flatten(),
                 im.flatten(),
-                tol = 1e-2,
-                maxiter = 100
+                tol=1e-2,
+                maxiter=100,
             )[0],
-            im.shape[:2]
+            im.shape[:2],
         )
         dx = shrink(da.backward_diff_x(im) + bx)
         dy = shrink(da.backward_diff_y(im) + by)

@@ -77,7 +77,7 @@ def physicalToStandardPixelOrdering(img: np.ndarray) -> np.ndarray:
 
 
 def standardToPhysicalPixel(
-    img: "Image", pixel: Union[tuple[int], list[int]]
+    img: da.Image, pixel: Union[tuple[int], list[int]]
 ) -> tuple[int]:
     """Translate a standard to a physical pixel.
 
@@ -95,7 +95,7 @@ def standardToPhysicalPixel(
 
 
 def physicalToStandardPixel(
-    img: "Image", pixel: Union[tuple[int], Union[tuple[int], list[int]]]
+    img: da.Image, pixel: Union[tuple[int], Union[tuple[int], list[int]]]
 ) -> tuple[int]:
     """Translate a physica pixel to a standard pixel.
 
