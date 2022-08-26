@@ -1,36 +1,40 @@
 from __future__ import annotations
 
+from typing import Union
 import daria as da
 import numpy as np
 import scipy.sparse as sps
 from scipy.sparse.linalg import LinearOperator
 import skimage
 
-from daria.utils.norms import frobenius_norm
-
-
 def tv_denoising(
     img: da.Image,
-    mu: float,
-    ell: float,
-    stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(
-        0.01, 100, da.frobenius_norm
+    mu: Union[float, np.ndarray],
+    l: float,
+    tvd_stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(
+        1e-2, 100
+    ),
+    cg_stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(
+        1e-2, 100
     ),
     verbose: bool = False,
 ) -> da.Image:
     """
     Anisotropic TV denoising using the Bregman split from Goldstein and Osher: min_u = |dxu|+|dyu|+mu/2||u-f||^2_2
 
+    NOTE: In contrast to skimage.restoration.denoise_tv_bregman, pixel-wise definition of the regularization parameter mu is allowed.
+
     Arguments:
         img (daria.Image): Image that should be regularized
-        mu (float): Regularization coefficient
-        ell (float): Penalty coefficient from Goldstein and Osher's algorithm
-        stoppingCriterion (daria.StoppingCriterion): stopping criterion containing information about tolerance, maximum number of iterations and norm
-        verbose (bool): Set to true
+        mu (float or array): Regularization coefficient / matrix
+        l (float): Penalty coefficient from Goldstein and Osher's algorithm
+        tvd_stoppingCriterion (daria.StoppingCriterion): stopping criterion for the Bregman split containing information about tolerance, maximum number of iterations and norm
+        cg_stoppingCriterion (daria.StoppingCriterion): stopping criterion for the inner CG solve containing information about tolerance, maximum number of iterations and norm
+        verbose (bool): Set to true for verbosity; default value is False
     """
 
     # Set verbosity of stopping criterion
-    stoppingCriterion.verbose = verbose
+    tvd_stoppingCriterion.verbose = verbose
 
     # Extract the two images
     rhs = skimage.util.img_as_float(img.img)
@@ -46,32 +50,31 @@ def tv_denoising(
     def mv(x: np.ndarray) -> np.ndarray:
         # Since the Laplace operator acts on 2d images, need to reshape first # FIXME try to rewrite laplace?
         x = np.reshape(x, im.shape[:2])
-        return (mu * x - ell * da.laplace(x)).flatten()
-
+        return (np.multiply(mu, x) - l * da.laplace(x)).flatten()
     im_size = im.shape[0] * im.shape[1]
     lhsoperator = LinearOperator((im_size, im_size), matvec=mv)
 
     # Right-hand-side operator
     def rhsoperator(rhs, dx, dy, bx, by):
-        return mu * rhs + ell * (da.forward_diff_x(dx - bx) + da.backward_diff_y(dy - by))
+        return np.multiply(mu, rhs) + l * (da.forward_diff_x(dx - bx) + da.backward_diff_y(dy - by))
 
     def shrink(x):
-        n = da.frobenius_norm(x)
-        return x / n * max(n - 1.0 / ell, 0.0)
+        n = np.linalg.norm(x, ord='fro')
+        return x / n * max(n - 1. / l, 0.)
 
     iterations: int = 0
     increment: np.ndarray = im.copy()
 
     # TVD algorithm from Goldstein and Osher, cf doi:10.1137/080725891
-    while not (stoppingCriterion.check_relative(increment, im, iterations)):
+    while not (tvd_stoppingCriterion.check_relative(increment, im, iterations)):
         im_old = np.ndarray.copy(im)
         im = np.reshape(
             sps.linalg.cg(
                 lhsoperator,
                 rhsoperator(rhs, dx, dy, bx, by).flatten(),
                 im.flatten(),
-                tol=1e-2,
-                maxiter=100,
+                tol = cg_stoppingCriterion.tolerance,
+                maxiter = cg_stoppingCriterion.max_iterations,
             )[0],
             im.shape[:2],
         )
