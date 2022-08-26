@@ -9,7 +9,7 @@ import skimage
 
 def tv_denoising(
     img: da.Image,
-    mu: float,
+    mu: Union[float, np.ndarray],
     l: float,
     tvd_stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(
         1e-2, 100
@@ -22,9 +22,11 @@ def tv_denoising(
     """
     Anisotropic TV denoising using the Bregman split from Goldstein and Osher: min_u = |dxu|+|dyu|+mu/2||u-f||^2_2
 
+    NOTE: In contrast to skimage.restoration.denoise_tv_bregman, pixel-wise definition of the regularization parameter mu is allowed.
+
     Arguments:
         img (daria.Image): Image that should be regularized
-        mu (float): Regularization coefficient
+        mu (float or array): Regularization coefficient / matrix
         l (float): Penalty coefficient from Goldstein and Osher's algorithm
         tvd_stoppingCriterion (daria.StoppingCriterion): stopping criterion for the Bregman split containing information about tolerance, maximum number of iterations and norm
         cg_stoppingCriterion (daria.StoppingCriterion): stopping criterion for the inner CG solve containing information about tolerance, maximum number of iterations and norm
@@ -48,13 +50,13 @@ def tv_denoising(
     def mv(x: np.ndarray) -> np.ndarray:
         # Since the Laplace operator acts on 2d images, need to reshape first # FIXME try to rewrite laplace?
         x = np.reshape(x, im.shape[:2])
-        return (mu * x - l * da.laplace(x)).flatten()
+        return (np.multiply(mu, x) - l * da.laplace(x)).flatten()
     im_size = im.shape[0] * im.shape[1]
     lhsoperator = LinearOperator((im_size, im_size), matvec=mv) 
 
     # Right-hand-side operator
     def rhsoperator(rhs, dx, dy, bx, by):
-        return mu * rhs + l * (da.forward_diff_x(dx - bx) + da.backward_diff_y(dy - by))
+        return np.multiply(mu, rhs) + l * (da.forward_diff_x(dx - bx) + da.backward_diff_y(dy - by))
 
     def shrink(x):
         n = np.linalg.norm(x, ord='fro')
