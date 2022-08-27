@@ -7,7 +7,7 @@ import daria.corrections.color as dacl
 img_BGR = cv2.imread("../images/fluidflower/Baseline.jpg")
 
 # Convert to RGB (int)
-img_RGB = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2RGB)
+# img_RGB = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2RGB)
 
 # -------- Match colors and apply correction to original picture using the nonlinear RGB colour space
 

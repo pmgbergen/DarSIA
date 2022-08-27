@@ -6,12 +6,11 @@ Includes:
 
 """
 
+from daria.corrections.curvature.curvaturecorrection import *
+from daria.image.coordinatesystem import *
 from daria.image.image import *
 from daria.image.patches import *
 from daria.image.subregions import *
-from daria.image.coordinatesystem import *
-from daria.corrections.curvature.curvaturecorrection import *
-from daria.mathematics.derivatives import *
 from daria.mathematics.derivatives import *
 from daria.mathematics.norms import *
 from daria.mathematics.stoppingcriterion import *
