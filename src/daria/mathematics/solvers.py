@@ -33,8 +33,8 @@ class Solver:
         self.stoppingCriterion = stoppingCriterion
         self.stoppingCriterion.verbose = verbose
 
-    def apply() -> None:
-        print("Please choose a solver!")
+    # def apply(self) -> None:
+    #     print("Please choose a solver!")
 
 
 class CG(Solver):
@@ -123,7 +123,7 @@ class ModifiedRichardson(Solver):
         iteration = 0
 
         # Iterate as long as the stopping criterion is not satisfied
-        while not (self.stoppingCriterion.check(res)):
+        while not (self.stoppingCriterion.check(res, iteration)):
 
             # Update the image and compute new residual
             im = im + omega * res
