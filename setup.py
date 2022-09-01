@@ -24,7 +24,16 @@ setup(
     ],
     long_description=long_description,
     long_description_content_type="text/markdown",
-    install_requires=required,
+    install_requires=[
+        "numpy",
+        "opencv-python",
+        "scipy",
+        "matplotlib",
+        "scikit-image",
+        "future",
+        "colour-science",
+        "colour-checker-detection",
+    ],
     extras_require={
         "dev": [
             "pytest>=7.1",
