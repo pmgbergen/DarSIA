@@ -28,7 +28,7 @@ def tv_denoising(
     Arguments:
         img (daria.Image): Image that should be regularized
         mu (float or array): Regularization coefficient / matrix
-        l (float): Penalty coefficient from Goldstein and Osher's algorithm
+        ell (float): Penalty coefficient from Goldstein and Osher's algorithm
         tvd_stoppingCriterion (daria.StoppingCriterion): stopping criterion for the Bregman
                                                          split containing information about
                                                          tolerance, maximum number of
