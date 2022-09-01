@@ -25,7 +25,11 @@ setup(
         "numpy",
         "opencv-python",
         "scipy",
-        "matplotlib.pyplot",
+        "matplotlib",
+        "scikit-image",
+        "future",
+        "colour-science",
+        "colour-checker-detection",
     ],
     extras_require={
         "dev": [
