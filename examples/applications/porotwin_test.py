@@ -75,6 +75,6 @@ cv2.imwrite("./out/tracer2.jpg", tracer2)
 
 # Plot
 fig, ax = plt.subplots(2,1)
-ax[0].imshow(diff_2)
-ax[1].imshow(diff_3)
+ax[0].imshow(tracer1)
+ax[1].imshow(tracer2)
 plt.show()
