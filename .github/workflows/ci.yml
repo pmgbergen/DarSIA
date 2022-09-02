@@ -48,17 +48,17 @@ jobs:
       if: ${{ always() }}
       run: black --check src
 
-#    - name: flake8
-#      if: ${{ always() }}
-#      run: flake8 src
-#
+    - name: flake8
+      if: ${{ always() }}
+      run: flake8 src
+
 #    - name: mypy
 #      if: ${{ always() }}
 #      run: mypy src
-#
-#    - name: isort
-#      if: ${{always()}}
-#      run: isort --check src
+
+    - name: isort
+      if: ${{always()}}
+      run: isort --check src
 
     - name: pytest
       if: ${{always()}}

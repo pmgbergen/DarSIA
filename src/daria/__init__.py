@@ -4,6 +4,9 @@ Includes:
 
     utils: conversion, image class, subregions, coordinate system, and curvature correction
 
+
+isort:skip_file
+
 """
 from daria.corrections.curvature.curvaturecorrection import *
 from daria.image.coordinatesystem import *
