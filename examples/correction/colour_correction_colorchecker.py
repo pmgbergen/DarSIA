@@ -4,7 +4,7 @@ from daria.corrections.color import ColorCorrection
 # -------- Convert the image into linear RGB color space
 
 # Fetch image, in BGR
-img_BGR = cv2.imread("../images/fluidflower/Baseline.jpg")
+img_BGR = cv2.imread("../../images/fluidflower/Baseline.jpg")
 
 # Convert to RGB (int)
 # img_RGB = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2RGB)
