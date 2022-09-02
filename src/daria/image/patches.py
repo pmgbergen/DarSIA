@@ -1,6 +1,8 @@
-import daria as da
 from math import sqrt
+
 import numpy as np
+
+import daria as da
 
 
 class Patches:
@@ -47,8 +49,3 @@ class Patches:
             height=self.baseImg.height,
         )
         return full_img
-
-
-# np.c_
-
-# og np.r_

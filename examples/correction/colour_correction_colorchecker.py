@@ -1,5 +1,5 @@
 import cv2
-import daria as da
+from daria.corrections.color import ColorCorrection
 
 # -------- Convert the image into linear RGB color space
 
@@ -7,12 +7,12 @@ import daria as da
 img_BGR = cv2.imread("../../images/fluidflower/Baseline.jpg")
 
 # Convert to RGB (int)
-img_RGB = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2RGB)
+# img_RGB = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2RGB)
 
 # -------- Match colors and apply correction to original picture using the nonlinear RGB colour space
 
 # Apply colour correction based on color checker
-colorcorrection = da.corrections.color.colorchecker.ColorCorrection()
+colorcorrection = ColorCorrection()
 
 # Need to specify a ROI which contains the color checker
 roi_cc = (slice(100, 600), slice(350, 600))
