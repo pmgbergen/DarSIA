@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import numpy as np
 
 
-# Functions for forward and backward differences of images in greyscale, with 0 Neumann boundary conditions
+# Functions for forward and backward differences of images in greyscale,
+# with 0 Neumann boundary conditions
 def backward_diff_x(im: np.ndarray) -> np.ndarray:
     return np.diff(im, axis=1, append=im[:, -1:])
 
