@@ -16,4 +16,3 @@ from daria.mathematics.stoppingcriterion import *
 from daria.mathematics.solvers import *
 from daria.mathematics.regularization import *
 from daria.utils.conversions import *
-
