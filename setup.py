@@ -6,6 +6,9 @@ with open("README.md", "r") as fh:
 with open("requirements.txt") as f:
     required = f.read().splitlines()
 
+with open("requirements-dev.txt") as f:
+    required_dev = f.read().splitlines()
+
 setup(
     name="daria",
     version="0.0.1",
@@ -24,24 +27,9 @@ setup(
     ],
     long_description=long_description,
     long_description_content_type="text/markdown",
-    install_requires=[
-        "numpy",
-        "opencv-python",
-        "scipy",
-        "matplotlib",
-        "scikit-image",
-        "future",
-        "colour-science",
-        "colour-checker-detection",
-    ],
+    install_requires= required,
     extras_require={
-        "dev": [
-            "pytest>=7.1",
-            "black == 22.3.0",
-            "isort",
-            "flake8",
-            "mypy",
-        ],
+        "dev": required_dev,
     },
     python_requires=">=3",
     url="https://github.com/EStorvik/DarIA.git",

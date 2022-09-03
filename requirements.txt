@@ -2,3 +2,7 @@ numpy
 opencv-python
 scipy
 matplotlib
+scikit-image
+future
+colour-science
+colour-checker-detection
