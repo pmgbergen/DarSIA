@@ -18,4 +18,5 @@ from daria.mathematics.solvers import *
 from daria.mathematics.regularization import *
 from daria.utils.conversions import *
 from daria.corrections.shape.curvaturecorrection import *
+from daria.corrections.shape.homography import *
 from daria.corrections.color.colorchecker import *
