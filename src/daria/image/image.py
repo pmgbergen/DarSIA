@@ -10,8 +10,9 @@ import sys
 from typing import Optional
 
 import cv2
-import daria as da
 import numpy as np
+
+import daria as da
 
 
 class Image:
@@ -206,7 +207,8 @@ class Image:
         cv2.waitKey(wait)
         cv2.destroyAllWindows()
 
-    # TODO: Should this be a part of the image class? Seems like something that should read an image and return a new one with grid.
+    # TODO: Should this be a part of the image class?
+    # Seems like something that should read an image and return a new one with grid.
     def add_grid(
         self,
         origo: list[float] = None,
