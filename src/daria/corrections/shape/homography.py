@@ -64,7 +64,7 @@ def homography_correction(
             ]
         )
     else:
-        pts_dts = kwargs.pop("pts_dst")
+        pts_dst = kwargs.pop("pts_dst")
         if isinstance(pts_dst, list):
             pts_dst = np.array(pts_dst)
 
