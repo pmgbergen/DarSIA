@@ -5,6 +5,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
+
 def homography_correction(
     img_src: np.ndarray,
     **kwargs,
@@ -37,30 +38,26 @@ def homography_correction(
     # image, modulo the ratio
     if kwargs.pop("in meters", False):
 
-        # Attempt to keep the same ratio but translate to number of pixels
-        target_width_tmp = int(min(1., float(target_height) / float(height)) * float(width))
-        target_height_tmp = int(min(1., float(target_width) / float(width)) * float(height))
-
-        # The goal aspect ratio        
+        # The goal aspect ratio
         aspect_ratio = target_width / target_height
 
         # Try to keep this aspect ratio, but do not use more pixels than before.
         # Convert to number of pixels
         target_width = min(width, int(aspect_ratio * float(height)))
-        target_height = min(height, int(1./aspect_ratio * float(width)))
+        target_height = min(height, int(1.0 / aspect_ratio * float(width)))
 
     # Assign corner points as destination points if none are provided.
     if "pts_dst" not in kwargs:
         # Assume implicitly that corner points have been provided,
         # and that their orientation is mathematically positive,
         # starting with the top left corner.
-        assert(pts_src.shape[0] == 4)
+        assert pts_src.shape[0] == 4
         pts_dst = np.array(
             [
                 [0, 0],
-                [0, target_height-1],
-                [target_width-1, target_height-1],
-                [target_width-1, 0],
+                [0, target_height - 1],
+                [target_width - 1, target_height - 1],
+                [target_width - 1, 0],
             ]
         )
     else:
