@@ -33,15 +33,22 @@ def curvature_correction(image: np.ndarray, **kwargs) -> np.ndarray:
                 Cartesian pixel grid
     """
     # Read in tuning parameters
+    # TODO move FluidFlower specific paremeters to FluifFlower class default
     width: float = kwargs.pop("width", 284)
     height: float = kwargs.pop("height", 150)
     horizontal_crop: float = kwargs.pop("horizontal_crop", 0.965)
     horizontal_bulge: float = kwargs.pop("horizontal_bulge", -3.1e-6)
+    horizontal_shear: float = kwargs.pop("horizontal_shear", 0.0)
+    horizontal_inverse_shear: float = kwargs.pop("horizontal_inverse_shear", 0.0)
     horizontal_stretch: float = kwargs.pop("horizontal_stretch", 2.35e-6)
     horizontal_stretch_mid: float = kwargs.pop("horizontal_stretch_mid", -0)
+    horizontal_stretch_sqrd: float = kwargs.pop("horizontal_stretch_sqrd", 0)
     vertical_crop: float = kwargs.pop("vertical_crop", 0.92)
     vertical_bulge: float = kwargs.pop("vertical_bulge", 0.5e-6)
     vertical_shear: float = kwargs.pop("vertical_shear", 2e-3)
+    vertical_inverse_shear: float = kwargs.pop("vertical_inverse_shear", 0.0)
+    vertical_stretch: float = kwargs.pop("vertical_stretch", 0.0)
+    vertical_stretch_mid: float = kwargs.pop("vertical_stretch_mid", 0)
     interpolation_order: int = kwargs.pop("interpolation_order", 1)
 
     if isinstance(image, np.ndarray):
@@ -65,12 +72,24 @@ def curvature_correction(image: np.ndarray, **kwargs) -> np.ndarray:
     X, Y = np.meshgrid(x, y)
 
     # Curvature corrected grid using input parameters
-    Xmod = horizontal_crop * np.multiply(
-        np.multiply(X, (1 + horizontal_stretch * (X - horizontal_stretch_mid) ** 2)),
-        (1 - vertical_bulge * Y**2),
+    Xmod = horizontal_crop * (
+        np.multiply(
+            np.multiply(
+                X, (1 + horizontal_stretch * (X - horizontal_stretch_mid) ** 2)
+            ),
+            (1 - vertical_bulge * Y**2),
+        )
+        - horizontal_shear * Y
+        - horizontal_inverse_shear * (np.max(Y) - Y)
+        - horizontal_stretch_sqrd * (X - horizontal_stretch_mid) ** 2
     )
     Ymod = vertical_crop * (
-        np.multiply(Y, (1 - horizontal_bulge * X**2)) - vertical_shear * X
+        np.multiply(
+            np.multiply(Y, (1 + vertical_stretch * (Y - vertical_stretch_mid) ** 2)),
+            (1 - horizontal_bulge * X**2),
+        )
+        - vertical_shear * X
+        - vertical_inverse_shear * (np.max(X) - X)
     )
 
     # Map corrected grid back to positional arguments
