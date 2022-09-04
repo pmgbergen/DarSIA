@@ -65,7 +65,7 @@ def homography_correction(
         if isinstance(pts_dst, list):
             pts_dst = np.array(pts_dst)
 
-    homography, _ = cv2.findHomography(pts_src, pts_dst)
+    homography, _ = cv2.findHomography(pts_src, pts_dst, method=cv2.RANSAC)
 
     # Warp source image
     img_dst = cv2.warpPerspective(img_src, homography, (target_width, target_height))
