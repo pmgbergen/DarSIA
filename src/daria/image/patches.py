@@ -32,17 +32,17 @@ class Patches:
                         (needs to be a square number),
                         or one can give the number of patches in x, and y direction
                         as two separate arguments, respectively.
-            **kwargs: checks for patch_overlay argument. If it is provided an overlay
-                      of length = patch_overlay is provided to the patches.
+            **kwargs: checks for patch_overlap argument. If it is provided an overlap
+                      of length = patch_overlap is provided to the patches.
 
         """
 
-        # Instance of base image and patch_overlay
+        # Instance of base image and patch_overlap
         self.baseImg = im
-        if "patch_overlay" in kwargs:
-            self.patch_overlay = kwargs["patch_overlay"]
+        if "patch_overlap" in kwargs:
+            self.patch_overlap = kwargs["patch_overlap"]
         else:
-            self.patch_overlay = 0
+            self.patch_overlap = 0
 
         # Define number of patches in each direction
         if len(args) == 1:
@@ -53,7 +53,7 @@ class Patches:
             self.num_patches_x = int(sqrt(args[0]))
             self.num_patches_y = int(sqrt(args[1]))
 
-        # Define width and height of each patch (before patch overlay is applied)
+        # Define width and height of each patch (before patch overlap is applied)
         width = im.width / self.num_patches_x
         height = im.height / self.num_patches_y
 
@@ -62,53 +62,53 @@ class Patches:
             shape=(self.num_patches_x, self.num_patches_y), dtype=da.Image
         )
 
-        # Create patches. The overlay has been hardcoded, and therefore it looks a bit messy.
+        # Create patches. The overlap has been hardcoded, and therefore it looks a bit messy.
         # Corners
         self.images[0, 0] = da.extractROI(
             self.baseImg,
-            [0, width + self.patch_overlay],
-            [0, height + self.patch_overlay],
+            [0, width + self.patch_overlap],
+            [0, height + self.patch_overlap],
         )
         self.images[self.num_patches_x - 1, self.num_patches_y - 1] = da.extractROI(
             self.baseImg,
             [
-                (self.num_patches_x - 1) * width - self.patch_overlay,
+                (self.num_patches_x - 1) * width - self.patch_overlap,
                 self.num_patches_x * width,
             ],
             [
-                (self.num_patches_y - 1) * height - self.patch_overlay,
+                (self.num_patches_y - 1) * height - self.patch_overlap,
                 self.num_patches_y * height,
             ],
         )
         self.images[0, self.num_patches_y - 1] = da.extractROI(
             self.baseImg,
-            [0, width + self.patch_overlay],
+            [0, width + self.patch_overlap],
             [
-                (self.num_patches_y - 1) * height - self.patch_overlay,
+                (self.num_patches_y - 1) * height - self.patch_overlap,
                 self.num_patches_y * height,
             ],
         )
         self.images[self.num_patches_x - 1, 0] = da.extractROI(
             self.baseImg,
             [
-                (self.num_patches_x - 1) * width - self.patch_overlay,
+                (self.num_patches_x - 1) * width - self.patch_overlap,
                 self.num_patches_x * width,
             ],
-            [0, height + self.patch_overlay],
+            [0, height + self.patch_overlap],
         )
 
         # Top and botton patches
         for i in range(1, self.num_patches_x - 1):
             self.images[i, 0] = da.extractROI(
                 self.baseImg,
-                [i * width - self.patch_overlay, (i + 1) * width + self.patch_overlay],
-                [0, height + self.patch_overlay],
+                [i * width - self.patch_overlap, (i + 1) * width + self.patch_overlap],
+                [0, height + self.patch_overlap],
             )
             self.images[i, self.num_patches_y - 1] = da.extractROI(
                 self.baseImg,
-                [i * width - self.patch_overlay, (i + 1) * width + self.patch_overlay],
+                [i * width - self.patch_overlap, (i + 1) * width + self.patch_overlap],
                 [
-                    (self.num_patches_y - 1) * height - self.patch_overlay,
+                    (self.num_patches_y - 1) * height - self.patch_overlap,
                     height * self.num_patches_y,
                 ],
             )
@@ -117,21 +117,21 @@ class Patches:
         for j in range(1, self.num_patches_y - 1):
             self.images[0, j] = da.extractROI(
                 self.baseImg,
-                [0, width + self.patch_overlay],
+                [0, width + self.patch_overlap],
                 [
-                    j * height - self.patch_overlay,
-                    (j + 1) * height + self.patch_overlay,
+                    j * height - self.patch_overlap,
+                    (j + 1) * height + self.patch_overlap,
                 ],
             )
             self.images[self.num_patches_x - 1, j] = da.extractROI(
                 self.baseImg,
                 [
-                    width * (self.num_patches_x - 1) - self.patch_overlay,
+                    width * (self.num_patches_x - 1) - self.patch_overlap,
                     width * self.num_patches_x,
                 ],
                 [
-                    j * height - self.patch_overlay,
-                    (j + 1) * height + self.patch_overlay,
+                    j * height - self.patch_overlap,
+                    (j + 1) * height + self.patch_overlap,
                 ],
             )
 
@@ -141,21 +141,21 @@ class Patches:
                 self.images[i, j] = da.extractROI(
                     self.baseImg,
                     [
-                        i * width - self.patch_overlay,
-                        (i + 1) * width + self.patch_overlay,
+                        i * width - self.patch_overlap,
+                        (i + 1) * width + self.patch_overlap,
                     ],
                     [
-                        j * height - self.patch_overlay,
-                        (j + 1) * height + self.patch_overlay,
+                        j * height - self.patch_overlap,
+                        (j + 1) * height + self.patch_overlap,
                     ],
                 )
 
     def assemble(self) -> da.Image:
         """
         Reassembles the patches into a new daria image.
-        The method will run regardless of whether patch overlay has
+        The method will run regardless of whether patch overlap has
         been applied or not, but it is only functioning as intended
-        without patch overlay.
+        without patch overlap.
         """
 
         # Create temporary image-array and add the lower left-corner patch to it
