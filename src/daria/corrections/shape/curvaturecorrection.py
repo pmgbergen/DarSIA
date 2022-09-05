@@ -66,7 +66,6 @@ def curvature_correction(image: np.ndarray, **kwargs) -> np.ndarray:
     # Center image, and set physical values
     x = (np.array(range(1, Nx + 1)) - round(Nx / 2)) / Nx * width
     y = (np.array(range(1, Ny + 1)) - round(Ny / 2)) / Ny * height
-    y = y.reshape((1, Ny))
 
     # Make it into a meshgrid
     X, Y = np.meshgrid(x, y)
