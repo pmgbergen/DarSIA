@@ -39,7 +39,7 @@ match testcase:
 
     case _:
         raise ValueError
-    
+
 # Work in the following on the gray version of the image
 image = cv2.cvtColor(image_color, cv2.COLOR_BGR2GRAY)
 image = skimage.img_as_float(image)
