@@ -61,7 +61,7 @@ def curvature_correction(image: np.ndarray, **kwargs) -> np.ndarray:
         )
 
     # Read size of image
-    Ny, Nx, _ = img.shape
+    Ny, Nx = img.shape[:2]
 
     # Center image, and set physical values
     x = (np.array(range(1, Nx + 1)) - round(Nx / 2)) / Nx * width
@@ -100,12 +100,12 @@ def curvature_correction(image: np.ndarray, **kwargs) -> np.ndarray:
     out_grid = np.array([Ymod.ravel(), Xmod.ravel()])
 
     # Return image
-    img_mod = np.zeros((Ny, Nx, 3), dtype=np.uint8)
+    img_mod = np.zeros_like(img, dtype=np.uint8)
 
     # Do interpolate original image on the new grid
-    for i in range(img[0, 0, :].size):
+    for i in range(img.shape[2]):
         in_data = img[:, :, i]
         im_array = map_coordinates(in_data, out_grid, order=interpolation_order)
-        img_mod[:, :, i] = im_array.reshape(img[:, :, 0].shape).astype(np.uint8)
+        img_mod[:, :, i] = im_array.reshape(img.shape[:2]).astype(np.uint8)
 
     return img_mod
