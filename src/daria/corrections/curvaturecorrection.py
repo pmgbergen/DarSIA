@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import cv2
-from scipy.ndimage import map_coordinates
 import numpy as np
+from scipy.ndimage import map_coordinates
 
 
 # TODO: Add an automatic way (using e.g, gradient decent) to choose the parameters.
@@ -28,14 +28,20 @@ def curvature_correction(
         img (str): path to image, alternative way to feed the actual image.
         width (float): physical width of image.
         height (float): physical height of image.
-        vertical_bulge (float): parameter for the curvature correction related to the vertical bulge of the image.
+        vertical_bulge (float): parameter for the curvature correction related to
+                                the vertical bulge of the image.
         horizontal_crop (float): parameter for the curvature correction for cropping the image.
-        horizontal_bulge (float): parameter for the curvature correction related to the horizontal bulge of the image.
-        horizontal_stretch (float): parameter for the curvature correction related to the horizontal stretch of the image.
-        horizontal_stretch_mid (float): parameter for the curvature correction related to the horizontal stretch of the image.
+        horizontal_bulge (float): parameter for the curvature correction related to
+                                  the horizontal bulge of the image.
+        horizontal_stretch (float): parameter for the curvature correction related to
+                                    the horizontal stretch of the image.
+        horizontal_stretch_mid (float): parameter for the curvature correction related to
+                                        the horizontal stretch of the image.
         vertical_crop (float): parameter for the curvature correction for cropping the image.
-        vertical_bulge (float): parameter for the curvature correction related to the vertical bulge of the image.
-        vertical_shear (float): parameter for the curvature correction correcting for vertical shear in the image.
+        vertical_bulge (float): parameter for the curvature correction related to
+                                the vertical bulge of the image.
+        vertical_shear (float): parameter for the curvature correction correcting for
+                                vertical shear in the image.
     """
     if isinstance(image, np.ndarray):
         img = image
