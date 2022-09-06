@@ -3,8 +3,7 @@ import numpy as np
 
 
 im = da.Image("images/originals/Baseline.jpg")
-patch = da.Patches(im, 4)
-
+patch = da.Patches(im, 16, patch_overlay = 0.1)
 
 im.show()
 patch.images[0, 0].show()
