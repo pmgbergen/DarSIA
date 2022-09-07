@@ -2,13 +2,11 @@
 
 Includes:
 
-    utils: conversion, image class, subregions, coordinate system, and curvature correction
-
+    conversion, image class, subregions, coordinate system, and curvature correction
 
 isort:skip_file
 
 """
-from daria.corrections.curvature.curvaturecorrection import *
 from daria.image.coordinatesystem import *
 from daria.image.image import *
 from daria.image.patches import *
@@ -19,3 +17,7 @@ from daria.mathematics.stoppingcriterion import *
 from daria.mathematics.solvers import *
 from daria.mathematics.regularization import *
 from daria.utils.conversions import *
+from daria.corrections.shape.curvaturecorrection import *
+from daria.corrections.shape.curvature import *
+from daria.corrections.shape.homography import *
+from daria.corrections.color.colorchecker import *
