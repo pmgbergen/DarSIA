@@ -64,8 +64,8 @@ def simple_curvature_correction(img: np.ndarray, **kwargs) -> np.ndarray:
     ]
 
     # Define coordinate system relative to image center, scaled with physical dimensions
-    x = (np.array(range(1, Nx + 1)) - image_center[0])
-    y = (np.array(range(1, Ny + 1)) - image_center[1])
+    x = np.array(range(1, Nx + 1)) - image_center[0]
+    y = np.array(range(1, Ny + 1)) - image_center[1]
 
     # Construct associated meshgrid
     X, Y = np.meshgrid(x, y)
