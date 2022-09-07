@@ -8,27 +8,21 @@ from scipy.ndimage import map_coordinates
 # OR determine manual tuning rules.
 def simple_curvature_correction(img: np.ndarray, **kwargs) -> np.ndarray:
     """
-    Correct image for bulge and stretch effects.
+    Correction of bulge and stretch effects.
 
     Args:
         img (np.ndarray): image array
         kwargs (optional keyword arguments):
-            width (float): physical width of image.
-            height (float): physical height of image.
-            "horizontal_crop" (float): parameter for the curvature correction for cropping the
-                image in x-direction; only required when correcting for stretch as well.
             "horizontal_bulge" (float): parameter for the curvature correction related to the
                 horizontal bulge of the image.
             "horizontal_stretch" (float): parameter for the curvature correction related to the
-                horizontal stretch of the image; cropping will be required
+                horizontal stretch of the image
             "horizontal_center_offset" (int): offset in terms of pixel of the image center in
                 x-direction, as compared to the numerical center
-            "vertical_crop" (float): parameter for the curvature correction for cropping the
-                image in y-direction; only required when correcting for stretch as well.
             vertical_bulge (float): parameter for the curvature correction related to the
                 vertical bulge of the image.
             "vertical_stretch" (float): parameter for the curvature correction related to the
-                vertical stretch of the image; cropping will be required
+                vertical stretch of the image
             "vertical_center_offset" (int): offset in terms of pixel of the image center in
                 y-direction, as compared to the numerical center
             "interpolation_order (int)": interpolation order to map back transformed image to
@@ -43,17 +37,9 @@ def simple_curvature_correction(img: np.ndarray, **kwargs) -> np.ndarray:
     # the image is correct. Also it i
     """
     # Read in tuning parameters
-    width: float = kwargs.pop("width", 1.0)
-    height: float = kwargs.pop("height", 1.0)
-    horizontal_crop: float = kwargs.pop(
-        "horizontal_crop", 1.0
-    )  # TODO automatic based on stretch?
     horizontal_bulge: float = kwargs.pop("horizontal_bulge", 0.0)
     horizontal_stretch: float = kwargs.pop("horizontal_stretch", 0.0)
     horizontal_center_offset: int = kwargs.pop("horizontal_center_offset", 0)
-    vertical_crop: float = kwargs.pop(
-        "vertical_crop", 1.0
-    )  # TODO automatic based on stretch?
     vertical_bulge: float = kwargs.pop("vertical_bulge", 0.0)
     vertical_stretch: float = kwargs.pop("vertical_stretch", 0.0)
     vertical_center_offset: int = kwargs.pop("vertical_center_offset", 0)
@@ -78,28 +64,28 @@ def simple_curvature_correction(img: np.ndarray, **kwargs) -> np.ndarray:
     ]
 
     # Define coordinate system relative to image center, scaled with physical dimensions
-    x = (np.array(range(1, Nx + 1)) - image_center[0]) / Nx * width
-    y = (np.array(range(1, Ny + 1)) - image_center[1]) / Ny * height
+    x = (np.array(range(1, Nx + 1)) - image_center[0])
+    y = (np.array(range(1, Ny + 1)) - image_center[1])
 
     # Construct associated meshgrid
     X, Y = np.meshgrid(x, y)
 
     # Warp the coordinate system nonlinearly, correcting for bulge and stretch effects.
-    Xmod = horizontal_crop * (
+    Xmod = (
         X
         + horizontal_bulge * np.multiply(X, (np.max(Y) - Y) * (Y - np.min(Y)))
-        + horizontal_stretch * X**3
+        + horizontal_stretch * X * (np.max(X) - X) * (X - np.min(X))
     )
-    Ymod = vertical_crop * (
+    Ymod = (
         Y
         + vertical_bulge * np.multiply(Y, (np.max(X) - X) * (X - np.min(X)))
-        + vertical_stretch * Y**3
+        + vertical_stretch * Y * (np.max(Y) - Y) * (Y - np.min(Y))
     )
 
     # Map corrected grid back to positional arguments, i.e. invert the definition
     # of the local coordinate system
-    Xmod = image_center[0] - 1 + Xmod * Nx / width
-    Ymod = image_center[1] - 1 + Ymod * Ny / height
+    Xmod += image_center[0] - 1
+    Ymod += image_center[1] - 1
 
     # Create out grid as the corrected grid, but not in meshgrid format
     out_grid = np.array([Ymod.ravel(), Xmod.ravel()])
