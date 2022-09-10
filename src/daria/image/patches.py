@@ -3,6 +3,7 @@ from math import ceil, sqrt
 import numpy as np
 
 import daria as da
+import skimage
 
 
 class Patches:
@@ -63,55 +64,72 @@ class Patches:
         patch_width = self.baseImg.width / self.num_patches_x
         patch_height = self.baseImg.height / self.num_patches_y
         # ... and in numbers of pixles
-        patch_pixels_width = ceil(patch_width / self.baseImg.dx)
-        patch_pixels_height = ceil(patch_height / self.baseImg.dy)
+        patch_pixels_width = self.baseImg.coordinatesystem.lengthToPixels(
+            patch_width, "x"
+        )
+        patch_pixels_height = self.baseImg.coordinatesystem.lengthToPixels(
+            patch_height, "y"
+        )
+        # TODO rename and put pixels to the back
 
         # Convert the overlap from metric to numbers of pixels
-        overlap_pixels_width = ceil(self.patch_overlap / self.baseImg.dx)
-        overlap_pixels_height = ceil(self.patch_overlap / self.baseImg.dy)
+        overlap_pixels_width = self.baseImg.coordinatesystem.lengthToPixels(
+            self.patch_overlap, "x"
+        )
+        overlap_pixels_height = self.baseImg.coordinatesystem.lengthToPixels(
+            self.patch_overlap, "y"
+        )
 
-        # TODO consider new class Patch which stores all the interesting info?
+        # Some abbreviation for better overview
+        nh = self.baseImg.num_pixels_height
+        pw = patch_pixels_width
+        ph = patch_pixels_height
+        ow = overlap_pixels_width
+        oh = overlap_pixels_height
+        cw = ceil(overlap_pixels_width / 2)
+        ch = ceil(overlap_pixels_height / 2)
+        off_w = 0 if cw == ow / 2.0 else 1
+        off_h = 0 if ch == oh / 2.0 else 1
 
-        # Extract patches (images and rois) and use a Cartesian ordering for patch
-        # coordinates
-        images_and_rois: list[list[tuple]] = [
+        # TODO if this works, change the convention of numbering of patches. and use the same as for images.
+
+        # Define pixel-based ROIs - with overlap
+        self.rois: list[list[tuple]] = [
             [
-                da.extractROI(
-                    self.baseImg,
-                    [
-                        max(0, i * patch_width - self.patch_overlap),
-                        min(
-                            self.baseImg.width,
-                            (i + 1) * patch_width + self.patch_overlap,
-                        ),
-                    ],
-                    [
-                        max(0, j * patch_height - self.patch_overlap),
-                        min(
-                            self.baseImg.height,
-                            (j + 1) * patch_height + self.patch_overlap,
-                        ),
-                    ],
-                    return_roi=True,
+                (
+                    slice(max(nh - (j + 1) * ph - oh, 0), nh - j * ph + oh),
+                    slice(max(i * pw - ow, 0), (i + 1) * pw + ow),
                 )
                 for j in range(self.num_patches_y)
             ]
             for i in range(self.num_patches_x)
         ]
 
-        # Extract the images
-        self.images: list[list[da.Image]] = [
-            [images_and_rois[i][j][0] for j in range(self.num_patches_y)]
+        # Define relative pixel-based ROIs corresponding to the area - without overlap
+        self.relative_rois_without_overlap: list[list[tuple]] = [
+            [
+                (
+                    slice(
+                        0 if j == self.num_patches_y - 1 else oh,
+                        ph if j == self.num_patches_y - 1 else ph + oh,
+                    ),
+                    slice(0 if i == 0 else ow, pw if i == 0 else pw + ow),
+                )
+                for j in range(self.num_patches_y)
+            ]
             for i in range(self.num_patches_x)
         ]
 
-        # Extract the rois
-        # TODO rename? do we also require rois without overlap?
-        self.rois_with_overlap: list[list[tuple]] = [
-            [images_and_rois[i][j][1] for j in range(self.num_patches_y)]
+        # Extract images with overlap
+        self.images = [
+            [
+                da.extractROIPixel(self.baseImg, self.rois[i][j])
+                for j in range(self.num_patches_y)
+            ]
             for i in range(self.num_patches_x)
         ]
-        # TODO self.rois_without_overlap = None
+
+        # TODO consider new class Patch which stores all the interesting info?
 
         # Store centers (x,y) of each patch in meters
         self.centers = [
@@ -125,76 +143,92 @@ class Patches:
         # Define partition of unity later to be used as weighting masks for blending in
         # x-direction. Distinguish between th three different cases: (i) left border,
         # (ii) internal, and (iii) right border.
-        self.weight_x = {
-            "left": np.hstack(
-                (
-                    np.ones(
-                        patch_pixels_width - ceil(overlap_pixels_width / 2), dtype=float
-                    ),
-                    np.linspace(1, 0, overlap_pixels_width),
-                    np.zeros(ceil(overlap_pixels_width / 2), dtype=float),
-                )
-            ),
-            "internal": np.hstack(
-                (
-                    np.zeros(ceil(overlap_pixels_width / 2), dtype=float),
-                    np.linspace(0, 1, overlap_pixels_width),
-                    np.ones(
-                        patch_pixels_width - 2 * ceil(overlap_pixels_width / 2),
-                        dtype=float,
-                    ),
-                    np.linspace(1, 0, overlap_pixels_width),
-                    np.zeros(ceil(overlap_pixels_width / 2), dtype=float),
-                )
-            ),
-            "right": np.hstack(
-                (
-                    np.zeros(ceil(overlap_pixels_width / 2), dtype=float),
-                    np.linspace(0, 1, overlap_pixels_width),
-                    np.ones(
-                        patch_pixels_width - ceil(overlap_pixels_width / 2), dtype=float
-                    ),
-                )
-            ),
-        }
+        self.weight_x = {}
+
+        # Corresponding to the most left patches
+        self.weight_x["left"] = np.hstack(
+            (
+                np.ones(pw - cw, dtype=float),
+                np.linspace(1, 0, ow),
+                np.zeros(cw, dtype=float),
+            )
+        )
+
+        # Corresponding to the internal patches
+        self.weight_x["internal"] = np.hstack(
+            (
+                np.zeros(cw, dtype=float),
+                np.linspace(0, 1, ow),
+                np.ones(pw - 2 * cw, dtype=float),
+                np.linspace(1, 0, ow),
+                np.zeros(cw, dtype=float),
+            )
+        )
+
+        # Have to take into account that not all patches have perfect size, and small
+        # adjustments have to be made at the right boundary patches. Thus, compute the
+        # so far total width occupied - goal: determine the amount of pixels which are
+        # left for true 1 values in the weight corresponding to the most right patch.
+        marked_width = (
+            # left patch
+            pw
+            - cw
+            + ow
+            + off_w
+            # all internal patches
+            + (self.num_patches_x - 2) * (pw - 2 * cw + ow + off_w)
+        )
+
+        # Corresponding to the most right patches
+        self.weight_x["right"] = np.hstack(
+            (
+                np.zeros(cw, dtype=float),
+                np.linspace(0, 1, ow),
+                np.ones(self.baseImg.num_pixels_width - marked_width, dtype=float),
+            )
+        )
 
         # Analogously, define the weighting in y-direction.
         # NOTE: The weight has to be defined consistently with the conventional pixel ordering
         # of images, i.e., the first pixel lies at the top.
-        self.weight_y = {
-            "top": np.hstack(
-                (
-                    np.ones(
-                        patch_pixels_height - ceil(overlap_pixels_height / 2),
-                        dtype=float,
-                    ),
-                    np.linspace(1, 0, overlap_pixels_height),
-                    np.zeros(ceil(overlap_pixels_height / 2), dtype=float),
-                )
-            ),
-            "internal": np.hstack(
-                (
-                    np.zeros(ceil(overlap_pixels_height / 2), dtype=float),
-                    np.linspace(0, 1, overlap_pixels_height),
-                    np.ones(
-                        patch_pixels_height - 2 * ceil(overlap_pixels_height / 2),
-                        dtype=float,
-                    ),
-                    np.linspace(1, 0, overlap_pixels_height),
-                    np.zeros(ceil(overlap_pixels_height / 2), dtype=float),
-                )
-            ),
-            "bottom": np.hstack(
-                (
-                    np.zeros(ceil(overlap_pixels_height / 2), dtype=float),
-                    np.linspace(0, 1, overlap_pixels_height),
-                    np.ones(
-                        patch_pixels_height - ceil(overlap_pixels_height / 2),
-                        dtype=float,
-                    ),
-                )
-            ),
-        }
+        self.weight_y = {}
+
+        # Corresponding to the bottom patches
+        self.weight_y["bottom"] = np.hstack(
+            (
+                np.zeros(ch, dtype=float),
+                np.linspace(0, 1, oh),
+                np.ones(ph - ch, dtype=float),
+            )
+        )
+
+        # Corresponding to the internal patches
+        self.weight_y["internal"] = np.hstack(
+            (
+                np.zeros(ch, dtype=float),
+                np.linspace(0, 1, oh),
+                np.ones(ph - 2 * ch, dtype=float),
+                np.linspace(1, 0, oh),
+                np.zeros(ch, dtype=float),
+            )
+        )
+
+        # Analogously to weight_x, have to determine the marked height
+        marked_height = (
+            # bottom patch
+            (ph - ch + oh + off_h)
+            # all internal patches
+            + (self.num_patches_y - 2) * (ph - 2 * ch + oh + off_h)
+        )
+
+        # Corresponding to the top patches
+        self.weight_y["top"] = np.hstack(
+            (
+                np.ones(self.baseImg.num_pixels_height - marked_height, dtype=float),
+                np.linspace(1, 0, oh),
+                np.zeros(ch, dtype=float),
+            )
+        )
 
     def position(self, i: int, j: int) -> tuple[str]:
         """
@@ -224,7 +258,7 @@ class Patches:
         # Determine vertical position (y-direction)
         if j == 0:
             vertical_position: str = "bottom"
-        elif i == self.num_patches_y - 1:
+        elif j == self.num_patches_y - 1:
             vertical_position = "top"
         else:
             vertical_position = "internal"
@@ -239,43 +273,60 @@ class Patches:
         """
         Update the image of a patch.
         """
-        # TODO redundant if this class only contains patches (a new object type)
         assert self.images[i][j].img.shape == img.shape
         self.images[i][j].img = img.copy()
 
-    def assemble(self) -> da.Image:
+    def assemble(self, update_img: bool = False) -> da.Image:
         """
-        Reassembles the patches into a new daria image.
+        Reassembles without taking into account the overlap.
+
+        Args:
+            update_img (bool): flag controlling whether the base image will be updated
+                with the assembled image; default set to False
+
+        Returns:
+            daria.image: assembled image as daria image
         """
-        # Create temporary image-array and add the lower left-corner patch to it
-        im_tmp_x = self.images[0][0].img
 
-        # Add patches along the bottom to the temporary image to create the
-        # lower part of the image
-        for i in range(self.num_patches_x - 1):
-            im_tmp_x = np.c_["1,0,0", im_tmp_x, self.images[i + 1][0].img]
+        # Initialize empty row of the final image. It will be used
+        # to assemble the patches row by row.
+        assembled_img = np.zeros(
+            (0, *self.baseImg.img.shape[1:]), dtype=self.baseImg.img.dtype
+        )
 
-        # Create actual temporary image
-        im_tmp = im_tmp_x
+        # Create "image-strips" that are assembled by concatenation
+        for j in range(self.num_patches_y):
 
-        # Repeate the process and create "image-strips" that are added to the
-        # top of the temporary image
-        for j in range(self.num_patches_y - 1):
-            im_tmp_x = self.images[0][j + 1].img
-            for i in range(self.num_patches_x - 1):
-                im_tmp_x = np.c_["1,0,0", im_tmp_x, self.images[i + 1][j + 1].img]
-            im_tmp = np.r_["0,1,0", im_tmp_x, im_tmp]
+            # Initialize the row of the final image with the first patch image.
+            rel_roi = self.relative_rois_without_overlap[0][j]
+            assembled_row_j = self.images[0][j].img[rel_roi]
 
-        # TODO review
-        print(im_tmp.shape, self.baseImg.img.shape)
+            # And assemble the remainder of the row by concatenation.
+            for i in range(1, self.num_patches_x):
+                rel_roi = self.relative_rois_without_overlap[i][j]
+                assembled_row_j = np.hstack(
+                    (assembled_row_j, self.images[i][j].img[rel_roi])
+                )
 
-        # Return the resulting daria image
-        return da.Image(
-            im_tmp,
+            # Concatenate the row and the current image
+            assembled_img = np.vstack((assembled_row_j, assembled_img))
+
+        # Make sure that the resulting image has the same resolution
+        assert assembled_img.shape == self.baseImg.img.shape
+
+        # Define resulting daria image
+        da_assembled_img = da.Image(
+            img=assembled_img,
             origo=self.baseImg.origo,
             width=self.baseImg.width,
             height=self.baseImg.height,
         )
+
+        # Update the base image if required
+        if update_img:
+            self.baseImg = da_assembled_img.copy()
+
+        return da_assembled_img
 
     def blend_and_assemble(self, update_img: bool = False) -> da.Image:
         """
@@ -298,29 +349,29 @@ class Patches:
         # concatenated, and added using the partition of unity.
 
         # Allocate memory for resassembled image
-        assembled_img = np.zeros_like(self.baseImg.img, dtype=self.baseImg.img.dtype)
+        assembled_img = np.zeros_like(self.baseImg.img, dtype=float)
 
         # Loop over patches
         for j in range(self.num_patches_y):
 
             # Allocate memory for row j
-            assembled_row_j = np.zeros_like(
-                (self.images[0][j].num_pixels_height, self.img.num_pixels_width),
-                dtype=self.img.img.dtype,
-            )
+            shape = [self.images[0][j].num_pixels_height, *self.baseImg.img.shape[1:]]
+            assembled_row_j = np.zeros(tuple(shape), dtype=float)
 
             # Assemble row j by suitable weighted combination of the patches in row j
             for i in range(self.num_patches_x):
 
                 # Determine active pixel range
-                roi = self.rois_with_overlap[i][j]
+                roi = self.rois[i][j]
                 roi_x = roi[1]
 
-                # Fetch patch
-                img_i_j = self.images[i][j].img[roi_x]
+                # Fetch patch, and convert to float
+                img_i_j = skimage.util.img_as_float(self.images[i][j].img)
 
-                # Fetch weight
+                # Fetch weight and convert to tensor
                 weight_i_j = self.weight_x[self.position(i, j)[0]]
+                # Convert to tensor
+                weight_i_j = weight_i_j.reshape(1, np.size(weight_i_j), 1)
 
                 # Add weighted patch at the active pixel range
                 assembled_row_j[:, roi_x] += np.multiply(img_i_j, weight_i_j)
@@ -331,64 +382,19 @@ class Patches:
             # pixel range, relevant for addressing the base image.
             roi_y = roi[0]
 
-            # Determine size of roi in y-direction
-            roi_y_size = roi_y.stop - roi_y.start
-
             # Fetch weight
             weight_j = self.weight_y[self.position(i, j)[1]]
+            # Convert to tensor
+            weight_j = weight_j.reshape(np.size(weight_j), 1, 1)
 
             # Add weighted row at the active pixel range
-            assembled_img[roi_y, :] += np.multiply(
-                assembled_row_j, weight_j.reshape(roi_y_size, 1)
-            )
+            assembled_img[roi_y, :] += np.multiply(assembled_row_j, weight_j)
 
         # Make sure the newly assembled image is compatible with the original base image
         assert assembled_img.shape == self.baseImg.img.shape
 
-        # Define resulting daria image
-        da_assembled_img = da.Image(
-            img=assembled_img,
-            origo=self.baseImg.origo,
-            width=self.baseImg.width,
-            height=self.baseImg.height,
-        )
-
-        # Update the base image if required
-        if update_img:
-            self.baseImg = da_assembled_img.copy()
-
-        return da_assembled_img
-
-    def reassemble(self, update_img: bool = False) -> da.Image:
-        """
-        Reassembles without taking into account the overlap.
-
-        Args:
-            update_img (bool): flag controlling whether the base image will be updated
-                with the assembled image; default set to False
-
-        Returns:
-            daria.image: assembled image as daria image
-        """
-
-        # Initialize empty row of the final image. It will be used
-        # to assemble the patches row by row.
-        assembled_img = np.zeros(
-            (0, *self.baseImg.img.shape[1:]), dtype=self.baseImg.img.dtype
-        )
-
-        # Create "image-strips" that are assembled by concatenation
-        for j in range(self.num_patches_y):
-            # Initialize the row of the final image with the first patch image.
-            assembled_row_j = self.images[0][j].img
-            # And assemble the remainder of the row by concatenation.
-            for i in range(1, self.num_patches_x):
-                assembled_row_j = np.hstack((assembled_row_j, self.images[i][j].img))
-            # Concatenate the row and the current image
-            assembled_img = np.vstack((assembled_row_j, assembled_img))
-
-        # Make sure that the resulting image has the same resolution
-        assert assembled_img.shape == self.baseImg.img.shape
+        # Convert final image to uint8 format
+        assembled_img = skimage.util.img_as_ubyte(assembled_img)
 
         # Define resulting daria image
         da_assembled_img = da.Image(
