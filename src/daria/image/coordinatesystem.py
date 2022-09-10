@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from math import ceil
 
 import daria as da
 
@@ -24,6 +25,8 @@ class CoordinateSystem:
         self._height: float = img.height
         self._num_pixels_width: int = img.num_pixels_width
         self._num_pixels_height: int = img.num_pixels_height
+        self._dx: float = img.dx
+        self._dy: float = img.dy
 
         # Determine the coordinate, corresponding to the origin pixel (0,0), i.e.,
         # the top left corner. NOTE img.origo corresponds to the lower left corner
@@ -47,6 +50,44 @@ class CoordinateSystem:
             "ymin": ymin,
             "ymax": ymax,
         }
+
+    def pixelsToLength(self, num_pixels: int, axis: str = "x") -> float:
+        """
+        Convert number of pixels to metric units, when interpreting the pixels
+        in some given axis.
+
+        Args:
+            num_pixels (int): number of pixels
+            axis (str): either "x" or "y" determining the conversion rate
+
+        Returns:
+            float: length in metric units
+        """
+        if axis == "x":
+            return num_pixels * self._dx
+        elif axis == "y":
+            return num_pixels * self._dy
+        else:
+            raise ValueError("Axis type not supported.")
+
+    def lengthToPixels(self, length: float, axis: str = "x") -> int:
+        """
+        Convert length in metric units to number of pixels, when interpreting
+        the length in some given axis.
+
+        Args:
+            length (float): length in metric units
+            axis (str): either "x" or "y" determining the conversion rate
+
+        Returns:
+            int: number of pixels
+        """
+        if axis == "x":
+            return ceil(length / self._dx)
+        elif axis == "y":
+            return ceil(length / self._dy)
+        else:
+            raise ValueError("Axis type not supported.")
 
     def pixelToCoordinate(self, pixel: tuple[int]) -> tuple[float]:
         """Conversion from pixel in standard format to coordinate in physical units.
