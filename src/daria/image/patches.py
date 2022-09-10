@@ -91,7 +91,8 @@ class Patches:
         off_w = 0 if cw == ow / 2.0 else 1
         off_h = 0 if ch == oh / 2.0 else 1
 
-        # TODO if this works, change the convention of numbering of patches. and use the same as for images.
+        # TODO if this works, change the convention of numbering of patches. and use the
+        # same as for images.
 
         # Define pixel-based ROIs - with overlap
         self.rois: list[list[tuple]] = [
