@@ -27,7 +27,7 @@ class Patches:
 
         Arguments:
             im (da.Image): the Image that is to be patched
-            *args: information on how many patches are created; 
+            *args: information on how many patches are created;
                         eiher one can give the amount of patches as one argument
                         (needs to be a square number),
                         or one can give the number of patches in x, and y direction
