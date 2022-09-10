@@ -1,9 +1,9 @@
 from math import ceil, sqrt
 
 import numpy as np
+import skimage
 
 import daria as da
-import skimage
 
 
 class Patches:
