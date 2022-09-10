@@ -44,7 +44,7 @@ class Patches:
 
         # Instance of base image and patch_overlap
         self.baseImg = im
-        self.patch_overlap = kwargs.pop("patch_overlap", 0)
+        self.patch_overlap = kwargs.pop("patch_overlap", 0)  # TODO rename to overlap
 
         # Define number of patches in each direction
         if len(args) == 1:
@@ -246,9 +246,6 @@ class Patches:
     def assemble(self) -> da.Image:
         """
         Reassembles the patches into a new daria image.
-        The method will run regardless of whether patch overlap has
-        been applied or not, but it is only functioning as intended
-        without patch overlap.
         """
         # Create temporary image-array and add the lower left-corner patch to it
         im_tmp_x = self.images[0][0].img
@@ -264,16 +261,145 @@ class Patches:
         # Repeate the process and create "image-strips" that are added to the
         # top of the temporary image
         for j in range(self.num_patches_y - 1):
-            im_tmp_x = self.images[0, j + 1].img
+            im_tmp_x = self.images[0][j + 1].img
             for i in range(self.num_patches_x - 1):
-                im_tmp_x = np.c_["1,0,0", im_tmp_x, self.images[i + 1, j + 1].img]
+                im_tmp_x = np.c_["1,0,0", im_tmp_x, self.images[i + 1][j + 1].img]
             im_tmp = np.r_["0,1,0", im_tmp_x, im_tmp]
 
-        # Make the daria image from the array
-        full_img = da.Image(
+        # TODO review
+        print(im_tmp.shape, self.baseImg.img.shape)
+
+        # Return the resulting daria image
+        return da.Image(
             im_tmp,
             origo=self.baseImg.origo,
             width=self.baseImg.width,
             height=self.baseImg.height,
         )
-        return full_img
+
+    def blend_and_assemble(self, update_img: bool = False) -> da.Image:
+        """
+        Reassembles taking into account the overlap as well.
+        On the overlap, a convex combination is used for
+        smooth blending.
+
+        Args:
+            update_img (bool): flag controlling whether the base image will be updated
+                with the assembled image; default set to False
+
+        Returns:
+            daria.image: assembled image as daria image
+        """
+        # The procedure is as follows. The image is reassembled, row by row.
+        # Each row is reconstructed by concatenation. Overlapping regions
+        # have to handled separately by a weighted sum (convex combination).
+        # For this, the above defined partition of unity will be used.
+        # Then, rows are combined in a similar manner, but now entire rows are
+        # concatenated, and added using the partition of unity.
+
+        # Allocate memory for resassembled image
+        assembled_img = np.zeros_like(self.baseImg.img, dtype=self.baseImg.img.dtype)
+
+        # Loop over patches
+        for j in range(self.num_patches_y):
+
+            # Allocate memory for row j
+            assembled_row_j = np.zeros_like(
+                (self.images[0][j].num_pixels_height, self.img.num_pixels_width),
+                dtype=self.img.img.dtype,
+            )
+
+            # Assemble row j by suitable weighted combination of the patches in row j
+            for i in range(self.num_patches_x):
+
+                # Determine active pixel range
+                roi = self.rois_with_overlap[i][j]
+                roi_x = roi[1]
+
+                # Fetch patch
+                img_i_j = self.images[i][j].img[roi_x]
+
+                # Fetch weight
+                weight_i_j = self.weight_x[self.position(i, j)[0]]
+
+                # Add weighted patch at the active pixel range
+                assembled_row_j[:, roi_x] += np.multiply(img_i_j, weight_i_j)
+
+            # Anologous procedure, but now on row-level and not single-patch level.
+
+            # Determine active pixel range. NOTE: roi[0] still contains the relevant
+            # pixel range, relevant for addressing the base image.
+            roi_y = roi[0]
+
+            # Determine size of roi in y-direction
+            roi_y_size = roi_y.stop - roi_y.start
+
+            # Fetch weight
+            weight_j = self.weight_y[self.position(i, j)[1]]
+
+            # Add weighted row at the active pixel range
+            assembled_img[roi_y, :] += np.multiply(
+                assembled_row_j, weight_j.reshape(roi_y_size, 1)
+            )
+
+        # Make sure the newly assembled image is compatible with the original base image
+        assert assembled_img.shape == self.baseImg.img.shape
+
+        # Define resulting daria image
+        da_assembled_img = da.Image(
+            img=assembled_img,
+            origo=self.baseImg.origo,
+            width=self.baseImg.width,
+            height=self.baseImg.height,
+        )
+
+        # Update the base image if required
+        if update_img:
+            self.baseImg = da_assembled_img.copy()
+
+        return da_assembled_img
+
+    def reassemble(self, update_img: bool = False) -> da.Image:
+        """
+        Reassembles without taking into account the overlap.
+
+        Args:
+            update_img (bool): flag controlling whether the base image will be updated
+                with the assembled image; default set to False
+
+        Returns:
+            daria.image: assembled image as daria image
+        """
+
+        # Initialize empty row of the final image. It will be used
+        # to assemble the patches row by row.
+        assembled_img = np.zeros(
+            (0, *self.baseImg.img.shape[1:]), dtype=self.baseImg.img.dtype
+        )
+
+        # Create "image-strips" that are assembled by concatenation
+        for j in range(self.num_patches_y):
+            # Initialize the row of the final image with the first patch image.
+            assembled_row_j = self.images[0][j].img
+            # And assemble the remainder of the row by concatenation.
+            for i in range(1, self.num_patches_x):
+                assembled_row_j = np.hstack((assembled_row_j, self.images[i][j].img))
+            # Concatenate the row and the current image
+            assembled_img = np.vstack((assembled_row_j, assembled_img))
+
+        # Make sure that the resulting image has the same resolution
+        assert assembled_img.shape == self.baseImg.img.shape
+
+        # Define resulting daria image
+        da_assembled_img = da.Image(
+            img=assembled_img,
+            origo=self.baseImg.origo,
+            width=self.baseImg.width,
+            height=self.baseImg.height,
+        )
+
+        # Update the base image if required
+        if update_img:
+            self.baseImg = da_assembled_img.copy()
+
+        return da_assembled_img
