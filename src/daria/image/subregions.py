@@ -24,7 +24,10 @@ def extractROI(img: Image, x: list, y: list, return_roi: bool = False) -> Image:
     bottom_right_corner = img.coordinatesystem.coordinateToPixel((x[1], y[0]))
 
     # Define the ROI
-    roi = (slice(top_left_corner[0], bottom_right_corner[0]), slice(top_left_corner[1], bottom_right_corner[1]))
+    roi = (
+        slice(top_left_corner[0], bottom_right_corner[0]),
+        slice(top_left_corner[1], bottom_right_corner[1]),
+    )
 
     # Define metadata (all quantities in metric units)
     origo = [x[0], y[0]]
@@ -36,6 +39,7 @@ def extractROI(img: Image, x: list, y: list, return_roi: bool = False) -> Image:
         return Image(img=img.img[roi], origo=origo, width=width, height=height), roi
     else:
         return Image(img=img.img[roi], origo=origo, width=width, height=height)
+
 
 def extractROIPixel(img: Image, roi: tuple) -> Image:
     """Extracts region of interest based on pixel info.
@@ -49,10 +53,7 @@ def extractROIPixel(img: Image, roi: tuple) -> Image:
     """
     # Define metadata; Note that img.origo uses a Cartesian ordering, while roi
     # uses the conventional pixel ordering
-    origo = [
-        img.origo[0] + roi[1].start * img.dx,
-        img.origo[1] + roi[0].stop * img.dy
-    ]
+    origo = [img.origo[0] + roi[1].start * img.dx, img.origo[1] + roi[0].stop * img.dy]
     width = (roi[1].stop - roi[1].start) * img.dx
     height = (roi[0].stop - roi[0].start) * img.dy
 
