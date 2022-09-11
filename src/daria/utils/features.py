@@ -111,7 +111,6 @@ class FeatureDetection:
 
         # Initialize homography
         H: Optional[np.ndarray] = None
-        intact_homography: bool = False
 
         # Only continue if matching features have been found, and it is at least four;
         # four matches are needed to find a homography.
@@ -132,12 +131,9 @@ class FeatureDetection:
             # compute the homography matrix between the two sets of matched points
             (H, mask) = cv2.findHomography(pts_src, pts_dst, method=cv2.RANSAC)
 
-            # cv2.findHomography may actually fail; check whether the computed homography
-            # is intact
-            intact_homography = H is not None
-
-        # The success is measure whether the homography is intact
+        # The success is measure whether the homography is intact; note that cv2.findHomography
+        # may actually fail.
         if return_matches:
-            return H, intact_homography, matches
+            return H, H is not None, matches
         else:
-            return H, intact_homography
+            return H, H is not None
