@@ -109,17 +109,14 @@ class FeatureDetection:
         # Consider the top matches
         matches = matches[:keep]
 
-        # Initialize homography
-        H: Optional[np.ndarray] = None
+        # Allocate memory for the keypoints (x, y)-coordinates from the
+        # top matches.
+        pts_src = np.zeros((len(matches), 2), dtype="float")
+        pts_dst = np.zeros((len(matches), 2), dtype="float")
 
         # Only continue if matching features have been found, and it is at least four;
         # four matches are needed to find a homography.
         if have_matched_features:
-
-            # Allocate memory for the keypoints (x, y)-coordinates from the
-            # top matches.
-            pts_src = np.zeros((len(matches), 2), dtype="float")
-            pts_dst = np.zeros((len(matches), 2), dtype="float")
 
             # Loop over the top matches
             for (i, m) in enumerate(matches):
@@ -131,9 +128,7 @@ class FeatureDetection:
             # compute the homography matrix between the two sets of matched points
             (H, mask) = cv2.findHomography(pts_src, pts_dst, method=cv2.RANSAC)
 
-        # The success is measure whether the homography is intact; note that cv2.findHomography
-        # may actually fail.
         if return_matches:
-            return H, H is not None, matches
+            return (pts_src, pts_dst), have_matched_features, matches
         else:
-            return H, H is not None
+            return (pts_src, pts_dst), have_matched_features
