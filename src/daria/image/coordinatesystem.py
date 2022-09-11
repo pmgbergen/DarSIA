@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import math
-from math import ceil
+from typing import Union
+
+import numpy as np
 
 import daria as da
 
@@ -51,17 +53,19 @@ class CoordinateSystem:
             "ymax": ymax,
         }
 
-    def pixelsToLength(self, num_pixels: int, axis: str = "x") -> float:
+    def pixelsToLength(
+        self, num_pixels: Union[int, np.ndarray], axis: str = "x"
+    ) -> Union[float, np.ndarray]:
         """
         Convert number of pixels to metric units, when interpreting the pixels
         in some given axis.
 
         Args:
-            num_pixels (int): number of pixels
+            num_pixels (int or 1d array of ints): number(s) of pixels
             axis (str): either "x" or "y" determining the conversion rate
 
         Returns:
-            float: length in metric units
+            float or 1d array of floats: length(s) in metric units
         """
         if axis == "x":
             return num_pixels * self._dx
@@ -70,22 +74,24 @@ class CoordinateSystem:
         else:
             raise ValueError("Axis type not supported.")
 
-    def lengthToPixels(self, length: float, axis: str = "x") -> int:
+    def lengthToPixels(
+        self, length: Union[float, np.ndarray], axis: str = "x"
+    ) -> Union[int, np.np.ndarray]:
         """
         Convert length in metric units to number of pixels, when interpreting
         the length in some given axis.
 
         Args:
-            length (float): length in metric units
+            length (float or 1d array of floats): length(s) in metric units
             axis (str): either "x" or "y" determining the conversion rate
 
         Returns:
-            int: number of pixels
+            int or 1d array of ints: number(s) of pixels
         """
         if axis == "x":
-            return ceil(length / self._dx)
+            return math.ceil(length / self._dx) if isinstance(length, float) else np.ceil(length / self._dx)
         elif axis == "y":
-            return ceil(length / self._dy)
+            return math.ceil(length / self._dy) if isinstance(length, float) else np.ceil(length / self._dy)
         else:
             raise ValueError("Axis type not supported.")
 
