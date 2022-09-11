@@ -39,13 +39,13 @@ class Patches:
                         or one can give the number of patches in x, and y direction
                         as two separate arguments, respectively.
             **kwargs: optional keyword arguments:
-                "patch_overlap" (int): overlap of each patch in each direction of a rectangular
-                    patch, given in metric units (same as for im); default value is 0.
+                "rel_overlap" (int): relative overlap of each patch (in relation to patch size)
+                    in each direction of a rectangular patch; default value is 0.
         """
 
-        # Instance of base image and patch_overlap
+        # Instance of base image and relative_overlap
         self.baseImg = im
-        self.patch_overlap = kwargs.pop("patch_overlap", 0)  # TODO rename to overlap
+        self.relative_overlap = kwargs.pop("rel_overlap", 0.0)
 
         # Define number of patches in each direction
         if len(args) == 1:
@@ -70,14 +70,18 @@ class Patches:
         patch_pixels_height = self.baseImg.coordinatesystem.lengthToPixels(
             patch_height, "y"
         )
+
+        # Determine the overal in metric lengths
+        overlap_width = self.relative_overlap * patch_width
+        overlap_height = self.relative_overlap * patch_height
         # TODO rename and put pixels to the back
 
         # Convert the overlap from metric to numbers of pixels
         overlap_pixels_width = self.baseImg.coordinatesystem.lengthToPixels(
-            self.patch_overlap, "x"
+            overlap_width, "x"
         )
         overlap_pixels_height = self.baseImg.coordinatesystem.lengthToPixels(
-            self.patch_overlap, "y"
+            overlap_height, "y"
         )
 
         # Some abbreviation for better overview
@@ -90,6 +94,16 @@ class Patches:
         ch = ceil(overlap_pixels_height / 2)
         off_w = 0 if cw == ow / 2.0 else 1
         off_h = 0 if ch == oh / 2.0 else 1
+
+        self.nh = nh
+        self.pw = pw
+        self.ph = ph
+        self.ow = ow
+        self.oh = oh
+        self.cw = cw
+        self.ch = ch
+        self.off_w = off_w
+        self.off_h = off_h
 
         # TODO if this works, change the convention of numbering of patches. and use the
         # same as for images.
@@ -130,16 +144,34 @@ class Patches:
             for i in range(self.num_patches_x)
         ]
 
-        # TODO consider new class Patch which stores all the interesting info?
-
         # Store centers (x,y) of each patch in meters
         self.centers = [
             [
-                np.array([(i + 0.5) * patch_width, (j + 0.5) * patch_height])
+                self.baseImg.origo
+                + np.array([(i + 0.5) * patch_width, (j + 0.5) * patch_height])
                 for j in range(self.num_patches_y)
             ]
             for i in range(self.num_patches_x)
         ]
+
+        # Define flag (will be turned on when running _prepare_weights)
+        self.weights_defined = False
+
+    def _prepare_weights(self):
+        """
+        Auxiliary setup method for defining weights to be used in blend_and_assemble.
+        """
+
+        # Fetch some abbreviations
+        nh = self.nh
+        pw = self.pw
+        ph = self.ph
+        ow = self.ow
+        oh = self.oh
+        cw = self.cw
+        ch = self.ch
+        off_w = self.off_w
+        off_h = self.off_h
 
         # Define partition of unity later to be used as weighting masks for blending in
         # x-direction. Distinguish between th three different cases: (i) left border,
@@ -154,6 +186,9 @@ class Patches:
                 np.zeros(cw, dtype=float),
             )
         )
+
+        if pw - 2 * cw <= 0:
+            raise ValueError("Overlap chosen to large")
 
         # Corresponding to the internal patches
         self.weight_x["internal"] = np.hstack(
@@ -230,6 +265,9 @@ class Patches:
                 np.zeros(ch, dtype=float),
             )
         )
+
+        # Mark flag that weights are defined.
+        self.weights_defined = True
 
     def position(self, i: int, j: int) -> tuple[str]:
         """
@@ -342,6 +380,10 @@ class Patches:
         Returns:
             daria.image: assembled image as daria image
         """
+        # Require weights. Define if needed.
+        if not self.weights_defined:
+            self._prepare_weights()
+
         # The procedure is as follows. The image is reassembled, row by row.
         # Each row is reconstructed by concatenation. Overlapping regions
         # have to handled separately by a weighted sum (convex combination).
