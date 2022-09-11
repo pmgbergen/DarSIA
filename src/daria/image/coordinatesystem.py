@@ -89,9 +89,17 @@ class CoordinateSystem:
             int or 1d array of ints: number(s) of pixels
         """
         if axis == "x":
-            return math.ceil(length / self._dx) if isinstance(length, float) else np.ceil(length / self._dx)
+            return (
+                math.ceil(length / self._dx)
+                if isinstance(length, float)
+                else np.ceil(length / self._dx)
+            )
         elif axis == "y":
-            return math.ceil(length / self._dy) if isinstance(length, float) else np.ceil(length / self._dy)
+            return (
+                math.ceil(length / self._dy)
+                if isinstance(length, float)
+                else np.ceil(length / self._dy)
+            )
         else:
             raise ValueError("Axis type not supported.")
 
