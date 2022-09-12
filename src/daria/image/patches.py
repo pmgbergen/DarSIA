@@ -145,14 +145,16 @@ class Patches:
         ]
 
         # Store centers (x,y) of each patch in meters
-        self.centers = [
+        self.centers = np.array(
             [
-                self.baseImg.origo
-                + np.array([(i + 0.5) * patch_width, (j + 0.5) * patch_height])
-                for j in range(self.num_patches_y)
+                [
+                    self.baseImg.origo
+                    + np.array([(i + 0.5) * patch_width, (j + 0.5) * patch_height])
+                    for j in range(self.num_patches_y)
+                ]
+                for i in range(self.num_patches_x)
             ]
-            for i in range(self.num_patches_x)
-        ]
+        )
 
         # Define flag (will be turned on when running _prepare_weights)
         self.weights_defined = False
