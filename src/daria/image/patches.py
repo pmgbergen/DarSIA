@@ -165,7 +165,6 @@ class Patches:
         """
 
         # Fetch some abbreviations
-        nh = self.nh
         pw = self.pw
         ph = self.ph
         ow = self.ow
