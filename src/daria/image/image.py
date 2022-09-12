@@ -35,13 +35,13 @@ class Image:
         width (float): physical width of the image
         height (float): physical height of the image
         depth (float): physical depth of the image (only relevant in 3d)
-        origo (list): physical coordinates of the lower left corner, i.e., (0,0) pixel
+        origo (list): physical coordinates of the lower left corner, i.e.,
+            of the (img.shape[0],0) pixel
         dim (int): dimension of image, could be 2, 3, 4 (incl. the possibility for time)
         shape (np.ndarray): num_pixels, as well number of color channels (typically 3 for RGB)
         dx (float): pixel size in x-direction
         dy (float): pixel size in y-direction
         dz (float): pixel size in z-direction
-        colourspace (str): identifying the colour space, e.g., BGR, RGB, xyY, XYZ.
     """
 
     def __init__(
@@ -87,9 +87,6 @@ class Image:
             raise Exception(
                 "Invalid image data. Provide either a path to an image or an image array."
             )
-
-        # OpenCV reads in images in BGR colourspace with uint8 values by default
-        self.colourspace = "BGR_uint8"
 
         # Read metadata from file or create from input arguments
         if read_metadata_from_file:
@@ -202,12 +199,9 @@ class Image:
         # Display image
         cv2.namedWindow(name, cv2.WINDOW_NORMAL)
         cv2.imshow(name, self.img)
-        # if wait is not None:
-        #     cv2.waitKey(wait)
         cv2.waitKey(wait)
         cv2.destroyAllWindows()
 
-    # TODO: Should this be a part of the image class?
     # Seems like something that should read an image and return a new one with grid.
     def add_grid(
         self,
