@@ -15,7 +15,21 @@ pip install .
 ## Usage
 
 ```python
-add some sample code here
+import daria as da
+
+# Create a daria Image: An image that also contains information of physical entities, baseline image can be found at the link: (WE NEED TO PROVIDE LINK TO IMAGE)
+image = da.Image("images/originals/Baseline.jpg", origo = [5, 2], width = 280, height = 150)
+
+# Use the show method to take a look at the imported image (push any button to close the window)
+image.show()
+
+# Copies the image and adds a grid on top of it.
+grid_image = image.add_grid(origo = [5, 2], dx = 10, dy = 10)
+grid_image.show()
+
+# Extract region of interest (ROI) from image:
+ROI_image = da.extractROI(image, [150, 280], [0, 70])
+ROI_image.show()
 ```
 
 ## Developing DarIA
@@ -23,17 +37,6 @@ To install daria, along with the tools to develop and run tests, run the followi
 ```bash
 $ pip install -e .[dev]
 ```
--e means editable, and "[dev]" installs the development packages as well (currently only pytest).
 
-At some point I will modify and make testing better, but for now:
-<ul>
-    <li> Write tests in the "tests"-folder</li>
-    <ul>
-        <li> File-names should start with "test_" </li>
-        <li> Create methods whose name start with "test", and use assert </li>
-    </ul>
-    <li> run $pytest in the project directory.
-<ul>
-
-Use black (version 22.3.0) for formatting, this can be run as as a post-processing step, or directly in the IDE (e.g., bound to save.)
+Use black (version 22.3.0), flake8 and isort formatting.
 
