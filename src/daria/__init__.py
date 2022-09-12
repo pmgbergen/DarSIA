@@ -22,3 +22,4 @@ from daria.corrections.shape.curvature import *
 from daria.corrections.shape.homography import *
 from daria.corrections.shape.translation import *
 from daria.corrections.color.colorchecker import *
+from daria.analysis.compaction import *
