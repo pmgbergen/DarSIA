@@ -128,6 +128,29 @@ class CoordinateSystem:
         # Return final coordinates
         return x, y
 
+    def pixelToCoordinate_for_arrays(self, pixels: np.ndarray) -> np.ndarray:
+        """Conversion from pixel in standard format to coordinate in physical units.
+
+        Arguments:
+            pixels (np.ndarray): pixel locations; in 2d, columns hold row and col image pixels;
+                one row per pixel
+
+        Returns:
+            np.ndarray: coordinates in metric units
+        """
+        # Fetch the top left corner.
+        x0, y0 = self._coordinate_of_origin_pixel
+
+        # Initialize coordinates
+        coordinates = np.empty_like(pixels, dtype=float)
+
+        # Obtain the coordinates by scaling - for the y-coordinate, one also has to flip
+        # the y-axis due to the convention in numbering of pixels, and therefore subtract.
+        coordinates[:, 0] = x0 + pixels[:, 0] / self._num_pixels_width * self._width
+        coordinates[:, 1] = y0 + pixels[:, 1] / self._num_pixels_height * self._height
+
+        return coordinates
+
     def coordinateToPixel(self, coordinate: tuple[float]) -> tuple[int]:
         """Conversion from coordinate in physical units to pixel in standard format.
 
