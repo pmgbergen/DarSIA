@@ -8,7 +8,7 @@ import daria
 # -------- Convert the image into linear RGB color space
 
 # Fetch image, in BGR
-img_BGR = cv2.imread(str(Path("./baseline.jpg")))
+img_BGR = cv2.imread(str(Path("./images/baseline.jpg")))
 
 # Convert to RGB (int)
 img_RGB = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2RGB)
