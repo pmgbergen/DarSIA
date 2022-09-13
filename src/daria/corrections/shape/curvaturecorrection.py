@@ -52,7 +52,7 @@ def curvature_correction(
         )
 
     # Read size of image
-    Ny, Nx, _ = img.shape
+    Ny, Nx = img.shape[:2]
 
     # Center image, and set physical values
     x = (np.array(range(1, Nx + 1)) - round(Nx / 2)) / Nx * width
