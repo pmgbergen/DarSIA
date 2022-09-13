@@ -4,3 +4,4 @@ while the remaining ones should be considered less important:
 
 correction/curvature_correction_walkthrough.py
 correction/color_correction.py
+segmentation/coarse_scale/segmentation_watershed.py
