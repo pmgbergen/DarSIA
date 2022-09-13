@@ -26,7 +26,7 @@ from daria.corrections.shape.curvature import simple_curvature_correction
 # NOTE: User input needed.
 
 # Choose a image of your choice.
-image_name = "./baseline_with_laser_grid.jpg"
+image_name = "./images/baseline_with_laser_grid.jpg"
 full_path = Path(image_name)
 
 # Read image
