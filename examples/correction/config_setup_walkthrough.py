@@ -1,23 +1,24 @@
 """
-Quick 5-step procedure to a decent config file for the correction of images of the large FluidFlower.
+Quick 5-step procedure to a decent config file for the correction of images of
+the large FluidFlower.
 
-The preprocessing of FluidFlower images requires a config file. It includes several tuning parameters,
-which need to be provided. In order to reduce manual tuning, this run script aims at a brief procedure
-describing how to choose them in 5 steps.
+The preprocessing of FluidFlower images requires a config file. It includes
+several tuning parameters, which need to be provided. In order to reduce manual
+tuning, this run script aims at a brief procedure describing how to choose them
+in 5 steps.
 
-This routine is not entirely free from tuning. However, tedious fine tuning is not necessary anymore.
+This routine is not entirely free from tuning. However, tedious fine tuning is
+not necessary anymore.
 """
 
 # TODO transform this to a jupyter notebook
 
-import cv2
 from pathlib import Path
-import daria as da
-import numpy as np
-import skimage
+
+import cv2
 import matplotlib.pyplot as plt
-from scipy import ndimage as ndi
-from daria.corrections.color.colorchecker import ColorCorrection
+
+import daria as da
 from daria.corrections.shape.curvature import simple_curvature_correction
 
 # !----- 1. Step: Read curved image and initialize the config file
@@ -25,9 +26,8 @@ from daria.corrections.shape.curvature import simple_curvature_correction
 # NOTE: User input needed.
 
 # Choose a image of your choice.
-folder = "/home/jakub/images/ift/benchmark/laser_grid"
-image_name = "laser grid on geometry.JPG"
-full_path = Path(folder) / Path(image_name)
+image_name = "./baseline_with_laser_grid.jpg"
+full_path = Path(image_name)
 
 # Read image
 img = cv2.imread(str(full_path))
@@ -52,9 +52,9 @@ config: dict() = {}
 # the default is to use the numerical center.
 config["init"] = {
     "horizontal_bulge": 5e-9,
-    #"vertical_bulge": 0,
-    #"horizontal_center_offset": 0,
-    #"vertical_center_offset": 0,
+    # "vertical_bulge": 0,
+    # "horizontal_center_offset": 0,
+    # "vertical_center_offset": 0,
 }
 
 # Apply bulge 'correction'
@@ -75,13 +75,14 @@ plt.show()
 # FluidFlower.
 config["crop"] = {
     "pts_src": [
-       [30, 22],
-       [47, 4384],
-       [7907, 4374],
-       [7915, 14],
+        [11, 8],
+        [16, 1755],
+        [3165, 1748],
+        [3165, 5],
     ],
-    # Specify the true dimensions of the reference points - known as they are points on the laser grid
-    "width": 2.8, 
+    # Specify the true dimensions of the reference points - known as they are
+    # points on the laser grid
+    "width": 2.8,
     "height": 1.5,
     "in meters": True,
 }
@@ -102,10 +103,10 @@ Ny, Nx = img.shape[:2]
 # NOTE: User input needed.
 
 # Read the x-coordinates of the two largest impressions in x-direction
-x1 = 72
-x2 = 7883
-y1 = 134 
-y2 = 4121
+x1 = 1e-6
+x2 = Nx - 1e-6
+y1 = 53
+y2 = 1646
 
 # Determine the associated increments
 dx1 = x1
@@ -114,10 +115,7 @@ dy1 = y1
 dy2 = Ny - y2
 
 # Determine the center of the image as described in the daria-notes
-image_center = [
-    int(Nx * dx1 / (dx1 + dx2)),
-    int(Ny * dy1 / (dy1 + dy2))
-]
+image_center = [int(Nx * dx1 / (dx1 + dx2)), int(Ny * dy1 / (dy1 + dy2))]
 
 # Determine the offset of the numerical center of the image
 horizontal_bulge_center_offset = image_center[0] - int(Nx / 2)
@@ -126,15 +124,19 @@ vertical_bulge_center_offset = image_center[1] - int(Ny / 2)
 # Determine the bulge tuning coefficients as explained in the daria notes
 # Assume here that the maximum impressions are applied at the image center
 # (more accurate values can be read from the image)
-horizontal_bulge = dx1 / ((x1 - image_center[0]) * image_center[1] * (Ny - image_center[1]))
-vertical_bulge = dy1 / ((y1 - image_center[1]) * image_center[0] * (Nx - image_center[0]))
+horizontal_bulge = dx1 / (
+    (x1 - image_center[0]) * image_center[1] * (Ny - image_center[1])
+)
+vertical_bulge = dy1 / (
+    (y1 - image_center[1]) * image_center[0] * (Nx - image_center[0])
+)
 
 # Choose horizontal and vertical bulge such that all laser grid lines are bulged inwards
 config["bulge"] = {
     "horizontal_bulge": horizontal_bulge,
     "horizontal_center_offset": horizontal_bulge_center_offset,
-    "vertical_bulge": vertical_bulge,    
-    "vertical_center_offset": vertical_bulge_center_offset, 
+    "vertical_bulge": vertical_bulge,
+    "vertical_center_offset": vertical_bulge_center_offset,
 }
 
 # Apply final curvature correction
@@ -143,42 +145,47 @@ img = simple_curvature_correction(img, **config["bulge"])
 # !----- 4. Step: Correct for stretch
 
 # Compare with a 'perfect' grid layed on top
-# Determine coordinates of some point which is off 
-da_img = da.Image(img, width=2.8, height=1.5).add_grid(dx = 0.1, dy = 0.1)
+# Determine coordinates of some point which is off
+da_img = da.Image(img, width=2.8, height=1.5).add_grid(dx=0.1, dy=0.1)
 plt.imshow(da_img.img)
 plt.show()
 
 # NOTE: User input needed.
 
 # Use [x,y] in pixels, and specify the current location, and the ought to be location
-pt_src = [2030, 554]
-pt_dst = [1988, 568]
+pt_src = [585, 676]
+pt_dst = [567, 676]
 
-# Define 'center' as the point which can be trusted the most - can be omitted if a second reference point is considered # FIXME
-stretch_center = [3691, 2555]
+# Define 'center' as the point which can be trusted the most - can be omitted if a
+# second reference point is considered # FIXME
+stretch_center = [1476, 1020]
 
 # Update the offset to the center
-horizontal_stretch_center_offset = stretch_center[0] - int(Nx/2)
-vertical_stretch_center_offset = stretch_center[1] - int(Ny/2)
+horizontal_stretch_center_offset = stretch_center[0] - int(Nx / 2)
+vertical_stretch_center_offset = stretch_center[1] - int(Ny / 2)
 
 # Compute the tuning parameter as explained in the notes
 # TODO add to the notes
-horizontal_stretch = -(pt_dst[0] - pt_src[0]) / ((pt_src[0] - stretch_center[0]) * pt_src[0] * (Nx - pt_src[0]))
-vertical_stretch = -(pt_dst[1] - pt_src[1]) / ((pt_src[1] - stretch_center[1]) * pt_src[1] * (Ny - pt_src[1]))
+horizontal_stretch = -(pt_dst[0] - pt_src[0]) / (
+    (pt_src[0] - stretch_center[0]) * pt_src[0] * (Nx - pt_src[0])
+)
+vertical_stretch = -(pt_dst[1] - pt_src[1]) / (
+    (pt_src[1] - stretch_center[1]) * pt_src[1] * (Ny - pt_src[1])
+)
 
 # Choose horizontal and vertical bulge such that all laser grid lines are bulged inwards
 config["stretch"] = {
     "horizontal_stretch": horizontal_stretch,
     "horizontal_center_offset": horizontal_stretch_center_offset,
-    "vertical_stretch": vertical_stretch,    
-    "vertical_center_offset": vertical_stretch_center_offset, 
+    "vertical_stretch": vertical_stretch,
+    "vertical_center_offset": vertical_stretch_center_offset,
 }
 
 # Apply final curvature correction
 img = simple_curvature_correction(img, **config["stretch"])
 
 # !----- 6. Step: Validation - Compare with a 'perfect' grid layed on top
-da_img = da.Image(img, width=2.8, height=1.5).add_grid(dx = 0.1, dy = 0.1)
+da_img = da.Image(img, width=2.8, height=1.5).add_grid(dx=0.1, dy=0.1)
 plt.imshow(da_img.img)
 plt.show()
 
