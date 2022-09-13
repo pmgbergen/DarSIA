@@ -3,7 +3,7 @@ from pathlib import Path
 import cv2
 import matplotlib.pyplot as plt
 
-from daria.corrections.color import ColorCorrection
+import daria
 
 # -------- Convert the image into linear RGB color space
 
@@ -19,10 +19,8 @@ img_RGB = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2RGB)
 roi_cc = (slice(0, 240), slice(0, 240))
 
 # Apply color correction
-colorcorrection = ColorCorrection()
-corrected_baseline_RGB = colorcorrection.adjust(
-    img_RGB, roi_cc, verbosity=False, whitebalancing=True
-)
+colorcorrection = daria.ColorCorrection()
+corrected_baseline_RGB = colorcorrection.adjust(img_RGB, roi_cc, verbosity=False)
 
 # NOTE: For some reason, when choosing verbosity=True the colour checker is displayed,
 # but no other images can be properly displayed afterwards anymore.
