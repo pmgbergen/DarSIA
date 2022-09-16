@@ -64,10 +64,10 @@ def curvature_correction(
     # Curvature corrected grid using input parameters
     Xmod = horizontal_crop * np.multiply(
         np.multiply(X, (1 + horizontal_stretch * (X - horizontal_stretch_mid) ** 2)),
-        (1 - vertical_bulge * Y ** 2),
+        (1 - vertical_bulge * Y**2),
     )
     Ymod = vertical_crop * (
-        np.multiply(Y, (1 - horizontal_bulge * X ** 2)) - vertical_shear * X
+        np.multiply(Y, (1 - horizontal_bulge * X**2)) - vertical_shear * X
     )
 
     # Map corrected grid back to positional arguments
