@@ -134,11 +134,7 @@ class CompactionAnalysis:
                     translation,
                     intact_translation,
                 ) = self.translationEstimator.find_effective_translation(
-                    img_src.img,
-                    img_dst.img,
-                    None,
-                    None,
-                    plot_matches=False,
+                    img_src.img, img_dst.img, None, None, plot_matches=False
                 )
 
                 # The above procedure to find a matching transformation is successful if in
@@ -266,26 +262,15 @@ class CompactionAnalysis:
         interpolated_patch_translation_x = interpolator_translation_x(input_arg)
         interpolated_patch_translation_y = interpolator_translation_y(input_arg)
 
-        # Convert coordinates of patch centers to pixels - using the (row, col) ordering
+        # Convert coordinates of patch centers to pixels - using the matrix indexing
         patch_centers_x_pixels = np.zeros(tuple(reversed(self.N_patches)), dtype=int)
         patch_centers_y_pixels = np.zeros(tuple(reversed(self.N_patches)), dtype=int)
         for j in range(self.N_patches[1]):
             for i in range(self.N_patches[0]):
                 center = self.patch_centers[i, j]
-                patch_centers_x_pixels[
-                    self.N_patches[1] - 1 - j, i
-                ] = self.img_src.coordinatesystem.coordinateToPixel(
-                    (center[0], center[1])
-                )[
-                    1
-                ]
-                patch_centers_y_pixels[
-                    self.N_patches[1] - 1 - j, i
-                ] = self.img_src.coordinatesystem.coordinateToPixel(
-                    (center[0], center[1])
-                )[
-                    0
-                ]
+                pixel = self.img_src.coordinatesystem.coordinateToPixel(center)
+                patch_centers_x_pixels[self.N_patches[1] - 1 - j, i] = pixel[1]
+                patch_centers_y_pixels[self.N_patches[1] - 1 - j, i] = pixel[0]
 
         # Plot the interpolated translation
         if plot_translation:

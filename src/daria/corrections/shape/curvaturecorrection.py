@@ -22,8 +22,7 @@ def curvature_correction(
     """
     Curvature correction.
     Arguments:
-        img (np.ndarray): image array, with pixel access, using y, x ordering, such that the
-            top left corner of the image corresponds to the (0,0) pixel.
+        img (np.ndarray): image array
         img (str): path to image, alternative way to feed the actual image.
         width (float): physical width of image.
         height (float): physical height of image.
@@ -65,10 +64,10 @@ def curvature_correction(
     # Curvature corrected grid using input parameters
     Xmod = horizontal_crop * np.multiply(
         np.multiply(X, (1 + horizontal_stretch * (X - horizontal_stretch_mid) ** 2)),
-        (1 - vertical_bulge * Y**2),
+        (1 - vertical_bulge * Y ** 2),
     )
     Ymod = vertical_crop * (
-        np.multiply(Y, (1 - horizontal_bulge * X**2)) - vertical_shear * X
+        np.multiply(Y, (1 - horizontal_bulge * X ** 2)) - vertical_shear * X
     )
 
     # Map corrected grid back to positional arguments

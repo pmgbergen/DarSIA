@@ -75,10 +75,7 @@ class TranslationEstimator:
             # effective translation (as affine map) as average translation between the
             # matches.
             if self._isclose_translation(transformation):
-                (
-                    translation,
-                    intact_translation,
-                ) = self._find_translation(matches)
+                (translation, intact_translation) = self._find_translation(matches)
             else:
                 translation = None
                 intact_translation = False
@@ -189,10 +186,7 @@ class TranslationEstimator:
 
         # Determine matching points
         (pts_src, pts_dst), have_match, matches = FeatureDetection.match_features(
-            features_src,
-            features_dst,
-            keep_percent=keep_percent,
-            return_matches=True,
+            features_src, features_dst, keep_percent=keep_percent, return_matches=True
         )
 
         # Determine matching transformation. Allow for different models.
@@ -271,6 +265,8 @@ class TranslationEstimator:
         """
         # Extract the translation directly as average displacement from all
         # provided matches - have to assume that the matches are well chosen.
+        # NOTE: As matches will result as output from cv2 routines, these use
+        # (col, row)-indexing, i.e., reverse matrix indexing.
         src, dst = matches
         displacement = np.average(dst - src, axis=0)
         affine_translation = np.hstack((np.eye(2), displacement.reshape((2, 1))))

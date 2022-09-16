@@ -30,7 +30,8 @@ class FeatureDetection:
 
         Returns:
             tuple: tuple of
-                kps: keypoints of the features
+                kps: keypoints of the features; note keypoints come in (col, row),
+                    i.e., reversed matrix indexing
                 np.ndarray: descriptors of the features
             bool: flag indicating whether features have been found
         """
@@ -72,10 +73,9 @@ class FeatureDetection:
                 which could e.g. be used for plotting
 
         Returns:
-            tuple: tuple of
-                np.ndarray: homography matching the features
-                bool: flag indicating whether procedure has been successful
-                matches (optional): matches between features # TODO type
+            np.ndarray: homography matrix matching the features
+            bool: flag indicating whether procedure has been successful
+            matches (optional): matches between features # TODO type
         """
         # Unpack features (keypoints and descriptors)
         kps_src, descs_src = features_src
@@ -109,7 +109,7 @@ class FeatureDetection:
         # Consider the top matches
         matches = matches[:keep]
 
-        # Allocate memory for the keypoints (x, y)-coordinates from the
+        # Allocate memory for the keypoints (col, row)-coordinates from the
         # top matches.
         pts_src = np.zeros((len(matches), 2), dtype="float")
         pts_dst = np.zeros((len(matches), 2), dtype="float")
