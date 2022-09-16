@@ -6,6 +6,8 @@ import numpy as np
 
 import daria as da
 
+import cv2
+
 
 def BGR2RGB(img: np.ndarray) -> np.ndarray:
     """Conversion between opencv (cv2) which has BGR-formatting and scikit-image (skimage)
@@ -18,6 +20,17 @@ def BGR2RGB(img: np.ndarray) -> np.ndarray:
         np.ndarray: converted image.
     """
     return img[:, :, ::-1]
+
+
+def BGR2GRAY(img: da.Image) -> da.Image:
+    img_gray = img.copy()
+    img_gray.img = cv2.cvtColor(img_gray.img, cv2.COLOR_BGR2GRAY)
+    return img_gray
+
+def BGR2RED(img: da.Image) -> da.Image:
+    img_red = img.copy()
+    img_red.img = img_red.img[:, :, 2]
+    return img_red
 
 
 def standardToPhysicalPixelOrdering(img: np.ndarray) -> np.ndarray:

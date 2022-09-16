@@ -208,7 +208,10 @@ class Image:
 
         """
 
-        rgbim = da.BGR2RGB(self.img)
+        if len(self.img.shape)==3:
+            rgbim = da.BGR2RGB(self.img)
+        else:
+            rgbim = self.img
         plt.imshow(rgbim)
 
 
