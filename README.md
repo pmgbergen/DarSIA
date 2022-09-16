@@ -18,7 +18,7 @@ pip install .
 import daria as da
 
 # Create a daria Image: An image that also contains information of physical entities, baseline image can be found at the link: (WE NEED TO PROVIDE LINK TO IMAGE)
-image = da.Image("images/originals/Baseline.jpg", origo = [5, 2], width = 280, height = 150)
+image = da.Image("examples/images/baseline.jpg", origo = [5, 2], width = 280, height = 150)
 
 # Use the show method to take a look at the imported image (push any button to close the window)
 image.show()
