@@ -228,7 +228,7 @@ class Image:
             origo (list of floats): origo of the grid, in physical units
             dx (float): grid size in x-direction, in physical units
             dy (float): grid size in y-direction, in physical units
-            color (tuple of int): RGB color of the grid
+            color (tuple of int): BGR color of the grid
             thickness (int): thickness of the grid lines
 
         Returns:
