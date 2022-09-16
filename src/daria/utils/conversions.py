@@ -7,7 +7,7 @@ import numpy as np
 import daria as da
 
 
-def cv2ToSkimage(img: np.ndarray) -> np.ndarray:
+def BGR2RGB(img: np.ndarray) -> np.ndarray:
     """Conversion between opencv (cv2) which has BGR-formatting and scikit-image (skimage)
     which has RGB. The same command works in both directions.
 

@@ -11,6 +11,7 @@ from typing import Optional
 
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 import daria as da
 
@@ -201,6 +202,15 @@ class Image:
         cv2.imshow(name, self.img)
         cv2.waitKey(wait)
         cv2.destroyAllWindows()
+
+    def plt_show(self) -> None:
+        """ Show image using matplotlib.pyplots built-in imshow
+
+        """
+
+        rgbim = da.BGR2RGB(self.img)
+        plt.imshow(rgbim)
+
 
     # Seems like something that should read an image and return a new one with grid.
     def add_grid(
