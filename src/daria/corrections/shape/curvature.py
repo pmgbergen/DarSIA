@@ -58,16 +58,18 @@ def simple_curvature_correction(img: np.ndarray, **kwargs) -> np.ndarray:
     # including lense properties. Thus, the task is actually quite hard. Here, a
     # simple approach is used, simply choosing the numerical centre of the image
     # corrected by the user.
+
+    # Image center in pixels, but in (col, row) order
     image_center = [
         round(Nx / 2) + horizontal_center_offset,
         round(Ny / 2) + vertical_center_offset,
     ]
 
-    # Define coordinate system relative to image center, scaled with physical dimensions
-    x = np.array(range(1, Nx + 1)) - image_center[0]
-    y = np.array(range(1, Ny + 1)) - image_center[1]
+    # Define coordinate system relative to image center, in terms of pixels
+    x = np.arange(Nx) - image_center[0]
+    y = np.arange(Ny) - image_center[1]
 
-    # Construct associated meshgrid
+    # Construct associated meshgrid with Cartesian indexing
     X, Y = np.meshgrid(x, y)
 
     # Warp the coordinate system nonlinearly, correcting for bulge and stretch effects.
@@ -84,10 +86,10 @@ def simple_curvature_correction(img: np.ndarray, **kwargs) -> np.ndarray:
 
     # Map corrected grid back to positional arguments, i.e. invert the definition
     # of the local coordinate system
-    Xmod += image_center[0] - 1
-    Ymod += image_center[1] - 1
+    Xmod += image_center[0]
+    Ymod += image_center[1]
 
-    # Create out grid as the corrected grid, but not in meshgrid format
+    # Create out grid as the corrected grid, use (row,col) format
     out_grid = np.array([Ymod.ravel(), Xmod.ravel()])
 
     # Define the shape corrected image.

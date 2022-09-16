@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import math
 import sys
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Union
 
 import cv2
 import numpy as np
@@ -28,14 +29,13 @@ class Image:
     functionality such as saving to image-file, and drawing a grid is provided in the class.
 
     Attributes:
-        img (np.ndarray): image array, with pixel access, using y, x ordering, such that the
-            top left corner of the image corresponds to the (0,0) pixel.
+        img (np.ndarray): image array
         img (str): path to image, alternative way to feed the actual image.
         imgpath (str): path to image, also used to define source for metadata
         width (float): physical width of the image
         height (float): physical height of the image
         depth (float): physical depth of the image (only relevant in 3d)
-        origo (list): physical coordinates of the lower left corner, i.e.,
+        origo (np.ndarray): physical coordinates of the lower left corner, i.e.,
             of the (img.shape[0],0) pixel
         dim (int): dimension of image, could be 2, 3, 4 (incl. the possibility for time)
         shape (np.ndarray): num_pixels, as well number of color channels (typically 3 for RGB)
@@ -47,7 +47,7 @@ class Image:
     def __init__(
         self,
         img: np.ndarray,
-        origo: list[float] = [0, 0],
+        origo: Union[np.ndarray, list[float]] = np.array([0, 0]),
         width: float = 1,
         height: float = 1,
         depth: float = 0,
@@ -59,12 +59,11 @@ class Image:
         """Constructor of Image object.
 
         The input image can either be a path to the image file or a numpy array with
-        conventional pixel ordering.
+        conventional matrix indexing.
 
         Arguments:
-            img (np.ndarray): image array, with standard pixel access, using y,x, such that
-                (0,0) corresponds to the top left corner
-            origo (list): physical coordinates of the lower left corner, i.e., (0,0) pixel
+            img (np.ndarray): image array with matrix indexing
+            origo (np.ndarray): physical coordinates of the lower left corner
             width (float): physical width of the image
             height (float): physical height of the image
             depth (float): physical depth of the image, only relevant for 3d images
@@ -92,7 +91,7 @@ class Image:
         if read_metadata_from_file:
             self.create_metadata_from_file(metadata_path)
         else:
-            self.origo = origo
+            self.origo = origo if isinstance(origo, np.ndarray) else np.array(origo)
             self.width = width
             self.height = height
             self.dim = dim
@@ -110,10 +109,10 @@ class Image:
 
         # Define the pixels in the corners of the image
         self.corners = {
-            "upperleft": (0, 0),
-            "lowerleft": (self.num_pixels_height, 0),
-            "lowerright": (self.num_pixels_height, self.num_pixels_width),
-            "upperright": (0, self.num_pixels_width),
+            "upperleft": np.array([0, 0]),
+            "lowerleft": np.array([self.num_pixels_height, 0]),
+            "lowerright": np.array([self.num_pixels_height, self.num_pixels_width]),
+            "upperright": np.array([0, self.num_pixels_width]),
         }
 
         # Establish a coordinate system based on the metadata
@@ -124,12 +123,13 @@ class Image:
         """Reading routine for metadata.
 
         Arguments:
-            path (str): path to metadata
+            path (str, optional): path to metadata
         """
         # If path is None, expect metadata in subfolder at same location
         # as the orginal image. Otherwise use given path.
         if path is None:
             assert isinstance(self.imgpath, str)
+            # TODO This may not be OS independent.
             pl = self.imgpath.split("/")
             name = pl[2].split(".")[0]
             path = pl[0] + "/metadata/" + name + ".txt"
@@ -146,7 +146,7 @@ class Image:
             md_dict[key] = value
         # FIXME The origo numbers are hardcoded, might be a better solution
         origo_nums = md_dict["Origo"].replace("[", "").replace("]", "").split(",")
-        self.origo = [float(origo_nums[0]), float(origo_nums[1])]
+        self.origo = np.array([float(origo_nums[0]), float(origo_nums[1])])
         self.width = float(md_dict["Width"])
         self.height = float(md_dict["Height"])
         self.dim = int(md_dict["Dimension"])
@@ -154,10 +154,10 @@ class Image:
     def write(
         self,
         name: str = "img",
-        path: str = "images/modified/",
+        path: str = str(Path("images/modified/")),
         file_format: str = ".jpg",
         save_metadata: bool = True,
-        metadata_path: str = "images/metadata/",
+        metadata_path: str = str(Path("images/metadata/")),
     ) -> None:
         """Write image to file.
 
@@ -172,7 +172,7 @@ class Image:
             metadata_path (str): path to metadata (only folders); the metadata file
                 has the same name as the image (and a .txt ending)
         """
-        # Write image, using the standard pixel ordering
+        # Write image, using the conventional matrix indexing
         cv2.imwrite(path + name + file_format, self.img)
         print("Image saved as: " + path + name + file_format)
 
@@ -205,7 +205,7 @@ class Image:
     # Seems like something that should read an image and return a new one with grid.
     def add_grid(
         self,
-        origo: list[float] = None,
+        origo: Optional[Union[np.ndarray, list[float]]] = None,
         dx: float = 1,
         dy: float = 1,
         color: tuple = (0, 0, 125),
@@ -215,7 +215,8 @@ class Image:
         Adds a grid on the image and returns new image.
 
         Arguments:
-            origo (list of floats): origo of the grid, in physical units
+            origo (np.ndarray): origo of the grid, in physical units - the reference
+                coordinate system is provided by the corresponding attribute coordinatesystem
             dx (float): grid size in x-direction, in physical units
             dy (float): grid size in y-direction, in physical units
             color (tuple of int): RGB color of the grid
@@ -227,6 +228,8 @@ class Image:
         # Set origo if it was not provided
         if origo is None:
             origo = self.origo
+        elif isinstance(origo, list):
+            origo = np.array(origo)
 
         # Determine the number of grid lines required
         num_horizontal_lines: int = math.ceil(self.height / dy) + 1
@@ -246,18 +249,15 @@ class Image:
             y = origo[1] + i * dy
 
             # Determine the pixels corresponding to the end points of the horizontal line
-            # (xmin,y) - (xmax,y). NOTE: The conventional ordering of pixels (y,x).
-            start = self.coordinatesystem.coordinateToPixel((xmin, y))
-            end = self.coordinatesystem.coordinateToPixel((xmax, y))
+            # (xmin,y) - (xmax,y), in (row,col) format.
+            start = self.coordinatesystem.coordinateToPixel(np.array([xmin, y]))
+            end = self.coordinatesystem.coordinateToPixel(np.array([xmax, y]))
 
-            # Add single line. NOTE: cv2.line takes pixels with the non-conventional
-            # ordering of pixels: (x,y), still using (0,0) as top left corner.
+            # Add single line. NOTE: cv2.line takes pixels as inputs with the reversed
+            # matrix indexing, i.e., (col,row) instead of (row,col). Furthermore,
+            # it requires tuples.
             gridimg = cv2.line(
-                gridimg,
-                tuple(reversed(start)),
-                tuple(reversed(end)),
-                color,
-                thickness,
+                gridimg, tuple(reversed(start)), tuple(reversed(end)), color, thickness
             )
 
         # Add vertical grid lines (line by line)
@@ -271,26 +271,20 @@ class Image:
             x = origo[0] + j * dx
 
             # Determine the pixels corresponding to the end points of the vertical line
-            # (x, ymin) - (x, ymax). NOTE: The conventional ordering of pixels.
-            start = self.coordinatesystem.coordinateToPixel((x, ymin))
-            end = self.coordinatesystem.coordinateToPixel((x, ymax))
+            # (x, ymin) - (x, ymax), in (row,col) format.
+            start = self.coordinatesystem.coordinateToPixel(np.array([x, ymin]))
+            end = self.coordinatesystem.coordinateToPixel(np.array([x, ymax]))
 
-            # Add single line. NOTE: cv2.line takes pixels with the non-conventional
-            # ordering of pixels: (x,y), still using (0,0) as top left corner.
+            # Add single line. NOTE: cv2.line takes pixels as inputs with the reversed
+            # matrix indexing, i.e., (col,row) instead of (row,col). Furthermore,
+            # it requires tuples.
             gridimg = cv2.line(
-                gridimg,
-                tuple(reversed(start)),
-                tuple(reversed(end)),
-                color,
-                thickness,
+                gridimg, tuple(reversed(start)), tuple(reversed(end)), color, thickness
             )
 
         # Return image with grid as Image object
         return Image(
-            img=gridimg,
-            origo=self.origo,
-            width=self.width,
-            height=self.height,
+            img=gridimg, origo=self.origo, width=self.width, height=self.height
         )
 
     # resize image by using cv2's resize command
@@ -299,12 +293,12 @@ class Image:
         Coarsen the image object
 
         Arguments:
-            cx: the amount of which to coarsen in x direction
-            cy: the amount of which to coarsen in y direction
+            cx: the amount of which to scale in x direction
+            cy: the amount of which to scale in y direction
         """
 
         # Coarsen image
-        self.img = cv2.resize(self.img, (0, 0), fx=cx, fy=cy)
+        self.img = cv2.resize(self.img, None, fx=cx, fy=cy)
 
         # Update parameters and coordinate system
         self.dx *= 1 / cx
