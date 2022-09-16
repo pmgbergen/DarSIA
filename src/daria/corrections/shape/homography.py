@@ -6,10 +6,7 @@ import cv2
 import numpy as np
 
 
-def homography_correction(
-    img_src: np.ndarray,
-    **kwargs,
-) -> np.ndarray:
+def homography_correction(img_src: np.ndarray, **kwargs) -> np.ndarray:
     """
     Homography correction for known corner points of a square (default) object.
 
@@ -19,8 +16,8 @@ def homography_correction(
             height (int or float): height of the physical object
             in meters (boolean): controlling whether width and height are float and
                 are meant as in meters; number of pixels otherwise
-            pts_src (array): N points with (x,y) pixel coordinates, N>=4
-            pts_dst (array, optional): N points with (x,y) pixel coordinates, N>=4
+            pts_src (array): N points with pixels in (col,row) format, N>=4
+            pts_dst (array, optional): N points with pixels in (col, row) format, N>=4
     """
 
     # Determine original and target size
@@ -51,6 +48,7 @@ def homography_correction(
         # Assume implicitly that corner points have been provided,
         # and that their orientation is mathematically positive,
         # starting with the top left corner.
+        # Further more use reversed matrix indexing, i.e., (col,row).
         assert pts_src.shape[0] == 4
         pts_dst = np.array(
             [
