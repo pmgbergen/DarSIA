@@ -271,6 +271,8 @@ class TranslationEstimator:
         """
         # Extract the translation directly as average displacement from all
         # provided matches - have to assume that the matches are well chosen.
+        # NOTE: As matches will result as output from cv2 routines, these use
+        # (col, row)-indexing, i.e., reverse matrix indexing.
         src, dst = matches
         displacement = np.average(dst - src, axis=0)
         affine_translation = np.hstack((np.eye(2), displacement.reshape((2, 1))))

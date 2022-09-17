@@ -22,8 +22,7 @@ def curvature_correction(
     """
     Curvature correction.
     Arguments:
-        img (np.ndarray): image array, with pixel access, using y, x ordering, such that the
-            top left corner of the image corresponds to the (0,0) pixel.
+        img (np.ndarray): image array
         img (str): path to image, alternative way to feed the actual image.
         width (float): physical width of image.
         height (float): physical height of image.
