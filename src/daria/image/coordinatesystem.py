@@ -22,23 +22,17 @@ class CoordinateSystem:
         """Generate a coordinate system based on the metadata of an existing image."""
 
         # Copy metadata from image. Will be used for conversions.
-        self._width: float = img.width
-        self._height: float = img.height
-        self._num_pixels_width: int = img.num_pixels_width
-        self._num_pixels_height: int = img.num_pixels_height
         self._dx: float = img.dx
         self._dy: float = img.dy
 
         # Determine the coordinate, corresponding to the origin pixel (0,0), i.e.,
         # the top left corner.
         self._coordinate_of_origin_pixel: np.ndarray = img.origo + np.array(
-            [0, self._height]
+            [0, img.height]
         )
 
         # Determine the pixel, corresponding to the physical origin (0,0)
-        self._pixel_of_origin_coordinate: np.ndarray = self.coordinateToPixel(
-            np.array([0, 0])
-        )
+        self._pixel_of_origin_coordinate: np.ndarray = self.coordinateToPixel([0, 0])
 
         # Determine the bounding box of the image, in physical dimensions,
         # also defining the effective boundaries of the coordinate system.
@@ -48,15 +42,15 @@ class CoordinateSystem:
         self.domain = {"xmin": xmin, "xmax": xmax, "ymin": ymin, "ymax": ymax}
 
     def pixelsToLength(
-        self, num_pixels: Union[int, np.ndarray], axis: str = "x"
+        self, num_pixels: Union[int, float, np.ndarray], axis: str = "x"
     ) -> Union[float, np.ndarray]:
         """
         Convert number of pixels to metric units, when interpreting the pixels
         in some given axis.
 
         Args:
-            num_pixels (int or 1d array of ints): number(s) of pixels
-            axis (str): either "x" or "y" determining the conversion rate
+            num_pixels (int or 1d or 2d array of ints): number(s) of pixels
+            axis (str): either "x", or "y" determining the conversion rate
 
         Returns:
             float or 1d array of floats: length(s) in metric units
@@ -90,7 +84,9 @@ class CoordinateSystem:
         else:
             raise ValueError("Axis type not supported.")
 
-    def pixelToCoordinate(self, pixel: Union[np.ndarray, list[int]]) -> np.ndarray:
+    def pixelToCoordinate(
+        self, pixel: Union[np.ndarray, list[int]], reverse: bool = False
+    ) -> np.ndarray:
         """
         Conversion from pixel to Cartesian coordinate, i.e., from (row,col) to (x,y)
         format plus scaling.
@@ -99,6 +95,8 @@ class CoordinateSystem:
 
         Arguments:
             pixel (np.ndarray): pixel location in (row,col) format; one pixel per row
+            reverse (bool): flag whether the input is using reverse matrix indexing;
+                default is False
 
         Returns:
             np.ndarray: corresponding coordinate in (x,y) format
@@ -120,16 +118,20 @@ class CoordinateSystem:
         # Initialize coordinates
         coordinate = np.empty_like(pixel, dtype=float)
 
-        # Combine two operations. 1. Convert from (row,col) to (x,y) format and
-        # scale correctly, to obtain the physical coordinates with correct units.
-        coordinate[:, 0] = x0 + pixel[:, 1] / self._num_pixels_width * self._width
-        coordinate[:, 1] = y0 - pixel[:, 0] / self._num_pixels_height * self._height
+        # Combine two operations. 1. Convert from (row,col) to (x,y) format
+        # (if required) and scale correctly, to obtain the physical coordinates
+        # with correct units.
+        vertical_pixel_pos = 1 if reverse else 0
+        horizontal_pixel_pos = 0 if reverse else 1
+
+        coordinate[:, 0] = x0 + pixel[:, horizontal_pixel_pos] * self._dx
+        coordinate[:, 1] = y0 - pixel[:, vertical_pixel_pos] * self._dy
 
         # Return in same format as the input
         return coordinate.reshape(original_shape)
 
     def coordinateToPixel(
-        self, coordinate: Union[np.ndarray, list[float]]
+        self, coordinate: Union[np.ndarray, list[float]], reverse: bool = False
     ) -> np.ndarray:
         """
         Conversion from Cartesian coordinate to pixel, from (x,y) to (row,col)
@@ -139,6 +141,8 @@ class CoordinateSystem:
 
         Arguments:
             coordinate (np.ndarray): coordinate in (x,y) format; one coordinate per row
+            reverse (bool): flag whether the output is using reverse matrix indexing;
+                default is False
 
         Returns:
             np.ndarray: corresponding pixels in (row,col) format
@@ -161,15 +165,42 @@ class CoordinateSystem:
         pixel = np.empty_like(coordinate, dtype=int)
 
         # Invert pixelToCoordinate. Again combine two operations. 1. Convert from
-        # (row,col) to (x,y) format and scale correctly, to obtain the physical
-        # coordinates with correct units. Use floor to indicate which pixel is
-        # marked by the coordinate.
-        pixel[:, 0] = np.floor(
-            (y0 - coordinate[:, 1]) * self._num_pixels_height / self._height
-        )
-        pixel[:, 1] = np.floor(
-            (coordinate[:, 0] - x0) * self._num_pixels_width / self._width
-        )
+        # (row,col) to (x,y) format (if required) and scale correctly, to obtain
+        # the physical coordinates with correct units. Use floor to indicate which
+        # pixel is marked by the coordinate.
+        vertical_pixel_pos = 1 if reverse else 0
+        horizontal_pixel_pos = 0 if reverse else 1
+
+        pixel[:, vertical_pixel_pos] = np.floor((y0 - coordinate[:, 1]) / self._dy)
+        pixel[:, horizontal_pixel_pos] = np.floor((coordinate[:, 0] - x0) / self._dx)
 
         # Return in same format as the input
         return pixel.reshape(original_shape).astype(int)
+
+    def pixelToCoordinateVector(
+        self, pixel_vector: np.ndarray, reverse: bool = False
+    ) -> np.ndarray:
+        """
+        Conversion from (translation) vectors in terms of pixels to coordinates.
+
+        Arguments:
+            pixel_vector (np.ndarray): vector(s) in pixel plane (one vector per row)
+            reverse (bool): flag whether the input is using reverse matrix indexing;
+                default is False
+
+        Returns:
+            np.ndarray: vector(s) in metric coordinate system
+        """
+        # Vectors are relative, and hence do not involve any information
+        # on any fixed points as the origin. Yet, the conversion requires
+        # to conform with the switch from Cartesian to matrix indexing
+        # and thereby also the orientation of the vertical axis. Additionally,
+        # the scaling from pixels to metric units is required.
+        coordinate_vector = (
+            np.atleast_2d(pixel_vector)
+            if reverse
+            else np.fliplr(np.atleast_2d(pixel_vector))
+        ) * np.array([self._dx, -self._dy])
+
+        # Reshape needed if only a single vector has been used in the argument.
+        return coordinate_vector.reshape(pixel_vector.shape)
