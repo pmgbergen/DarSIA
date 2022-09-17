@@ -51,7 +51,7 @@ class TranslationEstimator:
                 useful for debugging; default value is False
 
         Returns:
-            np.ndarray: transformation matrix operating on pixel coordinates using inverse
+            np.ndarray: transformation matrix operating on pixel coordinates using reverse
                 matrix indexing
             bool: flag indicating whether the procedure was successful
         """
@@ -160,7 +160,7 @@ class TranslationEstimator:
                 default is False
 
         Returns:
-            np.ndarray: transformation matrix operating on pixel coordinates using inverse
+            np.ndarray: transformation matrix operating on pixel coordinates using reverse
                 matrix indexing
             bool: flag indicating whether the procedure was successful
         """
@@ -178,7 +178,7 @@ class TranslationEstimator:
             assert img_src[roi_src].shape == img_dst[roi_dst].shape
 
         # Extract features for both images restricted to the ROI.
-        # Pixel coordinates are prescibed using inverse matrix indexing.
+        # Pixel coordinates are prescibed using reverse matrix indexing.
         features_src, have_features_src = FeatureDetection.extract_features(
             img_src, roi_src, self._max_features
         )
@@ -199,7 +199,7 @@ class TranslationEstimator:
         )
 
         # Determine matching transformation, operating on pixel coordinates using
-        # inverse matrix indexing. Allow for different models.
+        # reverse matrix indexing. Allow for different models.
         transformation = None
         if have_match:
             # Homography
