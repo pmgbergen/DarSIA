@@ -63,9 +63,13 @@ def homography_correction(img_src: np.ndarray, **kwargs) -> np.ndarray:
         if isinstance(pts_dst, list):
             pts_dst = np.array(pts_dst)
 
-    P = cv2.getPerspectiveTransform(pts_src.astype(np.float32), pts_dst.astype(np.float32))
+    P = cv2.getPerspectiveTransform(
+        pts_src.astype(np.float32), pts_dst.astype(np.float32)
+    )
 
     # Warp source image
-    img_dst = cv2.warpPerspective(img_src, P, (target_width, target_height), flags=cv2.INTER_LINEAR)
+    img_dst = cv2.warpPerspective(
+        img_src, P, (target_width, target_height), flags=cv2.INTER_LINEAR
+    )
 
     return img_dst
