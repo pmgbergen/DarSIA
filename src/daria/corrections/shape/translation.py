@@ -1,3 +1,7 @@
+"""
+Module containing estimator for translation required to match two images.
+"""
+
 from typing import Optional
 
 import cv2
@@ -36,6 +40,8 @@ class TranslationEstimator:
         Find effective translation to align to images, such that when restricted to an ROI,
         both images have matching features.
 
+        All lengths are measured in number of pixels.
+
         Args:
             img_src (np.ndarray): source image
             img_dst (np.ndarray): destination image
@@ -45,7 +51,7 @@ class TranslationEstimator:
                 useful for debugging; default value is False
 
         Returns:
-            np.ndarray: aligned source image
+            np.ndarray: transformation matrix
             bool: flag indicating whether the procedure was successful
         """
         # Make several attempts to find a matching transformation.
@@ -75,10 +81,7 @@ class TranslationEstimator:
             # effective translation (as affine map) as average translation between the
             # matches.
             if self._isclose_translation(transformation):
-                (
-                    translation,
-                    intact_translation,
-                ) = self._find_translation(matches)
+                (translation, intact_translation) = self._find_translation(matches)
             else:
                 translation = None
                 intact_translation = False
@@ -189,10 +192,7 @@ class TranslationEstimator:
 
         # Determine matching points
         (pts_src, pts_dst), have_match, matches = FeatureDetection.match_features(
-            features_src,
-            features_dst,
-            keep_percent=keep_percent,
-            return_matches=True,
+            features_src, features_dst, keep_percent=keep_percent, return_matches=True
         )
 
         # Determine matching transformation. Allow for different models.
