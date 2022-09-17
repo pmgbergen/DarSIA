@@ -1,3 +1,6 @@
+"""
+Module containing auxiliary methods to extract ROIs from daria Images.
+"""
 import numpy as np
 
 import daria
