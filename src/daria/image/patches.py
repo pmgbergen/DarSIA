@@ -141,8 +141,8 @@ class Patches:
             for i in range(self.num_patches_x)
         ]
 
-        # Store centers (x,y) of each patch in meters
-        self.centers = np.array(
+        # Store centers (x,y) of each patch in global Cartesian coordinates and metric units
+        self.global_centers_cartesian = np.array(
             [
                 [
                     self.baseImg.origo
@@ -158,8 +158,65 @@ class Patches:
             ]
         )
 
+        # Store corners of all patches in various formats, but keep the order:
+        # top_left, bottom_left, bottom_right, top_right
+
+        # Corners in global Cartesian coordinates, using metric units
+        self.global_corners_cartesian = np.array(
+            [
+                [
+                    np.array(
+                        [
+                            [i * patch_width_metric, (j + 1) * patch_height_metric],
+                            [i * patch_width_metric, j * patch_height_metric],
+                            [(i + 1) * patch_width_metric, j * patch_height_metric],
+                            [
+                                (i + 1) * patch_width_metric,
+                                (j + 1) * patch_height_metric,
+                            ],
+                        ]
+                    )
+                    + self.baseImg.origo[np.newaxis, :]
+                    for j in range(self.num_patches_y)
+                ]
+                for i in range(self.num_patches_x)
+            ]
+        )
+
+        # Corners in global pixel coordinates, using reverse matrix indexing
+        self.global_corners_reverse_matrix = np.array(
+            [
+                [
+                    np.array(
+                        [
+                            [i * pw, nh - (j + 1) * ph],
+                            [i * pw, nh - j * ph],
+                            [(i + 1) * pw, nh - j * ph],
+                            [(i + 1) * pw, nh - (j + 1) * ph],
+                        ]
+                    )
+                    for j in range(self.num_patches_y)
+                ]
+                for i in range(self.num_patches_x)
+            ]
+        )
+
+        # Corners in local pixel coordinates, using reverse matrix indexing
+        self.local_corners_reverse_matrix = np.array(
+            [
+                [
+                    np.array([[0, 0], [0, ph], [pw, ph], [pw, 0]])
+                    for j in range(self.num_patches_y)
+                ]
+                for i in range(self.num_patches_x)
+            ]
+        )
+
         # Define flag (will be turned on when running _prepare_weights)
         self.weights_defined = False
+
+    # TODO the interpolation may be not required after all. Keep it for now, but it may
+    # disappear afterall.
 
     def _prepare_weights(self):
         """
