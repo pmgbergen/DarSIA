@@ -177,8 +177,10 @@ class TranslationAnalysis:
                     # Convert to metric units if required - note that displacement is a
                     # vector, and that it is given using reverse matrix indexing
                     if units[1] == "metric":
-                        displacement = self.img_src.coordinatesystem.pixelToCoordinateVector(
-                            displacement, reverse=True
+                        displacement = (
+                            self.img_src.coordinatesystem.pixelToCoordinateVector(
+                                displacement, reverse=True
+                            )
                         )
 
                     # Store the displacement for the centers of the patch.
