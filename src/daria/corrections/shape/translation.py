@@ -51,7 +51,8 @@ class TranslationEstimator:
                 useful for debugging; default value is False
 
         Returns:
-            np.ndarray: transformation matrix
+            np.ndarray: transformation matrix operating on pixel coordinates using inverse
+                matrix indexing
             bool: flag indicating whether the procedure was successful
         """
         # Make several attempts to find a matching transformation.
@@ -159,7 +160,8 @@ class TranslationEstimator:
                 default is False
 
         Returns:
-            np.ndarray: transformation matrix
+            np.ndarray: transformation matrix operating on pixel coordinates using inverse
+                matrix indexing
             bool: flag indicating whether the procedure was successful
         """
         if transformation_type not in ["homography", "partial_affine"]:
@@ -175,7 +177,8 @@ class TranslationEstimator:
             # Only cover the case of compatible ROIs for now.
             assert img_src[roi_src].shape == img_dst[roi_dst].shape
 
-        # Extract features for both images restricted to the ROI containing the color palette
+        # Extract features for both images restricted to the ROI.
+        # Pixel coordinates are prescibed using inverse matrix indexing.
         features_src, have_features_src = FeatureDetection.extract_features(
             img_src, roi_src, self._max_features
         )
@@ -195,7 +198,8 @@ class TranslationEstimator:
             features_src, features_dst, keep_percent=keep_percent, return_matches=True
         )
 
-        # Determine matching transformation. Allow for different models.
+        # Determine matching transformation, operating on pixel coordinates using
+        # inverse matrix indexing. Allow for different models.
         transformation = None
         if have_match:
             # Homography
