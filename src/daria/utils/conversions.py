@@ -33,9 +33,6 @@ def matrixToCartesianIndexing(img: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: image array with Cartesian indexing
     """
-    if len(img.shape) > 3:
-        raise NotImplementedError("Format conversion only implemented for 2d images.")
-
     # Two operations are require: Swapping axis and flipping the vertical axis.
 
     # Exchange first and second component, to change from (row,col) to (x,y) format.
@@ -59,9 +56,6 @@ def cartesianToMatrixIndexing(img: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: image array with matrix indexing
     """
-    if len(img.shape) > 3:
-        raise NotImplementedError("Format conversion only implemented for 2d images.")
-
     # Two operations are require: Swapping axis and flipping the vertical axis.
 
     # Flip the orientation of the second axis, such that later row=0 is located at the top.
