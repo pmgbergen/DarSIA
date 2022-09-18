@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy as np
 from scipy.ndimage import map_coordinates
 
-
 # TODO: Add an automatic way (using e.g, gradient decent) to choose the parameters.
 # OR determine manual tuning rules.
 def simple_curvature_correction(img: np.ndarray, **kwargs) -> np.ndarray:
@@ -93,12 +92,12 @@ def simple_curvature_correction(img: np.ndarray, **kwargs) -> np.ndarray:
     out_grid = np.array([Ymod.ravel(), Xmod.ravel()])
 
     # Define the shape corrected image.
-    img_mod = np.zeros_like(img, dtype=np.uint8)
+    img_mod = np.zeros_like(img, dtype=img.dtype)
 
     # Do interpolate original image on the new grid
     for i in range(img.shape[2]):
         in_data = img[:, :, i]
         im_array = map_coordinates(in_data, out_grid, order=interpolation_order)
-        img_mod[:, :, i] = im_array.reshape(img.shape[:2]).astype(np.uint8)
+        img_mod[:, :, i] = im_array.reshape(img.shape[:2]).astype(img.dtype)
 
     return img_mod
