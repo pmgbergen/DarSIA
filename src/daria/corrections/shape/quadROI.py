@@ -1,4 +1,4 @@
-"""Apply homography to tilted and stretched image with known physical dimensions."""
+"""Apply perspective transform to tilted and stretched image with known physical dimensions."""
 
 from __future__ import annotations
 
@@ -6,9 +6,10 @@ import cv2
 import numpy as np
 
 
-def homography_correction(img_src: np.ndarray, **kwargs) -> np.ndarray:
+def extract_quadrilateral_ROI(img_src: np.ndarray, **kwargs) -> np.ndarray:
     """
-    Homography correction for known corner points of a square (default) object.
+    Extract quadrilateral ROI using a perspective transform,
+    given known corner points of a square (default) object.
 
     Args:
         kwargs (optional keyword arguments):
