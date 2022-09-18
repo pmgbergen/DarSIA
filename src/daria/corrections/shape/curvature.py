@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.ndimage import map_coordinates
 
+
 # TODO: Add an automatic way (using e.g, gradient decent) to choose the parameters.
 # OR determine manual tuning rules.
 def simple_curvature_correction(img: np.ndarray, **kwargs) -> np.ndarray:
