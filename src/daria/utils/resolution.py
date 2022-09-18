@@ -20,4 +20,5 @@ def resize(img: np.ndarray, scale_percent: float = 100) -> np.ndarray:
     width = int(img.shape[1] * scale_percent / 100)
     height = int(img.shape[0] * scale_percent / 100)
     dim = (width, height)
-    return cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+    # Omit converting 3-tensors to 2-tensors.
+    return np.atleast_3d(cv2.resize(img, dim, interpolation=cv2.INTER_AREA))
