@@ -14,6 +14,8 @@ pip install .
 
 ## Usage
 
+The following Python script can be applied to the test image in the examples/images folder.
+
 ```python
 import daria as da
 
@@ -32,8 +34,10 @@ ROI_image = da.extractROI(image, [150, 280], [0, 70])
 ROI_image.show()
 ```
 
+Furthermore, we encourage any user to checkout the jupyter notebooks in the examples/notebooks folder.
+
 ## Developing DarIA
-To install daria, along with the tools to develop and run tests, run the following in your virtualenv:
+To install daria, along with the tools to develop and run tests, run the following in your virtual environment:
 ```bash
 $ pip install -e .[dev]
 ```
