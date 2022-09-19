@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import numpy as np
+
 def compute_bulge(Nx: int, Ny: int, **kwargs):
     """
     Compute the bulge parameters depending on the maximum number of pixels
@@ -20,15 +20,16 @@ def compute_bulge(Nx: int, Ny: int, **kwargs):
                           has been displaced on the bottom
     """
 
-
-
     left = kwargs.pop("left", 0)
     right = kwargs.pop("right", 0)
     top = kwargs.pop("top", 0)
     bottom = kwargs.pop("bottom", 0)
 
     # Determine the center of the image
-    image_center = [int(Nx * (left + 1e-6) / (left + right + 2e-6)), int(Ny * (top + 1e-6) / (top + bottom + 2e-6))]
+    image_center = [
+        int(Nx * (left + 1e-6) / (left + right + 2e-6)),
+        int(Ny * (top + 1e-6) / (top + bottom + 2e-6)),
+    ]
 
     # Determine the offset of the numerical center of the image
     horizontal_bulge_center_offset = image_center[0] - int(Nx / 2)
@@ -43,4 +44,9 @@ def compute_bulge(Nx: int, Ny: int, **kwargs):
         (top - image_center[1]) * image_center[0] * (Nx - image_center[0])
     )
 
-    return horizontal_bulge, horizontal_bulge_center_offset, vertical_bulge, vertical_bulge_center_offset
+    return (
+        horizontal_bulge,
+        horizontal_bulge_center_offset,
+        vertical_bulge,
+        vertical_bulge_center_offset,
+    )

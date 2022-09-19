@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import numpy as np
 
+
 def backward_diff_x(im: np.ndarray) -> np.ndarray:
     """
     Backward difference of image matrix in horizontal direction.

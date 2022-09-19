@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Optional, Union
 
 import cv2
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 import daria as da
 
@@ -204,16 +204,13 @@ class Image:
         cv2.destroyAllWindows()
 
     def plt_show(self) -> None:
-        """ Show image using matplotlib.pyplots built-in imshow
+        """Show image using matplotlib.pyplots built-in imshow"""
 
-        """
-
-        if len(self.img.shape)==3:
+        if len(self.img.shape) == 3:
             rgbim = da.BGR2RGB(self.img)
         else:
             rgbim = self.img
         plt.imshow(rgbim)
-
 
     # Seems like something that should read an image and return a new one with grid.
     def add_grid(

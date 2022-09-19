@@ -1,10 +1,9 @@
 from __future__ import annotations
 
+import cv2
 import numpy as np
 
 import daria as da
-
-import cv2
 
 
 def BGR2RGB(img: np.ndarray) -> np.ndarray:
@@ -21,7 +20,7 @@ def BGR2RGB(img: np.ndarray) -> np.ndarray:
 
 
 def BGR2GRAY(img: da.Image) -> da.Image:
-    """ Creates a grayscale daria Image from a BGR ones
+    """Creates a grayscale daria Image from a BGR ones
 
     Arguments:
         img (da.Image): input image
@@ -33,8 +32,9 @@ def BGR2GRAY(img: da.Image) -> da.Image:
     img_gray.img = cv2.cvtColor(img_gray.img, cv2.COLOR_BGR2GRAY)
     return img_gray
 
+
 def BGR2RED(img: da.Image) -> da.Image:
-    """ Creates a redscale daria Image from a BGR ones
+    """Creates a redscale daria Image from a BGR ones
 
     Arguments:
         img (da.Image): input image

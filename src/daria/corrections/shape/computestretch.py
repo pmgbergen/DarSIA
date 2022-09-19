@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
-
-
 
 def compute_stretch(Nx: int, Ny: int, **kwargs):
     """
@@ -18,12 +15,9 @@ def compute_stretch(Nx: int, Ny: int, **kwargs):
             "stretch_center" (list): the stretch center.
     """
 
-
-
     pt_src = kwargs.pop("point_source", [Ny, Nx])
     pt_dst = kwargs.pop("point_destination", [Ny, Nx])
-    stretch_center = kwargs.pop("stretch_center", [int(Ny/2), int(Nx/2)])
-
+    stretch_center = kwargs.pop("stretch_center", [int(Ny / 2), int(Nx / 2)])
 
     # Update the offset to the center
     horizontal_stretch_center_offset = stretch_center[0] - int(Nx / 2)
@@ -37,4 +31,9 @@ def compute_stretch(Nx: int, Ny: int, **kwargs):
         (pt_src[1] - stretch_center[1]) * pt_src[1] * (Ny - pt_src[1])
     )
 
-    return horizontal_stretch, horizontal_stretch_center_offset, vertical_stretch, vertical_stretch_center_offset
+    return (
+        horizontal_stretch,
+        horizontal_stretch_center_offset,
+        vertical_stretch,
+        vertical_stretch_center_offset,
+    )

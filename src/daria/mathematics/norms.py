@@ -10,7 +10,6 @@ from math import sqrt
 import numpy as np
 
 
-
 def im_product(im1: np.ndarray, im2: np.ndarray) -> float:
     """
     L2-type inner product of two images
