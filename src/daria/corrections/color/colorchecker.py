@@ -48,7 +48,7 @@ class ColorCorrection:
     def adjust(
         self,
         image: np.ndarray,
-        roi_cc: Optional[tuple] = None,
+        roi: Optional[tuple] = None,
         verbosity: bool = False,
         whitebalancing: bool = True,
     ) -> np.ndarray:
@@ -59,7 +59,7 @@ class ColorCorrection:
 
         Arguments:
             image (np.ndarray): image with uint8 value in (linear) RGB color space
-            roi_cc (tupe of slices): region of interest containing a colour checker
+            roi (tuple of slices): region of interest containing a colour checker
             verbosity (bool): displays corrected color checker on top of the reference one if
                               True, default is False
             whitebalancing (bool): apply white balancing based on the third bottom left swatch
@@ -73,11 +73,7 @@ class ColorCorrection:
         decoded_image = self.eotf.adjust(image)
 
         # Extract part of the image containing a color checker.
-        colorchecker_image = (
-            decoded_image[roi_cc[0], roi_cc[1], :]
-            if roi_cc is not None
-            else decoded_image
-        )
+        colorchecker_image = decoded_image[roi] if roi is not None else decoded_image
 
         # Retrieve swatch colors in transfered RGB format
         swatches = detect_colour_checkers_segmentation(colorchecker_image)
@@ -89,17 +85,15 @@ class ColorCorrection:
         # Apply color correction onto full image based on the swatch colors in comparison with
         # the standard colors
         corrected_decoded_image = colour.colour_correction(
-            decoded_image,
-            swatches,
-            self.ccc.reference_swatches,
+            decoded_image, swatches, self.ccc.reference_swatches
         )
 
         # Apply white balancing, such that the third bottom left swatch of the color checker
         # is exact
         if whitebalancing:
             corrected_colorchecker_image = (
-                corrected_decoded_image[roi_cc[0], roi_cc[1], :]
-                if roi_cc is not None
+                corrected_decoded_image[roi]
+                if roi is not None
                 else corrected_decoded_image
             )
             swatches = detect_colour_checkers_segmentation(

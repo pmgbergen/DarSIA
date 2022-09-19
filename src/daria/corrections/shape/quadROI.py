@@ -1,4 +1,4 @@
-"""Apply homography to tilted and stretched image with known physical dimensions."""
+"""Apply perspective transform to tilted and stretched image with known physical dimensions."""
 
 from __future__ import annotations
 
@@ -6,12 +6,10 @@ import cv2
 import numpy as np
 
 
-def homography_correction(
-    img_src: np.ndarray,
-    **kwargs,
-) -> np.ndarray:
+def extract_quadrilateral_ROI(img_src: np.ndarray, **kwargs) -> np.ndarray:
     """
-    Homography correction for known corner points of a square (default) object.
+    Extract quadrilateral ROI using a perspective transform,
+    given known corner points of a square (default) object.
 
     Args:
         kwargs (optional keyword arguments):
@@ -19,8 +17,8 @@ def homography_correction(
             height (int or float): height of the physical object
             in meters (boolean): controlling whether width and height are float and
                 are meant as in meters; number of pixels otherwise
-            pts_src (array): N points with (x,y) pixel coordinates, N>=4
-            pts_dst (array, optional): N points with (x,y) pixel coordinates, N>=4
+            pts_src (array): N points with pixels in (col,row) format, N>=4
+            pts_dst (array, optional): N points with pixels in (col, row) format, N>=4
     """
 
     # Determine original and target size
@@ -51,6 +49,7 @@ def homography_correction(
         # Assume implicitly that corner points have been provided,
         # and that their orientation is mathematically positive,
         # starting with the top left corner.
+        # Further more use reversed matrix indexing, i.e., (col,row).
         assert pts_src.shape[0] == 4
         pts_dst = np.array(
             [
@@ -65,9 +64,16 @@ def homography_correction(
         if isinstance(pts_dst, list):
             pts_dst = np.array(pts_dst)
 
-    homography, _ = cv2.findHomography(pts_src, pts_dst, method=cv2.RANSAC)
+    P = cv2.getPerspectiveTransform(
+        pts_src.astype(np.float32), pts_dst.astype(np.float32)
+    )
 
-    # Warp source image
-    img_dst = cv2.warpPerspective(img_src, homography, (target_width, target_height))
+    # Warp source image. Warping may convert a 3-tensor to a 2-tensor.
+    # Force to use a 3-tensor structure.
+    img_dst = np.atleast_3d(
+        cv2.warpPerspective(
+            img_src, P, (target_width, target_height), flags=cv2.INTER_LINEAR
+        )
+    )
 
     return img_dst

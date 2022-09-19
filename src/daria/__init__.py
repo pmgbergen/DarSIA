@@ -19,7 +19,8 @@ from daria.mathematics.regularization import *
 from daria.utils.conversions import *
 from daria.corrections.shape.curvaturecorrection import *
 from daria.corrections.shape.curvature import *
-from daria.corrections.shape.homography import *
+from daria.corrections.shape.quadROI import *
 from daria.corrections.shape.translation import *
+from daria.corrections.shape.piecewiseperspective import *
 from daria.corrections.color.colorchecker import *
-from daria.analysis.compaction import *
+from daria.analysis.translationanalysis import *

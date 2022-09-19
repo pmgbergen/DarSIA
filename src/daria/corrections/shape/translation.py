@@ -1,3 +1,7 @@
+"""
+Module containing estimator for translation required to match two images.
+"""
+
 from typing import Optional
 
 import cv2
@@ -36,6 +40,8 @@ class TranslationEstimator:
         Find effective translation to align to images, such that when restricted to an ROI,
         both images have matching features.
 
+        All lengths are measured in number of pixels.
+
         Args:
             img_src (np.ndarray): source image
             img_dst (np.ndarray): destination image
@@ -45,7 +51,8 @@ class TranslationEstimator:
                 useful for debugging; default value is False
 
         Returns:
-            np.ndarray: aligned source image
+            np.ndarray: transformation matrix operating on pixel coordinates using reverse
+                matrix indexing
             bool: flag indicating whether the procedure was successful
         """
         # Make several attempts to find a matching transformation.
@@ -75,10 +82,7 @@ class TranslationEstimator:
             # effective translation (as affine map) as average translation between the
             # matches.
             if self._isclose_translation(transformation):
-                (
-                    translation,
-                    intact_translation,
-                ) = self._find_translation(matches)
+                (translation, intact_translation) = self._find_translation(matches)
             else:
                 translation = None
                 intact_translation = False
@@ -156,7 +160,8 @@ class TranslationEstimator:
                 default is False
 
         Returns:
-            np.ndarray: transformation matrix
+            np.ndarray: transformation matrix operating on pixel coordinates using reverse
+                matrix indexing
             bool: flag indicating whether the procedure was successful
         """
         if transformation_type not in ["homography", "partial_affine"]:
@@ -172,7 +177,8 @@ class TranslationEstimator:
             # Only cover the case of compatible ROIs for now.
             assert img_src[roi_src].shape == img_dst[roi_dst].shape
 
-        # Extract features for both images restricted to the ROI containing the color palette
+        # Extract features for both images restricted to the ROI.
+        # Pixel coordinates are prescibed using reverse matrix indexing.
         features_src, have_features_src = FeatureDetection.extract_features(
             img_src, roi_src, self._max_features
         )
@@ -189,13 +195,11 @@ class TranslationEstimator:
 
         # Determine matching points
         (pts_src, pts_dst), have_match, matches = FeatureDetection.match_features(
-            features_src,
-            features_dst,
-            keep_percent=keep_percent,
-            return_matches=True,
+            features_src, features_dst, keep_percent=keep_percent, return_matches=True
         )
 
-        # Determine matching transformation. Allow for different models.
+        # Determine matching transformation, operating on pixel coordinates using
+        # reverse matrix indexing. Allow for different models.
         transformation = None
         if have_match:
             # Homography
@@ -271,6 +275,8 @@ class TranslationEstimator:
         """
         # Extract the translation directly as average displacement from all
         # provided matches - have to assume that the matches are well chosen.
+        # NOTE: As matches will result as output from cv2 routines, these use
+        # (col, row)-indexing, i.e., reverse matrix indexing.
         src, dst = matches
         displacement = np.average(dst - src, axis=0)
         affine_translation = np.hstack((np.eye(2), displacement.reshape((2, 1))))

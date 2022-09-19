@@ -100,11 +100,7 @@ class ModifiedRichardson(Solver):
     """
 
     def apply(
-        self,
-        operator: Callable,
-        rhs: np.ndarray,
-        im0: np.ndarray,
-        omega: float,
+        self, operator: Callable, rhs: np.ndarray, im0: np.ndarray, omega: float
     ) -> np.ndarray:
         """
         Applies the modified Richardson solver.

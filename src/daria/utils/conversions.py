@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Union
-
 import numpy as np
 
 import daria as da
@@ -23,105 +21,78 @@ def BGR2RGB(img: np.ndarray) -> np.ndarray:
 
 
 def BGR2GRAY(img: da.Image) -> da.Image:
+    """ Creates a grayscale daria Image from a BGR ones
+
+    Arguments:
+        img (da.Image): input image
+
+    Returns:
+        da.Image: converged image
+    """
     img_gray = img.copy()
     img_gray.img = cv2.cvtColor(img_gray.img, cv2.COLOR_BGR2GRAY)
     return img_gray
 
 def BGR2RED(img: da.Image) -> da.Image:
+    """ Creates a redscale daria Image from a BGR ones
+
+    Arguments:
+        img (da.Image): input image
+
+    Returns:
+        da.Image: converged image
+    """
     img_red = img.copy()
     img_red.img = img_red.img[:, :, 2]
     return img_red
 
 
-def standardToPhysicalPixelOrdering(img: np.ndarray) -> np.ndarray:
-    """Reordering of pixels finally using a physical pixel ordering, starting from a
-    standard one.
+def matrixToCartesianIndexing(img: np.ndarray) -> np.ndarray:
+    """
+    Reordering data indexing converting from (row,col) to (x,y) indexing.
 
-    The standard ordering of pixels for images is that the top left
-    corner is the (0,0) pixel. With increasing x- and y-pixels, one
-    moves towards the lower right corner. In addition, the first and
-    second components correspond to the y and x pixels, respectively.
-    This is inconsistent with the physical coordinate system,
-    considering a standard photograph.
-
-    Therefore, we introduce the term 'physical ordering' which identifies
-    the lower left corner as (0,0) pixel. And with increasing x-
-    and y-pixels, one moves towards the top right corner. In addition,
-    first and second components correspond to x and y.
+    The conventional matrix indexing uses the (row, col) format, such
+    that the top left corner is the (0,0) pixel. On the other hand,
+    Cartesian indexing uses the (x,y) order and thereby identifies
+    the lower left corner by (0,0). This routine is in particular useful
+    when communicating image data to conventional simulators, which use
+    the Cartesian indexing.
 
     Arguments:
-        np.ndarray: image array with standard pixel ordering
+        np.ndarray: image array with matrix indexing
 
     Returns:
-        np.ndarray: image array with physical pixel ordering
+        np.ndarray: image array with Cartesian indexing
     """
-    if len(img.shape) > 3:
-        raise NotImplementedError("Pixel conversion only implemented for 2d images.")
+    # Two operations are require: Swapping axis and flipping the vertical axis.
 
-    # Reorder the y-pixels, corresponding to the first component
-    img = np.flip(img, 0)
-
-    # Flip first and second component
+    # Exchange first and second component, to change from (row,col) to (x,y) format.
     img = np.swapaxes(img, 0, 1)
+
+    # Flip the orientation of the second axis, such that later y=0 is located at the bottom.
+    img = np.flip(img, 1)
 
     return img
 
 
-def physicalToStandardPixelOrdering(img: np.ndarray) -> np.ndarray:
-    """Reordering of pixels finally using a standard pixel ordering, starting from a
-    physical one.
+def cartesianToMatrixIndexing(img: np.ndarray) -> np.ndarray:
+    """
+    Reordering data indexing, converting from (x,y) to (row,col) indexing.
 
-    Inverse to standardToPhysicalPixelOrdering. It is the same operations, but in
-    reverse order.
+    Inverse to matrixToCartesianIndexing.
 
     Arguments:
-        np.ndarray: image array with physical pixel ordering
+        np.ndarray: image array with Cartesian indexing
 
     Returns:
-        np.ndarray: image array with physical pixel ordering
+        np.ndarray: image array with matrix indexing
     """
-    if len(img.shape) > 3:
-        raise NotImplementedError("Pixel conversion only implemented for 2d images.")
+    # Two operations are require: Swapping axis and flipping the vertical axis.
 
-    # Flip first and second component
+    # Flip the orientation of the second axis, such that later row=0 is located at the top.
+    img = np.flip(img, 1)
+
+    # Exchange first and second component, to change from (x,y) to (row,col) format.
     img = np.swapaxes(img, 0, 1)
 
-    # Reorder the y-pixels, corresponding to the first component
-    img = np.flip(img, 0)
-
     return img
-
-
-def standardToPhysicalPixel(
-    img: da.Image, pixel: Union[tuple[int], list[int]]
-) -> tuple[int]:
-    """Translate a standard to a physical pixel.
-
-    The conversion is based on the width and height of the corresponding image.
-
-    Arguments:
-        img (Image): image object
-        pixel (list of int): standard pixel
-
-    Returns:
-        list of int: physical pixel
-    """
-    # TODO
-    pass
-
-
-def physicalToStandardPixel(
-    img: da.Image, pixel: Union[tuple[int], Union[tuple[int], list[int]]]
-) -> tuple[int]:
-    """Translate a physica pixel to a standard pixel.
-
-    Inversie of standardToPhysicalPixel.
-
-    Arguments:
-        img (Image): image object
-        pixel (list of int): physical pixel
-
-    Returns:
-        list of int: standard pixel
-    """
-    return img.shape[1] - pixel[1], pixel[0]

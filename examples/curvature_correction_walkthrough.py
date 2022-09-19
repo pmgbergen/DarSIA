@@ -69,7 +69,7 @@ plt.show()
 
 # NOTE: User input needed.
 
-# Define config file for applying a homography, which after all transforms
+# Define config file for extracting a quadrilateral ROI, which after all transforms
 # and crops the image to a box with known aspect ratio. This step already
 # corrects for bulging in the normal direction due to the curvature of the
 # FluidFlower.
@@ -87,8 +87,8 @@ config["crop"] = {
     "in meters": True,
 }
 
-# Crop by applying a homography
-img = da.homography_correction(img, **config["crop"])
+# Extract a quad ROI
+img = da.extract_quadrilateral_ROI(img, **config["crop"])
 
 # !----- 3. Step: Straighten the laser grid lines by correcting for bulge
 

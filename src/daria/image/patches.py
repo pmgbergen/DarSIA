@@ -18,7 +18,7 @@ class Patches:
         num_patches_y (int) = number of patches in the vertical direction
         images (np.ndarray)= array of patches of the original image
 
-    NOTE: A Cartesian ordering is used to refer to specific patches, i.e.,
+    NOTE: A Cartesian indexing is used to refer to specific patches, i.e.,
         The lower left patch will have the patch coordinate (0,0), while the
         top right patch will have the patch coordinate
         (num_patches_x-1, num_patches_y-1).
@@ -27,7 +27,7 @@ class Patches:
         assemble (da.Image): reassembles the patches to a new image
     """
 
-    def __init__(self, im: da.Image, *args, **kwargs) -> None:
+    def __init__(self, img: da.Image, *args, **kwargs) -> None:
         """
         Constructor for Patches class.
 
@@ -44,7 +44,7 @@ class Patches:
         """
 
         # Instance of base image and relative_overlap
-        self.baseImg = im
+        self.baseImg = img
         self.relative_overlap = kwargs.pop("rel_overlap", 0.0)
 
         # Define number of patches in each direction
@@ -61,37 +61,36 @@ class Patches:
 
         # Define base width and height of each patch (without overlap)...
         # ... in metric units
-        patch_width = self.baseImg.width / self.num_patches_x
-        patch_height = self.baseImg.height / self.num_patches_y
+        patch_width_metric = self.baseImg.width / self.num_patches_x
+        patch_height_metric = self.baseImg.height / self.num_patches_y
         # ... and in numbers of pixles
-        patch_pixels_width = self.baseImg.coordinatesystem.lengthToPixels(
-            patch_width, "x"
+        patch_width_pixels = self.baseImg.coordinatesystem.lengthToPixels(
+            patch_width_metric, "x"
         )
-        patch_pixels_height = self.baseImg.coordinatesystem.lengthToPixels(
-            patch_height, "y"
+        patch_height_pixels = self.baseImg.coordinatesystem.lengthToPixels(
+            patch_height_metric, "y"
         )
 
         # Determine the overal in metric lengths
-        overlap_width = self.relative_overlap * patch_width
-        overlap_height = self.relative_overlap * patch_height
-        # TODO rename and put pixels to the back
+        overlap_width_metric = self.relative_overlap * patch_width_metric
+        overlap_height_metric = self.relative_overlap * patch_height_metric
 
         # Convert the overlap from metric to numbers of pixels
-        overlap_pixels_width = self.baseImg.coordinatesystem.lengthToPixels(
-            overlap_width, "x"
+        overlap_width_pixels = self.baseImg.coordinatesystem.lengthToPixels(
+            overlap_width_metric, "x"
         )
-        overlap_pixels_height = self.baseImg.coordinatesystem.lengthToPixels(
-            overlap_height, "y"
+        overlap_height_pixels = self.baseImg.coordinatesystem.lengthToPixels(
+            overlap_height_metric, "y"
         )
 
         # Some abbreviation for better overview
         nh = self.baseImg.num_pixels_height
-        pw = patch_pixels_width
-        ph = patch_pixels_height
-        ow = overlap_pixels_width
-        oh = overlap_pixels_height
-        cw = ceil(overlap_pixels_width / 2)
-        ch = ceil(overlap_pixels_height / 2)
+        pw = patch_width_pixels
+        ph = patch_height_pixels
+        ow = overlap_width_pixels
+        oh = overlap_height_pixels
+        cw = ceil(overlap_width_pixels / 2)
+        ch = ceil(overlap_height_pixels / 2)
         off_w = 0 if cw == ow / 2.0 else 1
         off_h = 0 if ch == oh / 2.0 else 1
 
@@ -105,10 +104,11 @@ class Patches:
         self.off_w = off_w
         self.off_h = off_h
 
-        # TODO if this works, change the convention of numbering of patches. and use the
-        # same as for images.
-
         # Define pixel-based ROIs - with overlap
+        # NOTE: While patches use the Cartesian indexing, the ROIs address
+        # images with conventional matrix indexing, i.e., (x,y) vs (row,col).
+        # Thus, the standard conversion has to be applied: Flip arguments and flip
+        # the orientation of the vertical component.
         self.rois: list[list[tuple]] = [
             [
                 (
@@ -120,15 +120,12 @@ class Patches:
             for i in range(self.num_patches_x)
         ]
 
-        # Define relative pixel-based ROIs corresponding to the area - without overlap
+        # Define relative pixel-based ROIs corresponding to the area - without overlap.
         self.relative_rois_without_overlap: list[list[tuple]] = [
             [
                 (
-                    slice(
-                        0 if j == self.num_patches_y - 1 else oh,
-                        ph if j == self.num_patches_y - 1 else ph + oh,
-                    ),
-                    slice(0 if i == 0 else ow, pw if i == 0 else pw + ow),
+                    slice(0, ph) if j == self.num_patches_y else slice(oh, ph + oh),
+                    slice(0, pw) if i == 0 else slice(ow, pw + ow),
                 )
                 for j in range(self.num_patches_y)
             ]
@@ -144,12 +141,71 @@ class Patches:
             for i in range(self.num_patches_x)
         ]
 
-        # Store centers (x,y) of each patch in meters
-        self.centers = np.array(
+        # Store centers (x,y) of each patch in global Cartesian coordinates and metric units
+        self.global_centers_cartesian = np.array(
             [
                 [
                     self.baseImg.origo
-                    + np.array([(i + 0.5) * patch_width, (j + 0.5) * patch_height])
+                    + np.array(
+                        [
+                            (i + 0.5) * patch_width_metric,
+                            (j + 0.5) * patch_height_metric,
+                        ]
+                    )
+                    for j in range(self.num_patches_y)
+                ]
+                for i in range(self.num_patches_x)
+            ]
+        )
+
+        # Store corners of all patches in various formats, but keep the order:
+        # top_left, bottom_left, bottom_right, top_right
+
+        # Corners in global Cartesian coordinates, using metric units
+        self.global_corners_cartesian = np.array(
+            [
+                [
+                    np.array(
+                        [
+                            [i * patch_width_metric, (j + 1) * patch_height_metric],
+                            [i * patch_width_metric, j * patch_height_metric],
+                            [(i + 1) * patch_width_metric, j * patch_height_metric],
+                            [
+                                (i + 1) * patch_width_metric,
+                                (j + 1) * patch_height_metric,
+                            ],
+                        ]
+                    )
+                    + self.baseImg.origo[np.newaxis, :]
+                    for j in range(self.num_patches_y)
+                ]
+                for i in range(self.num_patches_x)
+            ]
+        )
+
+        # Corners in global pixel coordinates, using reverse matrix indexing
+        self.global_corners_reverse_matrix = np.array(
+            [
+                [
+                    np.array(
+                        [
+                            [i * pw, nh - (j + 1) * ph],
+                            [i * pw, nh - j * ph],
+                            [(i + 1) * pw, nh - j * ph],
+                            [(i + 1) * pw, nh - (j + 1) * ph],
+                        ]
+                    )
+                    for j in range(self.num_patches_y)
+                ]
+                for i in range(self.num_patches_x)
+            ]
+        )
+
+        # Corners in local pixel coordinates, using reverse matrix indexing
+        self.local_corners_reverse_matrix = np.array(
+            [
+                [
+                    np.array([[0, 0], [0, ph], [pw, ph], [pw, 0]])
                     for j in range(self.num_patches_y)
                 ]
                 for i in range(self.num_patches_x)
@@ -158,6 +214,9 @@ class Patches:
 
         # Define flag (will be turned on when running _prepare_weights)
         self.weights_defined = False
+
+    # TODO the interpolation may be not required after all. Keep it for now, but it may
+    # disappear afterall.
 
     def _prepare_weights(self):
         """
@@ -226,8 +285,8 @@ class Patches:
         )
 
         # Analogously, define the weighting in y-direction.
-        # NOTE: The weight has to be defined consistently with the conventional pixel ordering
-        # of images, i.e., the first pixel lies at the top.
+        # NOTE: The weight has to be defined consistently with the conventional matrix
+        # indexing of images, i.e., the first pixel lies at the top.
         self.weight_y = {}
 
         # Corresponding to the bottom patches
@@ -279,7 +338,7 @@ class Patches:
             i (int): patch coordinate in x-direction
             j (int): patch coordinate in y-direction
 
-        NOTE: The patch coordinates employ the Cartesian ordering.
+        NOTE: The patch coordinates employ the Cartesian indexing, i.e., (x,y).
 
         Returns:
             str: "left" or "right" if the patch is touching the left or right boundary
@@ -306,12 +365,26 @@ class Patches:
         return horizontal_position, vertical_position
 
     def __call__(self, i: int, j: int) -> np.ndarray:
-        """Return patch with patch coordinates (i,j)."""
+        """
+        Return patch with Cartesian patch coordinates (i,j).
+
+        Args:
+            i (int): x-coordinate of the patch
+            j (int): y-coordinate of the patch
+
+        Returns:
+            np.ndarray: image of the patch
+        """
         return self.images[i][j]
 
     def set_image(self, img: np.ndarray, i: int, j: int) -> None:
         """
         Update the image of a patch.
+
+        Args:
+            img (np.ndarray): image array
+            i (int): x-coordinate of the patch
+            j (int): y-coordinate of the patch
         """
         assert self.images[i][j].img.shape == img.shape
         self.images[i][j].img = img.copy()
@@ -329,7 +402,8 @@ class Patches:
         """
 
         # Initialize empty row of the final image. It will be used
-        # to assemble the patches row by row.
+        # to assemble the patches 'row' by 'row' (here row is not
+        # meant as for images, as patches use Cartesian coordinates).
         assembled_img = np.zeros(
             (0, *self.baseImg.img.shape[1:]), dtype=self.baseImg.img.dtype
         )
@@ -337,19 +411,21 @@ class Patches:
         # Create "image-strips" that are assembled by concatenation
         for j in range(self.num_patches_y):
 
-            # Initialize the row of the final image with the first patch image.
+            # Initialize the row with y coordinate j of the final image
+            # with the first patch image.
             rel_roi = self.relative_rois_without_overlap[0][j]
-            assembled_row_j = self.images[0][j].img[rel_roi]
+            assembled_y_j = self.images[0][j].img[rel_roi]
 
-            # And assemble the remainder of the row by concatenation.
+            # And assemble the remainder of the row by concatenation
+            # over the patches in x-direction with same y coordinate (=j).
             for i in range(1, self.num_patches_x):
                 rel_roi = self.relative_rois_without_overlap[i][j]
-                assembled_row_j = np.hstack(
-                    (assembled_row_j, self.images[i][j].img[rel_roi])
+                assembled_y_j = np.hstack(
+                    (assembled_y_j, self.images[i][j].img[rel_roi])
                 )
 
             # Concatenate the row and the current image
-            assembled_img = np.vstack((assembled_row_j, assembled_img))
+            assembled_img = np.vstack((assembled_y_j, assembled_img))
 
         # Make sure that the resulting image has the same resolution
         assert assembled_img.shape == self.baseImg.img.shape
@@ -398,14 +474,15 @@ class Patches:
         # Loop over patches
         for j in range(self.num_patches_y):
 
-            # Allocate memory for row j
+            # Allocate memory for row  with y-coordinate j.
             shape = [self.images[0][j].num_pixels_height, *self.baseImg.img.shape[1:]]
-            assembled_row_j = np.zeros(tuple(shape), dtype=float)
+            assembled_y_j = np.zeros(tuple(shape), dtype=float)
 
-            # Assemble row j by suitable weighted combination of the patches in row j
+            # Assemble the row with y-coordinate j by a suitable weighted combination
+            # of the patches in row j
             for i in range(self.num_patches_x):
 
-                # Determine active pixel range
+                # Determine the active pixel range
                 roi = self.rois[i][j]
                 roi_x = roi[1]
 
@@ -418,7 +495,7 @@ class Patches:
                 weight_i_j = weight_i_j.reshape(1, np.size(weight_i_j), 1)
 
                 # Add weighted patch at the active pixel range
-                assembled_row_j[:, roi_x] += np.multiply(img_i_j, weight_i_j)
+                assembled_y_j[:, roi_x] += np.multiply(img_i_j, weight_i_j)
 
             # Anologous procedure, but now on row-level and not single-patch level.
 
@@ -432,7 +509,7 @@ class Patches:
             weight_j = weight_j.reshape(np.size(weight_j), 1, 1)
 
             # Add weighted row at the active pixel range
-            assembled_img[roi_y, :] += np.multiply(assembled_row_j, weight_j)
+            assembled_img[roi_y, :] += np.multiply(assembled_y_j, weight_j)
 
         # Make sure the newly assembled image is compatible with the original base image
         assert assembled_img.shape == self.baseImg.img.shape
