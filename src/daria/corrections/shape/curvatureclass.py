@@ -17,21 +17,22 @@ import daria as da
 
 
 class CurvatureCorrection:
-    """ Class for curvature correction of curved images.
+    """Class for curvature correction of curved images.
 
-        Contains routines for setting up the curvature correction, as well as applying it to images.
+    Contains routines for setting up the curvature correction, as well as applying
+    it to images.
 
-        Attributes:
-            config (dict): config dictionary for curvture correction.
+    Attributes:
+        config (dict): config dictionary for curvture correction.
 
-            Circumstantial attributes:
-                reference_image (np.ndarray): image matrix of the reference image.
-                current_image (np.ndarray): image matrix of the updated reference image.
-                width (float): physical width of reference image.
-                height (float): physical height of reference image.
-                in_meters (bool): True if width/height is in meters.
-                Ny (int): number of pixels in vertical direction in reference image.
-                Nx (int): number of pixels in horizontal direction in reference image.
+        Circumstantial attributes:
+            reference_image (np.ndarray): image matrix of the reference image.
+            current_image (np.ndarray): image matrix of the updated reference image.
+            width (float): physical width of reference image.
+            height (float): physical height of reference image.
+            in_meters (bool): True if width/height is in meters.
+            Ny (int): number of pixels in vertical direction in reference image.
+            Nx (int): number of pixels in horizontal direction in reference image.
 
     """
 
@@ -109,13 +110,7 @@ class CurvatureCorrection:
         )
 
     def crop(
-        self,
-        corner_points: list = [
-            [11, 8],
-            [16, 1755],
-            [3165, 1748],
-            [3165, 5],
-        ],
+        self, corner_points: list = [[11, 8], [16, 1755], [3165, 1748], [3165, 5]]
     ) -> None:
         """
         Crop the image along the corners of the image.
@@ -250,7 +245,6 @@ class CurvatureCorrection:
         image_tmp = da.simple_curvature_correction(image_tmp, **self.config["bulge"])
         image_tmp = da.simple_curvature_correction(image_tmp, **self.config["stretch"])
         return image_tmp
-
 
     def write_config_to_file(self, path: str) -> None:
         """
