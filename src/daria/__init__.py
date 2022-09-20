@@ -23,6 +23,7 @@ from daria.corrections.shape.quadROI import *
 from daria.corrections.shape.translation import *
 from daria.corrections.shape.piecewiseperspective import *
 from daria.corrections.shape.computebulge import *
+from daria.corrections.shape.curvatureclass import *
 from daria.corrections.shape.computestretch import *
 from daria.corrections.color.colorchecker import *
 from daria.analysis.translationanalysis import *
