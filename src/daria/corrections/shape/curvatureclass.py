@@ -4,13 +4,14 @@ from typing import Union
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import json
 import daria as da
 
 
 class CurvatureCorrection:
     def __init__(
         self,
-        image_source: np.ndarray,
+        image_source: Union[np.ndarray, str],
         width: float = 1,
         height: float = 1,
         in_meters: bool = True,
@@ -68,7 +69,7 @@ class CurvatureCorrection:
         self.config["crop"] = {
             "pts_src": corner_points,
             "width": self.width,
-            "height": self.width,
+            "height": self.height,
             "in meters": self.in_meters,
         }
 
@@ -84,7 +85,7 @@ class CurvatureCorrection:
             horizontal_bulge_center_offset,
             vertical_bulge,
             vertical_bulge_center_offset,
-        ) = da.compute_bulge(self.Nx, self.Ny, left, right, top, bottom)
+        ) = da.compute_bulge(self.Nx, self.Ny, left=left, right =right, top =top, bottom =bottom)
 
         self.config["bulge"] = {
             "horizontal_bulge": horizontal_bulge,
@@ -109,7 +110,7 @@ class CurvatureCorrection:
             vertical_stretch,
             vertical_stretch_center_offset,
         ) = da.compute_stretch(
-            self.Nx, self.Ny, point_source, point_destination, stretch_center
+            self.Nx, self.Ny, point_source = point_source, point_destination = point_destination, stretch_center = stretch_center
         )
 
         self.config["stretch"] = {
@@ -143,13 +144,12 @@ class CurvatureCorrection:
         return da.Image(image_tmp, width=self.width, height=self.height)
 
     def write_config_to_file(self, path: str) -> None:
-        f = open(path, "w")
-        f.write(self.config)
-        f.close()
+        with open(path, "w") as outfile:
+            json.dump(self.config, outfile)
 
     def show_current(self):
         plt.imshow(da.BGR2RGB(self.current_image))
 
     def read_config_from_file(self, path: str) -> None:
-        f= open(path, "r")
-        self.config = f
+       with open(path, 'r') as openfile:
+         self.config = json.load(openfile)
