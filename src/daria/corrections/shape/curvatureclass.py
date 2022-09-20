@@ -17,13 +17,43 @@ import daria as da
 
 
 class CurvatureCorrection:
-    """
-    Class for curvature correction of curved images.
+    """ Class for curvature correction of curved images.
 
+        Contains routines for setting up the curvature correction, as well as applying it to images.
+
+        Attributes:
+            config (dict): config dictionary for curvture correction.
+
+            Circumstantial attributes:
+                reference_image (np.ndarray): image matrix of the reference image.
+                current_image (np.ndarray): image matrix of the updated reference image.
+                width (float): physical width of reference image.
+                height (float): physical height of reference image.
+                in_meters (bool): True if width/height is in meters.
+                Ny (int): number of pixels in vertical direction in reference image.
+                Nx (int): number of pixels in horizontal direction in reference image.
 
     """
 
     def __init__(self, **kwargs) -> None:
+        """
+        Constructor of curvature correction class.
+
+        Arguments:
+            kwargs (Optional keyword arguments):
+                image_source (Union[str, np.ndarray]): image source that either can
+                            be provided as a path to an image or an image matrix.
+                            Either this or the config_source must be provided.
+                config_source (str): path to the config source. Either this or the
+                            image_source must be provided.
+                width (float): physical width of the image. Only relevant if
+                            image_source is provided.
+                height (float): physical height of the image. Only relevant if
+                            image_source is provided.
+                in_meters (bool): returns True if width and height are given
+                            in terms of meters. Only relevant if image_source
+                            is provided.
+        """
 
         if "image_source" in kwargs:
             self.config: dict() = {}
@@ -87,6 +117,17 @@ class CurvatureCorrection:
             [3165, 5],
         ],
     ) -> None:
+        """
+        Crop the image along the corners of the image.
+
+        The four corner points of the image should be provided, and this method
+        will update the config file and modify the current image.
+
+        Arguments:
+            corner_points (list): list of the corner points. Preferably the list
+                        should be ordered starting from the upper left corner
+                        and going counter clockwise.
+        """
 
         self.config["crop"] = {
             "pts_src": corner_points,
@@ -102,6 +143,18 @@ class CurvatureCorrection:
     def bulge_corection(
         self, left: int = 0, right: int = 0, top: int = 53, bottom: int = 57
     ) -> None:
+        """
+        Bulge correction
+
+        Corrects bulging of image, depending on the amount of pixels that the
+        image is bulged inwards on each side.
+
+        Arguments:
+            left (int): amount of bulged pixels on the left side of the image.
+            right (int): amount of bulged pixels on the right side of the image.
+            top (int): amount of bulged pixels on the top of the image.
+            bottom (int): amount of bulged pixels on the bottom of the image.
+        """
         (
             horizontal_bulge,
             horizontal_bulge_center_offset,
@@ -128,6 +181,18 @@ class CurvatureCorrection:
         point_destination: list = [567, 676],
         stretch_center: list = [1476, 1020],
     ) -> None:
+        """
+        Stretch correction.
+
+        Stretches the image depending on the displacement of a
+        single point (point source <--> point_destination) and
+        an undisplaced point (stretch_center)
+
+        Arguments:
+            "point_source" (list): point that has been translated.
+            "point_destination" (list): the ought to be position.
+            "stretch_center" (list): the stretch center.
+        """
         (
             horizontal_stretch,
             horizontal_stretch_center_offset,
@@ -153,10 +218,25 @@ class CurvatureCorrection:
         )
 
     def return_current_image(self) -> da.Image:
+        """
+        Returns the current image as a daria image width provided width and height.
+        """
         return da.Image(self.current_image, width=self.width, height=self.height)
 
     def __call__(self, image_source: Union[str, np.ndarray]) -> np.ndarray:
+        """
+        Call method of the curvature correction.
 
+        Applies the curvature correction to a provided image, and returns the image
+        as an array.
+
+        Arguments:
+            image_source (Union[str, np.ndarray]): either the path to an image or an
+                            image matrix
+
+        Returns:
+            np.ndarray: curvature corrected image.
+        """
         if isinstance(image_source, np.ndarray):
             image_tmp = image_source
         elif isinstance(image_source, str):
@@ -173,12 +253,27 @@ class CurvatureCorrection:
 
 
     def write_config_to_file(self, path: str) -> None:
+        """
+        Writes the config dictionary to a json-file.
+
+        Arguments:
+            path (str): path to the json file
+        """
         with open(path, "w") as outfile:
             json.dump(self.config, outfile, indent=4)
 
-    def show_current(self):
+    def show_current(self) -> None:
+        """
+        Shows the current image using matplotlib.pyplot
+        """
         plt.imshow(da.BGR2RGB(self.current_image))
 
     def read_config_from_file(self, path: str) -> None:
+        """
+        Reads a json-file to the config disctionary.
+
+        Arguments:
+            path (str): path to the json-file.
+        """
         with open(path, "r") as openfile:
             self.config = json.load(openfile)
