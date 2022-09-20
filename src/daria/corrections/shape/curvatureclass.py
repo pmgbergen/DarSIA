@@ -1,3 +1,9 @@
+"""
+Curvature correction class.
+
+A class for setup and application of curvature correction.
+"""
+
 from __future__ import annotations
 
 import json
@@ -11,6 +17,12 @@ import daria as da
 
 
 class CurvatureCorrection:
+    """
+    Class for curvature correction of curved images.
+
+
+    """
+
     def __init__(self, **kwargs) -> None:
 
         if "image_source" in kwargs:
@@ -143,7 +155,7 @@ class CurvatureCorrection:
     def return_current_image(self) -> da.Image:
         return da.Image(self.current_image, width=self.width, height=self.height)
 
-    def apply_full_correction(self, image_source: Union[str, np.ndarray]) -> np.ndarray:
+    def __call__(self, image_source: Union[str, np.ndarray]) -> np.ndarray:
 
         if isinstance(image_source, np.ndarray):
             image_tmp = image_source
@@ -159,9 +171,10 @@ class CurvatureCorrection:
         image_tmp = da.simple_curvature_correction(image_tmp, **self.config["stretch"])
         return image_tmp
 
+
     def write_config_to_file(self, path: str) -> None:
         with open(path, "w") as outfile:
-            json.dump(self.config, outfile)
+            json.dump(self.config, outfile, indent=4)
 
     def show_current(self):
         plt.imshow(da.BGR2RGB(self.current_image))
