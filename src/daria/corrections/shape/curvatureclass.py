@@ -11,25 +11,32 @@ import daria as da
 class CurvatureCorrection:
     def __init__(
         self,
-        image_source: Union[np.ndarray, str],
-        width: float = 1,
-        height: float = 1,
-        in_meters: bool = True,
+        **kwargs
     ) -> None:
-        self.config: dict() = {}
-        if isinstance(image_source, np.ndarray):
-            self.reference_image = image_source
-        elif isinstance(image_source, str):
-            self.reference_image = cv2.imread(image_source)
+
+        if "image_source" in kwargs:
+            self.config: dict() = {}
+            im_source = kwargs.pop("image_source")
+            if isinstance(im_source, np.ndarray):
+                self.reference_image = im_source
+            elif isinstance(im_source, str):
+                self.reference_image = cv2.imread(im_source)
+            else:
+                raise Exception(
+                    "Invalid image data. Provide either a path to an image or an image array."
+                )
+            self.current_image = np.copy(self.reference_image)
+            self.Ny, self.Nx = self.reference_image.shape[:2]
+            self.in_meters = kwargs.pop("in_meters", True)
+            self.width = kwargs.pop("width", 1.)
+            self.height = kwargs.pop("height", 1.)
+
+        elif "config_source" in kwargs:
+            with open(kwargs.pop("config_source"), 'r') as openfile:
+                self.config = json.load(openfile)
+
         else:
-            raise Exception(
-                "Invalid image data. Provide either a path to an image or an image array."
-            )
-        self.current_image = np.copy(self.reference_image)
-        self.Ny, self.Nx = self.reference_image.shape[:2]
-        self.in_meters = in_meters
-        self.width = width
-        self.height = height
+            raise Exception("Please provide either an image as 'image_source' or a config file as 'config_source'.")
 
     def pre_bulge_correction(self, **kwargs) -> None:
         """
@@ -127,7 +134,7 @@ class CurvatureCorrection:
     def return_current_image(self) -> da.Image:
         return da.Image(self.current_image, width=self.width, height=self.height)
 
-    def apply_full_correction(self, image_source: Union[str, np.ndarray]) -> da.Image:
+    def apply_full_correction(self, image_source: Union[str, np.ndarray]) -> np.ndarray:
 
         if isinstance(image_source, np.ndarray):
             image_tmp = image_source
@@ -141,7 +148,7 @@ class CurvatureCorrection:
         image_tmp = da.extract_quadrilateral_ROI(image_tmp, **self.config["crop"])
         image_tmp = da.simple_curvature_correction(image_tmp, **self.config["bulge"])
         image_tmp = da.simple_curvature_correction(image_tmp, **self.config["stretch"])
-        return da.Image(image_tmp, width=self.width, height=self.height)
+        return image_tmp
 
     def write_config_to_file(self, path: str) -> None:
         with open(path, "w") as outfile:
