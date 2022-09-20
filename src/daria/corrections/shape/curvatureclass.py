@@ -1,18 +1,17 @@
 from __future__ import annotations
 
+import json
 from typing import Union
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import json
+
 import daria as da
 
 
 class CurvatureCorrection:
-    def __init__(
-        self,
-        **kwargs
-    ) -> None:
+    def __init__(self, **kwargs) -> None:
 
         if "image_source" in kwargs:
             self.config: dict() = {}
@@ -28,15 +27,18 @@ class CurvatureCorrection:
             self.current_image = np.copy(self.reference_image)
             self.Ny, self.Nx = self.reference_image.shape[:2]
             self.in_meters = kwargs.pop("in_meters", True)
-            self.width = kwargs.pop("width", 1.)
-            self.height = kwargs.pop("height", 1.)
+            self.width = kwargs.pop("width", 1.0)
+            self.height = kwargs.pop("height", 1.0)
 
         elif "config_source" in kwargs:
-            with open(kwargs.pop("config_source"), 'r') as openfile:
+            with open(kwargs.pop("config_source"), "r") as openfile:
                 self.config = json.load(openfile)
 
         else:
-            raise Exception("Please provide either an image as 'image_source' or a config file as 'config_source'.")
+            raise Exception(
+                "Please provide either an image as 'image_source' \
+                    or a config file as 'config_source'."
+            )
 
     def pre_bulge_correction(self, **kwargs) -> None:
         """
@@ -45,10 +47,10 @@ class CurvatureCorrection:
 
         Arguments:
             kwargs (optional keyword arguments):
-                "horizontal_bulge" (float): parameter for the curvature correction related to the
-                    horizontal bulge of the image.
-                "horizontal_center_offset" (int): offset in terms of pixel of the image center in
-                    x-direction, as compared to the numerical center
+                "horizontal_bulge" (float): parameter for the curvature correction related to
+                    the horizontal bulge of the image.
+                "horizontal_center_offset" (int): offset in terms of pixel of the image center
+                    in x-direction, as compared to the numerical center
                 vertical_bulge (float): parameter for the curvature correction related to the
                     vertical bulge of the image.
                 "vertical_center_offset" (int): offset in terms of pixel of the image center in
@@ -65,12 +67,13 @@ class CurvatureCorrection:
         )
 
     def crop(
-        self, corner_points: list =[
-        [11, 8],
-        [16, 1755],
-        [3165, 1748],
-        [3165, 5],
-    ]
+        self,
+        corner_points: list = [
+            [11, 8],
+            [16, 1755],
+            [3165, 1748],
+            [3165, 5],
+        ],
     ) -> None:
 
         self.config["crop"] = {
@@ -92,7 +95,9 @@ class CurvatureCorrection:
             horizontal_bulge_center_offset,
             vertical_bulge,
             vertical_bulge_center_offset,
-        ) = da.compute_bulge(self.Nx, self.Ny, left=left, right =right, top =top, bottom =bottom)
+        ) = da.compute_bulge(
+            self.Nx, self.Ny, left=left, right=right, top=top, bottom=bottom
+        )
 
         self.config["bulge"] = {
             "horizontal_bulge": horizontal_bulge,
@@ -117,7 +122,11 @@ class CurvatureCorrection:
             vertical_stretch,
             vertical_stretch_center_offset,
         ) = da.compute_stretch(
-            self.Nx, self.Ny, point_source = point_source, point_destination = point_destination, stretch_center = stretch_center
+            self.Nx,
+            self.Ny,
+            point_source=point_source,
+            point_destination=point_destination,
+            stretch_center=stretch_center,
         )
 
         self.config["stretch"] = {
@@ -158,5 +167,5 @@ class CurvatureCorrection:
         plt.imshow(da.BGR2RGB(self.current_image))
 
     def read_config_from_file(self, path: str) -> None:
-       with open(path, 'r') as openfile:
-         self.config = json.load(openfile)
+        with open(path, "r") as openfile:
+            self.config = json.load(openfile)
