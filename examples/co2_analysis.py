@@ -3,76 +3,97 @@ Example script for simple image analysis. By comparison of images
 of the same well test, a tracer concentration can be determined.
 """
 
-from pathlib import Path
-
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 import skimage
 
 import daria
 
 
-def preprocessing(img):
-    """Standard curvature and color correction. Return ROI."""
+def preprocessing(img: np.ndarray) -> np.ndarray:
+    """Standard for reading an image from file, applying curvature correction
+    and and color correction.
 
-    # Curvature correctio
-    img = daria.curvature_correction(img)
+    Args:
+        img (np.ndarray): image array
 
-    # Preprocessing. Transform to RGB space
+    Returns:
+        np.ndarray: corrected image
+    """
+
+    # Define curvature correction object, initiated with config file
+    # (which can be created the workflow presented in the Jupyter notebook
+    # examples/notebooks/curvature_correction_walkthrough.ipynb).
+    curvature_correction = daria.CurvatureCorrection(
+        config_source="./images/config.json", width=2.8, height=1.5
+    )
+
+    # Apply curvature correction.
+    img = curvature_correction(img)
+
+    # Transform to RGB space.
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    plt.imshow(img)
-    plt.show()
-
-    # Color correction
+    # Apply color correction - need to specify a crude ROI containing the color checker.
     roi_cc = (slice(0, 600), slice(0, 700))
     colorcorrection = daria.ColorCorrection()
-    img = colorcorrection.adjust(img, roi_cc, verbosity=False, whitebalancing=True)
-
-    # Transform to grayscale
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    img = colorcorrection.adjust(img, roi_cc)
 
     return img
 
 
-def determine_tracer(img, base):
-    """Extract tracer based on a reference image"""
+def determine_tracer(img: np.ndarray, base: np.ndarray) -> np.ndarray:
+    """Extract tracer based on a reference image.
+
+    Args:
+        img (np.ndarray):  probe image array
+        base (np.ndarray): baseline image array
+
+    Returns:
+        np.ndarray: concentration map
+    """
+    # Transform images to grayscale
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    base = cv2.cvtColor(base, cv2.COLOR_RGB2GRAY)
+
     # Take (unsigned) difference
     diff = skimage.util.compare_images(img, base, method="diff")
 
     # Apply smoothing filter
     diff = skimage.filters.rank.median(diff, skimage.morphology.disk(20))
 
-    # TODO: User input. Require threshold values for identifying both 0 and 1 concentrations.
-    plt.imshow(diff)
-    plt.show()
+    # The next step is to translate the color intensity to the actual concentration.
+    # Such post-processing is very much scenario dependent and require further knowledge
+    # of the physical process, or injection schedule etc. Here, an arbitrary thresholding
+    # routine is applied as an example. More advanced postprocessing routines are also
+    # possible,
+
+    # Apply thresholding to cut off noise
     thresh_min = 5
     thresh_max = 40
-
-    # Calibrated thresholding
     tracer_min_mask = diff <= thresh_min
     diff[tracer_min_mask] = 0
     diff[~tracer_min_mask] -= thresh_min
     tracer_max_mask = diff >= thresh_max - thresh_min
     diff[tracer_max_mask] = thresh_max - thresh_min
 
-    # Rescale image to range [0,255]
-    diff = skimage.exposure.rescale_intensity(diff)
-
     # Transform to float data type for simpler conversion to tracer concentration
     diff = skimage.util.img_as_float(diff)
+
+    # Rescale image to physically meaningful range [0,1]
+    diff = skimage.exposure.rescale_intensity(diff)
 
     return diff
 
 
 # !----- Main routine
 
-# Read in baseline figure and apply correction once
-baseline = cv2.imread(str(Path("./images/co2_0.jpg")))
+# Read image and preprocess baseline image
+baseline = cv2.imread("./images/co2_0.jpg")
 baseline = preprocessing(baseline)
 
-# Read in test figure and apply correction
-# tracer_image = cv2.imread("./images/co2_1.jpg")
+# Read and preprocess test image
 tracer_image = cv2.imread("./images/co2_2.jpg")
 tracer_image = preprocessing(tracer_image)
 
@@ -81,13 +102,4 @@ tracer = determine_tracer(tracer_image, baseline)
 
 # Plot
 plt.imshow(tracer)
-plt.show()
-
-# Blend with baseline
-fig, ax = plt.subplots(2, 1)
-ax[0].imshow(skimage.util.compare_images(tracer, baseline, method="blend"))
-ax[1].imshow(tracer_image)
-plt.show()
-
-plt.imshow(skimage.util.compare_images(tracer, tracer_image, method="blend"))
 plt.show()
