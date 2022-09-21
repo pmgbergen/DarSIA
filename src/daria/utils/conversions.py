@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import cv2
 import numpy as np
 
+import daria as da
 
-def cv2ToSkimage(img: np.ndarray) -> np.ndarray:
+
+def BGR2RGB(img: da.Image) -> da.Image:
     """Conversion between opencv (cv2) which has BGR-formatting and scikit-image (skimage)
     which has RGB. The same command works in both directions.
 
@@ -13,7 +16,72 @@ def cv2ToSkimage(img: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: converted image.
     """
-    return img[:, :, ::-1]
+
+    img_new = img.copy()
+    img_new.img = cv2.cvtColor(img_new.img, cv2.COLOR_BGR2RGB)
+    return img_new
+
+
+def BGR2GRAY(img: da.Image) -> da.Image:
+    """Creates a grayscale daria Image from a BGR ones
+
+    Arguments:
+        img (da.Image): input image
+
+    Returns:
+        da.Image: converged image
+    """
+    img_gray = img.copy()
+    img_gray.img = cv2.cvtColor(img_gray.img, cv2.COLOR_BGR2GRAY)
+    return img_gray
+
+
+def BGR2RED(img: da.Image) -> da.Image:
+    """Creates a redscale daria Image from a BGR ones
+
+    Arguments:
+        img (da.Image): input image
+
+    Returns:
+        da.Image: converged image
+    """
+    img_red = img.copy()
+    if img.colorspace == "bgr":
+        img_red.img = img_red.img[:, :, 2]
+    elif img.colorspace == "rgb":
+        img_red.img = img_red.img[:, :, 0]
+    return img_red
+
+
+def BGR2GREEN(img: da.Image) -> da.Image:
+    """Creates a greenscale daria Image from a BGR one
+
+    Arguments:
+        img (da.Image): input image
+
+    Returns:
+        da.Image: converged image
+    """
+    img_green = img.copy()
+    img_green.img = img_green.img[:, :, 1]
+    return img_green
+
+
+def BGR2BLUE(img: da.Image) -> da.Image:
+    """Creates a bluescale daria Image from a BGR ones
+
+    Arguments:
+        img (da.Image): input image
+
+    Returns:
+        da.Image: converged image
+    """
+    img_blue = img.copy()
+    if img.colorspace == "bgr":
+        img_blue.img = img_blue.img[:, :, 0]
+    elif img.colorspace == "rgb":
+        img_blue.img = img_blue.img[:, :, 2]
+    return img_blue
 
 
 def matrixToCartesianIndexing(img: np.ndarray) -> np.ndarray:

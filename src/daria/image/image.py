@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 
 import daria as da
@@ -118,6 +119,8 @@ class Image:
         # Establish a coordinate system based on the metadata
         self.coordinatesystem: da.CoordinateSystem = da.CoordinateSystem(self)
 
+        self.colorspace: str = "bgr"
+
     # There might be a cleaner way to do this. Then again, it works.
     def create_metadata_from_file(self, path: Optional[str]) -> None:
         """Reading routine for metadata.
@@ -196,11 +199,26 @@ class Image:
         if name is None:
             name = self.name
 
+        if self.colorspace == "rgb":
+            bgrim = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
+
+        else:
+            bgrim = self.img
+
         # Display image
         cv2.namedWindow(name, cv2.WINDOW_NORMAL)
-        cv2.imshow(name, self.img)
+        cv2.imshow(name, bgrim)
         cv2.waitKey(wait)
         cv2.destroyAllWindows()
+
+    def plt_show(self) -> None:
+        """Show image using matplotlib.pyplots built-in imshow"""
+
+        if self.colorspace == "bgr":
+            rgbim = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
+        else:
+            rgbim = self.img
+        plt.imshow(rgbim)
 
     # Seems like something that should read an image and return a new one with grid.
     def add_grid(
@@ -219,7 +237,7 @@ class Image:
                 coordinate system is provided by the corresponding attribute coordinatesystem
             dx (float): grid size in x-direction, in physical units
             dy (float): grid size in y-direction, in physical units
-            color (tuple of int): RGB color of the grid
+            color (tuple of int): BGR color of the grid
             thickness (int): thickness of the grid lines
 
         Returns:
@@ -310,3 +328,13 @@ class Image:
         Returns a copy of the image object.
         """
         return Image(self.img, self.origo, self.width, self.height)
+
+    def toBGR(self) -> None:
+        if self.colorspace == "rgb":
+            self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
+            self.colorspace = "bgr"
+
+    def toRGB(self) -> None:
+        if self.colorspace == "bgr":
+            self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
+            self.colorspace = "rgb"
