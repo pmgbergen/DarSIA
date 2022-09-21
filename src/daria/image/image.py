@@ -119,7 +119,7 @@ class Image:
         # Establish a coordinate system based on the metadata
         self.coordinatesystem: da.CoordinateSystem = da.CoordinateSystem(self)
 
-        self.colorspace: str = "rgb"
+        self.colorspace: str = "bgr"
 
     # There might be a cleaner way to do this. Then again, it works.
     def create_metadata_from_file(self, path: Optional[str]) -> None:
@@ -200,7 +200,7 @@ class Image:
             name = self.name
 
         if self.colorspace == "rgb":
-            bgrim = da.BGR2RGB(self.img)
+            bgrim = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
 
         else:
             bgrim = self.img
@@ -215,7 +215,7 @@ class Image:
         """Show image using matplotlib.pyplots built-in imshow"""
 
         if self.colorspace == "bgr":
-            rgbim = da.BGR2RGB(self.img)
+            rgbim = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
         else:
             rgbim = self.img
         plt.imshow(rgbim)
@@ -331,10 +331,10 @@ class Image:
 
     def toBGR(self) -> None:
         if self.colorspace == "rgb":
-            self.img = da.BGR2RGB(self.img)
+            self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
             self.colorspace = "bgr"
 
     def toRGB(self) -> None:
         if self.colorspace == "bgr":
-            self.img = da.BGR2RGB(self.img)
+            self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
             self.colorspace = "rgb"
