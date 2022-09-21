@@ -338,4 +338,3 @@ class Image:
         if self.colorspace == "bgr":
             self.img = da.BGR2RGB(self.img)
             self.colorspace = "rgb"
-
