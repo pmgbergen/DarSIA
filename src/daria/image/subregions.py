@@ -1,6 +1,7 @@
 """
 Module containing auxiliary methods to extract ROIs from daria Images.
 """
+import cv2
 import numpy as np
 
 import daria
@@ -71,3 +72,76 @@ def extractROIPixel(img: daria.Image, roi: tuple) -> daria.Image:
 
     # Construct and return image corresponding to ROI
     return daria.Image(img=img.img[roi], origo=origo, width=width, height=height)
+
+
+def extract_quadrilateral_ROI(img_src: np.ndarray, **kwargs) -> np.ndarray:
+    """
+    Extract quadrilateral ROI using a perspective transform,
+    given known corner points of a square (default) object.
+
+    Args:
+        kwargs (optional keyword arguments):
+            width (int or float): width of the physical object
+            height (int or float): height of the physical object
+            in meters (boolean): controlling whether width and height are float and
+                are meant as in meters; number of pixels otherwise
+            pts_src (array): N points with pixels in (col,row) format, N>=4
+            pts_dst (array, optional): N points with pixels in (col, row) format, N>=4
+    """
+
+    # Determine original and target size
+    height, width = img_src.shape[:2]
+    target_width = kwargs.pop("width", width)
+    target_height = kwargs.pop("height", height)
+
+    # Fetch corner points in the provided image
+    pts_src = kwargs.pop("pts_src")
+    if isinstance(pts_src, list):
+        pts_src = np.array(pts_src)
+
+    # Allow 'width' and 'height' to be provided in meters.
+    # Then aim at comparably many pixels as in the provided
+    # image, modulo the ratio
+    if kwargs.pop("in meters", False):
+
+        # The goal aspect ratio
+        aspect_ratio = target_width / target_height
+
+        # Try to keep this aspect ratio, but do not use more pixels than before.
+        # Convert to number of pixels
+        target_width = min(width, int(aspect_ratio * float(height)))
+        target_height = min(height, int(1.0 / aspect_ratio * float(width)))
+
+    # Assign corner points as destination points if none are provided.
+    if "pts_dst" not in kwargs:
+        # Assume implicitly that corner points have been provided,
+        # and that their orientation is mathematically positive,
+        # starting with the top left corner.
+        # Further more use reversed matrix indexing, i.e., (col,row).
+        assert pts_src.shape[0] == 4
+        pts_dst = np.array(
+            [
+                [0, 0],
+                [0, target_height - 1],
+                [target_width - 1, target_height - 1],
+                [target_width - 1, 0],
+            ]
+        )
+    else:
+        pts_dst = kwargs.pop("pts_dst")
+        if isinstance(pts_dst, list):
+            pts_dst = np.array(pts_dst)
+
+    P = cv2.getPerspectiveTransform(
+        pts_src.astype(np.float32), pts_dst.astype(np.float32)
+    )
+
+    # Warp source image. Warping may convert a 3-tensor to a 2-tensor.
+    # Force to use a 3-tensor structure.
+    img_dst = np.atleast_3d(
+        cv2.warpPerspective(
+            img_src, P, (target_width, target_height), flags=cv2.INTER_LINEAR
+        )
+    )
+
+    return img_dst
