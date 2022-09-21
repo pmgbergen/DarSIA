@@ -14,11 +14,13 @@ pip install .
 
 ## Usage
 
+The following Python script can be applied to the test image in the examples/images folder.
+
 ```python
 import daria as da
 
 # Create a daria Image: An image that also contains information of physical entities, baseline image can be found at the link: (WE NEED TO PROVIDE LINK TO IMAGE)
-image = da.Image("images/originals/Baseline.jpg", origo = [5, 2], width = 280, height = 150)
+image = da.Image("examples/images/baseline.jpg", origo = [5, 2], width = 280, height = 150)
 
 # Use the show method to take a look at the imported image (push any button to close the window)
 image.show()
@@ -32,8 +34,10 @@ ROI_image = da.extractROI(image, [150, 280], [0, 70])
 ROI_image.show()
 ```
 
+Furthermore, we encourage any user to checkout the jupyter notebooks in the examples/notebooks folder.
+
 ## Developing DarIA
-To install daria, along with the tools to develop and run tests, run the following in your virtualenv:
+To install daria, along with the tools to develop and run tests, run the following in your virtual environment:
 ```bash
 $ pip install -e .[dev]
 ```
