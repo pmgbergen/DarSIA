@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from typing import Union
 
+from pathlib import Path
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -63,7 +64,7 @@ class CurvatureCorrection:
             if isinstance(im_source, np.ndarray):
                 self.reference_image = im_source
             elif isinstance(im_source, str):
-                self.reference_image = cv2.imread(im_source)
+                self.reference_image = cv2.imread(str(Path(im_source)))
             else:
                 raise Exception(
                     "Invalid image data. Provide either a path to an image or an image array."
@@ -75,7 +76,7 @@ class CurvatureCorrection:
             self.height = kwargs.pop("height", 1.0)
 
         elif "config_source" in kwargs:
-            with open(kwargs.pop("config_source"), "r") as openfile:
+            with open(str(Path(kwargs.pop("config_source"))), "r") as openfile:
                 self.config = json.load(openfile)
 
         else:
@@ -230,7 +231,7 @@ class CurvatureCorrection:
         if isinstance(image_source, np.ndarray):
             image_tmp = image_source
         elif isinstance(image_source, str):
-            image_tmp = cv2.imread(image_source)
+            image_tmp = cv2.imread(str(Path(image_source)))
         else:
             raise Exception(
                 "Invalid image data. Provide either a path to an image or an image array."
@@ -250,7 +251,7 @@ class CurvatureCorrection:
         Arguments:
             path (str): path to the json file
         """
-        with open(path, "w") as outfile:
+        with open(str(Path(path)), "w") as outfile:
             json.dump(self.config, outfile, indent=4)
 
     def show_current(self) -> None:
@@ -266,7 +267,7 @@ class CurvatureCorrection:
         Arguments:
             path (str): path to the json-file.
         """
-        with open(path, "r") as openfile:
+        with open(str(Path(path)), "r") as openfile:
             self.config = json.load(openfile)
 
     # TODO: Add an automatic way (using e.g, gradient decent) to choose the parameters.
