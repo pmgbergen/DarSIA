@@ -87,17 +87,36 @@ def determine_tracer(img: np.ndarray, base: np.ndarray) -> np.ndarray:
     return diff
 
 
-# !----- Main routine
+# !----- Main routine for co2 analysis
 
 # Read image and preprocess baseline image
 baseline = cv2.imread("./images/co2_0.jpg")
 baseline = preprocessing(baseline)
 
 # Read and preprocess test image
-tracer_image = cv2.imread("./images/co2_2.jpg")
+co2_image = cv2.imread("./images/co2_2.jpg")
+co2_image = preprocessing(co2_image)
+
+# Determine co2
+co2 = determine_tracer(co2_image, baseline)
+
+# Plot
+plt.imshow(co2)
+plt.show()
+
+# !----- Main routine for tracer analysis
+
+# Read in baseline figure and apply correction once
+baseline = cv2.imread("./images/tracer_0.jpg")
+baseline = preprocessing(baseline)
+
+# Read in test figure and apply correction
+# tracer_image = cv2.imread("./images/tracer_1.jpg")
+# tracer_image = cv2.imread("./images/tracer_2.jpg")
+tracer_image = cv2.imread("./images/tracer_3.jpg")
 tracer_image = preprocessing(tracer_image)
 
-# Determin tracer
+# Determine tracer
 tracer = determine_tracer(tracer_image, baseline)
 
 # Plot
