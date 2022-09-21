@@ -7,9 +7,9 @@ A class for setup and application of curvature correction.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Union
 
-from pathlib import Path
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
