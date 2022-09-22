@@ -38,21 +38,33 @@ class ConcentrationAnalysis:
 
         self.tvd_parameter = kwargs.pop("tvd_parameter", 0.1)
 
-    def update_baseline(self, img: np.ndarray) -> None:
+    def update(
+        self,
+        img: Optional[np.ndarray] = None,
+        scaling_factor: Optional[float] = None,
+        offset: Optional[float] = None,
+    ) -> None:
         """
-        Update of the baseline image.
+        Update of the baseline image or parameters.
 
         Args:
-            img (np.ndarray): image array
+            img (np.ndarray, optional): image array
+            scaling_factor (float, optional): slope
+            offset (float, optional): offset
         """
-        self._check_img_compatibility(img)
-        self.baseline = img
+        if img is not None:
+            self._check_img_compatibility(img)
+            self.baseline = img
+        if scaling_factor is not None:
+            self.scaling_factor = scaling_factor
+        if offset is not None:
+            self.offset = offset
 
     def _check_img_compatibility(self, img: np.ndarray):
         """Check whether the image is a mono-colored image."""
         assert len(img.shape) == 2 or (len(img.shape) == 3 and img.shape[2] == 1)
 
-    def __call__(self, img: np.ndarray, resize_factor: float) -> np.ndarray:
+    def __call__(self, img: np.ndarray, resize_factor: float = 1.0) -> np.ndarray:
         """Extract concentration based on a reference image and rescaling.
 
         Args:
@@ -69,18 +81,16 @@ class ConcentrationAnalysis:
         diff = skimage.util.compare_images(img, self.baseline, method="diff")
 
         # Resize the image
+        # TODO this line should actually not be here...
         diff = daria.utils.resolution.resize(diff, resize_factor * 100)
 
         # Apply smoothing filter
-        # TODO rm
-        # diff = diff[:,:,0] if len(diff.shape) == 3 else diff
         diff = skimage.restoration.denoise_tv_chambolle(diff, weight=self.tvd_parameter)
 
-        # TODO Calibration needed. For now the images are transformed to float data
-        # and stretched onto the interval [0,1].
-        diff = self.convert_signal_to_concentration(diff)
+        # Convert from signal to concentration
+        concentration = self.convert_signal_to_concentration(diff)
 
-        return diff
+        return concentration
 
     def tune_signal_concentration_map(
         self, images: Union[daria.Image, list[daria.Image]], target: float
@@ -108,7 +118,12 @@ class ConcentrationAnalysis:
             np.ndarray: Rescaled concentration in the interval [0,1].
         """
         return np.clip(
-            skimage.util.img_as_float(self.scaling_factor * img + self.offset), 0, 1
+            skimage.util.img_as_float(
+                self.scaling_factor * skimage.exposure.rescale_intensity(img)
+                + self.offset
+            ),
+            0,
+            1,
         )
 
     def total_concentration(
