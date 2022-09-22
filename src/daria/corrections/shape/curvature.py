@@ -6,8 +6,6 @@ A class for setup and application of curvature correction.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import json
 from pathlib import Path
 from typing import Union
@@ -268,7 +266,7 @@ class CurvatureCorrection:
         """
         plt.imshow(cv2.cvtColor(self.current_image, cv2.COLOR_BGR2RGB))
 
-    def read_config_from_file(self, Path: path) -> None:
+    def read_config_from_file(self, path: Path) -> None:
         """
         Reads a json-file to the config disctionary.
 
