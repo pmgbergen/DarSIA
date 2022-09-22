@@ -80,7 +80,7 @@ class Image:
             self.img = img
             self.name = "Unnamed image"
         elif isinstance(img, str):
-            self.img = cv2.imread(img)
+            self.img = cv2.imread(str(Path(img)))
             self.imgpath = img
             self.name = img
         else:
@@ -137,7 +137,7 @@ class Image:
             name = pl[2].split(".")[0]
             path = pl[0] + "/metadata/" + name + ".txt"
         try:
-            f = open(path, "r")
+            f = open(str(Path(path)), "r")
         except OSError:
             print(f"Could not open/read file: {path}")
             sys.exit()
@@ -176,12 +176,12 @@ class Image:
                 has the same name as the image (and a .txt ending)
         """
         # Write image, using the conventional matrix indexing
-        cv2.imwrite(path + name + file_format, self.img)
-        print("Image saved as: " + path + name + file_format)
+        cv2.imwrite(str(Path(path + name + file_format)), self.img)
+        print("Image saved as: " + str(Path(path + name + file_format)))
 
         # Write meta data
         if save_metadata:
-            f = open(metadata_path + name + ".txt", "w")
+            f = open(str(Path(metadata_path + name + ".txt")), "w")
             f.write("Origo: " + str(self.origo) + "\n")
             f.write("Width: " + str(self.width) + "\n")
             f.write("Height: " + str(self.height) + "\n")

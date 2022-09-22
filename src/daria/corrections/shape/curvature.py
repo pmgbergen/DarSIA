@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import json
+from pathlib import Path
 from typing import Union
 
 import cv2
@@ -64,8 +65,10 @@ class CurvatureCorrection:
             im_source = kwargs.pop("image_source")
             if isinstance(im_source, np.ndarray):
                 self.reference_image = im_source
+
             elif isinstance(im_source, Path):
                 self.reference_image = cv2.imread(str(im_source))
+
             else:
                 raise Exception(
                     "Invalid image data. Provide either a path to an image or an image array."
@@ -77,6 +80,7 @@ class CurvatureCorrection:
             self.height = kwargs.pop("height", 1.0)
 
         elif "config_source" in kwargs:
+
             config_source = kwargs.pop("config_source")
             assert isinstance(config_source, Path)
             with open(str(config_source), "r") as openfile:
@@ -234,7 +238,7 @@ class CurvatureCorrection:
         if isinstance(image_source, np.ndarray):
             image_tmp = image_source
         elif isinstance(image_source, str):
-            image_tmp = cv2.imread(image_source)
+            image_tmp = cv2.imread(str(Path(image_source)))
         else:
             raise Exception(
                 "Invalid image data. Provide either a path to an image or an image array."
@@ -254,6 +258,7 @@ class CurvatureCorrection:
         Arguments:
             path (Path): path to the json file
         """
+
         with open(str(path), "w") as outfile:
             json.dump(self.config, outfile, indent=4)
 
@@ -271,6 +276,7 @@ class CurvatureCorrection:
             path (Path): path to the json-file.
         """
         with open(str(path), "r") as openfile:
+
             self.config = json.load(openfile)
 
     # TODO: Add an automatic way (using e.g, gradient decent) to choose the parameters.
