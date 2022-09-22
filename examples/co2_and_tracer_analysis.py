@@ -3,6 +3,8 @@ Example script for simple image analysis. By comparison of images
 of the same well test, a tracer concentration can be determined.
 """
 
+from pathlib import Path
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,7 +28,7 @@ def preprocessing(img: np.ndarray) -> np.ndarray:
     # (which can be created the workflow presented in the Jupyter notebook
     # examples/notebooks/curvature_correction_walkthrough.ipynb).
     curvature_correction = daria.CurvatureCorrection(
-        config_source="./images/config.json", width=2.8, height=1.5
+        config_source=Path("./images/config.json"), width=2.8, height=1.5
     )
 
     # Apply curvature correction.
