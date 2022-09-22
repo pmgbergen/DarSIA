@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import os
 import cv2
 import matplotlib.pyplot as plt
 
@@ -8,7 +9,7 @@ import daria
 # -------- Convert the image into linear RGB color space
 
 # Fetch image, in BGR
-img_BGR = cv2.imread(str(Path("./images/baseline.jpg")))
+img_BGR = cv2.imread(str(Path(f"{os.path.dirname(__file__)}/images/baseline.jpg")))
 
 # Convert to RGB (int)
 img_RGB = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2RGB)
@@ -31,4 +32,7 @@ fig, ax = plt.subplots(1, num=1)
 ax.imshow(img_RGB)
 fig, ax = plt.subplots(1, num=2)
 ax.imshow(corrected_baseline_RGB)
-plt.show()
+plt.show(block = False)
+# Pause longer if it is desired to keep the images on the screen
+plt.pause(3)
+plt.close()

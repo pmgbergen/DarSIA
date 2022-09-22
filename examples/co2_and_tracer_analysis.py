@@ -5,8 +5,10 @@ of the same well test, a tracer concentration can be determined.
 
 import cv2
 import matplotlib.pyplot as plt
+from pathlib import Path
 import numpy as np
 import skimage
+import os
 
 import daria
 
@@ -26,7 +28,7 @@ def preprocessing(img: np.ndarray) -> np.ndarray:
     # (which can be created the workflow presented in the Jupyter notebook
     # examples/notebooks/curvature_correction_walkthrough.ipynb).
     curvature_correction = daria.CurvatureCorrection(
-        config_source="./images/config.json", width=2.8, height=1.5
+        config_source=Path(f"{os.path.dirname(__file__)}/images/config.json"), width=2.8, height=1.5
     )
 
     # Apply curvature correction.
@@ -90,11 +92,11 @@ def determine_tracer(img: np.ndarray, base: np.ndarray) -> np.ndarray:
 # !----- Main routine for co2 analysis
 
 # Read image and preprocess baseline image
-baseline = cv2.imread("./images/co2_0.jpg")
+baseline = cv2.imread(str(Path(f"{os.path.dirname(__file__)}/images/co2_0.jpg")))
 baseline = preprocessing(baseline)
 
 # Read and preprocess test image
-co2_image = cv2.imread("./images/co2_2.jpg")
+co2_image = cv2.imread(str(Path(f"{os.path.dirname(__file__)}/images/co2_2.jpg")))
 co2_image = preprocessing(co2_image)
 
 # Determine co2
@@ -102,18 +104,21 @@ co2 = determine_tracer(co2_image, baseline)
 
 # Plot
 plt.imshow(co2)
-plt.show()
+plt.show(block = False)
+# Pause longer if it is desired to keep the images on the screen
+plt.pause(3)
+plt.close()
 
 # !----- Main routine for tracer analysis
 
 # Read in baseline figure and apply correction once
-baseline = cv2.imread("./images/tracer_0.jpg")
+baseline = cv2.imread(str(Path(f"{os.path.dirname(__file__)}/images/tracer_0.jpg")))
 baseline = preprocessing(baseline)
 
 # Read in test figure and apply correction
 # tracer_image = cv2.imread("./images/tracer_1.jpg")
 # tracer_image = cv2.imread("./images/tracer_2.jpg")
-tracer_image = cv2.imread("./images/tracer_3.jpg")
+tracer_image = cv2.imread(str(Path(f"{os.path.dirname(__file__)}/images/tracer_3.jpg")))
 tracer_image = preprocessing(tracer_image)
 
 # Determine tracer
@@ -121,4 +126,7 @@ tracer = determine_tracer(tracer_image, baseline)
 
 # Plot
 plt.imshow(tracer)
-plt.show()
+plt.show(block = False)
+# Pause longer if it is desired to keep the images on the screen
+plt.pause(3)
+plt.close()

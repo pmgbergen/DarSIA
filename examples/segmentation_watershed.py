@@ -7,13 +7,16 @@ import daria as da
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
+import os
 import skimage
 from skimage.restoration import denoise_tv_chambolle
 from scipy import ndimage as ndi
 
 # Color image
 # TODO: provide path to baseline image
-image_color = cv2.imread("images/Baseline_fullresolution.jpg")
+# image_color = cv2.imread("images/Baseline_fullresolution.jpg")
+image_color = cv2.imread(str(Path(f"{os.path.dirname(__file__)}/images/baseline.jpg")))
 
 # Consider 1d image, either gray or green channel (blue and red channels did not lead to any reasonable results in short time)
 image = cv2.cvtColor(image_color, cv2.COLOR_BGR2GRAY)
@@ -71,7 +74,10 @@ ax[1].plot(markers_basis_hist)
 ax[1].vlines(30, ymin=0, ymax=np.max(markers_basis_hist), colors="m")
 ax[2].imshow(skimage.color.label2rgb(labels, image_color))
 # ax[2].imshow(labels_roi2)
-plt.show()
+plt.show(block = False)
+# Pause longer if it is desired to keep the images on the screen
+plt.pause(3)
+plt.close()
 
 # NOTE two regions remain which need to be further segmented. They have labels: 3 and 4
 
@@ -114,4 +120,7 @@ fig, ax = plt.subplots(3, 1, num=2)
 ax[0].imshow(gradient)
 ax[1].imshow(sub_image)
 ax[2].imshow(sub_labels_roi2)
-plt.show()
+plt.show(block = False)
+# Pause longer if it is desired to keep the images on the screen
+plt.pause(3)
+plt.close()

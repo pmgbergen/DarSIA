@@ -60,6 +60,6 @@ jobs:
       if: ${{always()}}
       run: isort --check src
 
-    # - name: pytest
-    #   if: ${{always()}}
-    #   run: pytest
+    - name: pytest
+      if: ${{always()}}
+      run: pytest
