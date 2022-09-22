@@ -1,9 +1,10 @@
 This directory contains several examples on how DarIA can be used to
-analyze images of the FluidFlower. The following examples are highlighted
-while the remaining ones should be considered less important:
+analyze images of the FluidFlower. The run scripts demonstrate the practical
+use of daria, while in addition, notebooks include Jupter notebooks
+which instead have a more introductory character.
 
-curvature_correction_walkthrough.py
-color_correction.py
-segmentation_watershed.py
-tracer_analysis.py
-co2_analysis.py
+Topics covered in the examples are:
+* color and curvature correction
+* tracer and co2 detection
+* compaction analysis
+* sand layer segmentation

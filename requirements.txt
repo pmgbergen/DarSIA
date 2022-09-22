@@ -6,4 +6,5 @@ scikit-image
 future
 colour-science
 colour-checker-detection
+ipympl
 pillow
