@@ -6,3 +6,4 @@ scikit-image
 future
 colour-science
 colour-checker-detection
+pillow

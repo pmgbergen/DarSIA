@@ -6,6 +6,8 @@ A class for setup and application of curvature correction.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import json
 from pathlib import Path
 from typing import Union
@@ -44,10 +46,10 @@ class CurvatureCorrection:
 
         Arguments:
             kwargs (Optional keyword arguments):
-                image_source (Union[str, np.ndarray]): image source that either can
+                image_source (Union[Path, np.ndarray]): image source that either can
                             be provided as a path to an image or an image matrix.
                             Either this or the config_source must be provided.
-                config_source (str): path to the config source. Either this or the
+                config_source (Path): path to the config source. Either this or the
                             image_source must be provided.
                 width (float): physical width of the image. Only relevant if
                             image_source is provided.
@@ -63,8 +65,10 @@ class CurvatureCorrection:
             im_source = kwargs.pop("image_source")
             if isinstance(im_source, np.ndarray):
                 self.reference_image = im_source
-            elif isinstance(im_source, str):
-                self.reference_image = cv2.imread(str(Path(im_source)))
+
+            elif isinstance(im_source, Path):
+                self.reference_image = cv2.imread(str(im_source))
+
             else:
                 raise Exception(
                     "Invalid image data. Provide either a path to an image or an image array."
@@ -76,7 +80,10 @@ class CurvatureCorrection:
             self.height = kwargs.pop("height", 1.0)
 
         elif "config_source" in kwargs:
-            with open(str(Path(kwargs.pop("config_source"))), "r") as openfile:
+
+            config_source = kwargs.pop("config_source")
+            assert isinstance(config_source, Path)
+            with open(str(config_source), "r") as openfile:
                 self.config = json.load(openfile)
 
         else:
@@ -244,14 +251,15 @@ class CurvatureCorrection:
         )
         return image_tmp
 
-    def write_config_to_file(self, path: str) -> None:
+    def write_config_to_file(self, path: Path) -> None:
         """
         Writes the config dictionary to a json-file.
 
         Arguments:
-            path (str): path to the json file
+            path (Path): path to the json file
         """
-        with open(str(Path(path)), "w") as outfile:
+
+        with open(str(path), "w") as outfile:
             json.dump(self.config, outfile, indent=4)
 
     def show_current(self) -> None:
@@ -260,14 +268,15 @@ class CurvatureCorrection:
         """
         plt.imshow(cv2.cvtColor(self.current_image, cv2.COLOR_BGR2RGB))
 
-    def read_config_from_file(self, path: str) -> None:
+    def read_config_from_file(self, Path: path) -> None:
         """
         Reads a json-file to the config disctionary.
 
         Arguments:
-            path (str): path to the json-file.
+            path (Path): path to the json-file.
         """
-        with open(str(Path(path)), "r") as openfile:
+        with open(str(path), "r") as openfile:
+
             self.config = json.load(openfile)
 
     # TODO: Add an automatic way (using e.g, gradient decent) to choose the parameters.
