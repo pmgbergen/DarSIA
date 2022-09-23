@@ -82,6 +82,7 @@ class Image:
         """
 
         # Read metadata
+        no_colorspace_given = False
         if metadata is not None:
             self.metadata = metadata
             self.width: float = self.metadata["width"]
@@ -103,6 +104,11 @@ class Image:
             self.width: float = kwargs.pop("width", 1)
             self.height: float = kwargs.pop("height", 1)
             self.origo: list[float] = kwargs.pop("origo", [0, 0])
+            if "color_space" in kwargs:
+                self.colorspace = kwargs["color_space"]
+            else:
+                self.colorspace = "BGR"
+                no_colorspace_given = True
             self.colorspace: str = kwargs.pop("color_space", "BGR")
             self.update_metadata()
 
@@ -114,11 +120,7 @@ class Image:
             self.name = "Unnamed image"
             self.timestamp = None
 
-            if (
-                (metadata is None)
-                and ("color_space" not in kwargs)
-                and ("metadata_source" not in kwargs)
-            ):
+            if no_colorspace_given:
                 warn("Please provide a colorspace. Now it is assumed to be BGR.")
 
         elif isinstance(img, str):
@@ -238,19 +240,16 @@ class Image:
         cv2.waitKey(wait)
         cv2.destroyAllWindows()
 
-    def plt_show(self, time: Optional(int) = None) -> None:
+    def plt_show(self, time: int = 1000) -> None:
         """Show image using matplotlib.pyplots built-in imshow"""
 
         if self.colorspace == "BGR":
             rgbim = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
         else:
             rgbim = self.img
-        if time is not None:
-            plt.imshow(rgbim)
-            plt.pause(time)
-            plt.close
-        else:
-            plt.imshow(rgbim)
+        plt.imshow(rgbim)
+        plt.pause(time)
+        plt.close()
 
     # Seems like something that should read an image and return a new one with grid.
     def add_grid(
