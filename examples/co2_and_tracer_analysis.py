@@ -39,8 +39,8 @@ def preprocessing(img: np.ndarray) -> np.ndarray:
 
     # Apply color correction - need to specify a crude ROI containing the color checker.
     roi_cc = (slice(0, 600), slice(0, 700))
-    colorcorrection = daria.ColorCorrection()
-    img = colorcorrection.adjust(img, roi_cc)
+    color_correction = daria.ColorCorrection()
+    img = color_correction.adjust(img, roi_cc)
 
     return img
 
