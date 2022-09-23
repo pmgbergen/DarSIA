@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
 
 import cv2
 import matplotlib.pyplot as plt
@@ -38,12 +38,13 @@ class CurvatureCorrection:
 
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, config: Optional[dict] = None, **kwargs) -> None:
         """
         Constructor of curvature correction class.
 
         Arguments:
             kwargs (Optional keyword arguments):
+                config (dict, optional): config dictionary; default is None
                 image_source (Union[Path, np.ndarray]): image source that either can
                             be provided as a path to an image or an image matrix.
                             Either this or the config_source must be provided.
@@ -58,7 +59,11 @@ class CurvatureCorrection:
                             is provided.
         """
 
-        if "image_source" in kwargs:
+        if config is not None:
+            # Read config directly from argument list
+            self.config = config
+
+        elif "image_source" in kwargs:
             self.config: dict() = {}
             im_source = kwargs.pop("image_source")
             if isinstance(im_source, np.ndarray):
@@ -241,12 +246,20 @@ class CurvatureCorrection:
             raise Exception(
                 "Invalid image data. Provide either a path to an image or an image array."
             )
-        image_tmp = self.simple_curvature_correction(image_tmp, **self.config["init"])
-        image_tmp = da.extract_quadrilateral_ROI(image_tmp, **self.config["crop"])
-        image_tmp = self.simple_curvature_correction(image_tmp, **self.config["bulge"])
-        image_tmp = self.simple_curvature_correction(
-            image_tmp, **self.config["stretch"]
-        )
+        if "init" in self.config:
+            image_tmp = self.simple_curvature_correction(
+                image_tmp, **self.config["init"]
+            )
+        if "crop" in self.config:
+            image_tmp = da.extract_quadrilateral_ROI(image_tmp, **self.config["crop"])
+        if "bulge" in self.config:
+            image_tmp = self.simple_curvature_correction(
+                image_tmp, **self.config["bulge"]
+            )
+        if "stretch" in self.config:
+            image_tmp = self.simple_curvature_correction(
+                image_tmp, **self.config["stretch"]
+            )
         return image_tmp
 
     def write_config_to_file(self, path: Path) -> None:
