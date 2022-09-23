@@ -5,11 +5,12 @@ Images contain the image array, and in addition metadata about origo and dimensi
 
 from __future__ import annotations
 
+import json
 import math
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union
+from warnings import warn
 
 import cv2
 import matplotlib.pyplot as plt
@@ -49,19 +50,11 @@ class Image:
 
     def __init__(
         self,
-        img: np.ndarray,
-        origo: Union[np.ndarray, list[float]] = np.array([0, 0]),
-        width: float = 1,
-        height: float = 1,
-        depth: float = 0,
-        dim: int = 2,
-        read_metadata_from_file: bool = False,
-        metadata_path: Optional[str] = None,
-        # TODO Have to rethink the use of parameters, and possibly switch to
-        # a config file instead, that is shared among a full suite of images.
-        # It should contain information on the correction routines, necessary.
-        # It should include physical information: width, height
-        # It should include the format of timestamps included in the exifdata
+        img: Union[np.ndarray, str],
+        metadata: Optional[dict] = None,
+        curvature_correction: Optional[da.CurvatureCorrection] = None,
+        color_correction: Optional[da.ColorCorrection] = None,
+        **kwargs
     ) -> None:
         """Constructor of Image object.
 
@@ -69,16 +62,23 @@ class Image:
         conventional matrix indexing.
 
         Arguments:
-            img (np.ndarray): image array with matrix indexing
-            origo (np.ndarray): physical coordinates of the lower left corner
-            width (float): physical width of the image
-            height (float): physical height of the image
-            depth (float): physical depth of the image, only relevant for 3d images
-            dim (int): dimension of image, could be 2, 3, 4 (incl. the possibility for time)
-            read_metadata_from_file (bool): controlling whether meta data is read from file
-            metadata_path (str): path to metadata; should be changed if metadata is not placed
-                in the "images/metadata"-folder and taking the same path as the image. If
-                image is not passed as a path one also needs to pass it as a path.
+            img (Union[np.ndarray, str]): image array with matrix indexing
+            metadata (dict, Optional): metadata dictionary, default is None.
+            curvature_correction (daria.CurvatureCorrection, Optional):
+                Curvature correction object. Default is none, but should be included
+                if the image is to be curvature corrected at initialization
+            color_correction (daria.ColorCorrection, Optional): Color correction object.
+                Default is none, but should be included if the image is to be color
+                corrected at initialization.
+            kwargs (Optional arguments)
+                metadata_source (str): Path to a metadata json-file that provides
+                    metadata such as physical width, height and origo of image
+                    as well as colorspace
+                origo (np.ndarray): physical coordinates of the lower left corner
+                width (float): physical width of the image
+                height (float): physical height of the image
+                color_space (str): the colorspace of the image. So far only BGR
+                    and RGB are "valid", but more should be added at a later time.
         """
 
         # Fetch image
@@ -89,15 +89,12 @@ class Image:
             self.name = "Unnamed image"
             self.timestamp = None
 
-            # TODO this should come through a config file
-            self.colorspace: str = "bgr"
-
         elif isinstance(img, str):
             pil_img = PIL_Image.open(Path(img))
             self.img = np.array(pil_img)
 
             # PIL reads in RGB format
-            self.colorspace: str = "rgb"
+            self.colorspace: str = "RBG"
 
             # Read exif metadata
             self.exif = pil_img.getexif()
@@ -112,25 +109,53 @@ class Image:
                 "Invalid image data. Provide either a path to an image or an image array."
             )
 
-        # Read metadata from file or create from input arguments
-        if read_metadata_from_file:
-            self.create_metadata_from_file(metadata_path)
+        # # Read metadata from file or create from input arguments
+
+        if metadata is not None:
+            self.metadata = metadata
+            self.width: float = self.metadata["width"]
+            self.height: float = self.metadata["height"]
+            self.origo: list[float] = self.metadata["origo"]
+            self.colorspace: str = self.metadata["color_space"]
+
+        elif "metadata_source" in kwargs:
+            metadata_source = kwargs.pop("metadata_source")
+            with open(str(Path(metadata_source)), "r") as openfile:
+                self.metadata = json.load(openfile)
+
+            self.width: float = self.metadata["width"]
+            self.height: float = self.metadata["height"]
+            self.origo = self.metadata["origo"]
+            self.colorspace = self.metadata["color_space"]
+
         else:
-            self.origo = origo if isinstance(origo, np.ndarray) else np.array(origo)
-            self.width = width
-            self.height = height
-            self.dim = dim
-        self.shape = self.img.shape
+            self.width: float = kwargs.pop("width", 1)
+            self.height: float = kwargs.pop("height", 1)
+            self.origo: list[float] = kwargs.pop("origo", [0, 0])
+            if "color_space" in kwargs:
+                self.colorspace: str = kwargs["color_space"]
+            else:
+                self.colorspace: str = "BGR"
+                warn(
+                    "Please provide the color space. Now it is assumed to be in BGR format"
+                )
+            self.metadata: dict = {
+                "width": self.width,
+                "height": self.height,
+                "origo": self.origo,
+                "color_space": self.colorspace,
+            }
+
+        if curvature_correction is not None:
+            self.img = curvature_correction(self.img)
+
+        if color_correction is not None:
+            self.img = color_correction(self.img)
 
         # Determine numbers of cells in each dimension and cell size
         self.num_pixels_height, self.num_pixels_width = self.shape[:2]
         self.dx = self.width / self.num_pixels_width
         self.dy = self.height / self.num_pixels_height
-        # ... in 3d
-        if self.dim == 3:
-            self.depth = depth
-            self.num_pixels_depth = self.shape[2]
-            self.dz = self.depth / self.num_pixels_depth
 
         # Define the pixels in the corners of the image
         self.corners = {
@@ -143,46 +168,11 @@ class Image:
         # Establish a coordinate system based on the metadata
         self.coordinatesystem: da.CoordinateSystem = da.CoordinateSystem(self)
 
-    # There might be a cleaner way to do this. Then again, it works.
-    def create_metadata_from_file(self, path: Optional[str]) -> None:
-        """Reading routine for metadata.
-
-        Arguments:
-            path (str, optional): path to metadata
-        """
-        # If path is None, expect metadata in subfolder at same location
-        # as the orginal image. Otherwise use given path.
-        if path is None:
-            assert isinstance(self.imgpath, str)
-            # TODO This may not be OS independent.
-            pl = self.imgpath.split("/")
-            name = pl[2].split(".")[0]
-            path = pl[0] + "/metadata/" + name + ".txt"
-        try:
-            f = open(str(Path(path)), "r")
-        except OSError:
-            print(f"Could not open/read file: {path}")
-            sys.exit()
-
-        # Read in meta data: origo, width, height, dim
-        md_dict = {}
-        for line in f:
-            key, value = line.split(":")
-            md_dict[key] = value
-        # FIXME The origo numbers are hardcoded, might be a better solution
-        origo_nums = md_dict["Origo"].replace("[", "").replace("]", "").split(",")
-        self.origo = np.array([float(origo_nums[0]), float(origo_nums[1])])
-        self.width = float(md_dict["Width"])
-        self.height = float(md_dict["Height"])
-        self.dim = int(md_dict["Dimension"])
-
     def write(
         self,
         name: str = "img",
         path: str = str(Path("images/modified/")),
         file_format: str = ".jpg",
-        save_metadata: bool = True,
-        metadata_path: str = str(Path("images/metadata/")),
     ) -> None:
         """Write image to file.
 
@@ -193,26 +183,25 @@ class Image:
             name (str): name of image
             path (str): tpath to image (only folders)
             file_format (str): file ending, deifning the image format
-            save_metadata (bool): controlling whether metadata is stored
-            metadata_path (str): path to metadata (only folders); the metadata file
-                has the same name as the image (and a .txt ending)
         """
         # cv2 requires BGR format
         self.toBGR()
-        assert self.colorspace == "bgr"
+        assert self.colorspace == "BGR"
 
         # Write image, using the conventional matrix indexing
         cv2.imwrite(str(Path(path + name + file_format)), self.img)
         print("Image saved as: " + str(Path(path + name + file_format)))
 
-        # Write meta data
-        if save_metadata:
-            f = open(str(Path(metadata_path + name + ".txt")), "w")
-            f.write("Origo: " + str(self.origo) + "\n")
-            f.write("Width: " + str(self.width) + "\n")
-            f.write("Height: " + str(self.height) + "\n")
-            f.write("Dimension: " + str(self.dim) + "\n")
-            f.close()
+    def write_metadata_to_file(self, path: str) -> None:
+        """
+        Writes the metadata dictionary to a json-file.
+
+        Arguments:
+            path (str): path to the json file
+        """
+
+        with open(str(Path(path)), "w") as outfile:
+            json.dump(self.metadata, outfile, indent=4)
 
     def show(self, name: Optional[str] = None, wait: Optional[int] = 0) -> None:
         """Show image.
@@ -225,7 +214,7 @@ class Image:
         if name is None:
             name = self.name
 
-        if self.colorspace == "rgb":
+        if self.colorspace == "RGB":
             bgrim = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
 
         else:
@@ -240,7 +229,7 @@ class Image:
     def plt_show(self) -> None:
         """Show image using matplotlib.pyplots built-in imshow"""
 
-        if self.colorspace == "bgr":
+        if self.colorspace == "BGR":
             rgbim = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
         else:
             rgbim = self.img
@@ -353,14 +342,20 @@ class Image:
         """
         Returns a copy of the image object.
         """
-        return Image(self.img, self.origo, self.width, self.height)
+        return Image(self.img, self.metadata, color_space=self.colorspace)
 
     def toBGR(self) -> None:
-        if self.colorspace == "rgb":
+        """
+        Transforms image to BGR if it is in RGB
+        """
+        if self.colorspace == "RGB":
             self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
-            self.colorspace = "bgr"
+            self.colorspace = "BGR"
 
     def toRGB(self) -> None:
-        if self.colorspace == "bgr":
+        """
+        Transforms image to RGB if it is in BGR
+        """
+        if self.colorspace == "BGR":
             self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
-            self.colorspace = "rgb"
+            self.colorspace = "RGB"
