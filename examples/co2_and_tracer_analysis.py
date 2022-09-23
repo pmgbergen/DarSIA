@@ -77,7 +77,7 @@ co2_image = daria.Image(f"{os.path.dirname(__file__)}/images/co2_2.jpg", curvatu
 # Determine co2
 co2 = determine_tracer(co2_image, baseline_co2)
 
-# Plot change 3 to larger number (or remove it) if it is desired to keep the images on the screen
+# Plot change 3 to larger number if it is desired to keep the images on the screen
 co2.plt_show(3)
 
 # !----- Main routine for tracer analysis

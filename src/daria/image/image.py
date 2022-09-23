@@ -133,7 +133,7 @@ class Image:
 
             # Read exif metadata
             self.exif = pil_img.getexif()
-            if self.exif.get(306) is not None: 
+            if self.exif.get(306) is not None:
                 self.timestamp: datetime = datetime.strptime(
                     self.exif.get(306), "%Y:%m:%d %H:%M:%S"
                 )
@@ -240,6 +240,7 @@ class Image:
         cv2.waitKey(wait)
         cv2.destroyAllWindows()
 
+    # Not completely satisfied with this solution of timing
     def plt_show(self, time: int = 1000) -> None:
         """Show image using matplotlib.pyplots built-in imshow"""
 
@@ -332,9 +333,7 @@ class Image:
             )
 
         # Return image with grid as Image object
-        return Image(
-            img=gridimg, metadata = self.metadata
-        )
+        return Image(img=gridimg, metadata=self.metadata)
 
     # resize image by using cv2's resize command
     def resize(self, cx: float, cy: float) -> None:
@@ -387,10 +386,12 @@ class Image:
             gray_img.img = cv2.cvtColor(gray_img.img, cv2.COLOR_RGB2GRAY)
         elif self.colorspace == "BGR":
             gray_img.img = cv2.cvtColor(gray_img.img, cv2.COLOR_BGR2GRAY)
-        elif self.colorspace =="GRAY":
+        elif self.colorspace == "GRAY":
             pass
         else:
-            raise Exception("Only RGB or BGR images can be converted to Gray at the moment")
+            raise Exception(
+                "Only RGB or BGR images can be converted to Gray at the moment"
+            )
         gray_img.colorspace = "GRAY"
         gray_img.update_metadata()
         return gray_img
@@ -401,13 +402,15 @@ class Image:
         """
         red_img = self.copy()
         if self.colorspace == "RGB":
-            red_img.img = red_img.img[:,:,0]
+            red_img.img = red_img.img[:, :, 0]
         elif self.colorspace == "BGR":
-            red_img.img = red_img.img[:,:,2]
-        elif self.colorspace =="RED":
+            red_img.img = red_img.img[:, :, 2]
+        elif self.colorspace == "RED":
             pass
         else:
-            raise Exception("Only RGB or BGR images can be converted to Red at the moment")
+            raise Exception(
+                "Only RGB or BGR images can be converted to Red at the moment"
+            )
         red_img.colorspace = "RED"
         red_img.update_metadata()
         return red_img
@@ -418,13 +421,15 @@ class Image:
         """
         blue_img = self.copy()
         if self.colorspace == "RGB":
-            blue_img.img = blue_img.img[:,:,2]
+            blue_img.img = blue_img.img[:, :, 2]
         elif self.colorspace == "BGR":
-            blue_img.img = blue_img.img[:,:,0]
-        elif self.colorspace =="BLUE":
+            blue_img.img = blue_img.img[:, :, 0]
+        elif self.colorspace == "BLUE":
             pass
         else:
-            raise Exception("Only RGB or BGR images can be converted to blue at the moment")
+            raise Exception(
+                "Only RGB or BGR images can be converted to blue at the moment"
+            )
         blue_img.colorspace = "BLUE"
         blue_img.update_metadata()
         return blue_img
@@ -435,13 +440,15 @@ class Image:
         """
         green_img = self.copy()
         if self.colorspace == "RGB":
-            green_img.img = green_img.img[:,:,1]
+            green_img.img = green_img.img[:, :, 1]
         elif self.colorspace == "BGR":
-            green_img.img = green_img.img[:,:,2]
-        elif self.colorspace =="GREEN":
+            green_img.img = green_img.img[:, :, 2]
+        elif self.colorspace == "GREEN":
             pass
         else:
-            raise Exception("Only RGB or BGR images can be converted to green at the moment")
+            raise Exception(
+                "Only RGB or BGR images can be converted to green at the moment"
+            )
         green_img.colorspace = "GREEN"
         green_img.update_metadata()
         return green_img
