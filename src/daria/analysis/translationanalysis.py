@@ -20,7 +20,7 @@ class TranslationAnalysis:
 
     def __init__(
         self,
-        img_src: daria.Image,
+        base: daria.Image,
         N_patches: list[int],
         rel_overlap: float,
         translationEstimator: daria.TranslationEstimator,
@@ -28,24 +28,31 @@ class TranslationAnalysis:
         """
         Constructor for TranslationAnalysis.
 
+        It allows to determine the translation of any image to a given baseline image
+        in order to provide a best-possible match, based on feature detection.
+
         Args:
-            img_src (daria.Image): base image
+            base (daria.Image): baseline image; it serves as fixed point in the analysis,
+                which is relevant if a series of translations is analyzed. Furthermore, the
+                baseline image provides all reference values as the coordinate system, e.g.
             N_patches (list of two int): number of patches in x and y direction
             rel_overlap (float): relative overal related to patch size in each direction
         """
         # Store parameters
-        self.img_src = img_src
+        self.base = base
         self.N_patches = N_patches
         self.rel_overlap = rel_overlap
         self.translationEstimator = translationEstimator
 
         # Construct patches of the base image
-        self.patches_src = daria.Patches(
-            img_src, *self.N_patches, rel_overlap=self.rel_overlap
+        self.patches_base = daria.Patches(
+            base, *self.N_patches, rel_overlap=self.rel_overlap
         )
 
         # Determine the centers of the patches, in Cartesian coordinates
-        self.patch_centers_cartesian = self.patches_src.global_centers_cartesian
+        self.patch_centers_cartesian = self.patches_base.global_centers_cartesian
+
+    # TOOD add update_base methods similar to other tools
 
     def update_params(
         self, N_patches: Optional[list[int]] = None, rel_overlap: Optional[float] = None
@@ -74,28 +81,38 @@ class TranslationAnalysis:
 
         # Create new patches of the base image if any changes performed
         if need_update_N_patches or need_update_rel_overlap:
-            self.patches_src = daria.Patches(
-                self.img_src, *self.N_patches, rel_overlap=self.rel_overlap
+            self.patches_base = daria.Patches(
+                self.base, *self.N_patches, rel_overlap=self.rel_overlap
             )
 
             # Determine the centers of the patches in Cartesian coordinates
             if need_update_N_patches:
-                self.patch_centers_cartesian = self.patches_src.global_centers_cartesian
+                self.patch_centers_cartesian = (
+                    self.patches_base.global_centers_cartesian
+                )
 
-    def find_translation(
-        self, img_dst: daria.Image, units: list[str] = ["metric", "pixel"]
-    ) -> tuple:
+    def load_image(self, img: daria.Image) -> None:
+        """Load an image to be inspected in futher analysis.
+
+        Args:
+            img (daria.Image): test image
         """
-        Find translation map as translation required to match the base image to the
-        provided image.
+        self.img = img
+
+        # TODO, apply patching here already? why not?
+
+    def find_translation(self, units: list[str] = ["metric", "pixel"]) -> tuple:
+        # TODO ideally this method should not require units; only the application routine does.
+        """
+        Find translation map as translation from image to baseline image such that
+        these match as best as possible, measure on features.
 
         The final translation map will be stored as callable function. And it allows
         various input and output spaces (metric vs. pixel).
 
         Args:
-            img_dst (daria.Image): test image
             units (list of str): units for input (first entry) and output (second entry)
-                of the resulting translation map; accepts either "metric" (default for both)
+                ranges of the resulting translation map; accepts either "metric"
                 or "pixel".
 
         Returns:
@@ -113,8 +130,8 @@ class TranslationAnalysis:
         # ! ---- Step 1. Patch analysis.
 
         # Construct patches of the test image
-        patches_dst = daria.Patches(
-            img_dst, *self.N_patches, rel_overlap=self.rel_overlap
+        patches_img = daria.Patches(
+            self.img, *self.N_patches, rel_overlap=self.rel_overlap
         )
 
         # Monitor success of finding a translation/homography for each patch
@@ -140,16 +157,16 @@ class TranslationAnalysis:
             for j in range(self.N_patches[1]):
 
                 # Fetch patches of both source and destination image
-                img_src = self.patches_src(i, j)
-                img_dst = patches_dst(i, j)
+                patch_base = self.patches_base(i, j)
+                patch_img = patches_img(i, j)
 
-                # Determine effective translation, operating on pixel coordinates using
-                # reverse matrix indexing.
+                # Determine effective translation from input to baseline image, operating on
+                # pixel coordinates and using reverse matrix indexing.
                 (
                     translation,
                     intact_translation,
                 ) = self.translationEstimator.find_effective_translation(
-                    img_src.img, img_dst.img, None, None, plot_matches=False
+                    patch_img.img, patch_base.img, None, None, plot_matches=False
                 )
 
                 # The above procedure to find a matching transformation is successful if in
@@ -166,7 +183,7 @@ class TranslationAnalysis:
 
                     # Convert to pixel units using reverse matrix indexing, if required
                     if units[0] == "pixel":
-                        center = self.img_src.coordinatesystem.coordinateToPixel(
+                        center = self.base.coordinatesystem.coordinateToPixel(
                             center, reverse=True
                         )
 
@@ -178,7 +195,7 @@ class TranslationAnalysis:
                     # vector, and that it is given using reverse matrix indexing
                     if units[1] == "metric":
                         displacement = (
-                            self.img_src.coordinatesystem.pixelToCoordinateVector(
+                            self.base.coordinatesystem.pixelToCoordinateVector(
                                 displacement, reverse=True
                             )
                         )
@@ -248,13 +265,13 @@ class TranslationAnalysis:
         if units[0] == "metric":
             # Add the left vertical boundary
             vertical_boundary += [
-                self.img_src.origo + np.array([0, y_pos])
-                for y_pos in np.linspace(0, self.img_src.height, self.N_patches[1] + 1)
+                self.base.origo + np.array([0, y_pos])
+                for y_pos in np.linspace(0, self.base.height, self.N_patches[1] + 1)
             ]
             # Add the right vertical boundary
             vertical_boundary += [
-                self.img_src.origo + np.array([self.img_src.width, y_pos])
-                for y_pos in np.linspace(0, self.img_src.height, self.N_patches[1] + 1)
+                self.base.origo + np.array([self.base.width, y_pos])
+                for y_pos in np.linspace(0, self.base.height, self.N_patches[1] + 1)
             ]
 
         elif units[0] == "pixel":
@@ -262,14 +279,14 @@ class TranslationAnalysis:
             vertical_boundary += [
                 np.array([0, y_pos])
                 for y_pos in np.linspace(
-                    0, self.img_src.num_pixels_height, self.N_patches[1] + 1
+                    0, self.base.num_pixels_height, self.N_patches[1] + 1
                 )
             ]
             # Add the right vertical boundary - comply to reverse matrix indexing
             vertical_boundary += [
-                np.array([self.img_src.num_pixels_width, y_pos])
+                np.array([self.base.num_pixels_width, y_pos])
                 for y_pos in np.linspace(
-                    0, self.img_src.num_pixels_height, self.N_patches[1] + 1
+                    0, self.base.num_pixels_height, self.N_patches[1] + 1
                 )
             ]
 
@@ -299,30 +316,32 @@ class TranslationAnalysis:
         if units[0] == "metric":
             # Add the bottom horizontal boundary
             horizontal_boundary += [
-                self.img_src.origo + np.array([x_pos, 0])
-                for x_pos in np.linspace(0, self.img_src.width, self.N_patches[0] + 1)
+                self.base.origo + np.array([x_pos, 0])
+                for x_pos in np.linspace(0, self.base.width, self.N_patches[0] + 1)
             ]
 
         elif units[0] == "pixel":
             # Add the bottom horizontal boundary - comply to reverse matrix indexing
             horizontal_boundary += [
-                np.array([x_pos, self.img_src.num_pixels_height])
+                np.array([x_pos, self.base.num_pixels_height])
                 for x_pos in np.linspace(
-                    0, self.img_src.num_pixels_width, self.N_patches[0] + 1
+                    0, self.base.num_pixels_width, self.N_patches[0] + 1
                 )
             ]
 
         return horizontal_boundary, len(horizontal_boundary) * [0.0]
 
-    def translate_centers(
-        self, img_dst: daria.Image, plot_translation: bool = False
+    def plot_translation(
+        self,
+        reverse: bool = False,
     ) -> None:
         """
-        Translate centers of the base image.
+        Translate centers of the test image and plot in terms of displacement arrows.
 
         Args:
-            plot_translation (bool): flag controlling whether the translation is
-                plotted in terms of arrows on top of the base and test images
+            reverse (bool): flag whether the translation is understood as from the
+                test image to the baseline image, or reversed. The default is the
+                former one.
         """
         # Only continue if a translation has been already found
         assert self.have_translation.any()
@@ -339,70 +358,69 @@ class TranslationAnalysis:
         interpolated_patch_translation_x = self.interpolator_translation_x(input_arg)
         interpolated_patch_translation_y = self.interpolator_translation_y(input_arg)
 
+        # Flip, if required
+        if reverse:
+            interpolated_patch_translation_x *= -1.0
+            interpolated_patch_translation_y *= -1.0
+
         # Convert coordinates of patch centers to pixels - using the matrix indexing
         patch_centers_x_pixels = np.zeros(tuple(reversed(self.N_patches)), dtype=int)
         patch_centers_y_pixels = np.zeros(tuple(reversed(self.N_patches)), dtype=int)
         for j in range(self.N_patches[1]):
             for i in range(self.N_patches[0]):
                 center = self.patch_centers_cartesian[i, j]
-                pixel = self.img_src.coordinatesystem.coordinateToPixel(center)
+                pixel = self.base.coordinatesystem.coordinateToPixel(center)
                 patch_centers_x_pixels[self.N_patches[1] - 1 - j, i] = pixel[1]
                 patch_centers_y_pixels[self.N_patches[1] - 1 - j, i] = pixel[0]
 
         # Plot the interpolated translation
-        if plot_translation:
-            fig, ax = plt.subplots(1, num=1)
-            ax.quiver(
-                patch_centers_x_pixels,
-                patch_centers_y_pixels,
-                interpolated_patch_translation_x,
-                interpolated_patch_translation_y,
-                scale=2000,
-                color="white",
+        fig, ax = plt.subplots(1, num=1)
+        ax.quiver(
+            patch_centers_x_pixels,
+            patch_centers_y_pixels,
+            interpolated_patch_translation_x,
+            interpolated_patch_translation_y,
+            scale=2000,
+            color="white",
+        )
+        ax.imshow(
+            skimage.util.compare_images(self.base.img, self.img.img, method="blend")
+        )
+        fig, ax = plt.subplots(1, num=2)
+        ax.imshow(
+            skimage.util.compare_images(
+                self.base.img,
+                skimage.transform.resize(
+                    np.flipud(self.have_translation.T), self.base.img.shape
+                ),
+                method="blend",
             )
-            ax.imshow(
-                skimage.util.compare_images(
-                    self.img_src.img, img_dst.img, method="blend"
-                )
-            )
-            fig, ax = plt.subplots(1, num=2)
-            ax.imshow(
-                skimage.util.compare_images(
-                    self.img_src.img,
-                    skimage.transform.resize(
-                        np.flipud(self.have_translation.T), self.img_src.img.shape
-                    ),
-                    method="blend",
-                )
-            )
-            plt.show()
+        )
+        plt.show()
 
     def translate_image(
         self,
-        img_src: daria.Image,
         reverse: bool = False,
-        plot_transformation: bool = False,
     ) -> daria.Image:
         """
         Apply translation to an entire image by using piecwise perspective transformation.
 
         Args:
-            img_dst (daria.Image): source image to be translated (not necessarily self.img_src)
-            method (str): either "forward" or "reverse" for applying positive or negative
-                displacement
-            plot_transformation (bool): plot the transformed image
+            reverse (bool): flag whether the translation is understood as from the
+                test image to the baseline image, or reversed. The default is the
+                former one.
 
         Returns:
             daria.Image: translated image
         """
 
-        # Construct patches of the base image without overlap
-        patches_src = daria.Patches(img_src, *self.N_patches, rel_overlap=0.0)
+        # Segment the test image into cells by patching without overlap
+        patches = daria.Patches(self.img, *self.N_patches, rel_overlap=0.0)
 
         # Create piecewise perspective transform on the patches
         perspectiveTransform = daria.PiecewisePerspectiveTransform()
         transformed_img: daria.Image = perspectiveTransform.find_and_warp(
-            patches_src, self.translation, reverse
+            patches, self.translation, reverse
         )
 
         return transformed_img
