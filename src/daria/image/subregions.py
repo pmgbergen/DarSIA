@@ -83,8 +83,6 @@ def extract_quadrilateral_ROI(img_src: np.ndarray, **kwargs) -> np.ndarray:
         kwargs (optional keyword arguments):
             width (int or float): width of the physical object
             height (int or float): height of the physical object
-            in meters (boolean): controlling whether width and height are float and
-                are meant as in meters; number of pixels otherwise
             pts_src (array): N points with pixels in (col,row) format, N>=4
             pts_dst (array, optional): N points with pixels in (col, row) format, N>=4
     """
@@ -99,18 +97,14 @@ def extract_quadrilateral_ROI(img_src: np.ndarray, **kwargs) -> np.ndarray:
     if isinstance(pts_src, list):
         pts_src = np.array(pts_src)
 
-    # Allow 'width' and 'height' to be provided in meters.
-    # Then aim at comparably many pixels as in the provided
-    # image, modulo the ratio
-    if kwargs.pop("in meters", False):
+    # Aim at comparably many pixels as in the provided
+    # image, modulo the ratio.
+    aspect_ratio = target_width / target_height
 
-        # The goal aspect ratio
-        aspect_ratio = target_width / target_height
-
-        # Try to keep this aspect ratio, but do not use more pixels than before.
-        # Convert to number of pixels
-        target_width = min(width, int(aspect_ratio * float(height)))
-        target_height = min(height, int(1.0 / aspect_ratio * float(width)))
+    # Try to keep this aspect ratio, but do not use more pixels than before.
+    # Convert to number of pixels
+    target_width = min(width, int(aspect_ratio * float(height)))
+    target_height = min(height, int(1.0 / aspect_ratio * float(width)))
 
     # Assign corner points as destination points if none are provided.
     if "pts_dst" not in kwargs:
