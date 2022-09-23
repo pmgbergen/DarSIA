@@ -88,6 +88,10 @@ class ColorCorrection:
             decoded_image, swatches, self.ccc.reference_swatches, method="Cheung 2004"
         )
 
+        # The correction may result in values outside the feasible range [0., 1.].
+        # Thus, simply clip the values for consistency.
+        corrected_decoded_image = np.clip(corrected_decoded_image, 0, 1)
+
         # Apply white balancing, such that the third bottom left swatch of the color checker
         # is exact
         if whitebalancing:
