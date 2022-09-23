@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Union, Optional
+from typing import Optional, Union
 
 import cv2
 import matplotlib.pyplot as plt
