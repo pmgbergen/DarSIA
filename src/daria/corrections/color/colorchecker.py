@@ -45,7 +45,7 @@ class ColorCorrection:
         # Reference of the class color checker
         self.ccc = ClassicColorChecker()
 
-    def adjust(
+    def __call__(
         self,
         image: np.ndarray,
         roi: Optional[tuple] = None,
@@ -85,8 +85,12 @@ class ColorCorrection:
         # Apply color correction onto full image based on the swatch colors in comparison with
         # the standard colors
         corrected_decoded_image = colour.colour_correction(
-            decoded_image, swatches, self.ccc.reference_swatches
+            decoded_image, swatches, self.ccc.reference_swatches, method="Cheung 2004"
         )
+
+        # The correction may result in values outside the feasible range [0., 1.].
+        # Thus, simply clip the values for consistency.
+        corrected_decoded_image = np.clip(corrected_decoded_image, 0, 1)
 
         # Apply white balancing, such that the third bottom left swatch of the color checker
         # is exact
@@ -107,6 +111,10 @@ class ColorCorrection:
 
             # Standard D65 illuminant
             D65 = colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["D65"]
+
+            # NOTE: Mainly for debugging purposes, the visualize of the
+            # 'before' and 'after' of the color correction, is following.
+            # The 'before' is commented out, but can be activated by uncommenting.
 
             # Convert swatches from RGB to xyY
             # swatches_xyY = colour.XYZ_to_xyY(
