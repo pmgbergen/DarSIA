@@ -39,18 +39,12 @@ class TranslationAnalysis:
             rel_overlap (float): relative overal related to patch size in each direction
         """
         # Store parameters
-        self.base = base
         self.N_patches = N_patches
         self.rel_overlap = rel_overlap
         self.translationEstimator = translationEstimator
 
         # Construct patches of the base image
-        self.patches_base = daria.Patches(
-            base, *self.N_patches, rel_overlap=self.rel_overlap
-        )
-
-        # Determine the centers of the patches, in Cartesian coordinates
-        self.patch_centers_cartesian = self.patches_base.global_centers_cartesian
+        self.update_base(base)
 
     # TOOD add update_base methods similar to other tools
 
@@ -79,17 +73,23 @@ class TranslationAnalysis:
         if need_update_rel_overlap:
             self.rel_overlap = rel_overlap
 
-        # Create new patches of the base image if any changes performed
+        # Update the patches of the base image accordingly.
         if need_update_N_patches or need_update_rel_overlap:
-            self.patches_base = daria.Patches(
-                self.base, *self.N_patches, rel_overlap=self.rel_overlap
-            )
+            self.update_base()
 
-            # Determine the centers of the patches in Cartesian coordinates
-            if need_update_N_patches:
-                self.patch_centers_cartesian = (
-                    self.patches_base.global_centers_cartesian
-                )
+    def update_base(self, base: Optional[daria.Image] = None) -> None:
+        """Update baseline image.
+
+        Args:
+            base (daria.Image): baseline image
+        """
+        if base is not None:
+            self.base = base
+
+        # Create new patches of the base image.
+        self.patches_base = daria.Patches(
+            self.base, *self.N_patches, rel_overlap=self.rel_overlap
+        )
 
     def load_image(self, img: daria.Image) -> None:
         """Load an image to be inspected in futher analysis.
@@ -143,6 +143,9 @@ class TranslationAnalysis:
         patch_translation_x: list[float] = []
         patch_translation_y: list[float] = []
 
+        # Fetch patch centers
+        patch_centers_cartesian = self.patches_base.global_centers_cartesian
+
         # Continue with investigating all patches. The main idea is to determine
         # a suitable patchwise (discontinuous) homography, and extract an effective
         # translation for each patch. The following procedure does not work
@@ -179,7 +182,7 @@ class TranslationAnalysis:
 
                     # Fetch the center of the patch in metric units, which will be the input
                     # for later construction of the interpolator
-                    center = self.patch_centers_cartesian[i, j]
+                    center = patch_centers_cartesian[i, j]
 
                     # Convert to pixel units using reverse matrix indexing, if required
                     if units[0] == "pixel":
@@ -346,12 +349,15 @@ class TranslationAnalysis:
         # Only continue if a translation has been already found
         assert self.have_translation.any()
 
+        # Fetch patch centers
+        patch_centers_cartesian = self.patches_base.global_centers_cartesian
+
         # Interpolate at patch centers
         input_arg = np.transpose(
             np.vstack(
                 (
-                    np.flipud(self.patch_centers_cartesian[:, :, 0].T).flatten(),
-                    np.flipud(self.patch_centers_cartesian[:, :, 1].T).flatten(),
+                    np.flipud(patch_centers_cartesian[:, :, 0].T).flatten(),
+                    np.flipud(patch_centers_cartesian[:, :, 1].T).flatten(),
                 )
             )
         )
@@ -368,7 +374,7 @@ class TranslationAnalysis:
         patch_centers_y_pixels = np.zeros(tuple(reversed(self.N_patches)), dtype=int)
         for j in range(self.N_patches[1]):
             for i in range(self.N_patches[0]):
-                center = self.patch_centers_cartesian[i, j]
+                center = patch_centers_cartesian[i, j]
                 pixel = self.base.coordinatesystem.coordinateToPixel(center)
                 patch_centers_x_pixels[self.N_patches[1] - 1 - j, i] = pixel[1]
                 patch_centers_y_pixels[self.N_patches[1] - 1 - j, i] = pixel[0]
