@@ -30,12 +30,13 @@ class ClassicColorChecker:
 
 
 class ColorCorrection:
-    def __init__(self):
+    def __init__(self, ROI: Optional[tuple] = None):
         """
         Constructor of converter, setting up a priori all data needed for fast conversion.
 
         Attributes:
             eotf: LUTs for standard electro-optical transfer function
+            roi (tuple of slices): region of interest containing a colour checker
         """
 
         # Define look up tables approximating the standard electro-optical
@@ -45,10 +46,14 @@ class ColorCorrection:
         # Reference of the class color checker
         self.ccc = ClassicColorChecker()
 
+        # Define ROI
+        self.ROI = ROI
+
+    # TODO: if it possible to move all arguments (except for image) to the
+    # definition of the class?
     def __call__(
         self,
         image: np.ndarray,
-        roi: Optional[tuple] = None,
         verbosity: bool = False,
         whitebalancing: bool = True,
     ) -> np.ndarray:
@@ -59,7 +64,6 @@ class ColorCorrection:
 
         Arguments:
             image (np.ndarray): image with uint8 value in (linear) RGB color space
-            roi (tuple of slices): region of interest containing a colour checker
             verbosity (bool): displays corrected color checker on top of the reference one if
                               True, default is False
             whitebalancing (bool): apply white balancing based on the third bottom left swatch
@@ -73,7 +77,9 @@ class ColorCorrection:
         decoded_image = self.eotf.adjust(image)
 
         # Extract part of the image containing a color checker.
-        colorchecker_image = decoded_image[roi] if roi is not None else decoded_image
+        colorchecker_image = (
+            decoded_image[self.ROI] if self.ROI is not None else decoded_image
+        )
 
         # Retrieve swatch colors in transfered RGB format
         swatches = detect_colour_checkers_segmentation(colorchecker_image)
@@ -96,8 +102,8 @@ class ColorCorrection:
         # is exact
         if whitebalancing:
             corrected_colorchecker_image = (
-                corrected_decoded_image[roi]
-                if roi is not None
+                corrected_decoded_image[self.ROI]
+                if self.ROI is not None
                 else corrected_decoded_image
             )
             swatches = detect_colour_checkers_segmentation(

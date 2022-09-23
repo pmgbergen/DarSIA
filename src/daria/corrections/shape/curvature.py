@@ -69,8 +69,8 @@ class CurvatureCorrection:
             if isinstance(im_source, np.ndarray):
                 self.reference_image = im_source
 
-            elif isinstance(im_source, Path):
-                self.reference_image = cv2.imread(str(im_source))
+            elif isinstance(im_source, str):
+                self.reference_image = cv2.imread(str(Path(im_source)))
 
             else:
                 raise Exception(
@@ -85,8 +85,8 @@ class CurvatureCorrection:
         elif "config_source" in kwargs:
 
             config_source = kwargs.pop("config_source")
-            assert isinstance(config_source, Path)
-            with open(str(config_source), "r") as openfile:
+            assert isinstance(config_source, str)
+            with open(str(Path(config_source)), "r") as openfile:
                 self.config = json.load(openfile)
 
         else:
@@ -262,7 +262,7 @@ class CurvatureCorrection:
             )
         return image_tmp
 
-    def write_config_to_file(self, path: Path) -> None:
+    def write_config_to_file(self, path: str) -> None:
         """
         Writes the config dictionary to a json-file.
 
@@ -270,7 +270,7 @@ class CurvatureCorrection:
             path (Path): path to the json file
         """
 
-        with open(str(path), "w") as outfile:
+        with open(str(Path(path)), "w") as outfile:
             json.dump(self.config, outfile, indent=4)
 
     def show_current(self) -> None:
@@ -279,14 +279,14 @@ class CurvatureCorrection:
         """
         plt.imshow(cv2.cvtColor(self.current_image, cv2.COLOR_BGR2RGB))
 
-    def read_config_from_file(self, path: Path) -> None:
+    def read_config_from_file(self, path: str) -> None:
         """
         Reads a json-file to the config disctionary.
 
         Arguments:
             path (Path): path to the json-file.
         """
-        with open(str(path), "r") as openfile:
+        with open(str(Path(path)), "r") as openfile:
 
             self.config = json.load(openfile)
 
