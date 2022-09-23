@@ -430,3 +430,21 @@ class TranslationAnalysis:
         )
 
         return transformed_img
+
+    def __call__(self, img: daria.Image, plot_translation: bool = False) -> daria.Image:
+        """
+        Standard workflow, starting with loading the test image, finding
+        the translation required to match the baseline image,
+        and then apply the translation.
+
+        Args:
+            img (daria.Image): test image, to be matched with the baseline image
+
+        Returns:
+            daria.Image: translated image
+        """
+        self.load_image(img)
+        self.find_translation(units=["pixel", "pixel"])
+        transformed_img = self.translate_image()
+
+        return transformed_img
