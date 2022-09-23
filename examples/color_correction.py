@@ -8,30 +8,22 @@ import daria
 
 # -------- Convert the image into linear RGB color space
 
-# Fetch image, in BGR
-img_BGR = cv2.imread(str(Path(f"{os.path.dirname(__file__)}/images/baseline.jpg")))
-
-# Convert to RGB (int)
-img_RGB = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2RGB)
-
-# -------- Apply colour correction based on color checker
-
 # Need to specify a ROI which contains the color checker
 roi_cc = (slice(0, 240), slice(0, 240))
 
-# Apply color correction
-color_correction = daria.ColorCorrection()
-corrected_baseline_RGB = color_correction(img_RGB, roi_cc, verbosity=False)
+# Create the color correction and apply it at initialization of image class
+color_correction = daria.ColorCorrection(ROI=roi_cc)
+baseline_corrected = daria.Image(f"{os.path.dirname(__file__)}/images/baseline.jpg", color_correction = color_correction)
 
-# NOTE: For some reason, when choosing verbosity=True the colour checker is displayed,
-# but no other images can be properly displayed afterwards anymore.
+# Create an uncorrected image for comparison
+baseline_uncorrected = daria.Image(f"{os.path.dirname(__file__)}/images/baseline.jpg")
 
-# -------- Plot images pre and post correction, and store both images
+# -------- Plot corrected and uncorrected images
 
 fig, ax = plt.subplots(1, num=1)
-ax.imshow(img_RGB)
+ax.imshow(baseline_corrected.img)
 fig, ax = plt.subplots(1, num=2)
-ax.imshow(corrected_baseline_RGB)
+ax.imshow(baseline_uncorrected.img)
 plt.show(block = False)
 # Pause longer if it is desired to keep the images on the screen
 plt.pause(3)

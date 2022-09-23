@@ -54,7 +54,7 @@ class Image:
         metadata: Optional[dict] = None,
         curvature_correction: Optional[da.CurvatureCorrection] = None,
         color_correction: Optional[da.ColorCorrection] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Constructor of Image object.
 
@@ -81,36 +81,7 @@ class Image:
                     and RGB are "valid", but more should be added at a later time.
         """
 
-        # Fetch image
-        if isinstance(img, np.ndarray):
-            self.img = img
-
-            # Come up with default metadata
-            self.name = "Unnamed image"
-            self.timestamp = None
-
-        elif isinstance(img, str):
-            pil_img = PIL_Image.open(Path(img))
-            self.img = np.array(pil_img)
-
-            # PIL reads in RGB format
-            self.colorspace: str = "RBG"
-
-            # Read exif metadata
-            self.exif = pil_img.getexif()
-            self.timestamp: datetime = datetime.strptime(
-                self.exif.get(306), "%Y:%m:%d %H:%M:%S"
-            )
-
-            self.imgpath = img
-            self.name = img
-        else:
-            raise Exception(
-                "Invalid image data. Provide either a path to an image or an image array."
-            )
-
-        # # Read metadata from file or create from input arguments
-
+        # Read metadata
         if metadata is not None:
             self.metadata = metadata
             self.width: float = self.metadata["width"]
@@ -126,34 +97,67 @@ class Image:
             self.width: float = self.metadata["width"]
             self.height: float = self.metadata["height"]
             self.origo = self.metadata["origo"]
-            self.colorspace = self.metadata["color_space"]
+            self.colorspace: str = self.metadata["color_space"]
 
         else:
             self.width: float = kwargs.pop("width", 1)
             self.height: float = kwargs.pop("height", 1)
             self.origo: list[float] = kwargs.pop("origo", [0, 0])
-            if "color_space" in kwargs:
-                self.colorspace: str = kwargs["color_space"]
-            else:
-                self.colorspace: str = "BGR"
-                warn(
-                    "Please provide the color space. Now it is assumed to be in BGR format"
+            self.colorspace: str = kwargs.pop("color_space", "BGR")
+            self.update_metadata()
+
+        # Fetch image
+        if isinstance(img, np.ndarray):
+            self.img = img
+
+            # Come up with default metadata
+            self.name = "Unnamed image"
+            self.timestamp = None
+
+            if (
+                (metadata is None)
+                and ("color_space" not in kwargs)
+                and ("metadata_source" not in kwargs)
+            ):
+                warn("Please provide a colorspace. Now it is assumed to be BGR.")
+
+        elif isinstance(img, str):
+            pil_img = PIL_Image.open(Path(img))
+            self.img = np.array(pil_img)
+
+            # PIL reads in RGB format
+            self.colorspace: str = "RGB"
+            self.metadata["color_space"] = "RGB"
+
+            # Read exif metadata
+            self.exif = pil_img.getexif()
+            if self.exif.get(306) is not None: 
+                self.timestamp: datetime = datetime.strptime(
+                    self.exif.get(306), "%Y:%m:%d %H:%M:%S"
                 )
-            self.metadata: dict = {
-                "width": self.width,
-                "height": self.height,
-                "origo": self.origo,
-                "color_space": self.colorspace,
-            }
+            else:
+                self.timestamp = None
+
+            self.imgpath = img
+            self.name = img
+        else:
+            raise Exception(
+                "Invalid image data. Provide either a path to an image or an image array."
+            )
 
         if curvature_correction is not None:
             self.img = curvature_correction(self.img)
+            self.width = curvature_correction.config["crop"]["width"]
+            self.height = curvature_correction.config["crop"]["height"]
+            self.origo = [0, 0]
+            self.update_metadata()
 
         if color_correction is not None:
+            self.toRGB()
             self.img = color_correction(self.img)
 
         # Determine numbers of cells in each dimension and cell size
-        self.num_pixels_height, self.num_pixels_width = self.shape[:2]
+        self.num_pixels_height, self.num_pixels_width = self.img.shape[:2]
         self.dx = self.width / self.num_pixels_width
         self.dy = self.height / self.num_pixels_height
 
@@ -192,6 +196,14 @@ class Image:
         cv2.imwrite(str(Path(path + name + file_format)), self.img)
         print("Image saved as: " + str(Path(path + name + file_format)))
 
+    def update_metadata(self) -> None:
+        self.metadata: dict = {
+            "width": self.width,
+            "height": self.height,
+            "origo": self.origo,
+            "color_space": self.colorspace,
+        }
+
     def write_metadata_to_file(self, path: str) -> None:
         """
         Writes the metadata dictionary to a json-file.
@@ -226,14 +238,19 @@ class Image:
         cv2.waitKey(wait)
         cv2.destroyAllWindows()
 
-    def plt_show(self) -> None:
+    def plt_show(self, time: Optional(int) = None) -> None:
         """Show image using matplotlib.pyplots built-in imshow"""
 
         if self.colorspace == "BGR":
             rgbim = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
         else:
             rgbim = self.img
-        plt.imshow(rgbim)
+        if time is not None:
+            plt.imshow(rgbim, block = False)
+            plt.pause(time)
+            plt.close
+        else:
+            plt.show()
 
     # Seems like something that should read an image and return a new one with grid.
     def add_grid(
@@ -351,6 +368,7 @@ class Image:
         if self.colorspace == "RGB":
             self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
             self.colorspace = "BGR"
+            self.metadata["color_space"] = "BGR"
 
     def toRGB(self) -> None:
         """
@@ -359,3 +377,16 @@ class Image:
         if self.colorspace == "BGR":
             self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
             self.colorspace = "RGB"
+            self.metadata["color_space"] = "RGB"
+
+    def toGray(self) -> da.Image:
+        """
+        Returns a greyscale version of the daria image
+        """
+        gray_img = self.copy()
+        if self.colorspace == "BGR":
+            gray_img.img = cv2.cvtColor(gray_img.img, cv2.COLOR_BGR2GRAY)
+            gray_img.colorspace = "GRAY"
+            gray_img.update_metadata()
+        return gray_img
+
