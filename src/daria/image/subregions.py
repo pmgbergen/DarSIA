@@ -47,11 +47,11 @@ def extractROI(
     # Construct and return image corresponding to ROI
     if return_roi:
         return (
-            daria.Image(img=img.img[roi], origo=origo, width=width, height=height),
+            daria.Image(img=img.img[roi], origo=origo, width=width, height=height, color_space = img.colorspace),
             roi,
         )
     else:
-        return daria.Image(img=img.img[roi], origo=origo, width=width, height=height)
+        return daria.Image(img=img.img[roi], origo=origo, width=width, height=height, color_space = img.colorspace)
 
 
 def extractROIPixel(img: daria.Image, roi: tuple) -> daria.Image:
