@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import math
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image as PIL_Image
 
 import daria as da
 
@@ -55,7 +57,11 @@ class Image:
         dim: int = 2,
         read_metadata_from_file: bool = False,
         metadata_path: Optional[str] = None,
-        # TODO USE **kwargs in contructor
+        # TODO Have to rethink the use of parameters, and possibly switch to
+        # a config file instead, that is shared among a full suite of images.
+        # It should contain information on the correction routines, necessary.
+        # It should include physical information: width, height
+        # It should include the format of timestamps included in the exifdata
     ) -> None:
         """Constructor of Image object.
 
@@ -78,9 +84,27 @@ class Image:
         # Fetch image
         if isinstance(img, np.ndarray):
             self.img = img
+
+            # Come up with default metadata
             self.name = "Unnamed image"
+            self.timestamp = None
+
+            # TODO this should come through a config file
+            self.colorspace: str = "bgr"
+
         elif isinstance(img, str):
-            self.img = cv2.imread(str(Path(img)))
+            pil_img = PIL_Image.open(Path(img))
+            self.img = np.array(pil_img)
+
+            # PIL reads in RGB format
+            self.colorspace: str = "rgb"
+
+            # Read exif metadata
+            self.exif = pil_img.getexif()
+            self.timestamp: datetime = datetime.strptime(
+                self.exif.get(306), "%Y:%m:%d %H:%M:%S"
+            )
+
             self.imgpath = img
             self.name = img
         else:
@@ -118,8 +142,6 @@ class Image:
 
         # Establish a coordinate system based on the metadata
         self.coordinatesystem: da.CoordinateSystem = da.CoordinateSystem(self)
-
-        self.colorspace: str = "bgr"
 
     # There might be a cleaner way to do this. Then again, it works.
     def create_metadata_from_file(self, path: Optional[str]) -> None:
@@ -175,6 +197,10 @@ class Image:
             metadata_path (str): path to metadata (only folders); the metadata file
                 has the same name as the image (and a .txt ending)
         """
+        # cv2 requires BGR format
+        self.toBGR()
+        assert self.colorspace == "bgr"
+
         # Write image, using the conventional matrix indexing
         cv2.imwrite(str(Path(path + name + file_format)), self.img)
         print("Image saved as: " + str(Path(path + name + file_format)))
