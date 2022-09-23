@@ -25,3 +25,4 @@ from daria.corrections.shape.curvature import *
 from daria.corrections.color.colorchecker import *
 from daria.analysis.translationanalysis import *
 from daria.analysis.concentrationanalysis import *
+from daria.analysis.compactionanalysis import *
