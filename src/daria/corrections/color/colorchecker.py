@@ -45,7 +45,7 @@ class ColorCorrection:
         # Reference of the class color checker
         self.ccc = ClassicColorChecker()
 
-    def adjust(
+    def __call__(
         self,
         image: np.ndarray,
         roi: Optional[tuple] = None,
