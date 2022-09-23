@@ -76,39 +76,35 @@ da_img_dst = daria.Image(img_cropped_dst, width=2.8, height=final_height)
 # Define compaction analysis tool
 N_patches = [20, 10]
 rel_overlap = 0.1
-translationAnalysis = daria.TranslationAnalysis(
+translation_analysis = daria.TranslationAnalysis(
     da_img_src,
     N_patches=N_patches,
     rel_overlap=rel_overlap,
     translationEstimator=translationEstimator,
 )
 
-# Determine translation in patch centers
-translationAnalysis.find_translation(da_img_dst, units=["metric", "pixel"])
-translationAnalysis.translate_centers(da_img_dst, plot_translation=True)
+# Fix the pulse image for further analysis
+translation_analysis.load_image(da_img_dst)
+
+# Determine translation and plot on patch centers (here as deformation
+# from the baseline to the pulse image)
+translation_analysis.find_translation(units=["metric", "pixel"])
+translation_analysis.plot_translation(reverse=True)
 
 # ! ---- Step 3: Warp dst image back onto the baseline image
 
-# Determine translation and translate the dst image
-translationAnalysis.find_translation(da_img_dst, units=["pixel", "pixel"])
-da_new_image = translationAnalysis.translate_image(
-    da_img_dst, reverse=True, plot_transformation=True
-)
+# Determine translation and translate the pulse image to match the
+# baseline image
+translation_analysis.find_translation(units=["pixel", "pixel"])
+da_new_image = translation_analysis.translate_image()
 
 # Plot the differences between the two original images and after the transformation.
-if True:
-    fig, ax = plt.subplots(1, num=1)
-    ax.imshow(
-        skimage.util.compare_images(da_img_src.img, da_img_dst.img, method="blend")
-    )
-    fig, ax = plt.subplots(1, num=2)
-    ax.imshow(
-        skimage.util.compare_images(da_img_src.img, da_new_image.img, method="blend")
-    )
-    fig, ax = plt.subplots(1, num=3)
-    ax.imshow(da_img_src.img)
-    fig, ax = plt.subplots(1, num=4)
-    ax.imshow(da_img_dst.img)
-    fig, ax = plt.subplots(1, num=5)
-    ax.imshow(da_new_image.img)
-    plt.show()
+fig, ax = plt.subplots(1, num=1)
+ax.imshow(
+    skimage.util.compare_images(da_img_src.img, da_img_dst.img, method="blend")
+)
+fig, ax = plt.subplots(1, num=2)
+ax.imshow(
+    skimage.util.compare_images(da_img_src.img, da_new_image.img, method="blend")
+)
+plt.show()
