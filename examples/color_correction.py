@@ -20,8 +20,8 @@ img_RGB = cv2.cvtColor(img_BGR, cv2.COLOR_BGR2RGB)
 roi_cc = (slice(0, 240), slice(0, 240))
 
 # Apply color correction
-colorcorrection = daria.ColorCorrection()
-corrected_baseline_RGB = colorcorrection.adjust(img_RGB, roi_cc, verbosity=False)
+color_correction = daria.ColorCorrection()
+corrected_baseline_RGB = color_correction(img_RGB, roi_cc, verbosity=False)
 
 # NOTE: For some reason, when choosing verbosity=True the colour checker is displayed,
 # but no other images can be properly displayed afterwards anymore.
