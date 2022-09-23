@@ -246,11 +246,11 @@ class Image:
         else:
             rgbim = self.img
         if time is not None:
-            plt.imshow(rgbim, block = False)
+            plt.imshow(rgbim)
             plt.pause(time)
             plt.close
         else:
-            plt.show()
+            plt.imshow(rgbim)
 
     # Seems like something that should read an image and return a new one with grid.
     def add_grid(
@@ -334,7 +334,7 @@ class Image:
 
         # Return image with grid as Image object
         return Image(
-            img=gridimg, origo=self.origo, width=self.width, height=self.height
+            img=gridimg, metadata = self.metadata
         )
 
     # resize image by using cv2's resize command
@@ -384,9 +384,65 @@ class Image:
         Returns a greyscale version of the daria image
         """
         gray_img = self.copy()
-        if self.colorspace == "BGR":
+        if self.colorspace == "RGB":
+            gray_img.img = cv2.cvtColor(gray_img.img, cv2.COLOR_RGB2GRAY)
+        elif self.colorspace == "BGR":
             gray_img.img = cv2.cvtColor(gray_img.img, cv2.COLOR_BGR2GRAY)
-            gray_img.colorspace = "GRAY"
-            gray_img.update_metadata()
+        elif self.colorspace =="GRAY":
+            pass
+        else:
+            raise Exception("Only RGB or BGR images can be converted to Gray at the moment")
+        gray_img.colorspace = "GRAY"
+        gray_img.update_metadata()
         return gray_img
 
+    def toRed(self) -> da.Image:
+        """
+        Returns a red channel version of the daria image
+        """
+        red_img = self.copy()
+        if self.colorspace == "RGB":
+            red_img.img = red_img.img[:,:,0]
+        elif self.colorspace == "BGR":
+            red_img.img = red_img.img[:,:,2]
+        elif self.colorspace =="RED":
+            pass
+        else:
+            raise Exception("Only RGB or BGR images can be converted to Red at the moment")
+        red_img.colorspace = "RED"
+        red_img.update_metadata()
+        return red_img
+
+    def toBlue(self) -> da.Image:
+        """
+        Returns a blue channel version of the daria image
+        """
+        blue_img = self.copy()
+        if self.colorspace == "RGB":
+            blue_img.img = blue_img.img[:,:,2]
+        elif self.colorspace == "BGR":
+            blue_img.img = blue_img.img[:,:,0]
+        elif self.colorspace =="BLUE":
+            pass
+        else:
+            raise Exception("Only RGB or BGR images can be converted to blue at the moment")
+        blue_img.colorspace = "BLUE"
+        blue_img.update_metadata()
+        return blue_img
+
+    def toGreen(self) -> da.Image:
+        """
+        Returns a green channel version of the daria image
+        """
+        green_img = self.copy()
+        if self.colorspace == "RGB":
+            green_img.img = green_img.img[:,:,1]
+        elif self.colorspace == "BGR":
+            green_img.img = green_img.img[:,:,2]
+        elif self.colorspace =="GREEN":
+            pass
+        else:
+            raise Exception("Only RGB or BGR images can be converted to green at the moment")
+        green_img.colorspace = "GREEN"
+        green_img.update_metadata()
+        return green_img

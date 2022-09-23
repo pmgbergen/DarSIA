@@ -71,7 +71,7 @@ def extractROIPixel(img: daria.Image, roi: tuple) -> daria.Image:
     width = (roi[1].stop - roi[1].start) * img.dx
 
     # Construct and return image corresponding to ROI
-    return daria.Image(img=img.img[roi], origo=origo, width=width, height=height)
+    return daria.Image(img=img.img[roi], origo=origo, width=width, height=height, color_space = img.colorspace)
 
 
 def extract_quadrilateral_ROI(img_src: np.ndarray, **kwargs) -> np.ndarray:
