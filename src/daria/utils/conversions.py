@@ -46,9 +46,9 @@ def BGR2RED(img: da.Image) -> da.Image:
         da.Image: converged image
     """
     img_red = img.copy()
-    if img.colorspace == "bgr":
+    if img.colorspace == "BGR":
         img_red.img = img_red.img[:, :, 2]
-    elif img.colorspace == "rgb":
+    elif img.colorspace == "RGB":
         img_red.img = img_red.img[:, :, 0]
     return img_red
 
@@ -63,7 +63,10 @@ def BGR2GREEN(img: da.Image) -> da.Image:
         da.Image: converged image
     """
     img_green = img.copy()
-    img_green.img = img_green.img[:, :, 1]
+    if img.colorspace == "BGR":
+        img_green.img = img_green.img[:, :, 1]
+    elif img.colorspace == "RGB":
+        img_green.img = img_green.img[:, :, 1]
     return img_green
 
 
@@ -77,9 +80,9 @@ def BGR2BLUE(img: da.Image) -> da.Image:
         da.Image: converged image
     """
     img_blue = img.copy()
-    if img.colorspace == "bgr":
+    if img.colorspace == "BGR":
         img_blue.img = img_blue.img[:, :, 0]
-    elif img.colorspace == "rgb":
+    elif img.colorspace == "RGB":
         img_blue.img = img_blue.img[:, :, 2]
     return img_blue
 
