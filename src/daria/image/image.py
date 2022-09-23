@@ -241,16 +241,19 @@ class Image:
         cv2.destroyAllWindows()
 
     # Not completely satisfied with this solution of timing
-    def plt_show(self, time: int = 1000) -> None:
+    def plt_show(self, time: Optional[int] = None) -> None:
         """Show image using matplotlib.pyplots built-in imshow"""
 
         if self.colorspace == "BGR":
             rgbim = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
         else:
             rgbim = self.img
-        plt.imshow(rgbim)
-        plt.pause(time)
-        plt.close()
+        if time is not None:
+            plt.imshow(rgbim)
+            plt.pause(time)
+            plt.close()
+        else:
+            plt.imshow(rgbim)
 
     # Seems like something that should read an image and return a new one with grid.
     def add_grid(
