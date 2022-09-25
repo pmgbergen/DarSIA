@@ -158,6 +158,22 @@ class Patches:
             ]
         )
 
+        # Convert coordinates of patch centers to pixels - using the matrix indexing
+        self.global_centers_reverse_matrix = np.array(
+            [
+                [
+                    np.flip(
+                        self.base.coordinatesystem.coordinateToPixel(
+                            self.global_centers_cartesian[i, self.num_patches_y - 1 - j]
+                        )
+                    )
+                    for i in range(self.num_patches_x)
+                ]
+                for j in range(self.num_patches_y)
+            ],
+            dtype=int,
+        )
+
         # Store corners of all patches in various formats, but keep the order:
         # top_left, bottom_left, bottom_right, top_right
 
