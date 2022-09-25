@@ -25,8 +25,8 @@ def determine_tracer(img: daria.Image, base: daria.Image) -> daria.Image:
         np.ndarray: concentration map
     """
     # Transform images to grayscale
-    img = img.toGray()
-    base = base.toGray()
+    img = img.toGray(return_image=True)
+    base = base.toGray(return_image=True)
 
     # Take (unsigned) difference
     diff = skimage.util.compare_images(img.img, base.img, method="diff")
