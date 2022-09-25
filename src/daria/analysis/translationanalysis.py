@@ -101,7 +101,7 @@ class TranslationAnalysis:
 
         # TODO, apply patching here already? why not?
 
-    def find_translation(self, units: list[str] = ["metric", "pixel"]) -> tuple:
+    def find_translation(self, units: list[str] = ["pixel", "pixel"]) -> tuple:
         # TODO ideally this method should not require units; only the application routine does.
         """
         Find translation map as translation from image to baseline image such that
@@ -352,23 +352,6 @@ class TranslationAnalysis:
         # Fetch patch centers
         patch_centers_cartesian = self.patches_base.global_centers_cartesian
 
-        # Interpolate at patch centers
-        input_arg = np.transpose(
-            np.vstack(
-                (
-                    np.flipud(patch_centers_cartesian[:, :, 0].T).flatten(),
-                    np.flipud(patch_centers_cartesian[:, :, 1].T).flatten(),
-                )
-            )
-        )
-        interpolated_patch_translation_x = self.interpolator_translation_x(input_arg)
-        interpolated_patch_translation_y = self.interpolator_translation_y(input_arg)
-
-        # Flip, if required
-        if reverse:
-            interpolated_patch_translation_x *= -1.0
-            interpolated_patch_translation_y *= -1.0
-
         # Convert coordinates of patch centers to pixels - using the matrix indexing
         patch_centers_x_pixels = np.zeros(tuple(reversed(self.N_patches)), dtype=int)
         patch_centers_y_pixels = np.zeros(tuple(reversed(self.N_patches)), dtype=int)
@@ -378,6 +361,18 @@ class TranslationAnalysis:
                 pixel = self.base.coordinatesystem.coordinateToPixel(center)
                 patch_centers_x_pixels[self.N_patches[1] - 1 - j, i] = pixel[1]
                 patch_centers_y_pixels[self.N_patches[1] - 1 - j, i] = pixel[0]
+
+        # Interpolate at patch centers (pixel coordinates with reverse matrix indexing)
+        input_arg = np.vstack(
+            (patch_centers_x_pixels.ravel(), patch_centers_y_pixels.ravel())
+        ).T
+        interpolated_patch_translation_x = self.interpolator_translation_x(input_arg)
+        interpolated_patch_translation_y = self.interpolator_translation_y(input_arg)
+
+        # Flip, if required
+        if reverse:
+            interpolated_patch_translation_x *= -1.0
+            interpolated_patch_translation_y *= -1.0
 
         # Plot the interpolated translation
         fig, ax = plt.subplots(1, num=1)
@@ -431,7 +426,7 @@ class TranslationAnalysis:
 
         return transformed_img
 
-    def __call__(self, img: daria.Image, plot_translation: bool = False) -> daria.Image:
+    def __call__(self, img: daria.Image) -> daria.Image:
         """
         Standard workflow, starting with loading the test image, finding
         the translation required to match the baseline image,
@@ -444,7 +439,7 @@ class TranslationAnalysis:
             daria.Image: translated image
         """
         self.load_image(img)
-        self.find_translation(units=["pixel", "pixel"])
+        self.find_translation()
         transformed_img = self.translate_image()
 
         return transformed_img
