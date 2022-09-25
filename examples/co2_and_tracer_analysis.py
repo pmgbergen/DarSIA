@@ -3,12 +3,13 @@ Example script for simple image analysis. By comparison of images
 of the same well test, a tracer concentration can be determined.
 """
 
+import os
+from pathlib import Path
+
 import cv2
 import matplotlib.pyplot as plt
-from pathlib import Path
 import numpy as np
 import skimage
-import os
 
 import daria
 
@@ -57,37 +58,56 @@ def determine_tracer(img: daria.Image, base: daria.Image) -> daria.Image:
     return daria.Image(diff, base.metadata)
 
 
+# Define path to image folder
+image_folder = f"{os.path.dirname(__file__)}/images/"
+
 # Define curvature correction object, initiated with config file
 # (which can be created the workflow presented in the Jupyter notebook
 # examples/notebooks/curvature_correction_walkthrough.ipynb).
 curvature_correction = daria.CurvatureCorrection(
-    config_source=f"{os.path.dirname(__file__)}/images/config.json", width=2.8, height=1.5
+    config_source=image_folder + "config.json", width=2.8, height=1.5
 )
 
 # Define color correction object
 roi_cc = (slice(0, 600), slice(0, 700))
-color_correction = daria.ColorCorrection(ROI = roi_cc)
+color_correction = daria.ColorCorrection(ROI=roi_cc)
 
 # !----- Main routine for co2 analysis
 
 # Read baseline and co2 image and correct color and curvature
-baseline_co2 = daria.Image(f"{os.path.dirname(__file__)}/images/co2_0.jpg", curvature_correction=curvature_correction, color_correction= color_correction)
-co2_image = daria.Image(f"{os.path.dirname(__file__)}/images/co2_2.jpg", curvature_correction=curvature_correction, color_correction= color_correction )
+baseline_co2 = daria.Image(
+    image_folder + "co2_0.jpg",
+    curvature_correction=curvature_correction,
+    color_correction=color_correction,
+)
+co2_image = daria.Image(
+    image_folder + "co2_2.jpg",
+    curvature_correction=curvature_correction,
+    color_correction=color_correction,
+)
 
 # Determine co2
 co2 = determine_tracer(co2_image, baseline_co2)
 
-# Plot change 3 to larger number if it is desired to keep the images on the screen
-co2.plt_show(3)
+# Plot change 10 to larger number (or remove it) if it is desired to keep the images longer on the screen
+co2.plt_show(10)
 
 # !----- Main routine for tracer analysis
 
 # Read in baseline and tracer image and correct color and curvature
-baseline_tracer = daria.Image(f"{os.path.dirname(__file__)}/images/tracer_0.jpg",  curvature_correction=curvature_correction, color_correction= color_correction)
-tracer_image = daria.Image(f"{os.path.dirname(__file__)}/images/tracer_3.jpg",  curvature_correction=curvature_correction, color_correction= color_correction)
+baseline_tracer = daria.Image(
+    image_folder + "tracer_0.jpg",
+    curvature_correction=curvature_correction,
+    color_correction=color_correction,
+)
+tracer_image = daria.Image(
+    image_folder + "tracer_3.jpg",
+    curvature_correction=curvature_correction,
+    color_correction=color_correction,
+)
 
 # Determine tracer
 tracer = determine_tracer(tracer_image, baseline_tracer)
 
 # Plot
-tracer.plt_show(3)
+tracer.plt_show(10)
