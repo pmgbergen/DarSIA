@@ -394,7 +394,6 @@ class Image:
                 return_image.metadata["color_space"] = "RGB"
                 return return_image
 
-
     def toGray(self, return_image: bool = False) -> Optional[da.Image]:
         """
         Returns a greyscale version of the daria image
@@ -461,7 +460,6 @@ class Image:
                 )
             self.colorspace = "RED"
             self.update_metadata()
-
 
     def toBlue(self, return_image: bool = False) -> Optional[da.Image]:
         """
