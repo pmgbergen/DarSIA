@@ -49,8 +49,8 @@ class PiecewisePerspectiveTransform:
         # NOTE: At the moment, no normalization is considered.
 
         # Initialize empty image of same type as the original image
-        (h, w) = patches.baseImg.shape[:2]
-        transformed_img = np.zeros(patches.baseImg.shape, dtype=float)
+        (h, w) = patches.base.shape[:2]
+        transformed_img = np.zeros(patches.base.shape, dtype=float)
 
         # Loop over all patches in a grid fashion:
         for i in range(patches.num_patches_x):
@@ -81,8 +81,8 @@ class PiecewisePerspectiveTransform:
                 )
 
         # Fetch metadata from originating patches
-        origo = patches.baseImg.origo
-        width = patches.baseImg.width
-        height = patches.baseImg.height
+        origo = patches.base.origo
+        width = patches.base.width
+        height = patches.base.height
 
         return daria.Image(img=transformed_img, origo=origo, width=width, height=height)
