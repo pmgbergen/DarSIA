@@ -349,25 +349,14 @@ class TranslationAnalysis:
         # Only continue if a translation has been already found
         assert self.have_translation.any()
 
-        # Fetch patch centers
-        patch_centers_cartesian = self.patches_base.global_centers_cartesian
-
-        # Convert coordinates of patch centers to pixels - using the matrix indexing
-        patch_centers_x_pixels = np.zeros(tuple(reversed(self.N_patches)), dtype=int)
-        patch_centers_y_pixels = np.zeros(tuple(reversed(self.N_patches)), dtype=int)
-        for j in range(self.N_patches[1]):
-            for i in range(self.N_patches[0]):
-                center = patch_centers_cartesian[i, j]
-                pixel = self.base.coordinatesystem.coordinateToPixel(center)
-                patch_centers_x_pixels[self.N_patches[1] - 1 - j, i] = pixel[1]
-                patch_centers_y_pixels[self.N_patches[1] - 1 - j, i] = pixel[0]
-
         # Interpolate at patch centers (pixel coordinates with reverse matrix indexing)
-        input_arg = np.vstack(
-            (patch_centers_x_pixels.ravel(), patch_centers_y_pixels.ravel())
-        ).T
-        interpolated_patch_translation_x = self.interpolator_translation_x(input_arg)
-        interpolated_patch_translation_y = self.interpolator_translation_y(input_arg)
+        patch_centers = self.patches_base.global_centers_reverse_matrix.reshape((-1, 2))
+        interpolated_patch_translation_x = self.interpolator_translation_x(
+            patch_centers
+        )
+        interpolated_patch_translation_y = self.interpolator_translation_y(
+            patch_centers
+        )
 
         # Flip, if required
         if reverse:
@@ -377,8 +366,8 @@ class TranslationAnalysis:
         # Plot the interpolated translation
         fig, ax = plt.subplots(1, num=1)
         ax.quiver(
-            patch_centers_x_pixels,
-            patch_centers_y_pixels,
+            patch_centers[:, 0],
+            patch_centers[:, 1],
             interpolated_patch_translation_x,
             interpolated_patch_translation_y,
             scale=2000,
