@@ -134,7 +134,10 @@ def extract_quadrilateral_ROI(img_src: np.ndarray, **kwargs) -> np.ndarray:
     # Force to use a 3-tensor structure.
     img_dst = np.atleast_3d(
         cv2.warpPerspective(
-            img_src, P, (target_width, target_height), flags=cv2.INTER_LINEAR
+            img_src.astype(np.float32),
+            P,
+            (target_width, target_height),
+            flags=cv2.INTER_LINEAR,
         )
     )
 
