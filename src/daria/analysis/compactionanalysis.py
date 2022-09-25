@@ -48,7 +48,7 @@ class CompactionAnalysis:
         """
         self.translation_analysis.update_base(base)
 
-    def __call__(self, img: daria.Image):
+    def __call__(self, img: daria.Image, plot: bool = False, reverse: bool = False):
         """
         Determine the compaction patter and apply compaction to the image
         aiming at matching the baseline image.
@@ -57,5 +57,13 @@ class CompactionAnalysis:
 
         Args:
             img (daria.Image): test image
+            plot (bool): flag controlling whether the deformation is also
+                visualized as vector field.
+            reverse (bool): flag whether the translation is understood as from the
+                test image to the baseline image, or reversed. The default is the
+                former one.
         """
-        return self.translation_analysis(img)
+        transformed_img = self.translation_analysis(img)
+        if plot:
+            self.translation_analysis.plot_translation(reverse)
+        return transformed_img

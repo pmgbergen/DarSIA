@@ -80,8 +80,9 @@ config["compaction"] = {
 }
 compaction_analysis = daria.CompactionAnalysis(da_img_src, **config["compaction"])
 
-# Apply compaction analysis, providing the deformed image matching the baseline image
-da_new_image = compaction_analysis(da_img_dst)
+# Apply compaction analysis, providing the deformed image matching the baseline image.
+# Also plot the deformation as vector field.
+da_new_image = compaction_analysis(da_img_dst, plot=True, reverse=True)
 
 # Plot the differences between the two original images and after the transformation.
 fig, ax = plt.subplots(1, num=1)
