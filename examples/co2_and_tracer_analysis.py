@@ -3,12 +3,13 @@ Example script for simple image analysis. By comparison of images
 of the same well test, a tracer concentration can be determined.
 """
 
+import os
+from pathlib import Path
+
 import cv2
 import matplotlib.pyplot as plt
-from pathlib import Path
 import numpy as np
 import skimage
-import os
 
 import daria
 
@@ -28,7 +29,9 @@ def preprocessing(img: np.ndarray) -> np.ndarray:
     # (which can be created the workflow presented in the Jupyter notebook
     # examples/notebooks/curvature_correction_walkthrough.ipynb).
     curvature_correction = daria.CurvatureCorrection(
-        config_source=Path(f"{os.path.dirname(__file__)}/images/config.json"), width=2.8, height=1.5
+        config_source=str(Path(f"{os.path.dirname(__file__)}/images/config.json")),
+        width=2.8,
+        height=1.5,
     )
 
     # Apply curvature correction.
@@ -104,7 +107,7 @@ co2 = determine_tracer(co2_image, baseline)
 
 # Plot
 plt.imshow(co2)
-plt.show(block = False)
+plt.show(block=False)
 # Pause longer if it is desired to keep the images on the screen
 plt.pause(3)
 plt.close()
@@ -126,7 +129,7 @@ tracer = determine_tracer(tracer_image, baseline)
 
 # Plot
 plt.imshow(tracer)
-plt.show(block = False)
+plt.show(block=False)
 # Pause longer if it is desired to keep the images on the screen
 plt.pause(3)
 plt.close()
