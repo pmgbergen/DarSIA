@@ -69,8 +69,8 @@ class CurvatureCorrection:
             if isinstance(im_source, np.ndarray):
                 self.reference_image = im_source
 
-            elif isinstance(im_source, Path):
-                self.reference_image = cv2.imread(str(im_source))
+            elif isinstance(im_source, str):
+                self.reference_image = cv2.imread(str(Path(im_source)))
 
             else:
                 raise Exception(
@@ -85,8 +85,8 @@ class CurvatureCorrection:
         elif "config_source" in kwargs:
 
             config_source = kwargs.pop("config_source")
-            assert isinstance(config_source, Path)
-            with open(str(config_source), "r") as openfile:
+            assert isinstance(config_source, str)
+            with open(str(Path(config_source)), "r") as openfile:
                 self.config = json.load(openfile)
 
         else:
