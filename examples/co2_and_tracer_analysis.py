@@ -70,7 +70,7 @@ curvature_correction = daria.CurvatureCorrection(
 
 # Define color correction object
 roi_cc = (slice(0, 600), slice(0, 700))
-color_correction = daria.ColorCorrection(ROI=roi_cc)
+color_correction = daria.ColorCorrection(roi=roi_cc)
 
 # !----- Main routine for co2 analysis
 

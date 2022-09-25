@@ -30,7 +30,7 @@ class ClassicColorChecker:
 
 
 class ColorCorrection:
-    def __init__(self, ROI: Optional[tuple] = None):
+    def __init__(self, roi: Optional[tuple] = None):
         """
         Constructor of converter, setting up a priori all data needed for fast conversion.
 
@@ -47,7 +47,7 @@ class ColorCorrection:
         self.ccc = ClassicColorChecker()
 
         # Define ROI
-        self.ROI = ROI
+        self.roi = roi
 
     # TODO: if it possible to move all arguments (except for image) to the
     # definition of the class?
@@ -78,7 +78,7 @@ class ColorCorrection:
 
         # Extract part of the image containing a color checker.
         colorchecker_image = (
-            decoded_image[self.ROI] if self.ROI is not None else decoded_image
+            decoded_image[self.roi] if self.roi is not None else decoded_image
         )
 
         # Retrieve swatch colors in transfered RGB format
@@ -102,8 +102,8 @@ class ColorCorrection:
         # is exact
         if whitebalancing:
             corrected_colorchecker_image = (
-                corrected_decoded_image[self.ROI]
-                if self.ROI is not None
+                corrected_decoded_image[self.roi]
+                if self.roi is not None
                 else corrected_decoded_image
             )
             swatches = detect_colour_checkers_segmentation(
