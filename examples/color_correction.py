@@ -15,7 +15,7 @@ roi_cc = (slice(0, 240), slice(0, 240))
 image_folder = f"{os.path.dirname(__file__)}/images/"
 
 # Create the color correction and apply it at initialization of image class
-color_correction = daria.ColorCorrection(ROI=roi_cc)
+color_correction = daria.ColorCorrection(roi=roi_cc)
 baseline_corrected = daria.Image(
     image_folder + "baseline.jpg", color_correction=color_correction
 )
