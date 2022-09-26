@@ -35,17 +35,15 @@ class Image:
     Attributes:
         img (np.ndarray): image array
         img (str): path to image, alternative way to feed the actual image.
-        imgpath (str): path to image, also used to define source for metadata
-        width (float): physical width of the image
-        height (float): physical height of the image
-        depth (float): physical depth of the image (only relevant in 3d)
-        origo (np.ndarray): physical coordinates of the lower left corner, i.e.,
-            of the (img.shape[0],0) pixel
-        dim (int): dimension of image, could be 2, 3, 4 (incl. the possibility for time)
+        metadata (dict):
+            width (float): physical width of the image
+            height (float): physical height of the image
+            origo (np.ndarray): physical coordinates of the lower left corner, i.e.,
+                of the (img.shape[0],0) pixel
+            color_space (str): Color space (RGB/BGR/RED/GREEN/BLUE/GRAY)
         shape (np.ndarray): num_pixels, as well number of color channels (typically 3 for RGB)
         dx (float): pixel size in x-direction
         dy (float): pixel size in y-direction
-        dz (float): pixel size in z-direction
     """
 
     def __init__(
@@ -59,7 +57,9 @@ class Image:
         """Constructor of Image object.
 
         The input image can either be a path to the image file or a numpy array with
-        conventional matrix indexing.
+        conventional matrix indexing. Some metadata must be provided. If several
+        versions are provided a metadata dictionary will used over a path to a
+        metadata json-file over keyword arguments.
 
         Arguments:
             img (Union[np.ndarray, str]): image array with matrix indexing
@@ -73,44 +73,44 @@ class Image:
             kwargs (Optional arguments)
                 metadata_source (str): Path to a metadata json-file that provides
                     metadata such as physical width, height and origo of image
-                    as well as colorspace
+                    as well as  color space
                 origo (np.ndarray): physical coordinates of the lower left corner
                 width (float): physical width of the image
                 height (float): physical height of the image
-                color_space (str): the colorspace of the image. So far only BGR
+                color_space (str): the color space of the image. So far only BGR
                     and RGB are "valid", but more should be added at a later time.
         """
 
-        # Read metadata
+        # Read metadata.
         no_colorspace_given = False
         if metadata is not None:
             self.metadata = metadata
-            self.width: float = self.metadata["width"]
-            self.height: float = self.metadata["height"]
-            self.origo: list[float] = self.metadata["origo"]
-            self.colorspace: str = self.metadata["color_space"]
 
         elif "metadata_source" in kwargs:
             metadata_source = kwargs.pop("metadata_source")
             with open(str(Path(metadata_source)), "r") as openfile:
                 self.metadata = json.load(openfile)
 
-            self.width: float = self.metadata["width"]
-            self.height: float = self.metadata["height"]
-            self.origo = self.metadata["origo"]
-            self.colorspace: str = self.metadata["color_space"]
-
         else:
-            self.width: float = kwargs.pop("width", 1)
-            self.height: float = kwargs.pop("height", 1)
-            self.origo: list[float] = kwargs.pop("origo", [0, 0])
-            if "color_space" in kwargs:
-                self.colorspace = kwargs["color_space"]
+            self.metadata: dict = {}
+            if "width" in kwargs:
+                self.metadata["width"] = kwargs["width"]
+            elif curvature_correction is not None:
+                self.metadata["width"] = curvature_correction.config["crop"]["width"]
             else:
-                self.colorspace = "BGR"
+                raise Exception("image width not specified")
+            if "height" in kwargs:
+                self.metadata["height"] = kwargs["height"]
+            elif curvature_correction is not None:
+                self.metadata["height"] = curvature_correction.config["crop"]["height"]
+            else:
+                raise Exception("image height not specified")
+            self.metadata["origo"]: list[float] = kwargs.pop("origo", [0, 0])
+            if "color_space" in kwargs:
+                self.metadata["color_space"] = kwargs["color_space"]
+            else:
+                self.metadata["color_space"] = "BGR"
                 no_colorspace_given = True
-            self.colorspace: str = kwargs.pop("color_space", "BGR")
-            self.update_metadata()
 
         # Fetch image
         if isinstance(img, np.ndarray):
@@ -121,14 +121,13 @@ class Image:
             self.timestamp = None
 
             if no_colorspace_given:
-                warn("Please provide a colorspace. Now it is assumed to be BGR.")
+                warn("Please provide a color space. Now it is assumed to be BGR.")
 
         elif isinstance(img, str):
             pil_img = PIL_Image.open(Path(img))
             self.img = np.array(pil_img)
 
             # PIL reads in RGB format
-            self.colorspace: str = "RGB"
             self.metadata["color_space"] = "RGB"
 
             # Read exif metadata
@@ -149,10 +148,12 @@ class Image:
 
         if curvature_correction is not None:
             self.img = curvature_correction(self.img)
-            self.width = curvature_correction.config["crop"]["width"]
-            self.height = curvature_correction.config["crop"]["height"]
-            self.origo = [0, 0]
-            self.update_metadata()
+            assert (
+                self.metadata["width"] == curvature_correction.config["crop"]["width"]
+            )
+            assert (
+                self.metadata["height"] == curvature_correction.config["crop"]["height"]
+            )
 
         if color_correction is not None:
             self.toRGB()
@@ -160,8 +161,8 @@ class Image:
 
         # Determine numbers of cells in each dimension and cell size
         self.num_pixels_height, self.num_pixels_width = self.img.shape[:2]
-        self.dx = self.width / self.num_pixels_width
-        self.dy = self.height / self.num_pixels_height
+        self.dx = self.metadata["width"] / self.num_pixels_width
+        self.dy = self.metadata["height"] / self.num_pixels_height
 
         # Define the pixels in the corners of the image
         self.corners = {
@@ -173,6 +174,22 @@ class Image:
 
         # Establish a coordinate system based on the metadata
         self.coordinatesystem: da.CoordinateSystem = da.CoordinateSystem(self)
+
+    @property
+    def origo(self) -> list:
+        return self.metadata["origo"]
+
+    @property
+    def width(self) -> float:
+        return self.metadata["width"]
+
+    @property
+    def height(self) -> float:
+        return self.metadata["height"]
+
+    @property
+    def colorspace(self) -> str:
+        return self.metadata["color_space"]
 
     def write(
         self,
@@ -192,19 +209,11 @@ class Image:
         """
         # cv2 requires BGR format
         self.toBGR()
-        assert self.colorspace == "BGR"
+        assert self.metadata["color_space"] == "BGR"
 
         # Write image, using the conventional matrix indexing
         cv2.imwrite(str(Path(path + name + file_format)), self.img)
         print("Image saved as: " + str(Path(path + name + file_format)))
-
-    def update_metadata(self) -> None:
-        self.metadata: dict = {
-            "width": self.width,
-            "height": self.height,
-            "origo": self.origo,
-            "color_space": self.colorspace,
-        }
 
     def write_metadata_to_file(self, path: str) -> None:
         """
@@ -228,7 +237,7 @@ class Image:
         if name is None:
             name = self.name
 
-        if self.colorspace == "RGB":
+        if self.metadata["color_space"] == "RGB":
             bgrim = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
 
         else:
@@ -244,7 +253,7 @@ class Image:
     def plt_show(self, time: Optional[int] = None) -> None:
         """Show image using matplotlib.pyplots built-in imshow"""
 
-        if self.colorspace == "BGR":
+        if self.metadata["color_space"] == "BGR":
             rgbim = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
         else:
             rgbim = self.img
@@ -280,13 +289,13 @@ class Image:
         """
         # Set origo if it was not provided
         if origo is None:
-            origo = self.origo
+            origo = self.metadata["origo"]
         elif isinstance(origo, list):
             origo = np.array(origo)
 
         # Determine the number of grid lines required
-        num_horizontal_lines: int = math.ceil(self.height / dy) + 1
-        num_vertical_lines: int = math.ceil(self.width / dx) + 1
+        num_horizontal_lines: int = math.ceil(self.metadata["height"] / dy) + 1
+        num_vertical_lines: int = math.ceil(self.metadata["width"] / dx) + 1
 
         # Start from original image
         gridimg = self.img.copy()
@@ -360,21 +369,19 @@ class Image:
         """
         Returns a copy of the image object.
         """
-        return Image(self.img, self.metadata, color_space=self.colorspace)
+        return Image(self.img, self.metadata)
 
     def toBGR(self, return_image: bool = False) -> Optional[da.Image]:
         """
         Transforms image to BGR if it is in RGB
         """
-        if self.colorspace == "RGB":
+        if self.metadata["color_space"] == "RGB":
             if not return_image:
                 self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
-                self.colorspace = "BGR"
                 self.metadata["color_space"] = "BGR"
             else:
                 return_image = self.copy()
                 return_image.img = cv2.cvtColor(return_image.img, cv2.COLOR_BGR2RGB)
-                return_image.colorspace = "BGR"
                 return_image.metadata["color_space"] = "BGR"
                 return return_image
 
@@ -382,15 +389,14 @@ class Image:
         """
         Transforms image to RGB if it is in BGR
         """
-        if self.colorspace == "BGR":
+        if self.metadata["color_space"] == "BGR":
             if not return_image:
                 self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
-                self.colorspace = "RGB"
+                self.metadata["color_space"] = "RGB"
                 self.metadata["color_space"] = "RGB"
             else:
                 return_image = self.copy()
                 return_image.img = cv2.cvtColor(return_image.img, cv2.COLOR_BGR2RGB)
-                return_image.colorspace = "RGB"
                 return_image.metadata["color_space"] = "RGB"
                 return return_image
 
@@ -401,32 +407,30 @@ class Image:
 
         if return_image:
             gray_img = self.copy()
-            if self.colorspace == "RGB":
+            if self.metadata["color_space"] == "RGB":
                 gray_img.img = cv2.cvtColor(gray_img.img, cv2.COLOR_RGB2GRAY)
-            elif self.colorspace == "BGR":
+            elif self.metadata["color_space"] == "BGR":
                 gray_img.img = cv2.cvtColor(gray_img.img, cv2.COLOR_BGR2GRAY)
-            elif self.colorspace == "GRAY":
+            elif self.metadata["color_space"] == "GRAY":
                 pass
             else:
                 raise Exception(
                     "Only RGB or BGR images can be converted to Gray at the moment"
                 )
-            gray_img.colorspace = "GRAY"
-            gray_img.update_metadata()
+            gray_img.metadata["color_space"] = "GRAY"
             return gray_img
         else:
-            if self.colorspace == "RGB":
+            if self.metadata["color_space"] == "RGB":
                 self.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2GRAY)
-            elif self.colorspace == "BGR":
+            elif self.metadata["color_space"] == "BGR":
                 self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-            elif self.colorspace == "GRAY":
+            elif self.metadata["color_space"] == "GRAY":
                 pass
             else:
                 raise Exception(
                     "Only RGB or BGR images can be converted to Gray at the moment"
                 )
-            self.colorspace = "GRAY"
-            self.update_metadata()
+            self.metadata["color_space"] = "GRAY"
 
     def toRed(self, return_image: bool = False) -> Optional[da.Image]:
         """
@@ -434,32 +438,30 @@ class Image:
         """
         if return_image:
             red_img = self.copy()
-            if self.colorspace == "RGB":
+            if self.metadata["color_space"] == "RGB":
                 red_img.img = red_img.img[:, :, 0]
-            elif self.colorspace == "BGR":
+            elif self.metadata["color_space"] == "BGR":
                 red_img.img = red_img.img[:, :, 2]
-            elif self.colorspace == "RED":
+            elif self.metadata["color_space"] == "RED":
                 pass
             else:
                 raise Exception(
                     "Only RGB or BGR images can be converted to Red at the moment"
                 )
-            red_img.colorspace = "RED"
-            red_img.update_metadata()
+            red_img.metadata["color_space"] = "RED"
             return red_img
         else:
-            if self.colorspace == "RGB":
+            if self.metadata["color_space"] == "RGB":
                 self.img = self.img[:, :, 0]
-            elif self.colorspace == "BGR":
+            elif self.metadata["color_space"] == "BGR":
                 self.img = self.img[:, :, 2]
-            elif self.colorspace == "RED":
+            elif self.metadata["color_space"] == "RED":
                 pass
             else:
                 raise Exception(
                     "Only RGB or BGR images can be converted to Red at the moment"
                 )
-            self.colorspace = "RED"
-            self.update_metadata()
+            self.metadata["color_space"] = "RED"
 
     def toBlue(self, return_image: bool = False) -> Optional[da.Image]:
         """
@@ -467,32 +469,30 @@ class Image:
         """
         if return_image:
             blue_img = self.copy()
-            if self.colorspace == "RGB":
+            if self.metadata["color_space"] == "RGB":
                 blue_img.img = blue_img.img[:, :, 2]
-            elif self.colorspace == "BGR":
+            elif self.metadata["color_space"] == "BGR":
                 blue_img.img = blue_img.img[:, :, 0]
-            elif self.colorspace == "BLUE":
+            elif self.metadata["color_space"] == "BLUE":
                 pass
             else:
                 raise Exception(
                     "Only RGB or BGR images can be converted to blue at the moment"
                 )
-            blue_img.colorspace = "BLUE"
-            blue_img.update_metadata()
+            blue_img.metadata["color_space"] = "BLUE"
             return blue_img
         else:
-            if self.colorspace == "RGB":
+            if self.metadata["color_space"] == "RGB":
                 self.img = self.img[:, :, 2]
-            elif self.colorspace == "BGR":
+            elif self.metadata["color_space"] == "BGR":
                 self.img = self.img[:, :, 0]
-            elif self.colorspace == "BLUE":
+            elif self.metadata["color_space"] == "BLUE":
                 pass
             else:
                 raise Exception(
                     "Only RGB or BGR images can be converted to blue at the moment"
                 )
-            self.colorspace = "BLUE"
-            self.update_metadata()
+            self.metadata["color_space"] = "BLUE"
 
     def toGreen(self, return_image: bool = False) -> Optional[da.Image]:
         """
@@ -500,29 +500,27 @@ class Image:
         """
         if return_image:
             green_img = self.copy()
-            if self.colorspace == "RGB":
+            if self.metadata["color_space"] == "RGB":
                 green_img.img = green_img.img[:, :, 1]
-            elif self.colorspace == "BGR":
+            elif self.metadata["color_space"] == "BGR":
                 green_img.img = green_img.img[:, :, 1]
-            elif self.colorspace == "GREEN":
+            elif self.metadata["color_space"] == "GREEN":
                 pass
             else:
                 raise Exception(
                     "Only RGB or BGR images can be converted to green at the moment"
                 )
-            green_img.colorspace = "GREEN"
-            green_img.update_metadata()
+            green_img.metadata["color_space"] = "GREEN"
             return green_img
         else:
-            if self.colorspace == "RGB":
+            if self.metadata["color_space"] == "RGB":
                 self.img = self.img[:, :, 1]
-            elif self.colorspace == "BGR":
+            elif self.metadata["color_space"] == "BGR":
                 self.img = self.img[:, :, 1]
-            elif self.colorspace == "GREEN":
+            elif self.metadata["color_space"] == "GREEN":
                 pass
             else:
                 raise Exception(
                     "Only RGB or BGR images can be converted to green at the moment"
                 )
-            self.colorspace = "GREEN"
-            self.update_metadata()
+            self.metadata["color_space"] = "GREEN"

@@ -17,11 +17,11 @@ image_folder = f"{os.path.dirname(__file__)}/images/"
 # Create the color correction and apply it at initialization of image class
 color_correction = daria.ColorCorrection(roi=roi_cc)
 baseline_corrected = daria.Image(
-    image_folder + "baseline.jpg", color_correction=color_correction
+    image_folder + "baseline.jpg", color_correction=color_correction, width = 2.8, height = 1.5
 )
 
 # Create an uncorrected image for comparison
-baseline_uncorrected = daria.Image(image_folder + "baseline.jpg")
+baseline_uncorrected = daria.Image(image_folder + "baseline.jpg", width = 2.8, height = 1.5)
 
 # -------- Plot corrected and uncorrected images
 
