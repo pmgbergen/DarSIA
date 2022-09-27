@@ -148,7 +148,6 @@ class CurvatureCorrection:
     def temporary_image(self):
         return self.current_image.astype(np.uint8)
 
-    
     # ! ---- Wrappers for single transformations
 
     def pre_bulge_correction(self, **kwargs) -> None:
