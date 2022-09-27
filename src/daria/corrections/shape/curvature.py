@@ -42,6 +42,12 @@ class CurvatureCorrection:
         """
         Constructor of curvature correction class.
 
+        NOTE: CurvatureCorrection should be mostly initialized with a config file
+        which controls the correction routine. The possibility to define a curvature
+        correction using a path to an image (not a daria.Image) should be however
+        only used for setting up the config file via CurvatureCorrection as
+        showcased in examples/notebooks/curvature_correction_walkthrough.ipynb
+
         Arguments:
             kwargs (Optional keyword arguments):
                 config (dict, optional): config dictionary; default is None
