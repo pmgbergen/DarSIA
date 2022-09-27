@@ -13,7 +13,6 @@ import skimage
 
 import daria
 
-
 def determine_tracer(img: daria.Image, base: daria.Image) -> daria.Image:
     """Extract tracer based on a reference image.
 

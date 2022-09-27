@@ -21,18 +21,18 @@ class ConcentrationAnalysis:
 
     """
 
-    def __init__(self, img_base: Optional[np.ndarray], **kwargs) -> None:
+    def __init__(self, base: Optional[np.ndarray], **kwargs) -> None:
         """
         Constructor of ConcentrationAnalysis.
 
         Args:
-            img_base (np.ndarray): baseline image
+            base (np.ndarray): baseline image
             kwargs: Optional keyword arguments
                 tvd_parameter (float): tuning parameter of the TVD algorithm
         """
         # TODO switch to daria images
-        self._check_img_compatibility(img_base)
-        self.baseline = img_base
+        self._check_img_compatibility(base)
+        self.base = base
         self.scaling_factor = 1.0
         self.offset = 0.0
 
@@ -40,7 +40,7 @@ class ConcentrationAnalysis:
 
     def update(
         self,
-        img: Optional[np.ndarray] = None,
+        base: Optional[np.ndarray] = None,
         scaling_factor: Optional[float] = None,
         offset: Optional[float] = None,
     ) -> None:
@@ -48,13 +48,13 @@ class ConcentrationAnalysis:
         Update of the baseline image or parameters.
 
         Args:
-            img (np.ndarray, optional): image array
+            base (np.ndarray, optional): image array
             scaling_factor (float, optional): slope
             offset (float, optional): offset
         """
-        if img is not None:
-            self._check_img_compatibility(img)
-            self.baseline = img
+        if base is not None:
+            self._check_img_compatibility(base)
+            self.base = base
         if scaling_factor is not None:
             self.scaling_factor = scaling_factor
         if offset is not None:
@@ -78,11 +78,11 @@ class ConcentrationAnalysis:
         self._check_img_compatibility(img)
 
         # Take (unsigned) difference
-        diff = skimage.util.compare_images(img, self.baseline, method="diff")
+        diff = skimage.util.compare_images(img, self.base, method="diff")
 
         # Resize the image
         # TODO this line should actually not be here...
-        diff = daria.utils.resolution.resize(diff, resize_factor * 100)
+        diff = daria.resize(diff, resize_factor * 100)
 
         # Apply smoothing filter
         diff = skimage.restoration.denoise_tv_chambolle(diff, weight=self.tvd_parameter)
