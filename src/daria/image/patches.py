@@ -13,7 +13,7 @@ class Patches:
     Contains an array of patches of a prescribed full image.
 
     Attributes:
-        baseImg (da.Image) = full daria image
+        base (da.Image) = full daria image
         num_patches_x (int) = number of patches in the horizondal direction
         num_patches_y (int) = number of patches in the vertical direction
         images (np.ndarray)= array of patches of the original image
@@ -44,7 +44,7 @@ class Patches:
         """
 
         # Instance of base image and relative_overlap
-        self.baseImg = img
+        self.base = img
         self.relative_overlap = kwargs.pop("rel_overlap", 0.0)
 
         # Define number of patches in each direction
@@ -61,13 +61,13 @@ class Patches:
 
         # Define base width and height of each patch (without overlap)...
         # ... in metric units
-        patch_width_metric = self.baseImg.width / self.num_patches_x
-        patch_height_metric = self.baseImg.height / self.num_patches_y
+        patch_width_metric = self.base.width / self.num_patches_x
+        patch_height_metric = self.base.height / self.num_patches_y
         # ... and in numbers of pixles
-        patch_width_pixels = self.baseImg.coordinatesystem.lengthToPixels(
+        patch_width_pixels = self.base.coordinatesystem.lengthToPixels(
             patch_width_metric, "x"
         )
-        patch_height_pixels = self.baseImg.coordinatesystem.lengthToPixels(
+        patch_height_pixels = self.base.coordinatesystem.lengthToPixels(
             patch_height_metric, "y"
         )
 
@@ -76,15 +76,15 @@ class Patches:
         overlap_height_metric = self.relative_overlap * patch_height_metric
 
         # Convert the overlap from metric to numbers of pixels
-        overlap_width_pixels = self.baseImg.coordinatesystem.lengthToPixels(
+        overlap_width_pixels = self.base.coordinatesystem.lengthToPixels(
             overlap_width_metric, "x"
         )
-        overlap_height_pixels = self.baseImg.coordinatesystem.lengthToPixels(
+        overlap_height_pixels = self.base.coordinatesystem.lengthToPixels(
             overlap_height_metric, "y"
         )
 
         # Some abbreviation for better overview
-        nh = self.baseImg.num_pixels_height
+        nh = self.base.num_pixels_height
         pw = patch_width_pixels
         ph = patch_height_pixels
         ow = overlap_width_pixels
@@ -135,7 +135,7 @@ class Patches:
         # Extract images with overlap
         self.images = [
             [
-                da.extractROIPixel(self.baseImg, self.rois[i][j])
+                da.extractROIPixel(self.base, self.rois[i][j])
                 for j in range(self.num_patches_y)
             ]
             for i in range(self.num_patches_x)
@@ -145,7 +145,7 @@ class Patches:
         self.global_centers_cartesian = np.array(
             [
                 [
-                    self.baseImg.origo
+                    self.base.origo
                     + np.array(
                         [
                             (i + 0.5) * patch_width_metric,
@@ -156,6 +156,22 @@ class Patches:
                 ]
                 for i in range(self.num_patches_x)
             ]
+        )
+
+        # Convert coordinates of patch centers to pixels - using the matrix indexing
+        self.global_centers_reverse_matrix = np.array(
+            [
+                [
+                    np.flip(
+                        self.base.coordinatesystem.coordinateToPixel(
+                            self.global_centers_cartesian[i, self.num_patches_y - 1 - j]
+                        )
+                    )
+                    for i in range(self.num_patches_x)
+                ]
+                for j in range(self.num_patches_y)
+            ],
+            dtype=int,
         )
 
         # Store corners of all patches in various formats, but keep the order:
@@ -176,7 +192,7 @@ class Patches:
                             ],
                         ]
                     )
-                    + self.baseImg.origo[np.newaxis, :]
+                    + self.base.origo[np.newaxis, :]
                     for j in range(self.num_patches_y)
                 ]
                 for i in range(self.num_patches_x)
@@ -198,7 +214,8 @@ class Patches:
                     for j in range(self.num_patches_y)
                 ]
                 for i in range(self.num_patches_x)
-            ]
+            ],
+            dtype=int,
         )
 
         # Corners in local pixel coordinates, using reverse matrix indexing
@@ -209,7 +226,8 @@ class Patches:
                     for j in range(self.num_patches_y)
                 ]
                 for i in range(self.num_patches_x)
-            ]
+            ],
+            dtype=int,
         )
 
         # Define flag (will be turned on when running _prepare_weights)
@@ -280,7 +298,7 @@ class Patches:
             (
                 np.zeros(cw, dtype=float),
                 np.linspace(0, 1, ow),
-                np.ones(self.baseImg.num_pixels_width - marked_width, dtype=float),
+                np.ones(self.base.num_pixels_width - marked_width, dtype=float),
             )
         )
 
@@ -320,7 +338,7 @@ class Patches:
         # Corresponding to the top patches
         self.weight_y["top"] = np.hstack(
             (
-                np.ones(self.baseImg.num_pixels_height - marked_height, dtype=float),
+                np.ones(self.base.num_pixels_height - marked_height, dtype=float),
                 np.linspace(1, 0, oh),
                 np.zeros(ch, dtype=float),
             )
@@ -405,7 +423,7 @@ class Patches:
         # to assemble the patches 'row' by 'row' (here row is not
         # meant as for images, as patches use Cartesian coordinates).
         assembled_img = np.zeros(
-            (0, *self.baseImg.img.shape[1:]), dtype=self.baseImg.img.dtype
+            (0, *self.base.img.shape[1:]), dtype=self.base.img.dtype
         )
 
         # Create "image-strips" that are assembled by concatenation
@@ -428,19 +446,19 @@ class Patches:
             assembled_img = np.vstack((assembled_y_j, assembled_img))
 
         # Make sure that the resulting image has the same resolution
-        assert assembled_img.shape == self.baseImg.img.shape
+        assert assembled_img.shape == self.base.img.shape
 
         # Define resulting daria image
         da_assembled_img = da.Image(
             img=assembled_img,
-            origo=self.baseImg.origo,
-            width=self.baseImg.width,
-            height=self.baseImg.height,
+            origo=self.base.origo,
+            width=self.base.width,
+            height=self.base.height,
         )
 
         # Update the base image if required
         if update_img:
-            self.baseImg = da_assembled_img.copy()
+            self.base = da_assembled_img.copy()
 
         return da_assembled_img
 
@@ -469,13 +487,13 @@ class Patches:
         # concatenated, and added using the partition of unity.
 
         # Allocate memory for resassembled image
-        assembled_img = np.zeros_like(self.baseImg.img, dtype=float)
+        assembled_img = np.zeros_like(self.base.img, dtype=float)
 
         # Loop over patches
         for j in range(self.num_patches_y):
 
             # Allocate memory for row  with y-coordinate j.
-            shape = [self.images[0][j].num_pixels_height, *self.baseImg.img.shape[1:]]
+            shape = [self.images[0][j].num_pixels_height, *self.base.img.shape[1:]]
             assembled_y_j = np.zeros(tuple(shape), dtype=float)
 
             # Assemble the row with y-coordinate j by a suitable weighted combination
@@ -512,7 +530,7 @@ class Patches:
             assembled_img[roi_y, :] += np.multiply(assembled_y_j, weight_j)
 
         # Make sure the newly assembled image is compatible with the original base image
-        assert assembled_img.shape == self.baseImg.img.shape
+        assert assembled_img.shape == self.base.img.shape
 
         # Convert final image to uint8 format
         assembled_img = skimage.util.img_as_ubyte(assembled_img)
@@ -520,13 +538,13 @@ class Patches:
         # Define resulting daria image
         da_assembled_img = da.Image(
             img=assembled_img,
-            origo=self.baseImg.origo,
-            width=self.baseImg.width,
-            height=self.baseImg.height,
+            origo=self.base.origo,
+            width=self.base.width,
+            height=self.base.height,
         )
 
         # Update the base image if required
         if update_img:
-            self.baseImg = da_assembled_img.copy()
+            self.base = da_assembled_img.copy()
 
         return da_assembled_img
