@@ -73,8 +73,11 @@ class ColorCorrection:
             np.ndarray: image with uint8 values in (linear) RGB color space, with colors
                 matched based on the color checker within the roi
         """
+        # Make sure that the image is in uint8 format
+        formatted_image = image.astype(np.uint8)
+
         # Apply transfer function and convert to nonlinear RGB color space
-        decoded_image = self.eotf.adjust(image)
+        decoded_image = self.eotf.adjust(formatted_image)
 
         # Extract part of the image containing a color checker.
         colorchecker_image = (
