@@ -13,42 +13,7 @@ import skimage
 
 import daria
 
-
-def preprocessing(img: np.ndarray) -> np.ndarray:
-    """Standard for reading an image from file, applying curvature correction
-    and and color correction.
-
-    Args:
-        img (np.ndarray): image array
-
-    Returns:
-        np.ndarray: corrected image
-    """
-
-    # Define curvature correction object, initiated with config file
-    # (which can be created the workflow presented in the Jupyter notebook
-    # examples/notebooks/curvature_correction_walkthrough.ipynb).
-    curvature_correction = daria.CurvatureCorrection(
-        config_source=str(Path(f"{os.path.dirname(__file__)}/images/config.json")),
-        width=2.8,
-        height=1.5,
-    )
-
-    # Apply curvature correction.
-    img = curvature_correction(img)
-
-    # Transform to RGB space.
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-    # Apply color correction - need to specify a crude ROI containing the color checker.
-    roi_cc = (slice(0, 600), slice(0, 700))
-    color_correction = daria.ColorCorrection()
-    img = color_correction(img, roi_cc)
-
-    return img
-
-
-def determine_tracer(img: np.ndarray, base: np.ndarray) -> np.ndarray:
+def determine_tracer(img: daria.Image, base: daria.Image) -> daria.Image:
     """Extract tracer based on a reference image.
 
     Args:
@@ -59,11 +24,11 @@ def determine_tracer(img: np.ndarray, base: np.ndarray) -> np.ndarray:
         np.ndarray: concentration map
     """
     # Transform images to grayscale
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    base = cv2.cvtColor(base, cv2.COLOR_RGB2GRAY)
+    img = img.toGray(return_image=True)
+    base = base.toGray(return_image=True)
 
     # Take (unsigned) difference
-    diff = skimage.util.compare_images(img, base, method="diff")
+    diff = skimage.util.compare_images(img.img, base.img, method="diff")
 
     # Apply smoothing filter
     diff = skimage.filters.rank.median(diff, skimage.morphology.disk(20))
@@ -89,47 +54,59 @@ def determine_tracer(img: np.ndarray, base: np.ndarray) -> np.ndarray:
     # Rescale image to physically meaningful range [0,1]
     diff = skimage.exposure.rescale_intensity(diff)
 
-    return diff
+    return daria.Image(diff, base.metadata)
 
+
+# Define path to image folder
+image_folder = f"{os.path.dirname(__file__)}/images/"
+
+# Define curvature correction object, initiated with config file
+# (which can be created the workflow presented in the Jupyter notebook
+# examples/notebooks/curvature_correction_walkthrough.ipynb).
+curvature_correction = daria.CurvatureCorrection(
+    config_source=image_folder + "config.json", width=2.8, height=1.5
+)
+
+# Define color correction object
+roi_cc = (slice(0, 600), slice(0, 700))
+color_correction = daria.ColorCorrection(roi=roi_cc)
 
 # !----- Main routine for co2 analysis
 
-# Read image and preprocess baseline image
-baseline = cv2.imread(str(Path(f"{os.path.dirname(__file__)}/images/co2_0.jpg")))
-baseline = preprocessing(baseline)
-
-# Read and preprocess test image
-co2_image = cv2.imread(str(Path(f"{os.path.dirname(__file__)}/images/co2_2.jpg")))
-co2_image = preprocessing(co2_image)
+# Read baseline and co2 image and correct color and curvature
+baseline_co2 = daria.Image(
+    image_folder + "co2_0.jpg",
+    curvature_correction=curvature_correction,
+    color_correction=color_correction,
+)
+co2_image = daria.Image(
+    image_folder + "co2_2.jpg",
+    curvature_correction=curvature_correction,
+    color_correction=color_correction,
+)
 
 # Determine co2
-co2 = determine_tracer(co2_image, baseline)
+co2 = determine_tracer(co2_image, baseline_co2)
 
-# Plot
-plt.imshow(co2)
-plt.show(block=False)
-# Pause longer if it is desired to keep the images on the screen
-plt.pause(3)
-plt.close()
+# Plot change 10 to larger number (or remove it) if it is desired to keep the images longer on the screen
+co2.plt_show(10)
 
 # !----- Main routine for tracer analysis
 
-# Read in baseline figure and apply correction once
-baseline = cv2.imread(str(Path(f"{os.path.dirname(__file__)}/images/tracer_0.jpg")))
-baseline = preprocessing(baseline)
-
-# Read in test figure and apply correction
-# tracer_image = cv2.imread("./images/tracer_1.jpg")
-# tracer_image = cv2.imread("./images/tracer_2.jpg")
-tracer_image = cv2.imread(str(Path(f"{os.path.dirname(__file__)}/images/tracer_3.jpg")))
-tracer_image = preprocessing(tracer_image)
+# Read in baseline and tracer image and correct color and curvature
+baseline_tracer = daria.Image(
+    image_folder + "tracer_0.jpg",
+    curvature_correction=curvature_correction,
+    color_correction=color_correction,
+)
+tracer_image = daria.Image(
+    image_folder + "tracer_3.jpg",
+    curvature_correction=curvature_correction,
+    color_correction=color_correction,
+)
 
 # Determine tracer
-tracer = determine_tracer(tracer_image, baseline)
+tracer = determine_tracer(tracer_image, baseline_tracer)
 
 # Plot
-plt.imshow(tracer)
-plt.show(block=False)
-# Pause longer if it is desired to keep the images on the screen
-plt.pause(3)
-plt.close()
+tracer.plt_show(10)
