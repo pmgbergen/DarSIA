@@ -99,13 +99,16 @@ class Image:
                 self.metadata["width"] = curvature_correction.config["crop"]["width"]
             else:
                 raise Exception("image width not specified")
+
             if "height" in kwargs:
                 self.metadata["height"] = kwargs["height"]
             elif curvature_correction is not None:
                 self.metadata["height"] = curvature_correction.config["crop"]["height"]
             else:
                 raise Exception("image height not specified")
+
             self.metadata["origo"]: list[float] = kwargs.pop("origo", [0, 0])
+
             if "color_space" in kwargs:
                 self.metadata["color_space"] = kwargs["color_space"]
             else:
@@ -263,6 +266,7 @@ class Image:
             plt.close()
         else:
             plt.imshow(rgbim)
+            plt.show()
 
     # Seems like something that should read an image and return a new one with grid.
     def add_grid(
