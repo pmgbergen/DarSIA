@@ -52,7 +52,6 @@ config["crop"] = {
     # the laser grid
     "width": 2.8,
     "height": 1.5,
-    "in meters": True,
 }
 
 # Crop using the curvature correction
