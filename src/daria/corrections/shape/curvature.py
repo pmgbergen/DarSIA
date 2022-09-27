@@ -132,18 +132,23 @@ class CurvatureCorrection:
 
             self.config = json.load(openfile)
 
-    def return_current_image(self) -> da.Image:
+    def return_image(self) -> da.Image:
         """
         Returns the current image as a daria image width provided width and height.
         """
-        return da.Image(self.current_image, width=self.width, height=self.height)
+        return da.Image(self.temporary_image, width=self.width, height=self.height)
 
-    def show_current(self) -> None:
+    def show_image(self) -> None:
         """
         Shows the current image using matplotlib.pyplot
         """
-        plt.imshow(cv2.cvtColor(self.current_image, cv2.COLOR_BGR2RGB))
+        plt.imshow(cv2.cvtColor(self.temporary_image, cv2.COLOR_BGR2RGB))
 
+    @property
+    def temporary_image(self):
+        return self.current_image.astype(np.uint8)
+
+    
     # ! ---- Wrappers for single transformations
 
     def pre_bulge_correction(self, **kwargs) -> None:
@@ -576,6 +581,6 @@ class CurvatureCorrection:
                 in_data, grid, order=self.interpolation_order
             )
             # Convert to correct shape and data type
-            corrected_img[:, :, i] = im_array_as_vector.reshape(shape).astype(img.dtype)
+            corrected_img[:, :, i] = im_array_as_vector.reshape(shape).astype(np.uint8)
 
         return corrected_img
