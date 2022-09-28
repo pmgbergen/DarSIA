@@ -16,6 +16,7 @@ import numpy as np
 from scipy.ndimage import map_coordinates
 
 import daria as da
+import skimage
 
 
 class CurvatureCorrection:
@@ -83,6 +84,7 @@ class CurvatureCorrection:
                     "Invalid image data. Provide either a path to an image or an image array."
                 )
             self.current_image = np.copy(self.reference_image)
+            self.dtype = self.current_image.dtype
             self.Ny, self.Nx = self.reference_image.shape[:2]
             self.in_meters = kwargs.pop("in_meters", True)
             self.width = kwargs.pop("width", 1.0)
@@ -146,7 +148,7 @@ class CurvatureCorrection:
 
     @property
     def temporary_image(self):
-        return self.current_image.astype(np.uint8)
+        return skimage.util.img_as_ubyte(self.current_image)
 
     # ! ---- Wrappers for single transformations
 
@@ -474,11 +476,14 @@ class CurvatureCorrection:
 
         if "init" in self.config:
             X, Y = self._transform_coordinates(X, Y, **self.config["init"])
+
         if "crop" in self.config:
             X = da.extract_quadrilateral_ROI(X, **self.config["crop"])
             Y = da.extract_quadrilateral_ROI(Y, **self.config["crop"])
+
         if "bulge" in self.config:
             X, Y = self._transform_coordinates(X, Y, **self.config["bulge"])
+
         if "stretch" in self.config:
             X, Y = self._transform_coordinates(X, Y, **self.config["stretch"])
 
@@ -580,6 +585,6 @@ class CurvatureCorrection:
                 in_data, grid, order=self.interpolation_order
             )
             # Convert to correct shape and data type
-            corrected_img[:, :, i] = im_array_as_vector.reshape(shape).astype(np.uint8)
+            corrected_img[:, :, i] = im_array_as_vector.reshape(shape).astype(img.dtype)
 
         return corrected_img
