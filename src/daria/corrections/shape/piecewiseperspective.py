@@ -7,7 +7,6 @@ from typing import Callable
 
 import cv2
 import numpy as np
-import skimage
 
 import daria
 
@@ -86,4 +85,4 @@ class PiecewisePerspectiveTransform:
         # Use same metadata as for the base of the patches
         metadata = patches.base.metadata
 
-        return daria.Image(img=transformed_img, metadata=patches.base.metadata)
+        return daria.Image(img=transformed_img, metadata=metadata)
