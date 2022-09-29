@@ -148,6 +148,14 @@ def extract_quadrilateral_ROI(img_src: np.ndarray, **kwargs) -> np.ndarray:
         pts_src.astype(np.float32), pts_dst.astype(np.float32)
     )
 
+    # Take care of data type - cv2 requires np.float32 objects.
+    # However, when using input images with integer dtype, it is
+    # intended that it remains like this. One may indeed loose
+    # some information. However, since data type changes are
+    # challenging to keep track of, the intention is that this
+    # routine returns arrays of same dtype again.
+    dtype = img_src.dtype
+
     # Warp source image. Warping may convert a 3-tensor to a 2-tensor.
     # Force to use a 3-tensor structure.
     img_dst = np.atleast_3d(
@@ -157,6 +165,6 @@ def extract_quadrilateral_ROI(img_src: np.ndarray, **kwargs) -> np.ndarray:
             (target_width, target_height),
             flags=cv2.INTER_LINEAR,
         )
-    )
+    ).astype(dtype)
 
     return img_dst
