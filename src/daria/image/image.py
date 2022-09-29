@@ -99,6 +99,7 @@ class Image:
                 self.metadata["width"] = curvature_correction.config["crop"]["width"]
             else:
                 raise Exception("image width not specified")
+
             if "height" in kwargs:
                 self.metadata["height"] = kwargs["height"]
             elif curvature_correction is not None:
@@ -265,6 +266,7 @@ class Image:
             plt.close()
         else:
             plt.imshow(rgbim)
+            plt.show()
 
     # Seems like something that should read an image and return a new one with grid.
     def add_grid(
