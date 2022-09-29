@@ -105,12 +105,13 @@ class Image:
                 self.metadata["height"] = curvature_correction.config["crop"]["height"]
             else:
                 raise Exception("image height not specified")
-            self.metadata["origo"]: list[float] = kwargs.pop("origo", [0, 0])
-            if "color_space" in kwargs:
-                self.metadata["color_space"] = kwargs["color_space"]
-            else:
-                self.metadata["color_space"] = "BGR"
-                no_colorspace_given = True
+
+            self.metadata["origo"]: np.ndarray[float] = kwargs.pop(
+                "origo", np.array([0, 0])
+            )
+
+            no_colorspace_given = "color_space" not in kwargs
+            self.metadata["color_space"] = kwargs.pop("color_space", "BGR")
 
         # Fetch image
         if isinstance(img, np.ndarray):
