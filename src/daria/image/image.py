@@ -147,6 +147,11 @@ class Image:
                 "Invalid image data. Provide either a path to an image or an image array."
             )
 
+        # Apply corrections
+        if color_correction is not None:
+            self.toRGB()
+            self.img = color_correction(self.img)
+
         if curvature_correction is not None:
             self.img = curvature_correction(self.img)
             assert (
@@ -155,10 +160,6 @@ class Image:
             assert (
                 self.metadata["height"] == curvature_correction.config["crop"]["height"]
             )
-
-        if color_correction is not None:
-            self.toRGB()
-            self.img = color_correction(self.img)
 
         # Determine numbers of cells in each dimension and cell size
         self.num_pixels_height, self.num_pixels_width = self.img.shape[:2]
