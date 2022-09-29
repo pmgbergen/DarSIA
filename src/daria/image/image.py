@@ -350,14 +350,17 @@ class Image:
         return Image(img=gridimg, metadata=self.metadata)
 
     # resize image by using cv2's resize command
-    def resize(self, cx: float, cy: float) -> None:
+    def resize(self, cx: float, cy: Optional[float] = None) -> None:
         """ "
         Coarsen the image object
 
         Arguments:
-            cx: the amount of which to scale in x direction
-            cy: the amount of which to scale in y direction
+            cx (float): the amount of which to scale in x direction
+            cy (float, optional): the amount of which to scale in y direction;
+                default value is cx
         """
+        if cy == None:
+            cy = cx
 
         # Coarsen image
         self.img = cv2.resize(self.img, None, fx=cx, fy=cy)
