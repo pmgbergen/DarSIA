@@ -13,6 +13,7 @@ from typing import Optional, Union
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import skimage
 from scipy.ndimage import map_coordinates
 
 import daria as da
@@ -41,6 +42,12 @@ class CurvatureCorrection:
     def __init__(self, config: Optional[dict] = None, **kwargs) -> None:
         """
         Constructor of curvature correction class.
+
+        NOTE: CurvatureCorrection should be mostly initialized with a config file
+        which controls the correction routine. The possibility to define a curvature
+        correction using a path to an image (not a daria.Image) should be however
+        only used for setting up the config file via CurvatureCorrection as
+        showcased in examples/notebooks/curvature_correction_walkthrough.ipynb
 
         Arguments:
             kwargs (Optional keyword arguments):
@@ -77,6 +84,7 @@ class CurvatureCorrection:
                     "Invalid image data. Provide either a path to an image or an image array."
                 )
             self.current_image = np.copy(self.reference_image)
+            self.dtype = self.current_image.dtype
             self.Ny, self.Nx = self.reference_image.shape[:2]
             self.in_meters = kwargs.pop("in_meters", True)
             self.width = kwargs.pop("width", 1.0)
@@ -94,6 +102,55 @@ class CurvatureCorrection:
                 "Please provide either an image as 'image_source' \
                     or a config file as 'config_source'."
             )
+
+        # Initialize cache for precomputed transformed coordinates
+        self.cache = {}
+
+        # Hardcode the interpolation order, used when mapping pixels to transformed
+        # coordinates
+        self.interpolation_order: int = kwargs.pop("interpolation_order", 1)
+
+    # ! ---- I/O routines
+
+    def write_config_to_file(self, path: Path) -> None:
+        """
+        Writes the config dictionary to a json-file.
+
+        Arguments:
+            path (Path): path to the json file
+        """
+
+        with open(str(path), "w") as outfile:
+            json.dump(self.config, outfile, indent=4)
+
+    def read_config_from_file(self, path: Path) -> None:
+        """
+        Reads a json-file to the config disctionary.
+
+        Arguments:
+            path (Path): path to the json-file.
+        """
+        with open(str(path), "r") as openfile:
+
+            self.config = json.load(openfile)
+
+    def return_image(self) -> da.Image:
+        """
+        Returns the current image as a daria image width provided width and height.
+        """
+        return da.Image(self.temporary_image, width=self.width, height=self.height)
+
+    def show_image(self) -> None:
+        """
+        Shows the current image using matplotlib.pyplot
+        """
+        plt.imshow(cv2.cvtColor(self.temporary_image, cv2.COLOR_BGR2RGB))
+
+    @property
+    def temporary_image(self):
+        return skimage.util.img_as_ubyte(self.current_image)
+
+    # ! ---- Wrappers for single transformations
 
     def pre_bulge_correction(self, **kwargs) -> None:
         """
@@ -218,176 +275,7 @@ class CurvatureCorrection:
             self.current_image, **self.config["stretch"]
         )
 
-    def return_current_image(self) -> da.Image:
-        """
-        Returns the current image as a daria image width provided width and height.
-        """
-        return da.Image(self.current_image, width=self.width, height=self.height)
-
-    def __call__(self, image_source: Union[str, np.ndarray]) -> np.ndarray:
-        """
-        Call method of the curvature correction.
-
-        Applies the curvature correction to a provided image, and returns the image
-        as an array.
-
-        Arguments:
-            image_source (Union[str, np.ndarray]): either the path to an image or an
-                            image matrix
-
-        Returns:
-            np.ndarray: curvature corrected image.
-        """
-        if isinstance(image_source, np.ndarray):
-            image_tmp = image_source
-        elif isinstance(image_source, str):
-            image_tmp = cv2.imread(str(Path(image_source)))
-        else:
-            raise Exception(
-                "Invalid image data. Provide either a path to an image or an image array."
-            )
-        if "init" in self.config:
-            image_tmp = self.simple_curvature_correction(
-                image_tmp, **self.config["init"]
-            )
-        if "crop" in self.config:
-            image_tmp = da.extract_quadrilateral_ROI(image_tmp, **self.config["crop"])
-        if "bulge" in self.config:
-            image_tmp = self.simple_curvature_correction(
-                image_tmp, **self.config["bulge"]
-            )
-        if "stretch" in self.config:
-            image_tmp = self.simple_curvature_correction(
-                image_tmp, **self.config["stretch"]
-            )
-        return image_tmp
-
-    def write_config_to_file(self, path: str) -> None:
-        """
-        Writes the config dictionary to a json-file.
-
-        Arguments:
-            path (Path): path to the json file
-        """
-
-        with open(str(Path(path)), "w") as outfile:
-            json.dump(self.config, outfile, indent=4)
-
-    def show_current(self) -> None:
-        """
-        Shows the current image using matplotlib.pyplot
-        """
-        plt.imshow(cv2.cvtColor(self.current_image, cv2.COLOR_BGR2RGB))
-
-    def read_config_from_file(self, path: str) -> None:
-        """
-        Reads a json-file to the config disctionary.
-
-        Arguments:
-            path (Path): path to the json-file.
-        """
-        with open(str(Path(path)), "r") as openfile:
-
-            self.config = json.load(openfile)
-
-    # TODO: Add an automatic way (using e.g, gradient decent) to choose the parameters.
-    # OR determine manual tuning rules.
-    def simple_curvature_correction(self, img: np.ndarray, **kwargs) -> np.ndarray:
-        """
-        Correction of bulge and stretch effects.
-
-        Args:
-            img (np.ndarray): image array
-            kwargs (optional keyword arguments):
-                "horizontal_bulge" (float): parameter for the curvature correction related
-                    to the horizontal bulge of the image.
-                "horizontal_stretch" (float): parameter for the curvature correction related
-                    to the horizontal stretch of the image
-                "horizontal_center_offset" (int): offset in terms of pixel of the image
-                    center in x-direction, as compared to the numerical center
-                vertical_bulge (float): parameter for the curvature correction related to
-                    the vertical bulge of the image.
-                "vertical_stretch" (float): parameter for the curvature correction related
-                    to the vertical stretch of the image
-                "vertical_center_offset" (int): offset in terms of pixel of the image center
-                    in y-direction, as compared to the numerical center
-                "interpolation_order (int)": interpolation order to map back transformed
-                    image to Cartesian pixel grid
-
-        Returns:
-            np.ndarray: corrected image
-
-        # NOTE: The same image size is used, i.e., the aspect ratio of the image
-        # is taken the same as the input and it is therefore implicitly assumed
-        # that the input image already is warped such that the aspect ratio of
-        # the image is correct. Also it i
-        """
-        # Read in tuning parameters
-        horizontal_bulge: float = kwargs.pop("horizontal_bulge", 0.0)
-        horizontal_stretch: float = kwargs.pop("horizontal_stretch", 0.0)
-        horizontal_center_offset: int = kwargs.pop("horizontal_center_offset", 0)
-        vertical_bulge: float = kwargs.pop("vertical_bulge", 0.0)
-        vertical_stretch: float = kwargs.pop("vertical_stretch", 0.0)
-        vertical_center_offset: int = kwargs.pop("vertical_center_offset", 0)
-        interpolation_order: int = kwargs.pop("interpolation_order", 1)
-
-        # Assume a true image in the form of an array is provided
-        if not isinstance(img, np.ndarray):
-            raise Exception(
-                "Invalid image data. Provide either a path to an image or an image array."
-            )
-
-        # Read size of image
-        Ny, Nx = img.shape[:2]
-
-        # NOTE: Finding the true centre of the image actually depends on many factors
-        # including lense properties. Thus, the task is actually quite hard. Here, a
-        # simple approach is used, simply choosing the numerical centre of the image
-        # corrected by the user.
-
-        # Image center in pixels, but in (col, row) order
-        image_center = [
-            round(Nx / 2) + horizontal_center_offset,
-            round(Ny / 2) + vertical_center_offset,
-        ]
-
-        # Define coordinate system relative to image center, in terms of pixels
-        x = np.arange(Nx) - image_center[0]
-        y = np.arange(Ny) - image_center[1]
-
-        # Construct associated meshgrid with Cartesian indexing
-        X, Y = np.meshgrid(x, y)
-
-        # Warp the coordinate system nonlinearly, correcting for bulge and stretch effects.
-        Xmod = (
-            X
-            + horizontal_bulge * np.multiply(X, (np.max(Y) - Y) * (Y - np.min(Y)))
-            + horizontal_stretch * X * (np.max(X) - X) * (X - np.min(X))
-        )
-        Ymod = (
-            Y
-            + vertical_bulge * np.multiply(Y, (np.max(X) - X) * (X - np.min(X)))
-            + vertical_stretch * Y * (np.max(Y) - Y) * (Y - np.min(Y))
-        )
-
-        # Map corrected grid back to positional arguments, i.e. invert the definition
-        # of the local coordinate system
-        Xmod += image_center[0]
-        Ymod += image_center[1]
-
-        # Create out grid as the corrected grid, use (row,col) format
-        out_grid = np.array([Ymod.ravel(), Xmod.ravel()])
-
-        # Define the shape corrected image.
-        img_mod = np.zeros_like(img, dtype=img.dtype)
-
-        # Do interpolate original image on the new grid
-        for i in range(img.shape[2]):
-            in_data = img[:, :, i]
-            im_array = map_coordinates(in_data, out_grid, order=interpolation_order)
-            img_mod[:, :, i] = im_array.reshape(img.shape[:2]).astype(img.dtype)
-
-        return img_mod
+    # ! ---- Auxiliary routines for computing tuning parameters in the correction.
 
     def compute_bulge(self, **kwargs):
         """
@@ -473,3 +361,230 @@ class CurvatureCorrection:
             vertical_stretch,
             vertical_stretch_center_offset,
         )
+
+    # ! ---- Main correction routines
+
+    def __call__(
+        self, img: Union[str, np.ndarray], update_cache: bool = False
+    ) -> np.ndarray:
+        """
+        Call method of the curvature correction.
+
+        Applies the curvature correction to a provided image, and returns the
+        corrected image as an array.
+
+        Arguments:
+            img (np.ndarray): image array
+            update_cache (bool): flag controlling whether the transformed coordinates are
+                precomputed even if already existent; default is False.
+
+        Returns:
+            np.ndarray: curvature corrected image.
+        """
+        # FIXME: I suggest to remove the possibility of calling images via str outside
+        # of daria.Image. Opening an image comes with a pre-defined choice of the
+        # colorspace. This control is lost if we do not further pass this information.
+        # Also, modular thinking has had its success in software development for a reason.
+        # I would also say, either the user is loading the image him/herself but then
+        # is required to provide all other necessary information. Other than that, I am
+        # in favor of centralizing opening images from file. This be either in daria.Image
+        # or if need in utils (in addition). But I think, only daria.Image is the right
+        # place for it.
+
+        # Read image
+        if isinstance(img, str):
+            img = cv2.imread(img)
+        #            img = cv2.cvtColor(cv2.imread(img), cv2.COLOR_BGR2RGB)
+        assert isinstance(img, np.ndarray)
+
+        # Precompute transformed coordinates based on self.config, if required.
+        if "grid" not in self.cache or update_cache:
+            self._precompute_transformed_coordinates(img)
+
+        # Fetch precomputed transformed coordinates and the shape of the transformed image.
+        grid = self.cache["grid"]
+        shape = self.cache["shape"]
+
+        # Determine the corrected image
+        corrected_img = self._transform_image(img, grid, shape)
+
+        return corrected_img
+
+    # TODO: Add an automatic way (using e.g, gradient decent) to choose the parameters.
+    # OR determine manual tuning rules.
+    def simple_curvature_correction(
+        self,
+        img: np.ndarray,
+        **kwargs,
+    ) -> np.ndarray:
+        """
+        General routine for applying stretch and bulge transforms. This routine
+        in contrast to __call__ does always use the keyword arguments and constructs
+        the transformation instead of using cached values.
+
+        Args:
+            img (np.ndarray): image array
+            kwargs (optional keyword arguments): see _transform_coordinates for more details.
+
+        Returns:
+            np.ndarray: corrected image
+        """
+        # Read size of image
+        Ny, Nx = img.shape[:2]
+
+        # Define coordinates
+        x = np.arange(Nx)
+        y = np.arange(Ny)
+
+        # Construct associated meshgrid with Cartesian indexing
+        X, Y = np.meshgrid(x, y)
+
+        # Transform coordinates accoring to input
+        X, Y = self._transform_coordinates(X, Y, **kwargs)
+
+        # Create out grid as the corrected grid, use (row,col) format
+        grid = np.array([Y.ravel(), X.ravel()])
+        shape = X.shape[:2]
+
+        # Determine the corrected image
+        corrected_img = self._transform_image(img, grid, shape)
+
+        return corrected_img
+
+    # ! ---- Main auxiliary correction routines - dirctly called in the main routines
+
+    def _precompute_transformed_coordinates(self, img: np.ndarray) -> None:
+        """
+        Definition of the standard coordinate transformation routine and the
+        order of transformation. Furthermore, this routine implicitly defines
+        hardcoded keywords addressing the single transformation.
+
+        The final result is stored in cache.
+
+        Args:
+            img (np.ndarray)
+        """
+        # Read size of image
+        Ny, Nx = img.shape[:2]
+
+        # Define coordinates
+        x = np.arange(Nx)
+        y = np.arange(Ny)
+
+        # Construct associated meshgrid with Cartesian indexing
+        X, Y = np.meshgrid(x, y)
+
+        if "init" in self.config:
+            X, Y = self._transform_coordinates(X, Y, **self.config["init"])
+
+        if "crop" in self.config:
+            X = da.extract_quadrilateral_ROI(X, **self.config["crop"])
+            Y = da.extract_quadrilateral_ROI(Y, **self.config["crop"])
+
+        if "bulge" in self.config:
+            X, Y = self._transform_coordinates(X, Y, **self.config["bulge"])
+
+        if "stretch" in self.config:
+            X, Y = self._transform_coordinates(X, Y, **self.config["stretch"])
+
+        # Create out grid as the corrected grid, use (row,col) format
+        grid = np.array([Y.ravel(), X.ravel()])
+
+        # Store grid and shape
+        self.cache["grid"] = grid
+        self.cache["shape"] = X.shape[:2]
+
+    def _transform_coordinates(
+        self, X: np.ndarray, Y: np.ndarray, **kwargs
+    ) -> tuple[np.ndarray]:
+        """
+        Routine for applying stretch and bulge transformation of coordinates.
+
+        Args:
+            img (np.ndarray): image array
+            kwargs (optional keyword arguments): see _transform_coordinates for more details.
+                "horizontal_bulge" (float): parameter for the curvature correction related
+                    to the horizontal bulge of the image.
+                "horizontal_stretch" (float): parameter for the curvature correction related
+                    to the horizontal stretch of the image
+                "horizontal_center_offset" (int): offset in terms of pixel of the image
+                    center in x-direction, as compared to the numerical center
+                vertical_bulge (float): parameter for the curvature correction related to
+                    the vertical bulge of the image.
+                "vertical_stretch" (float): parameter for the curvature correction related
+                    to the vertical stretch of the image
+                "vertical_center_offset" (int): offset in terms of pixel of the image center
+                    in y-direction, as compared to the numerical center
+
+        Returns:
+            tuple of arrays: the transformed coordinates; first x and second y.
+        """
+        # Read in tuning parameters
+        horizontal_bulge: float = kwargs.pop("horizontal_bulge", 0.0)
+        horizontal_stretch: float = kwargs.pop("horizontal_stretch", 0.0)
+        horizontal_center_offset: int = kwargs.pop("horizontal_center_offset", 0)
+        vertical_bulge: float = kwargs.pop("vertical_bulge", 0.0)
+        vertical_stretch: float = kwargs.pop("vertical_stretch", 0.0)
+        vertical_center_offset: int = kwargs.pop("vertical_center_offset", 0)
+
+        Ny, Nx = X.shape[:2]
+
+        # Image center in pixels, but in (col, row) order
+        image_center = [
+            round(Nx / 2) + horizontal_center_offset,
+            round(Ny / 2) + vertical_center_offset,
+        ]
+
+        # Define coordinate system relative to image center, in terms of pixels
+        X -= image_center[0]
+        Y -= image_center[1]
+
+        # Warp the coordinate system nonlinearly, correcting for bulge and stretch effects.
+        Xmod = (
+            X
+            + horizontal_bulge * np.multiply(X, (np.max(Y) - Y) * (Y - np.min(Y)))
+            + horizontal_stretch * X * (np.max(X) - X) * (X - np.min(X))
+        )
+        Ymod = (
+            Y
+            + vertical_bulge * np.multiply(Y, (np.max(X) - X) * (X - np.min(X)))
+            + vertical_stretch * Y * (np.max(Y) - Y) * (Y - np.min(Y))
+        )
+
+        # Map corrected grid back to positional arguments, i.e. invert the definition
+        # of the local coordinate system
+        Xmod += image_center[0]
+        Ymod += image_center[1]
+
+        return Xmod, Ymod
+
+    def _transform_image(
+        self, img: np.ndarray, grid: tuple[np.ndarray], shape: tuple[int]
+    ) -> np.ndarray:
+        """
+        Routine to transform an image based on transformed coordinates.
+
+        Args:
+            img (np.ndarray): image array
+            grid (tuple of arrays): x and y components of the transformed coordinates
+            shape (tuple): shape of the final image
+
+        Returns:
+            np.ndarray: transformed image
+        """
+        # Initialize the corrected image.
+        corrected_img = np.zeros((*shape, img.shape[2]), dtype=img.dtype)
+
+        # Detemine the corrected image using interpolation based on the transformed
+        # coordinates.
+        for i in range(img.shape[2]):
+            # Consider each color channel separately
+            in_data = img[:, :, i]
+            # Map image to new coordinates
+            im_array_as_vector = map_coordinates(
+                in_data, grid, order=self.interpolation_order
+            )
+            # Convert to correct shape and data type
+            corrected_img[:, :, i] = im_array_as_vector.reshape(shape).astype(img.dtype)
+
+        return corrected_img

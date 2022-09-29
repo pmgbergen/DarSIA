@@ -7,7 +7,6 @@ from typing import Callable
 
 import cv2
 import numpy as np
-import skimage
 
 import daria
 
@@ -46,11 +45,11 @@ class PiecewisePerspectiveTransform:
         Returns:
             daria.Image: transformed image
         """
-        # NOTE: At the moment, no normalization is considered.
-
-        # Initialize empty image of same type as the original image
-        (h, w) = patches.base.shape[:2]
-        transformed_img = np.zeros(patches.base.shape, dtype=float)
+        # Initialize empty image of same type as the original image.
+        # Need float for cv2.warpPerspective.
+        (h, w) = patches.base.img.shape[:2]
+        dtype = patches.base.img.dtype
+        transformed_img = np.zeros(patches.base.img.shape, dtype=np.float32)
 
         # Loop over all patches in a grid fashion:
         for i in range(patches.num_patches_x):
@@ -75,14 +74,15 @@ class PiecewisePerspectiveTransform:
                 )
 
                 # Map patch onto transformed region
-                patch_img = skimage.util.img_as_float(patches.images[i][j].img)
+                patch_img = patches.images[i][j].img.astype(np.float32)
                 transformed_img += cv2.warpPerspective(
                     patch_img, P, (w, h), flags=cv2.INTER_LINEAR
                 )
 
-        # Fetch metadata from originating patches
-        origo = patches.base.origo
-        width = patches.base.width
-        height = patches.base.height
+        # Convert to the same data type as the input image
+        transformed_img = transformed_img.astype(dtype)
 
-        return daria.Image(img=transformed_img, origo=origo, width=width, height=height)
+        # Use same metadata as for the base of the patches
+        metadata = patches.base.metadata
+
+        return daria.Image(img=transformed_img, metadata=metadata)
