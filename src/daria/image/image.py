@@ -359,7 +359,7 @@ class Image:
             cy (float, optional): the amount of which to scale in y direction;
                 default value is cx
         """
-        if cy == None:
+        if cy is None:
             cy = cx
 
         # Coarsen image
