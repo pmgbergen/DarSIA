@@ -2,9 +2,6 @@
 Determine compaction of FluidFlower by comparing two different images.
 """
 
-from pathlib import Path
-
-import cv2
 import matplotlib.pyplot as plt
 import skimage
 
@@ -12,68 +9,52 @@ import daria
 
 # ! ----- Preliminaries - prepare two images for compaction analysis
 
-# Initialize config dictionary
-config = {}
-
 # Paths to two images of interest
 path_src = "/home/jakub/images/ift/benchmark/baseline/original/Baseline.jpg"
 path_dst = "/home/jakub/images/ift/benchmark/well_test/pulse1.jpg"
 
-# Read images from file
-img_src = cv2.imread(str(Path(path_src)))
-img_dst = cv2.imread(str(Path(path_dst)))
+# Setup config for cropping, and define geometry correction object
+config = {
+    "crop": {
+        # Define the pixel values (x,y) of the corners of the ROI.
+        # Start at top left corner and then continue counterclockwise.
+        "pts_src": [[52, 0], [64, 4429], [7896, 4429], [7891, 0]],
+        # Specify the true dimensions of the reference points
+        "width": 2.8,
+        "height": 1.5,
+    }
+}
+curvature_correction = daria.CurvatureCorrection(config)
 
-# Convert to RGB space
-img_src = cv2.cvtColor(img_src, cv2.COLOR_BGR2RGB)
-img_dst = cv2.cvtColor(img_dst, cv2.COLOR_BGR2RGB)
+# Create daria images with integrated cropping
+img_src = daria.Image(img=path_src, curvature_correction=curvature_correction)
+img_dst = daria.Image(img=path_dst, curvature_correction=curvature_correction)
 
-# Initialize the object which will be responsible for aligning patches, and
-# evenutally determining a compaction map.
-translation_estimator = daria.TranslationEstimator(max_features=200, tol=0.05)
-
-# ! ----- Step 1: Prepare images
-
-# ! ----- Step 1a: Prepare imagesAlign both images wrt color palette
-
-# Define (inaccurate) ROIs in which the color palette is contained - same here.
+# Scrutinze the color palette and align both images respectively. For this,
+# define (inaccurate) ROIs in terms of pixel ranges (y and x) in which the
+# color palette is contained.
+translation_estimator = daria.TranslationEstimator()
 roi_cc = (slice(0, 600), slice(0, 600))
-
-# Scrutinze the color palette and align both images respectively.
-aligned_img_src = translation_estimator.match_roi(
+translation_estimator.match_roi(
     img_src=img_src, img_dst=img_dst, roi_src=roi_cc, roi_dst=roi_cc
 )
 
-# ! ----- Step 1b: Extract a quarilateral ROI
+# Cut away the color palette - again define the ROI in terms of pixel ranges (y and x)
+roi_crop = (slice(470, img_src.img.shape[0]), slice(60, 7940))
+da_img_src = daria.extractROIPixel(img_src, roi_crop)
+da_img_dst = daria.extractROIPixel(img_dst, roi_crop)
 
-# Extract quad ROI with known physical size
-config["crop"] = {
-    "pts_src": [[52, 0], [64, 4429], [7896, 4429], [7891, 0]],
-    # Specify the true dimensions of the reference points - known as they are points on
-    # the laser grid
-    "width": 2.8,
-    "height": 1.5,
-}
 
-# Crop using the curvature correction
-curvature_correction = daria.CurvatureCorrection(config)
-img_cropped_src = curvature_correction(aligned_img_src)
-img_cropped_dst = curvature_correction(img_dst)
-
-# ! ----- Step 1c: Cut away the color palette
-final_height = 1.5 * (img_cropped_src.shape[0] - 470) / img_cropped_src.shape[0]
-img_cropped_src = img_cropped_src[470:, 60:7940]
-img_cropped_dst = img_cropped_dst[470:, 60:7940]
-
-# ! ----- Step 2: Determine the compaction between img_dst and aligned_img_src
-
-# Make daria images
-da_img_src = daria.Image(img_cropped_src, width=2.8, height=final_height)
-da_img_dst = daria.Image(img_cropped_dst, width=2.8, height=final_height)
+# ! ----- Actual analysis: Determine the compaction between img_dst and aligned_img_src
 
 # Define compaction analysis tool
 config["compaction"] = {
+    # Define the number of patches in x and y directions
     "N_patches": [20, 10],
+    # Define a relative overlap, this makes it often slightly easier for the feature detection.
     "rel_overlap": 0.1,
+    # Add some tuning parameters for the feature detection (these are actually the default
+    # values and could be also omitted.
     "max_features": 200,
     "tol": 0.05,
 }
