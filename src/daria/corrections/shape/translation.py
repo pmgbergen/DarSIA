@@ -2,18 +2,22 @@
 Module containing estimator for translation required to match two images.
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
+import daria
 from daria.utils.features import FeatureDetection
 
 
 class TranslationEstimator:
     """
     Class for computing translations to align images based on feature detection.
+
+    Operates mainly on numpy arrays, but also provides some functionalities for daria
+    Images.
     """
 
     def __init__(self, max_features: int = 200, tol: float = 0.05):
@@ -95,12 +99,46 @@ class TranslationEstimator:
 
     def match_roi(
         self,
+        img_src: Union[np.ndarray, daria.Image],
+        img_dst: Union[np.ndarray, daria.Image],
+        roi_src: Optional[tuple],
+        roi_dst: Optional[tuple],
+        plot_matches: bool = False,
+    ) -> Optional[np.ndarray]:
+        """
+        Align two images, such that when restricted to an ROI, both images have matching
+        features.
+
+        Args:
+            img_src (np.ndarray or daria.Image): source image
+            img_dst (np.ndarray or daria.Image): destination image
+            roi_src (tuple of slices): region of interested associated to the source image
+            roi_dst (tuple of slices): region of interested associated to the destination image
+                translation
+            plot_matches (bool): flag controlling whether the matching features are plotted;
+                useful for debugging; default value is False
+
+        Returns:
+            np.ndarray, optional: aligned source image, if input of type array
+        """
+        # Determine effective translation
+        if isinstance(img_src, np.ndarray) and isinstance(img_dst, np.ndarray):
+            return self._match_roi_arrays(
+                img_src, img_dst, roi_src, roi_dst, plot_matches
+            )
+        elif isinstance(img_src, daria.Image) and isinstance(img_dst, daria.Image):
+            self._match_roi_images(img_src, img_dst, roi_src, roi_dst, plot_matches)
+        else:
+            raise ValueError("Provide images either as numpy arrays or daria Images.")
+
+    def _match_roi_arrays(
+        self,
         img_src: np.ndarray,
         img_dst: np.ndarray,
         roi_src: Optional[tuple],
         roi_dst: Optional[tuple],
         plot_matches: bool = False,
-    ) -> np.ndarray:
+    ) -> Optional[np.ndarray]:
         """
         Align two images, such that when restricted to an ROI, both images have matching
         features.
@@ -125,11 +163,43 @@ class TranslationEstimator:
         if not intact_translation:
             raise ValueError("ROIs cannot be aligned by translation.")
 
-        # Apply translation
+        # Apply translation - Change the source and return it
         (h, w) = img_dst.shape[:2]
         aligned_img_src = cv2.warpAffine(img_src, translation, (w, h))
-
         return aligned_img_src
+
+    def _match_roi_images(
+        self,
+        img_src: daria.Image,
+        img_dst: daria.Image,
+        roi_src: Optional[tuple],
+        roi_dst: Optional[tuple],
+        plot_matches: bool = False,
+    ) -> Optional[daria.Image]:
+        """
+        Align two images, such that when restricted to an ROI, both images have matching
+        features.
+
+        Args:
+            img_src (daria.Image): source image, which will be modified and aligned
+            img_dst (daria.Image): destination image
+            roi_src (tuple of slices): region of interested associated to the source image
+            roi_dst (tuple of slices): region of interested associated to the destination image
+                translation
+            plot_matches (bool): flag controlling whether the matching features are plotted;
+                useful for debugging; default value is False
+        """
+        # Determine effective translation
+        translation, intact_translation = self.find_effective_translation(
+            img_src.img, img_dst.img, roi_src, roi_dst, plot_matches
+        )
+
+        if not intact_translation:
+            raise ValueError("ROIs cannot be aligned by translation.")
+
+        # Apply translation - Modify daria Image internally
+        (h, w) = img_dst.img.shape[:2]
+        img_src.img = cv2.warpAffine(img_src.img, translation, (w, h))
 
     def _find_matching_transformation(
         self,
