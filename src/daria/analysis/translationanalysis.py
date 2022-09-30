@@ -77,14 +77,13 @@ class TranslationAnalysis:
         if need_update_N_patches or need_update_rel_overlap:
             self.update_base()
 
-    def update_base(self, base: Optional[daria.Image] = None) -> None:
+    def update_base(self, base: daria.Image) -> None:
         """Update baseline image.
 
         Args:
             base (daria.Image): baseline image
         """
-        if base is not None:
-            self.base = base
+        self.base = base
 
         # Create new patches of the base image.
         self.patches_base = daria.Patches(

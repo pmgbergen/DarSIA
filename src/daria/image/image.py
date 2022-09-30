@@ -107,13 +107,12 @@ class Image:
             else:
                 raise Exception("image height not specified")
 
-            self.metadata["origo"]: list[float] = kwargs.pop("origo", [0, 0])
+            self.metadata["origo"]: np.ndarray[float] = kwargs.pop(
+                "origo", np.array([0, 0])
+            )
 
-            if "color_space" in kwargs:
-                self.metadata["color_space"] = kwargs["color_space"]
-            else:
-                self.metadata["color_space"] = "BGR"
-                no_colorspace_given = True
+            no_colorspace_given = "color_space" not in kwargs
+            self.metadata["color_space"] = kwargs.pop("color_space", "BGR")
 
         # Fetch image
         if isinstance(img, np.ndarray):
@@ -149,6 +148,11 @@ class Image:
                 "Invalid image data. Provide either a path to an image or an image array."
             )
 
+        # Apply corrections
+        if color_correction is not None:
+            self.toRGB()
+            self.img = color_correction(self.img)
+
         if curvature_correction is not None:
             self.img = curvature_correction(self.img)
             assert (
@@ -157,10 +161,6 @@ class Image:
             assert (
                 self.metadata["height"] == curvature_correction.config["crop"]["height"]
             )
-
-        if color_correction is not None:
-            self.toRGB()
-            self.img = color_correction(self.img)
 
         # Determine numbers of cells in each dimension and cell size
         self.num_pixels_height, self.num_pixels_width = self.img.shape[:2]
@@ -352,14 +352,17 @@ class Image:
         return Image(img=gridimg, metadata=self.metadata)
 
     # resize image by using cv2's resize command
-    def resize(self, cx: float, cy: float) -> None:
+    def resize(self, cx: float, cy: Optional[float] = None) -> None:
         """ "
         Coarsen the image object
 
         Arguments:
-            cx: the amount of which to scale in x direction
-            cy: the amount of which to scale in y direction
+            cx (float): the amount of which to scale in x direction
+            cy (float, optional): the amount of which to scale in y direction;
+                default value is cx
         """
+        if cy is None:
+            cy = cx
 
         # Coarsen image
         self.img = cv2.resize(self.img, None, fx=cx, fy=cy)
