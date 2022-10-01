@@ -48,7 +48,7 @@ class Image:
 
     def __init__(
         self,
-        img: Union[np.ndarray, str],
+        img: Union[np.ndarray, str, Path],
         metadata: Optional[dict] = None,
         curvature_correction: Optional[da.CurvatureCorrection] = None,
         color_correction: Optional[da.ColorCorrection] = None,
@@ -62,7 +62,7 @@ class Image:
         metadata json-file over keyword arguments.
 
         Arguments:
-            img (Union[np.ndarray, str]): image array with matrix indexing
+            img (Union[np.ndarray, str, Path]): image array with matrix indexing
             metadata (dict, Optional): metadata dictionary, default is None.
             curvature_correction (daria.CurvatureCorrection, Optional):
                 Curvature correction object. Default is none, but should be included
@@ -125,7 +125,7 @@ class Image:
             if no_colorspace_given:
                 warn("Please provide a color space. Now it is assumed to be BGR.")
 
-        elif isinstance(img, str):
+        elif isinstance(img, str) or isinstance(img, Path):
             pil_img = PIL_Image.open(Path(img))
             self.img = np.array(pil_img)
 
@@ -365,7 +365,13 @@ class Image:
             cy = cx
 
         # Coarsen image
-        self.img = cv2.resize(self.img, None, fx=cx, fy=cy)
+        self.img = cv2.resize(
+            self.img,
+            None,
+            fx=cx,
+            fy=cy,
+            interpolation=cv2.INTER_AREA if min(cx, cy) < 1 else cv2.INTER_CUBIC,
+        )
 
         # Update parameters and coordinate system
         self.dx *= 1 / cx
