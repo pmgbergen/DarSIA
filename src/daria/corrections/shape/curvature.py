@@ -7,6 +7,7 @@ A class for setup and application of curvature correction.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Optional, Union
 
@@ -14,10 +15,10 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
+from PIL import Image as PIL_Image
 from scipy.ndimage import map_coordinates
 
 import daria as da
-import math
 
 
 class CurvatureCorrection:
@@ -78,7 +79,7 @@ class CurvatureCorrection:
                 self.reference_image = im_source
 
             elif isinstance(im_source, str):
-                self.reference_image = cv2.imread(str(Path(im_source)))
+                self.reference_image = np.array(PIL_Image.open(Path(im_source)))
 
             else:
                 raise Exception(
@@ -106,8 +107,8 @@ class CurvatureCorrection:
 
         # The internally stored config file is tailored to when resize_factor is equal to 1.
         # For other values, it has to be adapted.
-        self.resize_factor = kwargs.pop("resize_factor", 1.)
-        if not math.isclose(self.resize_factor, 1.):
+        self.resize_factor = kwargs.pop("resize_factor", 1.0)
+        if not math.isclose(self.resize_factor, 1.0):
             self._adapt_config()
 
         # Initialize cache for precomputed transformed coordinates
@@ -372,13 +373,16 @@ class CurvatureCorrection:
     # ! ---- Main correction routines
 
     def __call__(
-        self, img: Union[str, np.ndarray], update_cache: bool = False
+        self,
+        img: Union[str, Path, np.ndarray],
+        update_cache: bool = False,
     ) -> np.ndarray:
         """
         Call method of the curvature correction.
 
         Applies the curvature correction to a provided image, and returns the
-        corrected image as an array.
+        corrected image as an array. If set in the constructor, the image
+        will be resized in the first step.
 
         Arguments:
             img (np.ndarray): image array
@@ -399,13 +403,12 @@ class CurvatureCorrection:
         # place for it.
 
         # Read image
-        if isinstance(img, str):
-            img = cv2.imread(img)
-        #            img = cv2.cvtColor(cv2.imread(img), cv2.COLOR_BGR2RGB)
+        if isinstance(img, str) or isinstance(img, Path):
+            img = np.array(PIL_Image.open(Path(img)))
         assert isinstance(img, np.ndarray)
 
         # Precompute transformed coordinates based on self.config, if required.
-        if "grid" not in self.cache or update_cache:
+        if update_cache or "grid" not in self.cache:
             self._precompute_transformed_coordinates(img)
 
         # Fetch precomputed transformed coordinates and the shape of the transformed image.
@@ -508,15 +511,27 @@ class CurvatureCorrection:
         """
         for mainkey in ["init", "bulge"]:
             if mainkey in self.config:
-                for key in ["horizontal_bulge", "vertical_bulge", "horizontal_center_offset", "vertical_center_offset"]:
+                for key in [
+                    "horizontal_bulge",
+                    "vertical_bulge",
+                    "horizontal_center_offset",
+                    "vertical_center_offset",
+                ]:
                     if key in self.config[mainkey]:
                         self.config[mainkey][key] *= self.resize_factor
 
         if "crop" in self.config:
-            self.config["crop"]["pts_src"] = (self.resize_factor * np.array(self.config["crop"]["pts_src"])).tolist()
+            self.config["crop"]["pts_src"] = (
+                self.resize_factor * np.array(self.config["crop"]["pts_src"])
+            ).tolist()
 
         if "stretch" in self.config:
-            for key in ["horizontal_stretch", "vertical_stretch", "horizontal_center_offset", "vertical_center_offset"]:
+            for key in [
+                "horizontal_stretch",
+                "vertical_stretch",
+                "horizontal_center_offset",
+                "vertical_center_offset",
+            ]:
                 self.config["stretch"][key] *= self.resize_factor
 
     def _transform_coordinates(
