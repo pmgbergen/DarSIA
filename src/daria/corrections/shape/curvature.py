@@ -6,6 +6,7 @@ A class for setup and application of curvature correction.
 
 from __future__ import annotations
 
+import copy
 import json
 import math
 from pathlib import Path
@@ -70,7 +71,7 @@ class CurvatureCorrection:
 
         if config is not None:
             # Read config directly from argument list
-            self.config = config
+            self.config = copy.deepcopy(config)
 
         elif "image_source" in kwargs:
             self.config: dict() = {}
