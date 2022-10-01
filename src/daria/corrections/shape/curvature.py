@@ -17,6 +17,7 @@ import skimage
 from scipy.ndimage import map_coordinates
 
 import daria as da
+import math
 
 
 class CurvatureCorrection:
@@ -102,6 +103,12 @@ class CurvatureCorrection:
                 "Please provide either an image as 'image_source' \
                     or a config file as 'config_source'."
             )
+
+        # The internally stored config file is tailored to when resize_factor is equal to 1.
+        # For other values, it has to be adapted.
+        self.resize_factor = kwargs.pop("resize_factor", 1.)
+        if not math.isclose(self.resize_factor, 1.):
+            self._adapt_config()
 
         # Initialize cache for precomputed transformed coordinates
         self.cache = {}
@@ -493,6 +500,24 @@ class CurvatureCorrection:
         # Store grid and shape
         self.cache["grid"] = grid
         self.cache["shape"] = X.shape[:2]
+
+    def _adapt_config(self) -> None:
+        """
+        Adapt config file for resized images, assuming config is correct
+        for resize_factor = 1.
+        """
+        for mainkey in ["init", "bulge"]:
+            if mainkey in self.config:
+                for key in ["horizontal_bulge", "vertical_bulge", "horizontal_center_offset", "vertical_center_offset"]:
+                    if key in self.config[mainkey]:
+                        self.config[mainkey][key] *= self.resize_factor
+
+        if "crop" in self.config:
+            self.config["crop"]["pts_src"] = (self.resize_factor * np.array(self.config["crop"]["pts_src"])).tolist()
+
+        if "stretch" in self.config:
+            for key in ["horizontal_stretch", "vertical_stretch", "horizontal_center_offset", "vertical_center_offset"]:
+                self.config["stretch"][key] *= self.resize_factor
 
     def _transform_coordinates(
         self, X: np.ndarray, Y: np.ndarray, **kwargs
