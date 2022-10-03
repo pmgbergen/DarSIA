@@ -4,6 +4,8 @@ analyze concentrations/saturation profiles based on image comparison.
 """
 
 import copy
+import json
+from pathlib import Path
 from typing import Optional, Union
 
 import cv2
@@ -96,6 +98,44 @@ class ConcentrationAnalysis:
             self._volumes_cache = {
                 self._volumes_ref_shape: np.squeeze(volumes),
             }
+
+    def read_calibration_from_file(self, config: dict, path: Union[str, Path]) -> None:
+        """
+        Read calibration information from file.
+
+        Args:
+            config (dict): config file for simple data.
+            path (str or Path): path to cleaning filter array.
+        """
+        # Fetch the scaling parameter and threshold mask from file
+        self.scaling = config["scaling"]
+        self.threshold = np.load(path)
+
+        # Resize threshold mask if unmatching the size of the base image
+        base_shape = self.base.img.shape[:2]
+        if self.threshold.shape[:2] != base_shape:
+            self.threshold = cv2.resize(self.threshold, tuple(reversed(base_shape)))
+
+    def write_calibration_to_file(
+        self, path_to_config: Union[str, Path], path_to_filter: Union[str, Path]
+    ) -> None:
+        """
+        Store available calibration information including the
+        scaling factor and the cleaning mask.
+
+        Args:
+            path_to_config (str or Path): path for storage of config file.
+            path_to_filter (str or Path): path for storage of the cleaning filter.
+        """
+        # Store scaling parameters.
+        config = {
+            "scaling": self.scaling,
+        }
+        with open(Path(path_to_config), "w") as outfile:
+            json.dump(config, outfile, indent=4)
+
+        # Store cleaning filter array.
+        np.save(str(Path(path_to_filter)), self.threshold)
 
     # TODO add clean_base method
     # def clean_base(self, img: daria.Image) -> None:
