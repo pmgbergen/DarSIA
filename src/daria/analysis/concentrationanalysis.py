@@ -173,7 +173,8 @@ class ConcentrationAnalysis:
         as thresholding mask.
 
         Args:
-            baseline_images (list of daria.Image): series of baseline_images
+            baseline_images (list of daria.Image): series of baseline_images.
+            reset (bool): flag whether the cleaning filter shall be reset.
         """
         # Initialize cleaning filter
         if reset:
@@ -198,7 +199,9 @@ class ConcentrationAnalysis:
         self,
         injection_rate: float,
         images: list[daria.Image],
-        scaling_init: Optional[tuple[float]] = None,
+        initial_guess: Optional[tuple[float]] = None,
+        tol: float = 1e-3,
+        maxiter: int = 20,
     ) -> None:
         """
         Calibrate the conversion used in __call__ such that the provided
@@ -207,6 +210,12 @@ class ConcentrationAnalysis:
         Args:
             injection_rate (float): constant injection rate in ml/hrs.
             images (list of daria.Image): images used for the calibration.
+            initial_guess (tuple): interval of scaling values to be considered
+                in the calibration; need to define lower and upper bounds on
+                the optimal scaling parameter.
+            tol (float): tolerance for the bisection algorithm.
+            maxiter (int): maximal number of bisection iterations used for
+                calibration.
         """
 
         # Define a function which is zero when the conversion parameters are chosen properly.
@@ -216,7 +225,7 @@ class ConcentrationAnalysis:
             return injection_rate - self._estimate_rate(images)[0]
 
         # Perform bisection
-        self.scaling = bisect(deviation, *scaling_init, xtol=1e-3, maxiter=20)
+        self.scaling = bisect(deviation, *initial_guess, xtol=tol, maxiter=maxiter)
 
         print(f"Calibration results in scaling factor {self.scaling}.")
 
