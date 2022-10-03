@@ -4,58 +4,8 @@ of the same well test, a tracer concentration can be determined.
 """
 
 import os
-from pathlib import Path
-
-import cv2
-import matplotlib.pyplot as plt
-import numpy as np
-import skimage
 
 import daria
-
-def determine_tracer(img: daria.Image, base: daria.Image) -> daria.Image:
-    """Extract tracer based on a reference image.
-
-    Args:
-        img (np.ndarray):  probe image array
-        base (np.ndarray): baseline image array
-
-    Returns:
-        np.ndarray: concentration map
-    """
-    # Transform images to grayscale
-    img = img.toGray(return_image=True)
-    base = base.toGray(return_image=True)
-
-    # Take (unsigned) difference
-    diff = skimage.util.compare_images(img.img, base.img, method="diff")
-
-    # Apply smoothing filter
-    diff = skimage.filters.rank.median(diff, skimage.morphology.disk(20))
-
-    # The next step is to translate the color intensity to the actual concentration.
-    # Such post-processing is very much scenario dependent and require further knowledge
-    # of the physical process, or injection schedule etc. Here, an arbitrary thresholding
-    # routine is applied as an example. More advanced postprocessing routines are also
-    # possible,
-
-    # Apply thresholding to cut off noise
-    thresh_min = 5
-    thresh_max = 40
-    tracer_min_mask = diff <= thresh_min
-    diff[tracer_min_mask] = 0
-    diff[~tracer_min_mask] -= thresh_min
-    tracer_max_mask = diff >= thresh_max - thresh_min
-    diff[tracer_max_mask] = thresh_max - thresh_min
-
-    # Transform to float data type for simpler conversion to tracer concentration
-    diff = skimage.util.img_as_float(diff)
-
-    # Rescale image to physically meaningful range [0,1]
-    diff = skimage.exposure.rescale_intensity(diff)
-
-    return daria.Image(diff, base.metadata)
-
 
 # Define path to image folder
 image_folder = f"{os.path.dirname(__file__)}/images/"
@@ -85,10 +35,34 @@ co2_image = daria.Image(
     color_correction=color_correction,
 )
 
-# Determine co2
-co2 = determine_tracer(co2_image, baseline_co2)
+# Construct concentration analysis for detecting the co2 concentration
+co2_analysis = daria.ConcentrationAnalysis(baseline_co2)
 
-# Plot change 10 to larger number (or remove it) if it is desired to keep the images longer on the screen
+# Given a series of baseline images one can setup a cleaning mask,
+# which is used as lower threshold in the concentration analysis.
+# The reason why this is useful is that illumination often is not
+# constant over time. Thus local noise effectes are created just
+# because of fluctuating light. Therefore, local thresholding is
+# applied to remove these local noise. Code for such use has the
+# form:
+# co2_analysis.find_cleaning_filter(baseline_images)
+# NOTE: That such illumination effects can be observed at the
+# color checker and across the entire middle layer.
+
+# Given a series of images, one can calibrate a concentration analysis
+# object assuming a constant growth of the effective (injected) volume
+# over time. For this code as the following has to be used:
+# co2_analysis.calibrate(injection_rate, images, [lower_initial_guess, upper_inital_guess])
+# The initial guesses are initial guesses for the internal scaling factor
+# for converting signals to concentrations. Here, we simply set a scaling
+# factor from outside without calibration.
+co2_analysis.update(scaling=4.0)
+
+# Determine co2
+co2 = co2_analysis(co2_image)
+
+# Plot change 10 to larger number (or remove it) if it is desired to
+# keep the images longer on the screen
 co2.plt_show(10)
 
 # !----- Main routine for tracer analysis
@@ -105,8 +79,11 @@ tracer_image = daria.Image(
     color_correction=color_correction,
 )
 
+# Construct concentration analysis for detecting the tracer concentration
+tracer_analysis = daria.ConcentrationAnalysis(baseline_tracer)
+
 # Determine tracer
-tracer = determine_tracer(tracer_image, baseline_tracer)
+tracer = tracer_analysis(tracer_image)
 
 # Plot
 tracer.plt_show(10)
