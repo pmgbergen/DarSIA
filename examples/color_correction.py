@@ -1,7 +1,5 @@
 import os
-from pathlib import Path
 
-import cv2
 import matplotlib.pyplot as plt
 
 import daria
@@ -17,11 +15,14 @@ image_folder = f"{os.path.dirname(__file__)}/images/"
 # Create the color correction and apply it at initialization of image class
 color_correction = daria.ColorCorrection(roi=roi_cc)
 baseline_corrected = daria.Image(
-    image_folder + "baseline.jpg", color_correction=color_correction, width = 2.8, height = 1.5
+    image_folder + "baseline.jpg",
+    color_correction=color_correction,
+    width=2.8,
+    height=1.5,
 )
 
 # Create an uncorrected image for comparison
-baseline_uncorrected = daria.Image(image_folder + "baseline.jpg", width = 2.8, height = 1.5)
+baseline_uncorrected = daria.Image(image_folder + "baseline.jpg", width=2.8, height=1.5)
 
 # -------- Plot corrected and uncorrected images
 
