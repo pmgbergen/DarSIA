@@ -1,7 +1,9 @@
 """
+Segmentation is an important part of te image analysis of multi-layered media.
 Apply various filters and denoising algorithms to the FluidFlower Baseline image.
 """
-# Clustering, based on https://www.thepythoncode.com/article/kmeans-for-image-segmentation-opencv-python
+# Clustering, based on https://www.thepythoncode.com/article/kmeans-for-...
+# image-segmentation-opencv-python
 
 import os
 from pathlib import Path
@@ -11,9 +13,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 from scipy import ndimage as ndi
-from skimage.restoration import denoise_tv_chambolle
-
-import daria as da
 
 # Color image
 # TODO: provide path to baseline image
@@ -25,7 +24,8 @@ image_folder = f"{os.path.dirname(__file__)}/images/"
 
 image_color = cv2.imread(str(Path(image_folder + "baseline.jpg")))
 
-# Consider 1d image, either gray or green channel (blue and red channels did not lead to any reasonable results in short time)
+# Consider 1d image, either gray or green channel (blue and red channels did not
+# lead to any reasonable results in short time)
 image = cv2.cvtColor(image_color, cv2.COLOR_BGR2GRAY)
 
 # Neutralize Color checker
@@ -47,7 +47,9 @@ roi = (slice(0, 4400), slice(140, 7850))
 image = image[roi]
 image_ubyte = skimage.util.img_as_ubyte(image)
 
-# Watershed segmentation as on https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_marked_watershed.html#sphx-glr-auto-examples-segmentation-plot-marked-watershed-py
+# Watershed segmentation as on https://scikit-image.org/docs/stable/auto_examples/...
+# segmentation/plot_marked_watershed.html#...
+# sphx-glr-auto-examples-segmentation-plot-marked-watershed-py
 denoised = skimage.filters.rank.median(image_ubyte, skimage.morphology.disk(20))
 denoised = skimage.util.img_as_ubyte(
     skimage.transform.rescale(denoised, 0.1, anti_aliasing=True)
