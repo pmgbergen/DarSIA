@@ -8,3 +8,4 @@ colour-science
 colour-checker-detection
 ipympl
 pillow
+scikit-learn
