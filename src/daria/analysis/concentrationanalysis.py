@@ -168,7 +168,7 @@ class ConcentrationAnalysis:
         # Convert from signal to concentration
         concentration = np.clip(self.scaling * processed_signal + self.offset, 0, 1)
 
-        return daria.Image(concentration, self.base.metadata)
+        return daria.Image(concentration, img.metadata)
 
     # ! ---- Pre- and post-processing methods
 
