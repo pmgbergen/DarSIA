@@ -153,7 +153,7 @@ class CurvatureCorrection:
         """
         Shows the current image using matplotlib.pyplot
         """
-        plt.imshow(cv2.cvtColor(self.temporary_image, cv2.COLOR_BGR2RGB))
+        plt.imshow(self.temporary_image)
         plt.show()
 
     @property
