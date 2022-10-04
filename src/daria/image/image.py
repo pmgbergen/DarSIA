@@ -121,7 +121,8 @@ class Image:
 
             # Come up with default metadata
             self.name = "Unnamed image"
-            self.timestamp = None
+            if "timestamp" not in self.metadata:
+                self.metadata["timestamp"] = None
 
             if no_colorspace_given:
                 warn("Please provide a color space. Now it is assumed to be BGR.")
@@ -136,11 +137,11 @@ class Image:
             # Read exif metadata
             self.exif = pil_img.getexif()
             if self.exif.get(306) is not None:
-                self.timestamp: datetime = datetime.strptime(
+                self.metadata["timestamp"] = datetime.strptime(
                     self.exif.get(306), "%Y:%m:%d %H:%M:%S"
                 )
             else:
-                self.timestamp = None
+                self.metadata["timestamp"] = None
 
             self.imgpath = img
             self.name = img
@@ -194,6 +195,10 @@ class Image:
     @property
     def colorspace(self) -> str:
         return self.metadata["color_space"]
+
+    @property
+    def timestamp(self) -> datetime.datetime:
+        return self.metadata["timestamp"]
 
     def write(
         self,
