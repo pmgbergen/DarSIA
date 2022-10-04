@@ -12,7 +12,6 @@ import math
 from pathlib import Path
 from typing import Optional, Union
 
-import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
