@@ -7,6 +7,7 @@ A class for setup and application of curvature correction.
 from __future__ import annotations
 
 import copy
+from email.mime import image
 import json
 import math
 from pathlib import Path
@@ -232,7 +233,7 @@ class CurvatureCorrection:
             vertical_bulge,
             vertical_bulge_center_offset,
         ) = self.compute_bulge(left=left, right=right, top=top, bottom=bottom)
-
+        print(self.compute_bulge(left=left, right=right, top=top, bottom=bottom))
         self.config["bulge"] = {
             "horizontal_bulge": horizontal_bulge,
             "horizontal_center_offset": horizontal_bulge_center_offset,
@@ -309,14 +310,24 @@ class CurvatureCorrection:
         bottom = kwargs.pop("bottom", 0)
 
         # Determine the center of the image
-        image_center = [
-            int(self.Nx * (left + 1e-6) / (left + right + 2e-6)),
-            int(self.Ny * (top + 1e-6) / (top + bottom + 2e-6)),
-        ]
+        if (left + right == 0) and (top + bottom == 0):
+            image_center = [round(self.Nx/2), round(self.Ny/2)]
+        elif (left + right == 0):
+            image_center = [round(self.Nx/2), round(self.Ny * (top) / (top + bottom))]
+        elif (top + bottom == 0):
+            image_center = [round(self.Nx * (left) / (left + right)), round(self.Ny/2)]
+        else:
+            image_center = [
+                round(self.Nx * (left) / (left + right)),
+                round(self.Ny * (top) / (top + bottom)),
+            ]
 
+        print(image_center)
+        print(self.Nx)
+        print(self.Ny)
         # Determine the offset of the numerical center of the image
-        horizontal_bulge_center_offset = image_center[0] - int(self.Nx / 2)
-        vertical_bulge_center_offset = image_center[1] - int(self.Ny / 2)
+        horizontal_bulge_center_offset = image_center[0] - round(self.Nx / 2)
+        vertical_bulge_center_offset = image_center[1] - round(self.Ny / 2)
 
         # Determine the bulge tuning coefficients as explained in the daria notes
         # Assume here that the maximum impressions are applied at the image center
@@ -349,12 +360,12 @@ class CurvatureCorrection:
         pt_src = kwargs.pop("point_source", [self.Ny, self.Nx])
         pt_dst = kwargs.pop("point_destination", [self.Ny, self.Nx])
         stretch_center = kwargs.pop(
-            "stretch_center", [int(self.Ny / 2), int(self.Nx / 2)]
+            "stretch_center", [round(self.Ny / 2), round(self.Nx / 2)]
         )
 
         # Update the offset to the center
-        horizontal_stretch_center_offset = stretch_center[0] - int(self.Nx / 2)
-        vertical_stretch_center_offset = stretch_center[1] - int(self.Ny / 2)
+        horizontal_stretch_center_offset = stretch_center[0] - round(self.Nx / 2)
+        vertical_stretch_center_offset = stretch_center[1] - round(self.Ny / 2)
 
         # Compute the tuning parameter as explained in the notes
         horizontal_stretch = -(pt_dst[0] - pt_src[0]) / (
