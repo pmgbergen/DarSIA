@@ -5,6 +5,7 @@ Images contain the image array, and in addition metadata about origo and dimensi
 
 from __future__ import annotations
 
+import copy
 import json
 import math
 from datetime import datetime
@@ -382,7 +383,7 @@ class Image:
         """
         Returns a copy of the image object.
         """
-        return Image(self.img, self.metadata)
+        return Image(np.copy(self.img), copy.copy(self.metadata))
 
     def toBGR(self, return_image: bool = False) -> Optional[da.Image]:
         """
