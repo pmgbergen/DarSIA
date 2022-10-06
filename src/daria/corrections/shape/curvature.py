@@ -488,8 +488,8 @@ class CurvatureCorrection:
         Ny, Nx = img.shape[:2]
 
         # Define coordinates
-        x = np.arange(Nx)
-        y = np.arange(Ny)
+        x = np.arange(Nx, dtype=np.int64)
+        y = np.arange(Ny, dtype=np.int64)
 
         # Construct associated meshgrid with Cartesian indexing
         X, Y = np.meshgrid(x, y)
