@@ -458,11 +458,17 @@ class CurvatureCorrection:
         x = np.arange(Nx)
         y = np.arange(Ny)
 
+        print("dtype of coordinates", x.dtype)
+
         # Construct associated meshgrid with Cartesian indexing
         X, Y = np.meshgrid(x, y)
 
+        print("dtype of X", X.dtype)
+
         # Transform coordinates accoring to input
         X, Y = self._transform_coordinates(X, Y, **kwargs)
+
+        print("dtype of X", X.dtype)
 
         # Create out grid as the corrected grid, use (row,col) format
         grid = np.array([Y.ravel(), X.ravel()])
