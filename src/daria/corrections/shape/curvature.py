@@ -7,7 +7,6 @@ A class for setup and application of curvature correction.
 from __future__ import annotations
 
 import copy
-from email.mime import image
 import json
 import math
 from pathlib import Path
@@ -310,11 +309,14 @@ class CurvatureCorrection:
 
         # Determine the center of the image
         if (left + right == 0) and (top + bottom == 0):
-            image_center = [round(self.Nx/2), round(self.Ny/2)]
-        elif (left + right == 0):
-            image_center = [round(self.Nx/2), round(self.Ny * (top) / (top + bottom))]
-        elif (top + bottom == 0):
-            image_center = [round(self.Nx * (left) / (left + right)), round(self.Ny/2)]
+            image_center = [round(self.Nx / 2), round(self.Ny / 2)]
+        elif left + right == 0:
+            image_center = [round(self.Nx / 2), round(self.Ny * (top) / (top + bottom))]
+        elif top + bottom == 0:
+            image_center = [
+                round(self.Nx * (left) / (left + right)),
+                round(self.Ny / 2),
+            ]
         else:
             image_center = [
                 round(self.Nx * (left) / (left + right)),
