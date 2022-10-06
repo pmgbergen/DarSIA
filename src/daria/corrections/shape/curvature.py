@@ -233,7 +233,6 @@ class CurvatureCorrection:
             vertical_bulge,
             vertical_bulge_center_offset,
         ) = self.compute_bulge(left=left, right=right, top=top, bottom=bottom)
-        print(self.compute_bulge(left=left, right=right, top=top, bottom=bottom))
         self.config["bulge"] = {
             "horizontal_bulge": horizontal_bulge,
             "horizontal_center_offset": horizontal_bulge_center_offset,
@@ -322,9 +321,6 @@ class CurvatureCorrection:
                 round(self.Ny * (top) / (top + bottom)),
             ]
 
-        print(image_center)
-        print(self.Nx)
-        print(self.Ny)
         # Determine the offset of the numerical center of the image
         horizontal_bulge_center_offset = image_center[0] - round(self.Nx / 2)
         vertical_bulge_center_offset = image_center[1] - round(self.Ny / 2)
@@ -458,17 +454,11 @@ class CurvatureCorrection:
         x = np.arange(Nx, dtype=np.int64)
         y = np.arange(Ny, dtype=np.int64)
 
-        print("dtype of coordinates", x.dtype)
-
         # Construct associated meshgrid with Cartesian indexing
         X, Y = np.meshgrid(x, y)
 
-        print("dtype of X", X.dtype)
-
         # Transform coordinates accoring to input
         X, Y = self._transform_coordinates(X, Y, **kwargs)
-
-        print("dtype of X", X.dtype)
 
         # Create out grid as the corrected grid, use (row,col) format
         grid = np.array([Y.ravel(), X.ravel()])
