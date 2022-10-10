@@ -2,6 +2,8 @@
 Module containing tools for studying compaction.
 """
 
+import numpy as np
+
 import daria
 
 
@@ -67,3 +69,42 @@ class CompactionAnalysis:
         if plot:
             self.translation_analysis.plot_translation(reverse)
         return transformed_img
+
+    def evaluate(self, coords: np.ndarray, units: str = "metric") -> np.ndarray:
+        """
+        Evaluate compaction in arbitrary points.
+
+        Args:
+            coords (np.ndarray): coordinate array with shape num_pts x 2.
+            units (str): input and output units; "metric" default; otherwise assumed
+                to be "pixel".
+
+        Returns:
+            np.ndarray: compaction vectors for all coordinates.
+
+        """
+        assert units in ["metric", "pixel"]
+
+        # Convert coordinates to pixels with matrix indexing, if provided in metric units
+        if units == "metric":
+            base = self.translation_analysis.base
+            pixel_coords = base.coordinatesystem.coordinateToPixel(coords, reverse=True)
+        else:
+            pixel_coords = coords
+
+        # Interpolate at provided values - expect reverse matrix indexing
+        translation_x = self.translation_analysis.interpolator_translation_x(
+            pixel_coords
+        )
+        translation_y = self.translation_analysis.interpolator_translation_y(
+            pixel_coords
+        )
+
+        # Collect results, use ordering of components consistent with matrix indexing
+        deformation = np.transpose(np.vstack((translation_y, translation_x)))
+
+        # Convert to metric units if required; for pixels, use matrix indexing.
+        if units == "metric":
+            deformation = base.coordinatesystem.pixelToCoordinateVector(deformation)
+
+        return deformation
