@@ -6,12 +6,12 @@ import matplotlib.pyplot as plt
 import skimage
 
 import daria
-
+import numpy as np
 # ! ----- Preliminaries - prepare two images for compaction analysis
 
-# Paths to two images of interest
+# Paths to two images of interest. NOTE: These images are not part of the GH repo.
 path_src = "/home/jakub/images/ift/benchmark/baseline/original/Baseline.jpg"
-path_dst = "/home/jakub/images/ift/benchmark/well_test/pulse1.jpg"
+path_dst = "/home/jakub/images/ift/benchmark/well_test/from_description/pulse1.jpg"
 
 # Setup config for cropping, and define geometry correction object
 config = {
@@ -70,3 +70,19 @@ ax.imshow(skimage.util.compare_images(da_img_src.img, da_img_dst.img, method="bl
 fig, ax = plt.subplots(1, num=2)
 ax.imshow(skimage.util.compare_images(da_img_src.img, da_new_image.img, method="blend"))
 plt.show()
+
+# It is also possible to evaluate the compaction approximation in arbitrary points.
+# For instance, consider 4 points in metric coordinates (provided in x, y format):
+pts = np.array(
+    [
+        [0.2, 1.4],
+        [0.5, 0.5],
+        [0.5, 1.2],
+        [1.2, 0.75],
+        [2.3, 1.1],
+    ]
+)
+
+deformation = compaction_analysis.evaluate(pts)
+print("Deformation evaluated:")
+print(deformation)
