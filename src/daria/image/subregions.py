@@ -78,7 +78,9 @@ def extractROIPixel(img: daria.Image, roi: tuple) -> daria.Image:
     """
     # Define metadata; Note that img.origo uses a Cartesian indexing, while the
     # roi uses the conventional matrix indexing
-    origo = img.origo + np.array([roi[1].start * img.dx, roi[0].stop * img.dy])
+    origo = img.origo + np.array(
+        [roi[1].start * img.dx, (img.num_pixels_height - roi[0].stop) * img.dy]
+    )
     height = (roi[0].stop - roi[0].start) * img.dy
     width = (roi[1].stop - roi[1].start) * img.dx
 
