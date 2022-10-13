@@ -1,5 +1,6 @@
-import numpy as np
 from math import ceil
+
+import numpy as np
 
 
 def compare_segmentations(*segmentations):
@@ -44,10 +45,9 @@ def compare_segmentations(*segmentations):
 
 
 def compare_segmentations_two_components(*segmentations):
-    # unique_colors = {"red": [205,38,38], "light_red": [255,48,48], "blue": [1,1,1], "light_blue": [1,1,1], "green": [1,1,1], "light_green"}
     colors = np.array(
         [
-            [[205,0,0]],
+            [[205, 0, 0]],
             [[0, 205, 0]],
             [[0, 0, 205]],
             [[205, 205, 0]],
@@ -55,13 +55,12 @@ def compare_segmentations_two_components(*segmentations):
             [[0, 205, 205]],
         ]
     )
-    colors_light = np.trunc(1.5*colors)
-    np.clip(colors_light, 0, 255, out = colors_light)
-    colors = np.hstack((colors,colors_light))
-    print(colors)
+    colors_light = np.trunc(1.5 * colors)
+    np.clip(colors_light, 0, 255, out=colors_light)
+    colors = np.hstack((colors, colors_light))
     NC = len(colors[:, 0, 0])
     N = len(segmentations)
-    assert (NC>=N)
+    assert NC >= N
     for i in range(N - 1):
         assert segmentations[0].shape == segmentations[i + 1].shape
 
