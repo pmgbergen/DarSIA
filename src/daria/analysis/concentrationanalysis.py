@@ -348,3 +348,265 @@ class ConcentrationAnalysis:
 
         # Integral of locally weighted concentration values
         return np.sum(np.multiply(np.squeeze(volumes), np.squeeze(concentration.img)))
+
+
+class BinaryConcentrationAnalysis(ConcentrationAnalysis):
+    """
+    Special case of ConcentrationAnalysis which generates boolean concentration profiles.
+    """
+
+    def __init__(
+        self,
+        base: Union[daria.Image, list[daria.Image]],
+        color: Union[str, callable] = "gray",
+        **kwargs,
+    ) -> None:
+        """
+        Constructor for BinaryConcentrationAnalysis.
+
+        Calls the constructor of parent class and fetches
+        all tuning parameters for the binary segmentation.
+
+        Args:
+            base (daria.Image or list of such): same as in ConcentrationAnalysis.
+            color (string or callable): same as in ConcentrationAnalysis.
+            kwargs (keyword arguments): interface to all tuning parameters
+        """
+        super().__init__(base, color)
+
+        # TVD parameters for pre and post smoothing
+        self.apply_presmoothing = kwargs.pop("presmoothing", False)
+        if self.apply_presmoothing:
+            self.presmoothing = {
+                "resize": kwargs.pop("presmoothing resize", 1.0),
+                "weight": kwargs.pop("presmoothing weight", 1.0),
+                "eps": kwargs.pop("presmoothing eps", 1e-5),
+                "max_num_iter": kwargs.pop("presmoothing max_num_iter", 1000),
+                "method": kwargs.pop("presmoothing method", "chambolle"),
+            }
+
+        self.apply_postsmoothing = kwargs.pop("postsmoothing", False)
+        if self.apply_postsmoothing:
+            self.postsmoothing = {
+                "resize": kwargs.pop("postsmoothing resize", 1.0),
+                "weight": kwargs.pop("postsmoothing weight", 1.0),
+                "eps": kwargs.pop("postsmoothing eps", 1e-5),
+                "max_num_iter": kwargs.pop("postsmoothing max_num_iter", 1000),
+                "method": kwargs.pop("postsmoothing method", "chambolle"),
+            }
+
+        # Thresholding parameters
+        self.apply_automatic_threshold: bool = kwargs.pop("threshold auto", False)
+        if not self.apply_automatic_threshold:
+            self.threshold_value: float = kwargs.pop("threshold value")
+
+        # Parameters to fill holes
+        self.area_threshold: int = kwargs.pop("max hole size", 10**2)
+
+        # Parameters for local convex cover
+        self.cover_patch_size: int = kwargs.pop("local convex cover patch size", 1)
+
+        # Active ROI
+        self.active_roi: np.ndarray = np.ones(self.base.img.shape[:2], dtype=bool)
+
+    def update_active_roi(self, active_roi: np.ndarray) -> None:
+        """
+        Update the active ROI to be considered in the analysis.
+        """
+        self.active_roi = active_roi
+
+    def gradient_modulus(self, img, area) -> float:
+        dx = daria.forward_diff_x(img)
+        dy = daria.forward_diff_y(img)
+        dx[np.logical_not(area)] = 0
+        dy[np.logical_not(area)] = 0
+        grad_mod = np.sqrt(dx**2 + dy**2)
+
+        return grad_mod
+
+    # ! ---- Main method
+    def postprocess_signal(self, signal: np.ndarray) -> np.ndarray:
+        """
+        Postprocessing routine, essentially converting a continuous
+        signal into a binary concentration and thereby segmentation.
+        The post processing consists of presmoothing, thresholding,
+        filling holes, local convex covering, and postsmoothing.
+        Tuning parameters for this routine have to be set in the
+        initialization routine.
+
+        Args:
+            signal (np.ndarray): clean continous signal with values
+                in the range between 0 and 1.
+
+        Returns:
+            np.ndarray: binary concentration
+        """
+        # Deactive signal in non-active ROI
+        signal[np.logical_not(self.active_roi)] = 0
+
+        # Apply presmoothing
+        if self.apply_presmoothing:
+            # Resize image
+            signal = cv2.resize(
+                signal.astype(np.float32),
+                None,
+                fx=self.presmoothing["resize"],
+                fy=self.presmoothing["resize"],
+            )
+
+            # Apply TVD
+            if self.presmoothing["method"] == "chambolle":
+                signal = skimage.restoration.denoise_tv_chambolle(
+                    signal,
+                    weight=self.presmoothing["weight"],
+                    eps=self.presmoothing["eps"],
+                    max_num_iter=self.presmoothing["max_num_iter"],
+                )
+            elif self.presmoothing["method"] == "anisotropic bregman":
+                signal = skimage.restoration.denoise_tv_bregman(
+                    signal,
+                    weight=self.presmoothing["weight"],
+                    eps=self.presmoothing["eps"],
+                    max_num_iter=self.presmoothing["max_num_iter"],
+                    isotropic=False,
+                )
+            else:
+                raise ValueError(f"Method {self.presmoothing['method']} not supported.")
+
+            # Resize to original size
+            signal = cv2.resize(signal, tuple(reversed(self.base.img.shape[:2])))
+
+        # Apply thresholding to obtain mask
+        if self.apply_automatic_threshold:
+            # Extract merely signal values in the active ROI
+            active_signal_values = np.ravel(signal)[np.ravel(self.active_roi)]
+            # Find automatic threshold value using OTSU
+            thresh = skimage.filters.threshold_otsu(active_signal_values)
+        else:
+            # Fetch user-defined threshold value
+            thresh = self.threshold_value
+        mask = signal > thresh
+
+        # Fill holes
+        mask = skimage.morphology.remove_small_holes(
+            mask, area_threshold=self.area_threshold
+        )
+
+        # Loop through patches and fill up
+        covered_mask = np.zeros(mask.shape[:2], dtype=bool)
+        size = self.cover_patch_size
+        Ny, Nx = mask.shape[:2]
+        for row in range(int(Ny / size)):
+            for col in range(int(Nx / size)):
+                roi = (
+                    slice(row * size, (row + 1) * size),
+                    slice(col * size, (col + 1) * size),
+                )
+                covered_mask[roi] = skimage.morphology.convex_hull_image(mask[roi])
+
+        # Update the mask value
+        mask = covered_mask
+
+        # Apply postsmoothing
+        if self.apply_postsmoothing:
+            # Resize image
+            resized_mask = cv2.resize(
+                covered_mask.astype(np.float32),
+                None,
+                fx=self.postsmoothing["resize"],
+                fy=self.postsmoothing["resize"],
+            )
+
+            # Apply TVD
+            if self.postsmoothing["method"] == "chambolle":
+                smoothed_mask = skimage.restoration.denoise_tv_chambolle(
+                    resized_mask,
+                    weight=self.postsmoothing["weight"],
+                    eps=self.postsmoothing["eps"],
+                    max_num_iter=self.postsmoothing["max_num_iter"],
+                )
+            elif self.postsmoothing["method"] == "anisotropic bregman":
+                smoothed_mask = skimage.restoration.denoise_tv_bregman(
+                    resized_mask,
+                    weight=self.postsmoothing["weight"],
+                    eps=self.postsmoothing["eps"],
+                    max_num_iter=self.postsmoothing["max_num_iter"],
+                    isotropic=False,
+                )
+            else:
+                raise ValueError(
+                    f"Method {self.postsmoothing['method']} is not supported."
+                )
+
+            # Resize to original size
+            large_mask = cv2.resize(
+                smoothed_mask.astype(np.float32),
+                tuple(reversed(self.base.img.shape[:2])),
+            )
+
+            # Apply hardcoded threshold value of 0.5 assuming it is sufficient to turn
+            # off small particles and rely on larger marked regions
+            thresh = (
+                0.5
+                if self.postsmoothing["method"] == "chambolle"
+                else skimage.filters.threshold_otsu(smoothed_mask)
+            )
+
+        final_mask = mask
+
+        return final_mask
+
+    def convert_signal(self, signal: np.ndarray) -> np.ndarray:
+        """
+        Pass the signal, assuming it identifies a binary concentration.
+
+        Args:
+            signal (np.ndarray): signal array.
+
+        Returns:
+            np.ndarray: signal array.
+        """
+        return signal
+
+        # # Clean up and include only connected regions which reach a certain value in
+        # # the cached mask. This step is built on the assumption that we have been
+        # # interested in high-concentration areas.
+
+        # cached_mask = copy.deepcopy(large_mask)
+        # #final_mask = np.zeros(cached_mask.shape[:2], dtype=bool)
+
+        # # Label the connected regions first
+        # labels, num_labels = skimage.measure.label(mask, return_num=True)
+        # props = skimage.measure.regionprops(labels)
+
+        # # Investigate each labeled region separately
+        # for label in range(num_labels):
+        #     # Find max value in region with fixed label
+        #     labeled_region = labels == label
+
+        #     ## Deactivate labeled region if the max value it not sufficiently high. Allow for some relaxation.
+        #     #max_value_in_cached_mask = np.max(cached_mask[labeled_region])
+        #     #print(label, max_value_in_cached_mask)
+        #     #if max_value_in_cached_mask > 0.8:
+        #     #    final_mask[labeled_region] = True
+        #     #    plt.figure()
+        #     #    plt.imshow(final_mask)
+        #     #    plt.show()
+
+        #     # Deactivate labeled region if the max value it not sufficiently high. Allow for some relaxation.
+        #     grad = self.gradient_modulus(large_mask, labeled_region)
+        #     plt.figure()
+        #     plt.imshow(labeled_region)
+        #     plt.figure()
+        #     plt.imshow(grad)
+        #     print(np.sum(grad), props[label]["perimeter"], np.sum(labeled_region))
+        #     plt.show()
+
+        # #plt.figure()
+        # #plt.imshow(large_mask)
+        # ##plt.figure()
+        # ##plt.imshow(labels)
+
+        # plt.figure()
+        # plt.imshow(final_mask)
+        # plt.show()
