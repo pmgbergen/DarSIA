@@ -66,7 +66,7 @@ def compare_segmentations(*segmentations, **kwargs) -> np.ndarray:
     for i in range(number_of_segmented_images - 1):
         assert segmentations[0].shape == segmentations[i + 1].shape
 
-    # Create the return array
+    # Create the return array, prepare for colored image with RGB colors
     return_image: np.ndarray = np.zeros(
         segmentations[0].shape[:2] + (3,), dtype=np.uint8
     )
