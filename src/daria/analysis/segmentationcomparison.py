@@ -63,7 +63,7 @@ def compare_segmentations(*segmentations, **kwargs) -> np.ndarray:
     # Assert that there are a sufficient amount of colors
     # and that all of the segmentations are of equal size
     assert colors.shape[0] >= number_of_segmented_images
-    for i in range(1,number_of_segmented_images):
+    for i in range(1, number_of_segmented_images):
         assert segmentations[0].shape == segmentations[i].shape
 
     # Create the return array, prepare for colored image with RGB colors
