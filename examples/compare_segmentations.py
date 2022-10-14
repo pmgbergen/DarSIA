@@ -1,19 +1,17 @@
 import daria as da
 import numpy as np
+import matplotlib.pyplot as plt
+from pathlib import Path
+# img1 = np.array([[1,0,1,2],[1,1,0,1],[1,1,2,1],[1,1,2,1]])
+# img2 = np.array([[0,1,1,2],[1,0,0,0],[1,0,2,1],[1,0,2,1]])
+# img3 = np.array([[1,2,1,2],[0,0,2,0],[0,0,2,1],[0,0,2,1]])
 
 
-img1 = np.array([[1,0,1,2],[1,1,0,1],[1,1,2,1],[1,1,2,1]])
-img2 = np.array([[0,1,1,2],[1,0,0,0],[1,0,2,1],[1,0,2,1]])
-img3 = np.array([[1,2,1,2],[0,0,2,0],[0,0,2,1],[0,0,2,1]])
+im1 = np.load(Path("../segmentation_70.npy"))
+im2 = np.load(Path("../segmentation_90.npy"))
 
-img4 = np.array([[1,0,1,2],[1,1,0,1],[1,1,2,1],[1,1,2,1]])
-img5 = np.array([[0,1,1,2],[1,0,0,0],[1,0,2,1],[1,0,2,1]])
-img6 = np.array([[1,2,1,2],[0,0,2,0],[0,0,2,1],[0,0,2,1]])
+comp_im = da.compare_segmentations(im1, im2, gray_colors = np.array([[100,100,100], [255,255,255], [180,180,180]]))
+plt.imshow(comp_im)
+plt.show()
 
-img7 = np.array([[1,0,1,2],[1,1,0,1],[1,1,2,1],[1,1,2,1]])
-img8 = np.array([[0,1,1,2],[1,0,0,0],[1,0,2,1],[1,0,2,1]])
-img9 = np.array([[1,2,1,2],[0,0,2,0],[0,0,2,1],[0,0,2,1]])
-
-
-comp_im = da.compare_segmentations_two_components(img1, img2, img3)
 # print(comp_im)
