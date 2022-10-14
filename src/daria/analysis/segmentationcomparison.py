@@ -1,9 +1,7 @@
 from __future__ import annotations
-from matplotlib.artist import get
 
 import numpy as np
 from matplotlib.cm import get_cmap
-
 
 
 def compare_segmentations(*segmentations, **kwargs) -> np.ndarray:
@@ -43,37 +41,22 @@ def compare_segmentations(*segmentations, **kwargs) -> np.ndarray:
         np.uint8
     )
 
-    # # Define unique colors
-    # colors: np.ndarray = kwargs.pop(
-    #     "colors",
-    #     np.array(
-    #         [
-    #             [[205, 0, 0]],
-    #             [[0, 205, 0]],
-    #             [[0, 0, 205]],
-    #             [[205, 205, 0]],
-    #             [[205, 0, 205]],
-    #             [[0, 205, 205]],
-    #         ],
-    #         dtype=np.uint8,
-    #     ),
-    # )
-    # light_scaling: float = kwargs.pop("light_scaling", 1.5)
-    # colors_light: np.ndarray = np.trunc(light_scaling * colors)
-    # np.clip(colors_light, 0, 255, out=colors_light)
-    # colors: np.ndarray = np.hstack((colors, colors_light))
     # Define unique colors
     light_scaling: float = kwargs.pop("light_scaling", 1.5)
     if "colors" not in kwargs:
         colormap = get_cmap("Spectral")
-        colors: np.ndarray = np.zeros((number_of_segmented_images,2,3), dtype = np.uint8)
+        colors: np.ndarray = np.zeros(
+            (number_of_segmented_images, 2, 3), dtype=np.uint8
+        )
         for i in range(number_of_segmented_images):
-            rgba = 255*np.array(colormap(1/number_of_segmented_images*(i+0.5))[0:3])
-            rgbalight = np.trunc(light_scaling*rgba)
-            print(colors[i,0])
+            rgba = 255 * np.array(
+                colormap(1 / number_of_segmented_images * (i + 0.5))[0:3]
+            )
+            rgbalight = np.trunc(light_scaling * rgba)
+            print(colors[i, 0])
             print(rgba.astype(np.uint8))
-            colors[i,0] = rgba.astype(np.uint8)
-            colors[i,1] = rgbalight.astype(np.uint8)
+            colors[i, 0] = rgba.astype(np.uint8)
+            colors[i, 1] = rgbalight.astype(np.uint8)
     else:
         colors = kwargs.pop("colors")
         colors_light: np.ndarray = np.trunc(light_scaling * colors)
