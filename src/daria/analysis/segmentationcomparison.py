@@ -106,7 +106,7 @@ def compare_segmentations(*segmentations, **kwargs) -> np.ndarray:
                 )
             ] += gray_base[2]
 
-    # Determine locations (and make modifications to return image) of unique coomponents
+    # Determine locations (and make modifications to return image) of unique components
     for c in components:
         for k in range(N):
             only_tmp: np.ndarray = segmentations[k] == c
