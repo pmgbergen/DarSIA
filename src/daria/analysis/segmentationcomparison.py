@@ -62,8 +62,8 @@ def compare_segmentations(*segmentations, **kwargs) -> np.ndarray:
         assert segmentations[0].shape == segmentations[i + 1].shape
 
     # Create the return array
-    return_image: np.ndarray = np.full(
-        shape=segmentations[0].shape + (3,), fill_value=[0, 0, 0], dtype=np.uint8
+    return_image: np.ndarray = np.zeros(
+        segmentations[0].shape[:2] + (3,), dtype=np.uint8
     )
 
     # Enter gray everywhere there are ovelaps of different segmentations
