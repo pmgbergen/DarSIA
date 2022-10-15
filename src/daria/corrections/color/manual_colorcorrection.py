@@ -162,7 +162,8 @@ class ManualColorCorrection:
         # Thus, simply clip the values for consistency.
         corrected_image = np.clip(corrected_image, 0, 1)
 
-        return corrected_image
+        # Ensure a data format which can be used by cv2 etc.
+        return corrected_image.astype(np.float32)
 
     def _restrict_to_roi(self, img: np.ndarray) -> np.ndarray:
         """
