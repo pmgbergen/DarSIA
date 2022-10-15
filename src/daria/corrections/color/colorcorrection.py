@@ -1,5 +1,13 @@
 """Module containing the color correction based on the Classic
-Color Checker from calibrite / x-rite.
+Color Checker from calibrite / x-rite. The algorithms here
+heavily use code from colour-science (see their github).
+This includes some ML-based algorithms. Sometimes, the algorithms
+are not able to detect the color checker despite a rather precise
+user-input on the location of the color checker. Or the swatches
+are not extracted correcty. In such cases, the ManualColorCorrection
+should be used which should always work. It is therefore recommended
+to double-check the results of the ColorCorrection by setting
+verbosity to True once.
 """
 
 from typing import Optional
