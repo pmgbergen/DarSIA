@@ -35,7 +35,11 @@ ml_corrected_baseline = daria.Image(
 
 # ! ---- Setup the manual color correction
 
-# Need to specify a ROI which contains the color checker
+# Need to specify the pixel coordines in (x,y), i.e., (col,row) format, of the
+# marks on the color checker. The first coordinate is associated to the mark
+# closest to the brown swatch. Continue in counter-clockwise direction.
+# NOTE: That this example uses a crudely coarsened image. Thus, the marks
+# are not very obvious. They are small white L's.
 manual_roi_cc = np.array(
     [
         [154, 176],
