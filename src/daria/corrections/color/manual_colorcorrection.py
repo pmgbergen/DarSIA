@@ -149,6 +149,15 @@ class ManualColorCorrection:
                 self.colorchecker.reference_swatches_rgb[pos, :] / swatches[pos, :]
             )
 
+        # For debugging, double-check once more the swatches.
+        if self.verbosity:
+            corrected_colorchecker_image: np.ndarray = self._restrict_to_roi(
+                corrected_image
+            )
+            swatches = self._detect_colour_checkers_segmentation(
+                corrected_colorchecker_image
+            )
+
         # The correction may result in values outside the feasible range [0., 1.].
         # Thus, simply clip the values for consistency.
         corrected_image = np.clip(corrected_image, 0, 1)
