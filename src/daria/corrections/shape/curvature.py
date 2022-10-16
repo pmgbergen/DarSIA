@@ -285,12 +285,13 @@ class CurvatureCorrection:
 
     # ! ---- Auxiliary routines for computing tuning parameters in the correction.
 
-    def compute_bulge(self, **kwargs):
+    def compute_bulge(self, img: Optional[np.ndarray] = None, **kwargs):
         """
         Compute the bulge parameters depending on the maximum number of pixels
         that the image has been displaced on each side.
 
         Arguments:
+            img (np.ndarray, optional): image array, basis for the computation.
             kwargs (optional keyword arguments):
                 "left" (int): the maximum number of pixels that the image
                               has been displaced on the left side
@@ -307,33 +308,38 @@ class CurvatureCorrection:
         top = kwargs.pop("top", 0)
         bottom = kwargs.pop("bottom", 0)
 
+        if img is None:
+            Ny, Nx = self.Ny, self.Nx
+        else:
+            Ny, Nx = img.shape[:2]
+
         # Determine the center of the image
         if (left + right == 0) and (top + bottom == 0):
-            image_center = [round(self.Nx / 2), round(self.Ny / 2)]
+            image_center = [round(Nx / 2), round(Ny / 2)]
         elif left + right == 0:
-            image_center = [round(self.Nx / 2), round(self.Ny * (top) / (top + bottom))]
+            image_center = [round(Nx / 2), round(Ny * (top) / (top + bottom))]
         elif top + bottom == 0:
             image_center = [
-                round(self.Nx * (left) / (left + right)),
-                round(self.Ny / 2),
+                round(Nx * (left) / (left + right)),
+                round(Ny / 2),
             ]
         else:
             image_center = [
-                round(self.Nx * (left) / (left + right)),
-                round(self.Ny * (top) / (top + bottom)),
+                round(Nx * (left) / (left + right)),
+                round(Ny * (top) / (top + bottom)),
             ]
 
         # Determine the offset of the numerical center of the image
-        horizontal_bulge_center_offset = image_center[0] - round(self.Nx / 2)
-        vertical_bulge_center_offset = image_center[1] - round(self.Ny / 2)
+        horizontal_bulge_center_offset = image_center[0] - round(Nx / 2)
+        vertical_bulge_center_offset = image_center[1] - round(Ny / 2)
 
         # Determine the bulge tuning coefficients as explained in the daria notes
         # Assume here that the maximum impressions are applied at the image center
         horizontal_bulge = left / (
-            (left - image_center[0]) * image_center[1] * (self.Ny - image_center[1])
+            (left - image_center[0]) * image_center[1] * (Ny - image_center[1])
         )
         vertical_bulge = top / (
-            (top - image_center[1]) * image_center[0] * (self.Nx - image_center[0])
+            (top - image_center[1]) * image_center[0] * (Nx - image_center[0])
         )
 
         return (
@@ -343,34 +349,38 @@ class CurvatureCorrection:
             vertical_bulge_center_offset,
         )
 
-    def compute_stretch(self, **kwargs):
+    def compute_stretch(self, img: Optional[np.ndarray] = None, **kwargs):
         """
         Compute the stretch parameters depending on the stretch center,
         and a known translation.
 
         Arguments:
+            img (np.ndarray, optional): image array, basis for the computation.
             kwargs (optional keyword arguments):
                 "point_source" (list): point that has been translated.
                 "point_destination" (list): the ought to be position.
                 "stretch_center" (list): the stretch center.
         """
 
-        pt_src = kwargs.pop("point_source", [self.Ny, self.Nx])
-        pt_dst = kwargs.pop("point_destination", [self.Ny, self.Nx])
-        stretch_center = kwargs.pop(
-            "stretch_center", [round(self.Ny / 2), round(self.Nx / 2)]
-        )
+        if img is None:
+            Ny, Nx = self.Ny, self.Nx
+        else:
+            Ny, Nx = img.shape[:2]
+
+        pt_src = kwargs.pop("point_source", [Ny, Nx])
+        pt_dst = kwargs.pop("point_destination", [Ny, Nx])
+        stretch_center = kwargs.pop("stretch_center", [round(Ny / 2), round(Nx / 2)])
 
         # Update the offset to the center
-        horizontal_stretch_center_offset = stretch_center[0] - round(self.Nx / 2)
-        vertical_stretch_center_offset = stretch_center[1] - round(self.Ny / 2)
+        horizontal_stretch_center_offset = stretch_center[0] - round(Nx / 2)
+        vertical_stretch_center_offset = stretch_center[1] - round(Ny / 2)
 
         # Compute the tuning parameter as explained in the notes
         horizontal_stretch = -(pt_dst[0] - pt_src[0]) / (
-            (pt_src[0] - stretch_center[0]) * pt_src[0] * (self.Nx - pt_src[0])
+            (pt_src[0] - stretch_center[0]) * pt_src[0] * (Nx - pt_src[0])
         )
         vertical_stretch = -(pt_dst[1] - pt_src[1]) / (
-            (pt_src[1] - stretch_center[1]) * pt_src[1] * (self.Ny - pt_src[1])
+            (pt_src[1] - stretch_center[1]) * pt_src[1] * (Ny - pt_src[1])
         )
 
         return (
