@@ -496,8 +496,7 @@ class CurvatureCorrection:
         # Define the current pixel mesh before any transformation
         Ny, Nx = img.shape[:2]
         X, Y = np.meshgrid(
-            np.arange(Nx, dtype=np.float32),
-            np.arange(Ny, dtype=np.float32)
+            np.arange(Nx, dtype=np.float32), np.arange(Ny, dtype=np.float32)
         )
 
         # Store references of the pixel coordinates in dict to easily iterate over both
@@ -513,9 +512,13 @@ class CurvatureCorrection:
             if "crop" in self.config:
                 pixels = da.extract_quadrilateral_ROI(pixels, **self.config["crop"])
             if "bulge" in self.config:
-                pixels = self.simple_curvature_correction(pixels, **self.config["bulge"])
+                pixels = self.simple_curvature_correction(
+                    pixels, **self.config["bulge"]
+                )
             if "stretch" in self.config:
-                pixels = self.simple_curvature_correction(pixels, **self.config["stretch"])
+                pixels = self.simple_curvature_correction(
+                    pixels, **self.config["stretch"]
+                )
 
             # Store the updated values
             coords[key] = pixels
