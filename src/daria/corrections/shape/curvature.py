@@ -87,7 +87,6 @@ class CurvatureCorrection:
                 )
             self.current_image = np.copy(self.reference_image)
             self.dtype = self.current_image.dtype
-            self.Ny, self.Nx = self.reference_image.shape[:2]
             self.in_meters = kwargs.pop("in_meters", True)
             self.width = kwargs.pop("width", 1.0)
             self.height = kwargs.pop("height", 1.0)
@@ -309,7 +308,7 @@ class CurvatureCorrection:
         bottom = kwargs.pop("bottom", 0)
 
         if img is None:
-            Ny, Nx = self.Ny, self.Nx
+            Ny, Nx = self.current_image.shape[:2]
         else:
             Ny, Nx = img.shape[:2]
 
@@ -363,7 +362,7 @@ class CurvatureCorrection:
         """
 
         if img is None:
-            Ny, Nx = self.Ny, self.Nx
+            Ny, Nx = self.current_image.shape[:2]
         else:
             Ny, Nx = img.shape[:2]
 
