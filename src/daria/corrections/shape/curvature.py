@@ -484,28 +484,36 @@ class CurvatureCorrection:
         Args:
             img (np.ndarray)
         """
-        # Read size of image
+        # Define the current pixel mesh before any transformation
         Ny, Nx = img.shape[:2]
+        X, Y = np.meshgrid(
+            np.arange(Nx, dtype=np.float32),
+            np.arange(Ny, dtype=np.float32)
+        )
 
-        # Define coordinates
-        x = np.arange(Nx, dtype=np.float32)
-        y = np.arange(Ny, dtype=np.float32)
+        # Store references of the pixel coordinates in dict to easily iterate over both
+        coords = {
+            "X": X,
+            "Y": Y,
+        }
 
-        # Construct associated meshgrid with Cartesian indexing
-        X, Y = np.meshgrid(x, y)
+        for key, pixels in coords.items():
+            # Apply transformation in the (only) expected order
+            if "init" in self.config:
+                pixels = self.simple_curvature_correction(pixels, **self.config["init"])
+            if "crop" in self.config:
+                pixels = da.extract_quadrilateral_ROI(pixels, **self.config["crop"])
+            if "bulge" in self.config:
+                pixels = self.simple_curvature_correction(pixels, **self.config["bulge"])
+            if "stretch" in self.config:
+                pixels = self.simple_curvature_correction(pixels, **self.config["stretch"])
 
-        if "init" in self.config:
-            X, Y = self._transform_coordinates(X, Y, **self.config["init"])
+            # Store the updated values
+            coords[key] = pixels
 
-        if "crop" in self.config:
-            X = da.extract_quadrilateral_ROI(X, **self.config["crop"])
-            Y = da.extract_quadrilateral_ROI(Y, **self.config["crop"])
-
-        if "bulge" in self.config:
-            X, Y = self._transform_coordinates(X, Y, **self.config["bulge"])
-
-        if "stretch" in self.config:
-            X, Y = self._transform_coordinates(X, Y, **self.config["stretch"])
+        # Fetch the updated X, Y
+        X = coords["X"]
+        Y = coords["Y"]
 
         # Create out grid as the corrected grid, use (row,col) format
         grid = np.array([Y.ravel(), X.ravel()])
