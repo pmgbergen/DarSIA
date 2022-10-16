@@ -630,7 +630,9 @@ class CurvatureCorrection:
         Returns:
             np.ndarray: transformed image
         """
-        # Initialize the corrected image.
+        # Initialize the corrected image. To unify code, transform to 3d arrays and
+        # transform back in the end if needed.
+        img = np.atleast_3d(img)
         corrected_img = np.zeros((*shape, img.shape[2]), dtype=img.dtype)
 
         # Detemine the corrected image using interpolation based on the transformed
@@ -645,4 +647,4 @@ class CurvatureCorrection:
             # Convert to correct shape and data type
             corrected_img[:, :, i] = im_array_as_vector.reshape(shape).astype(img.dtype)
 
-        return corrected_img
+        return np.squeeze(corrected_img)
