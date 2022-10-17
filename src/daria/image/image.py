@@ -66,7 +66,7 @@ class Image:
         Arguments:
             img (Union[np.ndarray, str, Path]): image array with matrix indexing
             metadata (dict, Optional): metadata dictionary, default is None.
-            drift_correction (daria.DriftCorrection, optional): Drift correction object.
+            drift_correction (daria.DriftCorrection, Optional): Drift correction object.
             color_correction (daria.ColorCorrection, Optional): Color correction object.
                 Default is none, but should be included if the image is to be color
                 corrected at initialization.
