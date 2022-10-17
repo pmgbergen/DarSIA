@@ -1,13 +1,5 @@
-"""Module containing the color correction based on the Classic
-Color Checker from calibrite / x-rite. The algorithms here
-heavily use code from colour-science (see their github).
-This includes some ML-based algorithms. Sometimes, the algorithms
-are not able to detect the color checker despite a rather precise
-user-input on the location of the color checker. Or the swatches
-are not extracted correcty. In such cases, the ManualColorCorrection
-should be used which should always work. It is therefore recommended
-to double-check the results of the ColorCorrection by setting
-verbosity to True once.
+"""Module containing a Machine learning free color correction/calibration
+based on the Classic Color Checker from calibrite / x-rite.
 """
 
 from typing import Optional, Union
@@ -16,84 +8,65 @@ import colour
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from colour_checker_detection import detect_colour_checkers_segmentation
+import skimage
+
+import daria
 
 
-class ClassicColorChecker:
-    """Definition of the classic color checker under default
+class ColorCheckerAfter2014:
+    """Definition of the classic color checker under (hardcoded) default
     illumination conditions.
     """
 
     def __init__(self):
 
-        # Fetch reference colourchecker data (in chromaticity coordinates),
-        # published by the manufacturer (X-Rite), latest data
-        self.colorchecker = colour.CCS_COLOURCHECKERS[
-            "ColorChecker24 - After November 2014"
-        ]
+        # Store reference colors in Lab format.
+        # From: https://www.xrite.com/service-support/...
+        # ...new_color_specifications_for_colorchecker_sg_and_classic_charts
+        reference_swatches_lab = np.array(
+            [
+                [[37.54, 14.37, 14.92]],
+                [[62.73, 35.83, 56.5]],
+                [[28.37, 15.42, -49.8]],
+                [[95.19, -1.03, 2.93]],
+                [[64.66, 19.27, 17.5]],
+                [[39.43, 10.75, -45.17]],
+                [[54.38, -39.72, 32.27]],
+                [[81.29, -0.57, 0.44]],
+                [[49.32, -3.82, -22.54]],
+                [[50.57, 48.64, 16.67]],
+                [[42.43, 51.05, 28.62]],
+                [[66.89, -0.75, -0.06]],
+                [[43.46, -12.74, 22.72]],
+                [[30.1, 22.54, -20.87]],
+                [[81.8, 2.67, 80.41]],
+                [[50.76, -0.13, 0.14]],
+                [[54.94, 9.61, -24.79]],
+                [[71.77, -24.13, 58.19]],
+                [[50.63, 51.28, -14.12]],
+                [[35.63, -0.46, -0.48]],
+                [[70.48, -32.26, -0.37]],
+                [[71.51, 18.24, 67.37]],
+                [[49.57, -29.71, -28.32]],
+                [[20.64, 0.07, -0.46]],
+            ]
+        ).astype(np.float32)
 
-        # Fetch standard colour names and reference colors in CIE xyY format
-        self.color_names = self.colorchecker.data.keys()
-        self.colors_xyY = list(self.colorchecker.data.values())
-
-        # Swatches of the Classic Colour Checker in RGB format, using the CIE standards
-        self.reference_swatches = colour.XYZ_to_RGB(
-            colour.xyY_to_XYZ(self.colors_xyY),
-            self.colorchecker.illuminant,
-            colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["D65"],
-            colour.RGB_COLOURSPACES["sRGB"].matrix_XYZ_to_RGB,
+        # Convert reference swatch colors to RGB
+        self.reference_swatches_rgb = np.squeeze(
+            cv2.cvtColor(np.atleast_3d(reference_swatches_lab), cv2.COLOR_LAB2RGB)
         )
 
 
-class EOTF:
-    """
-    Electro-optical transfer function (EOTF),the standard transfer
-    function for sRGB, cf. https://en.wikipedia.org/wiki/SRGB
-    """
-
-    def __init__(self):
-        """Define look up table (LUT), representing the EOTF."""
-
-        # Use the pre-defined EOTF implemented by colour and apply to any possible
-        # uint8 value.
-        self.table_eotf = colour.cctf_decoding(np.arange(0, 256) / 255.0)
-
-        # Define the inverse of EOTF, which acts on value in [0,1]. Here, the table
-        # translates to uint8 values, i.e., for before applying values of images
-        # with values in [0,1] have to be transformed accordingly to allow the application.
-        self.table_eotf_inverse = (
-            colour.cctf_encoding(np.arange(0, 256) / 255.0) * 255.0
-        ).astype("uint8")
-
-    def adjust(self, image: np.ndarray) -> np.ndarray:
-        """Apply EOTF using the look up table.
-
-        Arguments:
-            image (np.ndarray): image in linear RGB (uint8) format.
-
-        Returns:
-            np.ndarray: image with tranformed color space, with values in [0,1].
-        """
-        return cv2.LUT(image, self.table_eotf)
-
-    def inverse_approx(self, image: np.ndarray) -> np.ndarray:
-        """Apply approximate of the inverse of EOTF using the look up table.
-        In order to apply the exact inverse, the expensive function colout.cctf_encoding
-        would have to be applied to all pixels (with values in [0,1]). By restricting the
-        allowed input values to uint8 values, allows for faster LUT.
-
-        Arguments:
-            image (np.ndarray): image in gamma-corrected RGB format with values in [0,1].
-
-        Returns:
-            np.ndarray: image in linear RGB (uint8) format.
-        """
-
-        # Need to transform values to uint8 first before applying the LUT.
-        return cv2.LUT((255.0 * image).astype("uint8"), self.table_eotf_inverse)
-
-
 class ColorCorrection:
+    """ML-free color correction.
+
+    Precise user-input is required for detecting the color checker. The Calibrite/
+    X-rite color checker has four corner landmarks on the colorchecker. The pixel
+    coordinates of these have to be provided as input parameters, starting with the
+    corner close to the brown swatch, and continuing in counter-clockwise direction.
+    """
+
     def __init__(
         self,
         roi: Optional[Union[tuple, np.ndarray]] = None,
@@ -103,22 +76,17 @@ class ColorCorrection:
         """
         Constructor of converter, setting up a priori all data needed for fast conversion.
 
-        Attributes:
-            eotf: LUTs for standard electro-optical transfer function
+        Args:
             roi (tuple of slices, np.ndarray, or None): ROI containing a colour checker,
                 provided either as intervals, corner points, or nothing.
-            verbosity (bool): displays corrected color checker on top of the reference one if
-                True, default is False
+            verbosity (bool): flag controlling whether extracted ROIs of the colorchecker
+                as well as the extracted swatch colors are displayed. Useful for debugging.
             whitebalancing (bool): apply white balancing based on the third bottom left swatch
                 if True, default is True
         """
 
-        # Define look up tables approximating the standard electro-optical
-        # transfer function for sRGB.
-        self.eotf = EOTF()
-
         # Reference of the class color checker
-        self.colorchecker = ClassicColorChecker()
+        self.colorchecker = ColorCheckerAfter2014()
 
         # Define ROI
         self.roi = roi
@@ -132,133 +100,70 @@ class ColorCorrection:
         image: np.ndarray,
     ) -> np.ndarray:
         """
-        Apply workflow from colour-science to match the colors of the color checker with the
-        corresponding color values, cf.
+        Similar workflow as by colour-science to match the colors of the color checker with
+        the corresponding reference values, but tailored and simplified, based on the precise
+        user-input on the location of the color checker. Reference to the general workflow:
         https://github.com/colour-science/colour-checker-detection/blob/master/colour_checker_detection/examples/examples_detection.ipynb
 
-        Arguments:
-            image (np.ndarray): image with uint8 value in (linear) RGB color space
+        Args:
+            image (np.ndarray): image in RGB space, with values in uint8, float32, or float64.
 
         Returns:
-            np.ndarray: corrected image with uint8 values in (linear) RGB color space,
-                with colors matched based on the color checker within the roi
+            np.ndarray: corrected image
         """
         # Make sure that the image is in uint8 format
-        if image.dtype != np.uint8:
-            raise ValueError("Provide image in uint8 format.")
-
-        # Apply transfer function and convert to nonlinear RGB color space
-        decoded_image = self.eotf.adjust(image)
+        if image.dtype == np.uint8:
+            image = skimage.util.img_as_float(image)
+        if image.dtype not in [np.float32, np.float64]:
+            raise ValueError(
+                "Provide image in np.uint8, np.float32, or np.float64 format."
+            )
 
         # Extract part of the image containing a color checker.
-        colorchecker_image: np.ndarray = self._restrict_to_roi(decoded_image)
+        colorchecker_img: np.ndarray = self._restrict_to_roi(image)
 
-        # Retrieve swatch colors in transfered RGB format
-        swatches = detect_colour_checkers_segmentation(colorchecker_image)
-        if len(swatches) == 0:
-            raise ValueError(
-                """Color checker not identified. Choose a better ROI.
-                Or in the worst case, provide pixels with reverse matrix indexing,
-                i.e. (col,row) format, for the corner landmarks of the colorchecker,
-                starting in the left upper corner and continuing counter-clockwise."""
-            )
-        else:
-            assert len(swatches) == 1
-            swatches = swatches[0]
-
-        if self.verbosity:
-            swatches_img = swatches[:, np.newaxis, :].reshape((4, 6, 3), order="C")
-            plt.figure()
-            plt.imshow(swatches_img)
-            plt.show()
+        # Determine swatch colors
+        swatches = self._detect_colour_checkers_segmentation(colorchecker_img)
 
         # Apply color correction onto full image based on the swatch colors in comparison with
         # the standard colors
-        corrected_decoded_image = colour.colour_correction(
-            decoded_image,
+        corrected_image = colour.colour_correction(
+            skimage.util.img_as_float(image),
             swatches,
-            self.colorchecker.reference_swatches,
+            self.colorchecker.reference_swatches_rgb,
             method="Cheung 2004",
         )
 
         # Apply white balancing, such that the third bottom left swatch of the color checker
-        # is exact
+        # is exact. As swatch colors are stored column-by-column, this particular swatch is
+        # at position 11.
         if self.whitebalancing:
             corrected_colorchecker_image: np.ndarray = self._restrict_to_roi(
-                corrected_decoded_image
+                corrected_image
             )
-            swatches = detect_colour_checkers_segmentation(
+            swatches = self._detect_colour_checkers_segmentation(
                 corrected_colorchecker_image
-            )[0]
-            corrected_decoded_image *= (
-                self.colorchecker.reference_swatches[-4] / swatches[-4]
+            )
+            pos = 11
+            corrected_image *= (
+                self.colorchecker.reference_swatches_rgb[pos, :] / swatches[pos, :]
+            )
+
+        # For debugging, double-check once more the swatches.
+        if self.verbosity:
+            corrected_colorchecker_image: np.ndarray = self._restrict_to_roi(
+                corrected_image
+            )
+            swatches = self._detect_colour_checkers_segmentation(
+                corrected_colorchecker_image
             )
 
         # The correction may result in values outside the feasible range [0., 1.].
         # Thus, simply clip the values for consistency.
-        corrected_decoded_image = np.clip(corrected_decoded_image, 0, 1)
+        corrected_image = np.clip(corrected_image, 0, 1)
 
-        # For debugging purposes (a pre/post analysis), the swatches are displayed on top
-        # of the reference color checker.
-        if self.verbosity:
-
-            # Standard D65 illuminant
-            D65 = colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["D65"]
-
-            # NOTE: Mainly for debugging purposes, the visualize of the
-            # 'before' and 'after' of the color correction, is following.
-            # The 'before' is commented out, but can be activated by uncommenting.
-
-            # Convert swatches from RGB to xyY
-            # swatches_xyY = colour.XYZ_to_xyY(
-            #     colour.RGB_to_XYZ(
-            #         swatches,
-            #         D65,
-            #         D65,
-            #         colour.RGB_COLOURSPACES["sRGB"].matrix_RGB_to_XYZ,
-            #     )
-            # )
-
-            # Color correct swatches and also convert to xyY
-            corrected_swatches = colour.colour_correction(
-                swatches, swatches, self.colorchecker.reference_swatches
-            )
-            if self.whitebalancing:
-                corrected_swatches *= (
-                    self.colorchecker.reference_swatches[-4] / corrected_swatches[-4]
-                )
-            corrected_swatches_xyY = colour.XYZ_to_xyY(
-                colour.RGB_to_XYZ(
-                    corrected_swatches,
-                    D65,
-                    D65,
-                    colour.RGB_COLOURSPACES["sRGB"].matrix_RGB_to_XYZ,
-                )
-            )
-
-            # Define color checkers using the swatches pre and post color correction
-            # colour_checker_pre = colour.characterisation.ColourChecker(
-            #     "pre", dict(zip(self.colorchecker.color_names, swatches_xyY)), D65
-            # )
-
-            colour_checker_post = colour.characterisation.ColourChecker(
-                "post",
-                dict(zip(self.colorchecker.color_names, corrected_swatches_xyY)),
-                D65,
-            )
-
-            # Plot the constructed color checkers on top of the reference classic
-            # color checker.
-            # colour.plotting.plot_multi_colour_checkers(
-            #    [self.colorchecker.colorchecker, colour_checker_pre])
-
-            colour.plotting.plot_multi_colour_checkers(
-                [self.colorchecker.colorchecker, colour_checker_post]
-            )
-
-        # Convert to linear RGB by applying the inverse of the EOTF and return the
-        # corrected image
-        return self.eotf.inverse_approx(corrected_decoded_image)
+        # Ensure a data format which can be used by cv2 etc.
+        return corrected_image.astype(np.float32)
 
     def _restrict_to_roi(self, img: np.ndarray) -> np.ndarray:
         """
@@ -274,7 +179,77 @@ class ColorCorrection:
             return_img: np.ndarray = img
         elif isinstance(self.roi, tuple):
             return_img = img[self.roi]
-        else:
-            raise ValueError("ROI not supported.")
+        elif isinstance(self.roi, np.ndarray):
+            assert self.roi.shape == (4, 2)
+            # Use width and height (in cm - irrelevant) as provided by the manufacturer Xrite.
+            return_img = daria.extract_quadrilateral_ROI(
+                img, pts_src=self.roi, width=27.3, height=17.8
+            )
+
+        # For debugging puposes provide the possibility to plot the extracted image.
+        if self.verbosity:
+            plt.figure()
+            plt.imshow(return_img)
+            plt.show()
 
         return return_img
+
+    def _detect_colour_checkers_segmentation(self, img: np.ndarray) -> np.ndarray:
+        """
+        ML-free variant of detect_colour_checkers_segmentation from colour-science.
+        Exepcts images to be restricted to the ROI such that the landmarks in the
+        corners are also the corners of the image. Does
+
+        Args:
+            img: image of color checker.
+
+        Returns:
+            np.ndarray: 4 x 6 array with colour checker colors.
+        """
+        # Resize to fixed size
+        Ny, Nx = img.shape[:2]
+        fixed_width = 500
+        fixed_height = int(Ny / Nx * fixed_width)
+        resized_img = cv2.resize(img, (fixed_width, fixed_height))
+
+        # Upper left corners of swatches
+        swatch_pos_X, swatch_pos_Y = np.meshgrid(
+            [12, 95, 177, 260, 344, 427],
+            [12, 93, 175, 255],
+        )
+        swatch_size = 50
+
+        # Extract colors of all swatches in RGB by taking averages
+        swatches = np.zeros((4, 6, 3), dtype=np.float32)
+        for row in range(4):
+            for col in range(6):
+                pos_x = swatch_pos_X[row, col]
+                pos_y = swatch_pos_Y[row, col]
+                roi = (
+                    slice(pos_y, pos_y + swatch_size),
+                    slice(pos_x, pos_x + swatch_size),
+                )
+                swatches[row, col] = (
+                    np.sum(np.sum(resized_img[roi], axis=0), axis=0) / swatch_size**2
+                )
+
+        # For debugging puposes provide the possibility to plot the extracted swatches
+        # compared to the reference swatches.
+        if self.verbosity:
+            # Plot the extracted swatch colors
+            plt.figure()
+            plt.imshow(swatches)
+
+            # Plot the reference swatches in the order and form of the classic color checker.
+            ref_swatches = self.colorchecker.reference_swatches_rgb[
+                :, np.newaxis, :
+            ].reshape((4, 6, 3), order="F")
+            plt.figure()
+            plt.imshow(ref_swatches)
+
+            plt.show()
+
+        # Reshape to same format as reference swatches, i.e., (24,3) format, column by column.
+        swatches = np.squeeze(swatches.reshape((24, 1, 3), order="F"))
+
+        return swatches
