@@ -51,8 +51,9 @@ class Image:
         self,
         img: Union[np.ndarray, str, Path],
         metadata: Optional[dict] = None,
-        curvature_correction: Optional[da.CurvatureCorrection] = None,
+        drift_correction: Optional[da.DriftCorrection] = None,
         color_correction: Optional[da.ColorCorrection] = None,
+        curvature_correction: Optional[da.CurvatureCorrection] = None,
         **kwargs,
     ) -> None:
         """Constructor of Image object.
@@ -65,12 +66,13 @@ class Image:
         Arguments:
             img (Union[np.ndarray, str, Path]): image array with matrix indexing
             metadata (dict, Optional): metadata dictionary, default is None.
-            curvature_correction (daria.CurvatureCorrection, Optional):
-                Curvature correction object. Default is none, but should be included
-                if the image is to be curvature corrected at initialization
+            drift_correction (daria.DriftCorrection, optional): Drift correction object.
             color_correction (daria.ColorCorrection, Optional): Color correction object.
                 Default is none, but should be included if the image is to be color
                 corrected at initialization.
+            curvature_correction (daria.CurvatureCorrection, Optional):
+                Curvature correction object. Default is none, but should be included
+                if the image is to be curvature corrected at initialization
             kwargs (Optional arguments)
                 metadata_source (str): Path to a metadata json-file that provides
                     metadata such as physical width, height and origo of image
@@ -151,6 +153,9 @@ class Image:
             )
 
         # Apply corrections
+        if drift_correction is not None:
+            self.img = drift_correction(self.img)
+
         if color_correction is not None:
             self.toRGB()
             self.img = color_correction(self.img)
