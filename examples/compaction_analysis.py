@@ -14,7 +14,7 @@ import daria
 path_src = "/home/jakub/images/ift/benchmark/baseline/original/Baseline.jpg"
 path_dst = "/home/jakub/images/ift/benchmark/well_test/from_description/pulse1.jpg"
 
-# Setup config for cropping, and define geometry correction object
+# Setup curvature correction (here only cropping)
 config = {
     "crop": {
         # Define the pixel values (x,y) of the corners of the ROI.
@@ -27,24 +27,29 @@ config = {
 }
 curvature_correction = daria.CurvatureCorrection(config)
 
-# Create daria images with integrated cropping
-img_src = daria.Image(img=path_src, curvature_correction=curvature_correction)
-img_dst = daria.Image(img=path_dst, curvature_correction=curvature_correction)
-
-# Scrutinze the color palette and align both images respectively. For this,
-# define (inaccurate) ROIs in terms of pixel ranges (y and x) in which the
-# color palette is contained.
-translation_estimator = daria.TranslationEstimator()
+# Setup drift correction taking care of moving camera in between taking photos.
+# Use the color checker as reference in both images, and make the src image
+# the anker.
 roi_cc = (slice(0, 600), slice(0, 600))
-translation_estimator.match_roi(
-    img_src=img_src, img_dst=img_dst, roi_src=roi_cc, roi_dst=roi_cc
+drift_correction = daria.DriftCorrection(base=path_src, roi=roi_cc)
+
+# Create daria images with integrated cropping. Note: the drift correction
+# applied to img_src is without effect.
+img_src = daria.Image(
+    img=path_src,
+    drift_correction=drift_correction,
+    curvature_correction=curvature_correction,
+)
+img_dst = daria.Image(
+    img=path_dst,
+    drift_correction=drift_correction,
+    curvature_correction=curvature_correction,
 )
 
-# Cut away the color palette - again define the ROI in terms of pixel ranges (y and x)
+# Extract ROI to cut away the color palette. Use pixel ranges to crop the image.
 roi_crop = (slice(470, img_src.img.shape[0]), slice(60, 7940))
 da_img_src = daria.extractROIPixel(img_src, roi_crop)
 da_img_dst = daria.extractROIPixel(img_dst, roi_crop)
-
 
 # ! ----- Actual analysis: Determine the compaction between img_dst and aligned_img_src
 
