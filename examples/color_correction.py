@@ -16,9 +16,9 @@ uncorrected_baseline = daria.Image(image, width=2.8, height=1.5)
 # ! ---- Setup the machine learning based color correction
 
 # Need to specify a ROI which contains the color checker
-ml_roi_cc = (slice(0, 240), slice(0, 240))
-ml_based_color_correction = daria.ColorCorrection(
-    roi=ml_roi_cc,
+experimental_roi_cc = (slice(0, 240), slice(0, 240))
+experimental_color_correction = daria.ExperimentalColorCorrection(
+    roi=experimental_roi_cc,
     # verbosity = True,
 )
 
@@ -26,9 +26,9 @@ ml_based_color_correction = daria.ColorCorrection(
 # of the details/progress of the color checker.
 
 # Create the color correction and apply it at initialization of image class
-ml_corrected_baseline = daria.Image(
+experimental_corrected_baseline = daria.Image(
     image,
-    color_correction=ml_based_color_correction,
+    color_correction=experimental_color_correction,
     width=2.8,
     height=1.5,
 )
@@ -40,7 +40,7 @@ ml_corrected_baseline = daria.Image(
 # closest to the brown swatch. Continue in counter-clockwise direction.
 # NOTE: That this example uses a crudely coarsened image. Thus, the marks
 # are not very obvious. They are small white L's.
-manual_roi_cc = np.array(
+roi_cc = np.array(
     [
         [154, 176],
         [222, 176],
@@ -48,8 +48,8 @@ manual_roi_cc = np.array(
         [154, 68],
     ]
 )
-manual_color_correction = daria.ManualColorCorrection(
-    roi=manual_roi_cc,
+color_correction = daria.ColorCorrection(
+    roi=roi_cc,
     # verbosity = True,
 )
 
@@ -58,9 +58,9 @@ manual_color_correction = daria.ManualColorCorrection(
 # the final color checker after calibration is displayed.
 
 # Create the color correction and apply it at initialization of image class
-manual_corrected_baseline = daria.Image(
+corrected_baseline = daria.Image(
     image,
-    color_correction=manual_color_correction,
+    color_correction=color_correction,
     width=2.8,
     height=1.5,
 )
@@ -70,9 +70,9 @@ manual_corrected_baseline = daria.Image(
 plt.figure()
 plt.imshow(uncorrected_baseline.img)
 plt.figure()
-plt.imshow(ml_corrected_baseline.img)
+plt.imshow(experimental_corrected_baseline.img)
 plt.figure()
-plt.imshow(manual_corrected_baseline.img)
+plt.imshow(corrected_baseline.img)
 plt.show(block=False)
 # Pause longer if it is desired to keep the images on the screen
 plt.pause(10)
