@@ -22,6 +22,7 @@ from daria.corrections.shape.curvature import *
 from daria.corrections.shape.translation import *
 from daria.corrections.shape.piecewiseperspective import *
 from daria.corrections.shape.curvature import *
+from daria.corrections.shape.drift import *
 from daria.corrections.color.colorcorrection import *
 from daria.corrections.color.experimentalcolorcorrection import *
 from daria.analysis.translationanalysis import *
