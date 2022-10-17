@@ -31,13 +31,13 @@
     "bulge": {
         "horizontal_bulge": -0.0,
         "horizontal_center_offset": 0,
-        "vertical_bulge": -2.5945990825497644e-08,
-        "vertical_center_offset": -33
+        "vertical_bulge": -2.7297344514325645e-08,
+        "vertical_center_offset": -31
     },
     "stretch": {
         "horizontal_stretch": -1.3307656210674836e-08,
         "horizontal_center_offset": -114,
         "vertical_stretch": -0.0,
-        "vertical_center_offset": 126
+        "vertical_center_offset": 168
     }
 }

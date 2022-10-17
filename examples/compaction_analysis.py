@@ -3,10 +3,11 @@ Determine compaction of FluidFlower by comparing two different images.
 """
 
 import matplotlib.pyplot as plt
+import numpy as np
 import skimage
 
 import daria
-import numpy as np
+
 # ! ----- Preliminaries - prepare two images for compaction analysis
 
 # Paths to two images of interest. NOTE: These images are not part of the GH repo.
