@@ -36,8 +36,8 @@ class TranslationEstimator:
         self,
         img_src: np.ndarray,
         img_dst: np.ndarray,
-        roi_src: Optional[tuple],
-        roi_dst: Optional[tuple],
+        roi_src: Optional[tuple] = None,
+        roi_dst: Optional[tuple] = None,
         plot_matches: bool = False,
     ) -> tuple:
         """
@@ -101,8 +101,8 @@ class TranslationEstimator:
         self,
         img_src: Union[np.ndarray, daria.Image],
         img_dst: Union[np.ndarray, daria.Image],
-        roi_src: Optional[tuple],
-        roi_dst: Optional[tuple],
+        roi_src: Optional[tuple] = None,
+        roi_dst: Optional[tuple] = None,
         plot_matches: bool = False,
     ) -> Optional[np.ndarray]:
         """
