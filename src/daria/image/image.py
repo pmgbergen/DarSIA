@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union
 from warnings import warn
+import skimage
 
 import cv2
 import matplotlib.pyplot as plt
@@ -280,9 +281,9 @@ class Image:
         """Show image using matplotlib.pyplots built-in imshow"""
 
         if self.metadata["color_space"] == "BGR":
-            rgbim = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
+            rgbim = cv2.cvtColor(skimage.img_as_ubyte(self.img), cv2.COLOR_BGR2RGB)
         else:
-            rgbim = self.img
+            rgbim = skimage.img_as_ubyte(self.img)
         if time is not None:
             plt.imshow(rgbim)
             plt.pause(time)
