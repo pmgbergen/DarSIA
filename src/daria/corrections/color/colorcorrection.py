@@ -78,7 +78,8 @@ class ColorCorrection:
 
         Args:
             roi (tuple of slices, np.ndarray, or None): ROI containing a colour checker,
-                provided either as intervals, corner points, or nothing.
+                provided either as intervals, corner points, or nothing. The recommended
+                choice is to provide an array of coordinates.
             verbosity (bool): flag controlling whether extracted ROIs of the colorchecker
                 as well as the extracted swatch colors are displayed. Useful for debugging.
             whitebalancing (bool): apply white balancing based on the third bottom left swatch
