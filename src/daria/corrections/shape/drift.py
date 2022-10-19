@@ -21,17 +21,16 @@ class DriftCorrection:
     def __init__(
         self,
         base: Union[str, Path, np.ndarray, daria.Image],
-        roi: Optional[tuple] = None,
+        roi: Optional[Union[np.ndarray, tuple]] = None,
     ) -> None:
         """
         Constructor for DriftCorrection.
 
         Args:
             base (str, Path, or array): path to baseline array, or array.
-            roi (2-tuple of slices): region of interest defining the
-                considered area for detecting features and aligning
-                images.
-
+            roi (2-tuple of slices or array): region of interest defining
+                the considered area for detecting features and aligning
+                images. Either as tuple of ranges, or array of points.
         """
 
         # Read baseline image
@@ -46,7 +45,7 @@ class DriftCorrection:
             raise ValueError("Data type for baseline image not supported.")
 
         # Cache roi
-        self.roi = roi
+        self.roi = roi if isinstance(roi, tuple) else daria.bounding_box(roi)
 
         # Define a translation estimator
         self.translation_estimator = daria.TranslationEstimator()
