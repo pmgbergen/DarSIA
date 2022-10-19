@@ -107,13 +107,13 @@ class ColorCorrection:
         https://github.com/colour-science/colour-checker-detection/blob/master/colour_checker_detection/examples/examples_detection.ipynb
 
         Args:
-            image (np.ndarray): image in RGB space, with values in uint8, float32, or float64.
+            image (np.ndarray): image in RGB space, with values in uint8, uint16, float32, or float64.
 
         Returns:
             np.ndarray: corrected image
         """
-        # Make sure that the image is in uint8 format
-        if image.dtype == np.uint8:
+        # Make sure that the image is in uint8 or uint16 format
+        if image.dtype in [np.uint8, np.uint16]:
             image = skimage.util.img_as_float(image)
         if image.dtype not in [np.float32, np.float64]:
             raise ValueError(
