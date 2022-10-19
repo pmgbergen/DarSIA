@@ -44,8 +44,6 @@ co2_image = daria.Image(
     color_correction=color_correction,
 )
 
-print(co2_image.original_dtype)
-
 # Construct concentration analysis for detecting the co2 concentration
 co2_analysis = daria.ConcentrationAnalysis(baseline_co2)
 
