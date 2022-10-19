@@ -80,6 +80,9 @@ class CurvatureCorrection:
 
             elif isinstance(im_source, str):
                 self.reference_image = cv2.imread(im_source, cv2.IMREAD_UNCHANGED)
+                self.reference_image = cv2.cvtColor(
+                    self.reference_image, cv2.COLOR_BGR2RGB
+                )
 
             else:
                 raise Exception(
@@ -426,7 +429,8 @@ class CurvatureCorrection:
 
         # Read image
         if isinstance(img, str) or isinstance(img, Path):
-            img = cv2.imread(img, cv2.IMREAD_UNCHANGED)
+            img = cv2.imread(str(img), cv2.IMREAD_UNCHANGED)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         assert isinstance(img, np.ndarray)
 
         # Precompute transformed coordinates based on self.config, if required.

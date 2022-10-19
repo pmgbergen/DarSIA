@@ -44,8 +44,8 @@ def tv_denoising(
     tvd_stoppingCriterion.verbose = verbose
 
     # Extract the two images
-    rhs = skimage.util.img_as_float(img.img)
-    im = skimage.util.img_as_float(img.img)
+    rhs = skimage.img_as_float(img.img)
+    im = skimage.img_as_float(img.img)
 
     # Create algorithm specific functionality
     dx = np.zeros(rhs.shape)
@@ -97,6 +97,11 @@ def tv_denoising(
         iterations += 1
 
     # Convert to correct format
-    img.img = skimage.util.img_as_ubyte(im)
+    if img.original_dtype == np.uint8:
+        img.img = skimage.img_as_ubyte(im)
+    elif img.original_dtype == np.uint16:
+        img.img = skimage.img_as_uint(im)
+    else:
+        raise Exception(f"Conversion back to {img.original_dtype} is unknown.")
 
     return img
