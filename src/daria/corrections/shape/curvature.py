@@ -12,10 +12,10 @@ import math
 from pathlib import Path
 from typing import Optional, Union
 
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
-from PIL import Image as PIL_Image
 from scipy.ndimage import map_coordinates
 
 import daria as da
@@ -79,7 +79,7 @@ class CurvatureCorrection:
                 self.reference_image = im_source
 
             elif isinstance(im_source, str):
-                self.reference_image = np.array(PIL_Image.open(Path(im_source)))
+                self.reference_image = cv2.imread(im_source, cv2.IMREAD_UNCHANGED)
 
             else:
                 raise Exception(
@@ -151,12 +151,15 @@ class CurvatureCorrection:
         """
         Shows the current image using matplotlib.pyplot
         """
-        plt.imshow(self.temporary_image)
+        plt.imshow(skimage.img_as_ubyte(self.temporary_image))
         plt.show()
 
     @property
     def temporary_image(self):
-        return skimage.util.img_as_ubyte(self.current_image)
+        if self.dtype == np.uint16:
+            return skimage.util.img_as_uint(self.current_image)
+        else:
+            return skimage.util.img_as_ubyte(self.current_image)
 
     # ! ---- Wrappers for single transformations
 
@@ -423,7 +426,7 @@ class CurvatureCorrection:
 
         # Read image
         if isinstance(img, str) or isinstance(img, Path):
-            img = np.array(PIL_Image.open(Path(img)))
+            img = cv2.imread(img, cv2.IMREAD_UNCHANGED)
         assert isinstance(img, np.ndarray)
 
         # Precompute transformed coordinates based on self.config, if required.
