@@ -65,6 +65,9 @@ class ColorCorrection:
     X-rite color checker has four corner landmarks on the colorchecker. The pixel
     coordinates of these have to be provided as input parameters, starting with the
     corner close to the brown swatch, and continuing in counter-clockwise direction.
+    The color correction is applied prior to curvature correction in 
+    the daria.Image initialization, and therefore, the roi should be with respect to
+    the uncorrected image.
     """
 
     def __init__(
