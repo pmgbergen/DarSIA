@@ -229,16 +229,17 @@ class Image:
             path (str): path to image, including image name and file format
         """
         # cv2 requires BGR format
-        self.toBGR()
-        assert self.metadata["color_space"] == "BGR"
+        write_image = self.toBGR(return_image = True).img
 
         # Write image, using the conventional matrix indexing
         if self.original_dtype == np.uint8:
-            cv2.imwrite(str(Path(path)), self.img)
+            write_image = skimage.img_as_ubyte(write_image)
+            cv2.imwrite(str(Path(path)), write_image)
         elif self.original_dtype == np.uint16:
+            write_image = skimage.img_as_uint(write_image)
             cv2.imwrite(
                 str(Path(path)),
-                self.img,
+                write_image,
                 [
                     cv2.IMWRITE_TIFF_COMPRESSION,
                     1,
@@ -249,7 +250,7 @@ class Image:
                 ],
             )
         else:
-            raise Exception("Cannot write this datatype type")
+            raise Exception(f"Cannot write the datatype {self.original_dtype}")
 
         print("Image saved as: " + str(Path(path)))
 
