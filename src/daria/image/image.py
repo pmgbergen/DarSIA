@@ -54,6 +54,7 @@ class Image:
         drift_correction: Optional[da.DriftCorrection] = None,
         color_correction: Optional[da.ColorCorrection] = None,
         curvature_correction: Optional[da.CurvatureCorrection] = None,
+        get_timestamp: bool = False,
         **kwargs,
     ) -> None:
         """Constructor of Image object.
@@ -128,25 +129,30 @@ class Image:
 
             if no_colorspace_given:
                 warn("Please provide a color space. Now it is assumed to be BGR.")
+            
+            self.metadata["original_dtype"] = self.img.dtype
 
         elif isinstance(img, str) or isinstance(img, Path):
-            pil_img = PIL_Image.open(Path(img))
-            self.img = np.array(pil_img)
+            
+            self.img = cv2.imread(str(Path(img)), cv2.IMREAD_UNCHANGED)
+            self.metadata["color_space"] = "BGR"
+            self.metadata["original_dtype"] = self.img.dtype
 
-            # PIL reads in RGB format
-            self.metadata["color_space"] = "RGB"
+            if get_timestamp:
+                pil_img = PIL_Image.open(Path(img))
 
-            # Read exif metadata
-            self.exif = pil_img.getexif()
-            if self.exif.get(306) is not None:
-                self.metadata["timestamp"] = datetime.strptime(
-                    self.exif.get(306), "%Y:%m:%d %H:%M:%S"
-                )
-            else:
-                self.metadata["timestamp"] = None
-
+                # Read exif metadata
+                self.exif = pil_img.getexif()
+                if self.exif.get(306) is not None:
+                    self.metadata["timestamp"] = datetime.strptime(
+                        self.exif.get(306), "%Y:%m:%d %H:%M:%S"
+                    )
+                else:
+                    self.metadata["timestamp"] = None
+            
             self.imgpath = img
             self.name = img
+
         else:
             raise Exception(
                 "Invalid image data. Provide either a path to an image or an image array."
@@ -205,11 +211,13 @@ class Image:
     def timestamp(self) -> datetime.datetime:
         return self.metadata["timestamp"]
 
+    @property
+    def original_dtype(self) -> np.dtype:
+        return self.metadata["original_dtype"]
+
     def write(
         self,
-        name: str = "img",
-        path: str = str(Path("images/modified/")),
-        file_format: str = ".jpg",
+        path,
     ) -> None:
         """Write image to file.
 
@@ -217,17 +225,21 @@ class Image:
         can be changed by passing them as strings to the method.
 
         Arguments:
-            name (str): name of image
-            path (str): tpath to image (only folders)
-            file_format (str): file ending, deifning the image format
+            path (str): path to image, including image name and file format
         """
         # cv2 requires BGR format
         self.toBGR()
         assert self.metadata["color_space"] == "BGR"
 
         # Write image, using the conventional matrix indexing
-        cv2.imwrite(str(Path(path + name + file_format)), self.img)
-        print("Image saved as: " + str(Path(path + name + file_format)))
+        if self.original_dtype == np.uint8:
+            cv2.imwrite(str(Path(path)), self.img)
+        elif self.original_dtype == np.uint16:
+            cv2.imwrite(str(Path(path)), self.img, [cv2.IMWRITE_TIFF_COMPRESSION,1,cv2.IMWRITE_TIFF_XDPI,350,cv2.IMWRITE_TIFF_YDPI,350])
+        else:
+            raise Exception("Cannot write this datatype type")
+
+        print("Image saved as: " + str(Path(path)))
 
     def write_metadata_to_file(self, path: str) -> None:
         """
