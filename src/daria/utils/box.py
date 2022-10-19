@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def bounding_box(coords: np.array) -> tuple:
+def bounding_box(coords: np.ndarray) -> tuple:
     """
     Determine bounding box for a set of given coordinates.
 
