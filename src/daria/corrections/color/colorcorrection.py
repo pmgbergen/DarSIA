@@ -118,10 +118,10 @@ class ColorCorrection:
         """
         # Make sure that the image is in uint8 or uint16 format
         if image.dtype in [np.uint8, np.uint16]:
-            image = skimage.util.img_as_float(image)
+            image = skimage.img_as_float(image)
         if image.dtype not in [np.float32, np.float64]:
             raise ValueError(
-                "Provide image in np.uint8, np.float32, or np.float64 format."
+                "Provide image in np.uint8, np.uint16, np.float32, or np.float64 format."
             )
 
         # Extract part of the image containing a color checker.
@@ -129,11 +129,10 @@ class ColorCorrection:
 
         # Determine swatch colors
         swatches = self._detect_colour_checkers_segmentation(colorchecker_img)
-
         # Apply color correction onto full image based on the swatch colors in comparison with
         # the standard colors
         corrected_image = colour.colour_correction(
-            skimage.util.img_as_float(image),
+            skimage.img_as_float(image),
             swatches,
             self.colorchecker.reference_swatches_rgb,
             method="Cheung 2004",
@@ -242,14 +241,14 @@ class ColorCorrection:
         # compared to the reference swatches.
         if self.verbosity:
             # Plot the extracted swatch colors
-            plt.figure()
+            plt.figure("Registered swatches")
             plt.imshow(swatches)
 
             # Plot the reference swatches in the order and form of the classic color checker.
             ref_swatches = self.colorchecker.reference_swatches_rgb[
                 :, np.newaxis, :
             ].reshape((4, 6, 3), order="F")
-            plt.figure()
+            plt.figure("Reference swatches")
             plt.imshow(ref_swatches)
 
             plt.show()
