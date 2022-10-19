@@ -12,11 +12,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Union
 from warnings import warn
-import skimage
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import skimage
 from PIL import Image as PIL_Image
 
 import daria as da
@@ -130,11 +130,11 @@ class Image:
 
             if no_colorspace_given:
                 warn("Please provide a color space. Now it is assumed to be BGR.")
-            
+
             self.metadata["original_dtype"] = self.img.dtype
 
         elif isinstance(img, str) or isinstance(img, Path):
-            
+
             self.img = cv2.imread(str(Path(img)), cv2.IMREAD_UNCHANGED)
             self.metadata["color_space"] = "BGR"
             self.metadata["original_dtype"] = self.img.dtype
@@ -150,7 +150,7 @@ class Image:
                     )
                 else:
                     self.metadata["timestamp"] = None
-            
+
             self.imgpath = img
             self.name = img
 
@@ -236,7 +236,18 @@ class Image:
         if self.original_dtype == np.uint8:
             cv2.imwrite(str(Path(path)), self.img)
         elif self.original_dtype == np.uint16:
-            cv2.imwrite(str(Path(path)), self.img, [cv2.IMWRITE_TIFF_COMPRESSION,1,cv2.IMWRITE_TIFF_XDPI,350,cv2.IMWRITE_TIFF_YDPI,350])
+            cv2.imwrite(
+                str(Path(path)),
+                self.img,
+                [
+                    cv2.IMWRITE_TIFF_COMPRESSION,
+                    1,
+                    cv2.IMWRITE_TIFF_XDPI,
+                    350,
+                    cv2.IMWRITE_TIFF_YDPI,
+                    350,
+                ],
+            )
         else:
             raise Exception("Cannot write this datatype type")
 
