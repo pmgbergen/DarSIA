@@ -5,6 +5,8 @@ of the same well test, a tracer concentration can be determined.
 
 import os
 
+import numpy as np
+
 import daria
 
 # Define path to image folder
@@ -18,7 +20,14 @@ curvature_correction = daria.CurvatureCorrection(
 )
 
 # Define color correction object
-roi_cc = (slice(0, 600), slice(0, 700))
+roi_cc = np.array(
+    [
+        [152, 202],
+        [225, 206],
+        [226, 101],
+        [153, 98],
+    ]
+)
 color_correction = daria.ColorCorrection(roi=roi_cc)
 
 # !----- Main routine for co2 analysis
