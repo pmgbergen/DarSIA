@@ -16,6 +16,7 @@ import colour
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import skimage
 from colour_checker_detection import detect_colour_checkers_segmentation
 
 
@@ -90,7 +91,7 @@ class EOTF:
         """
 
         # Need to transform values to uint8 first before applying the LUT.
-        return cv2.LUT((255.0 * image).astype("uint8"), self.table_eotf_inverse)
+        return cv2.LUT(skimage.img_as_ubyte(image), self.table_eotf_inverse)
 
 
 class ExperimentalColorCorrection:

@@ -66,7 +66,7 @@ corrected_baseline = daria.Image(
 )
 
 # -------- Plot corrected and uncorrected images
-
+uncorrected_baseline.toRGB()
 plt.figure()
 plt.imshow(uncorrected_baseline.img)
 plt.figure()
