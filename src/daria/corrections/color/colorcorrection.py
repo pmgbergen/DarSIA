@@ -84,7 +84,7 @@ class ColorCorrection:
         Constructor of converter, setting up a priori all data needed for fast conversion.
 
         Args:
-            config (dict, str, path): config file for initialization of 
+            config (dict, str, path): config file for initialization of
                 images. Can replace roi.
             roi (tuple of slices, np.ndarray, or None): ROI containing a colour checker,
                 provided either as intervals, corner points, or nothing. The recommended

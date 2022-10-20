@@ -12,7 +12,7 @@ def bounding_box(
     Args:
         coords (np.ndarray): coordinate array of size N x dim.
         padding (Optional[int]): padding for the bounding box
-        max_size (Optional[list]): max size of bounding box. 
+        max_size (Optional[list]): max size of bounding box.
             Provided as list with max size in each dimension.
 
     Returns:
