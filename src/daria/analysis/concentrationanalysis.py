@@ -145,10 +145,6 @@ class ConcentrationAnalysis:
         # Store cleaning filter array.
         np.save(str(Path(path_to_filter)), self.threshold)
 
-    # TODO add clean_base method
-    # def clean_base(self, img: daria.Image) -> None:
-    # Take difference, and update image with the minimum of both images.
-
     # ! ---- Main method
 
     def __call__(self, img: daria.Image) -> daria.Image:
@@ -581,46 +577,3 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             np.ndarray: signal array.
         """
         return signal
-
-        # # Clean up and include only connected regions which reach a certain value in
-        # # the cached mask. This step is built on the assumption that we have been
-        # # interested in high-concentration areas.
-
-        # cached_mask = copy.deepcopy(large_mask)
-        # #final_mask = np.zeros(cached_mask.shape[:2], dtype=bool)
-
-        # # Label the connected regions first
-        # labels, num_labels = skimage.measure.label(mask, return_num=True)
-        # props = skimage.measure.regionprops(labels)
-
-        # # Investigate each labeled region separately
-        # for label in range(num_labels):
-        #     # Find max value in region with fixed label
-        #     labeled_region = labels == label
-
-        #     ## Deactivate labeled region if the max value it not sufficiently high. Allow for some relaxation.
-        #     #max_value_in_cached_mask = np.max(cached_mask[labeled_region])
-        #     #print(label, max_value_in_cached_mask)
-        #     #if max_value_in_cached_mask > 0.8:
-        #     #    final_mask[labeled_region] = True
-        #     #    plt.figure()
-        #     #    plt.imshow(final_mask)
-        #     #    plt.show()
-
-        #     # Deactivate labeled region if the max value it not sufficiently high. Allow for some relaxation.
-        #     grad = self.gradient_modulus(large_mask, labeled_region)
-        #     plt.figure()
-        #     plt.imshow(labeled_region)
-        #     plt.figure()
-        #     plt.imshow(grad)
-        #     print(np.sum(grad), props[label]["perimeter"], np.sum(labeled_region))
-        #     plt.show()
-
-        # #plt.figure()
-        # #plt.imshow(large_mask)
-        # ##plt.figure()
-        # ##plt.imshow(labels)
-
-        # plt.figure()
-        # plt.imshow(final_mask)
-        # plt.show()
