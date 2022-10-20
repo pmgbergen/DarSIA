@@ -156,18 +156,19 @@ class ConcentrationAnalysis:
         Returns:
             daria.Image: concentration
         """
-        # Extract mono-colored version
         probe_img = copy.deepcopy(img)
-        self._extract_scalar_information(probe_img)
 
-        # Take (unsigned) difference
+        # Extract monochromatic version and take difference wrt the baseline image
+        # If requested by the user, extract a monochromatic version before.
+        self._extract_scalar_information(probe_img)
         diff = skimage.util.compare_images(probe_img.img, self.base.img, method="diff")
+        signal = self._extract_scalar_information_after(diff)
 
         # Clean signal
-        signal = np.clip(diff - self.threshold, 0, None)
+        clean_signal = np.clip(signal - self.threshold, 0, None)
 
         # Post-process the signal
-        processed_signal = self.postprocess_signal(signal)
+        processed_signal = self.postprocess_signal(clean_signal)
 
         # Convert from signal to concentration
         concentration = np.clip(self.scaling * processed_signal + self.offset, 0, 1)
@@ -201,6 +202,18 @@ class ConcentrationAnalysis:
             img.img = self.color(img.img)
         else:
             raise ValueError(f"Mono-colored space {self.color} not supported.")
+
+    def _extract_scalar_information_after(self, img: np.ndarray) -> None:
+        """
+        Make a mono-colored image from potentially multi-colored image.
+
+        Args:
+            img (np.ndarray): image
+
+        Returns:
+            np.ndarray: monochromatic reduction of the array
+        """
+        return img
 
     def postprocess_signal(self, signal: np.ndarray) -> np.ndarray:
         """
