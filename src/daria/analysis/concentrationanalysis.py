@@ -444,10 +444,13 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         # Thresholding parameters
         self.apply_automatic_threshold: bool = kwargs.pop("threshold auto", False)
         if not self.apply_automatic_threshold:
-            self.threshold_value: float = kwargs.pop("threshold value")
+            self.threshold_value: float = kwargs.pop("threshold value", 0.0)
+
+        # Parameters to remove small objects
+        self.min_size: int = kwargs.pop("min area size", 1)
 
         # Parameters to fill holes
-        self.area_threshold: int = kwargs.pop("max hole size", 10**2)
+        self.area_threshold: int = kwargs.pop("max hole size", 0)
 
         # Parameters for local convex cover
         self.cover_patch_size: int = kwargs.pop("local convex cover patch size", 1)
