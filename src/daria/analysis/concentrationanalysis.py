@@ -458,11 +458,8 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         # Active ROI
         self.active_roi: np.ndarray = np.ones(self.base.img.shape[:2], dtype=bool)
 
-    def update_active_roi(self, active_roi: np.ndarray) -> None:
-        """
-        Update the active ROI to be considered in the analysis.
-        """
-        self.active_roi = active_roi
+        # Mask
+        self.mask: np.ndarray = np.ones(self.base.img.shape[:2], dtype=bool)
 
     def gradient_modulus(self, img, area) -> float:
         dx = daria.forward_diff_x(img)
@@ -471,7 +468,11 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         dy[np.logical_not(area)] = 0
         grad_mod = np.sqrt(dx**2 + dy**2)
 
-        return grad_mod
+    def update_mask(self, mask: np.ndarray) -> None:
+        """
+        Update the mask to be considered in the analysis.
+        """
+        self.mask = mask
 
     # ! ---- Main method
     def postprocess_signal(self, signal: np.ndarray) -> np.ndarray:
@@ -525,10 +526,24 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             # Resize to original size
             signal = cv2.resize(signal, tuple(reversed(self.base.img.shape[:2])))
 
+        if self.verbosity:
+            plt.figure("TVD smoothed signal")
+            plt.imshow(signal)
+
+        # Cache the (smooth) signal for output
+        smooth_signal = np.copy(signal)
+
+        if self.verbosity:
+            # Extract merely signal values in the mask
+            active_signal_values = np.ravel(signal)[np.ravel(self.mask)]
+            # Find automatic threshold value using OTSU
+            thresh = skimage.filters.threshold_otsu(active_signal_values)
+            print("OTSU threshold value", thresh)
+
         # Apply thresholding to obtain mask
         if self.apply_automatic_threshold:
-            # Extract merely signal values in the active ROI
-            active_signal_values = np.ravel(signal)[np.ravel(self.active_roi)]
+            # Extract merely signal values in the mask
+            active_signal_values = np.ravel(signal)[np.ravel(self.mask)]
             # Find automatic threshold value using OTSU
             thresh = skimage.filters.threshold_otsu(active_signal_values)
         else:
