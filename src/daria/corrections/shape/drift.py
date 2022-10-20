@@ -74,7 +74,7 @@ class DriftCorrection:
         elif "roi_drift_correction" in self.config:
             self.roi = daria.bounding_box(np.array(self.config["roi_drift_correction"]))
         elif "roi_color_correction" in self.config:
-            self.roi = daria.bounding_box(np.array(self.config["roi_color_correction"]))
+            self.roi = daria.bounding_box(np.array(self.config["roi_color_correction"]), padding = round(0.05*self.base.shape[0]), max_size=[self.base.shape[0], self.base.shape[1]])
         else:
             self.roi = None
 
@@ -95,8 +95,6 @@ class DriftCorrection:
         """
         # Define roi for source image. Let input argument be dominating over self.roi.
         roi_src = self.roi if roi is None else roi
-        print(roi_src)
-        print(self.roi)
         # Match image with baseline image
         return self.translation_estimator.match_roi(
             img_src=img, img_dst=self.base, roi_src=roi_src, roi_dst=self.roi
