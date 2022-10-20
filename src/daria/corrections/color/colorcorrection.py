@@ -108,6 +108,7 @@ class ColorCorrection:
                 self.config = copy.deepcopy(config)
         else:
             self.config: dict = {}
+
             
             
         # Define ROI
@@ -119,10 +120,11 @@ class ColorCorrection:
             self.config["roi_color_correction"] = roi
         elif isinstance(roi,tuple):
             self.roi = roi
-        elif "roi_color_correction" in config:
-            self.roi = np.array(config["roi_color_correction"])
+        elif "roi_color_correction" in self.config:
+            self.roi = np.array(self.config["roi_color_correction"])
         else:
             self.roi = None
+
 
         # Store flags
         self.verbosity = verbosity

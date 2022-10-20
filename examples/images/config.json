@@ -1,20 +1,61 @@
 {
     "roi_color_correction": [
         [
-            154,
-            176
+            146,
+            196
         ],
         [
-            222,
-            176
+            220,
+            199
         ],
         [
-            222,
-            68
+            220,
+            95
         ],
         [
-            154,
-            68
+            148,
+            91
         ]
-    ]
+    ],
+    "init": {
+        "horizontal_bulge": 5e-09,
+        "horizontal_center_offset": 0,
+        "vertical_bulge": 0,
+        "vertical_center_offset": 0
+    },
+    "crop": {
+        "pts_src": [
+            [
+                11,
+                8
+            ],
+            [
+                16,
+                1755
+            ],
+            [
+                3165,
+                1748
+            ],
+            [
+                3165,
+                5
+            ]
+        ],
+        "width": 2.8,
+        "height": 1.5,
+        "in meters": true
+    },
+    "bulge": {
+        "horizontal_bulge": -0.0,
+        "horizontal_center_offset": 0,
+        "vertical_bulge": -2.7297344514325645e-08,
+        "vertical_center_offset": -31
+    },
+    "stretch": {
+        "horizontal_stretch": -1.1571511345920683e-08,
+        "horizontal_center_offset": -114,
+        "vertical_stretch": 7.603351983341969e-09,
+        "vertical_center_offset": 168
+    }
 }
