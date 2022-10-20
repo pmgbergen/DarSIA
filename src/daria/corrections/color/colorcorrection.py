@@ -119,8 +119,10 @@ class ColorCorrection:
             self.config["roi_color_correction"] = roi
         elif isinstance(roi,tuple):
             self.roi = roi
-        else:
+        elif "roi_color_correction" in config:
             self.roi = np.array(config["roi_color_correction"])
+        else:
+            self.roi = None
 
         # Store flags
         self.verbosity = verbosity

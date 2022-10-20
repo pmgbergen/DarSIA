@@ -1,43 +1,20 @@
 {
-    "init": {
-        "horizontal_bulge": 5e-09,
-        "horizontal_center_offset": 0,
-        "vertical_bulge": 0,
-        "vertical_center_offset": 0
-    },
-    "crop": {
-        "pts_src": [
-            [
-                11,
-                8
-            ],
-            [
-                16,
-                1755
-            ],
-            [
-                3165,
-                1748
-            ],
-            [
-                3165,
-                5
-            ]
+    "roi_color_correction": [
+        [
+            154,
+            176
         ],
-        "width": 2.8,
-        "height": 1.5,
-        "in meters": true
-    },
-    "bulge": {
-        "horizontal_bulge": -0.0,
-        "horizontal_center_offset": 0,
-        "vertical_bulge": -2.7297344514325645e-08,
-        "vertical_center_offset": -31
-    },
-    "stretch": {
-        "horizontal_stretch": -1.3307656210674836e-08,
-        "horizontal_center_offset": -114,
-        "vertical_stretch": -0.0,
-        "vertical_center_offset": 168
-    }
+        [
+            222,
+            176
+        ],
+        [
+            222,
+            68
+        ],
+        [
+            154,
+            68
+        ]
+    ]
 }

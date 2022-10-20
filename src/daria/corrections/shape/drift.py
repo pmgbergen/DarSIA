@@ -7,6 +7,8 @@ is taking care of.
 from pathlib import Path
 from typing import Optional, Union
 
+import json
+import copy
 import numpy as np
 from PIL import Image as PIL_Image
 
@@ -21,7 +23,8 @@ class DriftCorrection:
     def __init__(
         self,
         base: Union[str, Path, np.ndarray, daria.Image],
-        roi: Optional[Union[np.ndarray, tuple]] = None,
+        roi: Optional[Union[np.ndarray, tuple, list]] = None,
+        config: Optional[Union[dict, str, Path]] = None,
     ) -> None:
         """
         Constructor for DriftCorrection.
@@ -44,8 +47,37 @@ class DriftCorrection:
         else:
             raise ValueError("Data type for baseline image not supported.")
 
-        # Cache roi
-        self.roi = roi if isinstance(roi, tuple) else daria.bounding_box(roi)
+        # Cache config
+        if config is not None:
+            if isinstance(config, str):
+                with open(str(Path(config)), "r") as openfile:
+                    self.config = json.load(openfile)
+            elif isinstance(config, Path):
+                with open(str(config), "r") as openfile:
+                    self.config = json.load(openfile)
+            else:
+                self.config = copy.deepcopy(config)
+        else:
+            self.config: dict = {}
+        
+
+        # Cache ROI
+        if isinstance(roi, np.ndarray):
+            print("here")
+            self.roi = daria.bounding_box(roi)
+            self.config["roi_drift_correction"] = self.roi.tolist()
+        elif isinstance(roi, list):
+            self.roi = daria.bounding_box(np.array(roi))
+            self.config["roi_drift_correction"] = roi
+        elif isinstance(roi, tuple):
+            self.roi = roi
+            self.config["roi_drift_correction"] = daria.bounding_box_inverse(roi).tolist()
+        elif "roi_drift_correction" in self.config:
+            self.roi = daria.bounding_box(np.array(self.config["roi_drift_correction"]))
+        elif "roi_color_correction" in self.config:
+            self.roi = daria.bounding_box(np.array(self.config["roi_color_correction"]))
+        else:
+            self.roi = None
 
         # Define a translation estimator
         self.translation_estimator = daria.TranslationEstimator()
@@ -69,3 +101,15 @@ class DriftCorrection:
         return self.translation_estimator.match_roi(
             img_src=img, img_dst=self.base, roi_src=roi_src, roi_dst=self.roi
         )
+
+
+    def write_config_to_file(self, path: Path) -> None:
+        """
+        Writes the config dictionary to a json-file.
+
+        Arguments:
+            path (Path): path to the json file
+        """
+
+        with open(str(path), "w") as outfile:
+            json.dump(self.config, outfile, indent=4)
