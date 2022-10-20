@@ -53,8 +53,6 @@ def compare_segmentations(*segmentations, **kwargs) -> np.ndarray:
                 colormap(1 / number_of_segmented_images * (i + 0.5))[0:3]
             )
             rgbalight = np.trunc(light_scaling * rgba)
-            print(colors[i, 0])
-            print(rgba.astype(np.uint8))
             colors[i, 0] = rgba.astype(np.uint8)
             colors[i, 1] = rgbalight.astype(np.uint8)
     else:

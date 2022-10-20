@@ -454,6 +454,7 @@ class Patches:
             origo=self.base.origo,
             width=self.base.width,
             height=self.base.height,
+            color_space=self.base.colorspace,
         )
 
         # Update the base image if required
@@ -505,7 +506,7 @@ class Patches:
                 roi_x = roi[1]
 
                 # Fetch patch, and convert to float
-                img_i_j = skimage.util.img_as_float(self.images[i][j].img)
+                img_i_j = skimage.img_as_float(self.images[i][j].img)
 
                 # Fetch weight and convert to tensor
                 weight_i_j = self.weight_x[self.position(i, j)[0]]
@@ -533,7 +534,10 @@ class Patches:
         assert assembled_img.shape == self.base.img.shape
 
         # Convert final image to uint8 format
-        assembled_img = skimage.util.img_as_ubyte(assembled_img)
+        if self.base.original_dtype == np.uint8:
+            assembled_img = skimage.img_as_ubyte(assembled_img)
+        elif self.base.original_dtype == np.uint16:
+            assembled_img = skimage.img_as_uint(assembled_img)
 
         # Define resulting daria image
         da_assembled_img = da.Image(
@@ -541,6 +545,7 @@ class Patches:
             origo=self.base.origo,
             width=self.base.width,
             height=self.base.height,
+            color_space=self.base.colorspace,
         )
 
         # Update the base image if required

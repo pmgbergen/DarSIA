@@ -65,6 +65,9 @@ class ColorCorrection:
     X-rite color checker has four corner landmarks on the colorchecker. The pixel
     coordinates of these have to be provided as input parameters, starting with the
     corner close to the brown swatch, and continuing in counter-clockwise direction.
+    The color correction is applied prior to curvature correction in
+    the daria.Image initialization, and therefore, the roi should be with respect to
+    the uncorrected image.
     """
 
     def __init__(
@@ -107,17 +110,18 @@ class ColorCorrection:
         https://github.com/colour-science/colour-checker-detection/blob/master/colour_checker_detection/examples/examples_detection.ipynb
 
         Args:
-            image (np.ndarray): image in RGB space, with values in uint8, float32, or float64.
+            image (np.ndarray): image in RGB space, with values in uint8,
+                uint16, float32, or float64.
 
         Returns:
             np.ndarray: corrected image
         """
-        # Make sure that the image is in uint8 format
-        if image.dtype == np.uint8:
-            image = skimage.util.img_as_float(image)
+        # Make sure that the image is in uint8 or uint16 format
+        if image.dtype in [np.uint8, np.uint16]:
+            image = skimage.img_as_float(image)
         if image.dtype not in [np.float32, np.float64]:
             raise ValueError(
-                "Provide image in np.uint8, np.float32, or np.float64 format."
+                "Provide image in np.uint8, np.uint16, np.float32, or np.float64 format."
             )
 
         # Extract part of the image containing a color checker.
@@ -125,11 +129,10 @@ class ColorCorrection:
 
         # Determine swatch colors
         swatches = self._detect_colour_checkers_segmentation(colorchecker_img)
-
         # Apply color correction onto full image based on the swatch colors in comparison with
         # the standard colors
         corrected_image = colour.colour_correction(
-            skimage.util.img_as_float(image),
+            skimage.img_as_float(image),
             swatches,
             self.colorchecker.reference_swatches_rgb,
             method="Cheung 2004",
@@ -238,14 +241,14 @@ class ColorCorrection:
         # compared to the reference swatches.
         if self.verbosity:
             # Plot the extracted swatch colors
-            plt.figure()
+            plt.figure("Registered swatches")
             plt.imshow(swatches)
 
             # Plot the reference swatches in the order and form of the classic color checker.
             ref_swatches = self.colorchecker.reference_swatches_rgb[
                 :, np.newaxis, :
             ].reshape((4, 6, 3), order="F")
-            plt.figure()
+            plt.figure("Reference swatches")
             plt.imshow(ref_swatches)
 
             plt.show()
