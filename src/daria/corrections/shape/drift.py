@@ -4,11 +4,11 @@ when restricted to a significant ROI. By this correction for drift
 is taking care of.
 """
 
+import copy
+import json
 from pathlib import Path
 from typing import Optional, Union
 
-import json
-import copy
 import numpy as np
 from PIL import Image as PIL_Image
 
@@ -59,22 +59,33 @@ class DriftCorrection:
                 self.config = copy.deepcopy(config)
         else:
             self.config: dict = {}
-        
 
         # Cache ROI
         if isinstance(roi, np.ndarray):
             self.roi = daria.bounding_box(roi)
             self.config["roi_drift_correction"] = self.roi.tolist()
         elif isinstance(roi, list):
-            self.roi = daria.bounding_box(np.array(roi), padding = round(0.05*self.base.shape[0]), max_size=[self.base.shape[0], self.base.shape[1]])
-            self.config["roi_drift_correction"] = daria.bounding_box_inverse(self.roi).tolist()
+            self.roi = daria.bounding_box(
+                np.array(roi),
+                padding=round(0.05 * self.base.shape[0]),
+                max_size=[self.base.shape[0], self.base.shape[1]],
+            )
+            self.config["roi_drift_correction"] = daria.bounding_box_inverse(
+                self.roi
+            ).tolist()
         elif isinstance(roi, tuple):
             self.roi = roi
-            self.config["roi_drift_correction"] = daria.bounding_box_inverse(roi).tolist()
+            self.config["roi_drift_correction"] = daria.bounding_box_inverse(
+                roi
+            ).tolist()
         elif "roi_drift_correction" in self.config:
             self.roi = daria.bounding_box(np.array(self.config["roi_drift_correction"]))
         elif "roi_color_correction" in self.config:
-            self.roi = daria.bounding_box(np.array(self.config["roi_color_correction"]), padding = round(0.05*self.base.shape[0]), max_size=[self.base.shape[0], self.base.shape[1]])
+            self.roi = daria.bounding_box(
+                np.array(self.config["roi_color_correction"]),
+                padding=round(0.05 * self.base.shape[0]),
+                max_size=[self.base.shape[0], self.base.shape[1]],
+            )
         else:
             self.roi = None
 
@@ -99,7 +110,6 @@ class DriftCorrection:
         return self.translation_estimator.match_roi(
             img_src=img, img_dst=self.base, roi_src=roi_src, roi_dst=self.roi
         )
-
 
     def write_config_to_file(self, path: Path) -> None:
         """

@@ -2,15 +2,15 @@
 based on the Classic Color Checker from calibrite / x-rite.
 """
 
+import copy
+import json
+from pathlib import Path
 from typing import Optional, Union
 
 import colour
-import copy
 import cv2
-import json
 import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
 import skimage
 
 import daria
@@ -109,8 +109,6 @@ class ColorCorrection:
         else:
             self.config: dict = {}
 
-            
-            
         # Define ROI
         if isinstance(roi, np.ndarray):
             self.roi = roi
@@ -118,13 +116,12 @@ class ColorCorrection:
         elif isinstance(roi, list):
             self.roi = np.array(roi)
             self.config["roi_color_correction"] = roi
-        elif isinstance(roi,tuple):
+        elif isinstance(roi, tuple):
             self.roi = roi
         elif "roi_color_correction" in self.config:
             self.roi = np.array(self.config["roi_color_correction"])
         else:
             self.roi = None
-
 
         # Store flags
         self.verbosity = verbosity

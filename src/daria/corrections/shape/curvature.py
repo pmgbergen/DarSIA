@@ -41,7 +41,9 @@ class CurvatureCorrection:
 
     """
 
-    def __init__(self, config: Optional[Union[dict, str, Path]] = None, **kwargs) -> None:
+    def __init__(
+        self, config: Optional[Union[dict, str, Path]] = None, **kwargs
+    ) -> None:
         """
         Constructor of curvature correction class.
 
@@ -78,7 +80,7 @@ class CurvatureCorrection:
             else:
                 assert isinstance(config, Path)
                 with open(str(config), "r") as openfile:
-                    self.config = json.load(openfile)     
+                    self.config = json.load(openfile)
         else:
             self.config = {}
 
