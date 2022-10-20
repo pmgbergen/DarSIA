@@ -55,12 +55,12 @@ class CurvatureCorrection:
 
         Arguments:
             kwargs (Optional keyword arguments):
-                config (dict, optional): config dictionary; default is None
+                config (dict, str, Path): config dictionary; default is None. Either this
+                            or the image_source must be provided.
                 image_source (Union[Path, np.ndarray]): image source that either can
                             be provided as a path to an image or an image matrix.
-                            Either this or the config_source must be provided.
-                config_source (Path): path to the config source. Either this or the
-                            image_source must be provided.
+                            Either this or the config must be provided.
+                config_source (Path): path to the config source. 
                 width (float): physical width of the image. Only relevant if
                             image_source is provided.
                 height (float): physical height of the image. Only relevant if
