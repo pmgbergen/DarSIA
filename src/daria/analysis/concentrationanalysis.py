@@ -253,15 +253,18 @@ class ConcentrationAnalysis:
             baseline_images (list of daria.Image): series of baseline_images.
             reset (bool): flag whether the cleaning filter shall be reset.
         """
+        print("Setting up a cleaning filter.")
+
         # Initialize cleaning filter
         if reset:
-            self.threshold = np.zeros_like(self.base, dtype=float)
+            self.threshold = np.zeros(self.base.img.shape[:2], dtype=float)
 
         # Combine the results of a series of images
         for i, img in enumerate(baseline_images):
 
-            # Extract mono-colored version
             probe_img = img.copy()
+
+            # Extract mono-colored version in case of a monochromatic comparison
             self._extract_scalar_information(probe_img)
 
             # Take (unsigned) difference
@@ -269,8 +272,14 @@ class ConcentrationAnalysis:
                 probe_img.img, self.base.img, method="diff"
             )
 
+            # Extract mono-colored version (should be only active in case of a
+            # multichromatic comparison
+            monochromatic_diff = self._extract_scalar_information_after(diff)
+
             # Consider elementwise max
-            self.threshold = np.maximum(self.threshold, diff)
+            self.threshold = np.maximum(self.threshold, monochromatic_diff)
+
+        print("Finished setting up a cleaning filter.")
 
     def calibrate(
         self,
