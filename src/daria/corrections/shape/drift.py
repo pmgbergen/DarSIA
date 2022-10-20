@@ -34,6 +34,7 @@ class DriftCorrection:
             roi (2-tuple of slices or array): region of interest defining
                 the considered area for detecting features and aligning
                 images. Either as tuple of ranges, or array of points.
+            config (dict, str, path)
         """
 
         # Read baseline image
