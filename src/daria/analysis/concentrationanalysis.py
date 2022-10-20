@@ -474,10 +474,10 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         """
         self.mask = mask
 
-    # ! ---- Main method
-    def postprocess_signal(self, signal: np.ndarray) -> np.ndarray:
+    # ! ---- Main methods
+    def _prior(self, signal: np.ndarray) -> np.ndarray:
         """
-        Postprocessing routine, essentially converting a continuous
+        Prior postprocessing routine, essentially converting a continuous
         signal into a binary concentration and thereby segmentation.
         The post processing consists of presmoothing, thresholding,
         filling holes, local convex covering, and postsmoothing.
@@ -485,14 +485,14 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         initialization routine.
 
         Args:
-            signal (np.ndarray): clean continous signal with values
-                in the range between 0 and 1.
+            signal (np.ndarray): signal
 
         Returns:
-            np.ndarray: binary concentration
+            np.ndarray: prior binary mask
         """
-        # Deactive signal in non-active ROI
-        signal[np.logical_not(self.active_roi)] = 0
+
+        # Deactive signal outside mask
+        signal[~self.mask] = 0
 
         # Apply presmoothing
         if self.apply_presmoothing:
