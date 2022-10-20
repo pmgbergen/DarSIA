@@ -28,17 +28,18 @@ class ConcentrationAnalysis:
 
     def __init__(
         self,
-        base: daria.Image,
+        base: Union[daria.Image, list[daria.Image]],
         color: Union[str, callable] = "gray",
     ) -> None:
         """
         Constructor of ConcentrationAnalysis.
 
         Args:
-            base (daria.Image): baseline image
-            color (string or callable): "gray", "red", "blue", or "green", identifyin
-                which mono-colored space should be used for the analysis; tailored
-                routine can also be provided.
+            base (daria.Image or list of such): baseline image(s); if multiple provided,
+                these are used to define a cleaning filter.
+            color (string or callable): "gray", "red", "blue", "green", "hue", "saturation",
+                "value" identifying which monochromatic space should be used for the
+                analysis; tailored routine can also be provided.
         """
         # Define mono-colored space
         self.color: Union[str, callable] = (
@@ -46,13 +47,20 @@ class ConcentrationAnalysis:
         )
 
         # Extract mono-colored version for baseline image
-        self.base: daria.Image = base.copy()
+        if not isinstance(base, list):
+            base = [base]
+        self.base: daria.Image = base[0].copy()
         self._extract_scalar_information(self.base)
 
-        # Initialize conversion parameters
+        # Initialize conversion parameters - if mulitple baseline images are provided,
+        # define a cleaning filter.
         self.scaling: float = 1.0
         self.offset: float = 0.0
-        self.threshold: np.ndarray[float] = np.zeros_like(self.base.img, dtype=float)
+        self.threshold: np.ndarray[float] = np.zeros(
+            self.base.img.shape[:2], dtype=float
+        )
+        if len(base) > 1:
+            self.find_cleaning_filter(base)
 
         # Initialize cache for effective volumes (per pixel). It is assumed that
         # the physical asset does not change, and that simply different versions
@@ -187,7 +195,13 @@ class ConcentrationAnalysis:
             img.toGreen()
         elif self.color == "blue":
             img.toBlue()
-        elif isinstance(self.color, callable):
+        elif self.color == "hue":
+            img.toHue()
+        elif self.color == "saturation":
+            img.toSaturation()
+        elif self.color == "value":
+            img.toValue()
+        elif callable(self.color):
             img.img = self.color(img.img)
         else:
             raise ValueError(f"Mono-colored space {self.color} not supported.")
