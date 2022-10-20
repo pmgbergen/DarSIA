@@ -530,7 +530,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             signal = cv2.resize(signal, tuple(reversed(self.base.img.shape[:2])))
 
         if self.verbosity:
-            plt.figure("TVD smoothed signal")
+            plt.figure("Prior: TVD smoothed signal")
             plt.imshow(signal)
 
         # Cache the (smooth) signal for output
@@ -555,7 +555,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         mask = signal > thresh
 
         if self.verbosity:
-            plt.figure("Thresholded mask")
+            plt.figure("Prior: Thresholded mask")
             plt.imshow(mask)
 
         # Remove small objects
@@ -569,7 +569,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             )
 
         if self.verbosity:
-            plt.figure("Cleaned mask")
+            plt.figure("Prior: Cleaned mask")
             plt.imshow(mask)
 
         # Loop through patches and fill up
@@ -588,7 +588,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             mask = covered_mask
 
         if self.verbosity:
-            plt.figure("Locally covered mask")
+            plt.figure("Prior: Locally covered mask")
             plt.imshow(mask)
 
         # Apply postsmoothing
@@ -638,14 +638,14 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             mask = large_mask > thresh
 
         if self.verbosity:
-            plt.figure("TVD postsmoothed mask")
+            plt.figure("Prior: TVD postsmoothed mask")
             plt.imshow(mask)
 
         # Finaly cleaning - deactive signal outside mask
         signal[~self.mask] = 0
 
         if self.verbosity:
-            plt.figure("Final mask after cleaning")
+            plt.figure("Prior: Final mask after cleaning")
             plt.imshow(mask)
             plt.show()
 
@@ -672,6 +672,10 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         dy = daria.forward_diff_y(signal)
         gradient_modulus = np.sqrt(dx**2 + dy**2)
 
+        if self.verbosity:
+            plt.figure("Posterior: Gradient modulus")
+            plt.imshow(gradient_modulus)
+
         # Extract concentration map
         mask_posterior = np.zeros(signal.shape, dtype=bool)
 
@@ -679,6 +683,11 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         labels_prior, num_labels_prior = skimage.measure.label(
             mask_prior, return_num=True
         )
+
+        if self.verbosity:
+            plt.figure("Posterior: Labeled regions from prior")
+            plt.imshow(labels_prior)
+            plt.show()
 
         # Investigate each labeled region separately; omit label 0, which corresponds
         # to non-marked area.
@@ -708,7 +717,6 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
                 if np.max(gradient_modulus[c]) > self.threshold_posterior:
                     accept = True
                     break
-
             # Collect findings
             if accept:
                 mask_posterior[labeled_region] = True
@@ -735,8 +743,9 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         mask_prior, smooth_signal = self._prior(signal)
         mask_posterior = self._posterior(smooth_signal, mask_prior)
 
-        # NOTE: Here the overlay process is obsolete. But allows to
-        # overwrite posterior by inheritance and design other schemes.
+        # NOTE: Here the overlay process is obsolete, posterior is active.
+        # Yet, it allows to overwrite posterior by inheritance and design
+        # other schemes.
 
         # Overlay prior and posterior
         mask = np.zeros(mask_prior.shape, dtype=bool)
