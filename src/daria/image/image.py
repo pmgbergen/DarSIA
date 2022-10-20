@@ -229,7 +229,7 @@ class Image:
             path (str): path to image, including image name and file format
         """
         # cv2 requires BGR format
-        write_image = self.toBGR(return_image = True).img
+        write_image = self.toBGR(return_image=True).img
 
         # Write image, using the conventional matrix indexing
         if self.original_dtype == np.uint8:
