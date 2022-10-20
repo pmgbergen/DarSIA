@@ -63,12 +63,11 @@ class DriftCorrection:
 
         # Cache ROI
         if isinstance(roi, np.ndarray):
-            print("here")
             self.roi = daria.bounding_box(roi)
             self.config["roi_drift_correction"] = self.roi.tolist()
         elif isinstance(roi, list):
-            self.roi = daria.bounding_box(np.array(roi))
-            self.config["roi_drift_correction"] = roi
+            self.roi = daria.bounding_box(np.array(roi), padding = round(0.05*self.base.shape[0]), max_size=[self.base.shape[0], self.base.shape[1]])
+            self.config["roi_drift_correction"] = daria.bounding_box_inverse(self.roi).tolist()
         elif isinstance(roi, tuple):
             self.roi = roi
             self.config["roi_drift_correction"] = daria.bounding_box_inverse(roi).tolist()
@@ -96,7 +95,8 @@ class DriftCorrection:
         """
         # Define roi for source image. Let input argument be dominating over self.roi.
         roi_src = self.roi if roi is None else roi
-
+        print(roi_src)
+        print(self.roi)
         # Match image with baseline image
         return self.translation_estimator.match_roi(
             img_src=img, img_dst=self.base, roi_src=roi_src, roi_dst=self.roi
