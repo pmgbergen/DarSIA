@@ -171,7 +171,7 @@ class ConcentrationAnalysis:
         processed_signal = self.postprocess_signal(clean_signal)
 
         # Convert from signal to concentration
-        concentration = np.clip(self.scaling * processed_signal + self.offset, 0, 1)
+        concentration = self.convert_signal(processed_signal)
 
         return daria.Image(concentration, img.metadata)
 
@@ -223,6 +223,20 @@ class ConcentrationAnalysis:
         return skimage.restoration.denoise_tv_chambolle(signal, weight=0.1)
         """
         return signal
+
+    def convert_signal(self, signal: np.ndarray) -> np.ndarray:
+        """
+        Convert signal to concentration. This requires in general some calibration.
+        Here, homogeneous scaling is assumed. In practical situations this
+        routine may be overwritten.
+
+        Args:
+            signal (np.ndarray): signal array.
+
+        Returns:
+            np.ndarray: concentration array.
+        """
+        return np.clip(self.scaling * signal + self.offset, 0, 1)
 
     # ! ---- Calibration tools for signal to concentration conversion
 
