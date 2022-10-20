@@ -41,7 +41,7 @@ class CurvatureCorrection:
 
     """
 
-    def __init__(self, config: Optional[dict] = None, **kwargs) -> None:
+    def __init__(self, config: Optional[Union[dict, str, Path]] = None, **kwargs) -> None:
         """
         Constructor of curvature correction class.
 
@@ -70,10 +70,19 @@ class CurvatureCorrection:
 
         if config is not None:
             # Read config directly from argument list
-            self.config = copy.deepcopy(config)
+            if isinstance(config, dict):
+                self.config = copy.deepcopy(config)
+            elif isinstance(config, str):
+                with open(str(Path(config)), "r") as openfile:
+                    self.config = json.load(openfile)
+            else:
+                assert isinstance(config, Path)
+                with open(str(config), "r") as openfile:
+                    self.config = json.load(openfile)     
+        else:
+            self.config = {}
 
-        elif "image_source" in kwargs:
-            self.config: dict() = {}
+        if "image_source" in kwargs:
             im_source = kwargs.pop("image_source")
             if isinstance(im_source, np.ndarray):
                 self.reference_image = im_source
@@ -94,18 +103,12 @@ class CurvatureCorrection:
             self.width = kwargs.pop("width", 1.0)
             self.height = kwargs.pop("height", 1.0)
 
-        elif "config_source" in kwargs:
-
-            config_source = kwargs.pop("config_source")
-            assert isinstance(config_source, str)
-            with open(str(Path(config_source)), "r") as openfile:
-                self.config = json.load(openfile)
-
         else:
-            raise Exception(
-                "Please provide either an image as 'image_source' \
-                    or a config file as 'config_source'."
-            )
+            if config is None:
+                raise Exception(
+                    "Please provide either an image as 'image_source' \
+                        or a config file as 'config'."
+                )
 
         # The internally stored config file is tailored to when resize_factor is equal to 1.
         # For other values, it has to be adapted.

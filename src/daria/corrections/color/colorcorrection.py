@@ -5,9 +5,12 @@ based on the Classic Color Checker from calibrite / x-rite.
 from typing import Optional, Union
 
 import colour
+import copy
 import cv2
+import json
 import matplotlib.pyplot as plt
 import numpy as np
+from pathlib import Path
 import skimage
 
 import daria
@@ -72,7 +75,8 @@ class ColorCorrection:
 
     def __init__(
         self,
-        roi: Optional[Union[tuple, np.ndarray]] = None,
+        config: Optional[Union[dict, str, Path]] = None,
+        roi: Optional[Union[tuple, np.ndarray, list]] = None,
         verbosity: bool = False,
         whitebalancing: bool = True,
     ):
@@ -92,8 +96,31 @@ class ColorCorrection:
         # Reference of the class color checker
         self.colorchecker = ColorCheckerAfter2014()
 
+        # Define config
+        if config is not None:
+            if isinstance(config, str):
+                with open(str(Path(config)), "r") as openfile:
+                    self.config = json.load(openfile)
+            elif isinstance(config, Path):
+                with open(str(config), "r") as openfile:
+                    self.config = json.load(openfile)
+            else:
+                self.config = copy.deepcopy(config)
+        else:
+            self.config: dict = {}
+            
+            
         # Define ROI
-        self.roi = roi
+        if isinstance(roi, np.ndarray):
+            self.roi = roi
+            self.config["roi_color_correction"] = self.roi.tolist()
+        elif isinstance(roi, list):
+            self.roi = np.array(roi)
+            self.config["roi_color_correction"] = roi
+        elif isinstance(roi,tuple):
+            self.roi = roi
+        else:
+            self.roi = np.array(config["roi_color_correction"])
 
         # Store flags
         self.verbosity = verbosity
@@ -168,6 +195,17 @@ class ColorCorrection:
 
         # Ensure a data format which can be used by cv2 etc.
         return corrected_image.astype(np.float32)
+
+    def write_config_to_file(self, path: Path) -> None:
+        """
+        Writes the config dictionary to a json-file.
+
+        Arguments:
+            path (Path): path to the json file
+        """
+
+        with open(str(path), "w") as outfile:
+            json.dump(self.config, outfile, indent=4)
 
     def _restrict_to_roi(self, img: np.ndarray) -> np.ndarray:
         """
