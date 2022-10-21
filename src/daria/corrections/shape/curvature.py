@@ -11,6 +11,7 @@ import json
 import math
 from pathlib import Path
 from typing import Optional, Union
+from warnings import warn
 
 import cv2
 import matplotlib.pyplot as plt
@@ -387,18 +388,98 @@ class CurvatureCorrection:
         pt_src = kwargs.pop("point_source", [Ny, Nx])
         pt_dst = kwargs.pop("point_destination", [Ny, Nx])
         stretch_center = kwargs.pop("stretch_center", [round(Ny / 2), round(Nx / 2)])
-        # TODO ADD WARNING!!
+
         # Update the offset to the center
         horizontal_stretch_center_offset = stretch_center[0] - round(Nx / 2)
         vertical_stretch_center_offset = stretch_center[1] - round(Ny / 2)
 
-        # Compute the tuning parameter as explained in the notes
-        horizontal_stretch = -(pt_dst[0] - pt_src[0]) / (
-            (pt_src[0] - stretch_center[0]) * pt_src[0] * (Nx - pt_src[0])
-        )
-        vertical_stretch = -(pt_dst[1] - pt_src[1]) / (
-            (pt_src[1] - stretch_center[1]) * pt_src[1] * (Ny - pt_src[1])
-        )
+        # Check whether zero horizontal stretch should be applied
+        if (pt_dst[0] - pt_src[0]) == 0:
+            horizontal_stretch = 0
+        # Check whether point is chosen too close to the center
+        # (within 10% of total pixels), and make warning
+        elif abs(pt_src[0] - stretch_center[0]) < round(0.05 * Nx):
+            horizontal_stretch = 0
+            warn(
+                "point_source chosen too close to stretch center for correction"
+                " in horizontal direction (within 5"
+                "%"
+                " of pixels in horizontal"
+                " direction). Please choose points that are approximately 1/4th"
+                " away from the top or the left or right of the image. Horizontal stretch"
+                " is set to zero now."
+            )
+        elif abs(pt_src[0] - Nx) < round(0.05 * Nx):
+            horizontal_stretch = 0
+            warn(
+                "point_source chosen too close to the right edge of the image for correction"
+                " in horizontal direction (within 5"
+                "%"
+                " of pixels in horizontal"
+                " direction). Please choose points that are approximately 1/4th"
+                " away from the top or the left or right of the image. Horizontal stretch"
+                " is set to zero now."
+            )
+        elif pt_src[0] < round(0.05 * Nx):
+            horizontal_stretch = 0
+            warn(
+                "point_source chosen too close to the left edge of the image for correction"
+                " in horizontal direction (within 5"
+                "%"
+                " of pixels in horizontal"
+                " direction). Please choose points that are approximately 1/4th"
+                " away from the top or the left or right of the image. Horizontal stretch"
+                " is set to zero now."
+            )
+        else:
+            # Compute the tuning parameter as explained in the notes.
+            horizontal_stretch = -(pt_dst[0] - pt_src[0]) / (
+                (pt_src[0] - stretch_center[0]) * pt_src[0] * (Nx - pt_src[0])
+            )
+
+        # Check whether zero vertical stretch should be applied
+        if (pt_dst[1] - pt_src[1]) == 0:
+            vertical_stretch = 0
+        # Check whether point is chosen too close to the center
+        # (within 5% of total pixels), and make warning
+        elif abs(pt_src[1] - stretch_center[1]) < round(0.05 * Ny):
+            vertical_stretch = 0
+            warn(
+                "point_source chosen too close to stretch center for correction"
+                " in vertical direction (within 5"
+                "%"
+                " of pixels in vertical"
+                " direction). Please choose points that are approximately 1/4th"
+                " away from the top or the bottom of the image. Vertical stretch"
+                " is set to zero now."
+            )
+        elif pt_src[0] < round(0.05 * Ny):
+            vertical_stretch = 0
+            warn(
+                "point_source chosen too close to the top of the image for correction"
+                " in vertical direction (within 5"
+                "%"
+                " of pixels in vertical"
+                " direction). Please choose points that are approximately 1/4th"
+                " away from the top or the bottom of the image. Vertical stretch"
+                " is set to zero now."
+            )
+        elif abs(Ny - pt_src[1]) < round(0.05 * Ny):
+            vertical_stretch = 0
+            warn(
+                "point_source chosen too close to the bottom of the image for correction"
+                " in vertical direction (within 5"
+                "%"
+                " of pixels in vertical"
+                " direction). Please choose points that are approximately 1/4th"
+                " away from the top or the bottom of the image. Vertical stretch"
+                " is set to zero now."
+            )
+        else:
+            # Compute the tuning parameter as explained in the notes.
+            vertical_stretch = -(pt_dst[1] - pt_src[1]) / (
+                (pt_src[1] - stretch_center[1]) * pt_src[1] * (Ny - pt_src[1])
+            )
 
         return (
             horizontal_stretch,
