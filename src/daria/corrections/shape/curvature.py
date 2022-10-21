@@ -11,13 +11,13 @@ import json
 import math
 from pathlib import Path
 from typing import Optional, Union
+from warnings import warn
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 from scipy.ndimage import map_coordinates
-from warnings import warn
 
 import daria as da
 
@@ -424,7 +424,7 @@ class CurvatureCorrection:
                 " Vertical stretch is set to zero now."
             )
         else:
-        # Compute the tuning parameter as explained in the notes
+            # Compute the tuning parameter as explained in the notes
             vertical_stretch = -(pt_dst[1] - pt_src[1]) / (
                 (pt_src[1] - stretch_center[1]) * pt_src[1] * (Ny - pt_src[1])
             )
