@@ -423,6 +423,13 @@ class Image:
     def toBGR(self, return_image: bool = False) -> Optional[da.Image]:
         """
         Transforms image to BGR if it is in RGB
+
+        Args:
+            return_image (bool): flag controlling whether the converted image
+                is returned, or converted internally.
+
+        Returns:
+            daria.Image (optional): converted image, if requested
         """
         if self.metadata["color_space"] == "RGB":
             if not return_image:
@@ -436,7 +443,14 @@ class Image:
 
     def toRGB(self, return_image: bool = False) -> Optional[da.Image]:
         """
-        Transforms image to RGB if it is in BGR
+        Transforms image to RGB if it is in BGR.
+
+        Args:
+            return_image (bool): flag controlling whether the converted image
+                is returned, or converted internally.
+
+        Returns:
+            daria.Image (optional): converted image, if requested
         """
         if self.metadata["color_space"] == "BGR":
             if not return_image:
@@ -451,7 +465,14 @@ class Image:
 
     def toGray(self, return_image: bool = False) -> Optional[da.Image]:
         """
-        Returns a greyscale version of the daria image
+        Returns a greyscale version of the daria image.
+
+        Args:
+            return_image (bool): flag controlling whether the converted image
+                is returned, or converted internally.
+
+        Returns:
+            daria.Image (optional): converted image, if requested
         """
 
         if return_image:
@@ -483,7 +504,14 @@ class Image:
 
     def toRed(self, return_image: bool = False) -> Optional[da.Image]:
         """
-        Returns a red channel version of the daria image
+        Returns a red channel version of the daria image.
+
+        Args:
+            return_image (bool): flag controlling whether the converted image
+                is returned, or converted internally.
+
+        Returns:
+            daria.Image (optional): converted image, if requested
         """
         if return_image:
             red_img = self.copy()
@@ -514,7 +542,14 @@ class Image:
 
     def toBlue(self, return_image: bool = False) -> Optional[da.Image]:
         """
-        Returns a blue channel version of the daria image
+        Returns a blue channel version of the daria image.
+
+        Args:
+            return_image (bool): flag controlling whether the converted image
+                is returned, or converted internally.
+
+        Returns:
+            daria.Image (optional): converted image, if requested
         """
         if return_image:
             blue_img = self.copy()
@@ -545,7 +580,14 @@ class Image:
 
     def toGreen(self, return_image: bool = False) -> Optional[da.Image]:
         """
-        Returns a green channel version of the daria image
+        Returns a green channel version of the daria image.
+
+        Args:
+            return_image (bool): flag controlling whether the converted image
+                is returned, or converted internally.
+
+        Returns:
+            daria.Image (optional): converted image, if requested
         """
         if return_image:
             green_img = self.copy()
@@ -573,3 +615,72 @@ class Image:
                     "Only RGB or BGR images can be converted to green at the moment"
                 )
             self.metadata["color_space"] = "GREEN"
+
+    def toHue(self, return_image: bool = False) -> Optional[da.Image]:
+        """
+        Returns a hue channel version of the daria image.
+
+        Args:
+            return_image (bool): flag controlling whether the converted image
+                is returned, or converted internally.
+
+        Returns:
+            daria.Image (optional): converted image, if requested
+        """
+        # Only for RGB images for now.
+        assert self.metadata["color_space"] == "RGB"
+
+        if return_image:
+            hue_img = self.copy()
+            hue_img.img = cv2.cvtColor(hue_img.img, cv2.COLOR_RGB2HSV)[:, :, 0]
+            hue_img.metadata["color_space"] = "HUE"
+            return hue_img
+        else:
+            self.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2HSV)[:, :, 0]
+            self.metadata["color_space"] = "HUE"
+
+    def toSaturation(self, return_image: bool = False) -> Optional[da.Image]:
+        """
+        Returns a saturation channel version of the daria image.
+
+        Args:
+            return_image (bool): flag controlling whether the converted image
+                is returned, or converted internally.
+
+        Returns:
+            daria.Image (optional): converted image, if requested
+        """
+        # Only for RGB images for now.
+        assert self.metadata["color_space"] == "RGB"
+
+        if return_image:
+            sat_img = self.copy()
+            sat_img.img = cv2.cvtColor(sat_img.img, cv2.COLOR_RGB2HSV)[:, :, 1]
+            sat_img.metadata["color_space"] = "SATURATION"
+            return sat_img
+        else:
+            self.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2HSV)[:, :, 1]
+            self.metadata["color_space"] = "SATURATION"
+
+    def toValue(self, return_image: bool = False) -> Optional[da.Image]:
+        """
+        Returns a value channel version of the daria image
+
+        Args:
+            return_image (bool): flag controlling whether the converted image
+                is returned, or converted internally.
+
+        Returns:
+            daria.Image (optional): converted image, if requested
+        """
+        # Only for RGB images for now.
+        assert self.metadata["color_space"] == "RGB"
+
+        if return_image:
+            val_img = self.copy()
+            val_img.img = cv2.cvtColor(val_img.img, cv2.COLOR_RGB2HSV)[:, :, 2]
+            val_img.metadata["color_space"] = "VALUE"
+            return val_img
+        else:
+            self.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2HSV)[:, :, 2]
+            self.metadata["color_space"] = "VALUE"
