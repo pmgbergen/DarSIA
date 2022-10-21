@@ -73,7 +73,7 @@ class DriftCorrection:
         # Cache ROI
         if isinstance(roi, np.ndarray):
             self.roi = daria.bounding_box(roi)
-            self.config["roi_drift_correction"] = self.roi.tolist()
+            self.config["roi_drift_correction"] = roi.tolist()
         elif isinstance(roi, list):
             # If a list is added as the roi, it is assumed that it comes from
             # the color correction roi and some padding might be needed in
