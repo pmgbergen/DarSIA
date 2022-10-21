@@ -56,16 +56,16 @@ class CurvatureCorrection:
         Arguments:
             kwargs (Optional keyword arguments):
                 config (dict, str, Path): config dictionary; default is None. Either this
-                            or the image_source must be provided.
-                image_source (Union[Path, np.ndarray]): image source that either can
+                            or the image must be provided.
+                image (Union[Path, np.ndarray]): image source that either can
                             be provided as a path to an image or an image matrix.
                             Either this or the config must be provided.
                 width (float): physical width of the image. Only relevant if
-                            image_source is provided.
+                            image is provided.
                 height (float): physical height of the image. Only relevant if
-                            image_source is provided.
+                            image is provided.
                 in_meters (bool): returns True if width and height are given
-                            in terms of meters. Only relevant if image_source
+                            in terms of meters. Only relevant if image
                             is provided.
         """
 
@@ -91,8 +91,8 @@ class CurvatureCorrection:
         else:
             self.config = {}
 
-        if "image_source" in kwargs:
-            im_source = kwargs.pop("image_source")
+        if "image" in kwargs:
+            im_source = kwargs.pop("image")
             if isinstance(im_source, np.ndarray):
                 self.reference_image = im_source
 
@@ -115,7 +115,7 @@ class CurvatureCorrection:
         else:
             if config is None:
                 raise Exception(
-                    "Please provide either an image as 'image_source' \
+                    "Please provide either an image as 'image' \
                         or a config file as 'config'."
                 )
 

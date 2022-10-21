@@ -11,7 +11,9 @@ def bounding_box(
 
     Args:
         coords (np.ndarray): coordinate array of size N x dim, using matrix indexing in 2d.
-        padding (Optional[int]): padding for the bounding box
+        padding (int): padding to create a slightly larger bounding box. Might
+            be of interest if the area that is prescribed in coords cover slightly less than
+            strictly needed. Default is 0.
         max_size (Optional[list]): max size of bounding box.
             Provided as list with max size in each dimension.
 
@@ -22,6 +24,9 @@ def bounding_box(
     bounding_box = ()
 
     for dim in range(coords.shape[1]):
+        # Padding is added to the bounding box while making sure that it never extends out
+        # of the scope of the 0 and max_size (where max size should be externally provided)
+        # and should maximally be the maximal size of the image in each dimension.
         min_value = max(np.min(coords[:, dim]) - padding, 0)
         max_value = (
             min(np.max(coords[:, dim]) + padding, max_size[dim])
