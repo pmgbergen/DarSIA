@@ -75,9 +75,9 @@ class DriftCorrection:
             self.roi = daria.bounding_box(roi)
             self.config["roi_drift_correction"] = self.roi.tolist()
         elif isinstance(roi, list):
-            # If a list is added as the roi, it is assumed that it comes from 
-            # the color correction roi and some padding might be needed in 
-            # order to apply the drift correction. Here 5% of the picture is 
+            # If a list is added as the roi, it is assumed that it comes from
+            # the color correction roi and some padding might be needed in
+            # order to apply the drift correction. Here 5% of the picture is
             # added as padding to the roi.
             self.roi = daria.bounding_box(
                 np.array(roi),
@@ -95,8 +95,8 @@ class DriftCorrection:
         elif "roi_drift_correction" in self.config:
             self.roi = daria.bounding_box(np.array(self.config["roi_drift_correction"]))
         elif "roi_color_correction" in self.config:
-            # When using the color correction roi some padding might be needed in 
-            # order to apply the drift correction. Here 5% of the picture is 
+            # When using the color correction roi some padding might be needed in
+            # order to apply the drift correction. Here 5% of the picture is
             # added as padding to the roi.
             self.roi = daria.bounding_box(
                 np.array(self.config["roi_color_correction"]),

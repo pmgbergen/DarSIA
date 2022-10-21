@@ -6,13 +6,13 @@ import copy
 import json
 from pathlib import Path
 from typing import Optional, Union
+from warnings import warn
 
 import colour
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
-from warnings import warn
 
 import daria
 
@@ -128,9 +128,12 @@ class ColorCorrection:
             self.roi = np.array(roi)
             self.config["roi_color_correction"] = roi
         elif isinstance(roi, tuple):
-            warn("An array of corner points are prefered. The tuple will not be stored in the config file.")
+            warn(
+                "An array of corner points are prefered.\
+                The tuple will not be stored in the config file."
+            )
             self.roi = roi
-            
+
         elif "roi_color_correction" in self.config:
             self.roi = np.array(self.config["roi_color_correction"])
         else:
