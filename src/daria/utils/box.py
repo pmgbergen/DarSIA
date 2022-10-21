@@ -10,7 +10,7 @@ def bounding_box(
     Determine bounding box for a set of given coordinates.
 
     Args:
-        coords (np.ndarray): coordinate array of size N x dim.
+        coords (np.ndarray): coordinate array of size N x dim, using matrix indexing in 2d.
         padding (Optional[int]): padding for the bounding box
         max_size (Optional[list]): max size of bounding box.
             Provided as list with max size in each dimension.
@@ -43,7 +43,7 @@ def bounding_box_inverse(bounding_box: tuple) -> np.ndarray:
             per dimension.
 
     Returns:
-        coords (np.ndarray): coordinate array of size N x dim.
+        coords (np.ndarray): coordinate array of size N x dim, using matrix indexing in 2d.
 
     """
     coords = np.array(
