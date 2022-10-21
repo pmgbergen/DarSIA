@@ -3,7 +3,6 @@ from typing import Optional
 import numpy as np
 
 
-
 def bounding_box(
     coords: np.ndarray, padding: int = 0, max_size: Optional[list] = None
 ) -> tuple:
