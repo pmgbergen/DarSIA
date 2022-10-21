@@ -254,8 +254,6 @@ class ConcentrationAnalysis:
             baseline_images (list of daria.Image): series of baseline_images.
             reset (bool): flag whether the cleaning filter shall be reset.
         """
-        print("Setting up a cleaning filter.")
-
         # Initialize cleaning filter
         if reset:
             self.threshold = np.zeros(self.base.img.shape[:2], dtype=float)
@@ -279,8 +277,6 @@ class ConcentrationAnalysis:
 
             # Consider elementwise max
             self.threshold = np.maximum(self.threshold, monochromatic_diff)
-
-        print("Finished setting up a cleaning filter.")
 
     def calibrate(
         self,
@@ -486,6 +482,10 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         filling holes, local convex covering, and postsmoothing.
         Tuning parameters for this routine have to be set in the
         initialization routine.
+
+        In addition, the determined segments are checked. Only segments are
+        marked for which the signal has a sufficiently large gradient
+        modulus.
 
         Args:
             signal (np.ndarray): signal
