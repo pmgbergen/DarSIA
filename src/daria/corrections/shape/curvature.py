@@ -60,7 +60,6 @@ class CurvatureCorrection:
                 image_source (Union[Path, np.ndarray]): image source that either can
                             be provided as a path to an image or an image matrix.
                             Either this or the config must be provided.
-                config_source (Path): path to the config source.
                 width (float): physical width of the image. Only relevant if
                             image_source is provided.
                 height (float): physical height of the image. Only relevant if
