@@ -16,7 +16,7 @@ image_folder = f"{os.path.dirname(__file__)}/images/"
 # (which can be created the workflow presented in the Jupyter notebook
 # examples/notebooks/curvature_correction_walkthrough.ipynb).
 curvature_correction = daria.CurvatureCorrection(
-    config=image_folder + "config.json", width=2.8, height=1.5
+    config=image_folder + "config.json"
 )
 
 # Define color correction object
