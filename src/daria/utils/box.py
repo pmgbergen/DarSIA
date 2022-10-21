@@ -43,7 +43,7 @@ def bounding_box_inverse(bounding_box: tuple) -> np.ndarray:
             per dimension.
 
     Returns:
-        coords (np.ndarray): coordinate array of size N x dim.
+        coords (np.ndarray): coordinate array of size N x dim, using matrix indexing in 2d.
 
     """
     coords = np.array(
