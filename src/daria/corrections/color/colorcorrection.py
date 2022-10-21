@@ -102,11 +102,19 @@ class ColorCorrection:
         # Define config
         if config is not None:
             if isinstance(config, str):
-                with open(str(Path(config)), "r") as openfile:
-                    self.config = json.load(openfile)
+                with open(Path(config), "r") as openfile:
+                    tmp_config = json.load(openfile)
+                if "color_correction" in tmp_config:
+                    self.config = tmp_config["color_correction"]
+                else:
+                    self.config = tmp_config
             elif isinstance(config, Path):
-                with open(str(config), "r") as openfile:
-                    self.config = json.load(openfile)
+                with open(config, "r") as openfile:
+                    tmp_config = json.load(openfile)
+                if "color_correction" in tmp_config:
+                    self.config = tmp_config["color_correction"]
+                else:
+                    self.config = tmp_config
             else:
                 self.config = copy.deepcopy(config)
         else:

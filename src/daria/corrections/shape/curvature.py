@@ -75,12 +75,20 @@ class CurvatureCorrection:
             if isinstance(config, dict):
                 self.config = copy.deepcopy(config)
             elif isinstance(config, str):
-                with open(str(Path(config)), "r") as openfile:
-                    self.config = json.load(openfile)
+                with open(Path(config), "r") as openfile:
+                    tmp_config = json.load(openfile)
+                if "curvature_correction" in tmp_config:
+                    self.config = tmp_config["curvature_correction"]
+                else:
+                    self.config = tmp_config
             else:
                 assert isinstance(config, Path)
-                with open(str(config), "r") as openfile:
-                    self.config = json.load(openfile)
+                with open(config, "r") as openfile:
+                    tmp_config = json.load(openfile)
+                if "curvature_correction" in tmp_config:
+                    self.config = tmp_config["curvature_correction"]
+                else:
+                    self.config = tmp_config
         else:
             self.config = {}
 

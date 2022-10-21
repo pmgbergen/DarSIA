@@ -52,11 +52,19 @@ class DriftCorrection:
         # Cache config
         if config is not None:
             if isinstance(config, str):
-                with open(str(Path(config)), "r") as openfile:
-                    self.config = json.load(openfile)
+                with open(Path(config), "r") as openfile:
+                    tmp_config = json.load(openfile)
+                if "drift_correction" in tmp_config:
+                    self.config = tmp_config["drift_correction"]
+                else:
+                    self.config = tmp_config
             elif isinstance(config, Path):
-                with open(str(config), "r") as openfile:
-                    self.config = json.load(openfile)
+                with open(config, "r") as openfile:
+                    tmp_config = json.load(openfile)
+                if "drift_correction" in tmp_config:
+                    self.config = tmp_config["drift_correction"]
+                else:
+                    self.config = tmp_config
             else:
                 self.config = copy.deepcopy(config)
         else:
@@ -67,6 +75,10 @@ class DriftCorrection:
             self.roi = daria.bounding_box(roi)
             self.config["roi_drift_correction"] = self.roi.tolist()
         elif isinstance(roi, list):
+            # If a list is added as the roi, it is assumed that it comes from 
+            # the color correction roi and some padding might be needed in 
+            # order to apply the drift correction. Here 5% of the picture is 
+            # added as padding to the roi.
             self.roi = daria.bounding_box(
                 np.array(roi),
                 padding=round(0.05 * self.base.shape[0]),
@@ -83,6 +95,9 @@ class DriftCorrection:
         elif "roi_drift_correction" in self.config:
             self.roi = daria.bounding_box(np.array(self.config["roi_drift_correction"]))
         elif "roi_color_correction" in self.config:
+            # When using the color correction roi some padding might be needed in 
+            # order to apply the drift correction. Here 5% of the picture is 
+            # added as padding to the roi.
             self.roi = daria.bounding_box(
                 np.array(self.config["roi_color_correction"]),
                 padding=round(0.05 * self.base.shape[0]),

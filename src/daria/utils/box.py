@@ -36,7 +36,8 @@ def bounding_box(
 
 def bounding_box_inverse(bounding_box: tuple) -> np.ndarray:
     """
-    Determine bounding box for a set of given coordinates.
+    Returns an array that would produce the same bounding box from the bounding_box()
+    function above.
 
     Args:
         tuple of slices: slices with ranges from min to max value
