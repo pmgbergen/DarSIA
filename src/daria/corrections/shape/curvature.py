@@ -41,7 +41,9 @@ class CurvatureCorrection:
 
     """
 
-    def __init__(self, config: Optional[dict] = None, **kwargs) -> None:
+    def __init__(
+        self, config: Optional[Union[dict, str, Path]] = None, **kwargs
+    ) -> None:
         """
         Constructor of curvature correction class.
 
@@ -53,28 +55,44 @@ class CurvatureCorrection:
 
         Arguments:
             kwargs (Optional keyword arguments):
-                config (dict, optional): config dictionary; default is None
-                image_source (Union[Path, np.ndarray]): image source that either can
+                config (dict, str, Path): config dictionary; default is None. Either this
+                            or the image must be provided.
+                image (Union[Path, np.ndarray]): image source that either can
                             be provided as a path to an image or an image matrix.
-                            Either this or the config_source must be provided.
-                config_source (Path): path to the config source. Either this or the
-                            image_source must be provided.
+                            Either this or the config must be provided.
                 width (float): physical width of the image. Only relevant if
-                            image_source is provided.
+                            image is provided.
                 height (float): physical height of the image. Only relevant if
-                            image_source is provided.
+                            image is provided.
                 in_meters (bool): returns True if width and height are given
-                            in terms of meters. Only relevant if image_source
+                            in terms of meters. Only relevant if image
                             is provided.
         """
 
         if config is not None:
             # Read config directly from argument list
-            self.config = copy.deepcopy(config)
+            if isinstance(config, dict):
+                self.config = copy.deepcopy(config)
+            elif isinstance(config, str):
+                with open(Path(config), "r") as openfile:
+                    tmp_config = json.load(openfile)
+                if "curvature_correction" in tmp_config:
+                    self.config = tmp_config["curvature_correction"]
+                else:
+                    self.config = tmp_config
+            else:
+                assert isinstance(config, Path)
+                with open(config, "r") as openfile:
+                    tmp_config = json.load(openfile)
+                if "curvature_correction" in tmp_config:
+                    self.config = tmp_config["curvature_correction"]
+                else:
+                    self.config = tmp_config
+        else:
+            self.config = {}
 
-        elif "image_source" in kwargs:
-            self.config: dict() = {}
-            im_source = kwargs.pop("image_source")
+        if "image" in kwargs:
+            im_source = kwargs.pop("image")
             if isinstance(im_source, np.ndarray):
                 self.reference_image = im_source
 
@@ -94,18 +112,12 @@ class CurvatureCorrection:
             self.width = kwargs.pop("width", 1.0)
             self.height = kwargs.pop("height", 1.0)
 
-        elif "config_source" in kwargs:
-
-            config_source = kwargs.pop("config_source")
-            assert isinstance(config_source, str)
-            with open(str(Path(config_source)), "r") as openfile:
-                self.config = json.load(openfile)
-
         else:
-            raise Exception(
-                "Please provide either an image as 'image_source' \
-                    or a config file as 'config_source'."
-            )
+            if config is None:
+                raise Exception(
+                    "Please provide either an image as 'image' \
+                        or a config file as 'config'."
+                )
 
         # The internally stored config file is tailored to when resize_factor is equal to 1.
         # For other values, it has to be adapted.
@@ -122,7 +134,7 @@ class CurvatureCorrection:
 
     # ! ---- I/O routines
 
-    def write_config_to_file(self, path: Path) -> None:
+    def write_config_to_file(self, path: Union[Path, str]) -> None:
         """
         Writes the config dictionary to a json-file.
 
@@ -130,7 +142,7 @@ class CurvatureCorrection:
             path (Path): path to the json file
         """
 
-        with open(str(path), "w") as outfile:
+        with open(Path(path), "w") as outfile:
             json.dump(self.config, outfile, indent=4)
 
     def read_config_from_file(self, path: Path) -> None:
@@ -375,7 +387,7 @@ class CurvatureCorrection:
         pt_src = kwargs.pop("point_source", [Ny, Nx])
         pt_dst = kwargs.pop("point_destination", [Ny, Nx])
         stretch_center = kwargs.pop("stretch_center", [round(Ny / 2), round(Nx / 2)])
-
+        # TODO ADD WARNING!!
         # Update the offset to the center
         horizontal_stretch_center_offset = stretch_center[0] - round(Nx / 2)
         vertical_stretch_center_offset = stretch_center[1] - round(Ny / 2)

@@ -2,7 +2,11 @@
 based on the Classic Color Checker from calibrite / x-rite.
 """
 
+import copy
+import json
+from pathlib import Path
 from typing import Optional, Union
+from warnings import warn
 
 import colour
 import cv2
@@ -72,7 +76,8 @@ class ColorCorrection:
 
     def __init__(
         self,
-        roi: Optional[Union[tuple, np.ndarray]] = None,
+        config: Optional[Union[dict, str, Path]] = None,
+        roi: Optional[Union[tuple, np.ndarray, list]] = None,
         verbosity: bool = False,
         whitebalancing: bool = True,
     ):
@@ -80,6 +85,8 @@ class ColorCorrection:
         Constructor of converter, setting up a priori all data needed for fast conversion.
 
         Args:
+            config (dict, str, Path): config file for initialization of images. Can be
+                used instead of roi, but roi is always prefered if it is present.
             roi (tuple of slices, np.ndarray, or None): ROI containing a colour checker,
                 provided either as intervals, corner points, or nothing. The recommended
                 choice is to provide an array of coordinates.
@@ -92,8 +99,45 @@ class ColorCorrection:
         # Reference of the class color checker
         self.colorchecker = ColorCheckerAfter2014()
 
+        # Define config
+        if config is not None:
+            if isinstance(config, str):
+                with open(Path(config), "r") as openfile:
+                    tmp_config = json.load(openfile)
+                if "color_correction" in tmp_config:
+                    self.config = tmp_config["color_correction"]
+                else:
+                    self.config = tmp_config
+            elif isinstance(config, Path):
+                with open(config, "r") as openfile:
+                    tmp_config = json.load(openfile)
+                if "color_correction" in tmp_config:
+                    self.config = tmp_config["color_correction"]
+                else:
+                    self.config = tmp_config
+            else:
+                self.config = copy.deepcopy(config)
+        else:
+            self.config: dict = {}
+
         # Define ROI
-        self.roi = roi
+        if isinstance(roi, np.ndarray):
+            self.roi = roi
+            self.config["roi_color_correction"] = self.roi.tolist()
+        elif isinstance(roi, list):
+            self.roi = np.array(roi)
+            self.config["roi_color_correction"] = roi
+        elif isinstance(roi, tuple):
+            warn(
+                "An array of corner points are prefered.\
+                The tuple will not be stored in the config file."
+            )
+            self.roi = roi
+
+        elif "roi_color_correction" in self.config:
+            self.roi = np.array(self.config["roi_color_correction"])
+        else:
+            self.roi = None
 
         # Store flags
         self.verbosity = verbosity
@@ -168,6 +212,16 @@ class ColorCorrection:
 
         # Ensure a data format which can be used by cv2 etc.
         return corrected_image.astype(np.float32)
+
+    def write_config_to_file(self, path: Union[Path, str]) -> None:
+        """
+        Writes the config dictionary to a json-file.
+
+        Arguments:
+            path (Path): path to the json file
+        """
+        with open(Path(path), "w") as outfile:
+            json.dump(self.config, outfile, indent=4)
 
     def _restrict_to_roi(self, img: np.ndarray) -> np.ndarray:
         """
