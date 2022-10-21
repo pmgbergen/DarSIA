@@ -380,7 +380,7 @@ class CurvatureCorrection:
         pt_src = kwargs.pop("point_source", [Ny, Nx])
         pt_dst = kwargs.pop("point_destination", [Ny, Nx])
         stretch_center = kwargs.pop("stretch_center", [round(Ny / 2), round(Nx / 2)])
-
+        # TODO ADD WARNING!!
         # Update the offset to the center
         horizontal_stretch_center_offset = stretch_center[0] - round(Nx / 2)
         vertical_stretch_center_offset = stretch_center[1] - round(Ny / 2)
