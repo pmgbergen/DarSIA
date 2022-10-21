@@ -15,6 +15,19 @@ def segment(img: np.ndarray, **kwargs) -> np.ndarray:
 
     Args:
         img (np.ndarray): input image in RGB color space
+        keyword arguments (optional): tuning parameters for the watershed algorithm
+            "median disk radius" (int): disk radius to be considered to smooth
+                the image using rank based median, before the analysis.
+            "rescaling factor" (float): factor how the image is scaled before
+                the actual watershed segmentation.
+            "markers disk radius" (int): disk radius used to define continous
+                regions via gradients.
+            "threshold" (float): threshold value marking regions as either
+                continuous or edge.
+            "gradient disk radius" (int): disk radius to define edges via gradients.
+            "dilation size" (int): amount of pixels, used for dilation in the postprocessing
+            "boundary size" (int): amount of pixels normal to the boundary, for which the
+                segmentation will be assigned as extension of the nearby interior values.
 
     Returns:
         np.ndarray: labeled regions
