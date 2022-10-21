@@ -84,7 +84,7 @@ class ColorCorrection:
         Constructor of converter, setting up a priori all data needed for fast conversion.
 
         Args:
-            config (dict, str, path): config file for initialization of images. Can be 
+            config (dict, str, path): config file for initialization of images. Can be
                 used instead of roi, but roi is always prefered if it is present.
             roi (tuple of slices, np.ndarray, or None): ROI containing a colour checker,
                 provided either as intervals, corner points, or nothing. The recommended
@@ -199,15 +199,14 @@ class ColorCorrection:
         # Ensure a data format which can be used by cv2 etc.
         return corrected_image.astype(np.float32)
 
-    def write_config_to_file(self, path: Path) -> None:
+    def write_config_to_file(self, path: Union[Path, str]) -> None:
         """
         Writes the config dictionary to a json-file.
 
         Arguments:
             path (Path): path to the json file
         """
-
-        with open(str(path), "w") as outfile:
+        with open(Path(path), "w") as outfile:
             json.dump(self.config, outfile, indent=4)
 
     def _restrict_to_roi(self, img: np.ndarray) -> np.ndarray:

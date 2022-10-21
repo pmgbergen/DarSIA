@@ -113,7 +113,7 @@ class DriftCorrection:
             img_src=img, img_dst=self.base, roi_src=roi_src, roi_dst=self.roi
         )
 
-    def write_config_to_file(self, path: Path) -> None:
+    def write_config_to_file(self, path: Union[Path, str]) -> None:
         """
         Writes the config dictionary to a json-file.
 
@@ -121,5 +121,5 @@ class DriftCorrection:
             path (Path): path to the json file
         """
 
-        with open(str(path), "w") as outfile:
+        with open(Path(path), "w") as outfile:
             json.dump(self.config, outfile, indent=4)

@@ -127,7 +127,7 @@ class CurvatureCorrection:
 
     # ! ---- I/O routines
 
-    def write_config_to_file(self, path: Path) -> None:
+    def write_config_to_file(self, path: Union[Path, str]) -> None:
         """
         Writes the config dictionary to a json-file.
 
@@ -135,7 +135,7 @@ class CurvatureCorrection:
             path (Path): path to the json file
         """
 
-        with open(str(path), "w") as outfile:
+        with open(Path(path), "w") as outfile:
             json.dump(self.config, outfile, indent=4)
 
     def read_config_from_file(self, path: Path) -> None:
