@@ -159,12 +159,14 @@ class Image:
                 "Invalid image data. Provide either a path to an image or an image array."
             )
 
+        # Convert to RGB
+        self.toRGB()
+
         # Apply corrections
         if drift_correction is not None:
             self.img = drift_correction(self.img)
 
         if color_correction is not None:
-            self.toRGB()
             self.img = color_correction(self.img)
 
         if curvature_correction is not None:
