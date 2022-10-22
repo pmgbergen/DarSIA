@@ -530,8 +530,9 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             np.ndarray: prior binary mask
         """
 
-        # Deactive signal outside mask
-        signal[~self.mask] = 0
+        if self.verbosity:
+            plt.figure("Prior: Input signal")
+            plt.imshow(signal)
 
         # Apply presmoothing
         if self.apply_presmoothing:
@@ -678,7 +679,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             plt.imshow(mask)
 
         # Finaly cleaning - deactive signal outside mask
-        signal[~self.mask] = 0
+        mask[~self.mask] = 0
 
         if self.verbosity:
             plt.figure("Prior: Final mask after cleaning")
