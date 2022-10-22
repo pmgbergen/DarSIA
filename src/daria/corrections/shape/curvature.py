@@ -397,7 +397,7 @@ class CurvatureCorrection:
         if (pt_dst[0] - pt_src[0]) == 0:
             horizontal_stretch = 0
         # Check whether point is chosen too close to the center
-        # (within 10% of total pixels), and make warning
+        # (within 5% of total pixels), and make warning
         elif abs(pt_src[0] - stretch_center[0]) < round(0.05 * Nx):
             horizontal_stretch = 0
             warn(
