@@ -502,6 +502,10 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
     def update_mask(self, mask: np.ndarray) -> None:
         """
         Update the mask to be considered in the analysis.
+
+        Args:
+            mask (np.ndarray): boolean mask, detecting which pixels will
+                be considered, al other will be ignored in the analysis.
         """
         self.mask = mask
 
