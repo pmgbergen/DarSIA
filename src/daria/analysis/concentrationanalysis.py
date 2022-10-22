@@ -7,6 +7,7 @@ import copy
 import json
 from pathlib import Path
 from typing import Optional, Union
+from warnings import warn
 
 import cv2
 import matplotlib.pyplot as plt
@@ -116,6 +117,11 @@ class ConcentrationAnalysis:
             config (dict): config file for simple data.
             path (str or Path): path to cleaning filter array.
         """
+        warn(
+            "Routine deprecated. Instead read scaling parameter from config and use"
+            "read_cleaning_filter_from_file()."
+        )
+
         # Fetch the scaling parameter and threshold mask from file
         self.scaling = config["scaling"]
         self.threshold = np.load(path)
@@ -136,6 +142,8 @@ class ConcentrationAnalysis:
             path_to_config (str or Path): path for storage of config file.
             path_to_filter (str or Path): path for storage of the cleaning filter.
         """
+        warn("Routine deprecated. Instead use write_cleaning_filter_to_file().")
+
         # Store scaling parameters.
         config = {
             "scaling": self.scaling,
@@ -144,6 +152,30 @@ class ConcentrationAnalysis:
             json.dump(config, outfile, indent=4)
 
         # Store cleaning filter array.
+        np.save(str(Path(path_to_filter)), self.threshold)
+
+    def read_cleaning_filter_from_file(self, path: Union[str, Path]) -> None:
+        """
+        Read cleaning filter from file.
+
+        Args:
+            path (str or Path): path to cleaning filter array.
+        """
+        # Fetch the threshold mask from file
+        self.threshold = np.load(path)
+
+        # Resize threshold mask if unmatching the size of the base image
+        base_shape = self.base.img.shape[:2]
+        if self.threshold.shape[:2] != base_shape:
+            self.threshold = cv2.resize(self.threshold, tuple(reversed(base_shape)))
+
+    def write_cleaning_filter_to_file(self, path_to_filter: Union[str, Path]) -> None:
+        """
+        Store cleaning filter to file.
+
+        Args:
+            path_to_filter (str or Path): path for storage of the cleaning filter.
+        """
         np.save(str(Path(path_to_filter)), self.threshold)
 
     # ! ---- Main method
