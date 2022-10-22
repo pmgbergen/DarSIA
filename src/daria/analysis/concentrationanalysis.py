@@ -5,9 +5,9 @@ analyze concentrations/saturation profiles based on image comparison.
 
 import copy
 import json
+import warnings
 from pathlib import Path
 from typing import Optional, Union
-from warnings import warn
 
 import cv2
 import matplotlib.pyplot as plt
@@ -117,9 +117,9 @@ class ConcentrationAnalysis:
             config (dict): config file for simple data.
             path (str or Path): path to cleaning filter array.
         """
-        warn(
-            "Routine deprecated. Instead read scaling parameter from config and use"
-            "read_cleaning_filter_from_file()."
+        raise PendingDeprecationWarning(
+            "Routine deprecated, and will be removed in the future. Instead read scaling"
+            "parameter from config and use read_cleaning_filter_from_file()."
         )
 
         # Fetch the scaling parameter and threshold mask from file
@@ -142,7 +142,10 @@ class ConcentrationAnalysis:
             path_to_config (str or Path): path for storage of config file.
             path_to_filter (str or Path): path for storage of the cleaning filter.
         """
-        warn("Routine deprecated. Instead use write_cleaning_filter_to_file().")
+        raise PendingDeprecationWarning(
+            "Routine deprecated, and will be removed in the future. Instead use"
+            "write_cleaning_filter_to_file()."
+        )
 
         # Store scaling parameters.
         config = {
