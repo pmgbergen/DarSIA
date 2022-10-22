@@ -3,18 +3,21 @@ Module containing utils for segmentation of layered media.
 """
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 from scipy import ndimage as ndi
 
 
-def segment(img: np.ndarray, **kwargs) -> np.ndarray:
+def segment(img: np.ndarray, verbosity: bool = False, **kwargs) -> np.ndarray:
     """
     Prededfined workflow for segmenting an image based on
     watershed segmentation. In addition, denoising is used.
 
     Args:
         img (np.ndarray): input image in RGB color space
+        verbosity (bool): flag controlling whether relevant quantities are plotted
+            which is useful in the tuning of the parameters; the default is False.
         keyword arguments (optional): tuning parameters for the watershed algorithm
             "median disk radius" (int): disk radius to be considered to smooth
                 the image using rank based median, before the analysis.
@@ -45,38 +48,70 @@ def segment(img: np.ndarray, **kwargs) -> np.ndarray:
     # but with little difference.
     basis = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
+    if verbosity:
+        plt.figure("Grayscale input image")
+        plt.imshow(basis)
+
     # Smooth the image to get rid of sand grains
     denoised = skimage.filters.rank.median(
         basis, skimage.morphology.disk(median_disk_radius)
     )
 
+    if verbosity:
+        plt.figure("Denoised input image")
+        plt.imshow(denoised)
+
     # Resize image
-    denoised = skimage.img_as_ubyte(
+    rescaled = skimage.img_as_ubyte(
         skimage.transform.rescale(denoised, rescaling_factor, anti_aliasing=False)
     )
 
+    if verbosity:
+        plt.figure("Rescaled input image")
+        plt.imshow(rescaled)
+
     # Find continuous region, i.e., areas with low local gradient
     markers_basis = skimage.filters.rank.gradient(
-        denoised, skimage.morphology.disk(markers_disk_radius)
+        rescaled, skimage.morphology.disk(markers_disk_radius)
     )
+
+    if verbosity:
+        plt.figure("Basis for finding continuous regions")
+        plt.imshow(markers_basis)
+
     # TODO add smoothing?
     markers = markers_basis < threshold
 
     # Label the marked regions
-    markers = skimage.measure.label(markers)
+    labeled_markers = skimage.measure.label(markers)
+
+    if verbosity:
+        plt.figure(
+            f"Labeled regions after applying thresholding with value {threshold}"
+        )
+        plt.imshow(labeled_markers)
 
     # Find edges
     gradient = skimage.filters.rank.gradient(
-        denoised, skimage.morphology.disk(gradient_disk_radius)
+        rescaled, skimage.morphology.disk(gradient_disk_radius)
     )
+
+    if verbosity:
+        plt.figure("Edges")
+        plt.imshow(gradient)
+        plt.show()
 
     # Process the watershed and resize to the original size
     labels_rescaled = skimage.img_as_ubyte(
-        skimage.segmentation.watershed(gradient, markers)
+        skimage.segmentation.watershed(gradient, labeled_markers)
     )
     labels = skimage.img_as_ubyte(
         skimage.transform.resize(labels_rescaled, img.shape[:2])
     )
+
+    if verbosity:
+        plt.figure("Segmentation after watershed algorithm")
+        plt.imshow(gradient)
 
     # Segmentation needs some cleaning, as some areas are just small,
     # tiny lines, etc. Define some auxiliary methods for this.
@@ -90,6 +125,11 @@ def segment(img: np.ndarray, **kwargs) -> np.ndarray:
     labels = _dilate_by_size(labels, dilation_size, True)
     labels = _reset_labels(labels)
     labels = _boundary(labels, boundary_size)
+
+    if verbosity:
+        plt.figure("Final result after clean up")
+        plt.imshow(labels)
+        plt.show()
 
     return labels
 
