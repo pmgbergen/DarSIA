@@ -5,7 +5,6 @@ analyze concentrations/saturation profiles based on image comparison.
 
 import copy
 import json
-import warnings
 from pathlib import Path
 from typing import Optional, Union
 
