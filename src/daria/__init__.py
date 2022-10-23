@@ -30,3 +30,5 @@ from daria.analysis.translationanalysis import *
 from daria.analysis.concentrationanalysis import *
 from daria.analysis.compactionanalysis import *
 from daria.analysis.segmentationcomparison import *
+from daria.manager.generalanalysis import *
+from daria.manager.traceranalysis import *
