@@ -108,3 +108,19 @@ class CompactionAnalysis:
             deformation = base.coordinatesystem.pixelToCoordinateVector(deformation)
 
         return deformation
+
+    def apply(self, img: daria.Image) -> daria.Image:
+        """
+        Apply computed transformation onto arbitrary image.
+
+        Args:
+            img (np.ndarray or daria.Image): image
+
+        Returns:
+            np.ndarray, optional: transformed image, if input is array; no output otherwise
+        """
+        # Load the image into translation_analysis
+        self.translation_analysis.load_image(img)
+
+        # Apply the transformation, stored in translation_analysis
+        return self.translation_analysis.translate_image()
