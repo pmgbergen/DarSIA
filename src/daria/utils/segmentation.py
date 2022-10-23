@@ -219,11 +219,11 @@ def _boundary(labels: np.ndarray, thickness: int) -> np.ndarray:
         np.ndarray: updated labeled image
     """
     # Top
-    labels[:thickness, :] = labels[thickness : 2 * thickness, :]
+    labels[:thickness, :] = labels[thickness : thickness + 1, :]
     # Bottom
-    labels[-thickness - 1 : -1, :] = labels[-2 * thickness : -thickness, :]
+    labels[-thickness - 1 : -1, :] = labels[-thickness - 1 : -thickness, :]
     # Left
-    labels[:, :thickness] = labels[:, thickness : 2 * thickness]
+    labels[:, :thickness] = labels[:, thickness : thickness + 1]
     # Right
-    labels[:, -thickness - 1 : -1] = labels[:, -2 * thickness : -thickness]
+    labels[:, -thickness - 1 : -1] = labels[:, -thickness - 1 : -thickness]
     return labels
