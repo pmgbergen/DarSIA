@@ -507,7 +507,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
 
         Args:
             mask (np.ndarray): boolean mask, detecting which pixels will
-                be considered, al other will be ignored in the analysis.
+                be considered, all other will be ignored in the analysis.
         """
         self.mask = mask
 
@@ -680,7 +680,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             plt.figure("Prior: TVD postsmoothed mask")
             plt.imshow(mask)
 
-        # Finaly cleaning - deactive signal outside mask
+        # Finaly cleaning - inactive signal outside mask
         mask[~self.mask] = 0
 
         if self.verbosity:
