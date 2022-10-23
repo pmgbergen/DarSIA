@@ -19,6 +19,8 @@ from daria.mathematics.regularization import *
 from daria.utils.conversions import *
 from daria.utils.resolution import *
 from daria.utils.box import *
+from daria.utils.segmentation import *
+from daria.utils.coloranalysis import *
 from daria.corrections.shape.curvature import *
 from daria.corrections.shape.translation import *
 from daria.corrections.shape.piecewiseperspective import *
@@ -30,5 +32,5 @@ from daria.analysis.translationanalysis import *
 from daria.analysis.concentrationanalysis import *
 from daria.analysis.compactionanalysis import *
 from daria.analysis.segmentationcomparison import *
-from daria.manager.generalanalysis import *
+from daria.manager.analysisbase import *
 from daria.manager.traceranalysis import *
