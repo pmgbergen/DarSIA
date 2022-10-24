@@ -2,20 +2,37 @@
 Module containing utils for segmentation of layered media.
 """
 
+from typing import Union
+from warnings import warn
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 from scipy import ndimage as ndi
 
+import daria
 
-def segment(img: np.ndarray, verbosity: bool = False, **kwargs) -> np.ndarray:
+
+def segment(
+    img: Union[np.ndarray, daria.Image],
+    markers_method: str = "gradient_based",
+    edges_method: str = "gradient_based",
+    verbosity: bool = False,
+    **kwargs,
+) -> Union[np.ndarray, daria.Image]:
     """
     Prededfined workflow for segmenting an image based on
     watershed segmentation. In addition, denoising is used.
 
     Args:
-        img (np.ndarray): input image in RGB color space
+        img (np.ndarray, or daria.Image): input image in RGB color space
+        markers_method (str): "gradient_based" or "supervised", deciding which algorithm
+            is used for detecting markers; the former allows for less input, while the
+            latter allows to explicitly address regions of interest.
+        edges_method (str): "gradient_based" or "scharr", deciding which algorithm
+            is used for determining edges; the former uses gradient filtering while
+            the latter uses the Scharr algorithm.
         verbosity (bool): flag controlling whether relevant quantities are plotted
             which is useful in the tuning of the parameters; the default is False.
         keyword arguments (optional): tuning parameters for the watershed algorithm
@@ -23,36 +40,28 @@ def segment(img: np.ndarray, verbosity: bool = False, **kwargs) -> np.ndarray:
                 the image using rank based median, before the analysis.
             "rescaling factor" (float): factor how the image is scaled before
                 the actual watershed segmentation.
-            "markers disk radius" (int): disk radius used to define continous
-                regions via gradients.
-            "threshold" (float): threshold value marking regions as either
-                continuous or edge.
-            "gradient disk radius" (int): disk radius to define edges via gradients.
-            "dilation size" (int): amount of pixels, used for dilation in the postprocessing
-            "boundary size" (int): amount of pixels normal to the boundary, for which the
-                segmentation will be assigned as extension of the nearby interior values.
 
     Returns:
-        np.ndarray: labeled regions
+        np.ndarray or daria.Image: labeled regions in the same format as img.
     """
 
-    median_disk_radius = kwargs.pop("median disk radius", 20)
-    rescaling_factor = kwargs.pop("rescaling factor", 0.1)
-    markers_disk_radius = kwargs.pop("markers disk radius", 10)
-    threshold = kwargs.pop("threshold", 20)
-    gradient_disk_radius = kwargs.pop("gradient disk radius", 2)
-    dilation_size = kwargs.pop("dilation size", 10)
-    boundary_size = kwargs.pop("boundary size", 55)
+    # ! ---- Preprocessing of input image
 
     # Require scalar representation - work with grayscale image. Alternatives exist,
     # but with little difference.
-    basis = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    if isinstance(img, np.ndarray):
+        basis: np.ndarray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    elif isinstance(img, daria.Image):
+        basis = cv2.cvtColor(img.img, cv2.COLOR_RGB2GRAY)
+    else:
+        raise ValueError(f"img of type {type(img)} not supported.")
 
     if verbosity:
         plt.figure("Grayscale input image")
         plt.imshow(basis)
 
     # Smooth the image to get rid of sand grains
+    median_disk_radius = kwargs.pop("median disk radius", 20)
     denoised = skimage.filters.rank.median(
         basis, skimage.morphology.disk(median_disk_radius)
     )
@@ -62,6 +71,7 @@ def segment(img: np.ndarray, verbosity: bool = False, **kwargs) -> np.ndarray:
         plt.imshow(denoised)
 
     # Resize image
+    rescaling_factor = kwargs.pop("rescaling factor", 0.1)
     rescaled = skimage.img_as_ubyte(
         skimage.transform.rescale(denoised, rescaling_factor, anti_aliasing=False)
     )
@@ -70,53 +80,238 @@ def segment(img: np.ndarray, verbosity: bool = False, **kwargs) -> np.ndarray:
         plt.figure("Rescaled input image")
         plt.imshow(rescaled)
 
-    # Find continuous region, i.e., areas with low local gradient
-    markers_basis = skimage.filters.rank.gradient(
-        rescaled, skimage.morphology.disk(markers_disk_radius)
-    )
+    # ! ---- Determine markers
 
-    if verbosity:
-        plt.figure("Basis for finding continuous regions")
-        plt.imshow(markers_basis)
+    if markers_method == "gradient_based":
+        # Detect markers by thresholding the gradient and thereby detecting
+        # continuous regions.
+        labeled_markers = _detect_markers_from_gradient(rescaled, verbosity, **kwargs)
 
-    # TODO add smoothing?
-    markers = markers_basis < threshold
+    elif markers_method == "supervised":
 
-    # Label the marked regions
-    labeled_markers = skimage.measure.label(markers)
+        # Read markers from input, provided for the large scale image
+        shape = basis.shape[:2]
+        labeled_markers = _detect_markers_from_input(shape, **kwargs)
 
-    if verbosity:
-        plt.figure(
-            f"Labeled regions after applying thresholding with value {threshold}"
+        # Project onto the coarse image
+        labeled_markers = cv2.resize(
+            labeled_markers,
+            tuple(reversed(rescaled.shape[:2])),
+            interpolation=cv2.INTER_NEAREST,
         )
-        plt.imshow(labeled_markers)
 
-    # Find edges
-    gradient = skimage.filters.rank.gradient(
-        rescaled, skimage.morphology.disk(gradient_disk_radius)
-    )
+    else:
+
+        raise ValueError(
+            f"Method {markers_method} for detecting markers not supported."
+        )
+
+    # ! ---- Determine edges
 
     if verbosity:
-        plt.figure("Edges")
-        plt.imshow(gradient)
+        labeled_markers_large = cv2.resize(
+            labeled_markers,
+            tuple(reversed(img.shape[:2])),
+            interpolation=cv2.INTER_NEAREST,
+        )
+        img_copy = skimage.img_as_ubyte(img)
+        img_copy[labeled_markers_large != 0] = [255, 255, 255]
+        plt.figure("Original image with markers")
+        plt.imshow(img_copy)
+
+    if edges_method == "gradient_based":
+        edges = _detect_edges_from_gradient(rescaled, **kwargs)
+    elif edges_method == "scharr":
+        edges = _detect_edges_from_scharr(rescaled, **kwargs)
+    else:
+        raise ValueError(f"Method {edges_method} for detecting edges not supported.")
+
+    if verbosity:
+        edges_copy = np.copy(edges)
+        edges_copy[labeled_markers != 0] = 1.0
+        plt.figure("Edges with markers")
+        plt.imshow(edges_copy)
         plt.show()
 
-    # Process the watershed and resize to the original size
+    # ! ---- Actual watershed algorithm
+
+    # Process the watershed algorithm
     labels_rescaled = skimage.img_as_ubyte(
-        skimage.segmentation.watershed(gradient, labeled_markers)
+        skimage.segmentation.watershed(edges, labeled_markers)
     )
+
+    # ! ---- Postprocessing of the labels
+
+    # Resize to oirginal size
     labels = skimage.img_as_ubyte(
         skimage.transform.resize(labels_rescaled, img.shape[:2])
     )
 
     if verbosity:
         plt.figure("Segmentation after watershed algorithm")
-        plt.imshow(gradient)
+        plt.imshow(labels)
 
     # Segmentation needs some cleaning, as some areas are just small,
     # tiny lines, etc. Define some auxiliary methods for this.
     # Simplify the segmentation drastically by removing small entities,
     # and correct for boundary effects.
+    labels = _cleanup(labels, **kwargs)
+
+    if verbosity:
+        plt.figure("Final result after clean up")
+        plt.imshow(labels)
+        plt.show()
+
+    # Return data in the same format as the input data
+    if isinstance(img, np.ndarray):
+        return labels
+    elif isinstance(img, daria.Image):
+        return daria.Image(labels, img.metadata)
+
+
+# ! ---- Auxiliary functions for segment
+
+
+def _detect_markers_from_gradient(img, verbosity, **kwargs) -> np.ndarray:
+    """
+    Routine to detect markers as continous regions, based on thresholding gradients.
+
+    Args:
+        img (np.ndarray): input image, basis for gradient analysis.
+        verbosity (bool): flag controlling whether relevant quantities are plotted
+            which is useful in the tuning of the parameters; the default is False.
+        keyword arguments: tuning parameters for the watershed algorithm
+            "markers disk radius" (int): disk radius used to define continous
+                regions via gradients.
+            "threshold" (float): threshold value marking regions as either
+                continuous or edge.
+    """
+
+    # Find continuous region, i.e., areas with low local gradient
+    markers_disk_radius = kwargs.pop("markers disk radius")
+    markers_basis = skimage.filters.rank.gradient(
+        img, skimage.morphology.disk(markers_disk_radius)
+    )
+
+    # Apply thresholding - requires fine tuning
+    threshold = kwargs.pop("threshold")
+    markers = markers_basis < threshold
+
+    # Label the marked regions
+    labeled_markers = skimage.measure.label(markers)
+
+    if verbosity:
+        plt.figure("Basis for finding continuous regions")
+        plt.imshow(markers_basis)
+        plt.figure(
+            f"Labeled regions after applying thresholding with value {threshold}"
+        )
+        plt.imshow(labeled_markers)
+        plt.show()
+
+    return labeled_markers
+
+
+def _detect_markers_from_input(shape, **kwargs) -> np.ndarray:
+    """
+    Routine to transform user-defined points into markers.
+
+    Args:
+        shape (tuple): shape of the original image, for which the marker
+            coordinates are defined.
+        keyword arguments (optional): tuning parameters for the watershed algorithm
+            patch (int): size of regions in each dimension to be marked.
+            marker_points (np.ndarray): array of coordinates for top left corner of
+                each marked region. Each point thereby is a representative point for
+                a unique region.
+
+    Returns:
+        np.ndarray: labeled markers corresponding to provided image shape.
+    """
+
+    # Fetch user-defined coordinates of markers
+    patch: int = kwargs.pop("region_size", 1)
+    pts: np.ndarray = kwargs.pop("marker_points")
+
+    # Mark squares with points providing the top left corner.
+    markers = np.zeros(shape, dtype=bool)
+    for pt in pts:
+        dx = np.array([patch, patch])
+        corners = np.array([pt, pt + dx])
+        roi = daria.bounding_box(corners)
+        markers[roi] = True
+
+    # Convert markers to labels assuming each point
+    labeled_markers = skimage.measure.label(markers).astype(np.uint8)
+
+    return labeled_markers
+
+
+def _detect_edges_from_gradient(img, **kwargs) -> np.ndarray:
+    """
+    Routine determining edges via gradient filter from scikit-image.
+
+    Args:
+        img (np.ndarray): input image, basis for determining the gradient.
+        keyword arguments (optional): tuning parameters for the watershed algorithm
+            "gradient disk radius" (int): disk radius to define edges via gradients.
+    """
+    gradient_disk_radius = kwargs.pop("gradient disk radius", 2)
+
+    # Find edges
+    edges = skimage.filters.rank.gradient(
+        img, skimage.morphology.disk(gradient_disk_radius)
+    )
+
+    return edges
+
+
+def _detect_edges_from_scharr(img, **kwargs) -> np.ndarray:
+    """
+    Routine determining edges using the Scharr algorithm from scikit-image.
+
+    Args:
+        img (np.ndarray): input image, basis for Scharr.
+        keyword arguments (optional): tuning parameters for the watershed algorithm
+            mask (np.ndarray): active mask to be considered in the Scharr routine.
+
+    Returns:
+            np.ndarray: edge array in terms of intensity.
+    """
+    # Fetch mask from file
+    mask = kwargs.pop("scharr mask", np.ones(img.shape[:2], dtype=bool))
+
+    # Resize mask if necessary
+    if mask.shape[:2] != img.shape[:2]:
+        mask = skimage.img_as_bool(skimage.transform.resize(mask, img.shape))
+
+    edges = skimage.filters.scharr(img, mask=mask)
+
+    # Take care of the boundary, which is left with values equal to zero
+    edges = _boundary(edges, 1)
+
+    return edges
+
+
+def _cleanup(labels: np.ndarray, **kwargs) -> np.ndarray:
+    """
+    Cleanup routine, taking care of small marked regions, boundary values etc.
+
+    Args:
+        labels (np.ndarray): input labels/segentation.
+        keyword arguments (optional): tuning parameters for the watershed algorithm
+            "dilation size" (int): amount of pixels, used for dilation in the postprocessing
+            "boundary size" (int): amount of pixels normal to the boundary, for which the
+                segmentation will be assigned as extension of the nearby interior values.
+
+    Returns:
+        np.ndarray: cleaned segmentation.
+    """
+    # Monitor number of labels prior and after the cleanup.
+    num_labels_prior = np.unique(labels).shape[0]
+
+    dilation_size = kwargs.pop("dilation size", 0)
+    boundary_size = kwargs.pop("boundary size", 0)
     labels = _reset_labels(labels)
     labels = _dilate_by_size(labels, dilation_size, False)
     labels = _reset_labels(labels)
@@ -126,15 +321,14 @@ def segment(img: np.ndarray, verbosity: bool = False, **kwargs) -> np.ndarray:
     labels = _reset_labels(labels)
     labels = _boundary(labels, boundary_size)
 
-    if verbosity:
-        plt.figure("Final result after clean up")
-        plt.imshow(labels)
-        plt.show()
+    # Inform the user if labels are removed - in particular, when using
+    # markers_method = "supervised", this means that provided markers
+    # are ignored.
+    num_labels_posterior = np.unique(labels).shape[0]
+    if num_labels_prior != num_labels_posterior:
+        warn("Cleanup in the segmentation has removed labels.")
 
     return labels
-
-
-# ! ---- Auxiliary functions for segment
 
 
 def _reset_labels(labels: np.ndarray) -> np.ndarray:
