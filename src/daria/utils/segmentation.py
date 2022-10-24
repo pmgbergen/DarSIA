@@ -368,14 +368,14 @@ def _fill_holes(labels: np.ndarray) -> np.ndarray:
 
 
 def _dilate_by_size(
-    labels: np.ndarray, footprint: np.ndarray, decreasing_order: bool
+    labels: np.ndarray, footprint: Union[np.ndarray, int], decreasing_order: bool
 ) -> np.ndarray:
     """
     Dilate objects by prescribed size.
 
     Args:
         labels (np.ndarray): labeled image
-        footprint (np.ndarray): foot print for dilation
+        footprint (np.ndarray or int): foot print for dilation
         descreasing_order (bool): flag controlling whether dilation
             should be performed on objects with decreasing order
             or not (increasing order then).
@@ -383,21 +383,21 @@ def _dilate_by_size(
     Returns:
         np.ndarray: labels after dilation
     """
-
-    # Determine sizes of all marked areas
-    pre_labels = np.unique(labels)
-    sizes = [np.count_nonzero(labels == label) for label in pre_labels]
-    # Sort from small to large
-    labels_sorted_sizes = np.argsort(sizes)
-    if decreasing_order:
-        labels_sorted_sizes = np.flip(labels_sorted_sizes)
-    # Erode for each label if still existent
-    for label in labels_sorted_sizes:
-        mask = labels == label
-        mask = skimage.morphology.binary_dilation(
-            mask, skimage.morphology.disk(footprint)
-        )
-        labels[mask] = label
+    if footprint != 0:
+        # Determine sizes of all marked areas
+        pre_labels = np.unique(labels)
+        sizes = [np.count_nonzero(labels == label) for label in pre_labels]
+        # Sort from small to large
+        labels_sorted_sizes = np.argsort(sizes)
+        if decreasing_order:
+            labels_sorted_sizes = np.flip(labels_sorted_sizes)
+        # Erode for each label if still existent
+        for label in labels_sorted_sizes:
+            mask = labels == label
+            mask = skimage.morphology.binary_dilation(
+                mask, skimage.morphology.disk(footprint)
+            )
+            labels[mask] = label
     return labels
 
 
