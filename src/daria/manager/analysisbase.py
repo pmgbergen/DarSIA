@@ -57,7 +57,7 @@ class AnalysisBase:
             config=self.config["geometry"]
         )
 
-        # Define baseline image as corrected daria Image - if exists use cached image
+        # Define baseline image as corrected daria Image
         self.base = self._read(reference_base)
 
     # ! ----- I/O
