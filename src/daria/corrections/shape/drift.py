@@ -9,8 +9,8 @@ import json
 from pathlib import Path
 from typing import Optional, Union
 
+import cv2
 import numpy as np
-from PIL import Image as PIL_Image
 
 import daria
 
@@ -40,8 +40,8 @@ class DriftCorrection:
 
         # Read baseline image
         if isinstance(base, str) or isinstance(base, Path):
-            pil_base = PIL_Image.open(Path(base))
-            self.base = np.array(pil_base)
+            base_BGR = cv2.imread(str(Path(base)), cv2.IMREAD_UNCHANGED)
+            self.base = cv2.cvtColor(base_BGR, cv2.COLOR_BGR2RGB)
         elif isinstance(base, np.ndarray):
             self.base = np.copy(base)
         elif isinstance(base, daria.Image):

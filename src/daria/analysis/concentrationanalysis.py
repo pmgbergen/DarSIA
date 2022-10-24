@@ -116,6 +116,11 @@ class ConcentrationAnalysis:
             config (dict): config file for simple data.
             path (str or Path): path to cleaning filter array.
         """
+        raise PendingDeprecationWarning(
+            "Routine deprecated, and will be removed in the future. Instead read scaling"
+            "parameter from config and use read_cleaning_filter_from_file()."
+        )
+
         # Fetch the scaling parameter and threshold mask from file
         self.scaling = config["scaling"]
         self.threshold = np.load(path)
@@ -136,6 +141,11 @@ class ConcentrationAnalysis:
             path_to_config (str or Path): path for storage of config file.
             path_to_filter (str or Path): path for storage of the cleaning filter.
         """
+        raise PendingDeprecationWarning(
+            "Routine deprecated, and will be removed in the future. Instead use"
+            "write_cleaning_filter_to_file()."
+        )
+
         # Store scaling parameters.
         config = {
             "scaling": self.scaling,
@@ -144,6 +154,30 @@ class ConcentrationAnalysis:
             json.dump(config, outfile, indent=4)
 
         # Store cleaning filter array.
+        np.save(str(Path(path_to_filter)), self.threshold)
+
+    def read_cleaning_filter_from_file(self, path: Union[str, Path]) -> None:
+        """
+        Read cleaning filter from file.
+
+        Args:
+            path (str or Path): path to cleaning filter array.
+        """
+        # Fetch the threshold mask from file
+        self.threshold = np.load(path)
+
+        # Resize threshold mask if unmatching the size of the base image
+        base_shape = self.base.img.shape[:2]
+        if self.threshold.shape[:2] != base_shape:
+            self.threshold = cv2.resize(self.threshold, tuple(reversed(base_shape)))
+
+    def write_cleaning_filter_to_file(self, path_to_filter: Union[str, Path]) -> None:
+        """
+        Store cleaning filter to file.
+
+        Args:
+            path_to_filter (str or Path): path for storage of the cleaning filter.
+        """
         np.save(str(Path(path_to_filter)), self.threshold)
 
     # ! ---- Main method
@@ -470,6 +504,10 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
     def update_mask(self, mask: np.ndarray) -> None:
         """
         Update the mask to be considered in the analysis.
+
+        Args:
+            mask (np.ndarray): boolean mask, detecting which pixels will
+                be considered, all other will be ignored in the analysis.
         """
         self.mask = mask
 
@@ -494,8 +532,9 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             np.ndarray: prior binary mask
         """
 
-        # Deactive signal outside mask
-        signal[~self.mask] = 0
+        if self.verbosity:
+            plt.figure("Prior: Input signal")
+            plt.imshow(signal)
 
         # Apply presmoothing
         if self.apply_presmoothing:
@@ -641,8 +680,8 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             plt.figure("Prior: TVD postsmoothed mask")
             plt.imshow(mask)
 
-        # Finaly cleaning - deactive signal outside mask
-        signal[~self.mask] = 0
+        # Finaly cleaning - inactive signal outside mask
+        mask[~self.mask] = 0
 
         if self.verbosity:
             plt.figure("Prior: Final mask after cleaning")
