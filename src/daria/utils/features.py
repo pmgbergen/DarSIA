@@ -6,6 +6,8 @@ from typing import Optional
 import cv2
 import numpy as np
 
+import skimage
+
 
 class FeatureDetection:
     """
@@ -41,6 +43,10 @@ class FeatureDetection:
 
         # Convert to gray color space
         img_gray = cv2.cvtColor(img_roi, cv2.COLOR_RGB2GRAY)
+
+        # Orb does not allow for uint16, so convert to uint8.
+        if (img_gray.dtype == np.uint16):
+            img_gray = skimage.img_as_ubyte(img_gray)
 
         # Determine matching features; use ORB to detect keypoints
         # and extract (binary) local invariant features
