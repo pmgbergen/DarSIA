@@ -3,15 +3,15 @@ Module providing structure for analyzing images of multi-component multi-phase
 experiments, with the goal to identify distinct components/phases. In practice,
 it may have to be tailored to the specific scenario by inheritance. For more
 general use, a generalized multicomponent analysis manager should be used.
-This module is tailored to CO2 experiments in water, strongly motivated by the 
+This module is tailored to CO2 experiments in water, strongly motivated by the
 International FluidFlower Benchmark study.
 """
 
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Union
+
 import daria
-import json
-from abc import ABC, abstractmethod
 
 
 class CO2Analysis(ABC, daria.ConcentrationAnalysisBase):
