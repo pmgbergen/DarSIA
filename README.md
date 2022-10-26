@@ -30,7 +30,7 @@ grid_image = image.add_grid(origo = [5, 2], dx = 10, dy = 10)
 grid_image.show()
 
 # Extract region of interest (ROI) from image:
-ROI_image = da.extractROI(image, [150, 280], [0, 70])
+ROI_image = da.extractROI(image, [[150, 0], [280, 70]])
 ROI_image.show()
 ```
 
