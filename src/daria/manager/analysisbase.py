@@ -72,9 +72,6 @@ class AnalysisBase:
         Returns:
             daria.Image: image corrected for curvature and color.
         """
-
-        print(f"Reading image from {str(path)}.")
-
         return daria.Image(
             img=path,
             drift_correction=self.drift_correction,
