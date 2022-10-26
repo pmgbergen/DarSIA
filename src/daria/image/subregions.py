@@ -5,31 +5,33 @@ import cv2
 import numpy as np
 
 import daria
+from typing import Union
 
 
 def extractROI(
-    img: daria.Image, x: list, y: list, return_roi: bool = False
+        img: daria.Image, pts: Union[np.ndarray, list], return_roi: bool = False
 ) -> daria.Image:
     """Extracts region of interest based on physical coordinates.
 
-    Arguments:
-        x (list): list with two elements and containst the start and end point in x-direction;
-            points in metric units.
-        y (list): list with two elements and containst the start and end point in y-direction;
-            points in metric units.
+    Args:
+        img (daria.Image): image to be cropped.
+        pts (np.ndarray or list): coordinates (x,y) with metric units implicitly defining a
+            bounding box, which again defines a ROI.
+        return_roi (bool): flag controlling whether the determined ROI should be returned;
+            default is False.
 
     Returns:
         daria.Image: image object restricted to the ROI.
     """
-
-    # Assume that x and y are in increasing order.
-    assert x[0] < x[1] and y[0] < y[1]
+    # Convert coordinates to array
+    if isinstance(pts, list):
+        pts = np.array(pts)
 
     # Convert metric units to number of pixels, and define top-left and bottom-right
     # corners of the roi, towards addressing the image with matrix indexing
     # of x and y coordinates.
-    top_left_coordinate = [x[0], y[1]]
-    bottom_right_coordinate = [x[1], y[0]]
+    top_left_coordinate = [np.min(pts[:,0]), np.max(pts[:,1])]
+    bottom_right_coordinate = [np.max(pts[:,0]), np.min(pts[:,1])]
     top_left_pixel = img.coordinatesystem.coordinateToPixel(top_left_coordinate)
     bottom_right_pixel = img.coordinatesystem.coordinateToPixel(bottom_right_coordinate)
 
@@ -40,9 +42,9 @@ def extractROI(
     )
 
     # Define metadata (all quantities in metric units)
-    origo = [x[0], y[0]]
-    width = x[1] - x[0]
-    height = y[1] - y[0]
+    origo = [np.min(pts[:,0]), np.min(pts[:,1])]
+    width = np.max(pts[:,0]) - np.min(pts[:,0])
+    height = np.max(pts[:,1]) - np.min(pts[:,1])
 
     # Construct and return image corresponding to ROI
     if return_roi:
