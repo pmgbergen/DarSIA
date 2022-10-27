@@ -193,6 +193,8 @@ class Image:
         # Establish a coordinate system based on the metadata
         self.coordinatesystem: da.CoordinateSystem = da.CoordinateSystem(self)
 
+    # ! ---- Fast-access getter functions for metadata
+
     @property
     def origo(self) -> list:
         return self.metadata["origo"]
@@ -216,6 +218,12 @@ class Image:
     @property
     def original_dtype(self) -> np.dtype:
         return self.metadata["original_dtype"]
+
+    # ! ---- Corresponding setter functions for metadata
+
+    @timestamp.setter
+    def timestamp(self, time: datetime.datetime) -> None:
+        self.metadata["timestamp"] = time
 
     def write(
         self,
