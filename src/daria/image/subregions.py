@@ -1,15 +1,16 @@
 """
 Module containing auxiliary methods to extract ROIs from daria Images.
 """
+from typing import Union
+
 import cv2
 import numpy as np
 
 import daria
-from typing import Union
 
 
 def extractROI(
-        img: daria.Image, pts: Union[np.ndarray, list], return_roi: bool = False
+    img: daria.Image, pts: Union[np.ndarray, list], return_roi: bool = False
 ) -> daria.Image:
     """Extracts region of interest based on physical coordinates.
 
@@ -30,8 +31,8 @@ def extractROI(
     # Convert metric units to number of pixels, and define top-left and bottom-right
     # corners of the roi, towards addressing the image with matrix indexing
     # of x and y coordinates.
-    top_left_coordinate = [np.min(pts[:,0]), np.max(pts[:,1])]
-    bottom_right_coordinate = [np.max(pts[:,0]), np.min(pts[:,1])]
+    top_left_coordinate = [np.min(pts[:, 0]), np.max(pts[:, 1])]
+    bottom_right_coordinate = [np.max(pts[:, 0]), np.min(pts[:, 1])]
     top_left_pixel = img.coordinatesystem.coordinateToPixel(top_left_coordinate)
     bottom_right_pixel = img.coordinatesystem.coordinateToPixel(bottom_right_coordinate)
 
@@ -42,9 +43,9 @@ def extractROI(
     )
 
     # Define metadata (all quantities in metric units)
-    origo = [np.min(pts[:,0]), np.min(pts[:,1])]
-    width = np.max(pts[:,0]) - np.min(pts[:,0])
-    height = np.max(pts[:,1]) - np.min(pts[:,1])
+    origo = [np.min(pts[:, 0]), np.min(pts[:, 1])]
+    width = np.max(pts[:, 0]) - np.min(pts[:, 0])
+    height = np.max(pts[:, 1]) - np.min(pts[:, 1])
 
     # Construct and return image corresponding to ROI
     if return_roi:
