@@ -43,7 +43,7 @@ class Image:
             origo (np.ndarray): physical coordinates of the lower left corner, i.e.,
                 of the (img.shape[0],0) pixel
             color_space (str): Color space (RGB/BGR/RED/GREEN/BLUE/GRAY)
-            timestamp (datetime.datetime): timestamp of the image in datetime format.
+            timestamp (datetime.datetime): timestamp of the image in (default) datetime format.
         shape (np.ndarray): num_pixels, as well number of color channels (typically 3 for RGB)
         dx (float): pixel size in x-direction
         dy (float): pixel size in y-direction
@@ -143,7 +143,7 @@ class Image:
             if self.metadata["timestamp"] is None:
                 pil_img = PIL_Image.open(Path(img))
 
-                # Read exif metadata
+                # Read timestamp from exif metadata if existent
                 self.exif = pil_img.getexif()
                 if self.exif.get(306) is not None:
                     self.metadata["timestamp"] = datetime.strptime(
