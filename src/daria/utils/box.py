@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 
@@ -62,3 +62,29 @@ def bounding_box_inverse(bounding_box: tuple) -> np.ndarray:
     )
 
     return coords
+
+
+def perimeter(box: Union[tuple, np.ndarray]) -> Union[int, float]:
+    """
+    Returns the perimeter of a box. Accepts both tuples of slices
+    as well as arrays of coordinates as input.
+
+    Args:
+        box (tuple of slices or np.ndarray): definition of a box,
+            either as tuple of slices, or coordinates (can also
+            use metric units)
+
+    Returns:
+        float or int (depending on input): perimeter
+    """
+    if isinstance(box, np.ndarray):
+        min_x = np.min(box[:, 0])
+        max_x = np.max(box[:, 0])
+        min_y = np.min(box[:, 1])
+        max_y = np.max(box[:, 1])
+        perimeter = 2 * (max_x - min_x) + 2 * (max_y - min_y)
+
+    elif isinstance(box, tuple):
+        raise NotImplementedError("This is currently not supported.")
+
+    return perimeter
