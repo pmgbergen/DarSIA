@@ -153,8 +153,10 @@ class ConcentrationAnalysis:
         with open(Path(path_to_config), "w") as outfile:
             json.dump(config, outfile, indent=4)
 
-        # Store cleaning filter array.
-        np.save(str(Path(path_to_filter)), self.threshold)
+        # Store cleaning filter array - create folder if does not exist.
+        path_to_filter = Path(path_to_filter)
+        path_to_filter.parents[0].mkdir(parents=True, exist_ok=True)
+        np.save(path_to_filter, self.threshold)
 
     def read_cleaning_filter_from_file(self, path: Union[str, Path]) -> None:
         """
@@ -178,7 +180,9 @@ class ConcentrationAnalysis:
         Args:
             path_to_filter (str or Path): path for storage of the cleaning filter.
         """
-        np.save(str(Path(path_to_filter)), self.threshold)
+        path_to_filter = Path(path_to_filter)
+        path_to_filter.parents[0].mkdir(parents=True, exist_ok=True)
+        np.save(path_to_filter, self.threshold)
 
     # ! ---- Main method
 
