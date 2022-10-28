@@ -1,6 +1,6 @@
 {
-    "color_correction": {
-        "roi_color_correction": [
+    "color": {
+        "roi": [
             [
                 146,
                 196
@@ -19,8 +19,8 @@
             ]
         ]
     },
-    "drift_correction": {
-        "roi_drift_correction": [
+    "drift": {
+        "roi": [
             [
                 57,
                 2
@@ -39,7 +39,7 @@
             ]
         ]
     },
-    "curvature_correction": {
+    "geometry": {
         "init": {
             "horizontal_bulge": 5e-09,
             "horizontal_center_offset": 0,
