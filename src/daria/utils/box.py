@@ -77,14 +77,16 @@ def perimeter(box: Union[tuple, np.ndarray]) -> Union[int, float]:
     Returns:
         float or int (depending on input): perimeter
     """
-    if isinstance(box, np.ndarray):
-        min_x = np.min(box[:, 0])
-        max_x = np.max(box[:, 0])
-        min_y = np.min(box[:, 1])
-        max_y = np.max(box[:, 1])
-        perimeter = 2 * (max_x - min_x) + 2 * (max_y - min_y)
+    # Convert to array
+    box = box if isinstance(box, np.ndarray) else bounding_box_inverse(box)
 
-    elif isinstance(box, tuple):
-        raise NotImplementedError("This is currently not supported.")
+    # Extract min and max for each dimension
+    min_x = np.min(box[:, 0])
+    max_x = np.max(box[:, 0])
+    min_y = np.min(box[:, 1])
+    max_y = np.max(box[:, 1])
+
+    # Determine perimeter
+    perimeter = 2 * (max_x - min_x) + 2 * (max_y - min_y)
 
     return perimeter
