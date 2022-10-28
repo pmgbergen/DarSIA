@@ -48,7 +48,7 @@ def contour_length(
         if values_of_interest is None:
             mask: np.ndarray = img_roi.img
         else:
-            mask = np.zeros(img_roi.img.shape[:2], dtype=bool)
+            mask = np.zeros_like(img_roi.img, dtype=bool)
             for value in values_of_interest:
                 mask[img_roi.img == value] = True
     elif img_roi.img.dtype in [np.uint8, np.int32, np.int64]:
