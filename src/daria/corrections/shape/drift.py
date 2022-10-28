@@ -24,7 +24,7 @@ class DriftCorrection:
         self,
         base: Union[str, Path, np.ndarray, daria.Image],
         roi: Optional[Union[np.ndarray, tuple, list]] = None,
-        config: Optional[Union[dict, str, Path]] = None,
+        config: Optional[dict] = None,
     ) -> None:
         """
         Constructor for DriftCorrection.
@@ -51,29 +51,14 @@ class DriftCorrection:
 
         # Cache config
         if config is not None:
-            if isinstance(config, str):
-                with open(Path(config), "r") as openfile:
-                    tmp_config = json.load(openfile)
-                if "drift_correction" in tmp_config:
-                    self.config = tmp_config["drift_correction"]
-                else:
-                    self.config = tmp_config
-            elif isinstance(config, Path):
-                with open(config, "r") as openfile:
-                    tmp_config = json.load(openfile)
-                if "drift_correction" in tmp_config:
-                    self.config = tmp_config["drift_correction"]
-                else:
-                    self.config = tmp_config
-            else:
-                self.config = copy.deepcopy(config)
+            self.config = copy.deepcopy(config)
         else:
             self.config: dict = {}
 
         # Cache ROI
         if isinstance(roi, np.ndarray):
             self.roi = daria.bounding_box(roi)
-            self.config["roi_drift_correction"] = roi.tolist()
+            self.config["roi"] = roi.tolist()
         elif isinstance(roi, list):
             # If a list is added as the roi, it is assumed that it comes from
             # the color correction roi and some padding might be needed in
@@ -84,25 +69,12 @@ class DriftCorrection:
                 padding=round(0.05 * self.base.shape[0]),
                 max_size=[self.base.shape[0], self.base.shape[1]],
             )
-            self.config["roi_drift_correction"] = daria.bounding_box_inverse(
-                self.roi
-            ).tolist()
+            self.config["roi"] = daria.bounding_box_inverse(self.roi).tolist()
         elif isinstance(roi, tuple):
             self.roi = roi
-            self.config["roi_drift_correction"] = daria.bounding_box_inverse(
-                roi
-            ).tolist()
-        elif "roi_drift_correction" in self.config:
-            self.roi = daria.bounding_box(np.array(self.config["roi_drift_correction"]))
-        elif "roi_color_correction" in self.config:
-            # When using the color correction roi some padding might be needed in
-            # order to apply the drift correction. Here 5% of the picture is
-            # added as padding to the roi.
-            self.roi = daria.bounding_box(
-                np.array(self.config["roi_color_correction"]),
-                padding=round(0.05 * self.base.shape[0]),
-                max_size=[self.base.shape[0], self.base.shape[1]],
-            )
+            self.config["roi"] = daria.bounding_box_inverse(roi).tolist()
+        elif "roi" in self.config:
+            self.roi = daria.bounding_box(np.array(self.config["roi"]))
         else:
             self.roi = None
 

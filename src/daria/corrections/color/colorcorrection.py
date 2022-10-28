@@ -76,7 +76,7 @@ class ColorCorrection:
 
     def __init__(
         self,
-        config: Optional[Union[dict, str, Path]] = None,
+        config: Optional[dict] = None,
         roi: Optional[Union[tuple, np.ndarray, list]] = None,
         verbosity: bool = False,
         whitebalancing: bool = True,
@@ -101,32 +101,17 @@ class ColorCorrection:
 
         # Define config
         if config is not None:
-            if isinstance(config, str):
-                with open(Path(config), "r") as openfile:
-                    tmp_config = json.load(openfile)
-                if "color_correction" in tmp_config:
-                    self.config = tmp_config["color_correction"]
-                else:
-                    self.config = tmp_config
-            elif isinstance(config, Path):
-                with open(config, "r") as openfile:
-                    tmp_config = json.load(openfile)
-                if "color_correction" in tmp_config:
-                    self.config = tmp_config["color_correction"]
-                else:
-                    self.config = tmp_config
-            else:
-                self.config = copy.deepcopy(config)
+            self.config = copy.deepcopy(config)
         else:
             self.config: dict = {}
 
         # Define ROI
         if isinstance(roi, np.ndarray):
             self.roi = roi
-            self.config["roi_color_correction"] = self.roi.tolist()
+            self.config["roi"] = self.roi.tolist()
         elif isinstance(roi, list):
             self.roi = np.array(roi)
-            self.config["roi_color_correction"] = roi
+            self.config["roi"] = roi
         elif isinstance(roi, tuple):
             warn(
                 "An array of corner points are prefered.\
@@ -134,8 +119,8 @@ class ColorCorrection:
             )
             self.roi = roi
 
-        elif "roi_color_correction" in self.config:
-            self.roi = np.array(self.config["roi_color_correction"])
+        elif "roi" in self.config:
+            self.roi = np.array(self.config["roi"])
         else:
             self.roi = None
 
