@@ -39,7 +39,7 @@
             ]
         ]
     },
-    "geometry": {
+    "curvature": {
         "init": {
             "horizontal_bulge": 5e-09,
             "horizontal_center_offset": 0,

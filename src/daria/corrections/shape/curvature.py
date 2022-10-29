@@ -77,10 +77,6 @@ class CurvatureCorrection:
             elif isinstance(config, str):
                 with open(Path(config), "r") as openfile:
                     self.config = json.load(openfile)
-            else:
-                assert isinstance(config, Path)
-                with open(config, "r") as openfile:
-                    self.config = json.load(openfile)
         else:
             self.config = {}
 
