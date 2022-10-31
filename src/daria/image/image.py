@@ -425,7 +425,7 @@ class Image:
         self.dy *= 1 / cy
         self.coordinatesystem = da.CoordinateSystem(self)
 
-    def copy(self) -> "Image":
+    def copy(self) -> da.Image:
         """
         Returns a copy of the image object.
         """

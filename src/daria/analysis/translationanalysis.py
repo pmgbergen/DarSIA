@@ -3,7 +3,7 @@ Module containing class for translation analysis, relevant e.g. for
 studying compaction of porous media.
 """
 
-from typing import Optional
+from typing import Optional, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -68,10 +68,10 @@ class TranslationAnalysis:
 
         # Update parameters if needed
         if need_update_N_patches:
-            self.N_patches = N_patches
+            self.N_patches = cast(list[int],N_patches)
 
         if need_update_rel_overlap:
-            self.rel_overlap = rel_overlap
+            self.rel_overlap = cast(float,rel_overlap)
 
         # Update the patches of the base image accordingly.
         if need_update_N_patches or need_update_rel_overlap:
@@ -229,7 +229,7 @@ class TranslationAnalysis:
         )
 
         # Convert interpolators to a callable displacement/translation map
-        def translation(arg):
+        def translation_callable(arg):
             return np.array(
                 [
                     self.interpolator_translation_x(arg),
@@ -237,7 +237,7 @@ class TranslationAnalysis:
                 ]
             )
 
-        self.translation = translation
+        self.translation = translation_callable
 
         # Store success
         self.have_translation = have_translation.copy()

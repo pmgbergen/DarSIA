@@ -118,9 +118,10 @@ class ColorCorrection:
             else:
                 self.config = copy.deepcopy(config)
         else:
-            self.config: dict = {}
+            self.config = {}
 
         # Define ROI
+        self.roi: Optional[Union[tuple, np.ndarray]] = None
         if isinstance(roi, np.ndarray):
             self.roi = roi
             self.config["roi_color_correction"] = self.roi.tolist()
@@ -136,8 +137,6 @@ class ColorCorrection:
 
         elif "roi_color_correction" in self.config:
             self.roi = np.array(self.config["roi_color_correction"])
-        else:
-            self.roi = None
 
         # Store flags
         self.verbosity = verbosity
@@ -199,7 +198,7 @@ class ColorCorrection:
 
         # For debugging, double-check once more the swatches.
         if self.verbosity:
-            corrected_colorchecker_image: np.ndarray = self._restrict_to_roi(
+            corrected_colorchecker_image = self._restrict_to_roi(
                 corrected_image
             )
             swatches = self._detect_colour_checkers_segmentation(

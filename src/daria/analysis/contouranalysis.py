@@ -4,7 +4,7 @@ measuring lengths of contours, weighted sums (generalized mass analysis).
 """
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -41,7 +41,7 @@ def contour_length(
             input image.
     """
     # Make copy of image and restrict to region of interest
-    img_roi = img.copy if roi is None else daria.extractROI(img, roi)
+    img_roi = img.copy() if roi is None else cast(daria.Image,daria.extractROI(img, roi))
 
     # Extract boolean mask covering pixels of interest.
     if img_roi.img.dtype == bool:
@@ -49,13 +49,19 @@ def contour_length(
             mask: np.ndarray = img_roi.img
         else:
             mask = np.zeros_like(img_roi.img, dtype=bool)
-            for value in values_of_interest:
-                mask[img_roi.img == value] = True
+            if isinstance(values_of_interest, int):
+                mask[img_roi.img == values_of_interest]
+            elif isinstance(values_of_interest, list):
+                for value in values_of_interest:
+                    mask[img_roi.img == value] = True
     elif img_roi.img.dtype in [np.uint8, np.int32, np.int64]:
         assert values_of_interest is not None
         mask = np.zeros(img_roi.img.shape[:2], dtype=bool)
-        for value in values_of_interest:
-            mask[img_roi.img == value] = True
+        if isinstance(values_of_interest, int):
+            mask[img_roi.img == values_of_interest] = True
+        elif isinstance(values_of_interest, list):
+            for value in values_of_interest:
+                mask[img_roi.img == value] = True
     else:
         raise ValueError(f"Images with dtype {img_roi.img.dtype} not supported.")
 
@@ -74,7 +80,7 @@ def contour_length(
         contour_length += props[counter].perimeter
 
     # Convert contour length from pixel units to metric units
-    metric_contour_length = img_roi.coordinatesystem.pixelsToLength(contour_length)
+    metric_contour_length = cast(float, img_roi.coordinatesystem.pixelsToLength(contour_length))
 
     # Plot masks and print contour length if requested.
     if verbosity:

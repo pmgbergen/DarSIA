@@ -729,7 +729,7 @@ class CurvatureCorrection:
         return Xmod, Ymod
 
     def _transform_image(
-        self, img: np.ndarray, grid: np.ndarray, shape: tuple[int, int]
+        self, img: np.ndarray, grid: np.ndarray, shape: tuple[int, ...]
     ) -> np.ndarray:
         """
         Routine to transform an image based on transformed coordinates.
