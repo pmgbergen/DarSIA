@@ -68,14 +68,14 @@ class TranslationAnalysis:
 
         # Update parameters if needed
         if need_update_N_patches:
-            self.N_patches = cast(list[int],N_patches)
+            self.N_patches = cast(list[int], N_patches)
 
         if need_update_rel_overlap:
-            self.rel_overlap = cast(float,rel_overlap)
+            self.rel_overlap = cast(float, rel_overlap)
 
         # Update the patches of the base image accordingly.
         if need_update_N_patches or need_update_rel_overlap:
-            self.update_base()
+            self.update_base_patches()
 
     def update_base(self, base: daria.Image) -> None:
         """Update baseline image.
@@ -84,7 +84,10 @@ class TranslationAnalysis:
             base (daria.Image): baseline image
         """
         self.base = base
+        self.update_base_patches()
 
+    def update_base_patches(self) -> None:
+        """Update patches of baseline."""
         # Create new patches of the base image.
         self.patches_base = daria.Patches(
             self.base, *self.N_patches, rel_overlap=self.rel_overlap
