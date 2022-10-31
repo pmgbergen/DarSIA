@@ -43,6 +43,7 @@ class Image:
             origo (np.ndarray): physical coordinates of the lower left corner, i.e.,
                 of the (img.shape[0],0) pixel
             color_space (str): Color space (RGB/BGR/RED/GREEN/BLUE/GRAY)
+            timestamp (datetime.datetime): timestamp of the image in (default) datetime format.
         shape (np.ndarray): num_pixels, as well number of color channels (typically 3 for RGB)
         dx (float): pixel size in x-direction
         dy (float): pixel size in y-direction
@@ -55,7 +56,6 @@ class Image:
         drift_correction: Optional[da.DriftCorrection] = None,
         color_correction: Optional[da.ColorCorrection] = None,
         curvature_correction: Optional[da.CurvatureCorrection] = None,
-        get_timestamp: bool = False,
         **kwargs,
     ) -> None:
         """Constructor of Image object.
@@ -84,6 +84,8 @@ class Image:
                 height (float): physical height of the image
                 color_space (str): the color space of the image. So far only BGR
                     and RGB are "valid", but more should be added at a later time.
+                timestamp (datetime.datetime): timestamp of the image. If it is not
+                    provided, and available in the image file it will be read by pillow.
         """
 
         # Read metadata.
@@ -118,6 +120,7 @@ class Image:
 
             no_colorspace_given = "color_space" not in kwargs
             self.metadata["color_space"] = kwargs.pop("color_space", "BGR")
+            self.metadata["timestamp"] = kwargs.pop("timestamp", None)
 
         # Fetch image
         if isinstance(img, np.ndarray):
@@ -125,8 +128,6 @@ class Image:
 
             # Come up with default metadata
             self.name = "Unnamed image"
-            if "timestamp" not in self.metadata:
-                self.metadata["timestamp"] = None
 
             if no_colorspace_given:
                 warn("Please provide a color space. Now it is assumed to be BGR.")
@@ -139,17 +140,15 @@ class Image:
             self.metadata["color_space"] = "BGR"
             self.metadata["original_dtype"] = self.img.dtype
 
-            if get_timestamp:
+            if self.metadata["timestamp"] is None:
                 pil_img = PIL_Image.open(Path(img))
 
-                # Read exif metadata
+                # Read timestamp from exif metadata if existent
                 self.exif = pil_img.getexif()
                 if self.exif.get(306) is not None:
                     self.metadata["timestamp"] = datetime.strptime(
                         self.exif.get(306), "%Y:%m:%d %H:%M:%S"
                     )
-                else:
-                    self.metadata["timestamp"] = None
 
             self.imgpath = img
             self.name = img
@@ -194,6 +193,8 @@ class Image:
         # Establish a coordinate system based on the metadata
         self.coordinatesystem: da.CoordinateSystem = da.CoordinateSystem(self)
 
+    # ! ---- Fast-access getter functions for metadata
+
     @property
     def origo(self) -> list:
         return self.metadata["origo"]
@@ -217,6 +218,12 @@ class Image:
     @property
     def original_dtype(self) -> np.dtype:
         return self.metadata["original_dtype"]
+
+    # ! ---- Corresponding setter functions for metadata
+
+    @timestamp.setter
+    def timestamp(self, time: datetime.datetime) -> None:
+        self.metadata["timestamp"] = time
 
     def write(
         self,

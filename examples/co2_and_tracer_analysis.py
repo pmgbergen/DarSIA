@@ -3,6 +3,7 @@ Example script for simple image analysis. By comparison of images
 of the same well test, a tracer concentration can be determined.
 """
 
+import json
 import os
 
 import numpy as np
@@ -15,9 +16,9 @@ image_folder = f"{os.path.dirname(__file__)}/images/"
 # Define curvature correction object, initiated with config file
 # (which can be created the workflow presented in the Jupyter notebook
 # examples/notebooks/curvature_correction_walkthrough.ipynb).
-curvature_correction = daria.CurvatureCorrection(
-    config=image_folder + "config.json"
-)
+with open(image_folder + "config.json", "r") as openfile:
+    config = json.load(openfile)
+curvature_correction = daria.CurvatureCorrection(config=config["curvature"])
 
 # Define color correction object
 roi_cc = np.array(

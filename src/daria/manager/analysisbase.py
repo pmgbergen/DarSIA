@@ -50,11 +50,11 @@ class AnalysisBase:
 
         # Define correction objects
         self.drift_correction = daria.DriftCorrection(
-            base=reference_base, roi=self.config["drift"]["roi"]
+            base=reference_base, config=self.config["drift"]
         )
-        self.color_correction = daria.ColorCorrection(roi=self.config["color"]["roi"])
+        self.color_correction = daria.ColorCorrection(config=self.config["color"])
         self.curvature_correction = daria.CurvatureCorrection(
-            config=self.config["geometry"]
+            config=self.config["curvature"]
         )
 
         # Define baseline image as corrected daria Image
@@ -77,7 +77,6 @@ class AnalysisBase:
             drift_correction=self.drift_correction,
             curvature_correction=self.curvature_correction,
             color_correction=self.color_correction,
-            # get_timestamp=True,
         )
 
     def load_and_process_image(self, path: Union[str, Path]) -> None:
