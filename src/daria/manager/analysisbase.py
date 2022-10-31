@@ -54,7 +54,7 @@ class AnalysisBase:
         )
         self.color_correction = daria.ColorCorrection(roi=self.config["color"]["roi"])
         self.curvature_correction = daria.CurvatureCorrection(
-            config=self.config["geometry"]
+            config=self.config["curvature"]
         )
 
         # Define baseline image as corrected daria Image
