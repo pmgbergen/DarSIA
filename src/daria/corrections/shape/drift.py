@@ -68,9 +68,10 @@ class DriftCorrection:
             else:
                 self.config = copy.deepcopy(config)
         else:
-            self.config: dict = {}
+            self.config = {}
 
         # Cache ROI
+        self.roi = None
         if isinstance(roi, np.ndarray):
             self.roi = daria.bounding_box(roi)
             self.config["roi_drift_correction"] = roi.tolist()
@@ -103,8 +104,7 @@ class DriftCorrection:
                 padding=round(0.05 * self.base.shape[0]),
                 max_size=[self.base.shape[0], self.base.shape[1]],
             )
-        else:
-            self.roi = None
+            
 
         # Define a translation estimator
         self.translation_estimator = daria.TranslationEstimator()

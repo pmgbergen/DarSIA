@@ -59,7 +59,7 @@ def compare_segmentations(*segmentations, **kwargs) -> np.ndarray:
         colors = kwargs.pop("colors")
         colors_light: np.ndarray = np.trunc(light_scaling * colors)
         np.clip(colors_light, 0, 255, out=colors_light)
-        colors: np.ndarray = np.hstack((colors, colors_light))
+        colors = np.hstack((colors, colors_light))
 
     # Assert that there are a sufficient amount of colors
     # and that all of the segmentations are of equal size

@@ -104,7 +104,7 @@ class TranslationEstimator:
         roi_src: Optional[tuple] = None,
         roi_dst: Optional[tuple] = None,
         plot_matches: bool = False,
-    ) -> Optional[np.ndarray]:
+    ) -> np.ndarray:
         """
         Align two images, such that when restricted to an ROI, both images have matching
         features.
@@ -127,7 +127,7 @@ class TranslationEstimator:
                 img_src, img_dst, roi_src, roi_dst, plot_matches
             )
         elif isinstance(img_src, daria.Image) and isinstance(img_dst, daria.Image):
-            self._match_roi_images(img_src, img_dst, roi_src, roi_dst, plot_matches)
+            return self._match_roi_images(img_src, img_dst, roi_src, roi_dst, plot_matches)
         else:
             raise ValueError("Provide images either as numpy arrays or daria Images.")
 
@@ -138,7 +138,7 @@ class TranslationEstimator:
         roi_src: Optional[tuple],
         roi_dst: Optional[tuple],
         plot_matches: bool = False,
-    ) -> Optional[np.ndarray]:
+    ) -> np.ndarray:
         """
         Align two images, such that when restricted to an ROI, both images have matching
         features.
@@ -175,7 +175,7 @@ class TranslationEstimator:
         roi_src: Optional[tuple],
         roi_dst: Optional[tuple],
         plot_matches: bool = False,
-    ) -> Optional[daria.Image]:
+    ) -> np.ndarray:
         """
         Align two images, such that when restricted to an ROI, both images have matching
         features.
@@ -199,7 +199,8 @@ class TranslationEstimator:
 
         # Apply translation - Modify daria Image internally
         (h, w) = img_dst.img.shape[:2]
-        img_src.img = cv2.warpAffine(img_src.img, translation, (w, h))
+        aligned_img_src = cv2.warpAffine(img_src.img, translation, (w, h))
+        return aligned_img_src
 
     def _find_matching_transformation(
         self,
@@ -324,7 +325,7 @@ class TranslationEstimator:
         """
         return (
             transformation is not None
-            and np.isclose(transformation[:2, :2], np.eye(2), atol=self._tol).all()
+            and np.allclose(transformation[:2, :2], np.eye(2), atol=self._tol)
         )
 
     def _find_translation(self, matches: tuple) -> tuple:

@@ -10,7 +10,7 @@ to double-check the results of the any of the color correction
 routines by setting verbosity to True once.
 """
 
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
 import colour
 import cv2
@@ -155,8 +155,8 @@ class ExperimentalColorCorrection:
         colorchecker_image: np.ndarray = self._restrict_to_roi(decoded_image)
 
         # Retrieve swatch colors in transfered RGB format
-        swatches = detect_colour_checkers_segmentation(colorchecker_image)
-        if len(swatches) == 0:
+        swatches_tmp = detect_colour_checkers_segmentation(colorchecker_image)
+        if len(swatches_tmp) == 0:
             raise ValueError(
                 """Color checker not identified. Choose a better ROI.
                 Or in the worst case, provide pixels with reverse matrix indexing,
@@ -164,8 +164,8 @@ class ExperimentalColorCorrection:
                 starting in the left upper corner and continuing counter-clockwise."""
             )
         else:
-            assert len(swatches) == 1
-            swatches = swatches[0]
+            assert len(swatches_tmp) == 1
+            swatches: np.ndarray = cast(np.ndarray, swatches_tmp[0])
 
         if self.verbosity:
             swatches_img = swatches[:, np.newaxis, :].reshape((4, 6, 3), order="C")
@@ -188,9 +188,9 @@ class ExperimentalColorCorrection:
             corrected_colorchecker_image: np.ndarray = self._restrict_to_roi(
                 corrected_decoded_image
             )
-            swatches = detect_colour_checkers_segmentation(
+            swatches = cast(np.ndarray, detect_colour_checkers_segmentation(
                 corrected_colorchecker_image
-            )[0]
+            )[0])
             corrected_decoded_image *= (
                 self.colorchecker.reference_swatches[-4] / swatches[-4]
             )

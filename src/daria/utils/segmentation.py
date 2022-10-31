@@ -109,12 +109,21 @@ def segment(
     # ! ---- Determine edges
 
     if verbosity:
-        labeled_markers_large = cv2.resize(
-            labeled_markers,
-            tuple(reversed(img.shape[:2])),
-            interpolation=cv2.INTER_NEAREST,
-        )
-        img_copy = skimage.img_as_ubyte(img)
+        if isinstance(img, np.ndarray):
+            labeled_markers_large = cv2.resize(
+                labeled_markers,
+                tuple(reversed(img.shape[:2])),
+                interpolation=cv2.INTER_NEAREST,
+            )
+            img_copy = skimage.img_as_ubyte(img)
+
+        elif isinstance(img, daria.Image):
+            labeled_markers_large = cv2.resize(
+                labeled_markers,
+                tuple(reversed(img.img.shape[:2])),
+                interpolation=cv2.INTER_NEAREST,
+            )
+            img_copy = skimage.img_as_ubyte(img.img)
         img_copy[labeled_markers_large != 0] = [255, 255, 255]
         plt.figure("Original image with markers")
         plt.imshow(img_copy)
@@ -143,9 +152,14 @@ def segment(
     # ! ---- Postprocessing of the labels
 
     # Resize to oirginal size
-    labels = skimage.img_as_ubyte(
-        skimage.transform.resize(labels_rescaled, img.shape[:2])
-    )
+    if isinstance(img, np.ndarray):
+        labels = skimage.img_as_ubyte(
+            skimage.transform.resize(labels_rescaled, img.shape[:2])
+        )
+    elif isinstance(img, daria.Image):
+        labels = skimage.img_as_ubyte(
+            skimage.transform.resize(labels_rescaled, img.img.shape[:2])
+        )
 
     if verbosity:
         plt.figure("Segmentation after watershed algorithm")

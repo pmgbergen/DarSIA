@@ -127,7 +127,7 @@ class CurvatureCorrection:
             self._adapt_config()
 
         # Initialize cache for precomputed transformed coordinates
-        self.cache = {}
+        self.cache: dict = {}
 
         # Hardcode the interpolation order, used when mapping pixels to transformed
         # coordinates
@@ -666,7 +666,7 @@ class CurvatureCorrection:
 
     def _transform_coordinates(
         self, X: np.ndarray, Y: np.ndarray, **kwargs
-    ) -> tuple[np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Routine for applying stretch and bulge transformation of coordinates.
 
@@ -729,14 +729,14 @@ class CurvatureCorrection:
         return Xmod, Ymod
 
     def _transform_image(
-        self, img: np.ndarray, grid: tuple[np.ndarray], shape: tuple[int]
+        self, img: np.ndarray, grid: np.ndarray, shape: tuple[int, int]
     ) -> np.ndarray:
         """
         Routine to transform an image based on transformed coordinates.
 
         Args:
             img (np.ndarray): image array
-            grid (tuple of arrays): x and y components of the transformed coordinates
+            grid (np.ndarray): array of x and y components of the transformed coordinates
             shape (tuple): shape of the final image
 
         Returns:

@@ -7,7 +7,7 @@ provide the approach for how to set up tailored analysis classes.
 
 import json
 from pathlib import Path
-from typing import Union
+from typing import Union, cast
 
 import daria
 
@@ -44,8 +44,10 @@ class AnalysisBase:
         # Define set of baseline images and initiate object for caching
         # processed baseline images.
         if not isinstance(baseline, list):
-            baseline = [baseline]
-        reference_base = baseline[0]
+            reference_base = cast(Union[str,Path],baseline)
+        
+        else:
+            reference_base = cast(Union[str, Path], baseline[0])
         self.processed_baseline_images = None
 
         # Define correction objects

@@ -5,7 +5,7 @@ import numpy as np
 
 def bounding_box(
     coords: np.ndarray, padding: int = 0, max_size: Optional[list] = None
-) -> tuple:
+) -> tuple[slice, ...]:
     """
     Determine bounding box for a set of given coordinates.
 
@@ -21,7 +21,7 @@ def bounding_box(
         tuple of slices: slices with ranges from min to max value
             per dimension.
     """
-    bounding_box = ()
+    bounding_box: tuple[slice, ...] = ()
 
     for dim in range(coords.shape[1]):
         # Padding is added to the bounding box while making sure that it never extends out
