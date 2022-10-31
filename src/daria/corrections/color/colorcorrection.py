@@ -89,7 +89,8 @@ class ColorCorrection:
                 used instead of roi, but roi is always prefered if it is present.
             roi (tuple of slices, np.ndarray, or None): ROI containing a colour checker,
                 provided either as intervals, corner points, or nothing. The recommended
-                choice is to provide an array of coordinates.
+                choice is to provide an array of coordinates. Can also be provided as
+                part of config; roi in config is prioritized.
             verbosity (bool): flag controlling whether extracted ROIs of the colorchecker
                 as well as the extracted swatch colors are displayed. Useful for debugging.
             whitebalancing (bool): apply white balancing based on the third bottom left swatch
@@ -106,7 +107,9 @@ class ColorCorrection:
             self.config: dict = {}
 
         # Define ROI
-        if isinstance(roi, np.ndarray):
+        if "roi" in self.config:
+            self.roi = np.array(self.config["roi"])
+        elif isinstance(roi, np.ndarray):
             self.roi = roi
             self.config["roi"] = self.roi.tolist()
         elif isinstance(roi, list):
@@ -119,8 +122,6 @@ class ColorCorrection:
             )
             self.roi = roi
 
-        elif "roi" in self.config:
-            self.roi = np.array(self.config["roi"])
         else:
             self.roi = None
 

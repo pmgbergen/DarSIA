@@ -23,19 +23,21 @@ class DriftCorrection:
     def __init__(
         self,
         base: Union[str, Path, np.ndarray, daria.Image],
-        roi: Optional[Union[np.ndarray, tuple, list]] = None,
         config: Optional[dict] = None,
+        roi: Optional[Union[np.ndarray, tuple, list]] = None,
     ) -> None:
         """
         Constructor for DriftCorrection.
 
         Args:
             base (str, Path, or array): path to baseline array, or array.
+            config (dict, str, Path): config file for initialization of
+                images.
             roi (2-tuple of slices or array): region of interest defining
                 the considered area for detecting features and aligning
                 images. Either as tuple of ranges, or array of points.
-            config (dict, str, Path): config file for initialization of
-                images. Can replace roi.
+                Can also be provided in config; roi in config is
+                prioritized.
         """
 
         # Read baseline image
@@ -56,7 +58,9 @@ class DriftCorrection:
             self.config: dict = {}
 
         # Cache ROI
-        if isinstance(roi, np.ndarray):
+        if "roi" in self.config:
+            self.roi = daria.bounding_box(np.array(self.config["roi"]))
+        elif isinstance(roi, np.ndarray):
             self.roi = daria.bounding_box(roi)
             self.config["roi"] = roi.tolist()
         elif isinstance(roi, list):
@@ -73,8 +77,6 @@ class DriftCorrection:
         elif isinstance(roi, tuple):
             self.roi = roi
             self.config["roi"] = daria.bounding_box_inverse(roi).tolist()
-        elif "roi" in self.config:
-            self.roi = daria.bounding_box(np.array(self.config["roi"]))
         else:
             self.roi = None
 
