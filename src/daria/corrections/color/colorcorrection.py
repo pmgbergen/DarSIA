@@ -76,7 +76,7 @@ class ColorCorrection:
 
     def __init__(
         self,
-        config: Optional[Union[dict, str, Path]] = None,
+        config: Optional[dict] = None,
         roi: Optional[Union[tuple, np.ndarray, list]] = None,
         verbosity: bool = False,
         whitebalancing: bool = True,
@@ -89,7 +89,8 @@ class ColorCorrection:
                 used instead of roi, but roi is always prefered if it is present.
             roi (tuple of slices, np.ndarray, or None): ROI containing a colour checker,
                 provided either as intervals, corner points, or nothing. The recommended
-                choice is to provide an array of coordinates.
+                choice is to provide an array of coordinates. Can also be provided as
+                part of config; roi in config is prioritized.
             verbosity (bool): flag controlling whether extracted ROIs of the colorchecker
                 as well as the extracted swatch colors are displayed. Useful for debugging.
             whitebalancing (bool): apply white balancing based on the third bottom left swatch
@@ -101,42 +102,26 @@ class ColorCorrection:
 
         # Define config
         if config is not None:
-            if isinstance(config, str):
-                with open(Path(config), "r") as openfile:
-                    tmp_config = json.load(openfile)
-                if "color_correction" in tmp_config:
-                    self.config = tmp_config["color_correction"]
-                else:
-                    self.config = tmp_config
-            elif isinstance(config, Path):
-                with open(config, "r") as openfile:
-                    tmp_config = json.load(openfile)
-                if "color_correction" in tmp_config:
-                    self.config = tmp_config["color_correction"]
-                else:
-                    self.config = tmp_config
-            else:
-                self.config = copy.deepcopy(config)
+            self.config = copy.deepcopy(config)
         else:
             self.config = {}
 
         # Define ROI
         self.roi: Optional[Union[tuple, np.ndarray]] = None
-        if isinstance(roi, np.ndarray):
+        if "roi" in self.config:
+            self.roi = np.array(self.config["roi"])
+        elif isinstance(roi, np.ndarray):
             self.roi = roi
-            self.config["roi_color_correction"] = self.roi.tolist()
+            self.config["roi"] = self.roi.tolist()
         elif isinstance(roi, list):
             self.roi = np.array(roi)
-            self.config["roi_color_correction"] = roi
+            self.config["roi"] = roi
         elif isinstance(roi, tuple):
             warn(
                 "An array of corner points are prefered.\
                 The tuple will not be stored in the config file."
             )
             self.roi = roi
-
-        elif "roi_color_correction" in self.config:
-            self.roi = np.array(self.config["roi_color_correction"])
 
         # Store flags
         self.verbosity = verbosity
