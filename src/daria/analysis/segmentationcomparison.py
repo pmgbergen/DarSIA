@@ -83,9 +83,7 @@ class SegmentationComparison:
         # Define gray colors
         self.gray_colors: np.ndarray = kwargs.pop(
             "gray_colors",
-            np.array(
-                [[90, 90, 90], [150, 150, 150], [200, 200, 200]], dtype=np.uint8
-            ),
+            np.array([[90, 90, 90], [150, 150, 150], [200, 200, 200]], dtype=np.uint8),
         )
 
         # Define unique colors
@@ -210,7 +208,7 @@ class SegmentationComparison:
                             segmentation_arrays[i][roi] == c,
                         )
                     ] = self.gray_colors[c_num]
-        
+
         # Overlap of different components. Note that it also writes wherever
         # segmentation_arrays[i][roi] is a non active component, but that case
         # should be overwritten when checking for unique apperances.
