@@ -37,7 +37,6 @@ class SegmentationComparison:
             be visual in legends.
         gray_colors (np.ndarray): array of base gray colors (in RGB space) that accounts
             for different overlapping segmentations of different components.
-        gray_base (np.ndarray): the gray values if only two segmentations overlap.
         colors (np.ndarray): color values for the different unique segmentations.
             Default is created from a colormap (matplotlib) depending on the amount of
             present segmentations.
@@ -85,13 +84,9 @@ class SegmentationComparison:
         self.gray_colors: np.ndarray = kwargs.pop(
             "gray_colors",
             np.array(
-                [[180, 180, 180], [220, 220, 220], [200, 200, 200]], dtype=np.uint8
+                [[90, 90, 90], [150, 150, 150], [200, 200, 200]], dtype=np.uint8
             ),
         )
-
-        self.gray_base: np.ndarray = np.fix(
-            self.gray_colors / self.number_of_segmented_images
-        ).astype(np.uint8)
 
         # Define unique colors
         self.light_scaling: float = kwargs.pop("light_scaling", 1.5)
@@ -135,17 +130,15 @@ class SegmentationComparison:
 
         # Adding information regarding gray colors and overlapping components of
         # different segmentations.
-        for i in range(self.number_of_segmented_images - 1):
-            self.color_dictionary[
-                f"{i+2} segmentations overlaps in {self.component_names[0]}"
-            ] = self.gray_base[0] * (i + 1)
-            self.color_dictionary[
-                f"{i+2} segmentations overlaps in {self.component_names[1]}"
-            ] = self.gray_base[1] * (i + 1)
-            self.color_dictionary[
-                f"Mixture {self.component_names[0]} and "
-                f"{self.component_names[1]} for {i+2} segmentations"
-            ] = self.gray_base[2] * (i + 1)
+        self.color_dictionary[
+            f"Overlapping segmentations in {self.component_names[0]}"
+        ] = self.gray_colors[0]
+        self.color_dictionary[
+            f"Overlapping segmentations in {self.component_names[1]}"
+        ] = self.gray_colors[1]
+        self.color_dictionary[
+            f"Segmentations overlap with different components."
+        ] = self.gray_colors[2]
 
     def __call__(
         self,
@@ -216,16 +209,19 @@ class SegmentationComparison:
                             segmentation_arrays[k][roi] == c,
                             segmentation_arrays[i][roi] == c,
                         )
-                    ] += self.gray_base[c_num]
-                # Overlap of different components. Note that it also writes wherever
-                # segmentation_arrays[i][roi] is a non active component, but that case
-                # should be overwritten when checking for unique apperances.
+                    ] = self.gray_colors[c_num]
+        
+        # Overlap of different components. Note that it also writes wherever
+        # segmentation_arrays[i][roi] is a non active component, but that case
+        # should be overwritten when checking for unique apperances.
+        for k in range(self.number_of_segmented_images):
+            for i in range(k + 1, self.number_of_segmented_images):
                 return_image[
                     np.logical_and(
                         np.isin(segmentation_arrays[k][roi], self.components),
                         segmentation_arrays[k][roi] != segmentation_arrays[i][roi],
                     )
-                ] += self.gray_base[2]
+                ] = self.gray_colors[2]
 
         # Determine locations (and make modifications to return image) of unique components
         for c_num, c in enumerate(self.components):
@@ -434,7 +430,7 @@ class SegmentationComparison:
             comparison_image,
             unique_colors=unique_colors,
             opacity=opacity,
-            contour_thickness=15,
+            contour_thickness=10,
         )
 
         # Create figure with legend
