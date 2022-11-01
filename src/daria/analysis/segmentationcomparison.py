@@ -194,7 +194,7 @@ class SegmentationComparison:
         else:
             raise Exception(
                 "Segmentation types are not allowed. They should"
-                "all be the same, and either arrays, og daria images."
+                "all be the same, and either arrays, or daria images."
             )
 
         # Enter gray everywhere there are ovelaps of different segmentations
