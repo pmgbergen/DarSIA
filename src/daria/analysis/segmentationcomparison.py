@@ -1,6 +1,14 @@
+"""
+Class for comparing segmented images.
+
+The object contain information about the different segmentations
+as well as methods for comparing them and visualizing the result.
+
+"""
+
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, cast
 
 import cv2
 import matplotlib.patches as mpatches
@@ -12,7 +20,7 @@ from matplotlib.cm import get_cmap
 import daria as da
 
 
-class CompareSegmentations:
+class SegmentationComparison:
     """
     Class for comparing segmented images.
 
@@ -25,8 +33,6 @@ class CompareSegmentations:
         components (list): list of values the different (active) components in the
             segmentations. As of now, up to two are allowed for and the default values
             are 1 and 2.
-        non_active_component (int): value for the nonactive component in the
-            segmentations. Default it 0.
         component_names (list[str]): list of names for each of the components. Will
             be visual in legends.
         gray_colors (np.ndarray): array of base gray colors (in RGB space) that accounts
@@ -54,8 +60,6 @@ class CompareSegmentations:
                     to be provided.
                 component_names (list):  list of names for the different components.
                     So far only used in legends, and color dictionary.
-                non_active_component (int): value of nonactive component in the segmented
-                    images.
                 gray_colors (np.ndarray): array of three different scales of
                     gray (in RGB format), one for each of the different combinations of
                     components in the segmentations.
@@ -73,7 +77,6 @@ class CompareSegmentations:
 
         # Define components
         self.components: list = kwargs.pop("components", [1, 2])
-        self.non_active_component: int = kwargs.pop("non_active_component", 0)
         self.component_names: list = kwargs.pop(
             "component_names", ["Component 0", "Component 1"]
         )
@@ -109,7 +112,7 @@ class CompareSegmentations:
             colors_pre = kwargs.pop("colors")
             colors_light: np.ndarray = np.trunc(self.light_scaling * colors_pre)
             np.clip(colors_light, 0, 255, out=colors_light)
-            self.colors: np.ndarray = np.hstack((colors_pre, colors_light))
+            self.colors = np.hstack((colors_pre, colors_light))
 
         # Assert that there are a sufficient amount of colors
         # and that all of the segmentations are of equal size
@@ -117,6 +120,9 @@ class CompareSegmentations:
 
         # Create dictionary with colors and associated situations. Used for legends.
         self.color_dictionary: dict = {}
+
+        # Adding information about colors that represent unique apperances for each
+        # segmented image and each component
         for i in range(self.number_of_segmented_images):
             self.color_dictionary[
                 f"Unique apperance of {self.component_names[0]}"
@@ -127,6 +133,8 @@ class CompareSegmentations:
                 f" in {self.segmentation_names[i]}"
             ] = self.colors[i, 1]
 
+        # Adding information regarding gray colors and overlapping components of
+        # different segmentations.
         for i in range(self.number_of_segmented_images - 1):
             self.color_dictionary[
                 f"{i+2} segmentations overlaps in {self.component_names[0]}"
@@ -154,9 +162,10 @@ class CompareSegmentations:
             Optional keyword arguments (kwargs):
                 plot_result (bool): plots the result with matplotlib if True,
                     default is False.
-                roi (tuple): roi where the segmentations should be compared,
-                    if default the maximal roi that fits in all segmentations
-                    is chosen.
+                roi (Union[tuple, np.ndarray]): roi where the segmentations should be
+                    compared, default is the maximal roi that fits in all segmentations.
+                    Should be provided in pixel coordinates using matrix indexing, either
+                    as a tuple of slices, or an array of corner points.
 
         """
 
@@ -165,105 +174,73 @@ class CompareSegmentations:
 
         if "roi" in kwargs:
             roi = kwargs["roi"]
+            if isinstance(roi, np.ndarray):
+                roi_tmp = da.bounding_box(roi)
+            elif isinstance(roi, tuple):
+                roi_tmp = roi
             return_image: np.ndarray = np.zeros(
-                (roi[0].stop - roi[0].start, roi[1].stop - roi[1].start) + (3,),
+                (roi_tmp[0].stop - roi_tmp[0].start, roi_tmp[1].stop - roi_tmp[1].start)
+                + (3,),
                 dtype=np.uint8,
             )
 
         else:
             if isinstance(segmentations[0], np.ndarray):
-                nx = min([seg.shape[0] for seg in segmentations])
-                ny = min([seg.shape[1] for seg in segmentations])
+                rows = min([cast(np.ndarray, seg).shape[0] for seg in segmentations])
+                cols = min([cast(np.ndarray, seg).shape[1] for seg in segmentations])
             elif isinstance(segmentations[0], da.Image):
-                nx = min([seg.img.shape[0] for seg in segmentations])
-                ny = min([seg.img.shape[1] for seg in segmentations])
-            roi = (slice(0, nx), slice(0, ny))
-            return_image: np.ndarray = np.zeros((nx, ny) + (3,), dtype=np.uint8)
+                rows = min([cast(da.Image, seg).img.shape[0] for seg in segmentations])
+                cols = min([cast(da.Image, seg).img.shape[1] for seg in segmentations])
+            roi = (slice(0, rows), slice(0, cols))
+            return_image = np.zeros((rows, cols) + (3,), dtype=np.uint8)
+
+        # Determine whether segmentations are arrays of daria images.
+        # They should all be the same.
+        if all([isinstance(seg, np.ndarray) for seg in segmentations]):
+            segmentation_arrays: tuple[np.ndarray, ...] = segmentations
+        elif all([isinstance(seg, da.Image) for seg in segmentations]):
+            segmentation_arrays = tuple([seg.img for seg in segmentations])
+        else:
+            raise Exception(
+                "Segmentation types are not allowed. They should"
+                "all be the same, and either arrays, og daria images."
+            )
 
         # Enter gray everywhere there are ovelaps of different segmentations
-
-        if isinstance(segmentations[0], np.ndarray):
-            for k in range(self.number_of_segmented_images):
-                for i in range(k + 1, self.number_of_segmented_images):
-
-                    # Overlap of components
-                    for c_num, c in enumerate(self.components):
-                        return_image[
-                            np.logical_and(
-                                segmentations[k][roi] == c,
-                                segmentations[i][roi] == c,
-                            )
-                        ] += self.gray_base[c_num]
-
-                    # Overlap of different components
+        for k in range(self.number_of_segmented_images):
+            for i in range(k + 1, self.number_of_segmented_images):
+                # Overlap of components
+                for c_num, c in enumerate(self.components):
                     return_image[
-                        np.logical_or(
-                            np.logical_and(
-                                segmentations[k][roi] == self.components[0],
-                                segmentations[i][roi] == self.components[1],
-                            ),
-                            np.logical_and(
-                                segmentations[k][roi] == self.components[1],
-                                segmentations[i][roi] == self.components[0],
-                            ),
+                        np.logical_and(
+                            segmentation_arrays[k][roi] == c,
+                            segmentation_arrays[i][roi] == c,
                         )
-                    ] += self.gray_base[2]
+                    ] += self.gray_base[c_num]
+                # Overlap of different components. Note that it also writes wherever
+                # segmentation_arrays[i][roi] is a non active component, but that case
+                # should be overwritten when checking for unique apperances.
+                return_image[
+                    np.logical_and(
+                        np.isin(segmentation_arrays[k][roi], self.components),
+                        segmentation_arrays[k][roi] != segmentation_arrays[i][roi],
+                    )
+                ] += self.gray_base[2]
 
-            # Determine locations (and make modifications to return image) of unique components
-            for c_num, c in enumerate(self.components):
-                for k in range(self.number_of_segmented_images):
-                    only_tmp: np.ndarray = segmentations[k][roi] == c
-                    for j in filter(
-                        lambda j: j != k, range(self.number_of_segmented_images)
-                    ):
-                        only_tmp = np.logical_and(
-                            only_tmp, segmentations[j][roi] == self.non_active_component
-                        )
-
-                    return_image[only_tmp] = self.colors[k, c_num]
-
-        elif isinstance(segmentations[0], da.Image):
+        # Determine locations (and make modifications to return image) of unique components
+        for c_num, c in enumerate(self.components):
             for k in range(self.number_of_segmented_images):
-                for i in range(k + 1, self.number_of_segmented_images):
-
-                    # Overlap of components
-                    for c_num, c in enumerate(self.components):
-                        return_image[
-                            np.logical_and(
-                                segmentations.img[k][roi] == c,
-                                segmentations.img[i][roi] == c,
-                            )
-                        ] += self.gray_base[c_num]
-
-                    # Overlap of different components
-                    return_image[
-                        np.logical_or(
-                            np.logical_and(
-                                segmentations.img[k][roi] == self.components[0],
-                                segmentations.img[i][roi] == self.components[1],
-                            ),
-                            np.logical_and(
-                                segmentations.img[k][roi] == self.components[1],
-                                segmentations.img[i][roi] == self.components[0],
-                            ),
-                        )
-                    ] += self.gray_base[2]
-
-            # Determine locations (and make modifications to return image) of unique components
-            for c_num, c in enumerate(self.components):
-                for k in range(self.number_of_segmented_images):
-                    only_tmp: np.ndarray = segmentations.img[k][roi] == c
-                    for j in filter(
-                        lambda j: j != k, range(self.number_of_segmented_images)
-                    ):
-                        only_tmp = np.logical_and(
-                            only_tmp,
-                            segmentations.img[j][roi] == self.non_active_component,
-                        )
-
-                    return_image[only_tmp] = self.colors[k, c_num]
-        else:
-            raise Exception("Segmentation type not supported")
+                unique_apperance: np.ndarray = segmentation_arrays[k][roi] == c
+                for j in filter(
+                    lambda j: j != k, range(self.number_of_segmented_images)
+                ):
+                    unique_apperance = np.logical_and(
+                        unique_apperance,
+                        np.logical_not(
+                            np.isin(segmentation_arrays[j][roi], self.components)
+                        ),
+                    )
+                return_image[unique_apperance] = self.colors[k, c_num]
 
         if plot_result:
             self.plot(return_image, "Comparison")
@@ -370,11 +347,11 @@ class CompareSegmentations:
         image: np.ndarray,
         unique_colors: Optional[np.ndarray] = None,
         opacity: float = 1.0,
-        countor_thickness: int = 10,
+        contour_thickness: int = 10,
     ) -> np.ndarray:
         """
         Routine for post processing the image, removing background,
-        drawing countors and applying opacity.
+        drawing contours and applying opacity.
 
         Args:
             image (np.ndarray): image array with comparison of segmentations.
@@ -382,11 +359,11 @@ class CompareSegmentations:
                 in image. If it is not provided it will find them
                 (but this takes some extra seconds).
             opacity (float): opacity value for the colors in the image.
-            countor_thickness (int): thickness of the countors in the
+            contour_thickness (int): thickness of the contours in the
                 return image.
 
         Returns:
-            processed image with drawn countors, opacity in the interior
+            processed image with drawn contours, opacity in the interior
             of the distinct colors, and a removed background.
         """
 
@@ -405,7 +382,7 @@ class CompareSegmentations:
         rgba = [b, g, r, alpha]
         im_new = cv2.merge(rgba, 4)
 
-        # Go over all distinct colors in the image and draw countors
+        # Go over all distinct colors in the image and draw contours
         if unique_colors is None:
             colors = self._get_unique_colors(image)
             colors = self._sort_colors(colors)
@@ -417,14 +394,14 @@ class CompareSegmentations:
             region_gray = cv2.cvtColor(
                 skimage.img_as_ubyte(colored_region), cv2.COLOR_BGR2GRAY
             )
-            countors, _ = cv2.findContours(
+            contours, _ = cv2.findContours(
                 region_gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
             )
             cl = c.tolist()
             cl.append(255)
             ct = tuple(cl)
             im_new = cv2.drawContours(
-                im_new, countors, -1, ct, thickness=countor_thickness
+                im_new, contours, -1, ct, thickness=contour_thickness
             )
         return im_new
 
@@ -434,7 +411,7 @@ class CompareSegmentations:
         base_image: np.ndarray,
         figure_name: str = "Comparison",
         opacity: float = 0.6,
-        legend_anchor: tuple[float] = (1.0, 1.0),
+        legend_anchor: tuple[float, float] = (1.0, 1.0),
     ) -> None:
         """
         Plots a comparison image overlayed a base image using matplotlib.
@@ -457,7 +434,7 @@ class CompareSegmentations:
             comparison_image,
             unique_colors=unique_colors,
             opacity=opacity,
-            countor_thickness=15,
+            contour_thickness=15,
         )
 
         # Create figure with legend
