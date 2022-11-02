@@ -163,25 +163,28 @@ class SegmentationComparison:
         # Define number of segmentations
         assert self.number_of_segmented_images == len(segmentations)
 
+        # Checks whether roi is provided and if it is as a tuple (of slices)
+        # or an array of corner points
         if "roi" in kwargs:
-            roi = kwargs["roi"]
-            if isinstance(roi, np.ndarray):
-                roi_tmp = da.bounding_box(roi)
-            elif isinstance(roi, tuple):
-                roi_tmp = roi
+            roi_input = kwargs["roi"]
+            if isinstance(roi_input, np.ndarray):
+                roi: tuple = da.bounding_box(roi_input)
+            elif isinstance(roi_input, tuple):
+                roi = roi_input
             return_image: np.ndarray = np.zeros(
-                (roi_tmp[0].stop - roi_tmp[0].start, roi_tmp[1].stop - roi_tmp[1].start)
+                (roi[0].stop - roi[0].start, roi[1].stop - roi[1].start)
                 + (3,),
                 dtype=np.uint8,
             )
 
+        # If roi is not provided the largest roi that fits all segmentations are chosen.
         else:
-            if isinstance(segmentations[0], np.ndarray):
-                rows = min([cast(np.ndarray, seg).shape[0] for seg in segmentations])
-                cols = min([cast(np.ndarray, seg).shape[1] for seg in segmentations])
-            elif isinstance(segmentations[0], da.Image):
-                rows = min([cast(da.Image, seg).img.shape[0] for seg in segmentations])
-                cols = min([cast(da.Image, seg).img.shape[1] for seg in segmentations])
+            if all([isinstance(seg, np.ndarray) for seg in segmentations]):
+                rows = min([seg.shape[0] for seg in segmentations])
+                cols = min([seg.shape[1] for seg in segmentations])
+            elif all([isinstance(seg, da.Image) for seg in segmentations]):
+                rows = min([seg.img.shape[0] for seg in segmentations])
+                cols = min([seg.img.shape[1] for seg in segmentations])
             roi = (slice(0, rows), slice(0, cols))
             return_image = np.zeros((rows, cols) + (3,), dtype=np.uint8)
 
