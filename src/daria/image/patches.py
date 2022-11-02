@@ -1,5 +1,4 @@
 from math import ceil, sqrt
-
 from typing import cast
 
 import numpy as np
@@ -66,24 +65,24 @@ class Patches:
         patch_width_metric = self.base.width / self.num_patches_x
         patch_height_metric = self.base.height / self.num_patches_y
         # ... and in numbers of pixles
-        patch_width_pixels = cast(int,self.base.coordinatesystem.lengthToPixels(
-            patch_width_metric, "x"
-        ))
-        patch_height_pixels = cast(int, self.base.coordinatesystem.lengthToPixels(
-            patch_height_metric, "y"
-        ))
+        patch_width_pixels = cast(
+            int, self.base.coordinatesystem.lengthToPixels(patch_width_metric, "x")
+        )
+        patch_height_pixels = cast(
+            int, self.base.coordinatesystem.lengthToPixels(patch_height_metric, "y")
+        )
 
         # Determine the overal in metric lengths
         overlap_width_metric = self.relative_overlap * patch_width_metric
         overlap_height_metric = self.relative_overlap * patch_height_metric
 
         # Convert the overlap from metric to numbers of pixels
-        overlap_width_pixels = cast(int, self.base.coordinatesystem.lengthToPixels(
-            overlap_width_metric, "x"
-        ))
-        overlap_height_pixels = cast(int,self.base.coordinatesystem.lengthToPixels(
-            overlap_height_metric, "y"
-        ))
+        overlap_width_pixels = cast(
+            int, self.base.coordinatesystem.lengthToPixels(overlap_width_metric, "x")
+        )
+        overlap_height_pixels = cast(
+            int, self.base.coordinatesystem.lengthToPixels(overlap_height_metric, "y")
+        )
 
         # Some abbreviation for better overview
         nh = self.base.num_pixels_height

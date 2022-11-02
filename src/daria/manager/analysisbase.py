@@ -44,8 +44,8 @@ class AnalysisBase:
         # Define set of baseline images and initiate object for caching
         # processed baseline images.
         if not isinstance(baseline, list):
-            reference_base = cast(Union[str,Path],baseline)
-        
+            reference_base = cast(Union[str, Path], baseline)
+
         else:
             reference_base = cast(Union[str, Path], baseline[0])
         self.processed_baseline_images = None

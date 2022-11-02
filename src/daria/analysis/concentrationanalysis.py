@@ -6,7 +6,7 @@ analyze concentrations/saturation profiles based on image comparison.
 import copy
 import json
 from pathlib import Path
-from typing import Optional, Union, Callable, cast
+from typing import Callable, Optional, Union, cast
 
 import cv2
 import matplotlib.pyplot as plt
@@ -57,9 +57,7 @@ class ConcentrationAnalysis:
         # define a cleaning filter.
         self.scaling: float = 1.0
         self.offset: float = 0.0
-        self.threshold: np.ndarray = np.zeros(
-            self.base.img.shape[:2], dtype=float
-        )
+        self.threshold: np.ndarray = np.zeros(self.base.img.shape[:2], dtype=float)
         if len(base) > 1:
             self.find_cleaning_filter(base)
 
@@ -423,11 +421,15 @@ class ConcentrationAnalysis:
                 volumes = cv2.resize(
                     ref_volumes, new_shape, interpolation=cv2.INTER_AREA
                 )
-                volumes *= np.sum(ref_volumes) / np.sum(cast(np.ndarray,volumes))
+                volumes *= np.sum(ref_volumes) / np.sum(cast(np.ndarray, volumes))
                 self._volumes_cache[shape] = volumes
 
         # Integral of locally weighted concentration values
-        return np.sum(np.multiply(np.squeeze(cast(np.ndarray, volumes)), np.squeeze(concentration.img)))
+        return np.sum(
+            np.multiply(
+                np.squeeze(cast(np.ndarray, volumes)), np.squeeze(concentration.img)
+            )
+        )
 
 
 class BinaryConcentrationAnalysis(ConcentrationAnalysis):

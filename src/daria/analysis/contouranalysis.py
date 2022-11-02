@@ -41,7 +41,9 @@ def contour_length(
             input image.
     """
     # Make copy of image and restrict to region of interest
-    img_roi = img.copy() if roi is None else cast(daria.Image,daria.extractROI(img, roi))
+    img_roi = (
+        img.copy() if roi is None else cast(daria.Image, daria.extractROI(img, roi))
+    )
 
     # Extract boolean mask covering pixels of interest.
     if img_roi.img.dtype == bool:
@@ -80,7 +82,9 @@ def contour_length(
         contour_length += props[counter].perimeter
 
     # Convert contour length from pixel units to metric units
-    metric_contour_length = cast(float, img_roi.coordinatesystem.pixelsToLength(contour_length))
+    metric_contour_length = cast(
+        float, img_roi.coordinatesystem.pixelsToLength(contour_length)
+    )
 
     # Plot masks and print contour length if requested.
     if verbosity:

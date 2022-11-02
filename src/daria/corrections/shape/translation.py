@@ -127,7 +127,9 @@ class TranslationEstimator:
                 img_src, img_dst, roi_src, roi_dst, plot_matches
             )
         elif isinstance(img_src, daria.Image) and isinstance(img_dst, daria.Image):
-            return self._match_roi_images(img_src, img_dst, roi_src, roi_dst, plot_matches)
+            return self._match_roi_images(
+                img_src, img_dst, roi_src, roi_dst, plot_matches
+            )
         else:
             raise ValueError("Provide images either as numpy arrays or daria Images.")
 
@@ -323,9 +325,8 @@ class TranslationEstimator:
         Returns:
             bool: flag whether transformation is close to a translation
         """
-        return (
-            transformation is not None
-            and np.allclose(transformation[:2, :2], np.eye(2), atol=self._tol)
+        return transformation is not None and np.allclose(
+            transformation[:2, :2], np.eye(2), atol=self._tol
         )
 
     def _find_translation(self, matches: tuple) -> tuple:

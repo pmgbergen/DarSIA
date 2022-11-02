@@ -114,9 +114,7 @@ class Image:
             else:
                 raise Exception("image height not specified")
 
-            self.metadata["origo"] = kwargs.pop(
-                "origo", np.array([0, 0])
-            )
+            self.metadata["origo"] = kwargs.pop("origo", np.array([0, 0]))
 
             no_colorspace_given = "color_space" not in kwargs
             self.metadata["color_space"] = kwargs.pop("color_space", "BGR")
@@ -226,7 +224,6 @@ class Image:
 
     # ! ---- Corresponding setter functions for metadata
 
-
     def write(
         self,
         path,
@@ -240,7 +237,7 @@ class Image:
             path (str): path to image, including image name and file format
         """
         # cv2 requires BGR format
-        write_image = cast(da.Image,self.toBGR(return_image=True)).img
+        write_image = cast(da.Image, self.toBGR(return_image=True)).img
 
         # Write image, using the conventional matrix indexing
         if self.original_dtype == np.uint8:

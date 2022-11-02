@@ -124,8 +124,12 @@ class CoordinateSystem:
         vertical_pixel_pos = 1 if reverse else 0
         horizontal_pixel_pos = 0 if reverse else 1
 
-        coordinate[:, 0] = x0 + cast(np.ndarray,pixel)[:, horizontal_pixel_pos] * self._dx
-        coordinate[:, 1] = y0 - cast(np.ndarray,pixel)[:, vertical_pixel_pos] * self._dy
+        coordinate[:, 0] = (
+            x0 + cast(np.ndarray, pixel)[:, horizontal_pixel_pos] * self._dx
+        )
+        coordinate[:, 1] = (
+            y0 - cast(np.ndarray, pixel)[:, vertical_pixel_pos] * self._dy
+        )
 
         # Return in same format as the input
         return coordinate.reshape(original_shape)
@@ -171,8 +175,12 @@ class CoordinateSystem:
         vertical_pixel_pos = 1 if reverse else 0
         horizontal_pixel_pos = 0 if reverse else 1
 
-        pixel[:, vertical_pixel_pos] = np.floor((y0 - cast(np.ndarray,coordinate)[:, 1]) / self._dy)
-        pixel[:, horizontal_pixel_pos] = np.floor((cast(np.ndarray,coordinate)[:, 0] - x0) / self._dx)
+        pixel[:, vertical_pixel_pos] = np.floor(
+            (y0 - cast(np.ndarray, coordinate)[:, 1]) / self._dy
+        )
+        pixel[:, horizontal_pixel_pos] = np.floor(
+            (cast(np.ndarray, coordinate)[:, 0] - x0) / self._dx
+        )
 
         # Return in same format as the input
         return pixel.reshape(original_shape).astype(int)

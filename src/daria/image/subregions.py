@@ -11,7 +11,7 @@ import daria
 
 def extractROI(
     img: daria.Image, pts: Union[np.ndarray, list], return_roi: bool = False
-) -> Union[daria.Image, tuple[daria.Image, tuple[slice,slice]]]:
+) -> Union[daria.Image, tuple[daria.Image, tuple[slice, slice]]]:
     """Extracts region of interest based on physical coordinates.
 
     Args:

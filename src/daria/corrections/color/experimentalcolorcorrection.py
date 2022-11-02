@@ -188,9 +188,10 @@ class ExperimentalColorCorrection:
             corrected_colorchecker_image: np.ndarray = self._restrict_to_roi(
                 corrected_decoded_image
             )
-            swatches = cast(np.ndarray, detect_colour_checkers_segmentation(
-                corrected_colorchecker_image
-            )[0])
+            swatches = cast(
+                np.ndarray,
+                detect_colour_checkers_segmentation(corrected_colorchecker_image)[0],
+            )
             corrected_decoded_image *= (
                 self.colorchecker.reference_swatches[-4] / swatches[-4]
             )

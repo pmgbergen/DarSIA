@@ -19,7 +19,7 @@ class ConcentrationAnalysisBase(daria.AnalysisBase):
         self,
         concentration_analysis: daria.ConcentrationAnalysis,
         cleaning_filter: Union[str, Path],
-        baseline_images:  Union[str, Path, list[str], list[Path]],
+        baseline_images: Union[str, Path, list[str], list[Path]],
         update: bool = False,
     ) -> None:
         """
@@ -43,9 +43,9 @@ class ConcentrationAnalysisBase(daria.AnalysisBase):
         else:
             # Process baseline images used for setting up the cleaning filter
             if self.processed_baseline_images is None:
-                self.processed_baseline_images: Union[str, Path, list[str], list[Path]] = [
-                    self._read(path) for path in baseline_images
-                ]
+                self.processed_baseline_images: Union[
+                    str, Path, list[str], list[Path]
+                ] = [self._read(path) for path in baseline_images]
 
             # Construct the concentration analysis specific cleaning filter
             concentration_analysis.find_cleaning_filter(self.processed_baseline_images)
