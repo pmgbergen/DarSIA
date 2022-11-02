@@ -167,10 +167,17 @@ class SegmentationComparison:
         # or an array of corner points
         if "roi" in kwargs:
             roi_input = kwargs["roi"]
-            if isinstance(roi_input, np.ndarray):
-                roi: tuple = da.bounding_box(roi_input)
-            elif isinstance(roi_input, tuple):
-                roi = roi_input
+            if isinstance(roi_input, tuple):
+                roi: tuple = roi_input
+            elif isinstance(roi_input, np.ndarray):
+                roi = da.bounding_box(roi_input)
+            elif isinstance(roi_input, list):
+                roi = da.bounding_box(np.array(roi_input))
+            else:
+                raise Exception(
+                    f"{type(roi_input)} is not a valid type for roi. Please provide it as"
+                    " a tuple of slices, or an array or list of corner points"
+                )
             return_image: np.ndarray = np.zeros(
                 (roi[0].stop - roi[0].start, roi[1].stop - roi[1].start) + (3,),
                 dtype=np.uint8,
