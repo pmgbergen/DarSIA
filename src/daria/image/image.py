@@ -138,6 +138,9 @@ class Image:
             self.metadata["color_space"] = "BGR"
             self.metadata["original_dtype"] = self.img.dtype
 
+            # Convert to RGB
+            self.toRGB()
+
             if self.metadata["timestamp"] is None:
                 pil_img = PIL_Image.open(Path(img))
 
@@ -155,9 +158,6 @@ class Image:
             raise Exception(
                 "Invalid image data. Provide either a path to an image or an image array."
             )
-
-        # Convert to RGB
-        self.toRGB()
 
         # Apply corrections
         if drift_correction is not None:
