@@ -8,7 +8,7 @@ as well as methods for comparing them and visualizing the result.
 
 from __future__ import annotations
 
-from typing import Optional, cast
+from typing import Optional
 
 import cv2
 import matplotlib.patches as mpatches
@@ -172,8 +172,7 @@ class SegmentationComparison:
             elif isinstance(roi_input, tuple):
                 roi = roi_input
             return_image: np.ndarray = np.zeros(
-                (roi[0].stop - roi[0].start, roi[1].stop - roi[1].start)
-                + (3,),
+                (roi[0].stop - roi[0].start, roi[1].stop - roi[1].start) + (3,),
                 dtype=np.uint8,
             )
 
