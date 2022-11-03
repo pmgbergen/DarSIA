@@ -220,8 +220,11 @@ class ConcentrationAnalysis:
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_clean_signal(clean_signal)
 
+        # Homogenize signal (take into account possible heterogeneous effects)
+        homogenized_signal = self._homogenize_signal(clean_signal)
+
         # Post-process the signal
-        processed_signal = self.postprocess_signal(clean_signal)
+        processed_signal = self.postprocess_signal(homogenized_signal)
 
         # Convert from signal to concentration
         concentration = self.convert_signal(processed_signal)
@@ -240,6 +243,15 @@ class ConcentrationAnalysis:
 
     def _inspect_clean_signal(self, img):
         pass
+
+    def _homogenize_signal(self, img: np.ndarray) -> np.ndarray:
+        """
+        Routine responsible for rescaling wrt segments.
+
+        Here, it is assumed that only one segment is present.
+        Thus, no rescaling is performed.
+        """
+        return img
 
     def _extract_scalar_information(self, img: daria.Image) -> None:
         """
