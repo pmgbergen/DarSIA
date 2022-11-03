@@ -64,7 +64,7 @@ def segment(
     if monochromatic == "gray":
         basis = cv2.cvtColor(basis, cv2.COLOR_RGB2GRAY)
     elif monochromatic == "value":
-        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+        hsv = cv2.cvtColor(basis, cv2.COLOR_RGB2HSV)
         basis = hsv[:, :, 2]
     else:
         raise ValueError(f"Monochromatic color space {monochromatic} not supported.")
