@@ -60,10 +60,13 @@ def segment(
         plt.figure("Grayscale input image")
         plt.imshow(basis)
 
+    # In order to surpress any warnings from skimage, reduce to ubyte data type
+    basis_ubyte = skimage.img_as_ubyte(basis)
+
     # Smooth the image to get rid of sand grains
     median_disk_radius = kwargs.pop("median disk radius", 20)
     denoised = skimage.filters.rank.median(
-        basis, skimage.morphology.disk(median_disk_radius)
+        basis_ubyte, skimage.morphology.disk(median_disk_radius)
     )
 
     if verbosity:
