@@ -1,6 +1,7 @@
 """
 Module containing auxiliary methods to extract ROIs from daria Images.
 """
+import warnings
 from typing import Union
 
 import cv2
@@ -38,9 +39,16 @@ def extractROI(
 
     # Define the ROI in terms of pixels, using matrix indexing, i.e., the (row,col) format
     roi = (
-        slice(top_left_pixel[0], bottom_right_pixel[0]),
-        slice(top_left_pixel[1], bottom_right_pixel[1]),
+        slice(max(0, top_left_pixel[0]), min(img.img.shape[0], bottom_right_pixel[0])),
+        slice(max(0, top_left_pixel[1]), min(img.img.shape[1], bottom_right_pixel[1])),
     )
+
+    if (
+        min(top_left_pixel[0], top_left_pixel[1]) < 0
+        or bottom_right_pixel[0] > img.img.shape[0]
+        or bottom_right_pixel[1] > img.img.shape[1]
+    ):
+        warnings.warn("Provided coordinates lie outside image.")
 
     # Define metadata (all quantities in metric units)
     origo = [np.min(pts[:, 0]), np.min(pts[:, 1])]
