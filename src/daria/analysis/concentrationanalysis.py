@@ -334,7 +334,7 @@ class ConcentrationAnalysis:
             self.threshold = np.zeros(self.base.img.shape[:2], dtype=float)
 
         # Combine the results of a series of images
-        for i, img in enumerate(baseline_images):
+        for img in baseline_images:
 
             probe_img = img.copy()
 
