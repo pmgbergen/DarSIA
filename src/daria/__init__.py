@@ -20,6 +20,7 @@ from daria.utils.conversions import *
 from daria.utils.resolution import *
 from daria.utils.box import *
 from daria.utils.segmentation import *
+from daria.utils.coloranalysis import *
 from daria.corrections.shape.curvature import *
 from daria.corrections.shape.translation import *
 from daria.corrections.shape.piecewiseperspective import *
