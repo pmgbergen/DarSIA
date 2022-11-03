@@ -50,7 +50,13 @@ class CompactionAnalysis:
         """
         self.translation_analysis.update_base(base)
 
-    def __call__(self, img: daria.Image, plot: bool = False, reverse: bool = False):
+    def __call__(
+        self,
+        img: daria.Image,
+        plot: bool = False,
+        reverse: bool = False,
+        return_patch_translation: bool = False,
+    ):
         """
         Determine the compaction patter and apply compaction to the image
         aiming at matching the baseline image.
@@ -64,10 +70,16 @@ class CompactionAnalysis:
             reverse (bool): flag whether the translation is understood as from the
                 test image to the baseline image, or reversed. The default is the
                 former one.
+            return_patch_translation (bool): flag controlling whether the deformation
+                in the patch centers is returned in the sense of dst to src image,
+                complying to the plot; default is False.
         """
         transformed_img = self.translation_analysis(img)
+        if return_patch_translation:
+            patch_translation = self.translation_analysis.return_patch_translation()
+            return transformed_img, patch_translation
         if plot:
-            self.translation_analysis.plot_translation(reverse)
+            self.translation_analysis.plot_translation()
         return transformed_img
 
     def evaluate(self, coords: np.ndarray, units: str = "metric") -> np.ndarray:
@@ -75,7 +87,8 @@ class CompactionAnalysis:
         Evaluate compaction in arbitrary points.
 
         Args:
-            coords (np.ndarray): coordinate array with shape num_pts x 2.
+            coords (np.ndarray): coordinate array with shape num_pts x 2, or alternatively
+                num_x_pts x num_y_pts x 2, identifying points in a mesh/patched image.
             units (str): input and output units; "metric" default; otherwise assumed
                 to be "pixel".
 
@@ -84,6 +97,11 @@ class CompactionAnalysis:
 
         """
         assert units in ["metric", "pixel"]
+        assert coords.shape[-1] == 2
+
+        # Reshape coords using a num_pts x 2 format.
+        coords_shape = coords.shape
+        coords = coords.reshape(-1, 2)
 
         # Convert coordinates to pixels with matrix indexing, if provided in metric units
         if units == "metric":
@@ -107,7 +125,8 @@ class CompactionAnalysis:
         if units == "metric":
             deformation = base.coordinatesystem.pixelToCoordinateVector(deformation)
 
-        return deformation
+        # Reshape to format used at input
+        return deformation.reshape(coords_shape)
 
     def apply(self, img: daria.Image) -> daria.Image:
         """
