@@ -333,23 +333,28 @@ class TranslationAnalysis:
 
         return horizontal_boundary, len(horizontal_boundary) * [0.0]
 
-    def plot_translation(
-        self,
-        reverse: bool = False,
-    ) -> None:
+    def return_patch_translation(
+        self, reverse: bool = False, units: str = "metric"
+    ) -> np.ndarray:
         """
-        Translate centers of the test image and plot in terms of displacement arrows.
+        Translate patch centers of the test image.
 
         Args:
             reverse (bool): flag whether the translation is understood as from the
                 test image to the baseline image, or reversed. The default is the
                 former one.
+            units (list of str): "metric" or "pixel"
+
+        Returns:
+            np.ndarray: deformation in patch centers
         """
         # Only continue if a translation has been already found
         assert self.have_translation.any()
 
         # Interpolate at patch centers (pixel coordinates with reverse matrix indexing)
-        patch_centers = self.patches_base.global_centers_reverse_matrix.reshape((-1, 2))
+        patch_centers = self.patches_base.global_centers_reverse_matrix
+        patch_centers_shape = patch_centers.shape
+        patch_centers = patch_centers.reshape((-1, 2))
         interpolated_patch_translation_x = self.interpolator_translation_x(
             patch_centers
         )
@@ -362,13 +367,44 @@ class TranslationAnalysis:
             interpolated_patch_translation_x *= -1.0
             interpolated_patch_translation_y *= -1.0
 
+        # Collect patch_translation using standard matrix indexing
+        patch_translation = np.vstack(
+            (interpolated_patch_translation_y, interpolated_patch_translation_x)
+        ).T
+
+        # Convert units if needed and provide in metric units
+        if units == "metric":
+            patch_translation = self.base.coordinatesystem.pixelToCoordinateVector(
+                patch_translation
+            )
+
+        # Return in patch format
+        return patch_translation.reshape(patch_centers_shape)
+
+    def plot_translation(
+        self,
+    ) -> None:
+        """
+        Translate centers of the test image and plot in terms of displacement arrows.
+        """
+        # Fetch the patch centers
+        patch_centers = self.patches_base.global_centers_reverse_matrix.reshape((-1, 2))
+
+        # Determine patch translation in matrix ordering (and with flipped y-direction
+        # to comply with the orientation of the y-axis in imaging.
+        patch_translation = self.return_patch_translation(
+            reverse=True, units="pixel"
+        ).reshape((-1, 2))
+        patch_translation_y = patch_translation[:, 0]
+        patch_translation_x = patch_translation[:, 1]
+
         # Plot the interpolated translation
         fig, ax = plt.subplots(1, num=1)
         ax.quiver(
             patch_centers[:, 0],
             patch_centers[:, 1],
-            interpolated_patch_translation_x,
-            interpolated_patch_translation_y,
+            patch_translation_x,
+            patch_translation_y,
             scale=2000,
             color="white",
         )
