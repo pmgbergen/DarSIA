@@ -200,11 +200,25 @@ class ConcentrationAnalysis:
         # Extract monochromatic version and take difference wrt the baseline image
         # If requested by the user, extract a monochromatic version before.
         self._extract_scalar_information(probe_img)
+
+        # Provide possibility for tuning and inspection of intermediate results
+        self._inspect_scalar(probe_img.img)
+
         diff = skimage.util.compare_images(probe_img.img, self.base.img, method="diff")
+
+        # Provide possibility for tuning and inspection of intermediate results
+        self._inspect_diff(diff)
+
         signal = self._extract_scalar_information_after(diff)
+
+        # Provide possibility for tuning and inspection of intermediate results
+        self._inspect_signal(signal)
 
         # Clean signal
         clean_signal = np.clip(signal - self.threshold, 0, None)
+
+        # Provide possibility for tuning and inspection of intermediate results
+        self._inspect_clean_signal(clean_signal)
 
         # Post-process the signal
         processed_signal = self.postprocess_signal(clean_signal)
@@ -215,6 +229,17 @@ class ConcentrationAnalysis:
         return daria.Image(concentration, img.metadata)
 
     # ! ---- Pre- and post-processing methods
+    def _inspect_scalar(self, img):
+        pass
+
+    def _inspect_diff(self, img):
+        pass
+
+    def _inspect_signal(self, img):
+        pass
+
+    def _inspect_clean_signal(self, img):
+        pass
 
     def _extract_scalar_information(self, img: daria.Image) -> None:
         """
