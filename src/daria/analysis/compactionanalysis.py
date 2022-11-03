@@ -53,8 +53,8 @@ class CompactionAnalysis:
     def __call__(
         self,
         img: daria.Image,
-        plot: bool = False,
         reverse: bool = False,
+        plot_patch_translation: bool = False,
         return_patch_translation: bool = False,
     ):
         """
@@ -65,22 +65,27 @@ class CompactionAnalysis:
 
         Args:
             img (daria.Image): test image
-            plot (bool): flag controlling whether the deformation is also
-                visualized as vector field.
             reverse (bool): flag whether the translation is understood as from the
                 test image to the baseline image, or reversed. The default is the
                 former one.
+            plot_patch_translation (bool): flag controlling whether the deformation is also
+                visualized as vector field.
             return_patch_translation (bool): flag controlling whether the deformation
                 in the patch centers is returned in the sense of dst to src image,
                 complying to the plot; default is False.
         """
         transformed_img = self.translation_analysis(img)
+
         if return_patch_translation:
             patch_translation = self.translation_analysis.return_patch_translation()
-            return transformed_img, patch_translation
-        if plot:
+
+        if plot_patch_translation:
             self.translation_analysis.plot_translation()
-        return transformed_img
+
+        if return_patch_translation:
+            return transformed_img, patch_translation
+        else:
+            return transformed_img
 
     def evaluate(self, coords: np.ndarray, units: str = "metric") -> np.ndarray:
         """
