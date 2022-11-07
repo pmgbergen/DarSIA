@@ -40,6 +40,8 @@ def segment(
                 the image using rank based median, before the analysis.
             "rescaling factor" (float): factor how the image is scaled before
                 the actual watershed segmentation.
+            "monochromatic_color" (str): "gray" or "value", identifying the
+                monochromatic color space to be used in the analysis; default is gray.
 
     Returns:
         np.ndarray or daria.Image: labeled regions in the same format as img.
@@ -47,23 +49,37 @@ def segment(
 
     # ! ---- Preprocessing of input image
 
-    # Require scalar representation - work with grayscale image. Alternatives exist,
-    # but with little difference.
+    # Extract numpy array from image
     if isinstance(img, np.ndarray):
-        basis: np.ndarray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        basis: np.ndarray = np.copy(img)
     elif isinstance(img, daria.Image):
-        basis = cv2.cvtColor(img.img, cv2.COLOR_RGB2GRAY)
+        basis = np.copy(img.img)
     else:
         raise ValueError(f"img of type {type(img)} not supported.")
 
+    # Require scalar representation - the most natural general choice is either to
+    # use a grayscale representation or the value component of the HSV version,
+    # when.
+    monochromatic = kwargs.pop("monochromatic_color", "gray")
+    if monochromatic == "gray":
+        basis = cv2.cvtColor(basis, cv2.COLOR_RGB2GRAY)
+    elif monochromatic == "value":
+        hsv = cv2.cvtColor(basis, cv2.COLOR_RGB2HSV)
+        basis = hsv[:, :, 2]
+    else:
+        raise ValueError(f"Monochromatic color space {monochromatic} not supported.")
+
     if verbosity:
-        plt.figure("Grayscale input image")
+        plt.figure("Monochromatic input image")
         plt.imshow(basis)
+
+    # In order to surpress any warnings from skimage, reduce to ubyte data type
+    basis_ubyte = skimage.img_as_ubyte(basis)
 
     # Smooth the image to get rid of sand grains
     median_disk_radius = kwargs.pop("median disk radius", 20)
     denoised = skimage.filters.rank.median(
-        basis, skimage.morphology.disk(median_disk_radius)
+        basis_ubyte, skimage.morphology.disk(median_disk_radius)
     )
 
     if verbosity:
