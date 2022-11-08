@@ -1,6 +1,6 @@
 """
 Segmentation is an important part of te image analysis of multi-layered media.
-This example showcases the workflow implemented in DarIA which is based on a
+This example showcases the workflow implemented in DarSIA which is based on a
 watershed segmentation approach.
 """
 
@@ -11,7 +11,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
-import daria
+import darsia
 
 # Define path to image folder
 path = Path(f"{os.path.dirname(__file__)}/images/baseline.jpg")
@@ -36,7 +36,7 @@ config = {
 # Determine labels. To better understand the choice of the tuning parameters (and in
 # practical situations for finding choices for these) set verboisty to True. Essentially
 # relevant quantities are plotted.
-labels = daria.segment(
+labels = darsia.segment(
     image,
     markers_method="gradient_based",
     edges_method="gradient_based",
@@ -91,7 +91,7 @@ config = {
     "mask scharr": mask,
 }
 
-labels_supervised = daria.segment(
+labels_supervised = darsia.segment(
     image, markers_method="supervised", edges_method="scharr", **config
 )
 

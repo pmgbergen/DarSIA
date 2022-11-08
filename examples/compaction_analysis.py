@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 
-import daria
+import darsia
 
 # ! ----- Preliminaries - prepare two images for compaction analysis
 
@@ -25,22 +25,22 @@ config = {
         "height": 1.5,
     }
 }
-curvature_correction = daria.CurvatureCorrection(config)
+curvature_correction = darsia.CurvatureCorrection(config)
 
 # Setup drift correction taking care of moving camera in between taking photos.
 # Use the color checker as reference in both images, and make the src image
 # the anker.
 roi_cc = (slice(0, 600), slice(0, 600))
-drift_correction = daria.DriftCorrection(base=path_src, roi=roi_cc)
+drift_correction = darsia.DriftCorrection(base=path_src, roi=roi_cc)
 
-# Create daria images with integrated cropping. Note: the drift correction
+# Create darsia images with integrated cropping. Note: the drift correction
 # applied to img_src is without effect.
-img_src = daria.Image(
+img_src = darsia.Image(
     img=path_src,
     drift_correction=drift_correction,
     curvature_correction=curvature_correction,
 )
-img_dst = daria.Image(
+img_dst = darsia.Image(
     img=path_dst,
     drift_correction=drift_correction,
     curvature_correction=curvature_correction,
@@ -48,8 +48,8 @@ img_dst = daria.Image(
 
 # Extract ROI to cut away the color palette. Use pixel ranges to crop the image.
 roi_crop = (slice(470, img_src.img.shape[0]), slice(60, 7940))
-da_img_src = daria.extractROIPixel(img_src, roi_crop)
-da_img_dst = daria.extractROIPixel(img_dst, roi_crop)
+da_img_src = darsia.extractROIPixel(img_src, roi_crop)
+da_img_dst = darsia.extractROIPixel(img_dst, roi_crop)
 
 # ! ----- Actual analysis: Determine the compaction between img_dst and aligned_img_src
 
@@ -64,7 +64,7 @@ config["compaction"] = {
     "max_features": 200,
     "tol": 0.05,
 }
-compaction_analysis = daria.CompactionAnalysis(da_img_src, **config["compaction"])
+compaction_analysis = darsia.CompactionAnalysis(da_img_src, **config["compaction"])
 
 # Apply compaction analysis, providing the deformed image matching the baseline image.
 # Also plot the deformation as vector field.
@@ -106,8 +106,8 @@ print(deformation)
 # define two corner points of the box:
 box_B = np.array([[0.0, 1.2], [1.1, 0.6]])
 
-# and extract the corresponding ROI as daria.Image (based on da_img_src):
-img_box_B = daria.extractROI(da_img_src, box_B)
+# and extract the corresponding ROI as darsia.Image (based on da_img_src):
+img_box_B = darsia.extractROI(da_img_src, box_B)
 
 # To double check the box, we plot the resulting box.
 plt.figure("Box B")
@@ -115,7 +115,7 @@ plt.imshow(img_box_B.img)
 plt.show()
 
 # Now we patch box B, the number of patches is arbitrary (here chosen to be 5 x 3):
-patches_box_B = daria.Patches(img_box_B, 5, 3)
+patches_box_B = darsia.Patches(img_box_B, 5, 3)
 
 # The patch centers can be accessed:
 patch_centers_box_B = patches_box_B.global_centers_cartesian

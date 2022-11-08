@@ -1,6 +1,6 @@
-This directory contains several examples on how DarIA can be used to
+This directory contains several examples on how DarSIA can be used to
 analyze images of the FluidFlower. The run scripts demonstrate the practical
-use of daria, while in addition, notebooks include Jupter notebooks
+use of darsia, while in addition, notebooks include Jupter notebooks
 which instead have a more introductory character.
 
 Topics covered in the examples are:
