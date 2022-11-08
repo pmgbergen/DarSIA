@@ -178,7 +178,7 @@ def segment(
             interpolation=cv2.INTER_NEAREST,
         )
     )
-    
+
     if verbosity:
         plt.figure("Segmentation after watershed algorithm")
         plt.imshow(labels)

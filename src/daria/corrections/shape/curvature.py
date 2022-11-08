@@ -123,7 +123,6 @@ class CurvatureCorrection:
                 self.config.get("cache", "./cache/curvature_transformation.npy")
             )
 
-
         # Hardcode the interpolation order, used when mapping pixels to transformed
         # coordinates
         self.interpolation_order: int = kwargs.pop("interpolation_order", 1)
