@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Union
+from typing import Union, cast
 
 import numpy as np
 
@@ -39,7 +39,7 @@ class CoordinateSystem:
         # for this, address the lower left and upper right corners.
         xmin, ymin = self.pixelToCoordinate(img.corners["lowerleft"])
         xmax, ymax = self.pixelToCoordinate(img.corners["upperright"])
-        self.domain = {"xmin": xmin, "xmax": xmax, "ymin": ymin, "ymax": ymax}
+        self.domain: dict = {"xmin": xmin, "xmax": xmax, "ymin": ymin, "ymax": ymax}
 
     def pixelsToLength(
         self, num_pixels: Union[int, float, np.ndarray], axis: str = "x"
@@ -64,7 +64,7 @@ class CoordinateSystem:
 
     def lengthToPixels(
         self, length: Union[float, np.ndarray], axis: str = "x"
-    ) -> Union[int, np.np.ndarray]:
+    ) -> Union[int, np.ndarray]:
         """
         Convert length in metric units to number of pixels, when interpreting
         the length in some given axis.
@@ -124,8 +124,12 @@ class CoordinateSystem:
         vertical_pixel_pos = 1 if reverse else 0
         horizontal_pixel_pos = 0 if reverse else 1
 
-        coordinate[:, 0] = x0 + pixel[:, horizontal_pixel_pos] * self._dx
-        coordinate[:, 1] = y0 - pixel[:, vertical_pixel_pos] * self._dy
+        coordinate[:, 0] = (
+            x0 + cast(np.ndarray, pixel)[:, horizontal_pixel_pos] * self._dx
+        )
+        coordinate[:, 1] = (
+            y0 - cast(np.ndarray, pixel)[:, vertical_pixel_pos] * self._dy
+        )
 
         # Return in same format as the input
         return coordinate.reshape(original_shape)
@@ -171,8 +175,12 @@ class CoordinateSystem:
         vertical_pixel_pos = 1 if reverse else 0
         horizontal_pixel_pos = 0 if reverse else 1
 
-        pixel[:, vertical_pixel_pos] = np.floor((y0 - coordinate[:, 1]) / self._dy)
-        pixel[:, horizontal_pixel_pos] = np.floor((coordinate[:, 0] - x0) / self._dx)
+        pixel[:, vertical_pixel_pos] = np.floor(
+            (y0 - cast(np.ndarray, coordinate)[:, 1]) / self._dy
+        )
+        pixel[:, horizontal_pixel_pos] = np.floor(
+            (cast(np.ndarray, coordinate)[:, 0] - x0) / self._dx
+        )
 
         # Return in same format as the input
         return pixel.reshape(original_shape).astype(int)

@@ -7,7 +7,7 @@ import copy
 import json
 from itertools import combinations
 from pathlib import Path
-from typing import Optional, Union
+from typing import Callable, Optional, Union, cast
 
 import cv2
 import matplotlib.pyplot as plt
@@ -32,7 +32,7 @@ class ConcentrationAnalysis:
     def __init__(
         self,
         base: Union[daria.Image, list[daria.Image]],
-        color: Union[str, callable] = "gray",
+        color: Union[str, Callable] = "gray",
     ) -> None:
         """
         Constructor of ConcentrationAnalysis.
@@ -40,12 +40,12 @@ class ConcentrationAnalysis:
         Args:
             base (daria.Image or list of such): baseline image(s); if multiple provided,
                 these are used to define a cleaning filter.
-            color (string or callable): "gray", "red", "blue", "green", "hue", "saturation",
+            color (string or Callable): "gray", "red", "blue", "green", "hue", "saturation",
                 "value" identifying which monochromatic space should be used for the
                 analysis; tailored routine can also be provided.
         """
         # Define mono-colored space
-        self.color: Union[str, callable] = (
+        self.color: Union[str, Callable] = (
             color.lower() if isinstance(color, str) else color
         )
 
@@ -59,9 +59,7 @@ class ConcentrationAnalysis:
         # define a cleaning filter.
         self.scaling: float = 1.0
         self.offset: float = 0.0
-        self.threshold: np.ndarray[float] = np.zeros(
-            self.base.img.shape[:2], dtype=float
-        )
+        self.threshold: np.ndarray = np.zeros(self.base.img.shape[:2], dtype=float)
         if len(base) > 1:
             self.find_cleaning_filter(base)
 
@@ -103,7 +101,7 @@ class ConcentrationAnalysis:
         """
         self._volumes_are_constant = isinstance(volumes, float)
         if self._volumes_are_constant:
-            self._volumes_cache = volumes
+            self._volumes_cache = cast(float, volumes)
         else:
             self._volumes_ref_shape = np.squeeze(volumes).shape
             self._volumes_cache = {
@@ -183,7 +181,7 @@ class ConcentrationAnalysis:
             path_to_filter (str or Path): path for storage of the cleaning filter.
         """
         path_to_filter = Path(path_to_filter)
-        path_to_filter.parents[0].mkdir(parents=True, exists_ok=True)
+        path_to_filter.parents[0].mkdir(parents=True, exist_ok=True)
         np.save(path_to_filter, self.threshold)
 
     # ! ---- Main method
@@ -281,7 +279,7 @@ class ConcentrationAnalysis:
         else:
             raise ValueError(f"Mono-colored space {self.color} not supported.")
 
-    def _extract_scalar_information_after(self, img: np.ndarray) -> None:
+    def _extract_scalar_information_after(self, img: np.ndarray) -> np.ndarray:
         """
         Make a mono-colored image from potentially multi-colored image.
 
@@ -389,7 +387,7 @@ class ConcentrationAnalysis:
 
         print(f"Calibration results in scaling factor {self.scaling}.")
 
-    def _estimate_rate(self, images: list[daria.Image]) -> tuple[float]:
+    def _estimate_rate(self, images: list[daria.Image]) -> tuple[float, float]:
         """
         Estimate the injection rate for the given series of images.
 
@@ -427,10 +425,8 @@ class ConcentrationAnalysis:
             total_volumes.append(total_volume)
 
         # Determine slope in time by linear regression
-        relative_times = np.array(relative_times).reshape(-1, 1)
-        total_volumes = np.array(total_volumes)
         ransac = RANSACRegressor()
-        ransac.fit(relative_times, total_volumes)
+        ransac.fit(np.array(relative_times).reshape(-1, 1), np.array(total_volumes))
 
         # Extract the slope and convert to
         return ransac.estimator_.coef_[0], ransac.estimator_.intercept_
@@ -452,6 +448,7 @@ class ConcentrationAnalysis:
             volumes = self._volumes_cache
         else:
             shape = np.squeeze(concentration.img).shape
+            assert isinstance(self._volumes_cache, dict)
             if shape in self._volumes_cache:
                 # Fetch previously cached volume
                 volumes = self._volumes_cache[shape]
@@ -463,11 +460,15 @@ class ConcentrationAnalysis:
                 volumes = cv2.resize(
                     ref_volumes, new_shape, interpolation=cv2.INTER_AREA
                 )
-                volumes *= np.sum(ref_volumes) / np.sum(volumes)
+                volumes *= np.sum(ref_volumes) / np.sum(cast(np.ndarray, volumes))
                 self._volumes_cache[shape] = volumes
 
         # Integral of locally weighted concentration values
-        return np.sum(np.multiply(np.squeeze(volumes), np.squeeze(concentration.img)))
+        return np.sum(
+            np.multiply(
+                np.squeeze(cast(np.ndarray, volumes)), np.squeeze(concentration.img)
+            )
+        )
 
 
 class SegmentedConcentrationAnalysis(ConcentrationAnalysis):
@@ -481,7 +482,7 @@ class SegmentedConcentrationAnalysis(ConcentrationAnalysis):
         self,
         base: Union[daria.Image, list[daria.Image]],
         labels: np.ndarray,
-        color: Union[str, callable] = "gray",
+        color: Union[str, Callable] = "gray",
         **kwargs,
     ) -> None:
         """
@@ -713,7 +714,7 @@ class SegmentedConcentrationAnalysis(ConcentrationAnalysis):
             # Initialize collection of interface ratios with empty lists,
             # as well as flag of trustable information by identifying
             # none of the coupling as trustworthy.
-            interface_ratio_container = {}
+            interface_ratio_container: dict = {}
             trustable_summary = {}
 
             for coupling in self.label_couplings:
@@ -995,7 +996,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
     def __init__(
         self,
         base: Union[daria.Image, list[daria.Image]],
-        color: Union[str, callable] = "gray",
+        color: Union[str, Callable] = "gray",
         **kwargs,
     ) -> None:
         """
@@ -1072,7 +1073,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         self.mask = mask
 
     # ! ---- Main methods
-    def _prior(self, signal: np.ndarray) -> np.ndarray:
+    def _prior(self, signal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Prior postprocessing routine, essentially converting a continuous
         signal into a binary concentration and thereby segmentation.
@@ -1387,8 +1388,8 @@ class LayeredBinaryConcentrationAnalysis(ConcentrationAnalysis):
     def __init__(
         self,
         base: Union[daria.Image, list[daria.Image]],
-        color: Union[str, callable] = "gray",
-        labels: np.ndarray = 0,
+        color: Union[str, Callable] = "gray",
+        labels: Optional[np.ndarray] = None,
         labels_legend: dict = {},
         **kwargs,
     ) -> None:
@@ -1471,7 +1472,7 @@ class LayeredBinaryConcentrationAnalysis(ConcentrationAnalysis):
         self.mask = mask
 
     # ! ---- Main methods
-    def _prior(self, signal: np.ndarray) -> np.ndarray:
+    def _prior(self, signal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Prior postprocessing routine, essentially converting a continuous
         signal into a binary concentration and thereby segmentation.

@@ -10,7 +10,7 @@ import json
 import math
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, cast
 from warnings import warn
 
 import cv2
@@ -99,7 +99,7 @@ class Image:
                 self.metadata = json.load(openfile)
 
         else:
-            self.metadata: dict = {}
+            self.metadata = {}
             if "width" in kwargs:
                 self.metadata["width"] = kwargs["width"]
             elif curvature_correction is not None:
@@ -114,9 +114,7 @@ class Image:
             else:
                 raise Exception("image height not specified")
 
-            self.metadata["origo"]: np.ndarray[float] = np.array(
-                kwargs.pop("origo", np.array([0, 0]))
-            )
+            self.metadata["origo"] = np.array(kwargs.pop("origo", np.array([0, 0])))
 
             no_colorspace_given = "color_space" not in kwargs
             self.metadata["color_space"] = kwargs.pop("color_space", "BGR")
@@ -124,7 +122,7 @@ class Image:
 
         # Fetch image
         if isinstance(img, np.ndarray):
-            self.img = img
+            self.img: np.ndarray = img
 
             # Come up with default metadata
             self.name = "Unnamed image"
@@ -154,7 +152,7 @@ class Image:
                     )
 
             self.imgpath = img
-            self.name = img
+            self.name = cast(str, img)
 
         else:
             raise Exception(
@@ -178,9 +176,10 @@ class Image:
             )
 
         # Determine numbers of cells in each dimension and cell size
-        self.num_pixels_height, self.num_pixels_width = self.img.shape[:2]
-        self.dx = self.metadata["width"] / self.num_pixels_width
-        self.dy = self.metadata["height"] / self.num_pixels_height
+        self.num_pixels_height: int = self.img.shape[:2][0]
+        self.num_pixels_width: int = self.img.shape[:2][1]
+        self.dx: float = self.metadata["width"] / self.num_pixels_width
+        self.dy: float = self.metadata["height"] / self.num_pixels_height
 
         # Define the pixels in the corners of the image
         self.corners = {
@@ -196,7 +195,7 @@ class Image:
     # ! ---- Fast-access getter functions for metadata
 
     @property
-    def origo(self) -> list:
+    def origo(self) -> np.ndarray:
         return self.metadata["origo"]
 
     @property
@@ -212,18 +211,18 @@ class Image:
         return self.metadata["color_space"]
 
     @property
-    def timestamp(self) -> datetime.datetime:
+    def timestamp(self) -> datetime:
         return self.metadata["timestamp"]
+
+    @timestamp.setter
+    def timestamp(self, time: datetime) -> None:
+        self.metadata["timestamp"] = time
 
     @property
     def original_dtype(self) -> np.dtype:
         return self.metadata["original_dtype"]
 
     # ! ---- Corresponding setter functions for metadata
-
-    @timestamp.setter
-    def timestamp(self, time: datetime.datetime) -> None:
-        self.metadata["timestamp"] = time
 
     def write(
         self,
@@ -238,7 +237,7 @@ class Image:
             path (str): path to image, including image name and file format
         """
         # cv2 requires BGR format
-        write_image = self.toBGR(return_image=True).img
+        write_image = cast(da.Image, self.toBGR(return_image=True)).img
 
         # Write image, using the conventional matrix indexing
         if self.original_dtype == np.uint8:
@@ -421,9 +420,9 @@ class Image:
         # Update parameters and coordinate system
         self.dx *= 1 / cx
         self.dy *= 1 / cy
-        self.coordinatesystem: da.CoordinateSystem = da.CoordinateSystem(self)
+        self.coordinatesystem = da.CoordinateSystem(self)
 
-    def copy(self) -> "Image":
+    def copy(self) -> da.Image:
         """
         Returns a copy of the image object.
         """
@@ -444,11 +443,14 @@ class Image:
             if not return_image:
                 self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
                 self.metadata["color_space"] = "BGR"
+                return None
             else:
-                return_image = self.copy()
-                return_image.img = cv2.cvtColor(return_image.img, cv2.COLOR_BGR2RGB)
-                return_image.metadata["color_space"] = "BGR"
-                return return_image
+                image = self.copy()
+                image.img = cv2.cvtColor(image.img, cv2.COLOR_BGR2RGB)
+                image.metadata["color_space"] = "BGR"
+                return image
+        else:
+            return None
 
     def toRGB(self, return_image: bool = False) -> Optional[da.Image]:
         """
@@ -466,11 +468,14 @@ class Image:
                 self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
                 self.metadata["color_space"] = "RGB"
                 self.metadata["color_space"] = "RGB"
+                return None
             else:
-                return_image = self.copy()
-                return_image.img = cv2.cvtColor(return_image.img, cv2.COLOR_BGR2RGB)
-                return_image.metadata["color_space"] = "RGB"
-                return return_image
+                image = self.copy()
+                image.img = cv2.cvtColor(image.img, cv2.COLOR_BGR2RGB)
+                image.metadata["color_space"] = "RGB"
+                return image
+        else:
+            return None
 
     def toGray(self, return_image: bool = False) -> Optional[da.Image]:
         """
@@ -510,6 +515,7 @@ class Image:
                     "Only RGB or BGR images can be converted to Gray at the moment"
                 )
             self.metadata["color_space"] = "GRAY"
+            return None
 
     def toRed(self, return_image: bool = False) -> Optional[da.Image]:
         """
@@ -548,6 +554,7 @@ class Image:
                     "Only RGB or BGR images can be converted to Red at the moment"
                 )
             self.metadata["color_space"] = "RED"
+            return None
 
     def toBlue(self, return_image: bool = False) -> Optional[da.Image]:
         """
@@ -586,6 +593,7 @@ class Image:
                     "Only RGB or BGR images can be converted to blue at the moment"
                 )
             self.metadata["color_space"] = "BLUE"
+            return None
 
     def toGreen(self, return_image: bool = False) -> Optional[da.Image]:
         """
@@ -624,6 +632,7 @@ class Image:
                     "Only RGB or BGR images can be converted to green at the moment"
                 )
             self.metadata["color_space"] = "GREEN"
+            return None
 
     def toHue(self, return_image: bool = False) -> Optional[da.Image]:
         """
@@ -647,6 +656,7 @@ class Image:
         else:
             self.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2HSV)[:, :, 0]
             self.metadata["color_space"] = "HUE"
+            return None
 
     def toSaturation(self, return_image: bool = False) -> Optional[da.Image]:
         """
@@ -670,6 +680,7 @@ class Image:
         else:
             self.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2HSV)[:, :, 1]
             self.metadata["color_space"] = "SATURATION"
+            return None
 
     def toValue(self, return_image: bool = False) -> Optional[da.Image]:
         """
@@ -693,3 +704,4 @@ class Image:
         else:
             self.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2HSV)[:, :, 2]
             self.metadata["color_space"] = "VALUE"
+            return None

@@ -98,7 +98,7 @@ class SegmentedTracerAnalysis(ABC, daria.ConcentrationAnalysisBase):
         self.tracer_analysis = self.define_tracer_analysis()
 
         # Feed tracer analysis with effective volumes
-        self.tracer_analysis.update_volumes(self.effective_volumes)
+        self.tracer_analysis.update_volumes(volumes)
 
         # Safety check
         if not isinstance(self.tracer_analysis, daria.ConcentrationAnalysis):

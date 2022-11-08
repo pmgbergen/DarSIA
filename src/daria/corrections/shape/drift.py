@@ -55,9 +55,10 @@ class DriftCorrection:
         if config is not None:
             self.config = copy.deepcopy(config)
         else:
-            self.config: dict = {}
+            self.config = {}
 
         # Cache ROI
+        self.roi = None
         if "roi" in self.config:
             self.roi = daria.bounding_box(np.array(self.config["roi"]))
         elif isinstance(roi, np.ndarray):
@@ -77,8 +78,6 @@ class DriftCorrection:
         elif isinstance(roi, tuple):
             self.roi = roi
             self.config["roi"] = daria.bounding_box_inverse(roi).tolist()
-        else:
-            self.roi = None
 
         # Define a translation estimator
         self.translation_estimator = daria.TranslationEstimator()
