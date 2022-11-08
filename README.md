@@ -1,12 +1,12 @@
-![build](https://github.com/pmgbergen/DarIA/workflows/Build%20test/badge.svg)
+![build](https://github.com/pmgbergen/DarSIA/workflows/Build%20test/badge.svg)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License: Apache v2](https://img.shields.io/hexpm/l/apa)](https://opensource.org/licenses/Apache-2.0)
 
-# DarIA
+# DarSIA
 Darcy scale image analysis toolbox
 
 ## Installation
-Clone the repository from github and enter the DarIA folder. Then, run the following command to install:
+Clone the repository from github and enter the DarSIA folder. Then, run the following command to install:
 
 ```bash
 pip install .
@@ -17,9 +17,9 @@ pip install .
 The following Python script can be applied to the test image in the examples/images folder.
 
 ```python
-import daria as da
+import darsia as da
 
-# Create a daria Image: An image that also contains information of physical entities
+# Create a darsia Image: An image that also contains information of physical entities
 image = da.Image("examples/images/baseline.jpg", origo = [5, 2], width = 280, height = 150)
 
 # Use the show method to take a look at the imported image (push any button to close the window)
@@ -36,8 +36,8 @@ ROI_image.show()
 
 Furthermore, we encourage any user to checkout the jupyter notebooks in the examples/notebooks folder.
 
-## Developing DarIA
-To install daria, along with the tools to develop and run tests, run the following in your virtual environment:
+## Developing DarSIA
+To install darsia, along with the tools to develop and run tests, run the following in your virtual environment:
 ```bash
 $ pip install -e .[dev]
 ```

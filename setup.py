@@ -10,14 +10,13 @@ with open("requirements-dev.txt") as f:
     required_dev = f.read().splitlines()
 
 setup(
-    name="daria",
+    name="darsia",
     version="0.0.1",
     description="Darcy scale image analysis toolbox",
     keywords="darcy image analysis porous media flow",
-    # py_modules={"helloworld"},
     package_dir={"": "src"},
     packages=find_packages(where="src"),
-    package_data={"daria": ["py.typed"]},
+    package_data={"darsia": ["py.typed"]},
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Programming Language :: Python ::3",
@@ -32,7 +31,7 @@ setup(
         "dev": required_dev,
     },
     python_requires=">=3",
-    url="https://github.com/EStorvik/DarIA.git",
+    url="https://github.com/pmgbergen/DarSIA.git",
     author="Erlend Storvik, Jan Nordbotten and Jakub Wiktor Both",
     maintainer="Erlend Storvik",
     maintainer_email="erlend.storvik@uib.no",

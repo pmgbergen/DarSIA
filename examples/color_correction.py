@@ -3,7 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-import daria
+import darsia
 
 # ! ---- Read uncorrected image
 
@@ -11,13 +11,13 @@ import daria
 image = f"{os.path.dirname(__file__)}/images/baseline.jpg"
 
 # Create an uncorrected image for comparison
-uncorrected_baseline = daria.Image(image, width=2.8, height=1.5)
+uncorrected_baseline = darsia.Image(image, width=2.8, height=1.5)
 
 # ! ---- Setup the machine learning based color correction
 
 # Need to specify a ROI which contains the color checker
 experimental_roi_cc = (slice(0, 240), slice(0, 240))
-experimental_color_correction = daria.ExperimentalColorCorrection(
+experimental_color_correction = darsia.ExperimentalColorCorrection(
     roi=experimental_roi_cc,
     # verbosity = True,
 )
@@ -26,7 +26,7 @@ experimental_color_correction = daria.ExperimentalColorCorrection(
 # of the details/progress of the color checker.
 
 # Create the color correction and apply it at initialization of image class
-experimental_corrected_baseline = daria.Image(
+experimental_corrected_baseline = darsia.Image(
     image,
     color_correction=experimental_color_correction,
     width=2.8,
@@ -48,7 +48,7 @@ roi_cc = np.array(
         [154, 68],
     ]
 )
-color_correction = daria.ColorCorrection(
+color_correction = darsia.ColorCorrection(
     roi=roi_cc,
     # verbosity = True,
 )
@@ -58,7 +58,7 @@ color_correction = daria.ColorCorrection(
 # the final color checker after calibration is displayed.
 
 # Create the color correction and apply it at initialization of image class
-corrected_baseline = daria.Image(
+corrected_baseline = darsia.Image(
     image,
     color_correction=color_correction,
     width=2.8,

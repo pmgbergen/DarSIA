@@ -8,7 +8,7 @@ import os
 
 import numpy as np
 
-import daria
+import darsia
 
 # Define path to image folder
 image_folder = f"{os.path.dirname(__file__)}/images/"
@@ -18,7 +18,7 @@ image_folder = f"{os.path.dirname(__file__)}/images/"
 # examples/notebooks/curvature_correction_walkthrough.ipynb).
 with open(image_folder + "config.json", "r") as openfile:
     config = json.load(openfile)
-curvature_correction = daria.CurvatureCorrection(config=config["curvature"])
+curvature_correction = darsia.CurvatureCorrection(config=config["curvature"])
 
 # Define color correction object
 roi_cc = np.array(
@@ -29,24 +29,24 @@ roi_cc = np.array(
         [153, 98],
     ]
 )
-color_correction = daria.ColorCorrection(roi=roi_cc)
+color_correction = darsia.ColorCorrection(roi=roi_cc)
 
 # !----- Main routine for co2 analysis
 
 # Read baseline and co2 image and correct color and curvature
-baseline_co2 = daria.Image(
+baseline_co2 = darsia.Image(
     image_folder + "co2_0.jpg",
     curvature_correction=curvature_correction,
     color_correction=color_correction,
 )
-co2_image = daria.Image(
+co2_image = darsia.Image(
     image_folder + "co2_2.jpg",
     curvature_correction=curvature_correction,
     color_correction=color_correction,
 )
 
 # Construct concentration analysis for detecting the co2 concentration
-co2_analysis = daria.ConcentrationAnalysis(baseline_co2)
+co2_analysis = darsia.ConcentrationAnalysis(baseline_co2)
 
 # Given a series of baseline images one can setup a cleaning mask,
 # which is used as lower threshold in the concentration analysis.
@@ -78,19 +78,19 @@ co2.plt_show(10)
 # !----- Main routine for tracer analysis
 
 # Read in baseline and tracer image and correct color and curvature
-baseline_tracer = daria.Image(
+baseline_tracer = darsia.Image(
     image_folder + "tracer_0.jpg",
     curvature_correction=curvature_correction,
     color_correction=color_correction,
 )
-tracer_image = daria.Image(
+tracer_image = darsia.Image(
     image_folder + "tracer_3.jpg",
     curvature_correction=curvature_correction,
     color_correction=color_correction,
 )
 
 # Construct concentration analysis for detecting the tracer concentration
-tracer_analysis = daria.ConcentrationAnalysis(baseline_tracer)
+tracer_analysis = darsia.ConcentrationAnalysis(baseline_tracer)
 
 # Determine tracer
 tracer = tracer_analysis(tracer_image)
