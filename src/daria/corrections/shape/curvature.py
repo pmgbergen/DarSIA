@@ -115,7 +115,14 @@ class CurvatureCorrection:
             self._adapt_config()
 
         # Initialize cache for precomputed transformed coordinates
-        self.cache: dict = {}
+
+        self.cache = {}
+        self.use_cache = self.config.get("use_cache", False)
+        if self.use_cache:
+            self.cache_path = Path(
+                self.config.get("cache", "./cache/curvature_transformation.npy")
+            )
+
 
         # Hardcode the interpolation order, used when mapping pixels to transformed
         # coordinates
@@ -515,8 +522,20 @@ class CurvatureCorrection:
         assert isinstance(img, np.ndarray)
 
         # Precompute transformed coordinates based on self.config, if required.
-        if update_cache or "grid" not in self.cache:
+        if not (self.use_cache and self.cache_path.exists()) and (
+            update_cache or "grid" not in self.cache
+        ):
+
             self._precompute_transformed_coordinates(img)
+
+            # Store in cache
+            if self.use_cache:
+                np.save(self.cache_path, self.cache)
+
+        elif self.use_cache and self.cache_path.exists():
+
+            # Reache cache from file
+            self.cache = np.load(self.cache_path, allow_pickle=True).item()
 
         # Fetch precomputed transformed coordinates and the shape of the transformed image.
         grid = self.cache["grid"]

@@ -68,7 +68,12 @@ compaction_analysis = daria.CompactionAnalysis(da_img_src, **config["compaction"
 
 # Apply compaction analysis, providing the deformed image matching the baseline image.
 # Also plot the deformation as vector field.
-da_new_image = compaction_analysis(da_img_dst, plot=True, reverse=True)
+da_new_image, patch_translation = compaction_analysis(
+    da_img_dst, reverse=True, plot_patch_translation=True, return_patch_translation=True
+)
+
+print("The centers of the 20 x 10 patches are translated:")
+print(patch_translation)
 
 # Plot the differences between the two original images and after the transformation.
 fig, ax = plt.subplots(1, num=1)
@@ -88,7 +93,37 @@ pts = np.array(
         [2.3, 1.1],
     ]
 )
+print("Consider the points:")
+print(pts)
 
 deformation = compaction_analysis.evaluate(pts)
 print("Deformation evaluated:")
 print(deformation)
+
+# One can also use a patched ROI and evaluate the deformation in the patch centers.
+# For this, we start extracting a roi, here we choose a box, which in the end
+# corresponds to box B from the benchmark analysis. This it is sufficient to
+# define two corner points of the box:
+box_B = np.array([[0.0, 1.2], [1.1, 0.6]])
+
+# and extract the corresponding ROI as daria.Image (based on da_img_src):
+img_box_B = daria.extractROI(da_img_src, box_B)
+
+# To double check the box, we plot the resulting box.
+plt.figure("Box B")
+plt.imshow(img_box_B.img)
+plt.show()
+
+# Now we patch box B, the number of patches is arbitrary (here chosen to be 5 x 3):
+patches_box_B = daria.Patches(img_box_B, 5, 3)
+
+# The patch centers can be accessed:
+patch_centers_box_B = patches_box_B.global_centers_cartesian
+
+# The deformation in the centers of these points can be obtained by evaluating the
+# deformation map in a similar fashion as above. The results comes in a matrix.
+# Entry [row,col] is associated to patch with coordinate [row,col] using the
+# conventional matrix indexing.
+deformation_patch_centers_box_B = compaction_analysis.evaluate(patch_centers_box_B)
+print("The deformation in the centers of the patches of Box B:")
+print(deformation_patch_centers_box_B)
