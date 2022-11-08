@@ -68,9 +68,6 @@ class CurvatureCorrection:
                 in_meters (bool): returns True if width and height are given
                             in terms of meters. Only relevant if image
                             is provided.
-                use_cache (bool): flag controlling whether the tranformation
-                            map should be fetched from cache.
-                cache (Union[Path, str]): path to cached transformation map.
         """
 
         if config is not None:
