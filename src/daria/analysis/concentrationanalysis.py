@@ -473,7 +473,7 @@ class ConcentrationAnalysis:
 class SegmentedConcentrationAnalysis(ConcentrationAnalysis):
     """
     Special case of ConcentrationAnalysis broadened and tailored to segmented media.
-    
+
     NOTE! Currently still under development and highly experimental.
     """
 
