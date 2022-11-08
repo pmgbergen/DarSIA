@@ -158,9 +158,16 @@ def segment(
 
     # ! ---- Postprocessing of the labels
 
+    labels_rescaled = _dilate_by_size(labels_rescaled, 1, False)
+    labels_rescaled = _dilate_by_size(labels_rescaled, 1, True)
+
     # Resize to oirginal size
     labels = skimage.img_as_ubyte(
-        skimage.transform.resize(labels_rescaled, img.shape[:2])
+        cv2.resize(
+            labels_rescaled,
+            tuple(reversed(img.shape[:2])),
+            interpolation=cv2.INTER_NEAREST,
+        )
     )
 
     if verbosity:
