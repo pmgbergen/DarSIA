@@ -181,7 +181,7 @@ class ConcentrationAnalysis:
             path_to_filter (str or Path): path for storage of the cleaning filter.
         """
         path_to_filter = Path(path_to_filter)
-        path_to_filter.parents[0].mkdir(parents=True, exists_ok=True)
+        path_to_filter.parents[0].mkdir(parents=True, exist_ok=True)
         np.save(path_to_filter, self.threshold)
 
     # ! ---- Main method
@@ -482,7 +482,7 @@ class SegmentedConcentrationAnalysis(ConcentrationAnalysis):
         self,
         base: Union[daria.Image, list[daria.Image]],
         labels: np.ndarray,
-        color: Union[str, callable] = "gray",
+        color: Union[str, Callable] = "gray",
         **kwargs,
     ) -> None:
         """
@@ -714,7 +714,7 @@ class SegmentedConcentrationAnalysis(ConcentrationAnalysis):
             # Initialize collection of interface ratios with empty lists,
             # as well as flag of trustable information by identifying
             # none of the coupling as trustworthy.
-            interface_ratio_container = {}
+            interface_ratio_container: dict = {}
             trustable_summary = {}
 
             for coupling in self.label_couplings:
@@ -1388,8 +1388,8 @@ class LayeredBinaryConcentrationAnalysis(ConcentrationAnalysis):
     def __init__(
         self,
         base: Union[daria.Image, list[daria.Image]],
-        color: Union[str, callable] = "gray",
-        labels: np.ndarray = 0,
+        color: Union[str, Callable] = "gray",
+        labels: Optional[np.ndarray] = None,
         labels_legend: dict = {},
         **kwargs,
     ) -> None:
@@ -1472,7 +1472,7 @@ class LayeredBinaryConcentrationAnalysis(ConcentrationAnalysis):
         self.mask = mask
 
     # ! ---- Main methods
-    def _prior(self, signal: np.ndarray) -> np.ndarray:
+    def _prior(self, signal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Prior postprocessing routine, essentially converting a continuous
         signal into a binary concentration and thereby segmentation.

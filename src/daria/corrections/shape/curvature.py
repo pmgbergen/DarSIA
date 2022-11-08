@@ -116,7 +116,7 @@ class CurvatureCorrection:
 
         # Initialize cache for precomputed transformed coordinates
 
-        self.cache = {}
+        self.cache: dict = {}
         self.use_cache = self.config.get("use_cache", False)
         if self.use_cache:
             self.cache_path = Path(

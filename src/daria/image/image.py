@@ -114,7 +114,7 @@ class Image:
             else:
                 raise Exception("image height not specified")
 
-            self.metadata["origo"]: np.ndarray[float] = np.array(
+            self.metadata["origo"] = np.array(
                 kwargs.pop("origo", np.array([0, 0]))
             )
 
