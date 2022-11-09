@@ -62,6 +62,30 @@ class ColorCheckerAfter2014:
         )
 
 
+class CustomColorChecker:
+    """Swatch colors determined from user-prescribed input image."""
+
+    def __init__(
+        self, path: Path, reference_colors: Optional[np.ndarray] = None
+    ) -> None:
+        """
+        Either read reference colors from file or from provided array.
+        If colors are provided, these will be prioritized and also written to file.
+
+        Args:
+            path (Path): path for storing and fetching reference colors
+            colors (np.ndarray, optional): reference RGB colors
+        """
+
+        # Prioritize colors if provided.
+        if reference_colors is None:
+            self.reference_swatches_rgb = np.load(path)
+
+        else:
+            self.reference_swatches_rgb = reference_colors
+            np.save(path, reference_colors)
+
+
 class ColorCorrection:
     """ML-free color correction.
 
