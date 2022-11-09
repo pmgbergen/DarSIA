@@ -1123,6 +1123,14 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
                     max_num_iter=self.presmoothing["max_num_iter"],
                     isotropic=False,
                 )
+            elif self.presmoothing["method"] == "isotropic bregman":
+                signal = skimage.restoration.denoise_tv_bregman(
+                    signal,
+                    weight=self.presmoothing["weight"],
+                    eps=self.presmoothing["eps"],
+                    max_num_iter=self.presmoothing["max_num_iter"],
+                    isotropic=True,
+                )
             else:
                 raise ValueError(f"Method {self.presmoothing['method']} not supported.")
 
@@ -1216,6 +1224,14 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
                     eps=self.postsmoothing["eps"],
                     max_num_iter=self.postsmoothing["max_num_iter"],
                     isotropic=False,
+                )
+            elif self.postsmoothing["method"] == "isotropic bregman":
+                signal = skimage.restoration.denoise_tv_bregman(
+                    signal,
+                    weight=self.postsmoothing["weight"],
+                    eps=self.postsmoothing["eps"],
+                    max_num_iter=self.postsmoothing["max_num_iter"],
+                    isotropic=True,
                 )
             else:
                 raise ValueError(
