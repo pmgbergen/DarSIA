@@ -121,9 +121,6 @@ class ColorCorrection:
                 if True, default is True
         """
 
-        # Reference of the class color checker
-        self.colorchecker = ColorCheckerAfter2014()
-
         # Define config
         if config is not None:
             self.config = copy.deepcopy(config)
@@ -142,7 +139,7 @@ class ColorCorrection:
             self.config["roi"] = roi
         elif isinstance(roi, tuple):
             warn(
-                "An array of corner points are prefered.\
+                "An array of corner points is preferred.\
                 The tuple will not be stored in the config file."
             )
             self.roi = roi
@@ -150,6 +147,10 @@ class ColorCorrection:
         # Store flags
         self.verbosity = verbosity
         self.whitebalancing = whitebalancing
+
+        # Reference of the class color checker - allow for the classic color checker and
+        # a custom one - assist in creating the latter with tools from ColorCorrection.
+        self._setup_colorchecker()
 
     def __call__(
         self,
@@ -181,6 +182,7 @@ class ColorCorrection:
 
         # Determine swatch colors
         swatches = self._detect_colour_checkers_segmentation(colorchecker_img)
+
         # Apply color correction onto full image based on the swatch colors in comparison with
         # the standard colors
         corrected_image = colour.colour_correction(
@@ -228,6 +230,69 @@ class ColorCorrection:
         """
         with open(Path(path), "w") as outfile:
             json.dump(self.config, outfile, indent=4)
+
+    # ! ---- Auxiliary files
+
+    def _setup_colorchecker(self) -> None:
+        """
+        Auxiliary setup routine for the custom color checker, making use
+        of capailities of this class. Defines self.colorchecker.
+        """
+        # Fetch type of colorchecker
+        reference = self.config.get("reference", "classic")
+        assert reference in ["classic", "custom"]
+
+        # Set up either classic or custom color checker
+        if reference == "classic":
+
+            # Choose a classic color checker
+            self.colorchecker = ColorCheckerAfter2014()
+
+        elif reference == "custom":
+
+            # Fetch path and flag on updating
+            colorchecker_path: Path = Path(
+                self.config.get("custom_colorchecker_path", "custom_colorchecker.npy")
+            )
+            update_colorchecker: bool = self.config.get(
+                "custom_colorchecker_update", False
+            )
+
+            # If required, extract swatches from a provided baseline image and use these as reference colors;
+            # otherwise fetch info form file.
+            if update_colorchecker or not colorchecker_path.exists():
+
+                # Fetch info on baseline image and roi
+                baseline_path: str = self.config.get(
+                    "custom_colorchecker_reference_image"
+                )
+                baseline = cv2.cvtColor(
+                    cv2.imread(str(Path(baseline_path)), cv2.IMREAD_UNCHANGED),
+                    cv2.COLOR_BGR2RGB,
+                )
+                baseline_roi: np.ndarray = np.array(
+                    self.config.get("custom_colorchecker_reference_roi", self.roi)
+                )
+
+                # Extract part of the image containing a color checker.
+                # Use width and height (in cm - irrelevant) as provided by the manufacturer Xrite.
+                assert self.roi.shape == (4, 2)
+                colorchecker_img = darsia.extract_quadrilateral_ROI(
+                    baseline, pts_src=baseline_roi, width=27.3, height=17.8
+                )
+
+                # Determine swatch colors
+                swatches = self._detect_colour_checkers_segmentation(colorchecker_img)
+
+                # Scale to interval [0,1], to not loose any information, perform the scaling by hand
+                assert baseline.dtype in [np.uint8, np.uint16]
+                scaling = 255.0 if baseline.dtype == np.uint8 else 255.0**2
+                swatches /= scaling
+
+                self.colorchecker = CustomColorChecker(colorchecker_path, swatches)
+
+            else:
+                self.colorchecker = CustomColorChecker(colorchecker_path)
 
     def _restrict_to_roi(self, img: np.ndarray) -> np.ndarray:
         """
