@@ -264,8 +264,8 @@ class ColorCorrection:
                 "custom_colorchecker_update", False
             )
 
-            # If required, extract swatches from a provided baseline image and use these as reference colors;
-            # otherwise fetch info form file.
+            # If required, extract swatches from a provided baseline image and use these
+            # as reference colors; otherwise fetch info form file.
             if update_colorchecker or not colorchecker_path.exists():
 
                 # Fetch info on baseline image and roi
@@ -281,7 +281,8 @@ class ColorCorrection:
                 )
 
                 # Extract part of the image containing a color checker.
-                # Use width and height (in cm - irrelevant) as provided by the manufacturer Xrite.
+                # Use width and height (in cm - irrelevant) as provided by the
+                # manufacturer Xrite.
                 assert self.roi.shape == (4, 2)
                 colorchecker_img = darsia.extract_quadrilateral_ROI(
                     baseline, pts_src=baseline_roi, width=27.3, height=17.8
@@ -290,7 +291,8 @@ class ColorCorrection:
                 # Determine swatch colors
                 swatches = self._detect_colour_checkers_segmentation(colorchecker_img)
 
-                # Scale to interval [0,1], to not loose any information, perform the scaling by hand
+                # Scale to interval [0,1], to not loose any information, perform the
+                # scaling by hand
                 assert baseline.dtype in [np.uint8, np.uint16]
                 scaling = 255.0 if baseline.dtype == np.uint8 else 255.0**2
                 swatches /= scaling
