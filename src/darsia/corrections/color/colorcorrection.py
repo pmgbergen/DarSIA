@@ -127,6 +127,9 @@ class ColorCorrection:
         else:
             self.config = {}
 
+        # Check whether colorchecker active
+        self.active = self.config.get("active", True)
+
         # Define ROI
         self.roi: Optional[Union[tuple, np.ndarray]] = None
         if "roi" in self.config:
@@ -169,6 +172,9 @@ class ColorCorrection:
         Returns:
             np.ndarray: corrected image
         """
+        if not self.active:
+            return skimage.img_as_float(image).astype(np.float32)
+
         # Make sure that the image is in uint8 or uint16 format
         if image.dtype in [np.uint8, np.uint16]:
             image = skimage.img_as_float(image)
