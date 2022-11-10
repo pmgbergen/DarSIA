@@ -1152,8 +1152,13 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             # Extract merely signal values in the mask
             active_signal_values = np.ravel(signal)[np.ravel(self.mask)]
             # Find automatic threshold value using OTSU
-            thresh = skimage.filters.threshold_otsu(active_signal_values)
-            print("OTSU threshold value", thresh)
+            thresh_test = skimage.filters.threshold_otsu(active_signal_values)
+
+            print(f"Otsu threshold value: {thresh_test}.")
+
+            # Display the corresponding histogram.
+            plt.figure("histogram for otsu analysis")
+            plt.plot(np.linspace(np.min(active_signal_values), np.max(active_signal_values), 100), np.histogram(active_signal_values, bins=100)[0])
 
         # Apply thresholding to obtain mask
         if self.apply_automatic_threshold:
