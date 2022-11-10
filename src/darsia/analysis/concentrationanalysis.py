@@ -1015,8 +1015,10 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         # TVD parameters for pre and post smoothing
         self.apply_presmoothing = kwargs.pop("presmoothing", False)
         if self.apply_presmoothing:
+            pre_global_resize = kwargs.pop("presmoothing resize", 1.0)
             self.presmoothing = {
-                "resize": kwargs.pop("presmoothing resize", 1.0),
+                "resize x": kwargs.pop("presmoothing resize x", pre_global_resize),
+                "resize y": kwargs.pop("presmoothing resize y", pre_global_resize),
                 "weight": kwargs.pop("presmoothing weight", 1.0),
                 "eps": kwargs.pop("presmoothing eps", 1e-5),
                 "max_num_iter": kwargs.pop("presmoothing max_num_iter", 1000),
@@ -1025,8 +1027,10 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
 
         self.apply_postsmoothing = kwargs.pop("postsmoothing", False)
         if self.apply_postsmoothing:
+            post_global_resize = kwargs.pop("postsmoothing resize", 1.0)
             self.postsmoothing = {
-                "resize": kwargs.pop("postsmoothing resize", 1.0),
+                "resize x": kwargs.pop("postsmoothing resize x", post_global_resize),
+                "resize y": kwargs.pop("postsmoothing resize y", post_global_resize),
                 "weight": kwargs.pop("postsmoothing weight", 1.0),
                 "eps": kwargs.pop("postsmoothing eps", 1e-5),
                 "max_num_iter": kwargs.pop("postsmoothing max_num_iter", 1000),
@@ -1103,8 +1107,8 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             signal = cv2.resize(
                 signal.astype(np.float32),
                 None,
-                fx=self.presmoothing["resize"],
-                fy=self.presmoothing["resize"],
+                fx=self.presmoothing["resize x"],
+                fy=self.presmoothing["resize y"],
             )
 
             # Apply TVD
@@ -1205,8 +1209,8 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             resized_mask = cv2.resize(
                 mask.astype(np.float32),
                 None,
-                fx=self.postsmoothing["resize"],
-                fy=self.postsmoothing["resize"],
+                fx=self.postsmoothing["resize x"],
+                fy=self.postsmoothing["resize y"],
             )
 
             # Apply TVD
