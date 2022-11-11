@@ -1556,16 +1556,6 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
         self.threshold_method = kwargs.get("threshold method", "local min")
         assert self.threshold_method in ["local min", "conservative"]
 
-    def _prior(self, signal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        if self.verbosity:
-            plt.figure("Prior: Cleaned mask")
-            plt.imshow(self.labels, alpha=0.5)
-
-            plt.figure("Prior: Final mask after cleaning")
-            plt.imshow(self.labels, alpha=0.5)
-
-        return super()._prior(signal)
-
     def _apply_thresholding(self, signal: np.ndarray) -> np.ndarray:
         """
         Apply heterogeneous thresholding to obtain binary mask.
