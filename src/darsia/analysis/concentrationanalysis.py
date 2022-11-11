@@ -12,6 +12,7 @@ from typing import Callable, Optional, Union, cast
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.ndimage as ndi
 import scipy.sparse as sps
 import skimage
 from scipy.optimize import bisect
@@ -1490,3 +1491,196 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             np.ndarray: signal array.
         """
         return signal
+
+
+class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
+    """
+    Special case of ConcentrationAnalysis which generates boolean concentration profiles.
+    Different to ConcentrationAnalysis, it takes advantage of apriori knowledge of
+    structurally different regions in the domain, provided as a labeled image.
+    These different regions are then treated differently.
+
+    This class supports both static and dynamic thresholding.
+    """
+
+    def __init__(
+        self,
+        base: Union[darsia.Image, list[darsia.Image]],
+        labels: np.ndarray,
+        color: Union[str, Callable] = "gray",
+        **kwargs,
+    ) -> None:
+        """
+        Constructor for SegmentedBinaryConcentrationAnalysis.
+
+        Calls the constructor of parent class and fetches
+        all tuning parameters for the binary segmentation.
+
+        Args:
+            base (darsia.Image or list of such): same as in ConcentrationAnalysis.
+            color (string or callable): same as in ConcentrationAnalysis.
+            kwargs (keyword arguments): interface to all tuning parameters
+        """
+        super().__init__(base, color, **kwargs)
+
+        # Segmentation
+        self.labels = labels
+        self.labels_set = np.unique(labels)
+        self.num_labels = self.labels_set.shape[0]
+
+        # From the labels determine the region properties
+        self.regionprops = skimage.measure.regionprops(self.labels)
+
+        # Initialize the threshold values.
+        threshold_init_value: Union[float, list] = kwargs.get("threshold value")
+
+        if isinstance(threshold_init_value, list):
+            # Allow for heterogeneous initial value.
+            assert len(threshold_init_value) == self.num_labels
+            self.threshold_labels = np.array(threshold_init_value)
+
+        elif isinstance(threshold_init_value, float):
+            # Or initialize all labels with the same value
+            self.threshold_labels = threshold_init_value * np.ones(
+                self.num_labels, dtype=float
+            )
+
+        else:
+            raise ValueError(f"Type {type(threshold_init_value)} not supported.")
+
+        # Define the method how to choose dynamic threshold values (later to be chosen
+        # as global minimum of signal histogram). The method "local min" requires
+        # the threshold also to be a local minimum, and otherwise picks a cached
+        # value, while the "conservative" method always aims at updating and in
+        # in doubt choosing the provided upper bound, making a conservative choice.
+        self.threshold_method = kwargs.get("threshold method", "local min")
+        assert self.threshold_method in ["local min", "conservative"]
+
+    def _prior(self, signal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        if self.verbosity:
+            plt.figure("Prior: Cleaned mask")
+            plt.imshow(self.labels, alpha=0.5)
+
+            plt.figure("Prior: Final mask after cleaning")
+            plt.imshow(self.labels, alpha=0.5)
+
+        return super()._prior(signal)
+
+    def _apply_thresholding(self, signal: np.ndarray) -> np.ndarray:
+        """
+        Apply heterogeneous thresholding to obtain binary mask.
+
+        This routine is tailored to the segmented nature of the image.
+        For each labeled segment, a separate thresholding value is possible.
+        If dynamic thresholding is activated, a seperate thresholding
+        value for each segment is determined.
+
+        Args:
+            signal (np.ndarray): signal on entire domain.
+
+        Returns:
+            np.ndarray: binary thresholding mask
+        """
+
+        # Update the thresholding values if dynamic thresholding is chosen.
+        if self.apply_dynamic_threshold:
+
+            for label in range(self.num_labels):
+
+                # Determine mask of interest, i.e., consider single label, and where signal lies in correct bounds
+                label_mask = self.labels == label
+                interval_mask = np.logical_and(
+                    signal > self.threshold_value_lower_bound,
+                    signal < self.threshold_value_upper_bound,
+                )
+                special_mask = np.logical_and(label_mask, interval_mask)
+
+                # Only continue if mask not empty
+                if np.count_nonzero(special_mask) > 0:
+
+                    # Reduce the signal to the ROI
+                    active_signal_values = np.ravel(signal)[np.ravel(special_mask)]
+
+                    def determine_threshold(
+                        signal_1d: np.ndarray,
+                        sigma: float = 10,
+                        bins: int = 100,
+                        relative_boundary: float = 0.05,
+                    ) -> tuple[float, bool]:
+                        """
+                        Find global minimum and check whether it also is a local minimum
+                        (sufficient to check whether it is located at the boundary.
+
+                        Args:
+                            signal_1d (np.ndarray): 1d signal
+                        """
+
+                        # Smooth the histogram of the signal
+                        smooth_hist = ndi.gaussian_filter1d(
+                            np.histogram(signal_1d, bins=bins)[0], sigma=sigma
+                        )
+
+                        # Determine the global minimum (index)
+                        global_min_index = np.argmin(smooth_hist)
+
+                        # Determine the global minimum (in terms of signal values), determining the candidate for the threshold value
+                        thresh_global_min = np.min(
+                            signal_1d
+                        ) + global_min_index / float(bins) * (
+                            np.max(signal_1d) - np.min(signal_1d)
+                        )
+
+                        # As long a the global minimum does not lie close to the boundary,
+                        # it is consisted a local minimum.
+                        is_local_min = (
+                            relative_boundary * bins
+                            < global_min_index
+                            < (1 - relative_boundary) * bins
+                        )
+
+                        return thresh_global_min, is_local_min, smooth_hist
+
+                    # Determine the threshold value (global min of the 1d signal)
+                    updated_threshold, is_local_min, smooth_hist = determine_threshold(
+                        active_signal_values
+                    )
+
+                    # Admit the new threshold value if it is also a local min, and clip at
+                    # provided bounds.
+                    if self.threshold_method == "local min" and is_local_min:
+                        self.threshold_labels[label] = np.clip(
+                            updated_threshold,
+                            self.threshold_value_lower_bound,
+                            self.threshold_value_upper_bound,
+                        )
+                    elif self.threshold_method == "conservative":
+                        self.threshold_labels[label] = np.clip(
+                            updated_threshold,
+                            self.threshold_value_lower_bound,
+                            self.threshold_value_upper_bound,
+                        )
+
+                    if self.verbosity:
+                        plt.figure("Histogram analysis")
+                        plt.plot(
+                            np.linspace(
+                                np.min(active_signal_values),
+                                np.max(active_signal_values),
+                                100,
+                            ),
+                            smooth_hist,
+                            label=f"Label {label}",
+                        )
+                        plt.legend()
+
+        if self.verbosity:
+            print(f"Heterogeneous threshold values: {self.threshold_labels}.")
+
+        # Build the mask segment by segment.
+        mask = np.zeros(self.labels.shape[:2], dtype=bool)
+        for label in range(self.num_labels):
+            label_mask = self.labels == label
+            threshold_mask = signal > self.threshold_labels[label]
+            mask[np.logical_and(label_mask, threshold_mask)] = True
+
+        return mask
