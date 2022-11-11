@@ -115,13 +115,15 @@ class CurvatureCorrection:
             self._adapt_config()
 
         # Initialize cache for precomputed transformed coordinates
-
         self.cache: dict = {}
-        self.use_cache = self.config.get("use_cache", False)
-        if self.use_cache:
-            self.cache_path = Path(
-                self.config.get("cache", "./cache/curvature_transformation.npy")
-            )
+        if hasattr(self, "config"):
+            self.use_cache = self.config.get("use_cache", False)
+            if self.use_cache:
+                self.cache_path = Path(
+                    self.config.get("cache", "./cache/curvature_transformation.npy")
+                )
+        else:
+            self.use_cache = False
 
         # Hardcode the interpolation order, used when mapping pixels to transformed
         # coordinates
