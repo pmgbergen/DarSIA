@@ -1038,9 +1038,19 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             }
 
         # Thresholding parameters
-        self.apply_automatic_threshold: bool = kwargs.pop("threshold auto", False)
-        if not self.apply_automatic_threshold:
-            self.threshold_value: float = kwargs.pop("threshold value", 0.0)
+        # TODO consider removing and automatically choosing it. The default would be to choose the bounds equal to the threshold value. if all are same a flag should be set, that the threshold is static. And only in the dynamic case, all otimization should be performed.
+        self.apply_dynamic_threshold: bool = kwargs.pop("threshold dynamic", False)
+        if self.apply_dynamic_threshold:
+            # Define global lower and upper bounds for the threshold value
+            self.threshold_value_lower_bound: float = kwargs.pop(
+                "threshold value min", 0.0
+            )
+            self.threshold_value_upper_bound: float = kwargs.pop(
+                "threshold value max", 255.0
+            )
+        else:
+            # Define fixed global threshold value
+            self.threshold_value: float = kwargs.get("threshold value", 0.0)
 
         # Parameters to remove small objects
         self.min_size: int = kwargs.pop("min area size", 1)
@@ -1085,10 +1095,6 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         filling holes, local convex covering, and postsmoothing.
         Tuning parameters for this routine have to be set in the
         initialization routine.
-
-        In addition, the determined segments are checked. Only segments are
-        marked for which the signal has a sufficiently large gradient
-        modulus.
 
         Args:
             signal (np.ndarray): signal
@@ -1148,28 +1154,8 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         # Cache the (smooth) signal for output
         smooth_signal = np.copy(signal)
 
-        if self.verbosity:
-            # Extract merely signal values in the mask
-            active_signal_values = np.ravel(signal)[np.ravel(self.mask)]
-            # Find automatic threshold value using OTSU
-            thresh_test = skimage.filters.threshold_otsu(active_signal_values)
-
-            print(f"Otsu threshold value: {thresh_test}.")
-
-            # Display the corresponding histogram.
-            plt.figure("histogram for otsu analysis")
-            plt.plot(np.linspace(np.min(active_signal_values), np.max(active_signal_values), 100), np.histogram(active_signal_values, bins=100)[0])
-
-        # Apply thresholding to obtain mask
-        if self.apply_automatic_threshold:
-            # Extract merely signal values in the mask
-            active_signal_values = np.ravel(signal)[np.ravel(self.mask)]
-            # Find automatic threshold value using OTSU
-            thresh = skimage.filters.threshold_otsu(active_signal_values)
-        else:
-            # Fetch user-defined threshold value
-            thresh = self.threshold_value
-        mask = signal > thresh
+        # Apply thresholding to obain a thresholding mask
+        mask = self._apply_thresholding(signal)
 
         if self.verbosity:
             plt.figure("Prior: Thresholded mask")
@@ -1189,24 +1175,26 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             plt.figure("Prior: Cleaned mask")
             plt.imshow(mask)
 
-        # Loop through patches and fill up
-        if self.cover_patch_size > 1:
-            covered_mask = np.zeros(mask.shape[:2], dtype=bool)
-            size = self.cover_patch_size
-            Ny, Nx = mask.shape[:2]
-            for row in range(int(Ny / size)):
-                for col in range(int(Nx / size)):
-                    roi = (
-                        slice(row * size, (row + 1) * size),
-                        slice(col * size, (col + 1) * size),
-                    )
-                    covered_mask[roi] = skimage.morphology.convex_hull_image(mask[roi])
-            # Update the mask value
-            mask = covered_mask
+        # TODO rm!
 
-        if self.verbosity:
-            plt.figure("Prior: Locally covered mask")
-            plt.imshow(mask)
+        #        # Loop through patches and fill up
+        #        if self.cover_patch_size > 1:
+        #            covered_mask = np.zeros(mask.shape[:2], dtype=bool)
+        #            size = self.cover_patch_size
+        #            Ny, Nx = mask.shape[:2]
+        #            for row in range(int(Ny / size)):
+        #                for col in range(int(Nx / size)):
+        #                    roi = (
+        #                        slice(row * size, (row + 1) * size),
+        #                        slice(col * size, (col + 1) * size),
+        #                    )
+        #                    covered_mask[roi] = skimage.morphology.convex_hull_image(mask[roi])
+        #            # Update the mask value
+        #            mask = covered_mask
+        #
+        #        if self.verbosity:
+        #            plt.figure("Prior: Locally covered mask")
+        #            plt.imshow(mask)
 
         # Apply postsmoothing
         if self.apply_postsmoothing:
@@ -1235,8 +1223,8 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
                     isotropic=False,
                 )
             elif self.postsmoothing["method"] == "isotropic bregman":
-                signal = skimage.restoration.denoise_tv_bregman(
-                    signal,
+                smoothed_mask = skimage.restoration.denoise_tv_bregman(
+                    resized_mask,
                     weight=self.postsmoothing["weight"],
                     eps=self.postsmoothing["eps"],
                     max_num_iter=self.postsmoothing["max_num_iter"],
@@ -1255,19 +1243,16 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
 
             # Apply hardcoded threshold value of 0.5 assuming it is sufficient to turn
             # off small particles and rely on larger marked regions
-            thresh = (
-                0.5
-                if self.postsmoothing["method"] == "chambolle"
-                else skimage.filters.threshold_otsu(large_mask)
-            )
+            thresh = 0.5
             mask = large_mask > thresh
 
         if self.verbosity:
             plt.figure("Prior: TVD postsmoothed mask")
             plt.imshow(mask)
 
+        # TODO rm?
         # Finaly cleaning - inactive signal outside mask
-        mask[~self.mask] = 0
+        # mask[~self.mask] = 0
 
         if self.verbosity:
             plt.figure("Prior: Final mask after cleaning")
@@ -1275,6 +1260,111 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             plt.show()
 
         return mask, smooth_signal
+
+    def _apply_thresholding(self, signal: np.ndarray) -> np.ndarray:
+        """
+        Apply global thresholding to obtain binary mask.
+
+        Both static and dynamic thresholding is possible.
+
+        Args:
+            signal (np.ndarray): signal on entire domain.
+
+        Returns:
+            np.ndarray: binary thresholding mask
+        """
+
+        # Update the thresholding values if dynamic thresholding is chosen.
+        if self.apply_dynamic_threshold:
+
+            # Determine mask of interest, i.e., consider single label, and where signal lies in correct bounds
+            interval_mask = np.logical_and(
+                signal > self.threshold_value_lower_bound,
+                signal < self.threshold_value_upper_bound,
+            )
+
+            # Only continue if mask not empty
+            if np.count_nonzero(interval_mask) > 0:
+                # Extract merely signal values in the mask - TODO
+                # active_signal_values = np.ravel(signal)[np.ravel(self.mask)]
+                active_signal_values = np.ravel(signal)[np.ravel(interval_mask)]
+
+                # Define only once
+                def determine_threshold(
+                    signal_1d: np.ndarray,
+                    sigma: float = 10,
+                    bins: int = 100,
+                    relative_boundary: float = 0.05,
+                ) -> tuple[float, bool]:
+                    """
+                    Find global minimum and check whether it also is a local minimum
+                    (sufficient to check whether it is located at the boundary.
+
+                    Args:
+                        signal_1d (np.ndarray): 1d signal
+                    """
+
+                    # Smooth the histogram of the signal
+                    smooth_hist = ndi.gaussian_filter1d(
+                        np.histogram(signal_1d, bins=bins)[0], sigma=sigma
+                    )
+
+                    # Determine the global minimum (index)
+                    global_min_index = np.argmin(smooth_hist)
+
+                    # Determine the global minimum (in terms of signal values), determining the candidate for the threshold value
+                    thresh_global_min = np.min(signal_1d) + global_min_index / float(
+                        bins
+                    ) * (np.max(signal_1d) - np.min(signal_1d))
+
+                    # As long a the global minimum does not lie close to the boundary,
+                    # it is consisted a local minimum.
+                    is_local_min = (
+                        relative_boundary * bins
+                        < global_min_index
+                        < (1 - relative_boundary) * bins
+                    )
+
+                    return thresh_global_min, is_local_min, smooth_hist
+
+                # Determine the threshold value (global min of the 1d signal)
+                updated_threshold, is_local_min, smooth_hist = determine_threshold(
+                    active_signal_values
+                )
+
+                # Admit the new threshold value if it is also a local min, and clip at
+                # provided bounds.
+                if self.threshold_method == "local min" and is_local_min:
+                    self.threshold_value = np.clip(
+                        updated_threshold,
+                        self.threshold_value_lower_bound,
+                        self.threshold_value_upper_bound,
+                    )
+                elif self.threshold_method == "conservative":
+                    self.threshold_value = np.clip(
+                        updated_threshold,
+                        self.threshold_value_lower_bound,
+                        self.threshold_value_upper_bound,
+                    )
+
+                if self.verbosity:
+                    plt.figure("Histogram analysis")
+                    plt.plot(
+                        np.linspace(
+                            np.min(active_signal_values),
+                            np.max(active_signal_values),
+                            100,
+                        ),
+                        smooth_hist,
+                    )
+
+        if self.verbosity:
+            print("Thresholding value", self.threshold_value)
+
+        # Build the mask segment by segment.
+        mask = signal > self.threshold_value
+
+        return mask
 
     def _posterior(self, signal: np.ndarray, mask_prior: np.ndarray) -> np.ndarray:
         """
@@ -1454,8 +1544,8 @@ class LayeredBinaryConcentrationAnalysis(ConcentrationAnalysis):
             }
 
         # Thresholding parameters
-        self.apply_automatic_threshold: bool = kwargs.pop("threshold auto", False)
-        if not self.apply_automatic_threshold:
+        self.apply_dynamic_threshold: bool = kwargs.pop("threshold auto", False)
+        if not self.apply_dynamic_threshold:
             self.threshold_value: float = kwargs.pop("threshold value", 0.0)
 
         # Parameters to remove small objects
@@ -1563,16 +1653,28 @@ class LayeredBinaryConcentrationAnalysis(ConcentrationAnalysis):
         if self.verbosity:
             # Extract merely signal values in the mask
             active_signal_values = np.ravel(signal)[np.ravel(self.mask)]
-            # Find automatic threshold value using OTSU
+            # Find dynamic threshold value using OTSU
             thresh = skimage.filters.threshold_otsu(active_signal_values)
             print("OTSU threshold value", thresh)
 
         # Apply thresholding to obtain mask
-        if self.apply_automatic_threshold:
+        if self.apply_dynamic_threshold:
+            # Check whether a minimal value is provided as safety guard
+            thresh_lower_bound = kwargs.pop("threshold value min", 0.0)
             # Extract merely signal values in the mask
             active_signal_values = np.ravel(signal)[np.ravel(self.mask)]
-            # Find automatic threshold value using OTSU
-            thresh = skimage.filters.threshold_otsu(active_signal_values)
+
+            plt.figure("otsu?")
+            plt.plot(
+                np.linspace(np.min(active_signal_values), np.max(active_signal_values)),
+                np.histogram(active_signal_values, bins=100),
+            )
+            plt.show()
+
+            # Find automatic threshold value using OTSU, and cut at lower bound
+            thresh = max(
+                skimage.filters.threshold_otsu(active_signal_values), thresh_lower_bound
+            )
         else:
             # Fetch user-defined threshold value
             thresh = self.threshold_value
