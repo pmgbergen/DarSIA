@@ -77,7 +77,9 @@ class CompactionAnalysis:
         transformed_img = self.translation_analysis(img)
 
         if return_patch_translation:
-            patch_translation = self.translation_analysis.return_patch_translation()
+            patch_translation = self.translation_analysis.return_patch_translation(
+                reverse
+            )
 
         if plot_patch_translation:
             self.translation_analysis.plot_translation()
