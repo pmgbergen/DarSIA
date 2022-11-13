@@ -337,7 +337,7 @@ class TranslationAnalysis:
         return horizontal_boundary, len(horizontal_boundary) * [0.0]
 
     def return_patch_translation(
-        self, reverse: bool = False, units: str = "metric"
+        self, reverse: bool = True, units: str = "metric"
     ) -> np.ndarray:
         """
         Translate patch centers of the test image.
@@ -345,7 +345,7 @@ class TranslationAnalysis:
         Args:
             reverse (bool): flag whether the translation is understood as from the
                 test image to the baseline image, or reversed. The default is the
-                former one.
+                former latter.
             units (list of str): "metric" or "pixel"
 
         Returns:
@@ -395,11 +395,15 @@ class TranslationAnalysis:
 
         # Determine patch translation in matrix ordering (and with flipped y-direction
         # to comply with the orientation of the y-axis in imaging.
-        patch_translation = self.return_patch_translation(
-            reverse=True, units="pixel"
-        ).reshape((-1, 2))
+        patch_translation = self.return_patch_translation(units="pixel").reshape(
+            (-1, 2)
+        )
         patch_translation_y = patch_translation[:, 0]
         patch_translation_x = patch_translation[:, 1]
+
+        # For visual purposes, since the row-axis / y-axis has a negative orientation,
+        # scale the translation in y-direction.
+        patch_translation_y *= -1.0
 
         # Plot the interpolated translation
         fig, ax = plt.subplots(1, num=1)
@@ -428,7 +432,7 @@ class TranslationAnalysis:
 
     def translate_image(
         self,
-        reverse: bool = False,
+        reverse: bool = True,
     ) -> darsia.Image:
         """
         Apply translation to an entire image by using piecwise perspective transformation.
@@ -436,7 +440,7 @@ class TranslationAnalysis:
         Args:
             reverse (bool): flag whether the translation is understood as from the
                 test image to the baseline image, or reversed. The default is the
-                former one.
+                latter.
 
         Returns:
             darsia.Image: translated image
@@ -467,6 +471,6 @@ class TranslationAnalysis:
         """
         self.load_image(img)
         self.find_translation()
-        transformed_img = self.translate_image()
+        transformed_img = self.translate_image(reverse=False)
 
         return transformed_img

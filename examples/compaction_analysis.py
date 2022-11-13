@@ -1,5 +1,11 @@
 """
 Determine compaction of FluidFlower by comparing two different images.
+
+The images correpsond to the baseline image of the official well test
+performed under the benchmark, and one of the other baseline images,
+most likely close to C1. Between these two images, compaction/sedimentation
+has occurred, i.e., to most degree the sand sunk from the src (well test)
+to dst (C1 like) scenarios.
 """
 
 import matplotlib.pyplot as plt
@@ -11,8 +17,8 @@ import darsia
 # ! ----- Preliminaries - prepare two images for compaction analysis
 
 # Paths to two images of interest. NOTE: These images are not part of the GH repo.
-path_src = "/home/jakub/images/ift/benchmark/baseline/original/Baseline.jpg"
-path_dst = "/home/jakub/images/ift/benchmark/well_test/from_description/pulse1.jpg"
+path_src = "/home/jakub/images/ift/benchmark/well_test/from_description/pulse1.jpg"
+path_dst = "/home/jakub/images/ift/benchmark/baseline/original/Baseline.jpg"
 
 # Setup curvature correction (here only cropping)
 config = {
@@ -66,10 +72,11 @@ config["compaction"] = {
 }
 compaction_analysis = darsia.CompactionAnalysis(da_img_src, **config["compaction"])
 
-# Apply compaction analysis, providing the deformed image matching the baseline image.
-# Also plot the deformation as vector field.
+# Apply compaction analysis, providing the deformed image matching the baseline image,
+# as well as the required translations on each patch, characterizing the total
+# deformation. Also plot the deformation as vector field.
 da_new_image, patch_translation = compaction_analysis(
-    da_img_dst, reverse=True, plot_patch_translation=True, return_patch_translation=True
+    da_img_dst, plot_patch_translation=True, return_patch_translation=True
 )
 
 print("The centers of the 20 x 10 patches are translated:")

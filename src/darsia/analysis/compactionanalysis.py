@@ -53,7 +53,7 @@ class CompactionAnalysis:
     def __call__(
         self,
         img: darsia.Image,
-        reverse: bool = False,
+        reverse: bool = True,
         plot_patch_translation: bool = False,
         return_patch_translation: bool = False,
     ):
@@ -67,7 +67,7 @@ class CompactionAnalysis:
             img (darsia.Image): test image
             reverse (bool): flag whether the translation is understood as from the
                 test image to the baseline image, or reversed. The default is the
-                former one.
+                latter.
             plot_patch_translation (bool): flag controlling whether the deformation is also
                 visualized as vector field.
             return_patch_translation (bool): flag controlling whether the deformation
@@ -77,7 +77,9 @@ class CompactionAnalysis:
         transformed_img = self.translation_analysis(img)
 
         if return_patch_translation:
-            patch_translation = self.translation_analysis.return_patch_translation()
+            patch_translation = self.translation_analysis.return_patch_translation(
+                reverse
+            )
 
         if plot_patch_translation:
             self.translation_analysis.plot_translation()
@@ -87,13 +89,18 @@ class CompactionAnalysis:
         else:
             return transformed_img
 
-    def evaluate(self, coords: np.ndarray, units: str = "metric") -> np.ndarray:
+    def evaluate(
+        self, coords: np.ndarray, reverse: bool = True, units: str = "metric"
+    ) -> np.ndarray:
         """
         Evaluate compaction in arbitrary points.
 
         Args:
             coords (np.ndarray): coordinate array with shape num_pts x 2, or alternatively
                 num_x_pts x num_y_pts x 2, identifying points in a mesh/patched image.
+            reverse (bool): flag whether the translation is understood as from the
+                test image to the baseline image, or reversed. The default is the
+                former latter.
             units (str): input and output units; "metric" default; otherwise assumed
                 to be "pixel".
 
@@ -123,6 +130,11 @@ class CompactionAnalysis:
             pixel_coords
         )
 
+        # Flip, if required
+        if reverse:
+            translation_x *= -1.0
+            translation_y *= -1.0
+
         # Collect results, use ordering of components consistent with matrix indexing
         deformation = np.transpose(np.vstack((translation_y, translation_x)))
 
@@ -133,12 +145,15 @@ class CompactionAnalysis:
         # Reshape to format used at input
         return deformation.reshape(coords_shape)
 
-    def apply(self, img: darsia.Image) -> darsia.Image:
+    def apply(self, img: darsia.Image, reverse: bool = True) -> darsia.Image:
         """
         Apply computed transformation onto arbitrary image.
 
         Args:
             img (np.ndarray or darsia.Image): image
+            reverse (bool): flag whether the translation is understood as from the
+                test image to the baseline image, or reversed. The default is the
+                latter.
 
         Returns:
             np.ndarray, optional: transformed image, if input is array; no output otherwise
@@ -147,4 +162,4 @@ class CompactionAnalysis:
         self.translation_analysis.load_image(img)
 
         # Apply the transformation, stored in translation_analysis
-        return self.translation_analysis.translate_image()
+        return self.translation_analysis.translate_image(reverse)
