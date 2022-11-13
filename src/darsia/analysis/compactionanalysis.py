@@ -145,12 +145,15 @@ class CompactionAnalysis:
         # Reshape to format used at input
         return deformation.reshape(coords_shape)
 
-    def apply(self, img: darsia.Image) -> darsia.Image:
+    def apply(self, img: darsia.Image, reverse: bool = True) -> darsia.Image:
         """
         Apply computed transformation onto arbitrary image.
 
         Args:
             img (np.ndarray or darsia.Image): image
+            reverse (bool): flag whether the translation is understood as from the
+                test image to the baseline image, or reversed. The default is the
+                latter.
 
         Returns:
             np.ndarray, optional: transformed image, if input is array; no output otherwise
@@ -159,4 +162,4 @@ class CompactionAnalysis:
         self.translation_analysis.load_image(img)
 
         # Apply the transformation, stored in translation_analysis
-        return self.translation_analysis.translate_image()
+        return self.translation_analysis.translate_image(reverse)
