@@ -1039,7 +1039,6 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             }
 
         # Thresholding parameters
-        # TODO consider removing and automatically choosing it. The default would be to choose the bounds equal to the threshold value. if all are same a flag should be set, that the threshold is static. And only in the dynamic case, all otimization should be performed.
         self.apply_dynamic_threshold: bool = kwargs.pop("threshold dynamic", False)
         if self.apply_dynamic_threshold:
             # Define global lower and upper bounds for the threshold value
@@ -1176,26 +1175,25 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             plt.figure("Prior: Cleaned mask")
             plt.imshow(mask)
 
-        # TODO rm!
-
-        #        # Loop through patches and fill up
-        #        if self.cover_patch_size > 1:
-        #            covered_mask = np.zeros(mask.shape[:2], dtype=bool)
-        #            size = self.cover_patch_size
-        #            Ny, Nx = mask.shape[:2]
-        #            for row in range(int(Ny / size)):
-        #                for col in range(int(Nx / size)):
-        #                    roi = (
-        #                        slice(row * size, (row + 1) * size),
-        #                        slice(col * size, (col + 1) * size),
-        #                    )
-        #                    covered_mask[roi] = skimage.morphology.convex_hull_image(mask[roi])
-        #            # Update the mask value
-        #            mask = covered_mask
+        # NOTE: Currently not used, yet, kept for the moment.
+        # # Loop through patches and fill up
+        # if self.cover_patch_size > 1:
+        #     covered_mask = np.zeros(mask.shape[:2], dtype=bool)
+        #     size = self.cover_patch_size
+        #     Ny, Nx = mask.shape[:2]
+        #     for row in range(int(Ny / size)):
+        #         for col in range(int(Nx / size)):
+        #             roi = (
+        #                 slice(row * size, (row + 1) * size),
+        #                 slice(col * size, (col + 1) * size),
+        #             )
+        #             covered_mask[roi] = skimage.morphology.convex_hull_image(mask[roi])
+        #     # Update the mask value
+        #     mask = covered_mask
         #
-        #        if self.verbosity:
-        #            plt.figure("Prior: Locally covered mask")
-        #            plt.imshow(mask)
+        # if self.verbosity:
+        #     plt.figure("Prior: Locally covered mask")
+        #     plt.imshow(mask)
 
         # Apply postsmoothing
         if self.apply_postsmoothing:
