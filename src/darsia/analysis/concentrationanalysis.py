@@ -1249,11 +1249,6 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             plt.figure("Prior: TVD postsmoothed mask")
             plt.imshow(mask)
 
-        # TODO rm?
-        # Finaly cleaning - inactive signal outside mask
-        # mask[~self.mask] = 0
-
-        if self.verbosity:
             plt.figure("Prior: Final mask after cleaning")
             plt.imshow(mask)
             plt.show()
