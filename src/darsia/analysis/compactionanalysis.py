@@ -89,13 +89,18 @@ class CompactionAnalysis:
         else:
             return transformed_img
 
-    def evaluate(self, coords: np.ndarray, units: str = "metric") -> np.ndarray:
+    def evaluate(
+        self, coords: np.ndarray, reverse: bool = True, units: str = "metric"
+    ) -> np.ndarray:
         """
         Evaluate compaction in arbitrary points.
 
         Args:
             coords (np.ndarray): coordinate array with shape num_pts x 2, or alternatively
                 num_x_pts x num_y_pts x 2, identifying points in a mesh/patched image.
+            reverse (bool): flag whether the translation is understood as from the
+                test image to the baseline image, or reversed. The default is the
+                former latter.
             units (str): input and output units; "metric" default; otherwise assumed
                 to be "pixel".
 
@@ -124,6 +129,11 @@ class CompactionAnalysis:
         translation_y = self.translation_analysis.interpolator_translation_y(
             pixel_coords
         )
+
+        # Flip, if required
+        if reverse:
+            translation_x *= -1.0
+            translation_y *= -1.0
 
         # Collect results, use ordering of components consistent with matrix indexing
         deformation = np.transpose(np.vstack((translation_y, translation_x)))
