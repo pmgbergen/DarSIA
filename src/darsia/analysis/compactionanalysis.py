@@ -53,7 +53,7 @@ class CompactionAnalysis:
     def __call__(
         self,
         img: darsia.Image,
-        reverse: bool = False,
+        reverse: bool = True,
         plot_patch_translation: bool = False,
         return_patch_translation: bool = False,
     ):
@@ -67,7 +67,7 @@ class CompactionAnalysis:
             img (darsia.Image): test image
             reverse (bool): flag whether the translation is understood as from the
                 test image to the baseline image, or reversed. The default is the
-                former one.
+                latter.
             plot_patch_translation (bool): flag controlling whether the deformation is also
                 visualized as vector field.
             return_patch_translation (bool): flag controlling whether the deformation
