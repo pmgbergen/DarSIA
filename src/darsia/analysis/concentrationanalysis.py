@@ -16,6 +16,7 @@ import scipy.ndimage as ndi
 import scipy.sparse as sps
 import skimage
 from scipy.optimize import bisect
+from scipy.signal import find_peaks
 from sklearn.linear_model import RANSACRegressor
 
 import darsia
@@ -1506,8 +1507,8 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
         """
         Constructor for SegmentedBinaryConcentrationAnalysis.
 
-        Calls the constructor of parent class and fetches
-        all tuning parameters for the binary segmentation.
+        # Update the thresholding values if dynamic thresholding is chosen.
+        if self.apply_dynamic_threshold:
 
         Args:
             base (darsia.Image or list of such): same as in ConcentrationAnalysis.
@@ -1530,11 +1531,11 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
         if isinstance(threshold_init_value, list):
             # Allow for heterogeneous initial value.
             assert len(threshold_init_value) == self.num_labels
-            self.threshold_labels = np.array(threshold_init_value)
+            self.threshold_value = np.array(threshold_init_value)
 
         elif isinstance(threshold_init_value, float):
             # Or initialize all labels with the same value
-            self.threshold_labels = threshold_init_value * np.ones(
+            self.threshold_value = threshold_init_value * np.ones(
                 self.num_labels, dtype=float
             )
 
@@ -1547,7 +1548,12 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
         # value, while the "conservative" method always aims at updating and in
         # in doubt choosing the provided upper bound, making a conservative choice.
         self.threshold_method = kwargs.get("threshold method", "local min")
-        assert self.threshold_method in ["local min", "conservative"]
+        assert self.threshold_method in [
+            "local/global min",
+            "conservative global min",
+            "otsu",
+            "otsu local min",
+        ]
 
     def _apply_thresholding(self, signal: np.ndarray) -> np.ndarray:
         """
@@ -1570,78 +1576,171 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
 
             for label in range(self.num_labels):
 
-                # Determine mask of interest, i.e., consider single label, and where signal lies in correct bounds
+                # Determine mask of interest, i.e., consider single label,
+                # the interval of interest and the provided mask.
                 label_mask = self.labels == label
                 interval_mask = np.logical_and(
                     signal > self.threshold_value_lower_bound,
                     signal < self.threshold_value_upper_bound,
                 )
-                special_mask = np.logical_and(label_mask, interval_mask)
+                effective_mask = np.logical_and(
+                    np.logical_and(label_mask, interval_mask), self.mask
+                )
 
                 # Only continue if mask not empty
-                if np.count_nonzero(special_mask) > 0:
+                if np.count_nonzero(effective_mask) > 0:
 
-                    # Reduce the signal to the ROI
-                    active_signal_values = np.ravel(signal)[np.ravel(special_mask)]
+                    # Reduce the signal to the effective mask
+                    active_signal_values = np.ravel(signal)[np.ravel(effective_mask)]
 
-                    def determine_threshold(
-                        signal_1d: np.ndarray,
-                        sigma: float = 10,
-                        bins: int = 100,
-                        relative_boundary: float = 0.05,
-                    ) -> tuple[float, bool]:
-                        """
-                        Find global minimum and check whether it also is a local minimum
-                        (sufficient to check whether it is located at the boundary.
+                    if self.threshold_method in [
+                        "local/global min",
+                        "conservative global min",
+                    ]:
 
-                        Args:
-                            signal_1d (np.ndarray): 1d signal
-                        """
+                        def determine_threshold(
+                            signal_1d: np.ndarray,
+                            sigma: float = 10,
+                            bins: int = 100,
+                            relative_boundary: float = 0.05,
+                        ) -> tuple[float, bool]:
+                            """
+                            Find global minimum and check whether it also is a local minimum
+                            (sufficient to check whether it is located at the boundary.
+
+                            Args:
+                                signal_1d (np.ndarray): 1d signal
+                            """
+
+                            # Smooth the histogram of the signal
+                            smooth_hist = ndi.gaussian_filter1d(
+                                np.histogram(signal_1d, bins=bins)[0], sigma=sigma
+                            )
+
+                            # Determine the global minimum (index)
+                            global_min_index = np.argmin(smooth_hist)
+
+                            # Determine the global minimum (in terms of signal values),
+                            # determining the candidate for the threshold value
+                            thresh_global_min = np.min(
+                                signal_1d
+                            ) + global_min_index / float(bins) * (
+                                np.max(signal_1d) - np.min(signal_1d)
+                            )
+
+                            # As long a the global minimum does not lie close to the boundary,
+                            # it is consisted a local minimum.
+                            is_local_min = (
+                                relative_boundary * bins
+                                < global_min_index
+                                < (1 - relative_boundary) * bins
+                            )
+
+                            return thresh_global_min, is_local_min, smooth_hist
+
+                        # Determine the threshold value (global min of the 1d signal)
+                        (
+                            updated_threshold,
+                            is_local_min,
+                            smooth_hist,
+                        ) = determine_threshold(active_signal_values)
+
+                        # Admit the new threshold value if it is also a local min, and clip at
+                        # provided bounds.
+                        if self.threshold_method == "local/global min" and is_local_min:
+                            self.threshold_value[label] = np.clip(
+                                updated_threshold,
+                                self.threshold_value_lower_bound,
+                                self.threshold_value_upper_bound,
+                            )
+                        elif self.threshold_method == "conservative global min":
+                            self.threshold_value[label] = np.clip(
+                                updated_threshold,
+                                self.threshold_value_lower_bound,
+                                self.threshold_value_upper_bound,
+                            )
+
+                        # TODO use find_peaks? Idea. Find a local minimum between two
+                        # local max. This does not always just produces the global min,
+                        # which may instead alway lay at the interval boundary.
+
+                        # TODO Find a relative local min. Accept value as 'minimum'
+                        # based on a tolerance on the derivative. And then choose the
+                        # smallest one satisfying this criterium.
+
+                    elif self.threshold_method in ["otsu", "otsu local min"]:
+
+                        # Define tuning parameters for defining histograms,
+                        # and smooth them. NOTE: They should be in general chosen
+                        # tailored to the situation. However, these values should
+                        # also work for most cases.
+                        bins = 200
+                        sigma = 10
 
                         # Smooth the histogram of the signal
                         smooth_hist = ndi.gaussian_filter1d(
-                            np.histogram(signal_1d, bins=bins)[0], sigma=sigma
+                            np.histogram(active_signal_values, bins=bins)[0],
+                            sigma=sigma,
                         )
 
                         # Determine the global minimum (index)
-                        global_min_index = np.argmin(smooth_hist)
-
-                        # Determine the global minimum (in terms of signal values), determining the candidate for the threshold value
-                        thresh_global_min = np.min(
-                            signal_1d
-                        ) + global_min_index / float(bins) * (
-                            np.max(signal_1d) - np.min(signal_1d)
+                        # thresh_otsu = skimage.filters.threshold_otsu(active_signal_values)
+                        thresh_otsu_smooth_pre = skimage.filters.threshold_otsu(
+                            hist=smooth_hist
+                        )
+                        thresh_otsu_smooth = np.min(
+                            active_signal_values
+                        ) + thresh_otsu_smooth_pre / bins * (
+                            np.max(active_signal_values) - np.min(active_signal_values)
                         )
 
-                        # As long a the global minimum does not lie close to the boundary,
-                        # it is consisted a local minimum.
-                        is_local_min = (
-                            relative_boundary * bins
-                            < global_min_index
-                            < (1 - relative_boundary) * bins
-                        )
-
-                        return thresh_global_min, is_local_min, smooth_hist
-
-                    # Determine the threshold value (global min of the 1d signal)
-                    updated_threshold, is_local_min, smooth_hist = determine_threshold(
-                        active_signal_values
-                    )
-
-                    # Admit the new threshold value if it is also a local min, and clip at
-                    # provided bounds.
-                    if self.threshold_method == "local min" and is_local_min:
-                        self.threshold_labels[label] = np.clip(
-                            updated_threshold,
+                        # Restrict to interval of interest
+                        updated_threshold_value = np.clip(
+                            thresh_otsu_smooth,
                             self.threshold_value_lower_bound,
                             self.threshold_value_upper_bound,
                         )
-                    elif self.threshold_method == "conservative":
-                        self.threshold_labels[label] = np.clip(
-                            updated_threshold,
-                            self.threshold_value_lower_bound,
-                            self.threshold_value_upper_bound,
-                        )
+
+                        if self.threshold_method == "otsu":
+                            # Fix the computed OTSU threshold value for considered label
+                            self.threshold_value[label] = updated_threshold_value
+
+                        elif self.threshold_method == "otsu local min":
+                            # Before accepcting the computed OTSU threshold value, check
+                            # first whether it defines a local minimum. Use find_peaks,
+                            # which requires some preparation of edge values to also
+                            # consider edge extrema as local extrema - add small value.
+                            enriched_smooth_hist = np.hstack(
+                                (
+                                    np.array([np.min(smooth_hist)]),
+                                    smooth_hist,
+                                    np.array([np.min(smooth_hist)]),
+                                )
+                            )
+
+                            # Find the local maxima
+                            peaks_pre, _ = find_peaks(enriched_smooth_hist)
+                            peaks = np.min(active_signal_values) + (
+                                peaks_pre + 1
+                            ) / bins * (
+                                np.max(active_signal_values)
+                                - np.min(active_signal_values)
+                            )
+
+                            # Identify as local minimum if value lies in between two peaks
+                            is_local_min = peaks.shape[0] > 1 and np.min(
+                                peaks
+                            ) < updated_threshold_value < np.max(peaks)
+
+                            # Update value if it is a local min
+                            if is_local_min:
+                                self.threshold_value[label] = updated_threshold_value
+
+                        if self.verbosity:
+                            print(
+                                f"""Label {label}; OTSU thresh {thresh_otsu_smooth};
+                                Peaks {peaks}; is local min {is_local_min}."""
+                            )
 
                     if self.verbosity:
                         plt.figure("Histogram analysis")
@@ -1649,7 +1748,7 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                             np.linspace(
                                 np.min(active_signal_values),
                                 np.max(active_signal_values),
-                                100,
+                                smooth_hist.shape[0],
                             ),
                             smooth_hist,
                             label=f"Label {label}",
@@ -1657,13 +1756,13 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                         plt.legend()
 
         if self.verbosity:
-            print(f"Heterogeneous threshold values: {self.threshold_labels}.")
+            print("Thresholding value", self.threshold_value)
 
         # Build the mask segment by segment.
         mask = np.zeros(self.labels.shape[:2], dtype=bool)
         for label in range(self.num_labels):
             label_mask = self.labels == label
-            threshold_mask = signal > self.threshold_labels[label]
+            threshold_mask = signal > self.threshold_value[label]
             mask[np.logical_and(label_mask, threshold_mask)] = True
 
         return mask
