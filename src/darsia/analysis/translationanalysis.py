@@ -401,6 +401,10 @@ class TranslationAnalysis:
         patch_translation_y = patch_translation[:, 0]
         patch_translation_x = patch_translation[:, 1]
 
+        # For visual purposes, since the row-axis / y-axis has a negative orientation,
+        # scale the translation in y-direction.
+        patch_translation_y *= -1.0
+
         # Plot the interpolated translation
         fig, ax = plt.subplots(1, num=1)
         ax.quiver(
