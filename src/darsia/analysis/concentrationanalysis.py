@@ -35,6 +35,7 @@ class ConcentrationAnalysis:
         self,
         base: Union[darsia.Image, list[darsia.Image]],
         color: Union[str, Callable] = "gray",
+        **kwargs,
     ) -> None:
         """
         Constructor of ConcentrationAnalysis.
@@ -50,6 +51,11 @@ class ConcentrationAnalysis:
         self.color: Union[str, Callable] = (
             color.lower() if isinstance(color, str) else color
         )
+
+        # Extra args for hsv color which here is meant has hue thresholded value
+        if self.color == "hsv":
+            self.hue_lower_bound = kwargs.pop("hue lower bound", 0.0)
+            self.hue_upper_bound = kwargs.pop("hue upper bound", 360.0)
 
         # Extract mono-colored version for baseline image
         if not isinstance(base, list):
@@ -276,6 +282,15 @@ class ConcentrationAnalysis:
             img.toSaturation()
         elif self.color == "value":
             img.toValue()
+        elif self.color == "hsv":
+            img.toRGB()
+            hsv_img = cv2.cvtColor(img.img, cv2.COLOR_RGB2HSV)
+            mask = np.logical_and(
+                self.hue_lower_bound < hsv_img[:, :, 0],
+                hsv_img[:, :, 0] < self.hue_upper_bound,
+            )
+            img.img = hsv_img[:, :, 2]
+            img.img[~mask] = 0
         elif callable(self.color):
             img.img = self.color(img.img)
         else:
@@ -1012,7 +1027,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             color (string or callable): same as in ConcentrationAnalysis.
             kwargs (keyword arguments): interface to all tuning parameters
         """
-        super().__init__(base, color)
+        super().__init__(base, color, **kwargs)
 
         # TVD parameters for pre and post smoothing
         self.apply_presmoothing = kwargs.pop("presmoothing", False)
