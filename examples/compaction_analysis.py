@@ -122,15 +122,18 @@ plt.imshow(img_box_B.img)
 plt.show()
 
 # Now we patch box B, the number of patches is arbitrary (here chosen to be 5 x 3):
-patches_box_B = darsia.Patches(img_box_B, 5, 3)
+patched_box_B = darsia.Patches(img_box_B, 5, 3)
 
-# The patch centers can be accessed:
-patch_centers_box_B = patches_box_B.global_centers_cartesian
+# The patch centers can be accessed - actually not required here, but these correspond
+# to the subsequent deformations.
+patch_centers_box_B = patched_box_B.global_centers_cartesian_matrix
+print(patch_centers_box_B)
 
 # The deformation in the centers of these points can be obtained by evaluating the
-# deformation map in a similar fashion as above. The results comes in a matrix.
-# Entry [row,col] is associated to patch with coordinate [row,col] using the
-# conventional matrix indexing.
-deformation_patch_centers_box_B = compaction_analysis.evaluate(patch_centers_box_B)
+# deformation map in a patch object. The result uses conventional matrix indexing.
+# Entry [row,col] is associated to patch with coordinate [row,col], with [0,0]
+# denoting the top left corner of the image/patch.
+deformation_patch_centers_box_B = compaction_analysis.evaluate(patched_box_B)
+
 print("The deformation in the centers of the patches of Box B:")
 print(deformation_patch_centers_box_B)
