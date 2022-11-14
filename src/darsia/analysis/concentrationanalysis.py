@@ -1102,8 +1102,34 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
 
         Returns:
             np.ndarray: prior binary mask
+            np.ndarray: smoothed signal, used in postprocessing
         """
 
+        # Prepare the signal by applying presmoothing
+        smooth_signal = self.prepare_signal(signal)
+
+        # Apply thresholding to obain a thresholding mask
+        mask = self._apply_thresholding(smooth_signal)
+
+        if self.verbosity:
+            plt.figure("Prior: Thresholded mask")
+            plt.imshow(mask)
+
+        # Clean mask by removing small objects, filling holes, and applying postsmoothing.
+        clean_mask = self.clean_mask(mask)
+
+        return clean_mask, smooth_signal
+
+    def prepare_signal(self, signal: np.ndarray) -> np.ndarray:
+        """
+        Apply presmoothing.
+
+        Args:
+            signal (np.ndarray): input signal
+
+        Return:
+            np.ndarray: smooth signal
+        """
         if self.verbosity:
             plt.figure("Prior: Input signal")
             plt.imshow(signal)
@@ -1152,109 +1178,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             plt.figure("Prior: TVD smoothed signal")
             plt.imshow(signal)
 
-        # Cache the (smooth) signal for output
-        smooth_signal = np.copy(signal)
-
-        # Apply thresholding to obain a thresholding mask
-        mask = self._apply_thresholding(signal)
-
-        if self.verbosity:
-            plt.figure("Prior: Thresholded mask")
-            plt.imshow(mask)
-
-        # Remove small objects
-        if self.min_size > 1:
-            mask = skimage.morphology.remove_small_objects(mask, min_size=self.min_size)
-
-        # Fill holes
-        if self.area_threshold > 0:
-            mask = skimage.morphology.remove_small_holes(
-                mask, area_threshold=self.area_threshold
-            )
-
-        if self.verbosity:
-            plt.figure("Prior: Cleaned mask")
-            plt.imshow(mask)
-
-        # NOTE: Currently not used, yet, kept for the moment.
-        # # Loop through patches and fill up
-        # if self.cover_patch_size > 1:
-        #     covered_mask = np.zeros(mask.shape[:2], dtype=bool)
-        #     size = self.cover_patch_size
-        #     Ny, Nx = mask.shape[:2]
-        #     for row in range(int(Ny / size)):
-        #         for col in range(int(Nx / size)):
-        #             roi = (
-        #                 slice(row * size, (row + 1) * size),
-        #                 slice(col * size, (col + 1) * size),
-        #             )
-        #             covered_mask[roi] = skimage.morphology.convex_hull_image(mask[roi])
-        #     # Update the mask value
-        #     mask = covered_mask
-        #
-        # if self.verbosity:
-        #     plt.figure("Prior: Locally covered mask")
-        #     plt.imshow(mask)
-
-        # Apply postsmoothing
-        if self.apply_postsmoothing:
-            # Resize image
-            resized_mask = cv2.resize(
-                mask.astype(np.float32),
-                None,
-                fx=self.postsmoothing["resize x"],
-                fy=self.postsmoothing["resize y"],
-            )
-
-            # Apply TVD
-            if self.postsmoothing["method"] == "chambolle":
-                smoothed_mask = skimage.restoration.denoise_tv_chambolle(
-                    resized_mask,
-                    weight=self.postsmoothing["weight"],
-                    eps=self.postsmoothing["eps"],
-                    max_num_iter=self.postsmoothing["max_num_iter"],
-                )
-            elif self.postsmoothing["method"] == "anisotropic bregman":
-                smoothed_mask = skimage.restoration.denoise_tv_bregman(
-                    resized_mask,
-                    weight=self.postsmoothing["weight"],
-                    eps=self.postsmoothing["eps"],
-                    max_num_iter=self.postsmoothing["max_num_iter"],
-                    isotropic=False,
-                )
-            elif self.postsmoothing["method"] == "isotropic bregman":
-                smoothed_mask = skimage.restoration.denoise_tv_bregman(
-                    resized_mask,
-                    weight=self.postsmoothing["weight"],
-                    eps=self.postsmoothing["eps"],
-                    max_num_iter=self.postsmoothing["max_num_iter"],
-                    isotropic=True,
-                )
-            else:
-                raise ValueError(
-                    f"Method {self.postsmoothing['method']} is not supported."
-                )
-
-            # Resize to original size
-            large_mask = cv2.resize(
-                smoothed_mask.astype(np.float32),
-                tuple(reversed(self.base.img.shape[:2])),
-            )
-
-            # Apply hardcoded threshold value of 0.5 assuming it is sufficient to turn
-            # off small particles and rely on larger marked regions
-            thresh = 0.5
-            mask = large_mask > thresh
-
-        if self.verbosity:
-            plt.figure("Prior: TVD postsmoothed mask")
-            plt.imshow(mask)
-
-            plt.figure("Prior: Final mask after cleaning")
-            plt.imshow(mask)
-            plt.show()
-
-        return mask, smooth_signal
+        return signal
 
     def _apply_thresholding(self, signal: np.ndarray) -> np.ndarray:
         """
@@ -1361,6 +1285,110 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
 
         # Build the mask segment by segment.
         mask = signal > self.threshold_value
+
+        return mask
+
+    def clean_mask(self, mask: np.ndarray) -> np.ndarray:
+        """
+        Remove small objects in binary mask, fill holes and apply postsmoothing.
+
+        Args:
+            mask (np.ndarray): binary mask
+
+        Returns:
+            np.ndarray: cleaned mask
+        """
+        # Remove small objects
+        if self.min_size > 1:
+            mask = skimage.morphology.remove_small_objects(mask, min_size=self.min_size)
+
+        # Fill holes
+        if self.area_threshold > 0:
+            mask = skimage.morphology.remove_small_holes(
+                mask, area_threshold=self.area_threshold
+            )
+
+        if self.verbosity:
+            plt.figure("Prior: Cleaned mask")
+            plt.imshow(mask)
+
+        # NOTE: Currently not used, yet, kept for the moment.
+        # # Loop through patches and fill up
+        # if self.cover_patch_size > 1:
+        #     covered_mask = np.zeros(mask.shape[:2], dtype=bool)
+        #     size = self.cover_patch_size
+        #     Ny, Nx = mask.shape[:2]
+        #     for row in range(int(Ny / size)):
+        #         for col in range(int(Nx / size)):
+        #             roi = (
+        #                 slice(row * size, (row + 1) * size),
+        #                 slice(col * size, (col + 1) * size),
+        #             )
+        #             covered_mask[roi] = skimage.morphology.convex_hull_image(mask[roi])
+        #     # Update the mask value
+        #     mask = covered_mask
+        #
+        # if self.verbosity:
+        #     plt.figure("Prior: Locally covered mask")
+        #     plt.imshow(mask)
+
+        # Apply postsmoothing
+        if self.apply_postsmoothing:
+            # Resize image
+            resized_mask = cv2.resize(
+                mask.astype(np.float32),
+                None,
+                fx=self.postsmoothing["resize x"],
+                fy=self.postsmoothing["resize y"],
+            )
+
+            # Apply TVD
+            if self.postsmoothing["method"] == "chambolle":
+                smoothed_mask = skimage.restoration.denoise_tv_chambolle(
+                    resized_mask,
+                    weight=self.postsmoothing["weight"],
+                    eps=self.postsmoothing["eps"],
+                    max_num_iter=self.postsmoothing["max_num_iter"],
+                )
+            elif self.postsmoothing["method"] == "anisotropic bregman":
+                smoothed_mask = skimage.restoration.denoise_tv_bregman(
+                    resized_mask,
+                    weight=self.postsmoothing["weight"],
+                    eps=self.postsmoothing["eps"],
+                    max_num_iter=self.postsmoothing["max_num_iter"],
+                    isotropic=False,
+                )
+            elif self.postsmoothing["method"] == "isotropic bregman":
+                smoothed_mask = skimage.restoration.denoise_tv_bregman(
+                    resized_mask,
+                    weight=self.postsmoothing["weight"],
+                    eps=self.postsmoothing["eps"],
+                    max_num_iter=self.postsmoothing["max_num_iter"],
+                    isotropic=True,
+                )
+            else:
+                raise ValueError(
+                    f"Method {self.postsmoothing['method']} is not supported."
+                )
+
+            # Resize to original size
+            large_mask = cv2.resize(
+                smoothed_mask.astype(np.float32),
+                tuple(reversed(self.base.img.shape[:2])),
+            )
+
+            # Apply hardcoded threshold value of 0.5 assuming it is sufficient to turn
+            # off small particles and rely on larger marked regions
+            thresh = 0.5
+            mask = large_mask > thresh
+
+        if self.verbosity:
+            plt.figure("Prior: TVD postsmoothed mask")
+            plt.imshow(mask)
+
+            plt.figure("Prior: Final mask after cleaning")
+            plt.imshow(mask)
+            plt.show()
 
         return mask
 
