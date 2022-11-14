@@ -2,6 +2,8 @@
 Module containing tools for studying compaction.
 """
 
+from typing import Union
+
 import numpy as np
 
 import darsia
@@ -90,14 +92,18 @@ class CompactionAnalysis:
             return transformed_img
 
     def evaluate(
-        self, coords: np.ndarray, reverse: bool = True, units: str = "metric"
+        self,
+        coords: Union[np.ndarray, darsia.Patches],
+        reverse: bool = True,
+        units: str = "metric",
     ) -> np.ndarray:
         """
         Evaluate compaction in arbitrary points.
 
         Args:
-            coords (np.ndarray): coordinate array with shape num_pts x 2, or alternatively
-                num_x_pts x num_y_pts x 2, identifying points in a mesh/patched image.
+            coords (np.ndarray, or darsia.Patches): coordinate array with shape num_pts x 2,
+                or alternatively num_rows_pts x num_cols_pts x 2, identifying points in a
+                mesh/patched image, or equivalently patch.
             reverse (bool): flag whether the translation is understood as from the
                 test image to the baseline image, or reversed. The default is the
                 former latter.
@@ -108,6 +114,9 @@ class CompactionAnalysis:
             np.ndarray: compaction vectors for all coordinates.
 
         """
+        if isinstance(coords, darsia.Patches):
+            coords = coords.global_centers_cartesian_matrix
+
         assert units in ["metric", "pixel"]
         assert coords.shape[-1] == 2
 
