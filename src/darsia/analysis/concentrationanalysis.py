@@ -1627,6 +1627,7 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
             "first local min",
             "otsu",
             "otsu local min",
+            "gradient analysis",
         ]
 
     def _apply_thresholding(self, signal: np.ndarray) -> np.ndarray:
@@ -1934,18 +1935,90 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                         )
                         self.threshold_value[label] = updated_threshold_value
 
-                    if self.verbosity:
-                        plt.figure("Histogram analysis")
-                        plt.plot(
-                            np.linspace(
-                                np.min(active_signal_values),
-                                np.max(active_signal_values),
-                                smooth_hist.shape[0],
-                            ),
-                            smooth_hist,
-                            label=f"Label {label}",
+                        if self.verbosity and label in [3, 6, 7, 4, 10]:
+                            plt.figure("Histogram analysis")
+                            plt.plot(
+                                np.linspace(
+                                    np.min(active_signal_values),
+                                    np.max(active_signal_values),
+                                    smooth_hist.shape[0],
+                                ),
+                                smooth_hist,
+                                label=f"Label {label}",
+                            )
+                            plt.legend()
+
+                    elif self.threshold_method == "gradient analysis":
+
+                        # Define components of the gradient
+                        grad_x = darsia.forward_diff_x(signal)
+                        grad_y = darsia.forward_diff_y(signal)
+
+                        gradient_modulus = np.sqrt(grad_x**2 + grad_y**2)
+
+                        ## Watershed based on gradient_modulus
+                        # markers = np.zeros(grad_x.shape[:2], dtype=np.uint8)
+                        # markers[:10,:10] = 1
+                        # markers[1800, 1500] = 2
+                        # outer = skimage.img_as_ubyte(
+                        #    skimage.segmentation.watershed(gradient_modulus, markers)
+                        # )
+
+                        # plt.figure()
+                        # plt.imshow(outer)
+                        # plt.show()
+
+                        # Find thick contour
+
+                        # Turn off gradient modulus outside the label
+                        gradient_modulus[~effective_mask] = 0
+                        gradient_mask = gradient_modulus > 0.1 * np.max(
+                            gradient_modulus
                         )
-                        plt.legend()
+
+                        plt.figure(f"gradient {label}")
+                        plt.imshow(gradient_mask)
+
+                        # Restrict analysis to each label
+                        label_gradient_mask = np.logical_and(
+                            gradient_mask, effective_mask
+                        )
+
+                        # Only continue if mask not empty
+                        if np.count_nonzero(label_gradient_mask) > 0:
+
+                            # Reduce the signal to the effective mask
+                            active_signal_values = np.ravel(signal)[
+                                np.ravel(label_gradient_mask)
+                            ]
+
+                            # Define tuning parameters for defining histograms,
+                            # and smooth them. NOTE: They should be in general chosen
+                            # tailored to the situation. However, these values should
+                            # also work for most cases.
+                            bins = 200
+                            sigma = 10
+
+                            # Smooth the histogram of the signal
+                            smooth_hist = ndi.gaussian_filter1d(
+                                np.histogram(active_signal_values, bins=bins)[0],
+                                sigma=sigma,
+                            )
+
+                            plt.figure("new hist")
+                            plt.plot(
+                                np.linspace(
+                                    np.min(active_signal_values),
+                                    np.max(active_signal_values),
+                                    bins,
+                                ),
+                                smooth_hist,
+                                label=f"Label {label}",
+                            )
+                            plt.legend()
+
+                            plt.figure("labels")
+                            plt.imshow(self.labels)
 
         if self.verbosity:
             print("Thresholding value", self.threshold_value)
