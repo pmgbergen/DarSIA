@@ -1058,10 +1058,10 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         self.apply_dynamic_threshold: bool = kwargs.pop("threshold dynamic", False)
         if self.apply_dynamic_threshold:
             # Define global lower and upper bounds for the threshold value
-            self.threshold_value_lower_bound: float = kwargs.pop(
+            self.threshold_value_lower_bound: Union[float, np.ndarray] = kwargs.pop(
                 "threshold value min", 0.0
             )
-            self.threshold_value_upper_bound: float = kwargs.pop(
+            self.threshold_value_upper_bound: Union[float, np.ndarray] = kwargs.pop(
                 "threshold value max", 255.0
             )
         else:
@@ -1586,6 +1586,32 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                 self.num_labels, dtype=float
             )
 
+        # Intialize lower and upper bounds
+        threshold_value_lower_bound: Union[float, list] = kwargs.pop(
+            "threshold value min", 0.0
+        )
+        threshold_value_upper_bound: Union[float, list] = kwargs.pop(
+            "threshold value max", 255.0
+        )
+
+        if isinstance(threshold_value_lower_bound, list):
+            assert len(threshold_value_lower_bound) == self.num_labels
+            self.threshold_value_lower_bound = np.array(threshold_value_lower_bound)
+
+        elif isinstance(threshold_value_lower_bound, float):
+            self.threshold_value_lower_bound = threshold_value_lower_bound * np.ones(
+                self.num_labels, dtype=float
+            )
+
+        if isinstance(threshold_value_upper_bound, list):
+            assert len(threshold_value_upper_bound) == self.num_labels
+            self.threshold_value_upper_bound = np.array(threshold_value_upper_bound)
+
+        elif isinstance(threshold_value_upper_bound, float):
+            self.threshold_value_upper_bound = threshold_value_upper_bound * np.ones(
+                self.num_labels, dtype=float
+            )
+
         else:
             raise ValueError(f"Type {type(threshold_init_value)} not supported.")
 
@@ -1628,8 +1654,8 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                 # the interval of interest and the provided mask.
                 label_mask = self.labels == label
                 interval_mask = np.logical_and(
-                    signal > self.threshold_value_lower_bound,
-                    signal < self.threshold_value_upper_bound,
+                    signal > self.threshold_value_lower_bound[label],
+                    signal < self.threshold_value_upper_bound[label],
                 )
                 effective_mask = np.logical_and(
                     np.logical_and(label_mask, interval_mask), self.mask
@@ -1700,14 +1726,14 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                         if self.threshold_method == "local/global min" and is_local_min:
                             self.threshold_value[label] = np.clip(
                                 updated_threshold,
-                                self.threshold_value_lower_bound,
-                                self.threshold_value_upper_bound,
+                                self.threshold_value_lower_bound[label],
+                                self.threshold_value_upper_bound[label],
                             )
                         elif self.threshold_method == "conservative global min":
                             self.threshold_value[label] = np.clip(
                                 updated_threshold,
-                                self.threshold_value_lower_bound,
-                                self.threshold_value_upper_bound,
+                                self.threshold_value_lower_bound[label],
+                                self.threshold_value_upper_bound[label],
                             )
 
                         # TODO use find_peaks? Idea. Find a local minimum between two
@@ -1717,6 +1743,19 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                         # TODO Find a relative local min. Accept value as 'minimum'
                         # based on a tolerance on the derivative. And then choose the
                         # smallest one satisfying this criterium.
+
+                        if self.verbosity:
+                            plt.figure("Histogram analysis")
+                            plt.plot(
+                                np.linspace(
+                                    np.min(active_signal_values),
+                                    np.max(active_signal_values),
+                                    smooth_hist.shape[0],
+                                ),
+                                smooth_hist,
+                                label=f"Label {label}",
+                            )
+                            plt.legend()
 
                     elif self.threshold_method in ["otsu", "otsu local min"]:
 
@@ -1747,8 +1786,8 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                         # Restrict to interval of interest
                         updated_threshold_value = np.clip(
                             thresh_otsu_smooth,
-                            self.threshold_value_lower_bound,
-                            self.threshold_value_upper_bound,
+                            self.threshold_value_lower_bound[label],
+                            self.threshold_value_upper_bound[label],
                         )
 
                         if self.threshold_method == "otsu":
@@ -1797,6 +1836,20 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                                     f"""Label {label}; OTSU thresh {updated_threshold_value};
                                     Peaks {peaks}; is local min {is_local_min}."""
                                 )
+
+                        if self.verbosity:
+                            plt.figure("Histogram analysis")
+                            plt.plot(
+                                np.linspace(
+                                    np.min(active_signal_values),
+                                    np.max(active_signal_values),
+                                    smooth_hist.shape[0],
+                                ),
+                                smooth_hist,
+                                label=f"Label {label}",
+                            )
+                            plt.legend()
+
                     elif self.threshold_method == "first local min":
                         # Under the assumption that there is a strong separation
                         # between background (concentration < tol) and foreground
@@ -1876,8 +1929,8 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                         # Update the threshold value
                         updated_threshold_value = np.clip(
                             thresh_first_local_min,
-                            self.threshold_value_lower_bound,
-                            self.threshold_value_upper_bound,
+                            self.threshold_value_lower_bound[label],
+                            self.threshold_value_upper_bound[label],
                         )
                         self.threshold_value[label] = updated_threshold_value
 
