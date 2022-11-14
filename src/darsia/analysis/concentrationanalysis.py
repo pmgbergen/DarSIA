@@ -1583,6 +1583,7 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
         assert self.threshold_method in [
             "local/global min",
             "conservative global min",
+            "first local min",
             "otsu",
             "otsu local min",
         ]
@@ -1618,6 +1619,8 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                 effective_mask = np.logical_and(
                     np.logical_and(label_mask, interval_mask), self.mask
                 )
+
+                effective_mask = np.logical_and(label_mask, self.mask)
 
                 # Only continue if mask not empty
                 if np.count_nonzero(effective_mask) > 0:
@@ -1737,6 +1740,12 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                             # Fix the computed OTSU threshold value for considered label
                             self.threshold_value[label] = updated_threshold_value
 
+                            if self.verbosity:
+                                print(
+                                    f"""Label {label}; OTSU thresh {thresh_otsu_smooth};
+                                    {updated_threshold_value}."""
+                                )
+
                         elif self.threshold_method == "otsu local min":
                             # Before accepcting the computed OTSU threshold value, check
                             # first whether it defines a local minimum. Use find_peaks,
@@ -1768,11 +1777,94 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                             if is_local_min:
                                 self.threshold_value[label] = updated_threshold_value
 
+                            if self.verbosity:
+                                print(
+                                    f"""Label {label}; OTSU thresh {updated_threshold_value};
+                                    Peaks {peaks}; is local min {is_local_min}."""
+                                )
+                    elif self.threshold_method == "first local min":
+                        # Under the assumption that there is a strong separation
+                        # between background (concentration < tol) and foreground
+                        # (concentration > tol), we are looking for a separation
+                        # by a local minimum. However, when one of the above zones
+                        # is not well represented so far, a global histogram will
+                        # not be able to highlight such zones. Therefore, a relaxed
+                        # concept of local minima is used. When the second derivative
+                        # is increasing, and the the first derivative is below some
+                        # tolerance, all corresponding points are identified as
+                        # local min. We choose the smallest of these.
+                        # NOTE: This is not applicable if diffusion zones are dominating
+                        # and the transition has a long scale and it is smooth.
+
+                        # Define tuning parameters for defining histograms,
+                        # and smooth them. NOTE: They should be in general chosen
+                        # tailored to the situation. However, these values should
+                        # also work for most cases.
+                        bins = 200
+                        sigma = 10
+
+                        # Smooth the histogram of the signal
+                        smooth_hist = ndi.gaussian_filter1d(
+                            np.histogram(active_signal_values, bins=bins)[0],
+                            sigma=sigma,
+                        )
+
+                        smooth_hist_1st_derivative = np.gradient(smooth_hist)
+                        smooth_hist_2nd_derivative = np.gradient(
+                            smooth_hist_1st_derivative
+                        )
+
                         if self.verbosity:
-                            print(
-                                f"""Label {label}; OTSU thresh {thresh_otsu_smooth};
-                                Peaks {peaks}; is local min {is_local_min}."""
+                            plt.figure("Histogram analysis - 1st der")
+                            plt.plot(
+                                np.linspace(
+                                    np.min(active_signal_values),
+                                    np.max(active_signal_values),
+                                    smooth_hist.shape[0],
+                                ),
+                                smooth_hist_1st_derivative,
+                                label=f"Label {label}",
                             )
+                            plt.legend()
+                            plt.figure("Histogram analysis - 2nd der")
+                            plt.plot(
+                                np.linspace(
+                                    np.min(active_signal_values),
+                                    np.max(active_signal_values),
+                                    smooth_hist.shape[0],
+                                ),
+                                smooth_hist_2nd_derivative,
+                                label=f"Label {label}",
+                            )
+                            plt.legend()
+
+                        # Restrict to positive 2nd derivative and small 1st derivative
+                        max_value = 0.01 * np.max(
+                            np.absolute(smooth_hist_1st_derivative)
+                        )
+                        min_index = np.min(
+                            np.argwhere(
+                                np.logical_and(
+                                    np.absolute(smooth_hist_1st_derivative) < max_value,
+                                    smooth_hist_2nd_derivative > 1e-6,
+                                )
+                            )
+                        )
+
+                        # Thresh in the mapped onto range of values
+                        thresh_first_local_min = np.min(
+                            active_signal_values
+                        ) + min_index / bins * (
+                            np.max(active_signal_values) - np.min(active_signal_values)
+                        )
+
+                        # Update the threshold value
+                        updated_threshold_value = np.clip(
+                            thresh_first_local_min,
+                            self.threshold_value_lower_bound,
+                            self.threshold_value_upper_bound,
+                        )
+                        self.threshold_value[label] = updated_threshold_value
 
                     if self.verbosity:
                         plt.figure("Histogram analysis")
