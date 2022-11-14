@@ -159,7 +159,39 @@ class Patches:
             ]
         )
 
+        # Store centers (x,y) of each patch in global Cartesian coordinates and metric units,
+        # but ordered using matrix indexing
+        self.global_centers_cartesian_matrix = np.array(
+            [
+                [
+                    self.base.origo
+                    + np.array(
+                        [
+                            (i + 0.5) * patch_width_metric,
+                            (self.num_patches_y - (j + 0.5)) * patch_height_metric,
+                        ]
+                    )
+                    for i in range(self.num_patches_x)
+                ]
+                for j in range(self.num_patches_y)
+            ]
+        )
+
         # Convert coordinates of patch centers to pixels - using the matrix indexing
+        self.global_centers_matrix = np.array(
+            [
+                [
+                    self.base.coordinatesystem.coordinateToPixel(
+                        self.global_centers_cartesian[i, self.num_patches_y - 1 - j]
+                    )
+                    for i in range(self.num_patches_x)
+                ]
+                for j in range(self.num_patches_y)
+            ],
+            dtype=int,
+        )
+
+        # Convert coordinates of patch centers to pixels - using the reverse matrix indexing
         self.global_centers_reverse_matrix = np.array(
             [
                 [
