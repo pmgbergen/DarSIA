@@ -283,14 +283,8 @@ class ConcentrationAnalysis:
         elif self.color == "value":
             img.toValue()
         elif self.color == "hsv":
-            img.toRGB()
-            hsv_img = cv2.cvtColor(img.img, cv2.COLOR_RGB2HSV)
-            mask = np.logical_and(
-                self.hue_lower_bound < hsv_img[:, :, 0],
-                hsv_img[:, :, 0] < self.hue_upper_bound,
-            )
-            img.img = hsv_img[:, :, 2]
-            img.img[~mask] = 0
+            # Apply reduction after taking the difference
+            img.img = cv2.cvtColor(img.img, cv2.COLOR_RGB2HSV)
         elif callable(self.color):
             img.img = self.color(img.img)
         else:
@@ -306,7 +300,14 @@ class ConcentrationAnalysis:
         Returns:
             np.ndarray: monochromatic reduction of the array
         """
-        return img
+        if self.color == "hsv":
+            mask = skimage.filters.apply_hysteresis_threshold(img[:,:,0], self.hue_lower_bound, self.hue_upper_bound)
+            img_v = img[:,:,2]
+            img_v[~mask] = 0
+
+            return img_v
+        else:
+            return img
 
     def postprocess_signal(self, signal: np.ndarray) -> np.ndarray:
         """
