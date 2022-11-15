@@ -1081,9 +1081,11 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         # Threshold for posterior analysis based on gradient moduli
         self.apply_posterior = kwargs.pop("posterior", False)
         if self.apply_posterior:
-            self.threshold_posterior: float = kwargs.pop(
-                "threshold posterior gradient modulus"
+            self.posterior_criterion: str = kwargs.pop(
+                "posterior criterion", "gradient modulus"
             )
+            assert self.posterior_criterion in ["gradient modulus", "value"]
+            self.posterior_threshold = kwargs.pop("posterior threshold", 0.0)
 
         # Mask
         self.mask: np.ndarray = np.ones(self.base.img.shape[:2], dtype=bool)
@@ -1424,16 +1426,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         if not self.apply_posterior:
             return np.ones(signal.shape[:2], dtype=bool)
 
-        # Determien gradient modulus of the smoothed signal
-        dx = darsia.forward_diff_x(signal)
-        dy = darsia.forward_diff_y(signal)
-        gradient_modulus = np.sqrt(dx**2 + dy**2)
-
-        if self.verbosity:
-            plt.figure("Posterior: Gradient modulus")
-            plt.imshow(gradient_modulus)
-
-        # Extract concentration map
+        # Initialize the output mask
         mask_posterior = np.zeros(signal.shape, dtype=bool)
 
         # Label the connected regions first
@@ -1446,6 +1439,17 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             plt.imshow(labels_prior)
             plt.show()
 
+        # Criterion-specific preparations
+        if self.posterior_criterion == "gradient modulus":
+            # Determien gradient modulus of the smoothed signal
+            dx = darsia.forward_diff_x(signal)
+            dy = darsia.forward_diff_y(signal)
+            gradient_modulus = np.sqrt(dx**2 + dy**2)
+
+            if self.verbosity:
+                plt.figure("Posterior: Gradient modulus")
+                plt.imshow(gradient_modulus)
+
         # Investigate each labeled region separately; omit label 0, which corresponds
         # to non-marked area.
         for label in range(1, num_labels_prior + 1):
@@ -1453,27 +1457,53 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             # Fix one label
             labeled_region = labels_prior == label
 
-            # Determine contour set of labeled region
-            contours, _ = cv2.findContours(
-                skimage.img_as_ubyte(labeled_region),
-                cv2.RETR_TREE,
-                cv2.CHAIN_APPROX_SIMPLE,
-            )
-
-            # For each part of the contour set, check whether the gradient is sufficiently
-            # large at any location
+            # Initialize acceptance
             accept = False
-            for c in contours:
 
-                # Extract coordinates of contours - have to flip columns, since cv2 provides
-                # reverse matrix indexing, and also 3 components, with the second one
-                # single dimensioned.
-                c = (c[:, 0, 1], c[:, 0, 0])
-
-                # Identify region as marked if gradient sufficiently large
-                if np.max(gradient_modulus[c]) > self.threshold_posterior:
+            # Check the chosen criterion
+            if self.posterior_criterion == "value":
+                # Check whether there exist values in the segment, larger
+                # than a provided critical value.
+                if np.max(signal[labeled_region]) > self.posterior_threshold:
                     accept = True
-                    break
+
+                if self.verbosity:
+                    print(
+                        f"""Posterior: Label {label},
+                        max value: {np.max(signal[labeled_region])}."""
+                    )
+
+            elif self.posterior_criterion == "gradient modulus":
+                # Check whether the gradient modulus reaches high values
+                # compared on contours to a provided tolerance.
+
+                # Determine contour set of labeled region
+                contours, _ = cv2.findContours(
+                    skimage.img_as_ubyte(labeled_region),
+                    cv2.RETR_TREE,
+                    cv2.CHAIN_APPROX_SIMPLE,
+                )
+
+                # For each part of the contour set, check whether the gradient is sufficiently
+                # large at any location
+                for c in contours:
+
+                    # Extract coordinates of contours - have to flip columns, since cv2
+                    # provides reverse matrix indexing, and also 3 components, with the
+                    # second one single dimensioned.
+                    c = (c[:, 0, 1], c[:, 0, 0])
+
+                    print(
+                        f"""Posterior: Label {label}, Grad mod. {np.max(gradient_modulus[c])},
+                        {np.median(gradient_modulus[c])}, {np.mean(gradient_modulus[c])};
+                        pos: {np.mean(c[0])}, {np.mean(c[1])}."""
+                    )
+
+                    # Identify region as marked if gradient sufficiently large
+                    if np.max(gradient_modulus[c]) > self.posterior_threshold:
+                        accept = True
+                        break
+
             # Collect findings
             if accept:
                 mask_posterior[labeled_region] = True
