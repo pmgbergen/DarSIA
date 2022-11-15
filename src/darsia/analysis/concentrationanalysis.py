@@ -301,8 +301,10 @@ class ConcentrationAnalysis:
             np.ndarray: monochromatic reduction of the array
         """
         if self.color == "hsv":
-            mask = skimage.filters.apply_hysteresis_threshold(img[:,:,0], self.hue_lower_bound, self.hue_upper_bound)
-            img_v = img[:,:,2]
+            mask = skimage.filters.apply_hysteresis_threshold(
+                img[:, :, 0], self.hue_lower_bound, self.hue_upper_bound
+            )
+            img_v = img[:, :, 2]
             img_v[~mask] = 0
 
             return img_v
@@ -1493,11 +1495,12 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
                     # second one single dimensioned.
                     c = (c[:, 0, 1], c[:, 0, 0])
 
-                    print(
-                        f"""Posterior: Label {label}, Grad mod. {np.max(gradient_modulus[c])},
-                        {np.median(gradient_modulus[c])}, {np.mean(gradient_modulus[c])};
-                        pos: {np.mean(c[0])}, {np.mean(c[1])}."""
-                    )
+                    if self.verbosity:
+                        print(
+                            f"""Posterior: Label {label},
+                            Grad mod. {np.max(gradient_modulus[c])},
+                            pos: {np.mean(c[0])}, {np.mean(c[1])}."""
+                        )
 
                     # Identify region as marked if gradient sufficiently large
                     if np.max(gradient_modulus[c]) > self.posterior_threshold:
