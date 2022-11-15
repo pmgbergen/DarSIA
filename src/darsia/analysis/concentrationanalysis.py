@@ -1942,29 +1942,28 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                         max_value = 0.01 * np.max(
                             np.absolute(smooth_hist_1st_derivative)
                         )
-                        min_index = np.min(
-                            np.argwhere(
-                                np.logical_and(
-                                    np.absolute(smooth_hist_1st_derivative) < max_value,
-                                    smooth_hist_2nd_derivative > 1e-6,
-                                )
+                        feasible_indices = np.logical_and(
+                            np.absolute(smooth_hist_1st_derivative) < max_value,
+                            smooth_hist_2nd_derivative > 1e-6,
+                        )
+                        if np.count_nonzero(feasible_indices) > 0:
+                            min_index = np.min(np.argwhere(feasible_indices))
+
+                            # Thresh in the mapped onto range of values
+                            thresh_first_local_min = np.min(
+                                active_signal_values
+                            ) + min_index / bins * (
+                                np.max(active_signal_values)
+                                - np.min(active_signal_values)
                             )
-                        )
 
-                        # Thresh in the mapped onto range of values
-                        thresh_first_local_min = np.min(
-                            active_signal_values
-                        ) + min_index / bins * (
-                            np.max(active_signal_values) - np.min(active_signal_values)
-                        )
-
-                        # Update the threshold value
-                        updated_threshold_value = np.clip(
-                            thresh_first_local_min,
-                            self.threshold_value_lower_bound[label],
-                            self.threshold_value_upper_bound[label],
-                        )
-                        self.threshold_value[label] = updated_threshold_value
+                            # Update the threshold value
+                            updated_threshold_value = np.clip(
+                                thresh_first_local_min,
+                                self.threshold_value_lower_bound[label],
+                                self.threshold_value_upper_bound[label],
+                            )
+                            self.threshold_value[label] = updated_threshold_value
 
                         if self.verbosity and label in [3, 6, 7, 4, 10]:
                             plt.figure("Histogram analysis")
