@@ -1216,19 +1216,10 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         # Update the thresholding values if dynamic thresholding is chosen.
         if self.apply_dynamic_threshold:
 
-            # Determine mask of interest defined by the interval of interest.
-            interval_mask = np.logical_and(
-                signal > self.threshold_value_lower_bound,
-                signal < self.threshold_value_upper_bound,
-            )
-
-            # Restrict to ROI described by self.mask
-            effective_mask = np.logical_and(self.mask, interval_mask)
-
             # Only continue if mask not empty
-            if np.count_nonzero(effective_mask) > 0:
+            if np.count_nonzero(self.mask) > 0:
                 # Extract merely signal values in the effective mask
-                active_signal_values = np.ravel(signal)[np.ravel(effective_mask)]
+                active_signal_values = np.ravel(signal)[np.ravel(self.mask)]
 
                 # Define only once
                 def determine_threshold(
@@ -1691,9 +1682,6 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                 interval_mask = np.logical_and(
                     signal > self.threshold_value_lower_bound[label],
                     signal < self.threshold_value_upper_bound[label],
-                )
-                effective_mask = np.logical_and(
-                    np.logical_and(label_mask, interval_mask), self.mask
                 )
 
                 effective_mask = np.logical_and(label_mask, self.mask)
