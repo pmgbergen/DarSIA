@@ -1956,7 +1956,7 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                             )
                             self.threshold_value[label] = updated_threshold_value
 
-                        if self.verbosity and label in [3, 6, 7, 4, 10]:
+                        if self.verbosity:
                             plt.figure("Histogram analysis")
                             plt.plot(
                                 np.linspace(
