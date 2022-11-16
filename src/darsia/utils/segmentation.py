@@ -62,19 +62,19 @@ def segment(
     # when.
     monochromatic = kwargs.pop("monochromatic_color", "gray")
     if monochromatic == "gray":
-        basis = cv2.cvtColor(basis, cv2.COLOR_RGB2GRAY)
+        monochromatic_basis = cv2.cvtColor(basis, cv2.COLOR_RGB2GRAY)
     elif monochromatic == "value":
         hsv = cv2.cvtColor(basis, cv2.COLOR_RGB2HSV)
-        basis = hsv[:, :, 2]
+        monochromatic_basis = hsv[:, :, 2]
     else:
         raise ValueError(f"Monochromatic color space {monochromatic} not supported.")
 
     if verbosity:
         plt.figure("Monochromatic input image")
-        plt.imshow(basis)
+        plt.imshow(monochromatic_basis)
 
     # In order to surpress any warnings from skimage, reduce to ubyte data type
-    basis_ubyte = skimage.img_as_ubyte(basis)
+    basis_ubyte = skimage.img_as_ubyte(monochromatic_basis)
 
     # Smooth the image to get rid of sand grains
     median_disk_radius = kwargs.pop("median disk radius", 20)
@@ -87,9 +87,15 @@ def segment(
         plt.imshow(denoised)
 
     # Resize image
-    rescaling_factor = kwargs.pop("rescaling factor", 0.1)
+    rescaling_factor = kwargs.pop("rescaling factor", 1.0)
     rescaled = skimage.img_as_ubyte(
-        skimage.transform.rescale(denoised, rescaling_factor, anti_aliasing=False)
+        cv2.resize(
+            denoised,
+            None,
+            fx=rescaling_factor,
+            fy=rescaling_factor,
+            interpolation=cv2.INTER_NEAREST,
+        )
     )
 
     if verbosity:
@@ -170,7 +176,7 @@ def segment(
     labels_rescaled = _dilate_by_size(labels_rescaled, 1, False)
     labels_rescaled = _dilate_by_size(labels_rescaled, 1, True)
 
-    # Resize to oirginal size
+    # Resize to original size
     labels = skimage.img_as_ubyte(
         cv2.resize(
             labels_rescaled,
@@ -192,6 +198,9 @@ def segment(
     if verbosity:
         plt.figure("Final result after clean up")
         plt.imshow(labels)
+        plt.figure("Final result after clean up with original image")
+        plt.imshow(labels)
+        plt.imshow(basis, alpha=0.5)
         plt.show()
 
     # Return data in the same format as the input data
