@@ -64,16 +64,17 @@ def segment(
     monochromatic = kwargs.pop("monochromatic_color", "gray")
     if monochromatic == "gray":
         monochromatic_basis = cv2.cvtColor(basis, cv2.COLOR_RGB2GRAY)
-    if monochromatic == "red":
+    elif monochromatic == "red":
         monochromatic_basis = basis[:, :, 0]
-    if monochromatic == "green":
+    elif monochromatic == "green":
         monochromatic_basis = basis[:, :, 1]
-    if monochromatic == "blue":
+    elif monochromatic == "blue":
         monochromatic_basis = basis[:, :, 2]
     elif monochromatic == "value":
         hsv = cv2.cvtColor(basis, cv2.COLOR_RGB2HSV)
         monochromatic_basis = hsv[:, :, 2]
     else:
+        print(monochromatic)
         raise ValueError(f"Monochromatic color space {monochromatic} not supported.")
 
     if verbosity:
