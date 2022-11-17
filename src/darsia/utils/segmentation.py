@@ -40,8 +40,9 @@ def segment(
                 the image using rank based median, before the analysis.
             "rescaling factor" (float): factor how the image is scaled before
                 the actual watershed segmentation.
-            "monochromatic_color" (str): "gray" or "value", identifying the
-                monochromatic color space to be used in the analysis; default is gray.
+            "monochromatic_color" (str): "gray", "red", "green", "blue", or "value",
+                identifying the monochromatic color space to be used in the analysis;
+                default is gray.
 
     Returns:
         np.ndarray or darsia.Image: labeled regions in the same format as img.
@@ -63,6 +64,12 @@ def segment(
     monochromatic = kwargs.pop("monochromatic_color", "gray")
     if monochromatic == "gray":
         monochromatic_basis = cv2.cvtColor(basis, cv2.COLOR_RGB2GRAY)
+    if monochromatic == "red":
+        monochromatic_basis = basis[:, :, 0]
+    if monochromatic == "green":
+        monochromatic_basis = basis[:, :, 1]
+    if monochromatic == "blue":
+        monochromatic_basis = basis[:, :, 2]
     elif monochromatic == "value":
         hsv = cv2.cvtColor(basis, cv2.COLOR_RGB2HSV)
         monochromatic_basis = hsv[:, :, 2]
