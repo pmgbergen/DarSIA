@@ -122,6 +122,7 @@ class CurvatureCorrection:
                 self.cache_path = Path(
                     self.config.get("cache", "./cache/curvature_transformation.npy")
                 )
+                self.cache_path.parents[0].mkdir(parents=True, exist_ok=True)
         else:
             self.use_cache = False
 
