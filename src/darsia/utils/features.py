@@ -38,13 +38,13 @@ class FeatureDetection:
         """
 
         # Restrict image to ROI
-        img_roi = img[roi] if roi is not None else img
+        img_roi = img[roi] if roi is not None else img.copy()
 
         # Convert to gray color space
         img_gray = cv2.cvtColor(img_roi, cv2.COLOR_RGB2GRAY)
 
         # Orb does not allow for uint16, so convert to uint8.
-        if img_gray.dtype == np.uint16:
+        if img_gray.dtype in [np.uint16, np.float32, np.float64]:
             img_gray = skimage.img_as_ubyte(img_gray)
 
         # Determine matching features; use ORB to detect keypoints
