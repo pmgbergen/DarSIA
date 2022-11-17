@@ -1740,11 +1740,6 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                 # Determine mask of interest, i.e., consider single label,
                 # the interval of interest and the provided mask.
                 label_mask = self.labels == label
-                interval_mask = np.logical_and(
-                    signal > self.threshold_value_lower_bound[label],
-                    signal < self.threshold_value_upper_bound[label],
-                )
-
                 effective_mask = np.logical_and(label_mask, self.mask)
 
                 # Only continue if mask not empty
@@ -2087,8 +2082,8 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                                 restricted_histogram
                             )
 
-                            # Map the relative index from the restricted to the full (not-enriched)
-                            # histogram.
+                            # Map the relative index from the restricted to the full
+                            # (not-enriched) histogram.
                             global_min_index = (
                                 sorted_max_indices[0] + restricted_global_min_index - 1
                             )
