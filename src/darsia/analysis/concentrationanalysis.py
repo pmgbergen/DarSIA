@@ -53,7 +53,7 @@ class ConcentrationAnalysis:
         )
 
         # Extra args for hsv color which here is meant has hue thresholded value
-        if self.color == "hsv":
+        if self.color in ["hsv", "hsv-based"]:
             self.hue_lower_bound = kwargs.pop("hue lower bound", 0.0)
             self.hue_upper_bound = kwargs.pop("hue upper bound", 360.0)
 
@@ -285,6 +285,8 @@ class ConcentrationAnalysis:
         elif self.color == "hsv":
             # Apply reduction after taking the difference
             img.img = cv2.cvtColor(img.img, cv2.COLOR_RGB2HSV)
+        elif self.color in ["hsv-based", "blue-after"]:
+            pass
         elif callable(self.color):
             img.img = self.color(img.img)
         else:
@@ -308,6 +310,16 @@ class ConcentrationAnalysis:
             img_v[~mask] = 0
 
             return img_v
+        elif self.color == "hsv-based":
+            hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+            mask = skimage.filters.apply_hysteresis_threshold(
+                hsv[:, :, 0], self.hue_lower_bound, self.hue_upper_bound
+            )
+            img_v = hsv[:, :, 2]
+            img_v[~mask] = 0
+            return img_v
+        elif self.color == "blue-after":
+            return img[:, :, 2]
         else:
             return img
 
