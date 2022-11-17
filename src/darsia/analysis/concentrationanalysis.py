@@ -1098,7 +1098,11 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             self.posterior_criterion: str = kwargs.pop(
                 "posterior criterion", "gradient modulus"
             )
-            assert self.posterior_criterion in ["gradient modulus", "value"]
+            assert self.posterior_criterion in [
+                "gradient modulus",
+                "value",
+                "value/gradient modulus",
+            ]
             self.posterior_threshold = kwargs.pop("posterior threshold", 0.0)
 
         # Mask
@@ -1445,7 +1449,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             plt.show()
 
         # Criterion-specific preparations
-        if self.posterior_criterion == "gradient modulus":
+        if self.posterior_criterion in ["gradient modulus", "value/gradient modulus"]:
             # Determien gradient modulus of the smoothed signal
             dx = darsia.forward_diff_x(signal)
             dy = darsia.forward_diff_y(signal)
@@ -1469,7 +1473,12 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             if self.posterior_criterion == "value":
                 # Check whether there exist values in the segment, larger
                 # than a provided critical value.
-                if np.max(signal[labeled_region]) > self.posterior_threshold:
+
+                roi = np.logical_and(labeled_region, self.mask)
+                if (
+                    np.count_nonzero(roi) > 0
+                    and np.max(signal[roi]) > self.posterior_threshold
+                ):
                     accept = True
 
                 if self.verbosity:
@@ -1509,6 +1518,45 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
                     if np.max(gradient_modulus[c]) > self.posterior_threshold:
                         accept = True
                         break
+
+            elif self.posterior_criterion == "value/gradient modulus":
+                # Run both routines and require both to hold
+                accept_value = (
+                    np.max(signal[labeled_region]) > self.posterior_threshold[0]
+                )
+
+                # Check whether the gradient modulus reaches high values
+                # compared on contours to a provided tolerance.
+                accept_gradient_modulus = False
+
+                # Determine contour set of labeled region
+                contours, _ = cv2.findContours(
+                    skimage.img_as_ubyte(labeled_region),
+                    cv2.RETR_TREE,
+                    cv2.CHAIN_APPROX_SIMPLE,
+                )
+
+                # For each part of the contour set, check whether the gradient is sufficiently
+                # large at any location
+                for c in contours:
+
+                    # Extract coordinates of contours - have to flip columns, since cv2
+                    # provides reverse matrix indexing, and also 3 components, with the
+                    # second one single dimensioned.
+                    c = (c[:, 0, 1], c[:, 0, 0])
+
+                    if self.verbosity:
+                        print(
+                            f"""Posterior: Label {label},
+                            Grad mod. {np.max(gradient_modulus[c])},
+                            pos: {np.mean(c[0])}, {np.mean(c[1])}."""
+                        )
+
+                    # Identify region as marked if gradient sufficiently large
+                    if np.max(gradient_modulus[c]) > self.posterior_threshold[1]:
+                        accept_gradient_modulus = True
+                        break
+                accept = accept_value and accept_gradient_modulus
 
             # Collect findings
             if accept:
