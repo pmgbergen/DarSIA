@@ -1650,6 +1650,7 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
             "local/global min",
             "conservative global min",
             "first local min",
+            "first local min enhanced",
             "otsu",
             "otsu local min",
             "gradient analysis",
@@ -1955,6 +1956,160 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                                 self.threshold_value_upper_bound[label],
                             )
                             self.threshold_value[label] = updated_threshold_value
+
+                        if self.verbosity:
+                            plt.figure("Histogram analysis")
+                            plt.plot(
+                                np.linspace(
+                                    np.min(active_signal_values),
+                                    np.max(active_signal_values),
+                                    smooth_hist.shape[0],
+                                ),
+                                smooth_hist,
+                                label=f"Label {label}",
+                            )
+                            plt.legend()
+
+                    elif self.threshold_method == "first local min enhanced":
+                        # Prioritize global minima on the interval between the two
+                        # largest peaks. If only a single peak exists, continue
+                        # as in 'first local min'.
+
+                        # Define tuning parameters for defining histograms,
+                        # and smooth them. NOTE: They should be in general chosen
+                        # tailored to the situation. However, these values should
+                        # also work for most cases.
+                        bins = 200
+                        sigma = 10
+
+                        # Smooth the histogram of the signal
+                        smooth_hist = ndi.gaussian_filter1d(
+                            np.histogram(active_signal_values, bins=bins)[0],
+                            sigma=sigma,
+                        )
+
+                        # To allow edge values being peaks as well, add low
+                        # numbers to the sides.
+                        enriched_smooth_hist = np.hstack(
+                            (
+                                np.array([np.min(smooth_hist)]),
+                                smooth_hist,
+                                np.array([np.min(smooth_hist)]),
+                            )
+                        )
+
+                        # Find the two largest peaks
+                        peaks_pre, _ = find_peaks(enriched_smooth_hist)
+                        peaks = np.min(active_signal_values) + (
+                            peaks_pre + 1
+                        ) / bins * (
+                            np.max(active_signal_values) - np.min(active_signal_values)
+                        )
+
+                        # Continue only if there exists two peaks.
+                        if peaks_pre.shape[0] > 1:
+
+                            # Find indices of the two largest peaks.
+                            peak_values = enriched_smooth_hist[peaks_pre]
+                            relative_max_indices = np.flip(np.argsort(peak_values))
+                            sorted_relative_max_indices = np.sort(
+                                relative_max_indices[:2]
+                            )
+                            sorted_max_indices = peaks_pre[sorted_relative_max_indices]
+
+                            # Consider the restricted signal/histogram
+                            restricted_histogram = enriched_smooth_hist[
+                                np.arange(*sorted_max_indices)
+                            ]
+
+                            # Identify the global minimum as separator of signals
+                            restricted_global_min_index = np.argmin(
+                                restricted_histogram
+                            )
+
+                            # Map the relative index from the restricted to the full (not-enriched)
+                            # histogram.
+                            global_min_index = (
+                                sorted_max_indices[0] + restricted_global_min_index - 1
+                            )
+
+                            # Determine the global minimum (in terms of signal values),
+                            # determining the candidate for the threshold value
+                            # Thresh mapped onto range of values
+                            thresh_inbetween_peaks = np.min(
+                                active_signal_values
+                            ) + global_min_index / bins * (
+                                np.max(active_signal_values)
+                                - np.min(active_signal_values)
+                            )
+
+                            # Update the threshold value
+                            updated_threshold_value = np.clip(
+                                thresh_inbetween_peaks,
+                                self.threshold_value_lower_bound[label],
+                                self.threshold_value_upper_bound[label],
+                            )
+                            self.threshold_value[label] = updated_threshold_value
+
+                        else:
+
+                            # Continue as in 'first local min'
+
+                            smooth_hist_1st_derivative = np.gradient(smooth_hist)
+                            smooth_hist_2nd_derivative = np.gradient(
+                                smooth_hist_1st_derivative
+                            )
+
+                            if self.verbosity:
+                                plt.figure("Histogram analysis - 1st der")
+                                plt.plot(
+                                    np.linspace(
+                                        np.min(active_signal_values),
+                                        np.max(active_signal_values),
+                                        smooth_hist.shape[0],
+                                    ),
+                                    smooth_hist_1st_derivative,
+                                    label=f"Label {label}",
+                                )
+                                plt.legend()
+                                plt.figure("Histogram analysis - 2nd der")
+                                plt.plot(
+                                    np.linspace(
+                                        np.min(active_signal_values),
+                                        np.max(active_signal_values),
+                                        smooth_hist.shape[0],
+                                    ),
+                                    smooth_hist_2nd_derivative,
+                                    label=f"Label {label}",
+                                )
+                                plt.legend()
+
+                            # Restrict to positive 2nd derivative and small 1st derivative
+                            max_value = 0.01 * np.max(
+                                np.absolute(smooth_hist_1st_derivative)
+                            )
+                            feasible_indices = np.logical_and(
+                                np.absolute(smooth_hist_1st_derivative) < max_value,
+                                smooth_hist_2nd_derivative > 1e-6,
+                            )
+                            if np.count_nonzero(feasible_indices) > 0:
+                                min_index = np.min(np.argwhere(feasible_indices))
+
+                                # Thresh in the mapped onto range of values
+                                thresh_first_local_min = np.min(
+                                    active_signal_values
+                                ) + min_index / bins * (
+                                    np.max(active_signal_values)
+                                    - np.min(active_signal_values)
+                                )
+
+                                # Update the threshold value
+                                updated_threshold_value = np.clip(
+                                    thresh_first_local_min,
+                                    self.threshold_value_lower_bound[label],
+                                    self.threshold_value_upper_bound[label],
+                                )
+                                self.threshold_value[label] = updated_threshold_value
 
                         if self.verbosity:
                             plt.figure("Histogram analysis")
