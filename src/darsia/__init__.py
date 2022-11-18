@@ -33,6 +33,7 @@ from darsia.analysis.concentrationanalysis import *
 from darsia.analysis.compactionanalysis import *
 from darsia.analysis.segmentationcomparison import *
 from darsia.analysis.contouranalysis import *
+from darsia.analysis.binarymassanalysis import *
 from darsia.manager.analysisbase import *
 from darsia.manager.concentrationanalysisbase import *
 from darsia.manager.traceranalysis import *
