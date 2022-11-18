@@ -232,7 +232,7 @@ class ConcentrationAnalysis:
         homogenized_signal = self._homogenize_signal(clean_signal)
 
         # Post-process the signal
-        processed_signal = self.postprocess_signal(homogenized_signal)
+        processed_signal = self.postprocess_signal(homogenized_signal, diff)
 
         # Convert from signal to concentration
         concentration = self.convert_signal(processed_signal)
@@ -325,12 +325,16 @@ class ConcentrationAnalysis:
         else:
             return img
 
-    def postprocess_signal(self, signal: np.ndarray) -> np.ndarray:
+    def postprocess_signal(self, signal: np.ndarray, img: np.ndarray) -> np.ndarray:
         """
         Empty postprocessing - should be overwritten for practical cases.
 
         Example for a postprocessing using some noise removal.
         return skimage.restoration.denoise_tv_chambolle(signal, weight=0.1)
+
+        Include img (which is the diff from __call__) to allow to extract other
+        information in the postprocessing, e.g., in the prior/posterior
+        analysis.
         """
         return signal
 
@@ -1104,8 +1108,14 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
                 "gradient modulus",
                 "value",
                 "value/gradient modulus",
+                "value/value extra color",
             ]
             self.posterior_threshold = kwargs.pop("posterior threshold", 0.0)
+            if self.posterior_criterion == "value/value extra color":
+                # Allow for a different color in the posterior
+                self.posterior_color: Union[str, Callable] = kwargs.pop(
+                    "posterior color", self.color
+                )
 
         # Mask
         self.mask: np.ndarray = np.ones(self.base.img.shape[:2], dtype=bool)
@@ -1421,7 +1431,9 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
 
         return mask
 
-    def _posterior(self, signal: np.ndarray, mask_prior: np.ndarray) -> np.ndarray:
+    def _posterior(
+        self, signal: np.ndarray, mask_prior: np.ndarray, img: np.ndarray
+    ) -> np.ndarray:
         """
         Posterior analysis of signal, determining the gradients of
         for marked regions.
@@ -1429,6 +1441,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         Args:
             signal (np.ndarray): (smoothed) signal
             mask_prior (np.ndarray): boolean mask marking prior regions
+            img (np.ndarray): original difference of images
 
         Return:
             np.ndarray: boolean mask of trusted regions.
@@ -1486,8 +1499,43 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
                 if self.verbosity:
                     print(
                         f"""Posterior: Label {label},
-                        max value: {np.max(signal[labeled_region])}."""
+                        max value: {np.max(signal[roi])}."""
                     )
+
+            elif self.posterior_criterion == "value/value extra color":
+                # Check whether there exist values in the segment, larger
+                # than a provided critical value, for the specific color
+                # provided and based on the original difference of images.
+
+                # Restrict image to monochromatic color and roi
+                if self.posterior_color == "red":
+                    img_color = img[:, :, 0]
+                elif self.posterior_color == "green":
+                    img_color = img[:, :, 1]
+                elif self.posterior_color == "blue":
+                    img_color = img[:, :, 2]
+                elif self.posterior_color == "yellow":
+                    img_color = img[:, :, 0] + img[:, :, 1]
+                else:
+                    raise ValueError(f"Color {self.posterior_color} not supported.")
+                roi = np.logical_and(labeled_region, self.mask)
+
+                if (
+                    np.count_nonzero(roi) > 0
+                    and np.max(signal[roi]) > self.posterior_threshold[0]
+                    and np.max(img_color[roi]) > self.posterior_threshold[1]
+                ):
+                    accept = True
+
+                    if self.verbosity:
+                        print(
+                            f"""Posterior: Label {label},
+                            max value: {np.max(img_color[roi])}."""
+                        )
+
+                if self.verbosity:
+                    plt.figure("Posterior color value analysis")
+                    plt.imshow(img_color)
 
             elif self.posterior_criterion == "gradient modulus":
                 # Check whether the gradient modulus reaches high values
@@ -1566,7 +1614,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
 
         return mask_posterior
 
-    def postprocess_signal(self, signal: np.ndarray) -> np.ndarray:
+    def postprocess_signal(self, signal: np.ndarray, img: np.ndarray) -> np.ndarray:
         """
         Postprocessing routine, essentially converting a continuous
         signal into a binary concentration and thereby segmentation.
@@ -1578,13 +1626,15 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
         Args:
             signal (np.ndarray): clean continous signal with values
                 in the range between 0 and 1.
+            img (np.ndarray): original difference of images, allowing
+                to extract new information besides the signal.
 
         Returns:
             np.ndarray: binary concentration
         """
         # Determine prior and posterior
         mask_prior, smooth_signal = self._prior(signal)
-        mask_posterior = self._posterior(smooth_signal, mask_prior)
+        mask_posterior = self._posterior(smooth_signal, mask_prior, img)
 
         # NOTE: Here the overlay process is obsolete, posterior is active.
         # Yet, it allows to overwrite posterior by inheritance and design
