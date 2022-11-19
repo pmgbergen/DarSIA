@@ -44,8 +44,8 @@ class ConcentrationAnalysis:
             base (darsia.Image or list of such): baseline image(s); if multiple provided,
                 these are used to define a cleaning filter.
             color (string or Callable): "gray", "red", "blue", "green", "hue", "saturation",
-                "value" identifying which monochromatic space should be used for the
-                analysis; tailored routine can also be provided.
+                "value", "red+green", "negative-key", identifying which monochromatic space
+                should be used for the analysis; tailored routine can also be provided.
         """
         # Define mono-colored space
         self.color: Union[str, Callable] = (
@@ -282,10 +282,13 @@ class ConcentrationAnalysis:
             img.toSaturation()
         elif self.color == "value":
             img.toValue()
+        elif self.color == "red+green":
+            img.toRGB()
+            img.img = img.img[:,:,0] + img.img[:,:,1]
         elif self.color == "hsv":
             # Apply reduction after taking the difference
             img.img = cv2.cvtColor(img.img, cv2.COLOR_RGB2HSV)
-        elif self.color in ["hsv-after", "blue-after", "red-after", "yellow"]:
+        elif self.color in ["hsv-after", "blue-after", "red-after", "red+green", "negative-key"]:
             pass
         elif callable(self.color):
             img.img = self.color(img.img)
@@ -322,6 +325,11 @@ class ConcentrationAnalysis:
             return img[:, :, 0]
         elif self.color == "blue-after":
             return img[:, :, 2]
+        elif self.color == "negative-key":
+            cmy = 1 - img
+            key = np.min(cmy, axis=2)
+            # To comply with remaining sign convention in this file, consider the negative
+            return 1 - key
         else:
             return img
 
