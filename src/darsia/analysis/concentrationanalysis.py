@@ -2008,9 +2008,13 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                             sigma=sigma,
                         )
 
-                        smooth_hist_1st_derivative = np.gradient(smooth_hist)
-                        smooth_hist_2nd_derivative = np.gradient(
-                            smooth_hist_1st_derivative
+                        smooth_hist_1st_derivative = ndi.gaussian_filter1d(
+                            np.gradient(smooth_hist),
+                            sigma=sigma,
+                        )
+                        smooth_hist_2nd_derivative = ndi.gaussian_filter1d(
+                            np.gradient(smooth_hist_1st_derivative),
+                            sigma=sigma,
                         )
 
                         if self.verbosity:
@@ -2043,7 +2047,7 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                         )
                         feasible_indices = np.logical_and(
                             np.absolute(smooth_hist_1st_derivative) < max_value,
-                            smooth_hist_2nd_derivative > 1e-6,
+                            smooth_hist_2nd_derivative > -1e-6,
                         )
                         if np.count_nonzero(feasible_indices) > 0:
                             min_index = np.min(np.argwhere(feasible_indices))
@@ -2085,9 +2089,15 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                         # Define tuning parameters for defining histograms,
                         # and smooth them. NOTE: They should be in general chosen
                         # tailored to the situation. However, these values should
-                        # also work for most cases.
+                        # also work for most cases. Only sigma has been tested
+                        # to be sufficiently large for a single characteristic
+                        # setting.
                         bins = 200
                         sigma = 10
+                        # NOTE: Hardcoded tolerance: Trust peak analysis only if
+                        # the ratio of the two largest peaks is sufficiently large.
+                        # This value has not been tuned.
+                        peak_value_ratio_threshold = 0.05
 
                         # Smooth the histogram of the signal
                         smooth_hist = ndi.gaussian_filter1d(
@@ -2113,7 +2123,9 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                             np.max(active_signal_values) - np.min(active_signal_values)
                         )
 
-                        # Continue only if there exists two peaks.
+                        # Check if the peak values are not of significantly different size
+                        # otherwise, do not weight small peaks too much, and rather use
+                        # the alternative concept of relative extrema.
                         if peaks_pre.shape[0] > 1:
 
                             # Find indices of the two largest peaks.
@@ -2124,6 +2136,17 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                             )
                             sorted_max_indices = peaks_pre[sorted_relative_max_indices]
 
+                            # Compare second to first largest peak value
+                            peak_value_ratio = (
+                                peak_values[relative_max_indices[1]]
+                                / peak_values[relative_max_indices[0]]
+                            )
+                            peak_values_comparable = (
+                                peak_value_ratio > peak_value_ratio_threshold
+                            )
+
+                        # Continue only if there exists two peaks, and the peaks are of similar size.
+                        if peaks_pre.shape[0] > 1 and peak_values_comparable:
                             # Consider the restricted signal/histogram
                             restricted_histogram = enriched_smooth_hist[
                                 np.arange(*sorted_max_indices)
@@ -2161,10 +2184,13 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                         else:
 
                             # Continue as in 'first local min'
-
-                            smooth_hist_1st_derivative = np.gradient(smooth_hist)
-                            smooth_hist_2nd_derivative = np.gradient(
-                                smooth_hist_1st_derivative
+                            smooth_hist_1st_derivative = ndi.gaussian_filter1d(
+                                np.gradient(smooth_hist),
+                                sigma=sigma,
+                            )
+                            smooth_hist_2nd_derivative = ndi.gaussian_filter1d(
+                                np.gradient(smooth_hist_1st_derivative),
+                                sigma=sigma,
                             )
 
                             if self.verbosity:
