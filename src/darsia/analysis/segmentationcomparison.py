@@ -8,7 +8,7 @@ as well as methods for comparing them and visualizing the result.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 import cv2
 import matplotlib.patches as mpatches
@@ -294,21 +294,17 @@ class SegmentationComparison:
         Returns:
             patches (list): patches suitable for legend in matplotlib.pyplot.
         """
-        # function to return key for any value
-        def get_key(val, dictionary):
-            for key, value in dictionary.items():
-                if np.array_equal(val, value):
-                    return key
-            return f"key corresponding to {val} doesn't exist in dictionary"
 
         # create a patch (proxy artist) for every color
         patches: list = [
-            mpatches.Patch(color=c / 255, label=get_key(c, self.color_dictionary))
+            mpatches.Patch(color=c / 255, label=self._get_key(c, self.color_dictionary))
             for c in unique_colors
         ]
         return patches
 
-    def _get_unique_colors(self, image: np.ndarray) -> np.ndarray:
+    def _get_unique_colors(
+        self, image: np.ndarray, return_counts=False
+    ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
         """
         Given an image it extracts the unique color values (except background color)
         and returns them as an array.
@@ -324,8 +320,13 @@ class SegmentationComparison:
         b = np.ascontiguousarray(flat_im).view(
             np.dtype((np.void, flat_im.dtype.itemsize * flat_im.shape[1]))
         )
-        u = np.unique(b).view(flat_im.dtype).reshape(-1, flat_im.shape[1])
-        return u[1:]
+        if return_counts:
+            unique, counts = np.unique(b, return_counts=True)
+            u = unique.view(flat_im.dtype).reshape(-1, flat_im.shape[1])
+            return u[1:], counts[1:]
+        else:
+            u = np.unique(b).view(flat_im.dtype).reshape(-1, flat_im.shape[1])
+            return u[1:]
 
     def _sort_colors(self, colors: np.ndarray) -> np.ndarray:
         """
@@ -454,3 +455,49 @@ class SegmentationComparison:
             handles=patches, bbox_to_anchor=legend_anchor, loc=2, borderaxespad=0.0
         )
         plt.show()
+
+    def print_color_fractions(self, comparison_image: np.ndarray) -> dict:
+        """
+        Prints and returns color fractions.
+
+        Arguments:
+            comparison_image (np.ndarray): Comparison of segmentations
+
+        Returns:
+            (dict): Dictionary relating each color to the fraction of
+                the number of pixels that the color occupies and the
+                total number of occupied pixels in the image.
+        """
+        unique_colors, counts = self._get_unique_colors(
+            comparison_image, return_counts=True
+        )
+
+        total_color_pixels = np.sum(counts)
+
+        fractions: dict = {}
+        for i, c in enumerate(unique_colors):
+            fractions[self._get_key(c, self.color_dictionary)] = (
+                counts[i] / total_color_pixels
+            )
+
+        print(fractions)
+        return fractions
+
+    def _get_key(self, val, dictionary: dict):
+        """
+        Returns key from dictionary and provided value.
+        
+        Arguments:
+            val: value in the dictionary
+            dictionary (dict): dictionary where key matching 
+                to val is searched for
+        
+        returns
+            key in dictionary
+            
+        
+        """
+        for key, value in dictionary.items():
+            if np.array_equal(val, value):
+                return key
+        return f"key corresponding to {val} doesn't exist in dictionary"
