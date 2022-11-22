@@ -87,7 +87,7 @@ class SegmentationComparison:
         )
 
         # Define unique colors
-        self.light_scaling: float = kwargs.pop("light_scaling", 1.5)
+        self.light_scaling: float = kwargs.pop("light_scaling", 1.1)
         # If set of colors are not provided create it with matplotlib colormap.
         if "colors" not in kwargs:
             colormap = get_cmap("Spectral")
@@ -102,14 +102,19 @@ class SegmentationComparison:
                 self.colors[i, 0] = rgba.astype(np.uint8)
                 self.colors[i, 1] = rgbalight.astype(np.uint8)
         else:
-            colors_pre = kwargs.pop("colors")
-            colors_light: np.ndarray = np.trunc(self.light_scaling * colors_pre)
-            np.clip(colors_light, 0, 255, out=colors_light)
-            self.colors = np.hstack((colors_pre, colors_light))
-
-        # Assert that there are a sufficient amount of colors
-        # and that all of the segmentations are of equal size
-        assert self.colors.shape[0] == self.number_of_segmented_images
+            # Assert that there are a sufficient amount of colors
+            colors_pre: np.ndarray = kwargs.pop("colors")
+            assert colors_pre.shape[0] == self.number_of_segmented_images
+            colors_light: np.ndarray = np.trunc(self.light_scaling * colors_pre).astype(
+                np.uint8
+            )
+            self.colors = np.zeros(
+                (self.number_of_segmented_images, 2, 3), dtype=np.uint8
+            )
+            for i in range(self.number_of_segmented_images):
+                self.colors[i, 0] = colors_pre[i]
+                self.colors[i, 1] = colors_light[i]
+            # self.colors = np.hstack((colors_pre, colors_light))
 
         # Create dictionary with colors and associated situations. Used for legends.
         self.color_dictionary: dict = {}
