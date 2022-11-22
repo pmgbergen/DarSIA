@@ -456,9 +456,9 @@ class SegmentationComparison:
         )
         plt.show()
 
-    def print_color_fractions(self, comparison_image: np.ndarray) -> dict:
+    def color_fractions(self, comparison_image: np.ndarray) -> dict:
         """
-        Prints and returns color fractions.
+        Returns color fractions.
 
         Arguments:
             comparison_image (np.ndarray): Comparison of segmentations
@@ -480,22 +480,21 @@ class SegmentationComparison:
                 counts[i] / total_color_pixels
             )
 
-        print(fractions)
         return fractions
 
     def _get_key(self, val, dictionary: dict):
         """
         Returns key from dictionary and provided value.
-        
+
         Arguments:
             val: value in the dictionary
-            dictionary (dict): dictionary where key matching 
+            dictionary (dict): dictionary where key matching
                 to val is searched for
-        
+
         returns
             key in dictionary
-            
-        
+
+
         """
         for key, value in dictionary.items():
             if np.array_equal(val, value):
