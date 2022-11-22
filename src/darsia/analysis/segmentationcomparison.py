@@ -282,7 +282,9 @@ class SegmentationComparison:
         )
         plt.show()
 
-    def _get_legend_patches(self, unique_colors: np.ndarray) -> list:
+    def _get_legend_patches(
+        self, unique_colors: np.ndarray, default_legend_text: Optional[list[str]] = None
+    ) -> list:
         """
         Function that extracts information from the color dictionary and creates
         legend entries depending on provided colors.
@@ -290,16 +292,27 @@ class SegmentationComparison:
         Args:
             unique_colors (np.ndarray): numpy array of color values whose
                 information should be extracted from the color dictionary.
+            default_legend_text (Optional[list[str]]): in case it is desirable
+                to customize legend.
 
         Returns:
             patches (list): patches suitable for legend in matplotlib.pyplot.
         """
 
         # create a patch (proxy artist) for every color
-        patches: list = [
-            mpatches.Patch(color=c / 255, label=self._get_key(c, self.color_dictionary))
-            for c in unique_colors
-        ]
+        if default_legend_text is None:
+            patches: list = [
+                mpatches.Patch(
+                    color=c / 255, label=self._get_key(c, self.color_dictionary)
+                )
+                for c in unique_colors
+            ]
+        else:
+            assert len(default_legend_text) == len(unique_colors)
+            patches = [
+                mpatches.Patch(color=c / 255, label=default_legend_text[i])
+                for i, c in enumerate(unique_colors)
+            ]
         return patches
 
     def _get_unique_colors(
@@ -424,6 +437,7 @@ class SegmentationComparison:
         figure_name: str = "Comparison",
         opacity: float = 0.6,
         legend_anchor: tuple[float, float] = (1.0, 1.0),
+        default_legend_text: Optional[list[str]] = None,
     ) -> None:
         """
         Plots a comparison image overlayed a base image using matplotlib.
@@ -435,6 +449,8 @@ class SegmentationComparison:
             opacity (float): Tha opacity value for the comparison image.
             legend_anchor (tuple): tuple of coordinates (x,y) in euclidean style that
                 determines legend anchor.
+            default_legend_text (Optional[list[str]]): in case it is desirable
+                to customize legend.
         """
 
         # Get unique colors and sort them
@@ -453,7 +469,12 @@ class SegmentationComparison:
         plt.figure(figure_name)
         plt.imshow(base_image)
         plt.imshow(processed_comparison_image)
-        patches = self._get_legend_patches(unique_colors=unique_colors)
+        if default_legend_text is None:
+            patches = self._get_legend_patches(unique_colors=unique_colors)
+        else:
+            patches = self._get_legend_patches(
+                unique_colors=unique_colors, default_legend_text=default_legend_text
+            )
         plt.legend(
             handles=patches, bbox_to_anchor=legend_anchor, loc=2, borderaxespad=0.0
         )
