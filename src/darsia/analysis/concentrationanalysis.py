@@ -44,7 +44,7 @@ class ConcentrationAnalysis:
             base (darsia.Image or list of such): baseline image(s); if multiple provided,
                 these are used to define a cleaning filter.
             color (string or Callable): "gray", "red", "blue", "green", "hue", "saturation",
-                "value", "red+green", "negative-key", identifying which monochromatic space
+                "value", "red+green", "green+blue", "negative-key", identifying which monochromatic space
                 should be used for the analysis; tailored routine can also be provided.
         """
         # Define mono-colored space
@@ -270,12 +270,6 @@ class ConcentrationAnalysis:
         """
         if self.color == "gray":
             img.toGray()
-        elif self.color == "red":
-            img.toRed()
-        elif self.color == "green":
-            img.toGreen()
-        elif self.color == "blue":
-            img.toBlue()
         elif self.color == "hue":
             img.toHue()
         elif self.color == "saturation":
@@ -285,10 +279,13 @@ class ConcentrationAnalysis:
         elif self.color == "red+green":
             img.toRGB()
             img.img = img.img[:,:,0] + img.img[:,:,1]
+        elif self.color == "green+blue":
+            img.toRGB()
+            img.img = img.img[:,:,1] + img.img[:,:,2]
         elif self.color == "hsv":
             # Apply reduction after taking the difference
             img.img = cv2.cvtColor(img.img, cv2.COLOR_RGB2HSV)
-        elif self.color in ["hsv-after", "blue-after", "red-after", "red+green", "negative-key"]:
+        elif self.color in ["hsv-after", "blue", "red", "red+green", "negative-key"]:
             pass
         elif callable(self.color):
             img.img = self.color(img.img)
@@ -321,9 +318,11 @@ class ConcentrationAnalysis:
             img_v = hsv[:, :, 2]
             img_v[~mask] = 0
             return img_v
-        elif self.color == "red-after":
+        elif self.color == "red":
             return img[:, :, 0]
-        elif self.color == "blue-after":
+        elif self.color == "green":
+            return img[:, :, 1]
+        elif self.color == "blue":
             return img[:, :, 2]
         elif self.color == "negative-key":
             cmy = 1 - img
