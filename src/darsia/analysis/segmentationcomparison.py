@@ -122,7 +122,7 @@ class SegmentationComparison:
         # Adding information about colors that represent unique apperances for each
         # segmented image and each component
         for i in range(self.number_of_segmented_images):
-            if abs(self.light_scaling-1) > 1e-6:
+            if abs(self.light_scaling - 1) > 1e-6:
                 self.color_dictionary[
                     f"Unique apperance of {self.component_names[0]}"
                     f" in {self.segmentation_names[i]}"
@@ -139,22 +139,17 @@ class SegmentationComparison:
                     f"Unique apperance of {self.segmentation_names[i]}"
                 ] = self.colors[i, 1]
 
-
         # Adding information regarding gray colors and overlapping components of
         # different segmentations.
-        if np.all(self.gray_colors[0]==self.gray_colors[1]) and np.all(self.gray_colors[1] == self.gray_colors[2]):
-            self.color_dictionary[
-                f"Segmentations overlap"
-            ] = self.gray_colors[0]
-            self.color_dictionary[
-                f"Segmentations overlap"
-            ] = self.gray_colors[1]
-            self.color_dictionary[
-                f"Segmentations overlap"
-            ] = self.gray_colors[2]
+        if np.all(self.gray_colors[0] == self.gray_colors[1]) and np.all(
+            self.gray_colors[1] == self.gray_colors[2]
+        ):
+            self.color_dictionary[f"Segmentations overlap"] = self.gray_colors[0]
+            self.color_dictionary[f"Segmentations overlap"] = self.gray_colors[1]
+            self.color_dictionary[f"Segmentations overlap"] = self.gray_colors[2]
         else:
             self.color_dictionary[
-                    f"Overlapping segmentations in {self.component_names[0]}"
+                f"Overlapping segmentations in {self.component_names[0]}"
             ] = self.gray_colors[0]
             self.color_dictionary[
                 f"Overlapping segmentations in {self.component_names[1]}"
