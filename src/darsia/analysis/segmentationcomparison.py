@@ -122,26 +122,46 @@ class SegmentationComparison:
         # Adding information about colors that represent unique apperances for each
         # segmented image and each component
         for i in range(self.number_of_segmented_images):
-            self.color_dictionary[
-                f"Unique apperance of {self.component_names[0]}"
-                f" in {self.segmentation_names[i]}"
-            ] = self.colors[i, 0]
-            self.color_dictionary[
-                f"Unique apperance of {self.component_names[1]}"
-                f" in {self.segmentation_names[i]}"
-            ] = self.colors[i, 1]
+            if abs(self.light_scaling-1) > 1e-6:
+                self.color_dictionary[
+                    f"Unique apperance of {self.component_names[0]}"
+                    f" in {self.segmentation_names[i]}"
+                ] = self.colors[i, 0]
+                self.color_dictionary[
+                    f"Unique apperance of {self.component_names[1]}"
+                    f" in {self.segmentation_names[i]}"
+                ] = self.colors[i, 1]
+            else:
+                self.color_dictionary[
+                    f"Unique apperance of {self.segmentation_names[i]}"
+                ] = self.colors[i, 0]
+                self.color_dictionary[
+                    f"Unique apperance of {self.segmentation_names[i]}"
+                ] = self.colors[i, 1]
+
 
         # Adding information regarding gray colors and overlapping components of
         # different segmentations.
-        self.color_dictionary[
-            f"Overlapping segmentations in {self.component_names[0]}"
-        ] = self.gray_colors[0]
-        self.color_dictionary[
-            f"Overlapping segmentations in {self.component_names[1]}"
-        ] = self.gray_colors[1]
-        self.color_dictionary[
-            f"Segmentations overlap with different components."
-        ] = self.gray_colors[2]
+        if np.all(self.gray_colors[0]==self.gray_colors[1]) and np.all(self.gray_colors[1] == self.gray_colors[2]):
+            self.color_dictionary[
+                f"Segmentations overlap."
+            ] = self.gray_colors[0]
+            self.color_dictionary[
+                f"Segmentations overlap."
+            ] = self.gray_colors[1]
+            self.color_dictionary[
+                f"Segmentations overlap."
+            ] = self.gray_colors[2]
+        else:
+            self.color_dictionary[
+                    f"Overlapping segmentations in {self.component_names[0]}"
+            ] = self.gray_colors[0]
+            self.color_dictionary[
+                f"Overlapping segmentations in {self.component_names[1]}"
+            ] = self.gray_colors[1]
+            self.color_dictionary[
+                f"Segmentations overlap with different components."
+            ] = self.gray_colors[2]
 
     def __call__(
         self,
@@ -283,7 +303,7 @@ class SegmentationComparison:
         plt.show()
 
     def _get_legend_patches(
-        self, unique_colors: np.ndarray, default_legend_text: Optional[list[str]] = None
+        self, unique_colors: np.ndarray, custom_legend_text: Optional[list[str]] = None
     ) -> list:
         """
         Function that extracts information from the color dictionary and creates
@@ -292,7 +312,7 @@ class SegmentationComparison:
         Args:
             unique_colors (np.ndarray): numpy array of color values whose
                 information should be extracted from the color dictionary.
-            default_legend_text (Optional[list[str]]): in case it is desirable
+            custom_legend_text (Optional[list[str]]): in case it is desirable
                 to customize legend.
 
         Returns:
@@ -300,7 +320,7 @@ class SegmentationComparison:
         """
 
         # create a patch (proxy artist) for every color
-        if default_legend_text is None:
+        if custom_legend_text is None:
             patches: list = [
                 mpatches.Patch(
                     color=c / 255, label=self._get_key(c, self.color_dictionary)
@@ -308,9 +328,9 @@ class SegmentationComparison:
                 for c in unique_colors
             ]
         else:
-            assert len(default_legend_text) == len(unique_colors)
+            assert len(custom_legend_text) == len(unique_colors)
             patches = [
-                mpatches.Patch(color=c / 255, label=default_legend_text[i])
+                mpatches.Patch(color=c / 255, label=custom_legend_text[i])
                 for i, c in enumerate(unique_colors)
             ]
         return patches
@@ -437,7 +457,7 @@ class SegmentationComparison:
         figure_name: str = "Comparison",
         opacity: float = 0.6,
         legend_anchor: tuple[float, float] = (1.0, 1.0),
-        default_legend_text: Optional[list[str]] = None,
+        custom_legend_text: Optional[list[str]] = None,
     ) -> None:
         """
         Plots a comparison image overlayed a base image using matplotlib.
@@ -449,7 +469,7 @@ class SegmentationComparison:
             opacity (float): Tha opacity value for the comparison image.
             legend_anchor (tuple): tuple of coordinates (x,y) in euclidean style that
                 determines legend anchor.
-            default_legend_text (Optional[list[str]]): in case it is desirable
+            custom_legend_text (Optional[list[str]]): in case it is desirable
                 to customize legend.
         """
 
@@ -475,11 +495,11 @@ class SegmentationComparison:
         plt.figure(figure_name)
         plt.imshow(base_image)
         plt.imshow(processed_comparison_image)
-        if default_legend_text is None:
+        if custom_legend_text is None:
             patches = self._get_legend_patches(unique_colors=unique_colors)
         else:
             patches = self._get_legend_patches(
-                unique_colors=unique_colors, default_legend_text=default_legend_text
+                unique_colors=unique_colors, custom_legend_text=custom_legend_text
             )
         plt.legend(
             handles=patches, bbox_to_anchor=legend_anchor, loc=2, borderaxespad=0.0
