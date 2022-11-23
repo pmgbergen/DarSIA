@@ -144,13 +144,13 @@ class SegmentationComparison:
         # different segmentations.
         if np.all(self.gray_colors[0]==self.gray_colors[1]) and np.all(self.gray_colors[1] == self.gray_colors[2]):
             self.color_dictionary[
-                f"Segmentations overlap."
+                f"Segmentations overlap"
             ] = self.gray_colors[0]
             self.color_dictionary[
-                f"Segmentations overlap."
+                f"Segmentations overlap"
             ] = self.gray_colors[1]
             self.color_dictionary[
-                f"Segmentations overlap."
+                f"Segmentations overlap"
             ] = self.gray_colors[2]
         else:
             self.color_dictionary[
