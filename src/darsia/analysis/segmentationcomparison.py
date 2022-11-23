@@ -465,6 +465,12 @@ class SegmentationComparison:
             contour_thickness=10,
         )
 
+        # Scale base image to be of same size with comparison image
+        base_image = cv2.resize(
+            base_image,
+            (processed_comparison_image.shape[1], processed_comparison_image.shape[0]),
+        )
+
         # Create figure with legend
         plt.figure(figure_name)
         plt.imshow(base_image)
