@@ -39,7 +39,8 @@ def segment(
         verbosity (bool): flag controlling whether relevant quantities are plotted
             which is useful in the tuning of the parameters; the default is False.
         keyword arguments (optional): tuning parameters for the watershed algorithm
-            "method" (str): 'median' or 'tvd'
+            "method" (str): 'median' or 'tvd', while the latter uses a anisotropic
+                TVD with fixed settings.
             "median disk radius" (int): disk radius to be considered to smooth
                 the image using rank based median, before the analysis.
             "rescaling factor" (float): factor how the image is scaled before
