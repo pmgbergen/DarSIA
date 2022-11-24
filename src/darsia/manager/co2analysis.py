@@ -54,16 +54,24 @@ class CO2Analysis(ABC, darsia.ConcentrationAnalysisBase):
             raise ValueError("co2_gas_analysis has wrong type.")
 
         # Setup standard data including the cleaning filter
+        co2_config = self.config.get("co2", {})
+        co2_cleaning_filter = co2_config.get(
+            "cleaning_filter", "cache/cleaning_filter_co2.npy"
+        )
         self._setup_concentration_analysis(
             self.co2_analysis,
-            self.config["co2"]["cleaning_filter"],
+            co2_cleaning_filter,
             baseline,
             update_setup,
         )
 
+        co2_gas_config = self.config.get("co2", {})
+        co2_gas_cleaning_filter = co2_gas_config.get(
+            "cleaning_filter", "cache/cleaning_filter_co2_gas.npy"
+        )
         self._setup_concentration_analysis(
             self.co2_gas_analysis,
-            self.config["co2(g)"]["cleaning_filter"],
+            co2_gas_cleaning_filter,
             baseline,
             update_setup,
         )
