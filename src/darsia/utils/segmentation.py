@@ -2,7 +2,7 @@
 Module containing utils for segmentation of layered media.
 """
 
-from typing import Union
+from typing import Optional, Union
 from warnings import warn
 
 import cv2
@@ -18,6 +18,7 @@ def segment(
     img: Union[np.ndarray, darsia.Image],
     markers_method: str = "gradient_based",
     edges_method: str = "gradient_based",
+    mask: Optional[np.ndarray] = None,
     verbosity: bool = False,
     **kwargs,
 ) -> Union[np.ndarray, darsia.Image]:
@@ -33,9 +34,12 @@ def segment(
         edges_method (str): "gradient_based" or "scharr", deciding which algorithm
             is used for determining edges; the former uses gradient filtering while
             the latter uses the Scharr algorithm.
+        mask (np.ndarray, optional): binary array, only where true, segmentation is
+            performed
         verbosity (bool): flag controlling whether relevant quantities are plotted
             which is useful in the tuning of the parameters; the default is False.
         keyword arguments (optional): tuning parameters for the watershed algorithm
+            "method" (str): 'median' or 'tvd'
             "median disk radius" (int): disk radius to be considered to smooth
                 the image using rank based median, before the analysis.
             "rescaling factor" (float): factor how the image is scaled before
@@ -58,6 +62,10 @@ def segment(
     else:
         raise ValueError(f"img of type {type(img)} not supported.")
 
+    # basis = skimage.exposure.adjust_gamma(basis, 1.3)
+    basis = skimage.exposure.adjust_log(basis, 1)
+    basis = skimage.exposure.equalize_adapthist(basis)
+
     # Require scalar representation - the most natural general choice is either to
     # use a grayscale representation or the value component of the HSV version,
     # when.
@@ -74,7 +82,6 @@ def segment(
         hsv = cv2.cvtColor(basis, cv2.COLOR_RGB2HSV)
         monochromatic_basis = hsv[:, :, 2]
     else:
-        print(monochromatic)
         raise ValueError(f"Monochromatic color space {monochromatic} not supported.")
 
     if verbosity:
@@ -85,10 +92,18 @@ def segment(
     basis_ubyte = skimage.img_as_ubyte(monochromatic_basis)
 
     # Smooth the image to get rid of sand grains
-    median_disk_radius = kwargs.pop("median disk radius", 20)
-    denoised = skimage.filters.rank.median(
-        basis_ubyte, skimage.morphology.disk(median_disk_radius)
-    )
+    smoothing_method = kwargs.pop("method", "median")
+    assert smoothing_method in ["median", "tvd"]
+
+    if smoothing_method == "median":
+        median_disk_radius = kwargs.pop("median disk radius", 20)
+        denoised = skimage.filters.rank.median(
+            basis_ubyte, skimage.morphology.disk(median_disk_radius)
+        )
+    elif smoothing_method == "tvd":
+        denoised = skimage.restoration.denoise_tv_bregman(
+            basis_ubyte, weight=0.1, eps=1e-4, max_num_iter=100, isotropic=False
+        )
 
     if verbosity:
         plt.figure("Denoised input image")
@@ -175,8 +190,10 @@ def segment(
     # ! ---- Actual watershed algorithm
 
     # Process the watershed algorithm
+    if mask is None:
+        mask = np.ones(edges.shape[:2], dtype=bool)
     labels_rescaled = skimage.img_as_ubyte(
-        skimage.segmentation.watershed(edges, labeled_markers)
+        skimage.segmentation.watershed(edges, labeled_markers, mask=mask)
     )
 
     # ! ---- Postprocessing of the labels
