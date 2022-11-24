@@ -72,7 +72,9 @@ def segment(
     # when.
     monochromatic = kwargs.pop("monochromatic_color", "gray")
     if monochromatic == "gray":
-        monochromatic_basis = cv2.cvtColor(basis, cv2.COLOR_RGB2GRAY)
+        monochromatic_basis = cv2.cvtColor(
+            skimage.img_as_ubyte(basis), cv2.COLOR_RGB2GRAY
+        )
     elif monochromatic == "red":
         monochromatic_basis = basis[:, :, 0]
     elif monochromatic == "green":
