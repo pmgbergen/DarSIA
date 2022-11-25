@@ -1148,6 +1148,7 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
             assert self.posterior_criterion in [
                 "gradient modulus",
                 "value",
+                "relative value",
                 "value/gradient modulus",
                 "value/value extra color",
             ]
@@ -1556,6 +1557,25 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
                     print(
                         f"""Posterior: Label {label},
                         max value: {np.max(signal[roi])}."""
+                    )
+
+            elif self.posterior_criterion == "relative value":
+                # Check whether there exist values in the segment, larger
+                # than a provided critical value, measured relatively to
+                # the smallest existing value (the threshold value).
+
+                roi = np.logical_and(labeled_region, self.mask)
+
+                if (
+                    np.count_nonzero(roi) > 0
+                    and np.max(signal[roi]) > self.posterior_threshold * np.min(signal[roi])
+                ):
+                    accept = True
+
+                if self.verbosity >= 3:
+                    print(
+                        f"""Posterior: Label {label},
+                        max value: {np.max(signal[roi]) / np.min(signal[roi])}."""
                     )
 
             elif self.posterior_criterion == "value/value extra color":
