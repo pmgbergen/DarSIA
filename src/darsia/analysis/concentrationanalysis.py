@@ -326,6 +326,12 @@ class ConcentrationAnalysis:
 
             hsv = skimage.color.rgb2hsv(img)
 
+            if self.verbosity >= 3:
+                plt.figure("hue")
+                plt.imshow(hsv[:, :, 0])
+                plt.figure("saturation")
+                plt.imshow(hsv[:, :, 1])
+
             # Restrict to user-defined thresholded hue and saturation values.
             mask_hue = np.logical_and(
                 hsv[:, :, 0] > self.hue_lower_bound,
@@ -335,7 +341,7 @@ class ConcentrationAnalysis:
                 hsv[:, :, 1] > self.saturation_lower_bound,
                 hsv[:, :, 1] < self.saturation_upper_bound,
             )
-            mask = np.logical(mask_hue, mask_saturation)
+            mask = np.logical_and(mask_hue, mask_saturation)
 
             # Consider value
             img_v = hsv[:, :, 2]
@@ -1566,10 +1572,9 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
 
                 roi = np.logical_and(labeled_region, self.mask)
 
-                if (
-                    np.count_nonzero(roi) > 0
-                    and np.max(signal[roi]) > self.posterior_threshold * np.min(signal[roi])
-                ):
+                if np.count_nonzero(roi) > 0 and np.max(
+                    signal[roi]
+                ) > self.posterior_threshold * np.min(signal[roi]):
                     accept = True
 
                 if self.verbosity >= 3:
@@ -2392,9 +2397,7 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
 
                                 # max_peak_value = np.max(restricted_hist)
                                 max_peak_derivative = np.max(
-                                    np.absolute(
-                                        restricted_hist_1st_derivative
-                                    )
+                                    np.absolute(restricted_hist_1st_derivative)
                                 )
 
                                 # Restrict to positive 2nd derivative and small 1st derivative
