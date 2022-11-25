@@ -57,6 +57,8 @@ class ConcentrationAnalysis:
         if self.color in ["hsv", "hsv-after"]:
             self.hue_lower_bound = kwargs.pop("hue lower bound", 0.0)
             self.hue_upper_bound = kwargs.pop("hue upper bound", 360.0)
+            self.saturation_lower_bound = kwargs.pop("saturation lower bound", 0.0)
+            self.saturation_upper_bound = kwargs.pop("saturation upper bound", 1.0)
 
         # Extract mono-colored version for baseline image
         if not isinstance(base, list):
@@ -321,13 +323,25 @@ class ConcentrationAnalysis:
 
             return img_v
         elif self.color == "hsv-after":
+
             hsv = skimage.color.rgb2hsv(img)
-            mask = np.logical_and(
-                hsv[:, :, 0] > self.hue_lower_bound, hsv[:, :, 0] < self.hue_upper_bound
+
+            # Restrict to user-defined thresholded hue and saturation values.
+            mask_hue = np.logical_and(
+                hsv[:, :, 0] > self.hue_lower_bound,
+                hsv[:, :, 0] < self.hue_upper_bound,
             )
+            mask_saturation = np.logical_and(
+                hsv[:, :, 1] > self.saturation_lower_bound,
+                hsv[:, :, 1] < self.saturation_upper_bound,
+            )
+            mask = np.logical(mask_hue, mask_saturation)
+
+            # Consider value
             img_v = hsv[:, :, 2]
             img_v[~mask] = 0
             return img_v
+
         elif self.color == "red":
             return img[:, :, 0]
         elif self.color == "green":
