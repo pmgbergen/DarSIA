@@ -48,6 +48,8 @@ def segment(
             "monochromatic_color" (str): "gray", "red", "green", "blue", or "value",
                 identifying the monochromatic color space to be used in the analysis;
                 default is gray.
+            "boundaries" (list of str): containing elements among "top", "bottom",
+                "right", "left". These will be omitted in the cleaning routine.
 
     Returns:
         np.ndarray or darsia.Image: labeled regions in the same format as img.
@@ -357,7 +359,8 @@ def _detect_edges_from_scharr(img, **kwargs) -> np.ndarray:
     edges = skimage.filters.scharr(img, mask=mask)
 
     # Take care of the boundary, which is left with values equal to zero
-    edges = _boundary(edges, 1)
+    entire_boundary = ["top", "left", "bottom", "right"]
+    edges = _boundary(edges, 1, entire_boundary)
 
     return edges
 
@@ -388,7 +391,8 @@ def _cleanup(labels: np.ndarray, **kwargs) -> np.ndarray:
     labels = _reset_labels(labels)
     labels = _dilate_by_size(labels, dilation_size, True)
     labels = _reset_labels(labels)
-    labels = _boundary(labels, boundary_size)
+    boundary: list[str] = kwargs.pop("boundary", ["top", "left", "bottom", "right"])
+    labels = _boundary(labels, boundary_size, boundary)
 
     # Inform the user if labels are removed - in particular, when using
     # markers_method = "supervised", this means that provided markers
@@ -470,7 +474,7 @@ def _dilate_by_size(
     return labels
 
 
-def _boundary(labels: np.ndarray, thickness: int) -> np.ndarray:
+def _boundary(labels: np.ndarray, thickness: int, boundary: list[str]) -> np.ndarray:
     """
     Constant extenion in normal direction at the boundary of labeled image.
 
@@ -482,12 +486,16 @@ def _boundary(labels: np.ndarray, thickness: int) -> np.ndarray:
         np.ndarray: updated labeled image
     """
     if thickness > 0:
-        # Top
-        labels[:thickness, :] = labels[thickness : thickness + 1, :]
-        # Bottom
-        labels[-thickness:, :] = labels[-thickness - 1 : -thickness, :]
-        # Left
-        labels[:, :thickness] = labels[:, thickness : thickness + 1]
-        # Right
-        labels[:, -thickness:] = labels[:, -thickness - 1 : -thickness]
+        if "top" in boundary:
+            # Top
+            labels[:thickness, :] = labels[thickness : thickness + 1, :]
+        if "bottom" in boundary:
+            # Bottom
+            labels[-thickness:, :] = labels[-thickness - 1 : -thickness, :]
+        if "left" in boundary:
+            # Left
+            labels[:, :thickness] = labels[:, thickness : thickness + 1]
+        if "right" in boundary:
+            # Right
+            labels[:, -thickness:] = labels[:, -thickness - 1 : -thickness]
     return labels

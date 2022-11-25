@@ -51,6 +51,12 @@ class AnalysisBase:
         self.processed_baseline_images = None
 
         # Define correction objects
+        self.translation_correction = (
+            darsia.TranslationCorrection(translation=self.config["translation"])
+            if "translation" in self.config
+            else None
+        )
+
         self.drift_correction = darsia.DriftCorrection(
             base=reference_base, config=self.config["drift"]
         )
@@ -83,6 +89,7 @@ class AnalysisBase:
         return darsia.Image(
             img=path,
             drift_correction=self.drift_correction,
+            translation_correction=self.translation_correction,
             curvature_correction=self.curvature_correction,
             color_correction=self.color_correction,
         )
