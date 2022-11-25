@@ -83,6 +83,7 @@ class CustomColorChecker:
 
         else:
             self.reference_swatches_rgb = reference_colors
+            path.parents[0].mkdir(parents=True, exist_ok=True)
             np.save(path, reference_colors)
 
 
@@ -270,7 +271,7 @@ class ColorCorrection:
 
                 # Fetch info on baseline image and roi
                 baseline_path: str = self.config.get(
-                    "custom_colorchecker_reference_image"
+                    "baseline"
                 )
                 baseline = cv2.cvtColor(
                     cv2.imread(str(Path(baseline_path)), cv2.IMREAD_UNCHANGED),
