@@ -54,6 +54,7 @@ class Image:
         img: Union[np.ndarray, str, Path],
         metadata: Optional[dict] = None,
         drift_correction: Optional[da.DriftCorrection] = None,
+        translation_correction: Optional[da.TranslationCorrection] = None,
         color_correction: Optional[da.ColorCorrection] = None,
         curvature_correction: Optional[da.CurvatureCorrection] = None,
         **kwargs,
@@ -69,6 +70,8 @@ class Image:
             img (Union[np.ndarray, str, Path]): image array with matrix indexing
             metadata (dict, Optional): metadata dictionary, default is None.
             drift_correction (darsia.DriftCorrection, Optional): Drift correction object.
+            translation_correction (darsia.TranslationCorrection, Optional): Translation
+                correction object.
             color_correction (darsia.ColorCorrection, Optional): Color correction object.
                 Default is none, but should be included if the image is to be color
                 corrected at initialization.
@@ -165,6 +168,9 @@ class Image:
 
         if color_correction is not None:
             self.img = color_correction(self.img)
+
+        if translation_correction is not None:
+            self.img = translation_correction(self.img)
 
         if curvature_correction is not None:
             self.img = curvature_correction(self.img)
