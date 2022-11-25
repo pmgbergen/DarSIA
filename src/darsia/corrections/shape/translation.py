@@ -2,6 +2,7 @@
 Module containing estimator for translation required to match two images.
 """
 
+from pathlib import Path
 from typing import Optional, Union
 
 import cv2
@@ -355,3 +356,39 @@ class TranslationEstimator:
 
         # Procedure successful - return the translation
         return affine_translation, True
+
+
+class TranslationCorrection:
+    """Correction object performing a user-prescribed translation to provided image."""
+
+    def __init__(self, translation: Optional[Union[str, Path]] = None):
+
+        # Read translation from file
+        if translation is not None:
+            self.translation = np.load(Path(translation))
+            self.active = True
+        else:
+            self.active = False
+
+    def __call__(self, img: Union[np.ndarray, darsia.Image]) -> Optional[np.ndarray]:
+        """
+        Perform translation.
+
+        Args:
+            img (np.ndarray or darsia.Image): image to be corrected.
+
+        Returns:
+            Corrected image as np.ndarray if input has been an array,
+            otherwise None.
+        """
+
+        # Apply translation - Modify darsia Image internally
+        if isinstance(img, np.ndarray):
+            (h, w) = img.shape[:2]
+            translated_img = cv2.warpAffine(img, self.translation, (w, h))
+            return translated_img
+        elif isinstance(img, darsia.Image):
+            (h, w) = img.img.shape[:2]
+            img.img = cv2.warpAffine(img.img, self.translation, (w, h))
+        else:
+            raise ValueError("Input has non-supported type.")
