@@ -428,14 +428,9 @@ class SegmentationComparison:
             colors = unique_colors
 
         for c in colors:
-            colored_region = image == c
-            region_gray_pre = cv2.cvtColor(
-                skimage.img_as_ubyte(colored_region), cv2.COLOR_BGR2GRAY
-            )
-            region_gray = np.zeros_like(region_gray_pre)
-            region_gray[region_gray_pre == 255]
+            colored_region = np.all(image==c,axis=2)
             contours, _ = cv2.findContours(
-                region_gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
+                skimage.img_as_ubyte(colored_region), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
             )
             cl = c.tolist()
             cl.append(255)
