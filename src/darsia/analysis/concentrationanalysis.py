@@ -2392,7 +2392,9 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
 
                                 # max_peak_value = np.max(restricted_hist)
                                 max_peak_derivative = np.max(
-                                    restricted_hist_1st_derivative
+                                    np.absolute(
+                                        restricted_hist_1st_derivative
+                                    )
                                 )
 
                                 # Restrict to positive 2nd derivative and small 1st derivative
