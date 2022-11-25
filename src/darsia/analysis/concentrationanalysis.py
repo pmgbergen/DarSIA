@@ -166,7 +166,7 @@ class ConcentrationAnalysis:
 
         # Store cleaning filter array.
         path_to_filter = Path(path_to_filter)
-        path_to_filter.parents[0].mkdir(parents=True, exists_ok=True)
+        path_to_filter.parents[0].mkdir(parents=True, exist_ok=True)
         np.save(path_to_filter, self.threshold)
 
     def read_cleaning_filter_from_file(self, path: Union[str, Path]) -> None:
