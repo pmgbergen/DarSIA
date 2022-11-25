@@ -54,7 +54,13 @@ class AnalysisBase:
         self.drift_correction = darsia.DriftCorrection(
             base=reference_base, config=self.config["drift"]
         )
+
+        # Define color correction and provide baseline to colorchecker
+        if "baseline" not in self.config["color"]:
+            self.config["color"]["baseline"] = reference_base
         self.color_correction = darsia.ColorCorrection(config=self.config["color"])
+
+        # Define curvature correction
         self.curvature_correction = darsia.CurvatureCorrection(
             config=self.config["curvature"]
         )
