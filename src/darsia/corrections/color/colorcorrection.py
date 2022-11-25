@@ -270,9 +270,7 @@ class ColorCorrection:
             if update_colorchecker or not colorchecker_path.exists():
 
                 # Fetch info on baseline image and roi
-                baseline_path: str = self.config.get(
-                    "baseline"
-                )
+                baseline_path: str = self.config.get("baseline")
                 baseline = cv2.cvtColor(
                     cv2.imread(str(Path(baseline_path)), cv2.IMREAD_UNCHANGED),
                     cv2.COLOR_BGR2RGB,
