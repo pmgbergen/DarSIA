@@ -2500,8 +2500,18 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                             # Do not allow larger values (inside the interval)
                             if (
                                 self.threshold_value_lower_bound[label]
+                                + 0.05
+                                * (
+                                    self.threshold_value_upper_bound[label]
+                                    - self.threshold_value_lower_bound[label]
+                                )
                                 < bounded_threshold_value
                                 < self.threshold_value_upper_bound[label]
+                                - 0.05
+                                * (
+                                    self.threshold_value_upper_bound[label]
+                                    - self.threshold_value_lower_bound[label]
+                                )
                             ):
                                 if label in self.min_feasible_value:
                                     self.min_feasible_value[label] = min(
