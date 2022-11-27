@@ -1852,8 +1852,10 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                 "gradient analysis",
             ]
 
-            self.threshold_safety: Optional[str] = kwargs.get("threshold safety", None)
-            assert self.threshold_safety in [None, "min"]
+            self.threshold_safety: Optional[str] = kwargs.get(
+                "threshold safety", "none"
+            )
+            assert self.threshold_safety in ["none", "min"]
 
         # Initialize cache for collecting threshold values
         self.threshold_cache = {i: [] for i in range(self.num_labels)}
@@ -2446,7 +2448,7 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                             self.threshold_value_upper_bound[label],
                         )
 
-                        if self.threshold_safety is None:
+                        if self.threshold_safety == "none":
                             # Just accept the new value
                             self.threshold_value[label] = bounded_threshold_value
 
