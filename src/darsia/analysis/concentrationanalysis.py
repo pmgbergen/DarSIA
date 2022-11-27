@@ -215,7 +215,8 @@ class ConcentrationAnalysis:
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_scalar(probe_img.img)
 
-        diff = skimage.util.compare_images(probe_img.img, self.base.img, method="diff")
+        #diff = skimage.util.compare_images(probe_img.img, self.base.img, method="diff")
+        diff = np.clip(probe_img.img - self.base.img, 0, None)
 
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_diff(diff)
