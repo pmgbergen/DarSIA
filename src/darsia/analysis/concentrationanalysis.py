@@ -215,7 +215,7 @@ class ConcentrationAnalysis:
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_scalar(probe_img.img)
 
-        #diff = skimage.util.compare_images(probe_img.img, self.base.img, method="diff")
+        # diff = skimage.util.compare_images(probe_img.img, self.base.img, method="diff")
         diff = np.clip(probe_img.img - self.base.img, 0, None)
 
         # Provide possibility for tuning and inspection of intermediate results
@@ -358,9 +358,10 @@ class ConcentrationAnalysis:
         elif self.color == "negative-blue":
             return 1 - img[:, :, 2]
         elif self.color == "cmyk-yellow":
-            cmy = 1 - img
-            key = np.min(cmy, axis=2)
-            yellow = (1 - img[:, :, 2] - key) / (1 - key)
+            blue = img[:, :, 2]
+            key = np.min(1 - img, axis=2)
+            tol = 1e-12  # NOTE: hardcoded
+            yellow = np.clip(1 - key - blue, 0, None) / np.clip(1 - key, tol, None)
             return yellow
         elif self.color == "cmy-yellow":
             return 1 - img[:, :, 2]
