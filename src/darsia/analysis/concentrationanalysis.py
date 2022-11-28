@@ -1855,7 +1855,14 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
             self.threshold_safety: Optional[str] = kwargs.get(
                 "threshold safety", "none"
             )
-            assert self.threshold_safety in ["none", "min"]
+            assert self.threshold_safety in ["none", "area", "min", "peaks passed"]
+
+            if (
+                self.threshold_method == "first local min enhanced"
+                and self.threshold_safety == "peaks passed"
+            ):
+                self.pre_peaks_passed = np.zeros(self.num_labels, dtype=bool)
+                self.peaks_passed = np.zeros(self.num_labels, dtype=bool)
 
         # Initialize cache for collecting threshold values
         self.threshold_cache = {i: [] for i in range(self.num_labels)}
@@ -2159,6 +2166,15 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                             # Cache the peak heights
                             peaks_heights = smooth_hist[peaks_indices]
 
+                            # Check whether peaks have passed
+                            if self.threshold_safety == "peaks passed":
+                                self.pre_peaks_passed[label] = False
+                                if (
+                                    peaks_heights[0] < np.max(peaks_heights)
+                                    and not self.peaks_passed[label]
+                                ):
+                                    self.pre_peaks_passed[label] = True
+
                             # Fetch the modulus of the second derivative for all peaks
                             peaks_2nd_derivative = np.absolute(
                                 smooth_hist_2nd_derivative[peaks_indices]
@@ -2451,6 +2467,39 @@ class SegmentedBinaryConcentrationAnalysis(BinaryConcentrationAnalysis):
                         if self.threshold_safety == "none":
                             # Just accept the new value
                             self.threshold_value[label] = bounded_threshold_value
+
+                        if self.threshold_safety == "peaks passed":
+                            # Comes only in combination with threshold_method first
+                            # local min enhanced.
+                            assert self.threshold_method in ["first local min enhanced"]
+
+                            hypothetically_marked_area = np.logical_and(
+                                signal > bounded_threshold_value, label_mask
+                            )
+                            fraction = 0.1  # NOTE: hardcoded
+                            if (
+                                np.count_nonzero(hypothetically_marked_area)
+                                > fraction * np.count_nonzero(label_mask)
+                                and self.pre_peaks_passed[label]
+                            ):
+                                self.peaks_passed[label] = True
+
+                            # Only allow new value as long a second peak has not arised
+                            # or it is still smaller than the first one.
+                            if not self.peaks_passed[label]:
+                                self.threshold_value[label] = bounded_threshold_value
+
+                        elif self.threshold_safety == "area":
+                            # Require that the area identified by the threshold value does not
+                            # outgo a certain fraction. Otherwise keep the previous value.
+                            hypothetically_marked_area = np.logical_and(
+                                signal > bounded_threshold_value, label_mask
+                            )
+                            fraction = 0.8  # NOTE: hardcoded
+                            if np.count_nonzero(
+                                hypothetically_marked_area
+                            ) < fraction * np.count_nonzero(label_mask):
+                                self.threshold_value[label] = bounded_threshold_value
 
                         elif self.threshold_safety == "ransac":
                             # TODO
