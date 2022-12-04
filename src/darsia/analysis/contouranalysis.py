@@ -222,7 +222,7 @@ class ContourAnalysis:
 
         return metric_contour_length
 
-    def tips(self, direction=np.array([0.0, -1.0])) -> np.ndarray:
+    def fingers(self, direction=np.array([0.0, -1.0])) -> tuple[np.ndarray, np.ndarray]:
         """
         Determine local extrema of the contour, where the extremality
         is defined by a direction.
@@ -242,12 +242,12 @@ class ContourAnalysis:
 
         # Special case of no contour
         if len(contours) == 0:
-            return np.array((0, 2), dtype=int), np.array((0, 2), dtype=int)
+            return np.zeros((0, 1, 2), dtype=int), np.zeros((0, 1, 2), dtype=int)
 
         # NOTE: Only possible to continue with one contour
         # assert len(contours) == 1
-        peaks_pixels = np.array((0, 2), dtype=int)
-        valleys_pixels = np.array((0, 2), dtype=int)
+        peaks_pixels = np.zeros((0, 2), dtype=int)
+        valleys_pixels = np.zeros((0, 2), dtype=int)
         for contour in contours:
 
             # Exclude pixels on the boundary
@@ -294,7 +294,7 @@ class ContourAnalysis:
 
             # Fetch pixels accounting for valleys and peaks
             _peaks_pixels = inner_contour[peaks_ind, :]
-            _valleys_pixels = inner_contour[peaks_ind, :]
+            _valleys_pixels = inner_contour[valleys_ind, :]
 
             peaks_pixels = np.vstack((peaks_pixels, _peaks_pixels))
             valleys_pixels = np.vstack((valleys_pixels, _valleys_pixels))
