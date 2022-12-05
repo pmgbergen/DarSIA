@@ -12,6 +12,9 @@ import scipy.ndimage as ndi
 import skimage
 import cv2
 from scipy.signal import find_peaks
+from scipy.spatial import distance_matrix
+import copy
+from collections import namedtuple
 
 import darsia
 
@@ -299,14 +302,261 @@ class ContourAnalysis:
             peaks_pixels = np.vstack((peaks_pixels, _peaks_pixels))
             valleys_pixels = np.vstack((valleys_pixels, _valleys_pixels))
 
-        peaks_pixels = np.reshape(peaks_pixels, (-1, 1, 2))
-        valleys_pixels = np.reshape(valleys_pixels, (-1, 1, 2))
+        # Sort peaks and valleys - no reason why the contours have been traversed not ordered.
+        arg_sorted_peaks_pixels = np.argsort(peaks_pixels[:,0], axis=0)
+        arg_sorted_valleys_pixels = np.argsort(valleys_pixels[:,0], axis=0)
+        sorted_peaks_pixels = peaks_pixels[arg_sorted_peaks_pixels]
+        sorted_valleys_pixels = valleys_pixels[arg_sorted_valleys_pixels]
 
-        if self.verbosity or True:
+        reshaped_peaks_pixels = np.reshape(sorted_peaks_pixels, (-1, 1, 2))
+        reshaped_valleys_pixels = np.reshape(sorted_valleys_pixels, (-1, 1, 2))
+
+        if self.verbosity:
             plt.figure("Original image with peaks")
             plt.imshow(self.img.img)
-            plt.scatter(peaks_pixels[:, 0, 0], peaks_pixels[:, 0, 1], c="r", s=20)
+            plt.scatter(reshaped_eaks_pixels[:, 0, 0], reshaped_peaks_pixels[:, 0, 1], c="r", s=20)
             plt.show()
 
         # Return peaks and valley pixels
-        return peaks_pixels, valleys_pixels
+        return reshaped_peaks_pixels, reshaped_valleys_pixels
+
+    def number_peaks(self) -> int:
+        peaks_pixels, _  = self.fingers()
+        return len(peaks_pixels)
+
+# In order to uniquely identify a location in the collection of paths, define
+# a subunit, storing the position in terms of local and global characteristics.
+PathUnit = namedtuple("PathUnit", ["time", "peak", "position"])
+# A connected path later will define a list of PathUnit. Collections of such
+# will define connected paths.
+
+class ContourEvolutionAnalysis:
+    # TODO try to merge with the above class.
+
+    def __init__(self, verbosity: bool = False) -> None:
+        """
+        Args:
+            verbosity (bool): verbosity - mostly useful for debugging.
+        """
+
+        self.index= 0
+        self.peaks = {}
+        self.valleys = {}
+        self.paths = []
+
+        self.verbosity = verbosity
+
+    def add(self, peaks: np.ndarray, valleys: np.ndarray, time: Optional[float] = None) -> None:
+
+        # TODO use time
+        self.peaks[self.index] = peaks.copy()
+        self.valleys[self.index] = valleys.copy()
+        self.index += 1
+
+        self.total_time = self.index
+
+    def plot(self, img: Optional[darsia.Image] = None) -> None:
+
+        if img is None:
+            raise False
+
+        background = np.zeros(img.img.shape[:2], dtype=int)
+        plt.figure("Tips and valleys - evolution")
+        plt.imshow(background)
+        for peaks in self.peaks.values():
+            plt.scatter(peaks[:, 0, 0], peaks[:, 0, 1], c="y", s=20, label="peaks")
+        for valleys in self.valleys.values():
+            plt.scatter(valleys[:, 0, 0], valleys[:, 0, 1], c="r", s=10, label="valleys")
+        plt.show() 
+
+    def plot_paths(self, img: Optional[darsia.Image] = None) -> None:
+
+        if img is None:
+            raise False
+
+        # Draw provided image in the background
+        plt.figure("Paths")
+        background = np.zeros(img.img.shape[:2], dtype=int)
+        #plt.imshow(background)
+        plt.imshow(img.img)
+
+        # Add paths
+        cmap = plt.cm.get_cmap('viridis')
+        num_paths = len(self.paths)
+        for i, path in enumerate(self.paths):
+            # Assemble path by connecting positions
+            path_pos = np.zeros((0,2), dtype=int)
+            for unit in path:
+                path_pos = np.vstack((path_pos, unit.position))
+            plt.plot(path_pos[:,0], path_pos[:,1], color = cmap(i / (num_paths-1)))
+
+        # Finalize plot
+        plt.show() 
+    
+    def find_paths(self, reset: bool = True) -> None:
+        """
+        Find paths in the peaks and valleys.
+        """
+
+        # TODO decide whether to reset 
+        if reset:
+            self.paths = []
+
+        def _same_path_unit(path_unit_0, path_unit_1):
+            """
+            Check whether all required items are the same (position not needed if implemented without errors).
+            """
+
+            return (
+                path_unit_0.time == path_unit_1.time and
+                path_unit_0.peak == path_unit_1.peak
+            )
+
+        def _include_segments(time_prev, time_next, segments, pts_prev, pts_next):
+            """
+            Assemble paths.
+            """
+
+            # Consider each segment separately:
+            for segment in segments:
+
+                # Define a path unit for the start point - ignore 
+                path_unit_prev = PathUnit(time_prev, segment[0], pts_prev[segment[0], :]) 
+
+                # Define a path unit for the end point
+                path_unit_next = PathUnit(time_next, segment[1], pts_next[segment[1], :])
+
+                # Traverse the paths to check whether a preexisting path ends with the start of the segment.
+                added_to_preexisting_path = False
+                for path in self.paths:
+
+                    # Check last element in the path
+                    last_unit = path[-1]
+                    identical_units = _same_path_unit(last_unit, path_unit_prev) 
+
+                    if identical_units:
+                        path.append(path_unit_next)
+                        added_to_preexisting_path = True
+                        break # TODO is it possible that a two tips evolve simultaneously from one? Currently it is assumed that the answer is no.
+
+                # Add the entire segment if no suitable path exists for this
+                if not added_to_preexisting_path:
+                    #print("create new path")
+                    self.paths.append([path_unit_prev, path_unit_next])
+    
+        def _include_points(time_next, points, pts_next):
+            """
+            Assemble paths.
+            """
+
+            # Consider each segment separately:
+            for point in points:
+
+                # Define a path unit for the end point
+                path_unit_next = PathUnit(time_next, point, pts_next[point, :])
+                self.paths.append([path_unit_next])
+
+        # TODO replace time_index with something global?
+        for time_index in range(self.total_time-1):
+
+            # Fetch peak indices
+            peaks_prev = np.squeeze(self.peaks[time_index]).reshape(-1,2)
+            peaks_next = np.squeeze(self.peaks[time_index+1]).reshape(-1,2)
+
+            # Initialize correpsonding peaks
+            prev_next_pairs = []
+            new_paths = []
+
+            if len(peaks_prev) == 0:
+                for peak_index in list(np.arange(len(peaks_prev))):
+                    new_paths.append(peak_index)
+                continue
+
+            if len(peaks_next) == 0:
+                continue
+
+            # Initialize paired slices
+            paired_slices = [(slice(0, len(peaks_prev)), slice(0, len(peaks_next)))]
+
+            # Construct distance matrix
+            dist = distance_matrix(peaks_prev, peaks_next)
+
+            for iteration in range(max(len(peaks_prev), len(peaks_next))):
+
+                # Stopping criterion.
+                if len(paired_slices) == 0:
+                    break
+
+                # First assignments
+                ind_prev, ind_next = paired_slices.pop(0)
+
+                if self.verbosity:
+                    print("slices", ind_prev, ind_next)
+
+                # Find smallest entry in the restricted distance matrix
+                #print(dist[ind_prev, ind_next])
+                local_distance_matrix = dist[ind_prev, ind_next]
+                num_local_cols = local_distance_matrix.shape[1]
+                local_argmin_1d = np.argmin(np.ravel(local_distance_matrix))
+                local_argmin_2d = np.array([int(local_argmin_1d / num_local_cols), local_argmin_1d % num_local_cols])
+                if self.verbosity:
+                    print("local argmin 2d", local_argmin_1d, local_argmin_2d)
+                # Globalize argmin_2d
+                argmin_2d = local_argmin_2d + np.array([ind_prev.start, ind_next.start])
+                if self.verbosity:
+                    print("argmin", argmin_2d, peaks_prev[argmin_2d[0]], peaks_next[argmin_2d[1]])
+                #NOTE: It holds: dist[argmin_2d] = np.linalg.norm(peaks_prev[argmin_2d[0]] - peaks_next[argmin_2d[1]]))
+
+                # Bookkeeping.
+                prev_next_pairs.append(argmin_2d)
+
+                pre_slice = (slice(ind_prev.start, argmin_2d[0]), slice(ind_next.start, argmin_2d[1]))
+                post_slice = (slice(argmin_2d[0] + 1, ind_prev.stop), slice(argmin_2d[1] + 1, ind_next.stop))
+
+                def _nonempty_slice(sl) -> bool:
+                    return sl.stop - sl.start > 0
+
+                # In order to keep the order, start with the later slice
+                if _nonempty_slice(post_slice[0]) and _nonempty_slice(post_slice[1]):
+                    paired_slices.insert(0, post_slice)
+                elif _nonempty_slice(post_slice[0]):
+                    if self.verbosity:
+                        print(f"Fingers according to slice {post_slice[0]} are terminated.")
+                elif _nonempty_slice(post_slice[1]):
+                    if self.verbosity:
+                        print(f"New paths according to slice {post_slice[1]}.")
+                    for peak_index in list(np.arange(post_slice[1].start, post_slice[1].stop)):
+                        new_paths.append(peak_index)
+
+                if _nonempty_slice(pre_slice[0]) and _nonempty_slice(pre_slice[1]):
+                    paired_slices.insert(0, pre_slice)
+                elif _nonempty_slice(pre_slice[0]):
+                    if self.verbosity:
+                        print(f"Fingers according to slice {pre_slice[0]} are terminated.")
+                elif _nonempty_slice(pre_slice[1]):
+                    if self.verbosity:
+                        print(f"New paths according to slice {pre_slice[1]}.")
+                    for peak_index in list(np.arange(pre_slice[1].start, pre_slice[1].stop)):
+                        new_paths.append(peak_index)
+
+                if self.verbosity:
+                    print()
+
+            # For simpler handling, convert to array format (reshape only for handling empty lists) and sort
+            prev_next_pairs = np.array(prev_next_pairs).reshape(-1,2)
+            arg_sorted_prev_next_pairs = np.argsort(prev_next_pairs[:,0])
+            prev_next_pairs = prev_next_pairs[arg_sorted_prev_next_pairs]
+
+            new_paths = np.array(new_paths)
+            arg_sorted_new_paths = np.argsort(new_paths)
+            new_paths = new_paths[arg_sorted_new_paths]
+
+            if self.verbosity:
+                print(f"final: {time_index} vs. {time_index+1}. Found {len(prev_next_pairs)} many pairs among {len(peaks_prev)} and {len(peaks_next)} fingers, respectively.")
+                print(prev_next_pairs)
+                print(new_paths)
+
+            # Glue together segments where possible (sort in).
+            _include_segments(time_index, time_index + 1, prev_next_pairs, peaks_prev, peaks_next)
+            _include_points(time_index + 1, new_paths, peaks_next)
+    
