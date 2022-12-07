@@ -346,7 +346,6 @@ class SegmentationComparison:
         for k in range(len(segmentations)):
             k_arr = np.zeros((len(segmentations)), dtype=np.uint8)
             k_arr[k] = 1
-            print(k_arr)
             return_image[
                 np.logical_or(
                     segmentation_arrays[k][roi] == components[0],
