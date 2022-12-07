@@ -534,6 +534,7 @@ class SegmentationComparison:
         figure_name: str = "Comparison",
         opacity: float = 0.6,
         legend_anchor: tuple[float, float] = (1.0, 1.0),
+        custom_legend: Optional[list[mpatches.Patch]] = None,
         custom_legend_text: Optional[list[str]] = None,
     ) -> None:
         """
@@ -546,6 +547,8 @@ class SegmentationComparison:
             opacity (float): Tha opacity value for the comparison image.
             legend_anchor (tuple): tuple of coordinates (x,y) in euclidean style that
                 determines legend anchor.
+            custom_legend (Optional[list[mpatches.Patch]]): in case it is desirable to create 
+                a custom legend.
             custom_legend_text (Optional[list[str]]): in case it is desirable
                 to customize legend.
         """
@@ -572,8 +575,10 @@ class SegmentationComparison:
         plt.figure(figure_name)
         plt.imshow(base_image)
         plt.imshow(processed_comparison_image)
-        if custom_legend_text is None:
+        if (custom_legend_text is None) and (custom_legend is None):
             patches = self._get_legend_patches(unique_colors=unique_colors)
+        elif custom_legend is not None:
+            patches = custom_legend
         else:
             patches = self._get_legend_patches(
                 unique_colors=unique_colors, custom_legend_text=custom_legend_text
