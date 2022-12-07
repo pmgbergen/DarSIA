@@ -547,7 +547,7 @@ class SegmentationComparison:
             opacity (float): Tha opacity value for the comparison image.
             legend_anchor (tuple): tuple of coordinates (x,y) in euclidean style that
                 determines legend anchor.
-            custom_legend (Optional[list[mpatches.Patch]]): in case it is desirable to create 
+            custom_legend (Optional[list[mpatches.Patch]]): in case it is desirable to create
                 a custom legend.
             custom_legend_text (Optional[list[str]]): in case it is desirable
                 to customize legend.
