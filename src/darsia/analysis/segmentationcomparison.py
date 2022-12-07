@@ -45,7 +45,7 @@ class SegmentationComparison:
 
     """
 
-    def __init__(self, number_of_segmented_images: int, **kwargs) -> None:
+    def __init__(self, number_of_segmented_images: int = 2, **kwargs) -> None:
         """
         Constructor of compare segmentations class.
 
@@ -267,6 +267,91 @@ class SegmentationComparison:
 
         if plot_result:
             self.plot(return_image, "Comparison")
+
+        return return_image
+
+    def compare_segmentations_binary_array(
+        self, *segmentations: tuple[np.ndarray, ...], **kwargs
+    ) -> np.ndarray:
+        """
+        Compares segmentations and returns an an array
+        with pixels that containing an array of 1s and 0s depending on
+        which segmentations are present there. At the current state it
+        does not distinguish between the different kind of components,
+
+        Args:
+            *segmentations (tuple[np.ndarray, ...]): The segmentations to be compared.
+            **kwargs: Optional keyword arguments.
+                roi (Union[tuple, np.ndarray]): roi where the segmentations should be
+                    compared, default is the maximal roi that fits in all segmentations.
+                    Should be provided in pixel coordinates using matrix indexing, either
+                    as a tuple of slices, or an array of corner points.
+                components (tuple[int, ...]): The components that should be recognized in
+                    the segmentations, default is [1,2].
+
+        """
+        # NOTE: At the moment both components are counted as the same.
+
+        # Checks whether roi is provided and if it is as a tuple (of slices)
+        # or an array of corner points
+        if "roi" in kwargs:
+            roi_input = kwargs["roi"]
+            if isinstance(roi_input, tuple):
+                roi: tuple = roi_input
+            elif isinstance(roi_input, np.ndarray):
+                roi = da.bounding_box(roi_input)
+            elif isinstance(roi_input, list):
+                roi = da.bounding_box(np.array(roi_input))
+            else:
+                raise Exception(
+                    f"{type(roi_input)} is not a valid type for roi. Please provide it as"
+                    " a tuple of slices, or an array or list of corner points"
+                )
+            return_image: np.ndarray = np.zeros(
+                (roi[0].stop - roi[0].start, roi[1].stop - roi[1].start)
+                + (len(segmentations),),
+                dtype=np.uint8,
+            )
+
+        # If roi is not provided the largest roi that fits all segmentations are chosen.
+        else:
+            if all([isinstance(seg, np.ndarray) for seg in segmentations]):
+                rows = min([seg.shape[0] for seg in segmentations])
+                cols = min([seg.shape[1] for seg in segmentations])
+            elif all([isinstance(seg, da.Image) for seg in segmentations]):
+                rows = min([seg.img.shape[0] for seg in segmentations])
+                cols = min([seg.img.shape[1] for seg in segmentations])
+            roi = (slice(0, rows), slice(0, cols))
+            return_image = np.zeros(
+                (rows, cols) + (len(segmentations),), dtype=np.uint8
+            )
+
+        # Determine whether segmentations are arrays of darsia images.
+        # They should all be the same.
+        if all([isinstance(seg, np.ndarray) for seg in segmentations]):
+            segmentation_arrays: tuple[np.ndarray, ...] = segmentations
+        elif all([isinstance(seg, da.Image) for seg in segmentations]):
+            segmentation_arrays = tuple([seg.img for seg in segmentations])
+        else:
+            raise Exception(
+                "Segmentation types are not allowed. They should"
+                "all be the same, and either arrays, or darsia images."
+            )
+
+        # Extract components
+        components = kwargs.pop("components", [1, 2])
+
+        # Go through segmentations and enter 1 in correct position at the
+        # pixels where they are present
+        for k in range(self.number_of_segmented_images):
+            k_arr = np.zeros((len(segmentations)), dtype=np.uint8)
+            k_arr[k] = 1
+            return_image[
+                np.logical_or(
+                    segmentation_arrays[k][roi] == components[0],
+                    segmentation_arrays[k][roi] == components[1],
+                )
+            ] += k_arr
 
         return return_image
 
