@@ -355,6 +355,53 @@ class SegmentationComparison:
 
         return return_image
 
+    def get_combinations(
+        self, num_segmentations: int = 5, *segmentation_numbers: tuple[int, ...]
+    ) -> list[list[int]]:
+        """
+        Returns a list of all possible combinations of segmentations.
+
+        Args:
+            num_segmentations (int, optional): Number of segmentations. Defaults to 5.
+            *segmentation_numbers (tuple[int, ...]): The segmentation numbers that
+                should be included in the combinations. Defaults to ().
+
+        Returns:
+            list[list[int]]: List of all possible combinations of segmentations.
+        """
+
+        # Create an empty list of all possible combinations of segmentations
+        combinations: list[list[int]] = []
+
+        # Create the base of a full combination
+        base: list = np.ones(num_segmentations, dtype=np.ubyte).tolist()
+
+        # Create a list of the segmentations that should be included in the combinations
+        segs: list[int] = [
+            i for i in range(num_segmentations) if i not in segmentation_numbers
+        ]
+
+        # Create a recursive function that loops through all possible combinations
+        def loop_rec_bool(n, max=True, tmp=None):
+            if n >= 1:
+                if max:
+                    for i in [0, 1]:
+                        tmp = base.copy()
+                        tmp[segs[n]] = i
+                        loop_rec_bool(n - 1, False, tmp)
+                else:
+                    for i in [0, 1]:
+                        tmp[segs[n]] = i
+                        loop_rec_bool(n - 1, False, tmp)
+            elif n == 0:
+                for i in [0, 1]:
+                    tmp[segs[n]] = i
+                    combinations.append(tmp.copy())
+
+        # Loop through all possible combinations
+        loop_rec_bool(len(segs) - 1)
+        return combinations
+
     def plot(
         self,
         image: np.ndarray,
