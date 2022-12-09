@@ -17,6 +17,8 @@ import numpy as np
 import skimage
 from matplotlib.cm import get_cmap
 
+from warnings import warn
+
 import darsia as da
 
 
@@ -402,6 +404,7 @@ class SegmentationComparison:
         loop_rec_bool(len(segs) - 1)
         return combinations
 
+
     def plot(
         self,
         image: np.ndarray,
@@ -635,7 +638,7 @@ class SegmentationComparison:
         )
         plt.show()
 
-    def color_fractions(self, comparison_image: np.ndarray) -> dict:
+    def color_fractions(self, comparison_image: np.ndarray, **kwargs) -> tuple[np.ndarray[float], np.ndarray[int]]:
         """
         Returns color fractions.
 
@@ -647,19 +650,21 @@ class SegmentationComparison:
                 the number of pixels that the color occupies and the
                 total number of occupied pixels in the image.
         """
-        unique_colors, counts = self._get_unique_colors(
-            comparison_image, return_counts=True
-        )
+        #Create empty list for color fractions
+        fractions: np.ndarray = []
 
-        total_color_pixels = np.sum(counts)
+        colors: np.ndarray = kwargs.pop("colors", self._get_unique_colors(comparison_image))
 
-        fractions: dict = {}
-        for i, c in enumerate(unique_colors):
-            fractions[self._get_key(c, self.color_dictionary)] = (
-                counts[i] / total_color_pixels
-            )
+        if "depth_map" in kwargs:
+            depth_map: np.ndarray = kwargs["depth_map"]
+        elif "depth_measurements" in kwargs:
+            depth_map = da.get_depth_map(kwargs["depth_measurements"])
+        else:
+            warn("No depth map provided. Color fractions will be calculated without depth information.")
+            depth_map = np.ones(comparison_image.shape[:2])
 
-        return fractions
+
+        return fractions, colors
 
     def _get_key(self, val, dictionary: dict):
         """
