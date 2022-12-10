@@ -672,7 +672,9 @@ class SegmentationComparison:
             # create darsia copy of comparison image
             width = kwargs.pop("width", 1)
             height = kwargs.pop("height", 1)
-            comparison_image_da = da.Image(comparison_image, width = width, height= height, color_space="RGB")
+            comparison_image_da = da.Image(
+                comparison_image, width=width, height=height, color_space="RGB"
+            )
             # Compute depth map
             depth_map = da.compute_depth_map(
                 comparison_image_da, kwargs["depth_measurements"]
@@ -702,7 +704,7 @@ class SegmentationComparison:
             weighted_colors = np.sum(only_c * depth_map)
 
             # Append to fractions
-            fractions.append(weighted_colors/total_colored)
+            fractions.append(weighted_colors / total_colored)
 
         return fractions, colors, total_colored, depth_map
 
