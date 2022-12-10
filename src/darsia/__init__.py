@@ -19,7 +19,7 @@ from darsia.mathematics.regularization import *
 from darsia.utils.conversions import *
 from darsia.utils.resolution import *
 from darsia.utils.box import *
-from darsia.utils.compute_depth_map import *
+from darsia.utils.computedepthmap import *
 from darsia.utils.segmentation import *
 from darsia.utils.coloranalysis import *
 from darsia.corrections.shape.curvature import *
