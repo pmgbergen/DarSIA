@@ -20,13 +20,13 @@ The following Python script can be applied to the test image in the examples/ima
 import darsia as da
 
 # Create a darsia Image: An image that also contains information of physical entities
-image = da.Image("examples/images/baseline.jpg", origo = [5, 2], width = 280, height = 150)
+image = da.Image("examples/images/baseline.jpg", origin = [5, 2], width = 280, height = 150)
 
 # Use the show method to take a look at the imported image (push any button to close the window)
 image.show()
 
 # Copies the image and adds a grid on top of it.
-grid_image = image.add_grid(origo = [5, 2], dx = 10, dy = 10)
+grid_image = image.add_grid(origin = [5, 2], dx = 10, dy = 10)
 grid_image.show()
 
 # Extract region of interest (ROI) from image:
