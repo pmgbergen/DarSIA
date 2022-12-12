@@ -1,6 +1,6 @@
 """Image class.
 
-Images contain the image array, and in addition metadata about origo and dimensions.
+Images contain the image array, and in addition metadata about origin and dimensions.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ class Image:
 
     Contains the actual image, as well as meta data, i.e., base properties such as
     position in global coordinates, width and height. One can either pass in metadata
-    (origo, width and height, amongst other entities) by passing them directly to
+    (origin, width and height, amongst other entities) by passing them directly to
     the constructor or through a metadata-file (default is to pass metadata diretly
     to the constructor. If a metadatafile is required, the "read_metadata_from_file"
     variable has to be passed as True). Image can either be passed in as numpy array
@@ -40,7 +40,7 @@ class Image:
         metadata (dict):
             width (float): physical width of the image
             height (float): physical height of the image
-            origo (np.ndarray): physical coordinates of the lower left corner, i.e.,
+            origin (np.ndarray): physical coordinates of the lower left corner, i.e.,
                 of the (img.shape[0],0) pixel
             color_space (str): Color space (RGB/BGR/RED/GREEN/BLUE/GRAY)
             timestamp (datetime.datetime): timestamp of the image in (default) datetime format.
@@ -80,9 +80,9 @@ class Image:
                 if the image is to be curvature corrected at initialization
             kwargs (Optional arguments)
                 metadata_source (str): Path to a metadata json-file that provides
-                    metadata such as physical width, height and origo of image
+                    metadata such as physical width, height and origin of image
                     as well as  color space
-                origo (np.ndarray): physical coordinates of the lower left corner
+                origin (np.ndarray): physical coordinates of the lower left corner
                 width (float): physical width of the image
                 height (float): physical height of the image
                 color_space (str): the color space of the image. So far only BGR
@@ -117,7 +117,7 @@ class Image:
             else:
                 raise Exception("image height not specified")
 
-            self.metadata["origo"] = np.array(kwargs.pop("origo", np.array([0, 0])))
+            self.metadata["origin"] = np.array(kwargs.pop("origin", np.array([0, 0])))
 
             no_colorspace_given = "color_space" not in kwargs
             self.metadata["color_space"] = kwargs.pop("color_space", "BGR")
@@ -201,8 +201,8 @@ class Image:
     # ! ---- Fast-access getter functions for metadata
 
     @property
-    def origo(self) -> np.ndarray:
-        return self.metadata["origo"]
+    def origin(self) -> np.ndarray:
+        return self.metadata["origin"]
 
     @property
     def width(self) -> float:
@@ -321,7 +321,7 @@ class Image:
     # Seems like something that should read an image and return a new one with grid.
     def add_grid(
         self,
-        origo: Optional[Union[np.ndarray, list[float]]] = None,
+        origin: Optional[Union[np.ndarray, list[float]]] = None,
         dx: float = 1,
         dy: float = 1,
         color: tuple = (0, 0, 125),
@@ -331,7 +331,7 @@ class Image:
         Adds a grid on the image and returns new image.
 
         Arguments:
-            origo (np.ndarray): origo of the grid, in physical units - the reference
+            origin (np.ndarray): origin of the grid, in physical units - the reference
                 coordinate system is provided by the corresponding attribute coordinatesystem
             dx (float): grid size in x-direction, in physical units
             dy (float): grid size in y-direction, in physical units
@@ -341,11 +341,11 @@ class Image:
         Returns:
             Image: original image with grid on top
         """
-        # Set origo if it was not provided
-        if origo is None:
-            origo = self.metadata["origo"]
-        elif isinstance(origo, list):
-            origo = np.array(origo)
+        # Set origin if it was not provided
+        if origin is None:
+            origin = self.metadata["origin"]
+        elif isinstance(origin, list):
+            origin = np.array(origin)
 
         # Determine the number of grid lines required
         num_horizontal_lines: int = math.ceil(self.metadata["height"] / dy) + 1
@@ -362,7 +362,7 @@ class Image:
             xmax = self.coordinatesystem.domain["xmax"]
 
             # Determine the y coordinate of the line
-            y = origo[1] + i * dy
+            y = origin[1] + i * dy
 
             # Determine the pixels corresponding to the end points of the horizontal line
             # (xmin,y) - (xmax,y), in (row,col) format.
@@ -384,7 +384,7 @@ class Image:
             ymax = self.coordinatesystem.domain["ymax"]
 
             # Determine the y coordinate of the line
-            x = origo[0] + j * dx
+            x = origin[0] + j * dx
 
             # Determine the pixels corresponding to the end points of the vertical line
             # (x, ymin) - (x, ymax), in (row,col) format.

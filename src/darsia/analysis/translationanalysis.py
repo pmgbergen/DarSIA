@@ -270,12 +270,12 @@ class TranslationAnalysis:
         if units[0] == "metric":
             # Add the left vertical boundary
             vertical_boundary += [
-                self.base.origo + np.array([0, y_pos])
+                self.base.origin + np.array([0, y_pos])
                 for y_pos in np.linspace(0, self.base.height, self.N_patches[1] + 1)
             ]
             # Add the right vertical boundary
             vertical_boundary += [
-                self.base.origo + np.array([self.base.width, y_pos])
+                self.base.origin + np.array([self.base.width, y_pos])
                 for y_pos in np.linspace(0, self.base.height, self.N_patches[1] + 1)
             ]
 
@@ -321,7 +321,7 @@ class TranslationAnalysis:
         if units[0] == "metric":
             # Add the bottom horizontal boundary
             horizontal_boundary += [
-                self.base.origo + np.array([x_pos, 0])
+                self.base.origin + np.array([x_pos, 0])
                 for x_pos in np.linspace(0, self.base.width, self.N_patches[0] + 1)
             ]
 
