@@ -535,3 +535,165 @@ class TranslationAnalysis:
         transformed_img = self.translate_image(reverse)
 
         return transformed_img
+
+    def deduct_translation_analysis(
+            self, translation_analysis: #TranslationAnalysis
+    ) -> None:
+        """
+        Overwrite translation analysis by deducting from external one.
+        (Re)defines the interpolation object.
+
+        Args:
+            translation_analysis (darsia.TranslationAnalysis): translation analysis
+                holding an interpolation object.
+        """
+
+        # ! ---- Step 1. Patch analysis.
+
+        # Initialize containers for coordinates of the patches as well as the translation
+        # Later to be used for interpolation.
+        input_coordinates: list[np.ndarray] = []
+        patch_translation_x: list[float] = []
+        patch_translation_y: list[float] = []
+
+        # Fetch patch centers
+        patch_centers_cartesian = self.patches_base.global_centers_cartesian
+
+        # Loop over all patches.
+        for i in range(self.N_patches[0]):
+            for j in range(self.N_patches[1]):
+
+                # Fetch the center of the patch in metric units, which will be the input
+                # for later construction of the interpolator
+                center = patch_centers_cartesian[i, j]
+
+                # TODO?
+                # Convert to pixel units using reverse matrix indexing, if required
+                if True:
+                    center = self.base.coordinatesystem.coordinateToPixel(
+                        center, reverse=True
+                    )
+
+                # Evaluate translation provided by the external translation analysis
+                displacement = translation_analysis.translation(center.reshape(-1, 2))
+
+                # Store the displacement for the centers of the patch.
+                # NOTE: In any case, the first and second components
+                # correspond to the x and y component.
+                input_coordinates.append(center)
+                patch_translation_x.append(displacement[0])
+                patch_translation_y.append(displacement[1])
+
+        # ! ---- Step 2. Boundary conditions.
+
+        # Fetch predetermined conditions (do not have to be on the boundary)
+        units = ["pixel", "pixel"]  # TODO?
+        extra_coordinates_x, extra_translation_x = self.bc_x(units)
+        extra_coordinates_y, extra_translation_y = self.bc_y(units)
+
+        # Define new interpolation objects
+        self.interpolator_translation_x = RBFInterpolator(
+            input_coordinates + extra_coordinates_x,
+            patch_translation_x + extra_translation_x,
+        )
+        self.interpolator_translation_y = RBFInterpolator(
+            input_coordinates + extra_coordinates_y,
+            patch_translation_y + extra_translation_y,
+        )
+
+        # Convert interpolators to a callable displacement/translation map
+        def translation_callable(arg):
+            return np.array(
+                [
+                    self.interpolator_translation_x(arg),
+                    self.interpolator_translation_y(arg),
+                ]
+            )
+
+        self.translation = translation_callable
+
+    def add_translation_analysis(
+        self, translation_analysis #: TranslationAnalysis
+    ) -> None:
+        """
+        Add another translation analysis to the existing one.
+        Modifies the interpolation object by redefinition.
+
+        Args:
+            translation_analysis (darsia.TranslationAnalysis): Translation analysis holding
+                an interpolation object.
+        """
+
+        # ! ---- Step 1. Patch analysis.
+
+        # Initialize containers for coordinates of the patches as well as the translation
+        # Later to be used for interpolation.
+        input_coordinates: list[np.ndarray] = []
+        patch_translation_x: list[float] = []
+        patch_translation_y: list[float] = []
+
+        # Fetch patch centers
+        patch_centers_cartesian = self.patches_base.global_centers_cartesian
+
+        # Loop over all patches.
+        for i in range(self.N_patches[0]):
+            for j in range(self.N_patches[1]):
+
+                # Fetch the center of the patch in metric units, which will be the input
+                # for later construction of the interpolator
+                center = patch_centers_cartesian[i, j]
+                pixel_center = self.base.coordinatesystem.coordinateToPixel(
+                    center, reverse=True
+                )
+
+                # Find displaced center
+                pixel_displacement = self.translation(pixel_center.reshape(-1, 2))
+                displaced_pixel_center = pixel_center + pixel_displacement.reshape(
+                    pixel_center.shape
+                )
+
+                # Determine the additional displacement
+                additional_pixel_displacement = translation_analysis.translation(
+                    displaced_pixel_center.reshape(-1, 2)
+                )
+
+                # Total displacement is sum and it is the effective displacement of
+                # the combined maps
+                total_pixel_displacement = (
+                    pixel_displacement + additional_pixel_displacement
+                )
+
+                # Store the displacement for the centers of the patch.
+                # NOTE: In any case, the first and second components
+                # correspond to the x and y component.
+                input_coordinates.append(pixel_center)
+                patch_translation_x.append(total_pixel_displacement[0])
+                patch_translation_y.append(total_pixel_displacement[1])
+
+        # ! ---- Step 2. Boundary conditions.
+
+        # Fetch predetermined conditions (do not have to be on the boundary)
+        units = ["pixel", "pixel"]  # TODO?
+        extra_coordinates_x, extra_translation_x = self.bc_x(units)
+        extra_coordinates_y, extra_translation_y = self.bc_y(units)
+
+        # Define new interpolation objects
+        self.interpolator_translation_x = RBFInterpolator(
+            input_coordinates + extra_coordinates_x,
+            patch_translation_x + extra_translation_x,
+        )
+        self.interpolator_translation_y = RBFInterpolator(
+            input_coordinates + extra_coordinates_y,
+            patch_translation_y + extra_translation_y,
+        )
+
+        # Convert interpolators to a callable displacement/translation map
+        def translation_callable(arg):
+            return np.array(
+                [
+                    self.interpolator_translation_x(arg),
+                    self.interpolator_translation_y(arg),
+                ]
+            )
+
+        self.translation = translation_callable
