@@ -2,8 +2,9 @@
 Module containing tools for studying compaction.
 """
 
-from typing import Union
+from typing import Optional, Union
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 import darsia
@@ -70,9 +71,9 @@ class CompactionAnalysis:
             reverse (bool): flag whether the translation is understood as from the
                 test image to the baseline image, or reversed. The default is the
                 latter.
-            plot_patch_translation (bool): flag controlling whether the deformation is also
+            plot_patch_translation (bool): flag controlling whether the displacement is also
                 visualized as vector field.
-            return_patch_translation (bool): flag controlling whether the deformation
+            return_patch_translation (bool): flag controlling whether the displacement
                 in the patch centers is returned in the sense of dst to src image,
                 complying to the plot; default is False.
         """
@@ -132,27 +133,23 @@ class CompactionAnalysis:
             pixel_coords = coords
 
         # Interpolate at provided values - expect reverse matrix indexing
-        translation_x = self.translation_analysis.interpolator_translation_x(
-            pixel_coords
-        )
-        translation_y = self.translation_analysis.interpolator_translation_y(
-            pixel_coords
-        )
+        translation = self.translation_analysis.translation(pixel_coords)
 
         # Flip, if required
         if reverse:
-            translation_x *= -1.0
-            translation_y *= -1.0
+            translation *= -1.0
 
-        # Collect results, use ordering of components consistent with matrix indexing
-        deformation = np.transpose(np.vstack((translation_y, translation_x)))
+        # Collect results, use ordering of components consistent with matrix
+        # indexing (i.e. flip of components needed)
+
+        displacement = np.transpose(np.vstack((translation[1], translation[0])))
 
         # Convert to metric units if required; for pixels, use matrix indexing.
         if units == "metric":
-            deformation = base.coordinatesystem.pixelToCoordinateVector(deformation)
+            displacement = base.coordinatesystem.pixelToCoordinateVector(displacement)
 
         # Reshape to format used at input
-        return deformation.reshape(coords_shape)
+        return displacement.reshape(coords_shape)
 
     def apply(self, img: darsia.Image, reverse: bool = True) -> darsia.Image:
         """
@@ -172,3 +169,10 @@ class CompactionAnalysis:
 
         # Apply the transformation, stored in translation_analysis
         return self.translation_analysis.translate_image(reverse)
+
+    def plot(self) -> None:
+        """
+        Plots total compaction.
+        """
+        # Warpper for translation_analysis.
+        self.translation_analysis.plot_translation()
