@@ -18,7 +18,11 @@ class FeatureDetection:
 
     @classmethod
     def extract_features(
-        cls, img: np.ndarray, roi: Optional[tuple] = None, max_features: int = 200
+        cls,
+        img: np.ndarray,
+        roi: Optional[tuple] = None,
+        mask: Optional[np.ndarray] = None,
+        max_features: int = 200,
     ) -> tuple:
         """
         Extract features from an image.
@@ -28,6 +32,8 @@ class FeatureDetection:
             roi (tuple of two slices, optional): region of interest; by default the
                 entire image is considered
             max_features (int): maximal number of features to be extracted
+            mask (np,ndarray, optional): region of interest for features to be considered
+                or ignored; default is None which identifies all features as relevant.
 
         Returns:
             tuple: tuple of
@@ -37,8 +43,10 @@ class FeatureDetection:
             bool: flag indicating whether features have been found
         """
 
-        # Restrict image to ROI
+        # Restrict image and mask to ROI
         img_roi = img[roi] if roi is not None else img.copy()
+        if mask is not None:
+            mask_roi = mask[roi] if roi is not None else mask.copy()
 
         # Convert to gray color space
         img_gray = cv2.cvtColor(img_roi, cv2.COLOR_RGB2GRAY)
@@ -50,7 +58,24 @@ class FeatureDetection:
         # Determine matching features; use ORB to detect keypoints
         # and extract (binary) local invariant features
         orb = cv2.ORB_create(max_features)
-        (kps, descs) = orb.detectAndCompute(img_gray, None)
+        (kps_all, descs_all) = orb.detectAndCompute(img_gray, None)
+
+        # Exclude features outside the restricted mask
+        if mask is not None and len(kps_all) > 0:
+            include_ids = np.zeros(len(kps_all), dtype=bool)
+            kps = []
+            for i, kp in enumerate(kps_all):
+                pt = np.array(kp.pt).astype(np.int32)
+                if mask_roi[pt[1], pt[0]]:
+                    include_ids[i] = True
+                    kps.append(kp)
+
+            # Convert to right format
+            kps = tuple(kps)
+            descs = descs_all[include_ids, :] if len(kps) > 0 else None
+        else:
+            kps = kps_all
+            descs = descs_all
 
         # Check if features valid
         found_features = descs is not None
