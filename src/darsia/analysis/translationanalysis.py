@@ -352,27 +352,21 @@ class TranslationAnalysis:
             np.ndarray: deformation in patch centers
         """
         # Only continue if a translation has been already found
-        assert self.have_translation.any()
+        # assert self.have_translation.any()
 
         # Interpolate at patch centers (pixel coordinates with reverse matrix indexing)
         patch_centers = self.patches_base.global_centers_reverse_matrix
         patch_centers_shape = patch_centers.shape
         patch_centers = patch_centers.reshape((-1, 2))
-        interpolated_patch_translation_x = self.interpolator_translation_x(
-            patch_centers
-        )
-        interpolated_patch_translation_y = self.interpolator_translation_y(
-            patch_centers
-        )
+        interpolated_patch_translation = self.translation(patch_centers)
 
         # Flip, if required
         if reverse:
-            interpolated_patch_translation_x *= -1.0
-            interpolated_patch_translation_y *= -1.0
+            interpolated_patch_translation *= -1.0
 
-        # Collect patch_translation using standard matrix indexing
+        # Collect patch_translation using standard matrix indexing - have to flip components
         patch_translation = np.vstack(
-            (interpolated_patch_translation_y, interpolated_patch_translation_x)
+            (interpolated_patch_translation[1], interpolated_patch_translation[0])
         ).T
 
         # Convert units if needed and provide in metric units
