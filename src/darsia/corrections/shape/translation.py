@@ -21,7 +21,7 @@ class TranslationEstimator:
     Images.
     """
 
-    def __init__(self, max_features: int = 200, tol: float = 0.05):
+    def __init__(self, max_features: int = 200, tol: float = 0.05, keep_percent=0.1):
         """
         Setup of user-defined tuning parameters.
 
@@ -31,6 +31,7 @@ class TranslationEstimator:
                 translation
         """
         self._max_features = max_features
+        self._keep_percent = keep_percent
         self._tol = tol
 
     def find_effective_translation(
@@ -79,6 +80,7 @@ class TranslationEstimator:
                 roi_src,
                 roi_dst,
                 transformation_type=transformation_type,
+                keep_percent=self._keep_percent,
                 return_matches=True,
                 plot_matches=plot_matches,
             )
