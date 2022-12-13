@@ -458,7 +458,8 @@ class TranslationAnalysis:
             color="white",
         )
         ax.imshow(
-            skimage.util.compare_images(self.base.img, self.img.img, method="blend")
+            self.base.img
+            # skimage.util.compare_images(self.base.img, self.img.img, method="blend")
         )
         fig, ax = plt.subplots(1, num=2)
         ax.imshow(
@@ -470,6 +471,11 @@ class TranslationAnalysis:
                 method="blend",
             )
         )
+
+        plt.figure("deformation x")
+        plt.imshow(patch_translation_x.reshape(self.N_patches[1], self.N_patches[0]))
+        plt.figure("deformation y")
+        plt.imshow(patch_translation_y.reshape(self.N_patches[1], self.N_patches[0]))
         plt.show()
 
     def translate_image(
