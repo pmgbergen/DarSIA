@@ -24,6 +24,7 @@ class TranslationAnalysis:
         N_patches: list[int],
         rel_overlap: float,
         translationEstimator: darsia.TranslationEstimator,
+        mask: Optional[darsia.Image] = None,
     ) -> None:
         """
         Constructor for TranslationAnalysis.
@@ -45,6 +46,23 @@ class TranslationAnalysis:
 
         # Construct patches of the base image
         self.update_base(base)
+
+        # Initialize translation with zero, allowing summation of translation
+        def zero_translation(arg):
+            return np.transpose(np.zeros_like(arg))
+
+        self.translation = zero_translation
+        self.have_translation = np.zeros(tuple(self.N_patches), dtype=bool)
+
+        # Cache mask
+        if mask is None:
+            self.mask_base = darsia.Image(
+                np.ones(base.img.shape[:2], dtype=bool),
+                width=base.width,
+                height=base.height,
+            )
+        else:
+            self.mask_base = mask.copy()
 
     # TOOD add update_base methods similar to other tools
 
@@ -93,13 +111,25 @@ class TranslationAnalysis:
             self.base, *self.N_patches, rel_overlap=self.rel_overlap
         )
 
-    def load_image(self, img: darsia.Image) -> None:
+    def load_image(
+        self, img: darsia.Image, mask: Optional[darsia.Image] = None
+    ) -> None:
         """Load an image to be inspected in futher analysis.
 
         Args:
             img (darsia.Image): test image
         """
         self.img = img
+
+        # Cache mask
+        if mask is None:
+            self.mask_img = darsia.Image(
+                np.ones(img.img.shape[:2], dtype=bool),
+                width=img.width,
+                height=img.height,
+            )
+        else:
+            self.mask_img = mask.copy()
 
         # TODO, apply patching here already? why not?
 
@@ -116,6 +146,8 @@ class TranslationAnalysis:
             units (list of str): units for input (first entry) and output (second entry)
                 ranges of the resulting translation map; accepts either "metric"
                 or "pixel".
+            mask (np.ndarray, optional): boolean mask marking all pixels to be considered;
+                all if mask is None (default).
 
         Returns:
             Callable: translation map defined as interpolator
@@ -157,6 +189,14 @@ class TranslationAnalysis:
         # TODO adaptive refinement stategy - as safety measure! will require
         # some effort in how to access patches. try first with fixed params.
 
+        # Create patches of masks
+        patches_mask_base = darsia.Patches(
+            self.mask_base, *self.N_patches, rel_overlap=self.rel_overlap
+        )
+        patches_mask_img = darsia.Patches(
+            self.mask_img, *self.N_patches, rel_overlap=self.rel_overlap
+        )
+
         # Loop over all patches.
         for i in range(self.N_patches[0]):
             for j in range(self.N_patches[1]):
@@ -165,13 +205,23 @@ class TranslationAnalysis:
                 patch_base = self.patches_base(i, j)
                 patch_img = patches_img(i, j)
 
+                # Fetch corresponding patches of mask
+                patch_mask_base = patches_mask_base(i, j)
+                patch_mask_img = patches_mask_img(i, j)
+
                 # Determine effective translation from input to baseline image, operating on
                 # pixel coordinates and using reverse matrix indexing.
                 (
                     translation,
                     intact_translation,
                 ) = self.translationEstimator.find_effective_translation(
-                    patch_img.img, patch_base.img, None, None, plot_matches=False
+                    patch_img.img,
+                    patch_base.img,
+                    None,
+                    None,
+                    mask_src=patch_mask_img.img,
+                    mask_dst=patch_mask_base.img,
+                    plot_matches=False,
                 )
 
                 # The above procedure to find a matching transformation is successful if in
@@ -378,9 +428,7 @@ class TranslationAnalysis:
         # Return in patch format
         return patch_translation.reshape(patch_centers_shape)
 
-    def plot_translation(
-        self,
-    ) -> None:
+    def plot_translation(self, reverse: bool = True) -> None:
         """
         Translate centers of the test image and plot in terms of displacement arrows.
         """
@@ -389,9 +437,9 @@ class TranslationAnalysis:
 
         # Determine patch translation in matrix ordering (and with flipped y-direction
         # to comply with the orientation of the y-axis in imaging.
-        patch_translation = self.return_patch_translation(units="pixel").reshape(
-            (-1, 2)
-        )
+        patch_translation = self.return_patch_translation(
+            reverse, units="pixel"
+        ).reshape((-1, 2))
         patch_translation_y = patch_translation[:, 0]
         patch_translation_x = patch_translation[:, 1]
 
@@ -445,13 +493,22 @@ class TranslationAnalysis:
 
         # Create piecewise perspective transform on the patches
         perspectiveTransform = darsia.PiecewisePerspectiveTransform()
+        import time
+
+        tic = time.time()
         transformed_img: darsia.Image = perspectiveTransform.find_and_warp(
             patches, self.translation, reverse
         )
+        print(f"find and warp takes {time.time() - tic}")
 
         return transformed_img
 
-    def __call__(self, img: darsia.Image) -> darsia.Image:
+    def __call__(
+        self,
+        img: darsia.Image,
+        reverse: bool = False,
+        mask: Optional[darsia.Image] = None,
+    ) -> darsia.Image:
         """
         Standard workflow, starting with loading the test image, finding
         the translation required to match the baseline image,
@@ -463,8 +520,12 @@ class TranslationAnalysis:
         Returns:
             darsia.Image: translated image
         """
-        self.load_image(img)
+        self.load_image(img, mask)
+        import time
+
+        tic = time.time()
         self.find_translation()
-        transformed_img = self.translate_image(reverse=False)
+        print(f"find takes: {time.time() - tic}")
+        transformed_img = self.translate_image(reverse)
 
         return transformed_img
