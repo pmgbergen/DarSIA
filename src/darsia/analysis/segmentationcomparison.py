@@ -395,9 +395,15 @@ class SegmentationComparison:
                         tmp[segs[n]] = i
                         loop_rec_bool(n - 1, False, tmp)
             elif n == 0:
-                for i in [0, 1]:
-                    tmp[segs[n]] = i
-                    combinations.append(tmp.copy())
+                if max:
+                    for i in [0, 1]:
+                        tmp = base.copy()
+                        tmp[segs[n]] = i
+                        combinations.append(tmp.copy())
+                else:
+                    for i in [0, 1]:
+                        tmp[segs[n]] = i
+                        combinations.append(tmp.copy())
             else:
                 combinations.append(base)
 
