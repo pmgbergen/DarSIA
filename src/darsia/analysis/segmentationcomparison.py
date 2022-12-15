@@ -398,6 +398,8 @@ class SegmentationComparison:
                 for i in [0, 1]:
                     tmp[segs[n]] = i
                     combinations.append(tmp.copy())
+            else:
+                combinations.append(base)
 
         # Loop through all possible combinations
         loop_rec_bool(len(segs) - 1)
