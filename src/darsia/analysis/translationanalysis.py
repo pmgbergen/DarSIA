@@ -537,7 +537,8 @@ class TranslationAnalysis:
         return transformed_img
 
     def deduct_translation_analysis(
-            self, translation_analysis: #TranslationAnalysis
+        self,
+        translation_analysis #: TranslationAnalysis
     ) -> None:
         """
         Overwrite translation analysis by deducting from external one.
@@ -613,7 +614,8 @@ class TranslationAnalysis:
         self.translation = translation_callable
 
     def add_translation_analysis(
-        self, translation_analysis #: TranslationAnalysis
+        self,
+        translation_analysis #: TranslationAnalysis
     ) -> None:
         """
         Add another translation analysis to the existing one.
