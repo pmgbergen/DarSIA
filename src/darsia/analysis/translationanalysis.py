@@ -428,7 +428,12 @@ class TranslationAnalysis:
         # Return in patch format
         return patch_translation.reshape(patch_centers_shape)
 
-    def plot_translation(self, reverse: bool = True) -> None:
+    def plot_translation(
+        self,
+        reverse: bool = True,
+        scaling: float = 1.0,
+        mask: Optional[darsia.Image] = None,
+    ) -> None:
         """
         Translate centers of the test image and plot in terms of displacement arrows.
         """
@@ -447,15 +452,57 @@ class TranslationAnalysis:
         # scale the translation in y-direction.
         patch_translation_y *= -1.0
 
+        # Restrict to values covered by mask
+        if mask is not None:
+            # Determine active and inactive set
+            assert mask.img.dtype == bool
+            num_patches = patch_centers.shape[0]
+            active_set = np.ones(num_patches, dtype=bool)
+            for i in range(num_patches):
+                # Fetch the position
+                pixel_pos_patch = patch_centers[i, :2]
+                coord_pos_patch = self.base.coordinatesystem.pixelToCoordinate(
+                    pixel_pos_patch, reverse=True
+                )
+                # Find pixel coordinate in mask
+                pixel_pos_mask = mask.coordinatesystem.coordinateToPixel(
+                    coord_pos_patch
+                )
+                if not mask.img[pixel_pos_mask[0], pixel_pos_mask[1]]:
+                    active_set[i] = False
+            inactive_set = np.logical_not(active_set)
+
+            # Damp translation in inexactive set
+            patch_translation_x[inactive_set] = 0
+            patch_translation_y[inactive_set] = 0
+
+            # Deactive unmasked points
+            active_patch_centers = patch_centers[active_set]
+            active_patch_translation_x = patch_translation_x[active_set]
+            active_patch_translation_y = patch_translation_y[active_set]
+
+        else:
+            active_patch_centers = patch_centers
+            active_patch_translation_x = patch_translation_x
+            active_patch_translation_y = patch_translation_y
+
+        c = np.sqrt(
+            np.power(active_patch_translation_x, 2)
+            + np.power(active_patch_translation_y, 2)
+        )
+
         # Plot the interpolated translation
         fig, ax = plt.subplots(1, num=1)
         ax.quiver(
-            patch_centers[:, 0],
-            patch_centers[:, 1],
-            patch_translation_x,
-            patch_translation_y,
-            scale=2000,
-            color="white",
+            active_patch_centers[:, 0],
+            active_patch_centers[:, 1],
+            active_patch_translation_x * scaling,
+            active_patch_translation_y * scaling,
+            c,
+            scale=1000,
+            alpha=0.5,
+            # color="white",
+            cmap="viridis",
         )
         ax.imshow(
             self.base.img
@@ -472,10 +519,31 @@ class TranslationAnalysis:
             )
         )
 
-        plt.figure("deformation x")
+        # Plot deformation in number of pixels
+        plt.figure("deformation x pixels")
+        plt.title("Deformation in x-direction in pixels")
         plt.imshow(patch_translation_x.reshape(self.N_patches[1], self.N_patches[0]))
-        plt.figure("deformation y")
+        plt.colorbar()
+        plt.figure("deformation y pixels")
+        plt.title("Deformation in y-direction in pixels")
         plt.imshow(patch_translation_y.reshape(self.N_patches[1], self.N_patches[0]))
+        plt.colorbar()
+
+        # Plot deformation in meters
+        plt.figure("deformation x meters")
+        plt.title("Deformation in x-direction in meters")
+        plt.imshow(
+            patch_translation_x.reshape(self.N_patches[1], self.N_patches[0])
+            * self.base.dx
+        )
+        plt.colorbar()
+        plt.figure("deformation y meters")
+        plt.title("Deformation in y-direction in meters")
+        plt.imshow(
+            patch_translation_y.reshape(self.N_patches[1], self.N_patches[0])
+            * self.base.dy
+        )
+        plt.colorbar()
         plt.show()
 
     def translate_image(
@@ -537,8 +605,7 @@ class TranslationAnalysis:
         return transformed_img
 
     def deduct_translation_analysis(
-        self,
-        translation_analysis #: TranslationAnalysis
+        self, translation_analysis  #: TranslationAnalysis
     ) -> None:
         """
         Overwrite translation analysis by deducting from external one.
@@ -614,8 +681,7 @@ class TranslationAnalysis:
         self.translation = translation_callable
 
     def add_translation_analysis(
-        self,
-        translation_analysis #: TranslationAnalysis
+        self, translation_analysis  #: TranslationAnalysis
     ) -> None:
         """
         Add another translation analysis to the existing one.

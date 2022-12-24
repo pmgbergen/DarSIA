@@ -224,10 +224,7 @@ class ReversedCompactionAnalysis:
         """
         self.translation_analysis.update_base(dst)
 
-    def deduct(
-        self,
-        compaction_analysis #: CompactionAnalysis
-    ) -> None:
+    def deduct(self, compaction_analysis) -> None:  #: CompactionAnalysis
         """
         Effectviely copy from external CompactionAnalysis.
 
@@ -242,10 +239,7 @@ class ReversedCompactionAnalysis:
             compaction_analysis.translation_analysis
         )
 
-    def add(
-        self,
-        compaction_analysis #: CompactionAnalysis
-    ) -> None:
+    def add(self, compaction_analysis) -> None:  #: CompactionAnalysis
         """
         Update the store translation by adding the translation
         of an external compaction analysis.
@@ -380,12 +374,14 @@ class ReversedCompactionAnalysis:
         # Apply the transformation, stored in translation_analysis
         return self.translation_analysis.translate_image(reverse)
 
-    def plot(self) -> None:
+    def plot(self, scaling: float = 1.0, mask: Optional[darsia.Image] = None) -> None:
         """
         Plots total compaction.
         """
         # Warpper for translation_analysis.
-        self.translation_analysis.plot_translation(False)
+        self.translation_analysis.plot_translation(
+            reverse=False, scaling=scaling, mask=mask
+        )
 
     def displacement(self) -> np.ndarray:
         """
