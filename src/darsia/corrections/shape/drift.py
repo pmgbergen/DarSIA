@@ -25,6 +25,7 @@ class DriftCorrection:
         base: Union[str, Path, np.ndarray, darsia.Image],
         config: Optional[dict] = None,
         roi: Optional[Union[np.ndarray, tuple, list]] = None,
+        **kwargs
     ) -> None:
         """
         Constructor for DriftCorrection.
@@ -38,7 +39,13 @@ class DriftCorrection:
                 images. Either as tuple of ranges, or array of points.
                 Can also be provided in config; roi in config is
                 prioritized.
+            kwargs (optional keyword arguments):
+                active (bool): flag whether drift correction should be
+                    applied or not, default is True.
         """
+
+        # Check whether the drift correction is active
+        self.active: bool = kwargs.get("active", True)
 
         # Read baseline image
         if isinstance(base, str) or isinstance(base, Path):
@@ -94,12 +101,15 @@ class DriftCorrection:
         Returns:
             np.ndarray: aligned image array.
         """
-        # Define roi for source image. Let input argument be dominating over self.roi.
-        roi_src = self.roi if roi is None else roi
-        # Match image with baseline image
-        return self.translation_estimator.match_roi(
-            img_src=img, img_dst=self.base, roi_src=roi_src, roi_dst=self.roi
-        )
+        if self.active:
+            # Define roi for source image. Let input argument be dominating over self.roi.
+            roi_src = self.roi if roi is None else roi
+            # Match image with baseline image
+            return self.translation_estimator.match_roi(
+                img_src=img, img_dst=self.base, roi_src=roi_src, roi_dst=self.roi
+            )
+        else:
+            return img
 
     def write_config_to_file(self, path: Union[Path, str]) -> None:
         """
