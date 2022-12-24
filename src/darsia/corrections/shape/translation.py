@@ -267,14 +267,18 @@ class TranslationEstimator:
             # Only cover the case of compatible ROIs for now.
             assert img_src[roi_src].shape == img_dst[roi_dst].shape
 
-        # Extract features for both images restricted to the ROI.
-        # Pixel coordinates are prescibed using reverse matrix indexing.
-        features_src, have_features_src = FeatureDetection.extract_features(
-            img_src, roi_src, mask_src, self._max_features
-        )
-        features_dst, have_features_dst = FeatureDetection.extract_features(
-            img_dst, roi_dst, mask_dst, self._max_features
-        )
+        # Only continue if images contain a sufficient amount of pixels.
+        if min(img_src.shape[:2]) < 2:
+            have_features_src = have_features_dst = False
+        else:
+            # Extract features for both images restricted to the ROI.
+            # Pixel coordinates are prescibed using reverse matrix indexing.
+            features_src, have_features_src = FeatureDetection.extract_features(
+                img_src, roi_src, mask_src, self._max_features
+            )
+            features_dst, have_features_dst = FeatureDetection.extract_features(
+                img_dst, roi_dst, mask_dst, self._max_features
+            )
 
         # Check whether features are valid
         if not (have_features_src and have_features_dst):
