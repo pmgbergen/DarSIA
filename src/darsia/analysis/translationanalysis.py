@@ -508,6 +508,33 @@ class TranslationAnalysis:
             self.base.img
             # skimage.util.compare_images(self.base.img, self.img.img, method="blend")
         )
+        plt.figure("Deformation arrow")
+        plt.quiver(
+            active_patch_centers[:, 0],
+            active_patch_centers[:, 1],
+            active_patch_translation_x * scaling,
+            active_patch_translation_y * scaling,
+            c,
+            scale=1000,
+            alpha=0.5,
+            # color="white",
+            cmap="viridis",
+        )
+        plt.imshow(
+            self.base.img
+            # skimage.util.compare_images(self.base.img, self.img.img, method="blend")
+        )
+
+        # For storing, uncomment:
+        # plt.savefig("deformation.svg", format="svg", dpi=1000)
+        # translation_length = np.max(np.sqrt(np.power(active_patch_translation_x, 2) + np.power(active_patch_translation_y, 2)))
+        # translation_length_SI = self.patches_base.base.coordinatesystem
+        # print(f"max length: {translation_length * self.patches_base.base.dx}, {self.patches_base.base.dx}, {self.patches_base.base.dy}")
+        # plt.figure("length")
+        # plt.imshow(np.sqrt(np.power(active_patch_translation_x, 2) + np.power(active_patch_translation_y, 2)).reshape(1,-1) * self.patches_base.base.dx)
+        # cbar = plt.colorbar()
+        # cbar.set_ticks(np.linspace(0, translation_length * self.patches_base.base.dx, 2))
+
         fig, ax = plt.subplots(1, num=2)
         ax.imshow(
             skimage.util.compare_images(
