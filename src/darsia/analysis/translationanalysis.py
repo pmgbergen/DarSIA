@@ -535,8 +535,8 @@ class TranslationAnalysis:
         # cbar = plt.colorbar()
         # cbar.set_ticks(np.linspace(0, translation_length * self.patches_base.base.dx, 2))
 
-        fig, ax = plt.subplots(1, num=2)
-        ax.imshow(
+        plt.figure("Success")
+        plt.imshow(
             skimage.util.compare_images(
                 self.base.img,
                 skimage.transform.resize(
@@ -545,6 +545,7 @@ class TranslationAnalysis:
                 method="blend",
             )
         )
+        #plt.savefig("success.svg", format="svg", dpi=1000)
 
         # Plot deformation in number of pixels
         plt.figure("deformation x pixels")
