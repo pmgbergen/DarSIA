@@ -404,6 +404,15 @@ class ContourEvolutionAnalysis:
         plt.figure("Paths")
         plt.imshow(img.img)
 
+        # Determine longest path
+        max_path_length = 0
+        for i, path in enumerate(self.paths):
+            # Assemble path by connecting positions
+            path_pos = np.zeros((0, 2), dtype=int)
+            for unit in path:
+                path_pos = np.vstack((path_pos, unit.position))
+            max_path_length = max(max_path_length, path_pos.shape[0])
+
         # Add paths
         cmap = plt.cm.get_cmap("viridis")
         num_paths = len(self.paths)
@@ -412,7 +421,10 @@ class ContourEvolutionAnalysis:
             path_pos = np.zeros((0, 2), dtype=int)
             for unit in path:
                 path_pos = np.vstack((path_pos, unit.position))
-            plt.plot(path_pos[:, 0], path_pos[:, 1], color=cmap(i / (num_paths - 1)))
+            path_length = path_pos.shape[0]
+            plt.plot(path_pos[:, 0], path_pos[:, 1], color=cmap(i / (num_paths - 1)), linewidth = path_length / max_path_length * 2)
+
+        plt.savefig("paths.svg", format="svg", dpi=1000)
 
         # Finalize plot
         plt.show()
