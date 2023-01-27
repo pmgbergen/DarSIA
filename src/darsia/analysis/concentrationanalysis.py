@@ -81,6 +81,9 @@ class ConcentrationAnalysis:
         self._volumes_cache: Union[float, dict] = 1.0
         self._volumes_are_constant = True
 
+        # Option for defining differences of images.
+        self._diff_option = kwargs.pop("diff option", "absolute")
+
     def update(
         self,
         base: Optional[darsia.Image] = None,
@@ -215,8 +218,8 @@ class ConcentrationAnalysis:
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_scalar(probe_img.img)
 
-        # diff = skimage.util.compare_images(probe_img.img, self.base.img, method="diff")
-        diff = np.clip(probe_img.img - self.base.img, 0, None)
+        # Remove background image
+        diff = self._subtract_background(probe_img)
 
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_diff(diff)
@@ -304,6 +307,26 @@ class ConcentrationAnalysis:
             img.img = self.color(img.img)
         else:
             raise ValueError(f"Mono-colored space {self.color} not supported.")
+
+    def _subtract_background(self, img: darsia.Image) -> darsia.Image:
+        """
+        Take difference between input image and baseline image, based
+        on cached option.
+
+        Args:
+            img (darsia.Image): Image.
+        """
+
+        if self._diff_option == "positive":
+            diff = np.clip(img.img - self.base.img, 0, None)
+        elif self._diff_option == "negative":
+            diff = np.clip(self.base.img - img.img, 0, None)
+        elif self._diff_option == "absolute":
+            diff = skimage.util.compare_images(img.img, self.base.img, method="diff")
+        else:
+            raise ValueError(f"Diff option {self._diff_option} not supported")
+
+        return diff
 
     def _extract_scalar_information_after(self, img: np.ndarray) -> np.ndarray:
         """
