@@ -248,15 +248,43 @@ class ConcentrationAnalysis:
 
     # ! ---- Pre- and post-processing methods
     def _inspect_scalar(self, img):
+        """
+        Routine allowing for plotting of intermediate results.
+        Requires overwrite.
+
+        Args:
+            img (darsia.Image): image
+        """
         pass
 
     def _inspect_diff(self, img):
+        """
+        Routine allowing for plotting of intermediate results.
+        Requires overwrite.
+
+        Args:
+            img (darsia.Image): image
+        """
         pass
 
     def _inspect_signal(self, img):
+        """
+        Routine allowing for plotting of intermediate results.
+        Requires overwrite.
+
+        Args:
+            img (darsia.Image): image
+        """
         pass
 
     def _inspect_clean_signal(self, img):
+        """
+        Routine allowing for plotting of intermediate results.
+        Requires overwrite.
+
+        Args:
+            img (darsia.Image): image
+        """
         pass
 
     def _homogenize_signal(self, img: np.ndarray) -> np.ndarray:
