@@ -244,58 +244,54 @@ class ConcentrationAnalysis:
         # Convert from signal to concentration
         concentration = self.convert_signal(processed_signal)
 
+        # Invoke plot
+        if self.verbosity >= 1:
+            plt.show()
+
         return darsia.Image(concentration, img.metadata)
 
+    # ! ---- Inspection routines
+    def _inspect_scalar(self, img: darsia.Image) -> None:
+        """
+        Routine allowing for plotting of intermediate results.
+        Requires overwrite.
+
+        Args:
+            img (darsia.Image): image
+        """
+        pass
+
+    def _inspect_diff(self, img: darsia.Image) -> None:
+        """
+        Routine allowing for plotting of intermediate results.
+        Requires overwrite.
+
+        Args:
+            img (darsia.Image): image
+        """
+        pass
+
+    def _inspect_signal(self, img: darsia.Image) -> None:
+        """
+        Routine allowing for plotting of intermediate results.
+        Requires overwrite.
+
+        Args:
+            img (darsia.Image): image
+        """
+        pass
+
+    def _inspect_clean_signal(self, img) -> None:
+        """
+        Routine allowing for plotting of intermediate results.
+        Requires overwrite.
+
+        Args:
+            img (darsia.Image): image
+        """
+        pass
+
     # ! ---- Pre- and post-processing methods
-    def _inspect_scalar(self, img):
-        """
-        Routine allowing for plotting of intermediate results.
-        Requires overwrite.
-
-        Args:
-            img (darsia.Image): image
-        """
-        pass
-
-    def _inspect_diff(self, img):
-        """
-        Routine allowing for plotting of intermediate results.
-        Requires overwrite.
-
-        Args:
-            img (darsia.Image): image
-        """
-        pass
-
-    def _inspect_signal(self, img):
-        """
-        Routine allowing for plotting of intermediate results.
-        Requires overwrite.
-
-        Args:
-            img (darsia.Image): image
-        """
-        pass
-
-    def _inspect_clean_signal(self, img):
-        """
-        Routine allowing for plotting of intermediate results.
-        Requires overwrite.
-
-        Args:
-            img (darsia.Image): image
-        """
-        pass
-
-    def _homogenize_signal(self, img: np.ndarray) -> np.ndarray:
-        """
-        Routine responsible for rescaling wrt segments.
-
-        Here, it is assumed that only one segment is present.
-        Thus, no rescaling is performed.
-        """
-        return img
-
     def _extract_scalar_information(self, img: darsia.Image) -> None:
         """
         Make a mono-colored image from potentially multi-colored image.
@@ -342,7 +338,10 @@ class ConcentrationAnalysis:
         on cached option.
 
         Args:
-            img (darsia.Image): Image.
+            img (darsia.Image): test image.
+
+        Returns:
+            darsia.Image: difference with background image
         """
 
         if self._diff_option == "positive":
@@ -378,6 +377,8 @@ class ConcentrationAnalysis:
 
             hsv = skimage.color.rgb2hsv(img)
 
+            # Plot Hue and Saturation channels, allowing to manually tune
+            # the concentration analysis.
             if self.verbosity >= 3:
                 plt.figure("hue")
                 plt.imshow(hsv[:, :, 0])
@@ -423,6 +424,21 @@ class ConcentrationAnalysis:
             return 1 - key
         else:
             return img
+
+    def _homogenize_signal(self, img: np.ndarray) -> np.ndarray:
+        """
+        Routine responsible for rescaling wrt segments.
+
+        Here, it is assumed that only one segment is present.
+        Thus, no rescaling is performed.
+
+        Args:
+            img (np.ndarray): image
+
+        Returns:
+            np.ndarray: homogenized image
+        """
+        return img
 
     def postprocess_signal(self, signal: np.ndarray, img: np.ndarray) -> np.ndarray:
         """
@@ -1266,6 +1282,9 @@ class BinaryConcentrationAnalysis(ConcentrationAnalysis):
 
         # Clean mask by removing small objects, filling holes, and applying postsmoothing.
         clean_mask = self.clean_mask(mask)
+
+        if self.verbosity >= 1:
+            plt.show()
 
         return clean_mask, smooth_signal
 
