@@ -47,6 +47,7 @@ class ConcentrationAnalysis:
                 "value", "red+green", "green+blue", "negative-key", identifying which
                 monochromatic space should be used for the analysis; tailored routine can
                 also be provided.
+            kwargs (keyword arguments): interface to all tuning parameters
         """
         # Define mono-colored space
         self.color: Union[str, Callable] = (
@@ -64,7 +65,6 @@ class ConcentrationAnalysis:
         if not isinstance(base, list):
             base = [base]
         self.base: darsia.Image = base[0].copy()
-        self._extract_scalar_information(self.base)
 
         # Initialize conversion parameters - if mulitple baseline images are provided,
         # define a cleaning filter.
@@ -100,7 +100,6 @@ class ConcentrationAnalysis:
         """
         if base is not None:
             self.base = base.copy()
-            self._extract_scalar_information(self.base)
         if scaling is not None:
             self.scaling = scaling
         if offset is not None:
@@ -211,20 +210,14 @@ class ConcentrationAnalysis:
         """
         probe_img = copy.deepcopy(img)
 
-        # Extract monochromatic version and take difference wrt the baseline image
-        # If requested by the user, extract a monochromatic version before.
-        self._extract_scalar_information(probe_img)
-
-        # Provide possibility for tuning and inspection of intermediate results
-        self._inspect_scalar(probe_img.img)
-
         # Remove background image
         diff = self._subtract_background(probe_img)
 
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_diff(diff)
 
-        signal = self._extract_scalar_information_after(diff)
+        # Extract monochromatic version and take difference wrt the baseline image
+        signal = self._extract_scalar_information(diff)
 
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_signal(signal)
@@ -251,16 +244,6 @@ class ConcentrationAnalysis:
         return darsia.Image(concentration, img.metadata)
 
     # ! ---- Inspection routines
-    def _inspect_scalar(self, img: darsia.Image) -> None:
-        """
-        Routine allowing for plotting of intermediate results.
-        Requires overwrite.
-
-        Args:
-            img (darsia.Image): image
-        """
-        pass
-
     def _inspect_diff(self, img: darsia.Image) -> None:
         """
         Routine allowing for plotting of intermediate results.
@@ -292,46 +275,6 @@ class ConcentrationAnalysis:
         pass
 
     # ! ---- Pre- and post-processing methods
-    def _extract_scalar_information(self, img: darsia.Image) -> None:
-        """
-        Make a mono-colored image from potentially multi-colored image.
-
-        Args:
-            img (darsia.Image): image
-        """
-        if self.color == "gray":
-            img.toGray()
-        elif self.color == "hue":
-            img.toHue()
-        elif self.color == "saturation":
-            img.toSaturation()
-        elif self.color == "value":
-            img.toValue()
-        elif self.color == "red+green":
-            img.toRGB()
-            img.img = img.img[:, :, 0] + img.img[:, :, 1]
-        elif self.color == "green+blue":
-            img.toRGB()
-            img.img = img.img[:, :, 1] + img.img[:, :, 2]
-        elif self.color == "hsv":
-            # Apply reduction after taking the difference
-            img.img = cv2.cvtColor(img.img, cv2.COLOR_RGB2HSV)
-        elif self.color in [
-            "hsv-after",
-            "blue",
-            "negative-blue",
-            "red",
-            "red+green",
-            "negative-key",
-            "cmyk-yellow",
-            "cmy-yellow",
-        ]:
-            pass
-        elif callable(self.color):
-            img.img = self.color(img.img)
-        else:
-            raise ValueError(f"Mono-colored space {self.color} not supported.")
-
     def _subtract_background(self, img: darsia.Image) -> darsia.Image:
         """
         Take difference between input image and baseline image, based
@@ -355,7 +298,7 @@ class ConcentrationAnalysis:
 
         return diff
 
-    def _extract_scalar_information_after(self, img: np.ndarray) -> np.ndarray:
+    def _extract_scalar_information(self, img: np.ndarray) -> np.ndarray:
         """
         Make a mono-colored image from potentially multi-colored image.
 
@@ -365,15 +308,7 @@ class ConcentrationAnalysis:
         Returns:
             np.ndarray: monochromatic reduction of the array
         """
-        if self.color == "hsv":
-            mask = skimage.filters.apply_hysteresis_threshold(
-                img[:, :, 0], self.hue_lower_bound, self.hue_upper_bound
-            )
-            img_v = img[:, :, 2]
-            img_v[~mask] = 0
-
-            return img_v
-        elif self.color == "hsv-after":
+        if self.color == "hsv-after":
 
             hsv = skimage.color.rgb2hsv(img)
 
@@ -401,6 +336,9 @@ class ConcentrationAnalysis:
             img_v[~mask] = 0
             return img_v
 
+        elif self.color == "gray":
+            # Assume RGB input
+            return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         elif self.color == "red":
             return img[:, :, 0]
         elif self.color == "green":
@@ -422,8 +360,12 @@ class ConcentrationAnalysis:
             key = np.min(cmy, axis=2)
             # To comply with remaining sign convention in this file, consider the negative
             return 1 - key
-        else:
+        elif callable(self.color):
+            return self.color(img)
+        elif self.color == "":
             return img
+        else:
+            raise ValueError(f"Mono-colored space {self.color} not supported.")
 
     def _homogenize_signal(self, img: np.ndarray) -> np.ndarray:
         """
@@ -491,17 +433,11 @@ class ConcentrationAnalysis:
 
             probe_img = img.copy()
 
-            # Extract mono-colored version in case of a monochromatic comparison
-            self._extract_scalar_information(probe_img)
-
             # Take (unsigned) difference
-            diff = skimage.util.compare_images(
-                probe_img.img, self.base.img, method="diff"
-            )
+            diff = self._subtract_background(probe_img)
 
-            # Extract mono-colored version (should be only active in case of a
-            # multichromatic comparison
-            monochromatic_diff = self._extract_scalar_information_after(diff)
+            # Extract mono-colored version
+            monochromatic_diff = self._extract_scalar_information(diff)
 
             # Consider elementwise max
             self.threshold = np.maximum(self.threshold, monochromatic_diff)
@@ -884,17 +820,11 @@ class SegmentedConcentrationAnalysis(ConcentrationAnalysis):
                 def _image_to_clean_signal(img: darsia.Image) -> np.ndarray:
                     probe_img = img.copy()
 
-                    # Extract mono-colored version in case of a monochromatic comparison
-                    self._extract_scalar_information(probe_img)
-
                     # Take (unsigned) difference
-                    diff = skimage.util.compare_images(
-                        probe_img.img, self.base.img, method="diff"
-                    )
+                    diff = self._subtract_background(probe_img)
 
-                    # Extract mono-colored version (should be only active in case of a
-                    # multichromatic comparison
-                    signal = self._extract_scalar_information_after(diff)
+                    # Extract monochromatic version
+                    signal = self._extract_scalar_information(diff)
 
                     # Clean signal
                     clean_signal = np.clip(signal - self.threshold, 0, None)
