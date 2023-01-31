@@ -65,7 +65,7 @@ class CO2Analysis(ABC, darsia.ConcentrationAnalysisBase):
             update_setup,
         )
 
-        co2_gas_config = self.config.get("co2", {})
+        co2_gas_config = self.config.get("co2(g)", {})
         co2_gas_cleaning_filter = co2_gas_config.get(
             "cleaning_filter", "cache/cleaning_filter_co2_gas.npy"
         )
