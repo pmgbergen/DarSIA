@@ -43,10 +43,9 @@ class ConcentrationAnalysis:
         Args:
             base (darsia.Image or list of such): baseline image(s); if multiple provided,
                 these are used to define a cleaning filter.
-            color (string or Callable): "gray", "red", "blue", "green", "hue", "saturation",
-                "value", "red+green", "green+blue", "negative-key", identifying which
-                monochromatic space should be used for the analysis; tailored routine can
-                also be provided.
+            color (string or Callable): "gray", "red", "blue", "green", "hsv-after",
+                "negative-key", identifying which monochromatic space should be used
+                for the analysis; a tailored routine can also be provided.
             kwargs (keyword arguments): interface to all tuning parameters
         """
         # Define mono-colored space
