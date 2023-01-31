@@ -1,5 +1,8 @@
 """
 Module converting signals to binary data by applying thresholding.
+
+A distinction between heterogeneous and homogeneous thresholding
+is performed automatically.
 """
 
 import darsia
@@ -7,13 +10,24 @@ import numpy as np
 from typing import Union, Optional
 
 class StaticThresholdModel(darsia.Model):
+    """
+    Class for static thresholding.
+    """
 
     def __init__(
             self,
             threshold_low: Union[float, list[float]] = 0.,
             threshold_high: Optional[Union[float, list[float]]] = None,
             labels: Optional[np.ndarray] = None,
-            ):
+            ) -> None:
+        """
+        Constructor of StaticThresholdModel.
+
+        Args:
+            threshold_low (float or list of float): lower threshold value(s)
+            threshold_high (float or list of float): upper threshold value(s)
+            labels (array): labeled domain
+        """
 
         # The argument label decides whether a homogeneous or heterogeneous
         # threatment is considered.
@@ -118,4 +132,10 @@ class StaticThresholdModel(darsia.Model):
         return threshold_mask
 
     def calibrate(self, img: list[np.ndarray]) -> None:
+        """
+        Empty calibration.
+
+        Args:
+            img (list of arrays): images.
+        """
         pass
