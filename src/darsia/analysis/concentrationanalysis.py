@@ -48,22 +48,15 @@ class NewConcentrationAnalysis:
                 for the analysis; a tailored routine can also be provided.
             kwargs (keyword arguments): interface to all tuning parameters
         """
-        # Define mono-colored space
-        self.color = kwargs.pop("color", "gray")
+        # Define mono-colored space # TODO add to argument list
+        self.monochromatic_reduction = darsia.MonochromaticReduction(**kwargs)
 
-        # Extra args for hsv color which here is meant has hue thresholded value
-        if self.color in ["hsv-after"]:
-            self.hue_lower_bound = kwargs.pop("hue lower bound", 0.0)
-            self.hue_upper_bound = kwargs.pop("hue upper bound", 360.0)
-            self.saturation_lower_bound = kwargs.pop("saturation lower bound", 0.0)
-            self.saturation_upper_bound = kwargs.pop("saturation upper bound", 1.0)
-
-        # Extract mono-colored version for baseline image
+        # Fix single baseline image
         if not isinstance(base, list):
             base = [base]
         self.base: darsia.Image = base[0].copy()
 
-        # Segmentation
+        # Cache heterogeneous distribution
         self.labels = labels
 
         # TODO Move this fully outside.
@@ -141,8 +134,9 @@ class NewConcentrationAnalysis:
             self.posterior_threshold = kwargs.pop("posterior threshold", 0.0)
             if self.posterior_criterion == "value/value extra color":
                 # Allow for a different color in the posterior
+                color = kwargs.pop("color", "gray")
                 self.posterior_color: Union[str, Callable] = kwargs.pop(
-                    "posterior extra color", self.color
+                    "posterior extra color", color
                 )
 
         # Mask
@@ -465,53 +459,7 @@ class NewConcentrationAnalysis:
         Returns:
             np.ndarray: monochromatic reduction of the array
         """
-        if self.color == "hsv-after":
-
-            hsv = skimage.color.rgb2hsv(img)
-
-            # Plot Hue and Saturation channels, allowing to manually tune
-            # the concentration analysis.
-            if self.verbosity >= 3:
-                plt.figure("hue")
-                plt.imshow(hsv[:, :, 0])
-                plt.figure("saturation")
-                plt.imshow(hsv[:, :, 1])
-
-            # Restrict to user-defined thresholded hue and saturation values.
-            mask_hue = np.logical_and(
-                hsv[:, :, 0] > self.hue_lower_bound,
-                hsv[:, :, 0] < self.hue_upper_bound,
-            )
-            mask_saturation = np.logical_and(
-                hsv[:, :, 1] > self.saturation_lower_bound,
-                hsv[:, :, 1] < self.saturation_upper_bound,
-            )
-            mask = np.logical_and(mask_hue, mask_saturation)
-
-            # Consider value
-            img_v = hsv[:, :, 2]
-            img_v[~mask] = 0
-            return img_v
-
-        elif self.color == "gray":
-            # Assume RGB input
-            return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        elif self.color == "red":
-            return img[:, :, 0]
-        elif self.color == "green":
-            return img[:, :, 1]
-        elif self.color == "blue":
-            return img[:, :, 2]
-        elif self.color == "negative-key":
-            cmy = 1 - img
-            key = np.min(cmy, axis=2)
-            return 1 - key
-        elif callable(self.color):
-            return self.color(img)
-        elif self.color == "":
-            return img
-        else:
-            raise ValueError(f"Mono-colored space {self.color} not supported.")
+        return self.monochromatic_reduction(img)
 
     def _homogenize_signal(self, img: np.ndarray) -> np.ndarray:
         """
