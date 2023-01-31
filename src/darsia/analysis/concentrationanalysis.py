@@ -70,6 +70,9 @@ class NewConcentrationAnalysis:
         if self.apply_postsmoothing:
             self.postsmoother = darsia.TVD("postsmoothing ", **kwargs)
 
+        # Inpainting object for binary data
+        self.binary_inpaint = darsia.BinaryInpaint(**kwargs)
+
         ########################################################################
 
         # Fix single baseline image
@@ -99,15 +102,6 @@ class NewConcentrationAnalysis:
 
         ##############################
         # from binary
-
-        # Parameters to remove small objects
-        self.min_size: int = kwargs.pop("min area size", 1)
-
-        # Parameters to fill holes
-        self.area_threshold: int = kwargs.pop("max hole size", 0)
-
-        # Parameters for local convex cover
-        self.cover_patch_size: int = kwargs.pop("local convex cover patch size", 1)
 
         # Threshold for posterior analysis based on gradient moduli
         self.apply_posterior = kwargs.pop("posterior", False)
@@ -1517,39 +1511,8 @@ class NewConcentrationAnalysis:
         Returns:
             np.ndarray: cleaned mask
         """
-        # Remove small objects
-        if self.min_size > 1:
-            mask = skimage.morphology.remove_small_objects(mask, min_size=self.min_size)
-
-        # Fill holes
-        if self.area_threshold > 0:
-            mask = skimage.morphology.remove_small_holes(
-                mask, area_threshold=self.area_threshold
-            )
-
-        if self.verbosity >= 3:
-            plt.figure("Prior: Cleaned mask")
-            plt.imshow(mask)
-
-        # NOTE: Currently not used, yet, kept for the moment.
-        # # Loop through patches and fill up
-        # if self.cover_patch_size > 1:
-        #     covered_mask = np.zeros(mask.shape[:2], dtype=bool)
-        #     size = self.cover_patch_size
-        #     Ny, Nx = mask.shape[:2]
-        #     for row in range(int(Ny / size)):
-        #         for col in range(int(Nx / size)):
-        #             roi = (
-        #                 slice(row * size, (row + 1) * size),
-        #                 slice(col * size, (col + 1) * size),
-        #             )
-        #             covered_mask[roi] = skimage.morphology.convex_hull_image(mask[roi])
-        #     # Update the mask value
-        #     mask = covered_mask
-        #
-        # if self.verbosity:
-        #     plt.figure("Prior: Locally covered mask")
-        #     plt.imshow(mask)
+        # Apply inpainting
+        mask = self.binary_inpaint(mask)
 
         # Apply postsmoothing
         if self.apply_postsmoothing:
