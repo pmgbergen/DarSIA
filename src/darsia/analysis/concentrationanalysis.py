@@ -55,7 +55,7 @@ class ConcentrationAnalysis:
         )
 
         # Extra args for hsv color which here is meant has hue thresholded value
-        if self.color in ["hsv", "hsv-after"]:
+        if self.color in ["hsv-after"]:
             self.hue_lower_bound = kwargs.pop("hue lower bound", 0.0)
             self.hue_upper_bound = kwargs.pop("hue upper bound", 360.0)
             self.saturation_lower_bound = kwargs.pop("saturation lower bound", 0.0)
@@ -345,20 +345,9 @@ class ConcentrationAnalysis:
             return img[:, :, 1]
         elif self.color == "blue":
             return img[:, :, 2]
-        elif self.color == "negative-blue":
-            return 1 - img[:, :, 2]
-        elif self.color == "cmyk-yellow":
-            blue = img[:, :, 2]
-            key = np.min(1 - img, axis=2)
-            tol = 1e-12  # NOTE: hardcoded
-            yellow = np.clip(1 - key - blue, 0, None) / np.clip(1 - key, tol, None)
-            return yellow
-        elif self.color == "cmy-yellow":
-            return 1 - img[:, :, 2]
         elif self.color == "negative-key":
             cmy = 1 - img
             key = np.min(cmy, axis=2)
-            # To comply with remaining sign convention in this file, consider the negative
             return 1 - key
         elif callable(self.color):
             return self.color(img)
