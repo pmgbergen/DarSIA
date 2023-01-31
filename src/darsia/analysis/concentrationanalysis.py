@@ -48,8 +48,29 @@ class NewConcentrationAnalysis:
                 for the analysis; a tailored routine can also be provided.
             kwargs (keyword arguments): interface to all tuning parameters
         """
-        # Define mono-colored space # TODO add to argument list
+        ########################################################################
+        # TODO Move this fully outside - add to argument list.
+
+        # Define mono-colored space.
         self.monochromatic_reduction = darsia.MonochromaticReduction(**kwargs)
+
+        # Initialize the threshold values.
+        threshold_value: Union[float, list] = kwargs.get("threshold value")
+        self.model = darsia.StaticThresholdModel(
+            threshold_low=threshold_value,
+            labels=labels,
+        )
+
+        # TVD parameters for pre and post smoothing
+        self.apply_presmoothing = kwargs.pop("presmoothing", False)
+        if self.apply_presmoothing:
+            self.presmoother = darsia.TVD("presmoothing ", **kwargs)
+
+        self.apply_postsmoothing = kwargs.pop("postsmoothing", False)
+        if self.apply_postsmoothing:
+            self.postsmoother = darsia.TVD("postsmoothing ", **kwargs)
+
+        ########################################################################
 
         # Fix single baseline image
         if not isinstance(base, list):
@@ -59,17 +80,15 @@ class NewConcentrationAnalysis:
         # Cache heterogeneous distribution
         self.labels = labels
 
-        # TODO Move this fully outside.
-        # Initialize the threshold values.
-        threshold_value: Union[float, list] = kwargs.get("threshold value")
-        self.model = darsia.StaticThresholdModel(
-            threshold_low=threshold_value,
-            labels=labels,
-        )
+        # Option for defining differences of images.
+        self._diff_option = kwargs.pop("diff option", "absolute")
 
         # Define a cleaning filter.
         if len(base) > 1:
             self.find_cleaning_filter(base)
+
+        ########################################################################
+        # TODO move: related to linear model
 
         # Initialize cache for effective volumes (per pixel). It is assumed that
         # the physical asset does not change, and that simply different versions
@@ -78,36 +97,8 @@ class NewConcentrationAnalysis:
         self._volumes_cache: Union[float, dict] = 1.0
         self._volumes_are_constant = True
 
-        # Option for defining differences of images.
-        self._diff_option = kwargs.pop("diff option", "absolute")
-
         ##############################
         # from binary
-
-        # TVD parameters for pre and post smoothing
-        self.apply_presmoothing = kwargs.pop("presmoothing", False)
-        if self.apply_presmoothing:
-            pre_global_resize = kwargs.pop("presmoothing resize", 1.0)
-            self.presmoothing = {
-                "resize x": kwargs.pop("presmoothing resize x", pre_global_resize),
-                "resize y": kwargs.pop("presmoothing resize y", pre_global_resize),
-                "weight": kwargs.pop("presmoothing weight", 1.0),
-                "eps": kwargs.pop("presmoothing eps", 1e-5),
-                "max_num_iter": kwargs.pop("presmoothing max_num_iter", 1000),
-                "method": kwargs.pop("presmoothing method", "chambolle"),
-            }
-
-        self.apply_postsmoothing = kwargs.pop("postsmoothing", False)
-        if self.apply_postsmoothing:
-            post_global_resize = kwargs.pop("postsmoothing resize", 1.0)
-            self.postsmoothing = {
-                "resize x": kwargs.pop("postsmoothing resize x", post_global_resize),
-                "resize y": kwargs.pop("postsmoothing resize y", post_global_resize),
-                "weight": kwargs.pop("postsmoothing weight", 1.0),
-                "eps": kwargs.pop("postsmoothing eps", 1e-5),
-                "max_num_iter": kwargs.pop("postsmoothing max_num_iter", 1000),
-                "method": kwargs.pop("postsmoothing method", "chambolle"),
-            }
 
         # Parameters to remove small objects
         self.min_size: int = kwargs.pop("min area size", 1)
@@ -717,49 +708,9 @@ class NewConcentrationAnalysis:
         Return:
             np.ndarray: smooth signal
         """
-        if self.verbosity >= 3:
-            plt.figure("Prior: Input signal")
-            plt.imshow(signal)
-
         # Apply presmoothing
         if self.apply_presmoothing:
-            # Resize image
-            signal = cv2.resize(
-                signal.astype(np.float32),
-                None,
-                fx=self.presmoothing["resize x"],
-                fy=self.presmoothing["resize y"],
-            )
-
-            # Apply TVD
-            if self.presmoothing["method"] == "chambolle":
-                signal = skimage.restoration.denoise_tv_chambolle(
-                    signal,
-                    weight=self.presmoothing["weight"],
-                    eps=self.presmoothing["eps"],
-                    max_num_iter=self.presmoothing["max_num_iter"],
-                )
-            elif self.presmoothing["method"] == "anisotropic bregman":
-                signal = skimage.restoration.denoise_tv_bregman(
-                    signal,
-                    weight=self.presmoothing["weight"],
-                    eps=self.presmoothing["eps"],
-                    max_num_iter=self.presmoothing["max_num_iter"],
-                    isotropic=False,
-                )
-            elif self.presmoothing["method"] == "isotropic bregman":
-                signal = skimage.restoration.denoise_tv_bregman(
-                    signal,
-                    weight=self.presmoothing["weight"],
-                    eps=self.presmoothing["eps"],
-                    max_num_iter=self.presmoothing["max_num_iter"],
-                    isotropic=True,
-                )
-            else:
-                raise ValueError(f"Method {self.presmoothing['method']} not supported.")
-
-            # Resize to original size
-            signal = cv2.resize(signal, tuple(reversed(self.base.img.shape[:2])))
+            signal = self.presmoother(signal)
 
         if self.verbosity >= 2:
             plt.figure("Prior: TVD smoothed signal")
@@ -1602,53 +1553,12 @@ class NewConcentrationAnalysis:
 
         # Apply postsmoothing
         if self.apply_postsmoothing:
-            # Resize image
-            resized_mask = cv2.resize(
-                mask.astype(np.float32),
-                None,
-                fx=self.postsmoothing["resize x"],
-                fy=self.postsmoothing["resize y"],
-            )
-
-            # Apply TVD
-            if self.postsmoothing["method"] == "chambolle":
-                smoothed_mask = skimage.restoration.denoise_tv_chambolle(
-                    resized_mask,
-                    weight=self.postsmoothing["weight"],
-                    eps=self.postsmoothing["eps"],
-                    max_num_iter=self.postsmoothing["max_num_iter"],
-                )
-            elif self.postsmoothing["method"] == "anisotropic bregman":
-                smoothed_mask = skimage.restoration.denoise_tv_bregman(
-                    resized_mask,
-                    weight=self.postsmoothing["weight"],
-                    eps=self.postsmoothing["eps"],
-                    max_num_iter=self.postsmoothing["max_num_iter"],
-                    isotropic=False,
-                )
-            elif self.postsmoothing["method"] == "isotropic bregman":
-                smoothed_mask = skimage.restoration.denoise_tv_bregman(
-                    resized_mask,
-                    weight=self.postsmoothing["weight"],
-                    eps=self.postsmoothing["eps"],
-                    max_num_iter=self.postsmoothing["max_num_iter"],
-                    isotropic=True,
-                )
-            else:
-                raise ValueError(
-                    f"Method {self.postsmoothing['method']} is not supported."
-                )
-
-            # Resize to original size
-            large_mask = cv2.resize(
-                smoothed_mask.astype(np.float32),
-                tuple(reversed(self.base.img.shape[:2])),
-            )
+            smooth_mask = self.postsmoother(mask)
 
             # Apply hardcoded threshold value of 0.5 assuming it is sufficient to turn
             # off small particles and rely on larger marked regions
             thresh = 0.5
-            mask = large_mask > thresh
+            mask = smooth_mask > thresh
 
         if self.verbosity >= 2:
             plt.figure("Prior: TVD postsmoothed mask")
