@@ -43,9 +43,7 @@ class NewConcentrationAnalysis:
         Args:
             base (darsia.Image or list of such): baseline image(s); if multiple provided,
                 these are used to define a cleaning filter.
-            color (string or Callable): "gray", "red", "blue", "green", "hsv-after",
-                "negative-key", identifying which monochromatic space should be used
-                for the analysis; a tailored routine can also be provided.
+            labels (array, optional): labeled image of domain
             kwargs (keyword arguments): interface to all tuning parameters
         """
         ########################################################################
@@ -76,7 +74,7 @@ class NewConcentrationAnalysis:
         # Threshold for posterior analysis based on gradient moduli
         self.apply_posterior = kwargs.pop("posterior", False)
         if self.apply_posterior:
-            self.posterior_analysis = darsia.DataSelector(prefix = "posterior ", **kwargs)
+            self.posterior_analysis = darsia.BinaryDataSelector(prefix = "posterior ", **kwargs)
 
         ########################################################################
 
@@ -94,16 +92,6 @@ class NewConcentrationAnalysis:
         # Define a cleaning filter.
         if len(base) > 1:
             self.find_cleaning_filter(base)
-
-#        ########################################################################
-#        # TODO move: related to linear model
-#
-#        # Initialize cache for effective volumes (per pixel). It is assumed that
-#        # the physical asset does not change, and that simply different versions
-#        # of the same volumes have to be stored, differing by the shape only.
-#        # Start with default value, assuming constant volume per pixel.
-#        self._volumes_cache: Union[float, dict] = 1.0
-#        self._volumes_are_constant = True
 
         # Mask
         self.mask: np.ndarray = np.ones(self.base.img.shape[:2], dtype=bool)
@@ -180,22 +168,15 @@ class NewConcentrationAnalysis:
         #        self.threshold_cache = {i: [] for i in range(self.num_labels)}
         #        self.threshold_cache_all = {i: [] for i in range(self.num_labels)}
 
-        ##############################
-        # from binary
-
-
-# TODO posterior for heterogeneous thresholds
-
-#            # Allow for heterogeneous threshold
-#            if self.posterior_criterion == "value":
+#        ########################################################################
+#        # TODO move: related to linear model
 #
-#                if isinstance(self.posterior_threshold, list):
-#                    assert len(self.posterior_threshold) == self.num_labels
-#                    self.posterior_threshold = np.array(self.posterior_threshold)
-#                elif isinstance(self.posterior_threshold, float):
-#                    pass
-#                else:
-#                    raise ValueError(f"Posterior threshold has not-supported data type.")
+#        # Initialize cache for effective volumes (per pixel). It is assumed that
+#        # the physical asset does not change, and that simply different versions
+#        # of the same volumes have to be stored, differing by the shape only.
+#        # Start with default value, assuming constant volume per pixel.
+#        self._volumes_cache: Union[float, dict] = 1.0
+#        self._volumes_are_constant = True
 
         # Fetch verbosity. If larger than 0, several intermediate results in the
         # postprocessing will be displayed. This allows for simpler tuning
@@ -286,6 +267,124 @@ class NewConcentrationAnalysis:
     #        path_to_filter = Path(path_to_filter)
     #        path_to_filter.parents[0].mkdir(parents=True, exist_ok=True)
     #        np.save(path_to_filter, self.threshold)
+
+# TODO Move to linear model
+#    def calibrate(
+#        self,
+#        injection_rate: float,
+#        images: list[darsia.Image],
+#        initial_guess: Optional[tuple[float]] = None,
+#        tol: float = 1e-3,
+#        maxiter: int = 20,
+#    ) -> None:
+#        """
+#        Calibrate the conversion used in __call__ such that the provided
+#        injection rate is matched for the given set of images.
+#
+#        Args:
+#            injection_rate (float): constant injection rate in ml/hrs.
+#            images (list of darsia.Image): images used for the calibration.
+#            initial_guess (tuple): interval of scaling values to be considered
+#                in the calibration; need to define lower and upper bounds on
+#                the optimal scaling parameter.
+#            tol (float): tolerance for the bisection algorithm.
+#            maxiter (int): maximal number of bisection iterations used for
+#                calibration.
+#        """
+#
+#        # Define a function which is zero when the conversion parameters are chosen properly.
+#        def deviation(scaling: float):
+#            self.scaling = scaling
+#            # self.offset = None
+#            return injection_rate - self._estimate_rate(images)[0]
+#
+#        # Perform bisection
+#        self.scaling = bisect(deviation, *initial_guess, xtol=tol, maxiter=maxiter)
+#
+#        print(f"Calibration results in scaling factor {self.scaling}.")
+#
+#    def _estimate_rate(self, images: list[darsia.Image]) -> tuple[float, float]:
+#        """
+#        Estimate the injection rate for the given series of images.
+#
+#        Args:
+#            images (list of darsia.Image): basis for computing the injection rate.
+#
+#        Returns:
+#            float: estimated injection rate.
+#            float: offset at time 0, useful to determine the actual start time,
+#                or plot the total concentration over time compared to the expected
+#                volumes.
+#        """
+#        # Conversion constants
+#        SECONDS_TO_HOURS = 1.0 / 3600.0
+#        M3_TO_ML = 1e6
+#
+#        # Define reference time (not important which image serves as basis)
+#        ref_time = images[0].timestamp
+#
+#        # For each image, compute the total concentration, based on the currently
+#        # set tuning parameters, and compute the relative time.
+#        total_volumes = []
+#        relative_times = []
+#        for img in images:
+#
+#            # Fetch associated time for image, relate to reference time, and store.
+#            time = img.timestamp
+#            relative_time = (time - ref_time).total_seconds() * SECONDS_TO_HOURS
+#            relative_times.append(relative_time)
+#
+#            # Convert signal image to concentration, compute the total volumetric
+#            # concentration in ml, and store.
+#            concentration = self(img)
+#            total_volume = self._determine_total_volume(concentration) * M3_TO_ML
+#            total_volumes.append(total_volume)
+#
+#        # Determine slope in time by linear regression
+#        ransac = RANSACRegressor()
+#        ransac.fit(np.array(relative_times).reshape(-1, 1), np.array(total_volumes))
+#
+#        # Extract the slope and convert to
+#        return ransac.estimator_.coef_[0], ransac.estimator_.intercept_
+#
+#    def _determine_total_volume(self, concentration: darsia.Image) -> float:
+#        """
+#        Determine the total concentration of a spatial concentration map.
+#
+#        Args:
+#            concentration (darsia.Image): concentration data.
+#
+#        Returns:
+#            float: The integral over the spatial, weighted concentration map.
+#        """
+#        # Fetch pixel volumes from cache, possibly require reshaping if the dimensions
+#        # do not match.
+#        if self._volumes_are_constant:
+#            # Just fetch the constant volume
+#            volumes = self._volumes_cache
+#        else:
+#            shape = np.squeeze(concentration.img).shape
+#            assert isinstance(self._volumes_cache, dict)
+#            if shape in self._volumes_cache:
+#                # Fetch previously cached volume
+#                volumes = self._volumes_cache[shape]
+#            else:
+#                # Need to resize and rescale (to ensure volume conservation).
+#                # Use the reference volume for all such operations.
+#                ref_volumes = self._volumes_cache[self._volumes_ref_shape]
+#                new_shape = tuple(reversed(shape))
+#                volumes = cv2.resize(
+#                    ref_volumes, new_shape, interpolation=cv2.INTER_AREA
+#                )
+#                volumes *= np.sum(ref_volumes) / np.sum(cast(np.ndarray, volumes))
+#                self._volumes_cache[shape] = volumes
+#
+#        # Integral of locally weighted concentration values
+#        return np.sum(
+#            np.multiply(
+#                np.squeeze(cast(np.ndarray, volumes)), np.squeeze(concentration.img)
+#            )
+#        )
 
     def read_cleaning_filter_from_file(self, path: Union[str, Path]) -> None:
         """
@@ -493,124 +592,6 @@ class NewConcentrationAnalysis:
 
             # Consider elementwise max
             self.threshold = np.maximum(self.threshold, monochromatic_diff)
-
-# TODO Move to linear model
-#    def calibrate(
-#        self,
-#        injection_rate: float,
-#        images: list[darsia.Image],
-#        initial_guess: Optional[tuple[float]] = None,
-#        tol: float = 1e-3,
-#        maxiter: int = 20,
-#    ) -> None:
-#        """
-#        Calibrate the conversion used in __call__ such that the provided
-#        injection rate is matched for the given set of images.
-#
-#        Args:
-#            injection_rate (float): constant injection rate in ml/hrs.
-#            images (list of darsia.Image): images used for the calibration.
-#            initial_guess (tuple): interval of scaling values to be considered
-#                in the calibration; need to define lower and upper bounds on
-#                the optimal scaling parameter.
-#            tol (float): tolerance for the bisection algorithm.
-#            maxiter (int): maximal number of bisection iterations used for
-#                calibration.
-#        """
-#
-#        # Define a function which is zero when the conversion parameters are chosen properly.
-#        def deviation(scaling: float):
-#            self.scaling = scaling
-#            # self.offset = None
-#            return injection_rate - self._estimate_rate(images)[0]
-#
-#        # Perform bisection
-#        self.scaling = bisect(deviation, *initial_guess, xtol=tol, maxiter=maxiter)
-#
-#        print(f"Calibration results in scaling factor {self.scaling}.")
-#
-#    def _estimate_rate(self, images: list[darsia.Image]) -> tuple[float, float]:
-#        """
-#        Estimate the injection rate for the given series of images.
-#
-#        Args:
-#            images (list of darsia.Image): basis for computing the injection rate.
-#
-#        Returns:
-#            float: estimated injection rate.
-#            float: offset at time 0, useful to determine the actual start time,
-#                or plot the total concentration over time compared to the expected
-#                volumes.
-#        """
-#        # Conversion constants
-#        SECONDS_TO_HOURS = 1.0 / 3600.0
-#        M3_TO_ML = 1e6
-#
-#        # Define reference time (not important which image serves as basis)
-#        ref_time = images[0].timestamp
-#
-#        # For each image, compute the total concentration, based on the currently
-#        # set tuning parameters, and compute the relative time.
-#        total_volumes = []
-#        relative_times = []
-#        for img in images:
-#
-#            # Fetch associated time for image, relate to reference time, and store.
-#            time = img.timestamp
-#            relative_time = (time - ref_time).total_seconds() * SECONDS_TO_HOURS
-#            relative_times.append(relative_time)
-#
-#            # Convert signal image to concentration, compute the total volumetric
-#            # concentration in ml, and store.
-#            concentration = self(img)
-#            total_volume = self._determine_total_volume(concentration) * M3_TO_ML
-#            total_volumes.append(total_volume)
-#
-#        # Determine slope in time by linear regression
-#        ransac = RANSACRegressor()
-#        ransac.fit(np.array(relative_times).reshape(-1, 1), np.array(total_volumes))
-#
-#        # Extract the slope and convert to
-#        return ransac.estimator_.coef_[0], ransac.estimator_.intercept_
-#
-#    def _determine_total_volume(self, concentration: darsia.Image) -> float:
-#        """
-#        Determine the total concentration of a spatial concentration map.
-#
-#        Args:
-#            concentration (darsia.Image): concentration data.
-#
-#        Returns:
-#            float: The integral over the spatial, weighted concentration map.
-#        """
-#        # Fetch pixel volumes from cache, possibly require reshaping if the dimensions
-#        # do not match.
-#        if self._volumes_are_constant:
-#            # Just fetch the constant volume
-#            volumes = self._volumes_cache
-#        else:
-#            shape = np.squeeze(concentration.img).shape
-#            assert isinstance(self._volumes_cache, dict)
-#            if shape in self._volumes_cache:
-#                # Fetch previously cached volume
-#                volumes = self._volumes_cache[shape]
-#            else:
-#                # Need to resize and rescale (to ensure volume conservation).
-#                # Use the reference volume for all such operations.
-#                ref_volumes = self._volumes_cache[self._volumes_ref_shape]
-#                new_shape = tuple(reversed(shape))
-#                volumes = cv2.resize(
-#                    ref_volumes, new_shape, interpolation=cv2.INTER_AREA
-#                )
-#                volumes *= np.sum(ref_volumes) / np.sum(cast(np.ndarray, volumes))
-#                self._volumes_cache[shape] = volumes
-#
-#        # Integral of locally weighted concentration values
-#        return np.sum(
-#            np.multiply(
-#                np.squeeze(cast(np.ndarray, volumes)), np.squeeze(concentration.img)
-#            )
-#        )
 
     # ! ---- Main methods from BinaryConcentrationAnalysis
     def _prior(self, signal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -1565,6 +1546,11 @@ class ConcentrationAnalysis:
 
         # Option for defining differences of images.
         self._diff_option = kwargs.pop("diff option", "absolute")
+
+        # Fetch verbosity. If larger than 0, several intermediate results in the
+        # postprocessing will be displayed. This allows for simpler tuning
+        # of the parameters.
+        self.verbosity: int = kwargs.pop("verbosity", 0)
 
     def update(
         self,
