@@ -43,6 +43,9 @@ def tv_denoising(
     # Set verbosity of stopping criterion
     tvd_stoppingCriterion.verbose = verbose
 
+    # Copy image to avoid overwriting
+    img = img.copy()
+
     # Extract the two images
     rhs = skimage.img_as_float(img.img)
     im = skimage.img_as_float(img.img)
