@@ -73,6 +73,11 @@ class NewConcentrationAnalysis:
         # Inpainting object for binary data
         self.binary_inpaint = darsia.BinaryInpaint(**kwargs)
 
+        # Threshold for posterior analysis based on gradient moduli
+        self.apply_posterior = kwargs.pop("posterior", False)
+        if self.apply_posterior:
+            self.posterior_analysis = darsia.DataSelector(prefix = "posterior ", **kwargs)
+
         ########################################################################
 
         # Fix single baseline image
@@ -90,39 +95,15 @@ class NewConcentrationAnalysis:
         if len(base) > 1:
             self.find_cleaning_filter(base)
 
-        ########################################################################
-        # TODO move: related to linear model
-
-        # Initialize cache for effective volumes (per pixel). It is assumed that
-        # the physical asset does not change, and that simply different versions
-        # of the same volumes have to be stored, differing by the shape only.
-        # Start with default value, assuming constant volume per pixel.
-        self._volumes_cache: Union[float, dict] = 1.0
-        self._volumes_are_constant = True
-
-        ##############################
-        # from binary
-
-        # Threshold for posterior analysis based on gradient moduli
-        self.apply_posterior = kwargs.pop("posterior", False)
-        if self.apply_posterior:
-            self.posterior_criterion: str = kwargs.pop(
-                "posterior criterion", "gradient modulus"
-            )
-            assert self.posterior_criterion in [
-                "gradient modulus",
-                "value",
-                "relative value",
-                "value/gradient modulus",
-                "value/value extra color",
-            ]
-            self.posterior_threshold = kwargs.pop("posterior threshold", 0.0)
-            if self.posterior_criterion == "value/value extra color":
-                # Allow for a different color in the posterior
-                color = kwargs.pop("color", "gray")
-                self.posterior_color: Union[str, Callable] = kwargs.pop(
-                    "posterior extra color", color
-                )
+#        ########################################################################
+#        # TODO move: related to linear model
+#
+#        # Initialize cache for effective volumes (per pixel). It is assumed that
+#        # the physical asset does not change, and that simply different versions
+#        # of the same volumes have to be stored, differing by the shape only.
+#        # Start with default value, assuming constant volume per pixel.
+#        self._volumes_cache: Union[float, dict] = 1.0
+#        self._volumes_are_constant = True
 
         # Mask
         self.mask: np.ndarray = np.ones(self.base.img.shape[:2], dtype=bool)
@@ -199,16 +180,22 @@ class NewConcentrationAnalysis:
         #        self.threshold_cache = {i: [] for i in range(self.num_labels)}
         #        self.threshold_cache_all = {i: [] for i in range(self.num_labels)}
 
-        # Also for the posterior analysis, allow for heterogeneous threshold
-        if self.apply_posterior and self.posterior_criterion == "value":
+        ##############################
+        # from binary
 
-            if isinstance(self.posterior_threshold, list):
-                assert len(self.posterior_threshold) == self.num_labels
-                self.posterior_threshold = np.array(self.posterior_threshold)
-            elif isinstance(self.posterior_threshold, float):
-                pass
-            else:
-                raise ValueError(f"Posterior threshold has not-supported data type.")
+
+# TODO posterior for heterogeneous thresholds
+
+#            # Allow for heterogeneous threshold
+#            if self.posterior_criterion == "value":
+#
+#                if isinstance(self.posterior_threshold, list):
+#                    assert len(self.posterior_threshold) == self.num_labels
+#                    self.posterior_threshold = np.array(self.posterior_threshold)
+#                elif isinstance(self.posterior_threshold, float):
+#                    pass
+#                else:
+#                    raise ValueError(f"Posterior threshold has not-supported data type.")
 
         # Fetch verbosity. If larger than 0, several intermediate results in the
         # postprocessing will be displayed. This allows for simpler tuning
@@ -218,8 +205,6 @@ class NewConcentrationAnalysis:
     def update(
         self,
         base: Optional[darsia.Image] = None,
-        scaling: Optional[float] = None,
-        offset: Optional[float] = None,
         mask: Optional[np.ndarray] = None,
     ) -> None:
         """
@@ -227,35 +212,30 @@ class NewConcentrationAnalysis:
 
         Args:
             base (darsia.Image, optional): image array
-            scaling (float, optional): slope
-            offset (float, optional): offset
             mask (np.ndarray, optional): boolean mask, detecting which pixels
                 will be considered, all other will be ignored in the analysis.
         """
         if base is not None:
             self.base = base.copy()
-        if scaling is not None:
-            self.scaling = scaling
-        if offset is not None:
-            self.offset = offset
         if mask is not None:
             self.mask = mask
 
-    def update_volumes(self, volumes: Union[float, np.ndarray]) -> None:
-        """
-        Clear the cache and redefine some reference of the effective pixel volumes.
-
-        Args:
-            volumes (float or array): effective pixel volume per pixel
-        """
-        self._volumes_are_constant = isinstance(volumes, float)
-        if self._volumes_are_constant:
-            self._volumes_cache = cast(float, volumes)
-        else:
-            self._volumes_ref_shape = np.squeeze(volumes).shape
-            self._volumes_cache = {
-                self._volumes_ref_shape: np.squeeze(volumes),
-            }
+# TODO Linear model
+#    def update_volumes(self, volumes: Union[float, np.ndarray]) -> None:
+#        """
+#        Clear the cache and redefine some reference of the effective pixel volumes.
+#
+#        Args:
+#            volumes (float or array): effective pixel volume per pixel
+#        """
+#        self._volumes_are_constant = isinstance(volumes, float)
+#        if self._volumes_are_constant:
+#            self._volumes_cache = cast(float, volumes)
+#        else:
+#            self._volumes_ref_shape = np.squeeze(volumes).shape
+#            self._volumes_cache = {
+#                self._volumes_ref_shape: np.squeeze(volumes),
+#            }
 
     #    def read_calibration_from_file(self, config: dict, path: Union[str, Path]) -> None:
     #        """
@@ -367,11 +347,8 @@ class NewConcentrationAnalysis:
         # Homogenize signal (take into account possible heterogeneous effects)
         homogenized_signal = self._homogenize_signal(clean_signal)
 
-        # Post-process the signal
-        processed_signal = self.postprocess_signal(homogenized_signal, diff)
-
         # Convert from signal to concentration
-        concentration = processed_signal  # self.model(processed_signal) # TODO
+        concentration = self._convert_signal(homogenized_signal, diff)
 
         # Invoke plot
         if self.verbosity >= 1:
@@ -446,6 +423,7 @@ class NewConcentrationAnalysis:
         """
         return self.monochromatic_reduction(img)
 
+    # TODO merge with postprocess?
     def _homogenize_signal(self, img: np.ndarray) -> np.ndarray:
         """
         Routine responsible for rescaling wrt segments.
@@ -461,15 +439,10 @@ class NewConcentrationAnalysis:
         """
         return img
 
-    # TODO from segmentedbinaryconcentrationanalysis.
-    def postprocess_signal(self, signal: np.ndarray, img: np.ndarray) -> np.ndarray:
+    def _convert_signal(self, signal: np.ndarray, img: np.ndarray) -> np.ndarray:
         """
         Postprocessing routine, essentially converting a continuous
-        signal into a binary concentration and thereby segmentation.
-        The post processing consists of presmoothing, thresholding,
-        filling holes, local convex covering, and postsmoothing.
-        Tuning parameters for this routine have to be set in the
-        initialization routine.
+        signal into physical data (binary, continuous concentration etc.)
 
         Args:
             signal (np.ndarray): clean continous signal with values
@@ -478,31 +451,14 @@ class NewConcentrationAnalysis:
                 to extract new information besides the signal.
 
         Returns:
-            np.ndarray: binary concentration
+            np.ndarray: physical data
         """
-        # Determine prior and posterior
-        mask_prior, smooth_signal = self._prior(signal)
-        mask_posterior = self._posterior(smooth_signal, mask_prior, img)
+        # Determine prior
+        mask, smooth_signal = self._prior(signal)
 
-        # NOTE: Here the overlay process is obsolete, posterior is active.
-        # Yet, it allows to overwrite posterior by inheritance and design
-        # other schemes.
-
-        # Overlay prior and posterior
-        mask = np.zeros(mask_prior.shape, dtype=bool)
-        # Label the connected regions first
-        labels_prior, num_labels_prior = skimage.measure.label(
-            mask_prior, return_num=True
-        )
-
-        for label in range(1, num_labels_prior + 1):
-
-            # Fix one label
-            labeled_region = labels_prior == label
-
-            # Check whether posterior marked in this area
-            if np.any(mask_posterior[labeled_region]):
-                mask[labeled_region] = True
+        # Determine posterior
+        if self.apply_posterior:
+            mask = self.posterior_analysis(smooth_signal, mask, img)
 
         return mask
 
@@ -538,122 +494,123 @@ class NewConcentrationAnalysis:
             # Consider elementwise max
             self.threshold = np.maximum(self.threshold, monochromatic_diff)
 
-    def calibrate(
-        self,
-        injection_rate: float,
-        images: list[darsia.Image],
-        initial_guess: Optional[tuple[float]] = None,
-        tol: float = 1e-3,
-        maxiter: int = 20,
-    ) -> None:
-        """
-        Calibrate the conversion used in __call__ such that the provided
-        injection rate is matched for the given set of images.
-
-        Args:
-            injection_rate (float): constant injection rate in ml/hrs.
-            images (list of darsia.Image): images used for the calibration.
-            initial_guess (tuple): interval of scaling values to be considered
-                in the calibration; need to define lower and upper bounds on
-                the optimal scaling parameter.
-            tol (float): tolerance for the bisection algorithm.
-            maxiter (int): maximal number of bisection iterations used for
-                calibration.
-        """
-
-        # Define a function which is zero when the conversion parameters are chosen properly.
-        def deviation(scaling: float):
-            self.scaling = scaling
-            # self.offset = None
-            return injection_rate - self._estimate_rate(images)[0]
-
-        # Perform bisection
-        self.scaling = bisect(deviation, *initial_guess, xtol=tol, maxiter=maxiter)
-
-        print(f"Calibration results in scaling factor {self.scaling}.")
-
-    def _estimate_rate(self, images: list[darsia.Image]) -> tuple[float, float]:
-        """
-        Estimate the injection rate for the given series of images.
-
-        Args:
-            images (list of darsia.Image): basis for computing the injection rate.
-
-        Returns:
-            float: estimated injection rate.
-            float: offset at time 0, useful to determine the actual start time,
-                or plot the total concentration over time compared to the expected
-                volumes.
-        """
-        # Conversion constants
-        SECONDS_TO_HOURS = 1.0 / 3600.0
-        M3_TO_ML = 1e6
-
-        # Define reference time (not important which image serves as basis)
-        ref_time = images[0].timestamp
-
-        # For each image, compute the total concentration, based on the currently
-        # set tuning parameters, and compute the relative time.
-        total_volumes = []
-        relative_times = []
-        for img in images:
-
-            # Fetch associated time for image, relate to reference time, and store.
-            time = img.timestamp
-            relative_time = (time - ref_time).total_seconds() * SECONDS_TO_HOURS
-            relative_times.append(relative_time)
-
-            # Convert signal image to concentration, compute the total volumetric
-            # concentration in ml, and store.
-            concentration = self(img)
-            total_volume = self._determine_total_volume(concentration) * M3_TO_ML
-            total_volumes.append(total_volume)
-
-        # Determine slope in time by linear regression
-        ransac = RANSACRegressor()
-        ransac.fit(np.array(relative_times).reshape(-1, 1), np.array(total_volumes))
-
-        # Extract the slope and convert to
-        return ransac.estimator_.coef_[0], ransac.estimator_.intercept_
-
-    def _determine_total_volume(self, concentration: darsia.Image) -> float:
-        """
-        Determine the total concentration of a spatial concentration map.
-
-        Args:
-            concentration (darsia.Image): concentration data.
-
-        Returns:
-            float: The integral over the spatial, weighted concentration map.
-        """
-        # Fetch pixel volumes from cache, possibly require reshaping if the dimensions
-        # do not match.
-        if self._volumes_are_constant:
-            # Just fetch the constant volume
-            volumes = self._volumes_cache
-        else:
-            shape = np.squeeze(concentration.img).shape
-            assert isinstance(self._volumes_cache, dict)
-            if shape in self._volumes_cache:
-                # Fetch previously cached volume
-                volumes = self._volumes_cache[shape]
-            else:
-                # Need to resize and rescale (to ensure volume conservation).
-                # Use the reference volume for all such operations.
-                ref_volumes = self._volumes_cache[self._volumes_ref_shape]
-                new_shape = tuple(reversed(shape))
-                volumes = cv2.resize(
-                    ref_volumes, new_shape, interpolation=cv2.INTER_AREA
-                )
-                volumes *= np.sum(ref_volumes) / np.sum(cast(np.ndarray, volumes))
-                self._volumes_cache[shape] = volumes
-
-        # Integral of locally weighted concentration values
-        return np.sum(
-            np.multiply(
-                np.squeeze(cast(np.ndarray, volumes)), np.squeeze(concentration.img)
-            )
-        )
+# TODO Move to linear model
+#    def calibrate(
+#        self,
+#        injection_rate: float,
+#        images: list[darsia.Image],
+#        initial_guess: Optional[tuple[float]] = None,
+#        tol: float = 1e-3,
+#        maxiter: int = 20,
+#    ) -> None:
+#        """
+#        Calibrate the conversion used in __call__ such that the provided
+#        injection rate is matched for the given set of images.
+#
+#        Args:
+#            injection_rate (float): constant injection rate in ml/hrs.
+#            images (list of darsia.Image): images used for the calibration.
+#            initial_guess (tuple): interval of scaling values to be considered
+#                in the calibration; need to define lower and upper bounds on
+#                the optimal scaling parameter.
+#            tol (float): tolerance for the bisection algorithm.
+#            maxiter (int): maximal number of bisection iterations used for
+#                calibration.
+#        """
+#
+#        # Define a function which is zero when the conversion parameters are chosen properly.
+#        def deviation(scaling: float):
+#            self.scaling = scaling
+#            # self.offset = None
+#            return injection_rate - self._estimate_rate(images)[0]
+#
+#        # Perform bisection
+#        self.scaling = bisect(deviation, *initial_guess, xtol=tol, maxiter=maxiter)
+#
+#        print(f"Calibration results in scaling factor {self.scaling}.")
+#
+#    def _estimate_rate(self, images: list[darsia.Image]) -> tuple[float, float]:
+#        """
+#        Estimate the injection rate for the given series of images.
+#
+#        Args:
+#            images (list of darsia.Image): basis for computing the injection rate.
+#
+#        Returns:
+#            float: estimated injection rate.
+#            float: offset at time 0, useful to determine the actual start time,
+#                or plot the total concentration over time compared to the expected
+#                volumes.
+#        """
+#        # Conversion constants
+#        SECONDS_TO_HOURS = 1.0 / 3600.0
+#        M3_TO_ML = 1e6
+#
+#        # Define reference time (not important which image serves as basis)
+#        ref_time = images[0].timestamp
+#
+#        # For each image, compute the total concentration, based on the currently
+#        # set tuning parameters, and compute the relative time.
+#        total_volumes = []
+#        relative_times = []
+#        for img in images:
+#
+#            # Fetch associated time for image, relate to reference time, and store.
+#            time = img.timestamp
+#            relative_time = (time - ref_time).total_seconds() * SECONDS_TO_HOURS
+#            relative_times.append(relative_time)
+#
+#            # Convert signal image to concentration, compute the total volumetric
+#            # concentration in ml, and store.
+#            concentration = self(img)
+#            total_volume = self._determine_total_volume(concentration) * M3_TO_ML
+#            total_volumes.append(total_volume)
+#
+#        # Determine slope in time by linear regression
+#        ransac = RANSACRegressor()
+#        ransac.fit(np.array(relative_times).reshape(-1, 1), np.array(total_volumes))
+#
+#        # Extract the slope and convert to
+#        return ransac.estimator_.coef_[0], ransac.estimator_.intercept_
+#
+#    def _determine_total_volume(self, concentration: darsia.Image) -> float:
+#        """
+#        Determine the total concentration of a spatial concentration map.
+#
+#        Args:
+#            concentration (darsia.Image): concentration data.
+#
+#        Returns:
+#            float: The integral over the spatial, weighted concentration map.
+#        """
+#        # Fetch pixel volumes from cache, possibly require reshaping if the dimensions
+#        # do not match.
+#        if self._volumes_are_constant:
+#            # Just fetch the constant volume
+#            volumes = self._volumes_cache
+#        else:
+#            shape = np.squeeze(concentration.img).shape
+#            assert isinstance(self._volumes_cache, dict)
+#            if shape in self._volumes_cache:
+#                # Fetch previously cached volume
+#                volumes = self._volumes_cache[shape]
+#            else:
+#                # Need to resize and rescale (to ensure volume conservation).
+#                # Use the reference volume for all such operations.
+#                ref_volumes = self._volumes_cache[self._volumes_ref_shape]
+#                new_shape = tuple(reversed(shape))
+#                volumes = cv2.resize(
+#                    ref_volumes, new_shape, interpolation=cv2.INTER_AREA
+#                )
+#                volumes *= np.sum(ref_volumes) / np.sum(cast(np.ndarray, volumes))
+#                self._volumes_cache[shape] = volumes
+#
+#        # Integral of locally weighted concentration values
+#        return np.sum(
+#            np.multiply(
+#                np.squeeze(cast(np.ndarray, volumes)), np.squeeze(concentration.img)
+#            )
+#        )
 
     # ! ---- Main methods from BinaryConcentrationAnalysis
     def _prior(self, signal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -677,18 +634,13 @@ class NewConcentrationAnalysis:
         smooth_signal = self.prepare_signal(signal)
 
         # Apply thresholding to obain a thresholding mask
-        # mask = self._apply_thresholding(smooth_signal)
+        # mask = self._apply_thresholding(smooth_signal) # TODO rm
         mask = self.model(smooth_signal, self.mask)
-
-        if self.verbosity >= 2:
-            plt.figure("Prior: Thresholded mask")
-            plt.imshow(mask)
-
-        # Clean mask by removing small objects, filling holes, and applying postsmoothing.
         clean_mask = self.clean_mask(mask)
 
-        if self.verbosity >= 1:
-            plt.show()
+        if self.verbosity >= 2:
+            plt.figure("Prior")
+            plt.imshow(clean_mask)
 
         return clean_mask, smooth_signal
 
@@ -707,7 +659,7 @@ class NewConcentrationAnalysis:
             signal = self.presmoother(signal)
 
         if self.verbosity >= 2:
-            plt.figure("Prior: TVD smoothed signal")
+            plt.figure("TVD smoothed signal")
             plt.imshow(signal)
 
         return signal
@@ -1500,7 +1452,7 @@ class NewConcentrationAnalysis:
 
     # ! ---- Utilities
     # TODO move to darsia/utils/postprocess
-    # This is only usefule for binary data.
+    # This is only useful for binary data - could make this an extended threshold model
     def clean_mask(self, mask: np.ndarray) -> np.ndarray:
         """
         Remove small objects in binary mask, fill holes and apply postsmoothing.
@@ -1514,17 +1466,14 @@ class NewConcentrationAnalysis:
         # Apply inpainting
         mask = self.binary_inpaint(mask)
 
-        # Apply postsmoothing
+        # Apply postsmoothing and thresholding
         if self.apply_postsmoothing:
             smooth_mask = self.postsmoother(mask)
-
-            # Apply hardcoded threshold value of 0.5 assuming it is sufficient to turn
-            # off small particles and rely on larger marked regions
             thresh = 0.5
             mask = smooth_mask > thresh
 
         if self.verbosity >= 2:
-            plt.figure("Prior: TVD postsmoothed mask")
+            plt.figure("TVD postsmoothed mask")
             plt.imshow(mask)
 
             plt.show()
@@ -1546,271 +1495,10 @@ class NewConcentrationAnalysis:
         Return:
             np.ndarray: boolean mask of trusted regions.
         """
-        if not (
-            self.apply_posterior
-            and self.posterior_criterion == "value"
-            and isinstance(self.posterior_threshold, np.ndarray)
-        ):
-            # TODO rm return super()._posterior(signal, mask_prior, img)
-            # Only continue if necessary
-            if not self.apply_posterior:
-                return np.ones(signal.shape[:2], dtype=bool)
-
-            # Initialize the output mask
-            mask_posterior = np.zeros(signal.shape, dtype=bool)
-
-            # Label the connected regions first
-            labels_prior, num_labels_prior = skimage.measure.label(
-                mask_prior, return_num=True
-            )
-
-            if self.verbosity >= 3:
-                plt.figure("Posterior: Labeled regions from prior")
-                plt.imshow(labels_prior)
-                plt.show()
-
-            # Criterion-specific preparations
-            if self.posterior_criterion in [
-                "gradient modulus",
-                "value/gradient modulus",
-            ]:
-                # Determien gradient modulus of the smoothed signal
-                dx = darsia.forward_diff_x(signal)
-                dy = darsia.forward_diff_y(signal)
-                gradient_modulus = np.sqrt(dx**2 + dy**2)
-
-                if self.verbosity >= 2:
-                    plt.figure("Posterior: Gradient modulus")
-                    plt.imshow(gradient_modulus)
-
-            if self.posterior_criterion == "value/value extra color":
-                # Restrict image to monochromatic color and roi
-                if self.posterior_color == "red":
-                    img_color = img[:, :, 0]
-                elif self.posterior_color == "green":
-                    img_color = img[:, :, 1]
-                elif self.posterior_color == "blue":
-                    img_color = img[:, :, 2]
-                elif self.posterior_color == "red+green":
-                    img_color = img[:, :, 0] + img[:, :, 1]
-                else:
-                    raise ValueError(f"Color {self.posterior_color} not supported.")
-
-                # Prepare the signal by applying presmoothing
-                smooth_img_color = self.prepare_signal(img_color)
-
-            # Investigate each labeled region separately; omit label 0, which corresponds
-            # to non-marked area.
-            for label in range(1, num_labels_prior + 1):
-
-                # Fix one label
-                labeled_region = labels_prior == label
-
-                # Initialize acceptance
-                accept = False
-
-                # Check the chosen criterion
-                if self.posterior_criterion == "value":
-                    # Check whether there exist values in the segment, larger
-                    # than a provided critical value.
-
-                    roi = np.logical_and(labeled_region, self.mask)
-
-                    if (
-                        np.count_nonzero(roi) > 0
-                        and np.max(signal[roi]) > self.posterior_threshold
-                    ):
-                        accept = True
-
-                    if self.verbosity >= 3:
-                        print(
-                            f"""Posterior: Label {label},
-                            max value: {np.max(signal[roi])}."""
-                        )
-
-                elif self.posterior_criterion == "relative value":
-                    # Check whether there exist values in the segment, larger
-                    # than a provided critical value, measured relatively to
-                    # the smallest existing value (the threshold value).
-
-                    roi = np.logical_and(labeled_region, self.mask)
-
-                    if np.count_nonzero(roi) > 0 and np.max(
-                        signal[roi]
-                    ) > self.posterior_threshold * np.min(signal[roi]):
-                        accept = True
-
-                    if self.verbosity >= 3:
-                        print(
-                            f"""Posterior: Label {label},
-                            max value: {np.max(signal[roi]) / np.min(signal[roi])}."""
-                        )
-
-                elif self.posterior_criterion == "value/value extra color":
-                    # Check whether there exist values in the segment, larger
-                    # than a provided critical value, for the specific color
-                    # provided and based on the original difference of images.
-
-                    # Apply posterior analysis on the region of interest
-                    roi = np.logical_and(labeled_region, self.mask)
-
-                    if (
-                        np.count_nonzero(roi) > 0
-                        and np.max(signal[roi]) > self.posterior_threshold[0]
-                        and np.max(smooth_img_color[roi]) > self.posterior_threshold[1]
-                    ):
-                        accept = True
-
-                    if np.count_nonzero(roi) > 0:
-                        if self.verbosity >= 3:
-                            print(
-                                f"""Posterior: Label {label},
-                                signal max value: {np.max(signal[roi])},
-                                extra color max value: {np.max(img_color[roi])},
-                                smooth extra color max value: {np.max(smooth_img_color[roi])}."""
-                            )
-
-                    if self.verbosity >= 3:
-                        plt.figure("posterior extra color value analysis")
-                        plt.imshow(img_color)
-                    if self.verbosity >= 2:
-                        plt.figure("posterior extra color value analysis - smooth")
-                        plt.imshow(smooth_img_color)
-
-                elif self.posterior_criterion == "gradient modulus":
-                    # Check whether the gradient modulus reaches high values
-                    # compared on contours to a provided tolerance.
-
-                    # Determine contour set of labeled region
-                    contours, _ = cv2.findContours(
-                        skimage.img_as_ubyte(labeled_region),
-                        cv2.RETR_TREE,
-                        cv2.CHAIN_APPROX_SIMPLE,
-                    )
-
-                    # For each part of the contour set, check whether the gradient is sufficiently
-                    # large at any location
-                    for c in contours:
-
-                        # Extract coordinates of contours - have to flip columns, since cv2
-                        # provides reverse matrix indexing, and also 3 components, with the
-                        # second one single dimensioned.
-                        c = (c[:, 0, 1], c[:, 0, 0])
-
-                        if self.verbosity >= 2:
-                            print(
-                                f"""Posterior: Label {label},
-                                Grad mod. {np.max(gradient_modulus[c])},
-                                pos: {np.mean(c[0])}, {np.mean(c[1])}."""
-                            )
-
-                        # Identify region as marked if gradient sufficiently large
-                        if np.max(gradient_modulus[c]) > self.posterior_threshold:
-                            accept = True
-                            break
-
-                elif self.posterior_criterion == "value/gradient modulus":
-                    # Run both routines and require both to hold
-                    accept_value = (
-                        np.max(signal[labeled_region]) > self.posterior_threshold[0]
-                    )
-
-                    # Check whether the gradient modulus reaches high values
-                    # compared on contours to a provided tolerance.
-                    accept_gradient_modulus = False
-
-                    # Determine contour set of labeled region
-                    contours, _ = cv2.findContours(
-                        skimage.img_as_ubyte(labeled_region),
-                        cv2.RETR_TREE,
-                        cv2.CHAIN_APPROX_SIMPLE,
-                    )
-
-                    # For each part of the contour set, check whether the gradient is sufficiently
-                    # large at any location
-                    for c in contours:
-
-                        # Extract coordinates of contours - have to flip columns, since cv2
-                        # provides reverse matrix indexing, and also 3 components, with the
-                        # second one single dimensioned.
-                        c = (c[:, 0, 1], c[:, 0, 0])
-
-                        if self.verbosity >= 2:
-                            print(
-                                f"""Posterior: Label {label},
-                                Grad mod. {np.max(gradient_modulus[c])},
-                                pos: {np.mean(c[0])}, {np.mean(c[1])}."""
-                            )
-
-                        # Identify region as marked if gradient sufficiently large
-                        if np.max(gradient_modulus[c]) > self.posterior_threshold[1]:
-                            accept_gradient_modulus = True
-                            break
-                    accept = accept_value and accept_gradient_modulus
-
-                # Collect findings
-                if accept:
-                    mask_posterior[labeled_region] = True
-
-                if self.verbosity >= 1:
-                    plt.show()
-
-            return mask_posterior
-
-        # Initialize the output mask
-        mask_posterior = np.zeros(signal.shape, dtype=bool)
-
-        # Label the connected regions first
-        labels_prior, num_labels_prior = skimage.measure.label(
-            mask_prior, return_num=True
-        )
-
-        if self.verbosity >= 3:
-            plt.figure("Posterior: Labeled regions from prior")
-            plt.imshow(labels_prior)
-            plt.show()
-
-        # Investigate each labeled region separately; omit label 0, which corresponds
-        # to non-marked area.
-        for label in range(1, num_labels_prior + 1):
-
-            # Fix one label
-            labeled_region = labels_prior == label
-
-            # Initialize acceptance
-            # accept = False
-
-            # Check the chosen criterion (is true)
-            if self.posterior_criterion == "value":
-                # Check whether there exist values in the segment, larger
-                # than a provided critical value.
-
-                roi = np.logical_and(labeled_region, self.mask)
-
-                for geometry_label in range(self.num_labels):
-                    geometry_label_roi = np.logical_and(
-                        roi, self.labels == geometry_label
-                    )
-                    if (
-                        np.count_nonzero(geometry_label_roi) > 0
-                        and np.max(signal[geometry_label_roi])
-                        > self.posterior_threshold[geometry_label]
-                    ):
-                        mask_posterior[labeled_region] = True
-                        # mask_posterior[geometry_label_roi] = True
-
-                        # self.covered_area[label] = np.count_nonzero(mask_posterior[
-                        break
-
-                if self.verbosity >= 3 and np.count_nonzero(geometry_label_roi) > 0:
-                    print(
-                        f"""Posterior: Label {label},
-                        geometry_label {geometry_label},
-                        max value: {np.max(signal[geometry_label_roi])}."""
-                    )
-
-        return mask_posterior
-
+        if self.apply_posterior:
+            return self.posterior_analysis(signal, mask_prior, img)
+        else:
+            return mask_prior
 
 #################################################################3
 # Old concentration analyses.
