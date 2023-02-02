@@ -228,7 +228,24 @@ class Image:
     def original_dtype(self) -> np.dtype:
         return self.metadata["original_dtype"]
 
-    # ! ---- Corresponding setter functions for metadata
+    # ! ---- Operation overloaders
+    def __sub__(self, other: da.Image):
+        """Subtract two images.
+
+        Arguments:
+            other (Image): image to subtract from self
+
+        Returns:
+            Image: difference image
+        """
+        if self.img.shape != other.img.shape:
+            warn("Images have different shapes. Resizing second argument to match.")
+            return da.Image(
+                self.img - cv2.resize(other.img, tuple(reversed(self.img.shape[:2]))),
+                copy.copy(self.metadata),
+            )
+        else:
+            return da.Image(self.img - other.img, copy.copy(self.metadata))
 
     def write(
         self,

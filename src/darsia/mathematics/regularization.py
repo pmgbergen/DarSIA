@@ -43,7 +43,7 @@ def tv_denoising(
     # Set verbosity of stopping criterion
     tvd_stoppingCriterion.verbose = verbose
 
-    # Copy image to avoid overwriting
+    # Copy the input image
     img = img.copy()
 
     # Extract the two images
