@@ -241,8 +241,7 @@ class Image:
         if self.img.shape != other.img.shape:
             warn("Images have different shapes. Resizing second argument to match.")
             return da.Image(
-                self.img
-                - cv2.resize(other.img, tuple(reversed(self.img.shape[:2]))),
+                self.img - cv2.resize(other.img, tuple(reversed(self.img.shape[:2]))),
                 copy.copy(self.metadata),
             )
         else:
