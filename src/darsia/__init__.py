@@ -40,6 +40,7 @@ from darsia.manager.co2analysis import *
 from darsia.transformations.signals.basemodel import *
 from darsia.transformations.signals.linearmodel import *
 from darsia.transformations.signals.staticthresholdmodel import *
+from darsia.transformations.signals.dynamicthresholdmodel import *
 from darsia.transformations.signals.binarydataselector import *
 from darsia.transformations.colors.monochromatic import *
 from darsia.regularization.tvd import *
