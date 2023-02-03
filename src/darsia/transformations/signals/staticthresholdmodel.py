@@ -33,7 +33,7 @@ class StaticThresholdModel(darsia.Model):
         # threatment is considered.
         if labels is None:
             # Homogeneous case
-            self._homogeneous = True
+            self._is_homogeneous = True
             assert isinstance(threshold_low, float)
             assert isinstance(threshold_high, float) or threshold_high is None
             self._threshold_low = threshold_low
@@ -41,7 +41,7 @@ class StaticThresholdModel(darsia.Model):
 
         else:
             # Heterogeneous case
-            self._homogeneous = False
+            self._is_homogeneous = False
             self._labels = labels
             num_labels = len(np.unique(self._labels))
 
@@ -85,7 +85,7 @@ class StaticThresholdModel(darsia.Model):
             np.ndarray: boolean mask
         """
         # Apply thresholding directly to the signal
-        if self._homogeneous:
+        if self._is_homogeneous:
             threshold_mask = self._call_homogeneous(img)
         else:
             threshold_mask = self._call_heterogeneous(img)
@@ -122,7 +122,6 @@ class StaticThresholdModel(darsia.Model):
             np.ndarray: boolean mask
         """
         threshold_mask = np.zeros(self._labels.shape[:2], dtype=bool)
-        import matplotlib.pyplot as plt
         for i, label in enumerate(np.unique(self._labels)):
             threshold_mask_i = img > self._threshold_low[i]
             if self._threshold_high is not None:
