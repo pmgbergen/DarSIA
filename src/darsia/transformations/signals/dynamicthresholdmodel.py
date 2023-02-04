@@ -414,7 +414,7 @@ class DynamicThresholdModel(darsia.StaticThresholdModel):
         threshold_lower: Optional[Union[float, list[float]]] = None,
         threshold_upper: Optional[Union[float, list[float]]] = None,
         labels: Optional[np.ndarray] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Constructor of DynamicThresholdModel.
@@ -425,15 +425,21 @@ class DynamicThresholdModel(darsia.StaticThresholdModel):
             labels (array): labeled domain
         """
         # Determine threshold strategy and lower and upper bounds.
-        threshold_method = kwargs.get(
-            "threshold method", "tailored global min"
-        ) if method is None else method
-        threshold_value_lower_bound: Union[float, list] = kwargs.pop(
-            "threshold value min", 0.
-        ) if threshold_lower is None else threshold_lower
-        threshold_value_upper_bound: Optional[Union[float, list]] = kwargs.pop(
-            "threshold value max", None
-        ) if threshold_upper is None else threshold_upper
+        threshold_method = (
+            kwargs.get("threshold method", "tailored global min")
+            if method is None
+            else method
+        )
+        threshold_value_lower_bound: Union[float, list] = (
+            kwargs.pop("threshold value min", 0.0)
+            if threshold_lower is None
+            else threshold_lower
+        )
+        threshold_value_upper_bound: Optional[Union[float, list]] = (
+            kwargs.pop("threshold value max", None)
+            if threshold_upper is None
+            else threshold_upper
+        )
 
         # Call the constructor if the static threshold model.
         super().__init__(threshold_lower, threshold_upper, labels)

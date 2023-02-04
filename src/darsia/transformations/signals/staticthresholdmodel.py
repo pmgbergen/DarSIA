@@ -9,17 +9,18 @@ import darsia
 import numpy as np
 from typing import Union, Optional
 
+
 class StaticThresholdModel(darsia.Model):
     """
     Class for static thresholding.
     """
 
     def __init__(
-            self,
-            threshold_lower: Union[float, list[float]] = 0.,
-            threshold_upper: Optional[Union[float, list[float]]] = None,
-            labels: Optional[np.ndarray] = None,
-            ) -> None:
+        self,
+        threshold_lower: Union[float, list[float]] = 0.0,
+        threshold_upper: Optional[Union[float, list[float]]] = None,
+        labels: Optional[np.ndarray] = None,
+    ) -> None:
         """
         Constructor of StaticThresholdModel.
 
@@ -45,7 +46,9 @@ class StaticThresholdModel(darsia.Model):
             self._labels = labels
             num_labels = len(np.unique(self._labels))
 
-            if isinstance(threshold_lower, list) or isinstance(threshold_lower, np.ndarray):
+            if isinstance(threshold_lower, list) or isinstance(
+                threshold_lower, np.ndarray
+            ):
                 # Allow for heterogeneous initial value.
                 assert len(threshold_lower) == num_labels
                 self._threshold_lower = np.array(threshold_lower)
@@ -58,7 +61,9 @@ class StaticThresholdModel(darsia.Model):
             else:
                 raise ValueError(f"Type {type(threshold_lower)} not supported.")
 
-            if isinstance(threshold_upper, list) or isinstance(threshold_upper, np.ndarray):
+            if isinstance(threshold_upper, list) or isinstance(
+                threshold_upper, np.ndarray
+            ):
                 # Allow for heterogeneous initial value.
                 assert len(threshold_upper) == num_labels
                 self._threshold_upper = np.array(threshold_upper)
@@ -73,7 +78,9 @@ class StaticThresholdModel(darsia.Model):
             else:
                 raise ValueError(f"Type {type(threshold_upper)} not supported.")
 
-    def __call__(self, img: np.ndarray, mask: Optional[np.ndarray] = None) -> np.ndarray:
+    def __call__(
+        self, img: np.ndarray, mask: Optional[np.ndarray] = None
+    ) -> np.ndarray:
         """
         Convert signal to binary data through thresholding.
 
@@ -107,7 +114,9 @@ class StaticThresholdModel(darsia.Model):
             np.ndarray: boolean mask
         """
         if self._threshold_upper is not None:
-            return np.logical_and(img > self._threshold_lower, img < self._threshold_upper)
+            return np.logical_and(
+                img > self._threshold_lower, img < self._threshold_upper
+            )
         else:
             return img > self._threshold_lower
 
@@ -125,7 +134,9 @@ class StaticThresholdModel(darsia.Model):
         for i, label in enumerate(np.unique(self._labels)):
             threshold_mask_i = img > self._threshold_lower[i]
             if self._threshold_upper is not None:
-                threshold_mask_i = np.logical_and(threshold_mask_i, img < self._threshold_upper[i])
+                threshold_mask_i = np.logical_and(
+                    threshold_mask_i, img < self._threshold_upper[i]
+                )
             roi = np.logical_and(threshold_mask_i, self._labels == label)
             threshold_mask[roi] = True
         return threshold_mask

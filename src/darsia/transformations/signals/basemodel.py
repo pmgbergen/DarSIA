@@ -5,8 +5,8 @@ Models convert signals to data.
 import abc
 import numpy as np
 
-class Model:
 
+class Model:
     @abc.abstractmethod
     def __call__(self, img: np.ndarray) -> np.ndarray:
         """
@@ -21,8 +21,8 @@ class Model:
         """
         pass
 
-class BaseModel(Model):
 
+class BaseModel(Model):
     def __call__(self, img: np.ndarray) -> np.ndarray:
         return img
 
