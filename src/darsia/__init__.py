@@ -39,6 +39,7 @@ from darsia.manager.traceranalysis import *
 from darsia.manager.co2analysis import *
 from darsia.transformations.signals.basemodel import *
 from darsia.transformations.signals.linearmodel import *
+from darsia.transformations.signals.thresholdmodel import *
 from darsia.transformations.signals.staticthresholdmodel import *
 from darsia.transformations.signals.dynamicthresholdmodel import *
 from darsia.transformations.signals.binarydataselector import *
