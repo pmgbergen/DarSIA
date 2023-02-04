@@ -323,12 +323,14 @@ class NewConcentrationAnalysis:
             path (str or Path): path to cleaning filter array.
         """
         # Fetch the threshold mask from file
-        self.threshold = np.load(path)
+        self.threshold_cleaning_filter = np.load(path)
 
         # Resize threshold mask if unmatching the size of the base image
         base_shape = self.base.img.shape[:2]
-        if self.threshold.shape[:2] != base_shape:
-            self.threshold = cv2.resize(self.threshold, tuple(reversed(base_shape)))
+        if self.threshold_cleaning_filter.shape[:2] != base_shape:
+            self.threshold_cleaning_filter = cv2.resize(
+                self.threshold_cleaning_filter, tuple(reversed(base_shape))
+            )
 
     def write_cleaning_filter_to_file(self, path_to_filter: Union[str, Path]) -> None:
         """
@@ -339,7 +341,7 @@ class NewConcentrationAnalysis:
         """
         path_to_filter = Path(path_to_filter)
         path_to_filter.parents[0].mkdir(parents=True, exist_ok=True)
-        np.save(path_to_filter, self.threshold)
+        np.save(path_to_filter, self.threshold_cleaning_filter)
 
     # ! ---- Main method
 
@@ -367,7 +369,7 @@ class NewConcentrationAnalysis:
         self._inspect_signal(signal)
 
         # Clean signal
-        clean_signal = np.clip(signal - self.threshold, 0, None)
+        clean_signal = np.clip(signal - self.threshold_cleaning_filter, 0, None)
 
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_clean_signal(clean_signal)
@@ -506,7 +508,7 @@ class NewConcentrationAnalysis:
             reset (bool): flag whether the cleaning filter shall be reset.
         """
         # Initialize cleaning filter
-        self.threshold = np.zeros(self.base.img.shape[:2], dtype=float)
+        self.threshold_cleaning_filter = np.zeros(self.base.img.shape[:2], dtype=float)
 
         # Combine the results of a series of images
         for img in baseline_images:
@@ -520,7 +522,9 @@ class NewConcentrationAnalysis:
             monochromatic_diff = self._extract_scalar_information(diff)
 
             # Consider elementwise max
-            self.threshold = np.maximum(self.threshold, monochromatic_diff)
+            self.threshold_cleaning_filter = np.maximum(
+                self.threshold_cleaning_filter, monochromatic_diff
+            )
 
     # ! ---- Main methods from BinaryConcentrationAnalysis
     def _prior(self, signal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -543,8 +547,7 @@ class NewConcentrationAnalysis:
         # Prepare the signal by applying presmoothing
         smooth_signal = self.prepare_signal(signal)
 
-        # Apply thresholding to obain a thresholding mask
-        # mask = self._apply_thresholding(smooth_signal) # TODO rm
+        # Apply data conversion model provided by the user
         mask = self.model(smooth_signal, self.mask)
         clean_mask = self.clean_mask(mask)
 
@@ -590,7 +593,7 @@ class NewConcentrationAnalysis:
         # Apply inpainting
         mask = self.binary_inpaint(mask)
 
-        # Apply postsmoothing and thresholding
+        # Apply postsmoothing and local thresholding
         if self.apply_postsmoothing:
             smooth_mask = self.postsmoother(mask)
             thresh = 0.5
@@ -748,12 +751,14 @@ class ConcentrationAnalysis:
 
         # Fetch the scaling parameter and threshold mask from file
         self.scaling = config["scaling"]
-        self.threshold = np.load(path)
+        self.threshold_cleaning_file = np.load(path)
 
         # Resize threshold mask if unmatching the size of the base image
         base_shape = self.base.img.shape[:2]
-        if self.threshold.shape[:2] != base_shape:
-            self.threshold = cv2.resize(self.threshold, tuple(reversed(base_shape)))
+        if self.threshold_cleaning_file.shape[:2] != base_shape:
+            self.threshold_cleaning_file = cv2.resize(
+                self.threshold_cleaning_file, tuple(reversed(base_shape))
+            )
 
     def write_calibration_to_file(
         self, path_to_config: Union[str, Path], path_to_filter: Union[str, Path]
@@ -781,7 +786,7 @@ class ConcentrationAnalysis:
         # Store cleaning filter array.
         path_to_filter = Path(path_to_filter)
         path_to_filter.parents[0].mkdir(parents=True, exist_ok=True)
-        np.save(path_to_filter, self.threshold)
+        np.save(path_to_filter, self.threshold_cleaning_filter)
 
     def read_cleaning_filter_from_file(self, path: Union[str, Path]) -> None:
         """
@@ -791,12 +796,14 @@ class ConcentrationAnalysis:
             path (str or Path): path to cleaning filter array.
         """
         # Fetch the threshold mask from file
-        self.threshold = np.load(path)
+        self.threshold_cleaning_filter = np.load(path)
 
         # Resize threshold mask if unmatching the size of the base image
         base_shape = self.base.img.shape[:2]
-        if self.threshold.shape[:2] != base_shape:
-            self.threshold = cv2.resize(self.threshold, tuple(reversed(base_shape)))
+        if self.threshold_cleaning_filter.shape[:2] != base_shape:
+            self.threshold_cleaning_filter = cv2.resize(
+                self.threshold_cleaning_filter, tuple(reversed(base_shape))
+            )
 
     def write_cleaning_filter_to_file(self, path_to_filter: Union[str, Path]) -> None:
         """
@@ -807,7 +814,7 @@ class ConcentrationAnalysis:
         """
         path_to_filter = Path(path_to_filter)
         path_to_filter.parents[0].mkdir(parents=True, exist_ok=True)
-        np.save(path_to_filter, self.threshold)
+        np.save(path_to_filter, self.threshold_cleaning_filter)
 
     # ! ---- Main method
 
@@ -835,7 +842,7 @@ class ConcentrationAnalysis:
         self._inspect_signal(signal)
 
         # Clean signal
-        clean_signal = np.clip(signal - self.threshold, 0, None)
+        clean_signal = np.clip(signal - self.threshold_cleaning_filter, 0, None)
 
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_clean_signal(clean_signal)
@@ -983,7 +990,9 @@ class ConcentrationAnalysis:
         """
         return img
 
-    def postprocess_signal(self, signal: np.ndarray, img: np.ndarray) -> np.ndarray:
+    def postprocess_signal(
+        self, signal: np.ndarray, img: Optional[np.ndarray] = None
+    ) -> np.ndarray:
         """
         Empty postprocessing - should be overwritten for practical cases.
 
