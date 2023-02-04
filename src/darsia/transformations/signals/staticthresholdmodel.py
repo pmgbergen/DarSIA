@@ -16,16 +16,16 @@ class StaticThresholdModel(darsia.Model):
 
     def __init__(
             self,
-            threshold_low: Union[float, list[float]] = 0.,
-            threshold_high: Optional[Union[float, list[float]]] = None,
+            threshold_lower: Union[float, list[float]] = 0.,
+            threshold_upper: Optional[Union[float, list[float]]] = None,
             labels: Optional[np.ndarray] = None,
             ) -> None:
         """
         Constructor of StaticThresholdModel.
 
         Args:
-            threshold_low (float or list of float): lower threshold value(s)
-            threshold_high (float or list of float): upper threshold value(s)
+            threshold_lower (float or list of float): lower threshold value(s)
+            threshold_upper (float or list of float): upper threshold value(s)
             labels (array): labeled domain
         """
 
@@ -34,10 +34,10 @@ class StaticThresholdModel(darsia.Model):
         if labels is None:
             # Homogeneous case
             self._is_homogeneous = True
-            assert isinstance(threshold_low, float)
-            assert isinstance(threshold_high, float) or threshold_high is None
-            self._threshold_low = threshold_low
-            self._threshold_high = threshold_high
+            assert isinstance(threshold_lower, float)
+            assert isinstance(threshold_upper, float) or threshold_upper is None
+            self._threshold_lower = threshold_lower
+            self._threshold_upper = threshold_upper
 
         else:
             # Heterogeneous case
@@ -45,33 +45,33 @@ class StaticThresholdModel(darsia.Model):
             self._labels = labels
             num_labels = len(np.unique(self._labels))
 
-            if isinstance(threshold_low, list) or isinstance(threshold_low, np.ndarray):
+            if isinstance(threshold_lower, list) or isinstance(threshold_lower, np.ndarray):
                 # Allow for heterogeneous initial value.
-                assert len(threshold_low) == num_labels
-                self._threshold_low = np.array(threshold_low)
+                assert len(threshold_lower) == num_labels
+                self._threshold_lower = np.array(threshold_lower)
 
-            elif isinstance(threshold_low, float):
+            elif isinstance(threshold_lower, float):
                 # Or initialize all labels with the same value
-                self._threshold_low = threshold_low * np.ones(
+                self._threshold_lower = threshold_lower * np.ones(
                     num_labels, dtype=float
                 )
             else:
-                raise ValueError(f"Type {type(threshold_low)} not supported.")
+                raise ValueError(f"Type {type(threshold_lower)} not supported.")
 
-            if isinstance(threshold_high, list) or isinstance(threshold_high, np.ndarray):
+            if isinstance(threshold_upper, list) or isinstance(threshold_upper, np.ndarray):
                 # Allow for heterogeneous initial value.
-                assert len(threshold_high) == num_labels
-                self._threshold_high = np.array(threshold_high)
+                assert len(threshold_upper) == num_labels
+                self._threshold_upper = np.array(threshold_upper)
 
-            elif isinstance(threshold_high, float):
+            elif isinstance(threshold_upper, float):
                 # Or initialize all labels with the same value
-                self._threshold_high = threshold_high * np.ones(
+                self._threshold_upper = threshold_upper * np.ones(
                     num_labels, dtype=float
                 )
-            elif threshold_high is None:
-                self._threshold_high = None
+            elif threshold_upper is None:
+                self._threshold_upper = None
             else:
-                raise ValueError(f"Type {type(threshold_high)} not supported.")
+                raise ValueError(f"Type {type(threshold_upper)} not supported.")
 
     def __call__(self, img: np.ndarray, mask: Optional[np.ndarray] = None) -> np.ndarray:
         """
@@ -106,10 +106,10 @@ class StaticThresholdModel(darsia.Model):
         Returns:
             np.ndarray: boolean mask
         """
-        if self._threshold_high is not None:
-            return np.logical_and(img > self._threshold_low, img < self._threshold_high)
+        if self._threshold_upper is not None:
+            return np.logical_and(img > self._threshold_lower, img < self._threshold_upper)
         else:
-            return img > self._threshold_low
+            return img > self._threshold_lower
 
     def _call_heterogeneous(self, img: np.ndarray) -> np.ndarray:
         """
@@ -123,9 +123,9 @@ class StaticThresholdModel(darsia.Model):
         """
         threshold_mask = np.zeros(self._labels.shape[:2], dtype=bool)
         for i, label in enumerate(np.unique(self._labels)):
-            threshold_mask_i = img > self._threshold_low[i]
-            if self._threshold_high is not None:
-                threshold_mask_i = np.logical_and(threshold_mask_i, img < self._threshold_high[i])
+            threshold_mask_i = img > self._threshold_lower[i]
+            if self._threshold_upper is not None:
+                threshold_mask_i = np.logical_and(threshold_mask_i, img < self._threshold_upper[i])
             roi = np.logical_and(threshold_mask_i, self._labels == label)
             threshold_mask[roi] = True
         return threshold_mask

@@ -410,38 +410,51 @@ class DynamicThresholdModel(darsia.StaticThresholdModel):
 
     def __init__(
         self,
-        method: str,
-        threshold_low: Union[float, list[float]] = 0.0,
-        threshold_high: Optional[Union[float, list[float]]] = None,
+        method: Optional[str] = None,
+        threshold_lower: Optional[Union[float, list[float]]] = None,
+        threshold_upper: Optional[Union[float, list[float]]] = None,
         labels: Optional[np.ndarray] = None,
+        **kwargs
     ) -> None:
         """
         Constructor of DynamicThresholdModel.
 
         Args:
-            threshold_low (float or list of float): lower threshold value boundary
-            threshold_high (float or list of float): upper threshold value boundary
+            threshold_lower (float or list of float): lower threshold value boundary
+            threshold_upper (float or list of float): upper threshold value boundary
             labels (array): labeled domain
         """
-        super().__init__(threshold_low, threshold_high, labels)
+        # Determine threshold strategy and lower and upper bounds.
+        threshold_method = kwargs.get(
+            "threshold method", "tailored global min"
+        ) if method is None else method
+        threshold_value_lower_bound: Union[float, list] = kwargs.pop(
+            "threshold value min", 0.
+        ) if threshold_lower is None else threshold_lower
+        threshold_value_upper_bound: Optional[Union[float, list]] = kwargs.pop(
+            "threshold value max", None
+        ) if threshold_upper is None else threshold_upper
 
-        # Identify method
-        if method == "tailored global min":
+        # Call the constructor if the static threshold model.
+        super().__init__(threshold_lower, threshold_upper, labels)
+
+        # Identify method and define corresponding thresholding object
+        if threshold_method == "tailored global min":
             self.method = GlobalMinTwoPeakHistogrammAnalysis()
-        elif method == "tailored otsu":
+        elif threshold_method == "tailored otsu":
             self.method = OtsuTwoPeakHistogrammAnalysis()
-        elif method == "otsu":
+        elif threshold_method == "otsu":
             self.method = StandardOtsu()
         else:
             raise ValueError(f"Method {method} not supported for dynamic thresholding")
 
         # Identify the provided thresholds as fixed bounds, allowing to modify the
         # threshold values.
-        self._threshold_lower_bound = self._threshold_low.copy()
-        self._threshold_upper_bound = self._threshold_high.copy()
+        self._threshold_lower_bound = self._threshold_lower.copy()
+        self._threshold_upper_bound = self._threshold_upper.copy()
 
         # Only allow for lower threshold values. Deactive upper thresholding
-        self._threshold_high = None
+        self._threshold_upper = None
 
     def __call__(
         self, img: np.ndarray, mask: Optional[np.ndarray] = None
@@ -519,6 +532,6 @@ class DynamicThresholdModel(darsia.StaticThresholdModel):
                         self._threshold_upper_bound[label_count],
                     )
 
-                    # Set self.threshold_low is used in self.__call__ as effective lower
+                    # Set self.threshold_lower is used in self.__call__ as effective lower
                     # threshold value
-                    self._threshold_low[label_count] = bounded_threshold_value
+                    self._threshold_lower[label_count] = bounded_threshold_value
