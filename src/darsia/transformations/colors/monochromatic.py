@@ -62,6 +62,8 @@ class MonochromaticReduction:
             return img[:, :, 1]
         elif self.color == "blue":
             return img[:, :, 2]
+        elif self.color == "red+green":
+            return img[:, :, 0] + img[:, :, 1]
         elif self.color == "negative-key":
             cmy = 1 - img
             key = np.min(cmy, axis=2)
