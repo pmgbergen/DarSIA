@@ -53,33 +53,7 @@ class NewConcentrationAnalysis:
         self.monochromatic_reduction = darsia.MonochromaticReduction(**kwargs)
 
         # Initialize the threshold values.
-        self.apply_dynamic_threshold: bool = kwargs.pop("threshold dynamic", False)
-        if self.apply_dynamic_threshold:
-            # Determine threshold strategy and lower and upper bounds.
-            threshold_method = kwargs.get(
-                "threshold method", "first local min enhanced"
-            )
-            threshold_value_lower_bound: Union[float, list] = kwargs.pop(
-                "threshold value min", 0.0
-            )
-            threshold_value_upper_bound: Optional[Union[float, list]] = kwargs.pop(
-                "threshold value max", None
-            )
-
-            # Define final thresholding model.
-            self.model = darsia.DynamicThresholdModel(
-                threshold_method,
-                threshold_value_lower_bound,
-                threshold_value_upper_bound,
-                labels,
-            )
-
-        else:
-            threshold_value: Union[float, list] = kwargs.get("threshold value")
-            self.model = darsia.StaticThresholdModel(
-                threshold_low=threshold_value,
-                labels=labels,
-            )
+        self.model = darsia.ThresholdingModel(labels, **kwargs)
 
         # TVD parameters for pre and post smoothing
         self.apply_presmoothing = kwargs.pop("presmoothing", False)
