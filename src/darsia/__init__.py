@@ -12,10 +12,10 @@ from darsia.image.image import *
 from darsia.image.patches import *
 from darsia.image.subregions import *
 from darsia.mathematics.derivatives import *
-from darsia.mathematics.norms import *
 from darsia.mathematics.stoppingcriterion import *
 from darsia.mathematics.solvers import *
 from darsia.mathematics.regularization import *
+from darsia.measure.norms import *
 from darsia.utils.conversions import *
 from darsia.utils.resolution import *
 from darsia.utils.box import *
