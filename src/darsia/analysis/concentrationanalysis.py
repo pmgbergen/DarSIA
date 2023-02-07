@@ -486,54 +486,51 @@ class NewConcentrationAnalysis:
 
 
 class PriorPosteriorConcentrationAnalysis(NewConcentrationAnalysis):
-    # TODO Create models which allow for the combination of various. See binarydataselector.
-    # Then get rid of PriorPosteriorAnalysis.
+    """
+    Special case of the ConcentrationAnalysis performing a
+    prior-posterior analysis, i.e., allowing to review the
+    conversion performed through a prior model.
+
+    """
 
     def __init__(
         self,
         base: Union[darsia.Image, list[darsia.Image]],
         signal_reduction: darsia.SignalReduction,
-        model: darsia.Model,
+        prior_model: darsia.Model,
+        posterior_model: darsia.Model,
         upscaling: darsia.TVD,
         labels: Optional[np.ndarray] = None,
         **kwargs,
     ) -> None:
 
-        super().__init__(base, signal_reduction, model, upscaling, labels, **kwargs)
+        # Cache the posterior model
+        self.posterior_model = posterior_model
 
-        # TODO make the following to arguments?
-        self.apply_postsmoothing = kwargs.pop("postsmoothing", False)
-        if self.apply_postsmoothing:
-            self.postsmoother = darsia.TVD("postsmoothing ", **kwargs)
-
-        # Inpainting object for binary data
-        self.binary_inpaint = darsia.BinaryInpaint(**kwargs)
-
-        # Threshold for posterior analysis based on gradient moduli
-        self.apply_posterior = kwargs.pop("posterior", False)
-        if self.apply_posterior:
-            self.posterior_analysis = darsia.BinaryDataSelector(
-                prefix="posterior ", **kwargs
-            )
+        # Define the concentration analysis (note the prior_model is stored under self.model)
+        super().__init__(
+            base, signal_reduction, prior_model, upscaling, labels, **kwargs
+        )
 
     def _convert_signal(self, signal: np.ndarray, diff: np.ndarray) -> np.ndarray:
         """
         Postprocessing routine, essentially converting a continuous
         signal into physical data (binary, continuous concentration etc.)
+        Use a prior-posterior approach, allowing to review the prior choice.
 
         Args:
             signal (np.ndarray): mooth signal
-            img (np.ndarray): original difference of images, allowing
+            diff (np.ndarray): original difference of images, allowing
                 to extract new information besides the signal.
 
         Returns:
             np.ndarray: physical data
         """
         # Determine prior
-        prior = self._prior(signal)
+        prior = self.model(signal, self.mask)
 
         # Determine posterior
-        posterior = self.posterior_analysis(signal, prior, diff)
+        posterior = self.posterior_model(signal, prior, diff)
 
         if self.verbosity >= 2:
             plt.figure("Prior")
@@ -542,75 +539,6 @@ class PriorPosteriorConcentrationAnalysis(NewConcentrationAnalysis):
             plt.imshow(posterior)
 
         return posterior
-
-    def _prior(self, signal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Prior postprocessing routine, essentially converting a continuous
-        signal into a binary concentration and thereby segmentation.
-        The post processing consists of presmoothing, thresholding,
-        filling holes, local convex covering, and postsmoothing.
-        Tuning parameters for this routine have to be set in the
-        initialization routine.
-
-        Args:
-            signal (np.ndarray): upscaled signal
-
-        Returns:
-            np.ndarray: prior binary mask
-            np.ndarray: smoothed signal, used in postprocessing
-        """
-
-        # Apply data conversion model provided by the user
-        mask = self.model(signal, self.mask)
-
-        # TODO clean_mask should not be part, but strictly used for thresholding only.
-
-        clean_mask = self.clean_mask(mask)
-
-        return clean_mask
-
-    # ! ---- Utilities
-    # TODO move to darsia/utils/postprocess
-    def clean_mask(self, mask: np.ndarray) -> np.ndarray:
-        """
-        Remove small objects in binary mask, fill holes and apply postsmoothing.
-
-        Args:
-            mask (np.ndarray): binary mask
-
-        Returns:
-            np.ndarray: cleaned mask
-        """
-        # Apply inpainting
-        mask = self.binary_inpaint(mask)
-
-        # Apply postsmoothing and local thresholding
-        if self.apply_postsmoothing:
-            smooth_mask = self.postsmoother(mask)
-            thresh = 0.5
-            mask = smooth_mask > thresh
-
-        return mask
-
-    def _posterior(
-        self, signal: np.ndarray, prior: np.ndarray, img: np.ndarray
-    ) -> np.ndarray:
-        """
-        Posterior analysis of signal for segmented geometry - only consider
-        the cases in which it is meaningful.
-
-        Args:
-            signal (np.ndarray): (smoothed) signal
-            prior (np.ndarray): result of prior analysis
-            img (np.ndarray): original difference of images
-
-        Return:
-            np.ndarray: result of posterior analysis
-        """
-        if self.apply_posterior:
-            return self.posterior_analysis(signal, prior, img)
-        else:
-            return prior
 
 
 #################################################################3
