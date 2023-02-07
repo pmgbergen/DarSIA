@@ -1,8 +1,10 @@
 """
-Module containing abstract BaseModel.
+Module containing abstract Model.
 Models convert signals to data.
+
 """
 import abc
+
 import numpy as np
 
 
@@ -19,12 +21,4 @@ class Model:
         """
         Calibration routine of model.
         """
-        pass
-
-
-class BaseModel(Model):
-    def __call__(self, img: np.ndarray) -> np.ndarray:
-        return img
-
-    def calibrate(self):
         pass
