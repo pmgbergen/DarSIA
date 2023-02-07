@@ -34,6 +34,9 @@ class NewConcentrationAnalysis:
     def __init__(
         self,
         base: Union[darsia.Image, list[darsia.Image]],
+        signal_reduction: darsia.SignalReduction,
+        model: darsia.Model,
+        upscaling: Optional[darsia.TVD] = None,
         labels: Optional[np.ndarray] = None,
         **kwargs,
     ) -> None:
@@ -50,29 +53,16 @@ class NewConcentrationAnalysis:
         # TODO Move this fully outside - add to argument list.
 
         # Define mono-colored space.
-        self.monochromatic_reduction = darsia.MonochromaticReduction(**kwargs)
+        self.signal_reduction = signal_reduction
 
         # Initialize the threshold values.
-        self.model = darsia.ThresholdingModel(labels, **kwargs)
+        self.model = model
 
         # TVD parameters for pre and post smoothing
-        self.apply_presmoothing = kwargs.pop("presmoothing", False)
-        if self.apply_presmoothing:
-            self.presmoother = darsia.TVD("presmoothing ", **kwargs)
-
-        self.apply_postsmoothing = kwargs.pop("postsmoothing", False)
-        if self.apply_postsmoothing:
-            self.postsmoother = darsia.TVD("postsmoothing ", **kwargs)
-
-        # Inpainting object for binary data
-        self.binary_inpaint = darsia.BinaryInpaint(**kwargs)
-
-        # Threshold for posterior analysis based on gradient moduli
-        self.apply_posterior = kwargs.pop("posterior", False)
-        if self.apply_posterior:
-            self.posterior_analysis = darsia.BinaryDataSelector(
-                prefix="posterior ", **kwargs
-            )
+        self.apply_presmoothing = (
+            kwargs.pop("presmoothing", False) or upscaling is not None
+        )
+        self.presmoother = upscaling
 
         ########################################################################
 
