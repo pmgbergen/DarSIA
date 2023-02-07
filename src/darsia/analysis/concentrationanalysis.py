@@ -13,6 +13,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage as ndi
+import scipy.optimize as optimize
 import scipy.sparse as sps
 import skimage
 from scipy.optimize import bisect
@@ -350,7 +351,198 @@ class NewConcentrationAnalysis:
                 self.threshold_cleaning_filter, monochromatic_diff
             )
 
-    # ! ---- Main methods from BinaryConcentrationAnalysis
+    def calibrate_model(
+        self,
+        images: list[darsia.Image],
+        geometry: darsia.Geometry,
+        injection_rate: float,
+        options: dict,
+    ) -> bool:
+        """
+        Utility for calibrating the model used in the concentration analysis.
+
+        Args:
+            images (list of darsia.Image): calibration images
+            geometry (darsia.Geometry): geometry for integration
+            injection_rate (float): known injection rate in ml/hr
+            options (dict): container holding tuning information for the numerical calibration routine
+
+        Returns:
+            bool: success of the calibration study.
+
+        """
+        # Apply the same steps as in __call__ to all images.
+
+        # Prepare calibration and determine fixed data
+        images_diff = [self._subtract_background(img) for img in images]
+
+        # Extract monochromatic version and take difference wrt the baseline image
+        images_signal = [self._extract_scalar_information(diff) for diff in images_diff]
+
+        # Clean signal
+        images_clean_signal = [self._clean_signal(signal) for signal in images_signal]
+
+        # Homogenize signal (take into account possible heterogeneous effects)
+        images_homogenized_signal = [
+            self._homogenize_signal(clean_signal)
+            for clean_signal in images_clean_signal
+        ]
+
+        # Smoothen the signals
+        images_smooth_signal = [
+            self._prepare_signal(homogenized_signal)
+            for homogenized_signal in images_homogenized_signal
+        ]
+
+        # Fix the last as input for the calibration
+        input_images = images_smooth_signal
+
+        # The only step missing from __call__ is the conversion of the signal applying the provided model.
+        # This step will be used to tune the model.
+
+        # TODO use a mixin class here?
+        # Apply the calibration.
+
+        # Fetch calibration options
+        initial_guess = options.get("initial_guess")
+        tol = options.get("tol")
+        maxiter = options.get("maxiter")
+
+        # Define reference time (not important which image serves as basis)
+        SECONDS_TO_HOURS = 1.0 / 3600.0
+        ref_time = images[0].timestamp
+        relative_times = [
+            (img.timestamp - ref_time).total_seconds() * SECONDS_TO_HOURS
+            for img in images
+        ]
+
+        # Define deviation from injection rate for set model - TODO move outside
+        def _deviation(params: np.ndarray, *args) -> float:
+            """
+            Compute the deviation between anticipated and expected injection rate.
+
+            Args:
+                params (np.ndarray): model parameters
+                args: concentration analysis based arguments.
+
+            """
+
+            # Set the stage
+            self.model.update_model_parameters(params)
+            arg_input_images = args[0]
+            arg_images_diff = args[1]
+            arg_relative_times = args[2]
+
+            # For each image, compute the total concentration, based on the currently
+            # set tuning parameters, and compute the relative time.
+            M3_TO_ML = 1e6
+            total_volumes = [
+                geometry.integrate(self._convert_signal(img, diff)) * M3_TO_ML
+                for img, diff in zip(arg_input_images, arg_images_diff)
+            ]
+
+            # Determine slope in time by linear regression
+            ransac = RANSACRegressor()
+            ransac.fit(
+                np.array(arg_relative_times).reshape(-1, 1), np.array(total_volumes)
+            )
+
+            # Extract the slope and convert to
+            effective_injection_rate = ransac.estimator_.coef_[0]
+
+            # Measure deffect
+            return effective_injection_rate - injection_rate
+
+        # Attempt to use multivalued optimization, define objective function such that the root is the min.
+        def _objective(params: np.ndarray) -> float:
+            return (_deviation(params, input_images, images_diff, relative_times)) ** 2
+
+        opt_result = optimize.minimize(
+            _objective,
+            initial_guess,
+            tol=tol,
+            options={"maxiter": maxiter, "disp": True},
+        )
+        self.model.update(
+            scaling=opt_result.x[0], offset=opt_result.x[1]
+        )  # TODO model dependent.
+
+        return opt_result.success
+
+
+# Old approach using bisection only...
+#        def _scaling_vs_deviation(scaling: float) -> float:
+#            return _deviation([scaling, 0.], input_images, images_diff, relative_times)
+#
+#        st_time = time.time()
+#        # Perform bisection
+#        initial_guess = [1,10]
+#        xtol = 1e-1
+#        maxiter = 10
+#        calibrated_scaling = bisect(_scaling_vs_deviation, *initial_guess, xtol=xtol, maxiter=maxiter)
+#        print(calibrated_scaling)
+#        print("bisection", time.time() - st_time)
+#        self.model.update(scaling = calibrated_scaling)
+
+
+class PriorPosteriorConcentrationAnalysis(NewConcentrationAnalysis):
+    # TODO Create models which allow for the combination of various. See binarydataselector.
+    # Then get rid of PriorPosteriorAnalysis.
+
+    def __init__(
+        self,
+        base: Union[darsia.Image, list[darsia.Image]],
+        signal_reduction: darsia.SignalReduction,
+        model: darsia.Model,
+        upscaling: darsia.TVD,
+        labels: Optional[np.ndarray] = None,
+        **kwargs,
+    ) -> None:
+
+        super().__init__(base, signal_reduction, model, upscaling, labels, **kwargs)
+
+        # TODO make the following to arguments?
+        self.apply_postsmoothing = kwargs.pop("postsmoothing", False)
+        if self.apply_postsmoothing:
+            self.postsmoother = darsia.TVD("postsmoothing ", **kwargs)
+
+        # Inpainting object for binary data
+        self.binary_inpaint = darsia.BinaryInpaint(**kwargs)
+
+        # Threshold for posterior analysis based on gradient moduli
+        self.apply_posterior = kwargs.pop("posterior", False)
+        if self.apply_posterior:
+            self.posterior_analysis = darsia.BinaryDataSelector(
+                prefix="posterior ", **kwargs
+            )
+
+    def _convert_signal(self, signal: np.ndarray, diff: np.ndarray) -> np.ndarray:
+        """
+        Postprocessing routine, essentially converting a continuous
+        signal into physical data (binary, continuous concentration etc.)
+
+        Args:
+            signal (np.ndarray): mooth signal
+            img (np.ndarray): original difference of images, allowing
+                to extract new information besides the signal.
+
+        Returns:
+            np.ndarray: physical data
+        """
+        # Determine prior
+        prior = self._prior(signal)
+
+        # Determine posterior
+        posterior = self.posterior_analysis(signal, prior, diff)
+
+        if self.verbosity >= 2:
+            plt.figure("Prior")
+            plt.imshow(prior)
+            plt.figure("Posterior")
+            plt.imshow(posterior)
+
+        return posterior
+
     def _prior(self, signal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Prior postprocessing routine, essentially converting a continuous
@@ -361,51 +553,24 @@ class NewConcentrationAnalysis:
         initialization routine.
 
         Args:
-            signal (np.ndarray): signal
+            signal (np.ndarray): upscaled signal
 
         Returns:
             np.ndarray: prior binary mask
             np.ndarray: smoothed signal, used in postprocessing
         """
 
-        # Prepare the signal by applying presmoothing
-        smooth_signal = self.prepare_signal(signal)
-
         # Apply data conversion model provided by the user
-        mask = self.model(smooth_signal, self.mask)
+        mask = self.model(signal, self.mask)
+
+        # TODO clean_mask should not be part, but strictly used for thresholding only.
+
         clean_mask = self.clean_mask(mask)
 
-        # TODO rm? include more?
-        if self.verbosity >= 2:
-            plt.figure("Prior")
-            plt.imshow(clean_mask)
-
-        return clean_mask, smooth_signal
-
-    def prepare_signal(self, signal: np.ndarray) -> np.ndarray:
-        """
-        Apply presmoothing.
-
-        Args:
-            signal (np.ndarray): input signal
-
-        Return:
-            np.ndarray: smooth signal
-        """
-        # Apply presmoothing
-        if self.apply_presmoothing:
-            signal = self.presmoother(signal)
-
-        if self.verbosity >= 2:
-            plt.figure("TVD smoothed signal")
-            plt.imshow(signal)
-
-        return signal
+        return clean_mask
 
     # ! ---- Utilities
     # TODO move to darsia/utils/postprocess
-    # TODO what to do for continuous data?
-    # TODO This is only useful for binary data - could make this an extended threshold model
     def clean_mask(self, mask: np.ndarray) -> np.ndarray:
         """
         Remove small objects in binary mask, fill holes and apply postsmoothing.
@@ -425,17 +590,10 @@ class NewConcentrationAnalysis:
             thresh = 0.5
             mask = smooth_mask > thresh
 
-        if self.verbosity >= 2:
-            plt.figure("TVD postsmoothed mask")
-            plt.imshow(mask)
-
-            plt.show()
-
         return mask
 
-    # TODO still meaningful for continuous data?
     def _posterior(
-        self, signal: np.ndarray, mask_prior: np.ndarray, img: np.ndarray
+        self, signal: np.ndarray, prior: np.ndarray, img: np.ndarray
     ) -> np.ndarray:
         """
         Posterior analysis of signal for segmented geometry - only consider
@@ -443,16 +601,16 @@ class NewConcentrationAnalysis:
 
         Args:
             signal (np.ndarray): (smoothed) signal
-            mask_prior (np.ndarray): boolean mask marking prior regions
+            prior (np.ndarray): result of prior analysis
             img (np.ndarray): original difference of images
 
         Return:
-            np.ndarray: boolean mask of trusted regions.
+            np.ndarray: result of posterior analysis
         """
         if self.apply_posterior:
-            return self.posterior_analysis(signal, mask_prior, img)
+            return self.posterior_analysis(signal, prior, img)
         else:
-            return mask_prior
+            return prior
 
 
 #################################################################3
