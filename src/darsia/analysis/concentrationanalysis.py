@@ -77,9 +77,8 @@ class NewConcentrationAnalysis:
         # Option for defining differences of images.
         self._diff_option = kwargs.pop("diff option", "absolute")
 
-        # Define a cleaning filter.
-        if len(base) > 1:
-            self.find_cleaning_filter(base)
+        # Define a cleaning filter based on remaining images.
+        self.find_cleaning_filter(base[1:])
 
         # Mask
         self.mask: np.ndarray = np.ones(self.base.img.shape[:2], dtype=bool)
@@ -160,7 +159,7 @@ class NewConcentrationAnalysis:
         self._inspect_signal(signal)
 
         # Clean signal
-        clean_signal = np.clip(signal - self.threshold_cleaning_filter, 0, None)
+        clean_signal = self._clean_signal(signal)
 
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_clean_signal(clean_signal)
@@ -168,8 +167,11 @@ class NewConcentrationAnalysis:
         # Homogenize signal (take into account possible heterogeneous effects)
         homogenized_signal = self._homogenize_signal(clean_signal)
 
+        # Regularize/upscale signal to Darcy scale
+        smooth_signal = self._prepare_signal(homogenized_signal)
+
         # Convert from signal to concentration
-        concentration = self._convert_signal(homogenized_signal, diff)
+        concentration = self._convert_signal(smooth_signal, diff)
 
         # Invoke plot
         if self.verbosity >= 1:
@@ -242,9 +244,24 @@ class NewConcentrationAnalysis:
         Returns:
             np.ndarray: monochromatic reduction of the array
         """
-        return self.monochromatic_reduction(img)
+        return self.signal_reduction(img)
 
-    # TODO merge with postprocess?
+    def _clean_signal(self, img: np.ndarray) -> np.ndarray:
+        """
+        Apply cleaning thresholds.
+
+        Args:
+            img (np.ndarray): input image
+
+        Returns:
+            np.ndarray: cleaned image
+        """
+        return (
+            img
+            if self.threshold_cleaning_filter is None
+            else np.clip(img - self.threshold_cleaning_filter, 0, None)
+        )
+
     def _homogenize_signal(self, img: np.ndarray) -> np.ndarray:
         """
         Routine responsible for rescaling wrt segments.
@@ -260,7 +277,27 @@ class NewConcentrationAnalysis:
         """
         return img
 
-    def _convert_signal(self, signal: np.ndarray, img: np.ndarray) -> np.ndarray:
+    def _prepare_signal(self, signal: np.ndarray) -> np.ndarray:
+        """
+        Apply presmoothing.
+
+        Args:
+            signal (np.ndarray): input signal
+
+        Return:
+            np.ndarray: smooth signal
+        """
+        # Apply presmoothing
+        if self.apply_presmoothing:
+            signal = self.presmoother(signal)
+
+            if self.verbosity >= 2:
+                plt.figure("Smoothed signal")
+                plt.imshow(signal)
+
+        return signal
+
+    def _convert_signal(self, signal: np.ndarray, diff: np.ndarray) -> np.ndarray:
         """
         Postprocessing routine, essentially converting a continuous
         signal into physical data (binary, continuous concentration etc.)
@@ -268,20 +305,16 @@ class NewConcentrationAnalysis:
         Args:
             signal (np.ndarray): clean continous signal with values
                 in the range between 0 and 1.
-            img (np.ndarray): original difference of images, allowing
+            diff (np.ndarray): original difference of images, allowing
                 to extract new information besides the signal.
 
         Returns:
             np.ndarray: physical data
         """
-        # Determine prior
-        mask, smooth_signal = self._prior(signal)
+        # Obtain data from model
+        data = self.model(signal)
 
-        # Determine posterior
-        if self.apply_posterior:
-            mask = self.posterior_analysis(smooth_signal, mask, img)
-
-        return mask
+        return data
 
     # ! ---- Calibration tools for signal to concentration conversion
 
