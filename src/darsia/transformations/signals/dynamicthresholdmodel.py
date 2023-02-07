@@ -456,8 +456,12 @@ class DynamicThresholdModel(darsia.StaticThresholdModel):
 
         # Identify the provided thresholds as fixed bounds, allowing to modify the
         # threshold values.
-        self._threshold_lower_bound = self._threshold_lower.copy()
-        self._threshold_upper_bound = self._threshold_upper.copy()
+        self._threshold_lower_bound = (
+            self._threshold_lower.copy() if self._threshold_lower is not None else None
+        )
+        self._threshold_upper_bound = (
+            self._threshold_upper.copy() if self._threshold_upper is not None else None
+        )
 
         # Only allow for lower threshold values. Deactive upper thresholding
         self._threshold_upper = None
