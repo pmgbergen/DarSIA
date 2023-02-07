@@ -3,11 +3,13 @@ Module containing several utils operating on binary signals.
 """
 
 import abc
-import numpy as np
 from typing import Optional
-import darsia
-import skimage
+
 import cv2
+import numpy as np
+import skimage
+
+import darsia
 
 
 class BaseCriterion:

@@ -3,9 +3,11 @@ Organizer of various thresholding methods.
 
 """
 
-import darsia
 from typing import Optional
+
 import numpy as np
+
+import darsia
 
 
 class ThresholdingModel:

@@ -5,9 +5,11 @@ A distinction between heterogeneous and homogeneous thresholding
 is performed automatically.
 """
 
-import darsia
+from typing import Optional, Union
+
 import numpy as np
-from typing import Union, Optional
+
+import darsia
 
 
 class StaticThresholdModel(darsia.Model):
