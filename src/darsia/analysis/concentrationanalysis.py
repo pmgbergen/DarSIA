@@ -3,6 +3,7 @@ Module that contains a class which provides the capabilities to
 analyze concentrations/saturation profiles based on image comparison.
 """
 
+import abc
 import copy
 import json
 from itertools import combinations
@@ -51,7 +52,11 @@ class NewConcentrationAnalysis:
             kwargs (keyword arguments): interface to all tuning parameters
         """
         ########################################################################
-        # TODO Move this fully outside - add to argument list.
+
+        # Fix single baseline image
+        if not isinstance(base, list):
+            base = [base]
+        self.base: darsia.Image = base[0].copy()
 
         # Define mono-colored space.
         self.signal_reduction = signal_reduction
@@ -60,17 +65,8 @@ class NewConcentrationAnalysis:
         self.model = model
 
         # TVD parameters for pre and post smoothing
-        self.apply_presmoothing = (
-            kwargs.pop("presmoothing", False) or upscaling is not None
-        )
+        self.apply_presmoothing = upscaling is not None
         self.presmoother = upscaling
-
-        ########################################################################
-
-        # Fix single baseline image
-        if not isinstance(base, list):
-            base = [base]
-        self.base: darsia.Image = base[0].copy()
 
         # Cache heterogeneous distribution
         self.labels = labels
@@ -355,11 +351,12 @@ class NewConcentrationAnalysis:
         self,
         images: list[darsia.Image],
         geometry: darsia.Geometry,
-        injection_rate: float,
         options: dict,
     ) -> bool:
         """
         Utility for calibrating the model used in the concentration analysis.
+
+        NOTE: Require to combine ConcentrationAnalysis with a calibration model.
 
         Args:
             images (list of darsia.Image): calibration images
@@ -394,14 +391,8 @@ class NewConcentrationAnalysis:
             for homogenized_signal in images_homogenized_signal
         ]
 
-        # Fix the last as input for the calibration
-        input_images = images_smooth_signal
-
-        # The only step missing from __call__ is the conversion of the signal applying the provided model.
-        # This step will be used to tune the model.
-
-        # TODO use a mixin class here?
-        # Apply the calibration.
+        # NOTE: The only step missing from __call__ is the conversion of the signal applying the
+        # provided model. This step will be used to tune the model -> calibration.
 
         # Fetch calibration options
         initial_guess = options.get("initial_guess")
@@ -416,56 +407,32 @@ class NewConcentrationAnalysis:
             for img in images
         ]
 
-        # Define deviation from injection rate for set model - TODO move outside
-        def _deviation(params: np.ndarray, *args) -> float:
-            """
-            Compute the deviation between anticipated and expected injection rate.
-
-            Args:
-                params (np.ndarray): model parameters
-                args: concentration analysis based arguments.
-
-            """
-
-            # Set the stage
-            self.model.update_model_parameters(params)
-            arg_input_images = args[0]
-            arg_images_diff = args[1]
-            arg_relative_times = args[2]
-
-            # For each image, compute the total concentration, based on the currently
-            # set tuning parameters, and compute the relative time.
-            M3_TO_ML = 1e6
-            total_volumes = [
-                geometry.integrate(self._convert_signal(img, diff)) * M3_TO_ML
-                for img, diff in zip(arg_input_images, arg_images_diff)
-            ]
-
-            # Determine slope in time by linear regression
-            ransac = RANSACRegressor()
-            ransac.fit(
-                np.array(arg_relative_times).reshape(-1, 1), np.array(total_volumes)
+        # Double check an objective has been provided for calibration
+        if not hasattr(self, "define_objective_function"):
+            raise NotImplementedError(
+                "The concentration analysis is not equipped with a calibration model."
+            )
+        else:
+            calibration_objective = self.define_objective_function(
+                images_smooth_signal, images_diff, relative_times, geometry, options
             )
 
-            # Extract the slope and convert to
-            effective_injection_rate = ransac.estimator_.coef_[0]
-
-            # Measure deffect
-            return effective_injection_rate - injection_rate
-
-        # Attempt to use multivalued optimization, define objective function such that the root is the min.
-        def _objective(params: np.ndarray) -> float:
-            return (_deviation(params, input_images, images_diff, relative_times)) ** 2
-
+        # Perform optimization step
         opt_result = optimize.minimize(
-            _objective,
+            calibration_objective,
             initial_guess,
             tol=tol,
             options={"maxiter": maxiter, "disp": True},
         )
-        self.model.update(
-            scaling=opt_result.x[0], offset=opt_result.x[1]
-        )  # TODO model dependent.
+        if opt_result.success:
+            print(
+                f"Calibration successful with obtained model parameters {opt_result.x}."
+            )
+        else:
+            print("Calibration not successful.")
+
+        # Update model
+        self.model.update_model_parameters(opt_result.x)
 
         return opt_result.success
 
@@ -539,6 +506,91 @@ class PriorPosteriorConcentrationAnalysis(NewConcentrationAnalysis):
             plt.imshow(posterior)
 
         return posterior
+
+
+#################################################################3
+# Calibration Models
+#################################################################3
+class CalibrationModel:
+    @abc.abstractmethod
+    def define_objective_function(
+        self,
+        input_images: list[np.ndarray],
+        images_diff: list[np.ndarray],
+        relative_times: list[float],
+        geometry: darsia.Geometry,
+        options: dict,
+    ):
+        pass
+
+
+class InjectionRateObjectiveMixin(CalibrationModel):
+    """
+    Calibration model based on matching injection rates.
+    Has to be combined with ConcentrationAnalysis.
+
+    """
+
+    def define_objective_function(
+        self,
+        input_images: list[np.ndarray],
+        images_diff: list[np.ndarray],
+        relative_times: list[float],
+        geometry: darsia.Geometry,
+        options: dict,
+    ):
+        """
+        Define objective function such that the root is the min.
+
+        Args:
+            input_images (list of np.ndarray): input for _convert_signal
+            images_diff (list of np.ndarray): plain differences wrt background image
+            relative_times (list of float): times
+            geometry (darsia.Geometry): geometry object for integration
+            options (dict): dictionary with objective value, here the injection rate
+
+        Returns:
+            callable: objetive function
+
+        """
+
+        # Fetch the injection rate
+        injection_rate = options.get("injection_rate")
+
+        # Define the objective function
+        def objective_function(params: np.ndarray) -> float:
+            """
+            Compute the deviation between anticipated and expected injection rate.
+
+            Args:
+                params (np.ndarray): model parameters
+                args: concentration analysis based arguments.
+
+            """
+
+            # Set the stage
+            self.model.update_model_parameters(params)
+
+            # For each image, compute the total concentration, based on the currently
+            # set tuning parameters, and compute the relative time.
+            M3_TO_ML = 1e6
+            total_volumes = [
+                geometry.integrate(self._convert_signal(img, diff)) * M3_TO_ML
+                for img, diff in zip(input_images, images_diff)
+            ]
+
+            # Determine slope in time by linear regression
+            ransac = RANSACRegressor()
+            ransac.fit(np.array(relative_times).reshape(-1, 1), np.array(total_volumes))
+
+            # Extract the slope and convert to
+            effective_injection_rate = ransac.estimator_.coef_[0]
+
+            # Measure deffect
+            defect = effective_injection_rate - injection_rate
+            return defect**2
+
+        return objective_function
 
 
 #################################################################3
