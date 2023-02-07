@@ -35,8 +35,8 @@ from darsia.transformations.signals.thresholdmodel import *
 from darsia.transformations.signals.staticthresholdmodel import *
 from darsia.transformations.signals.dynamicthresholdmodel import *
 from darsia.transformations.signals.binarydataselector import *
-from darsia.transformations.colors.signalreduction import *
-from darsia.transformations.colors.monochromatic import *
+from darsia.transformations.reduction.signalreduction import *
+from darsia.transformations.reduction.monochromatic import *
 from darsia.regularization.tvd import *
 from darsia.regularization.binaryinpaint import *
 from darsia.analysis.translationanalysis import *
