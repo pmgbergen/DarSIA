@@ -30,6 +30,7 @@ from darsia.corrections.shape.drift import *
 from darsia.corrections.color.colorcorrection import *
 from darsia.corrections.color.experimentalcolorcorrection import *
 from darsia.signals.models.basemodel import *
+from darsia.signals.models.combinedmodel import *
 from darsia.signals.models.linearmodel import *
 from darsia.signals.models.thresholdmodel import *
 from darsia.signals.models.staticthresholdmodel import *
