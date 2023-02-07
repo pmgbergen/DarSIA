@@ -10,7 +10,7 @@ import numpy as np
 import darsia
 
 
-class ThresholdingModel:
+class ThresholdModel:
     def __init__(self, labels: Optional[np.ndarray] = None, **kwargs) -> None:
 
         apply_dynamic_thresholding: bool = kwargs.pop("threshold dynamic", True)
