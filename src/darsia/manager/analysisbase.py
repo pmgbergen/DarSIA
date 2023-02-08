@@ -9,6 +9,10 @@ import json
 from pathlib import Path
 from typing import Union, cast
 
+import cv2
+import numpy as np
+import skimage
+
 import darsia
 
 
@@ -57,18 +61,25 @@ class AnalysisBase:
             else None
         )
 
-        self.drift_correction = darsia.DriftCorrection(
-            base=reference_base, config=self.config["drift"]
+        self.drift_correction = (
+            darsia.DriftCorrection(base=reference_base, config=self.config["drift"])
+            if "drift" in self.config
+            else None
         )
 
         # Define color correction and provide baseline to colorchecker
-        if "baseline" not in self.config["color"]:
-            self.config["color"]["baseline"] = reference_base
-        self.color_correction = darsia.ColorCorrection(config=self.config["color"])
+        if "color" in self.config:
+            if "baseline" not in self.config["color"]:
+                self.config["color"]["baseline"] = reference_base
+            self.color_correction = darsia.ColorCorrection(config=self.config["color"])
+        else:
+            self.color_correction = None
 
         # Define curvature correction
-        self.curvature_correction = darsia.CurvatureCorrection(
-            config=self.config["curvature"]
+        self.curvature_correction = (
+            darsia.CurvatureCorrection(config=self.config["curvature"])
+            if "curvature" in self.config
+            else None
         )
 
         # Define baseline image as corrected darsia Image
@@ -85,6 +96,7 @@ class AnalysisBase:
 
         Returns:
             darsia.Image: image corrected for curvature and color.
+
         """
         return darsia.Image(
             img=path,
@@ -100,7 +112,52 @@ class AnalysisBase:
 
         Args:
             path (str or Path): path to image
+
         """
 
         # Read and process
         self.img = self._read(path)
+
+    def store(
+        self,
+        img: darsia.Image,
+        path: Path,
+        cartesian_indexing: bool = False,
+        store_jpg: bool = False,
+        suffix_jpg: str = "",
+        suffix_npy: str = "",
+    ) -> bool:
+        """Convert to correct format (use Cartesian indexing by default)
+        and store to file (both as image and numpy array).
+
+        Args:
+            img (darsia.Image): image
+            path (Path): path to file
+            cartesian_indexing (bool): flag controlling whether data is stored with matrix indexing
+            store_jpg (bool): flag controlling whether a jpg representation is stored
+            suffix_jpg (str): suffix to be added to the jpg file
+            suffix_npy (str): suffix to be added to the npy file
+
+        Returns:
+            bool: success of the routine (always True).
+
+        """
+        plain_path = path.with_suffix("")
+
+        # Store the image
+        if store_jpg:
+            cv2.imwrite(
+                str(plain_path) + suffix_jpg + ".jpg",
+                skimage.util.img_as_ubyte(img.img),
+                [int(cv2.IMWRITE_JPEG_QUALITY), 90],
+            )
+
+        # Store numpy array
+        np.save(
+            str(plain_path) + suffix_npy + ".npy",
+            darsia.matrixToCartesianIndexing(img.img)
+            if cartesian_indexing
+            else img.img,
+        )
+
+        return True
