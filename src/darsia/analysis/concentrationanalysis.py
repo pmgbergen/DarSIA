@@ -37,8 +37,8 @@ class NewConcentrationAnalysis:
         self,
         base: Union[darsia.Image, list[darsia.Image]],
         signal_reduction: darsia.SignalReduction,
+        restoration: Optional[darsia.TVD] = None,
         model: darsia.Model,
-        upscaling: Optional[darsia.TVD] = None,
         labels: Optional[np.ndarray] = None,
         **kwargs,
     ) -> None:
@@ -65,8 +65,8 @@ class NewConcentrationAnalysis:
         self.model = model
 
         # TVD parameters for pre and post smoothing
-        self.apply_presmoothing = upscaling is not None
-        self.presmoother = upscaling
+        self.apply_restoration = restoration is not None
+        self.restoration = restoration
 
         # Cache heterogeneous distribution
         self.labels = labels
@@ -276,7 +276,7 @@ class NewConcentrationAnalysis:
 
     def _prepare_signal(self, signal: np.ndarray) -> np.ndarray:
         """
-        Apply presmoothing.
+        Apply restoration.
 
         Args:
             signal (np.ndarray): input signal
@@ -284,9 +284,9 @@ class NewConcentrationAnalysis:
         Return:
             np.ndarray: smooth signal
         """
-        # Apply presmoothing
-        if self.apply_presmoothing:
-            signal = self.presmoother(signal)
+        # Apply restoration
+        if self.apply_restoration:
+            signal = self.restoration(signal)
 
             if self.verbosity >= 2:
                 plt.figure("Smoothed signal")
@@ -464,9 +464,9 @@ class PriorPosteriorConcentrationAnalysis(NewConcentrationAnalysis):
         self,
         base: Union[darsia.Image, list[darsia.Image]],
         signal_reduction: darsia.SignalReduction,
+        restoration: darsia.TVD,
         prior_model: darsia.Model,
         posterior_model: darsia.Model,
-        upscaling: darsia.TVD,
         labels: Optional[np.ndarray] = None,
         **kwargs,
     ) -> None:
@@ -476,7 +476,7 @@ class PriorPosteriorConcentrationAnalysis(NewConcentrationAnalysis):
 
         # Define the concentration analysis (note the prior_model is stored under self.model)
         super().__init__(
-            base, signal_reduction, prior_model, upscaling, labels, **kwargs
+            base, signal_reduction, restoration, prior_model, labels, **kwargs
         )
 
     def _convert_signal(self, signal: np.ndarray, diff: np.ndarray) -> np.ndarray:
@@ -508,9 +508,10 @@ class PriorPosteriorConcentrationAnalysis(NewConcentrationAnalysis):
         return posterior
 
 
-#################################################################3
+###################################################################
 # Calibration Models
-#################################################################3
+# TODO add other models as direct comparison with absolute volumes.
+###################################################################
 class CalibrationModel:
     @abc.abstractmethod
     def define_objective_function(
