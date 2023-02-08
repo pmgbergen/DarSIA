@@ -39,6 +39,7 @@ from darsia.signals.models.binarydataselector import *
 from darsia.signals.reduction.signalreduction import *
 from darsia.signals.reduction.monochromatic import *
 from darsia.regularization.tvd import *
+from darsia.regularization.resize import *
 from darsia.regularization.binaryinpaint import *
 from darsia.analysis.translationanalysis import *
 from darsia.analysis.concentrationanalysis import *
