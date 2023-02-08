@@ -38,7 +38,7 @@ class NewConcentrationAnalysis:
         base: Union[darsia.Image, list[darsia.Image]],
         signal_reduction: darsia.SignalReduction,
         restoration: Optional[darsia.TVD] = None,
-        model: darsia.Model,
+        model: darsia.Model = darsia.Identity,
         labels: Optional[np.ndarray] = None,
         **kwargs,
     ) -> None:
@@ -58,7 +58,7 @@ class NewConcentrationAnalysis:
             base = [base]
         self.base: darsia.Image = base[0].copy()
 
-        # Define mono-colored space.
+        # Define scalar space.
         self.signal_reduction = signal_reduction
 
         # Initialize the threshold values.
@@ -101,6 +101,40 @@ class NewConcentrationAnalysis:
             self.base = base.copy()
         if mask is not None:
             self.mask = mask
+
+    # ! ---- Cleaning filter methods
+
+    def find_cleaning_filter(
+        self, baseline_images: list[darsia.Image], reset: bool = False
+    ) -> None:
+        """
+        Determine natural noise by studying a series of baseline images.
+        The resulting cleaning filter will be used prior to the conversion
+        of signal to concentration. The cleaning filter should be understood
+        as thresholding mask.
+
+        Args:
+            baseline_images (list of darsia.Image): series of baseline_images.
+            reset (bool): flag whether the cleaning filter shall be reset.
+        """
+        # Initialize cleaning filter
+        self.threshold_cleaning_filter = np.zeros(self.base.img.shape[:2], dtype=float)
+
+        # Combine the results of a series of images
+        for img in baseline_images:
+
+            probe_img = img.copy()
+
+            # Take (unsigned) difference
+            diff = self._subtract_background(probe_img)
+
+            # Extract scalar version
+            monochromatic_diff = self._extract_scalar_information(diff)
+
+            # Consider elementwise max
+            self.threshold_cleaning_filter = np.maximum(
+                self.threshold_cleaning_filter, monochromatic_diff
+            )
 
     def read_cleaning_filter_from_file(self, path: Union[str, Path]) -> None:
         """
@@ -233,7 +267,7 @@ class NewConcentrationAnalysis:
 
     def _extract_scalar_information(self, img: np.ndarray) -> np.ndarray:
         """
-        Make a mono-colored image from potentially multi-colored image.
+        Make a scalar image from potentially multi-colored image.
 
         Args:
             img (np.ndarray): image
@@ -314,38 +348,6 @@ class NewConcentrationAnalysis:
         return data
 
     # ! ---- Calibration tools for signal to concentration conversion
-
-    def find_cleaning_filter(
-        self, baseline_images: list[darsia.Image], reset: bool = False
-    ) -> None:
-        """
-        Determine natural noise by studying a series of baseline images.
-        The resulting cleaning filter will be used prior to the conversion
-        of signal to concentration. The cleaning filter should be understood
-        as thresholding mask.
-
-        Args:
-            baseline_images (list of darsia.Image): series of baseline_images.
-            reset (bool): flag whether the cleaning filter shall be reset.
-        """
-        # Initialize cleaning filter
-        self.threshold_cleaning_filter = np.zeros(self.base.img.shape[:2], dtype=float)
-
-        # Combine the results of a series of images
-        for img in baseline_images:
-
-            probe_img = img.copy()
-
-            # Take (unsigned) difference
-            diff = self._subtract_background(probe_img)
-
-            # Extract mono-colored version
-            monochromatic_diff = self._extract_scalar_information(diff)
-
-            # Consider elementwise max
-            self.threshold_cleaning_filter = np.maximum(
-                self.threshold_cleaning_filter, monochromatic_diff
-            )
 
     def calibrate_model(
         self,
@@ -625,7 +627,7 @@ class ConcentrationAnalysis:
                 for the analysis; a tailored routine can also be provided.
             kwargs (keyword arguments): interface to all tuning parameters
         """
-        # Define mono-colored space
+        # Define scalar space
         self.color: Union[str, Callable] = (
             color.lower() if isinstance(color, str) else color
         )
