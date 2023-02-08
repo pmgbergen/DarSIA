@@ -23,6 +23,7 @@ class Resize:
         fx: Optional[float] = None,
         fy: Optional[float] = None,
         interpolation: Optional[str] = None,
+        dtype=None,
     ) -> None:
         """
         Args:
@@ -32,12 +33,14 @@ class Resize:
             fy (float, optional): resize factor in y-dimension.
             interpolation (str, optional): interpolation method, default: None, invoking
                 the default option in cv2.resize.
+            dtype: conversion dtype before resizing; noting happens if None
 
         """
         # Cache parameters
         self.dsize = dsize
         self.fx = fx
         self.fy = fy
+        self.dtype = dtype
 
         # Convert to CV2 format
         if interpolation is None:
@@ -64,16 +67,20 @@ class Resize:
             np.ndarray: resized image
 
         """
+        # Convert data type
+        img = img if self.dtype is None else img.astype(self.dtype)
+
+        # Apply resizing
         if self.interpolation is None:
             return cv2.resize(
-                img.astype(np.float32),
+                img,
                 dsize=self.dsize,
                 fx=self.fx,
                 fy=self.fy,
             )
         else:
             return cv2.resize(
-                img.astype(np.float32),
+                img,
                 dsize=self.dsize,
                 fx=self.fx,
                 fy=self.fy,
