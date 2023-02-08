@@ -25,9 +25,9 @@ class TVD:
         pre_global_resize = kwargs.pop(key + "resize", 1.0)
         self.resize_x = kwargs.pop(key + "resize x", pre_global_resize)
         self.resize_y = kwargs.pop(key + "resize y", pre_global_resize)
-        self.weight = kwargs.pop(key + "weight", 1.0)
-        self.eps = kwargs.pop(key + "eps", 1e-5)
-        self.max_num_iter = kwargs.pop(key + "max_num_iter", 1000)
+        self.weight = kwargs.pop(key + "weight", 0.1)
+        self.eps = kwargs.pop(key + "eps", 2e-4)
+        self.max_num_iter = kwargs.pop(key + "max_num_iter", 200)
         self.method = kwargs.pop(key + "method", "chambolle")
 
     def __call__(self, img: np.ndarray) -> np.ndarray:
