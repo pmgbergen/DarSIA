@@ -11,19 +11,36 @@ import darsia
 
 
 class ThresholdModel:
-    def __init__(self, labels: Optional[np.ndarray] = None, **kwargs) -> None:
+    """
+    Manager of available thresholding models.
 
-        apply_dynamic_thresholding: bool = kwargs.pop("threshold dynamic", True)
+    Example:
+    options = {
+        "example threshold dynamic": False,
+        "example threshold value": 0.2,
+    }
+    static_threshold_model = darsia.ThresholdModel(key = "example ", **options)
+    mask = static_threshold_model(img)
+
+    """
+
+    def __init__(
+        self, labels: Optional[np.ndarray] = None, key: str = "", **kwargs
+    ) -> None:
+
+        apply_dynamic_thresholding: bool = kwargs.get(key + "threshold dynamic", True)
 
         if apply_dynamic_thresholding:
 
             # Determine threshold strategy and lower and upper bounds.
-            threshold_method = kwargs.get("threshold method", "tailored global min")
-            threshold_value_lower_bound: Union[float, list] = kwargs.pop(
-                "threshold value min", 0.0
+            threshold_method = kwargs.get(
+                key + "threshold method", "tailored global min"
             )
-            threshold_value_upper_bound: Optional[Union[float, list]] = kwargs.pop(
-                "threshold value max", None
+            threshold_value_lower_bound: Union[float, list] = kwargs.get(
+                key + "threshold value min", 0.0
+            )
+            threshold_value_upper_bound: Optional[Union[float, list]] = kwargs.get(
+                key + "threshold value max", None
             )
 
             # Define final thresholding model.
@@ -32,13 +49,14 @@ class ThresholdModel:
                 threshold_value_lower_bound,
                 threshold_value_upper_bound,
                 labels,
+                key,
                 **kwargs,
             )
 
         else:
 
             # Determine specs
-            threshold_value: Union[float, list] = kwargs.get("threshold value")
+            threshold_value: Union[float, list] = kwargs.get(key + "threshold value")
 
             # Create thresholding model
             self.model = darsia.StaticThresholdModel(

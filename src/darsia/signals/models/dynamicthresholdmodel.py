@@ -414,29 +414,32 @@ class DynamicThresholdModel(darsia.StaticThresholdModel):
         threshold_lower: Optional[Union[float, list[float]]] = None,
         threshold_upper: Optional[Union[float, list[float]]] = None,
         labels: Optional[np.ndarray] = None,
+        key: str = "",
         **kwargs,
     ) -> None:
         """
         Constructor of DynamicThresholdModel.
 
         Args:
+            method (str): method name
             threshold_lower (float or list of float): lower threshold value boundary
             threshold_upper (float or list of float): upper threshold value boundary
             labels (array): labeled domain
+            key (str): prefix for options
         """
         # Determine threshold strategy and lower and upper bounds.
         threshold_method = (
-            kwargs.get("threshold method", "tailored global min")
+            kwargs.get(key + "threshold method", "tailored global min")
             if method is None
             else method
         )
         threshold_value_lower_bound: Union[float, list] = (
-            kwargs.pop("threshold value min", 0.0)
+            kwargs.get(key + "threshold value min", 0.0)
             if threshold_lower is None
             else threshold_lower
         )
         threshold_value_upper_bound: Optional[Union[float, list]] = (
-            kwargs.pop("threshold value max", None)
+            kwargs.get(key + "threshold value max", None)
             if threshold_upper is None
             else threshold_upper
         )

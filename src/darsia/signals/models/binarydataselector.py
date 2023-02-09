@@ -81,7 +81,7 @@ class GradientCriterion(BaseCriterion):
     """
 
     def __init__(
-        self, threshold: Optional[float] = None, prefix: str = "", **kwargs
+        self, threshold: Optional[float] = None, key: str = "", **kwargs
     ) -> None:
         self.threshold = threshold
 
@@ -116,7 +116,7 @@ class BinaryDataSelector:
     """
 
     def __init__(
-        self, criterion: Optional[BaseCriterion] = None, prefix: str = "", **kwargs
+        self, criterion: Optional[BaseCriterion] = None, key: str = "", **kwargs
     ) -> None:
         """
         Constructor, initializing criteria. Possibly from keyword arguments.
@@ -130,8 +130,8 @@ class BinaryDataSelector:
         if criterion is not None:
             self.criterion = criterion
         else:
-            criterion_key: str = kwargs.pop(prefix + "criterion")
-            threshold = kwargs.pop(prefix + "threshold")
+            criterion_key: str = kwargs.get(key + "criterion")
+            threshold = kwargs.get(key + "threshold")
 
             if criterion_key == "value":
                 self.criterion = ValueCriterion(threshold)
@@ -146,7 +146,7 @@ class BinaryDataSelector:
                 value_criterion = ValueCriterion(threshold[0])
 
                 # Value of extra color
-                color: Union[str, Callable] = kwargs.pop(prefix + "extra color")
+                color: Union[str, Callable] = kwargs.get(key + "extra color")
                 transformation = darsia.MonochromaticReduction(color=color)
                 extra_color_criterion = TransformedValueCriterion(
                     transformation,
