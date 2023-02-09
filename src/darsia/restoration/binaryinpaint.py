@@ -2,47 +2,121 @@
 Module containing class with inpainting workflow for binary signals.
 """
 
+from typing import Optional
+
 import numpy as np
 import skimage
 
 
-class BinaryInpaint:
-    def __init__(self, **kwargs) -> None:
+class BinaryRemoveSmallObjects:
+    """
+    Wrapper for removing small objects in binary images with skimage.
+
+    """
+
+    def __init__(self, min_size: Optional[int] = None, key: str = "", **kwargs) -> None:
         """
-        Constructor.
+        Args:
+            min_size (int): min size of objects which will not be removed.
+            key (str): prefix
+            kwargs (keyword arguments)
 
-        Read parameters from keyword arguments.
         """
-        self.min_size: int = kwargs.pop("min area size", 1)
-
-        # Parameters to fill holes
-        self.area_threshold: int = kwargs.pop("max hole size", 0)
-
-        # Parameters for local convex cover
-        self.cover_patch_size: int = kwargs.pop("local convex cover patch size", 1)
+        self.min_size = (
+            kwargs.pop(key + "remove small objects size", 1)
+            if min_size is None
+            else min_size
+        )
 
     def __call__(self, img: np.ndarray) -> np.ndarray:
         """
-        Binary inpainting routine.
+        Remove small objects.
 
         Args:
             img (np.ndarray): boolean input image
 
         Returns:
             np.ndarray: boolean inpainted image
-        """
 
-        # Remove small objects
+        """
         if self.min_size > 1:
             img = skimage.morphology.remove_small_objects(img, min_size=self.min_size)
+        return img
 
-        # Fill holes
+
+class BinaryFillHoles:
+    """
+    Wrapper for filing holes in binary images with skimage.
+
+    """
+
+    def __init__(
+        self, area_threshold: Optional[int] = None, key: str = "", **kwargs
+    ) -> None:
+        """
+        Args:
+            area_threshold (int): max size of holes which will be filled.
+            key (str): prefix
+            kwargs (keyword arguments)
+
+        """
+        self.area_threshold = (
+            kwargs.pop(key + "fill holes size", 0)
+            if area_threshold is None
+            else area_threshold
+        )
+
+    def __call__(self, img: np.ndarray) -> np.ndarray:
+        """
+        Fill holes.
+
+        Args:
+            img (np.ndarray): boolean input image
+
+        Returns:
+            np.ndarray: boolean inpainted image
+
+        """
         if self.area_threshold > 0:
             img = skimage.morphology.remove_small_holes(
                 img, area_threshold=self.area_threshold
             )
+        return img
 
-        # Loop through patches and fill up
+
+class BinaryLocalConvexCover:
+    """
+    Local convex cover using local convex hulls with skimage.
+
+    """
+
+    def __init__(
+        self, cover_patch_size: Optional[int] = None, key: str = "", **kwargs
+    ) -> None:
+        """
+        Args:
+            cover_patch_size (int): size of local patches
+            key (str): prefix
+            kwargs (keyword arguments)
+
+        """
+        self.cover_patch_size = (
+            kwargs.pop(key + "local convex cover size", 0)
+            if cover_patch_size is None
+            else cover_patch_size
+        )
+
+    def __call__(self, img: np.ndarray) -> np.ndarray:
+        """
+        Fill holes.
+
+        Args:
+            img (np.ndarray): boolean input image
+
+        Returns:
+            np.ndarray: boolean inpainted image
+
+        """
         if self.cover_patch_size > 1:
             covered_img = np.zeros(img.shape[:2], dtype=bool)
             size = self.cover_patch_size
