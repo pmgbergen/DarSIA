@@ -422,7 +422,12 @@ class ContourEvolutionAnalysis:
             for unit in path:
                 path_pos = np.vstack((path_pos, unit.position))
             path_length = path_pos.shape[0]
-            plt.plot(path_pos[:, 0], path_pos[:, 1], color=cmap(i / (num_paths - 1)), linewidth = path_length / max_path_length * 2)
+            plt.plot(
+                path_pos[:, 0],
+                path_pos[:, 1],
+                color=cmap(i / (num_paths - 1)),
+                linewidth=path_length / max_path_length * 2,
+            )
 
         plt.savefig("paths.svg", format="svg", dpi=1000)
 
