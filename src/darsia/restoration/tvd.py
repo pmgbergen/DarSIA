@@ -22,10 +22,10 @@ class TVD:
             key (str): Prefix for kwargs arguments.
 
         """
-        self.weight = kwargs.pop(key + "weight", 0.1)
-        self.eps = kwargs.pop(key + "eps", 2e-4)
-        self.max_num_iter = kwargs.pop(key + "max_num_iter", 200)
-        self.method = kwargs.pop(key + "method", "chambolle")
+        self.method = kwargs.pop(key + "smoothing method", "chambolle")
+        self.weight = kwargs.pop(key + "smoothing weight", 0.1)
+        self.eps = kwargs.pop(key + "smoothing eps", 2e-4)
+        self.max_num_iter = kwargs.pop(key + "smoothing max_num_iter", 200)
 
     def __call__(self, img: np.ndarray) -> np.ndarray:
         """
