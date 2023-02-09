@@ -42,7 +42,7 @@ class ThresholdModel:
 
             # Create thresholding model
             self.model = darsia.StaticThresholdModel(
-                threshold_low=threshold_value,
+                threshold_lower=threshold_value,
                 labels=labels,
             )
 
