@@ -15,6 +15,17 @@ class Resize:
     """
     Object for resizing 2d arrays.
 
+    Example:
+
+    import darsia
+    options = {
+        "example resize x": 0.2,
+        "example resize y": 0.5,
+        "example interpolation": "inter_nearest",
+    }
+    resizer = darsia.Resize(key = "example ", **options)
+    img_small = resizer(img_large)
+
     """
 
     def __init__(
@@ -24,6 +35,8 @@ class Resize:
         fy: Optional[float] = None,
         interpolation: Optional[str] = None,
         dtype=None,
+        key: str = "",
+        **kwargs,
     ) -> None:
         """
         Args:
@@ -36,24 +49,36 @@ class Resize:
             dtype: conversion dtype before resizing; noting happens if None
 
         """
+
         # Cache parameters
-        self.dsize = dsize
-        self.fx = fx
-        self.fy = fy
-        self.dtype = dtype
+        self.dsize = kwargs.pop(key + "resize dsize", None) if dsize is None else dsize
+        general_f = kwargs.pop(key + "resize", None)
+        self.fx = kwargs.pop(key + "resize x", general_f) if fx is None else fx
+        self.fy = kwargs.pop(key + "resize y", general_f) if fy is None else fy
+        self.dtype = kwargs.pop(key + "resize dtype", None) if dtype is None else dtype
+
+        # Safety checks - double check resize options
+        if self.dsize is None:
+            self.fx = 1 if self.fx is None else self.fx
+            self.fy = 1 if self.fy is None else self.fy
 
         # Convert to CV2 format
-        if interpolation is None:
+        interpolation_pre = (
+            kwargs.pop(key + "resize interpolation", None)
+            if interpolation is None
+            else None
+        )
+        if interpolation_pre is None:
             self.interpolation = None
-        elif interpolation == "inter_area":
+        elif interpolation_pre == "inter_area":
             self.interpolation = cv2.INTER_AREA
-        elif interpolation == "inter_linear":
+        elif interpolation_pre == "inter_linear":
             self.interpolation = cv2.INTER_LINEAR
-        elif interpolation == "inter_nearest":
+        elif interpolation_pre == "inter_nearest":
             self.interpolation = cv2.INTER_NEAREST
         else:
             raise NotImplementedError(
-                f"Interpolation option {interpolation} is not implemented."
+                f"Interpolation option {interpolation_pre} is not implemented."
             )
 
     def __call__(self, img: np.ndarray) -> np.ndarray:
