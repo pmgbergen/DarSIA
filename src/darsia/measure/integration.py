@@ -39,17 +39,17 @@ class Geometry:
         self.Nz = Nz
 
         # Define width, height and depth of each voxel
-        self.voxel_width = kwargs.pop("voxel_width", None)
+        self.voxel_width = kwargs.get("voxel_width", None)
         if self.voxel_width is None:
-            self.voxel_width = kwargs.pop("width") / Nx
+            self.voxel_width = kwargs.get("width") / Nx
 
-        self.voxel_height = kwargs.pop("voxel_height", None)
+        self.voxel_height = kwargs.get("voxel_height", None)
         if self.voxel_height is None:
-            self.voxel_height = kwargs.pop("height") / Ny
+            self.voxel_height = kwargs.get("height") / Ny
 
-        self.voxel_depth = kwargs.pop("voxel_depth", None)
+        self.voxel_depth = kwargs.get("voxel_depth", None)
         if self.voxel_depth is None:
-            self.voxel_depth = kwargs.pop("depth") / Nz
+            self.voxel_depth = kwargs.get("depth") / Nz
 
         # Determine effective pixel and voxel measures
         self.voxel_area = np.multiply(self.voxel_width, self.voxel_height)
@@ -97,7 +97,7 @@ class PorousGeometry(Geometry):
     def __init__(self, shape: np.ndarray, **kwargs) -> None:
 
         super().__init__(shape, **kwargs)
-        self.porosity = kwargs.pop("porosity")
+        self.porosity = kwargs.get("porosity")
 
         # Determine effective pixel and voxel measures
         self.voxel_area = np.multiply(self.voxel_area, self.porosity)

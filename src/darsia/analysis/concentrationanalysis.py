@@ -74,7 +74,7 @@ class NewConcentrationAnalysis:
         self.labels = labels
 
         # Option for defining differences of images.
-        self._diff_option = kwargs.pop("diff option", "absolute")
+        self._diff_option = kwargs.get("diff option", "absolute")
 
         # Define a cleaning filter based on remaining images.
         self.find_cleaning_filter(base[1:])
@@ -84,7 +84,7 @@ class NewConcentrationAnalysis:
 
         # Fetch verbosity. With increasing number, more intermediate results
         # are displayed. Useful for parameter tuning.
-        self.verbosity: int = kwargs.pop("verbosity", 0)
+        self.verbosity: int = kwargs.get("verbosity", 0)
 
     def update(
         self,

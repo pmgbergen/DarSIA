@@ -51,11 +51,11 @@ class Resize:
         """
 
         # Cache parameters
-        self.dsize = kwargs.pop(key + "resize dsize", None) if dsize is None else dsize
-        general_f = kwargs.pop(key + "resize", None)
-        self.fx = kwargs.pop(key + "resize x", general_f) if fx is None else fx
-        self.fy = kwargs.pop(key + "resize y", general_f) if fy is None else fy
-        self.dtype = kwargs.pop(key + "resize dtype", None) if dtype is None else dtype
+        self.dsize = kwargs.get(key + "resize dsize", None) if dsize is None else dsize
+        general_f = kwargs.get(key + "resize", None)
+        self.fx = kwargs.get(key + "resize x", general_f) if fx is None else fx
+        self.fy = kwargs.get(key + "resize y", general_f) if fy is None else fy
+        self.dtype = kwargs.get(key + "resize dtype", None) if dtype is None else dtype
 
         # Safety checks - double check resize options
         if self.dsize is None:
@@ -64,7 +64,7 @@ class Resize:
 
         # Convert to CV2 format
         interpolation_pre = (
-            kwargs.pop(key + "resize interpolation", None)
+            kwargs.get(key + "resize interpolation", None)
             if interpolation is None
             else None
         )

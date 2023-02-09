@@ -120,11 +120,11 @@ def extract_quadrilateral_ROI(img_src: np.ndarray, **kwargs) -> np.ndarray:
 
     # Determine original and target size
     height, width = img_src.shape[:2]
-    target_width = kwargs.pop("width", width)
-    target_height = kwargs.pop("height", height)
+    target_width = kwargs.get("width", width)
+    target_height = kwargs.get("height", height)
 
     # Fetch corner points in the provided image
-    pts_src = kwargs.pop("pts_src")
+    pts_src = kwargs.get("pts_src")
     if isinstance(pts_src, list):
         pts_src = np.array(pts_src)
 
@@ -153,7 +153,7 @@ def extract_quadrilateral_ROI(img_src: np.ndarray, **kwargs) -> np.ndarray:
             ]
         )
     else:
-        pts_dst = kwargs.pop("pts_dst")
+        pts_dst = kwargs.get("pts_dst")
         if isinstance(pts_dst, list):
             pts_dst = np.array(pts_dst)
 

@@ -12,13 +12,13 @@ import darsia
 
 class MonochromaticReduction(darsia.SignalReduction):
     def __init__(self, **kwargs) -> None:
-        self.color = kwargs.pop("color", "gray")
+        self.color = kwargs.get("color", "gray")
 
         if self.color in ["hsv-after"]:
-            self.hue_lower_bound = kwargs.pop("hue lower bound", 0.0)
-            self.hue_upper_bound = kwargs.pop("hue upper bound", 360.0)
-            self.saturation_lower_bound = kwargs.pop("saturation lower bound", 0.0)
-            self.saturation_upper_bound = kwargs.pop("saturation upper bound", 1.0)
+            self.hue_lower_bound = kwargs.get("hue lower bound", 0.0)
+            self.hue_upper_bound = kwargs.get("hue upper bound", 360.0)
+            self.saturation_lower_bound = kwargs.get("saturation lower bound", 0.0)
+            self.saturation_upper_bound = kwargs.get("saturation upper bound", 1.0)
 
     def __call__(self, img: np.ndarray) -> np.ndarray:
         """

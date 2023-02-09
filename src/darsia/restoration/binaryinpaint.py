@@ -23,7 +23,7 @@ class BinaryRemoveSmallObjects:
 
         """
         self.min_size = (
-            kwargs.pop(key + "remove small objects size", 1)
+            kwargs.get(key + "remove small objects size", 1)
             if min_size is None
             else min_size
         )
@@ -61,7 +61,7 @@ class BinaryFillHoles:
 
         """
         self.area_threshold = (
-            kwargs.pop(key + "fill holes size", 0)
+            kwargs.get(key + "fill holes size", 0)
             if area_threshold is None
             else area_threshold
         )
@@ -101,7 +101,7 @@ class BinaryLocalConvexCover:
 
         """
         self.cover_patch_size = (
-            kwargs.pop(key + "local convex cover size", 0)
+            kwargs.get(key + "local convex cover size", 0)
             if cover_patch_size is None
             else cover_patch_size
         )
