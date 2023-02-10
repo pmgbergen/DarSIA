@@ -34,7 +34,7 @@ class TracerAnalysis(ABC, darsia.ConcentrationAnalysisBase):
         self.tracer_analysis = self.define_tracer_analysis()
 
         # Safety check
-        if not isinstance(self.tracer_analysis, darsia.NewConcentrationAnalysis):
+        if not isinstance(self.tracer_analysis, darsia.ConcentrationAnalysis):
             raise ValueError("tracer_analysis has wrong type.")
 
         # Setup standard data including the cleaning filter
@@ -117,7 +117,7 @@ class SegmentedTracerAnalysis(ABC, darsia.ConcentrationAnalysisBase):
         )
 
     @abstractmethod
-    def define_tracer_analysis(self) -> darsia.SegmentedConcentrationAnalysis:
+    def define_tracer_analysis(self) -> darsia.ConcentrationAnalysis:
         """
         The main purpose of this routine is to define self.tracer_analysis,
         which lies at the heart of this class. It is supposed to determine tracers

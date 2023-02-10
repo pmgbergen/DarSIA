@@ -35,6 +35,7 @@ class CO2Analysis(ABC, darsia.ConcentrationAnalysisBase):
             baseline (str, Path or list of such): see darsia.GeneralAnalysis.
             config_source (str or Path): see darsia.GeneralAnalysis.
             update_setup (bool): see darsia.GeneralAnalysis.
+
         """
         # Call constructor of TracerAnalysis
         super().__init__(baseline, config, update_setup)
@@ -77,28 +78,20 @@ class CO2Analysis(ABC, darsia.ConcentrationAnalysisBase):
         )
 
     @abstractmethod
-    def define_co2_analysis(self) -> darsia.BinaryConcentrationAnalysis:
+    def define_co2_analysis(self) -> darsia.ConcentrationAnalysis:
         """
         Empty method which should define self.co2_analysis of type
-        darsia.BinaryConcentrationAnalysis.
+        darsia.ConcentrationAnalysis.
 
-        Example:
-        self.co2_analysis = darsia.BinaryConcentrationAnalysis(
-            self.base, color="red", **self.config["co2"]
-        )
         """
         pass
 
     @abstractmethod
-    def define_co2_gas_analysis(self) -> darsia.BinaryConcentrationAnalysis:
+    def define_co2_gas_analysis(self) -> darsia.ConcentrationAnalysis:
         """
         Empty method which should define self.co2_gas_analysis of type
-        darsia.BinaryConcentrationAnalysis.
+        darsia.ConcentrationAnalysis.
 
-        Example:
-        self.mobile_co2_analysis = darsia.BinaryConcentrationAnalysis(
-            self.base, color="blue", **self.config["mobile_co2"]
-        )
         """
         pass
 
