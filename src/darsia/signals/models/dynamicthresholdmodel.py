@@ -277,7 +277,7 @@ class TwoPeakHistogrammAnalysis(HistogrammBasedThresholding):
                 if peaks_significant:
                     new_threshold = np.min(
                         active_signal_values
-                    ) + global_min_index / self._bins * (
+                    ) + threshold_index / self._bins * (
                         np.max(active_signal_values) - np.min(active_signal_values)
                     )
 
@@ -433,12 +433,14 @@ class DynamicThresholdModel(darsia.StaticThresholdModel):
             if method is None
             else method
         )
-        threshold_value_lower_bound: Union[float, list] = (
+
+        threshold_lower = (
             kwargs.get(key + "threshold value min", 0.0)
             if threshold_lower is None
             else threshold_lower
         )
-        threshold_value_upper_bound: Optional[Union[float, list]] = (
+
+        threshold_upper = (
             kwargs.get(key + "threshold value max", None)
             if threshold_upper is None
             else threshold_upper
