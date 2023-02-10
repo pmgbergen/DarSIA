@@ -25,7 +25,7 @@ from sklearn.linear_model import RANSACRegressor
 import darsia
 
 
-class NewConcentrationAnalysis:
+class ConcentrationAnalysis:
     """
     Class providing the capabilities to determine concentration/saturation
     profiles based on image comparison, and tuning of concentration-intensity
