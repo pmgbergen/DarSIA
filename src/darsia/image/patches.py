@@ -146,7 +146,7 @@ class Patches:
         self.global_centers_cartesian = np.array(
             [
                 [
-                    self.base.origo
+                    self.base.origin
                     + np.array(
                         [
                             (i + 0.5) * patch_width_metric,
@@ -164,7 +164,7 @@ class Patches:
         self.global_centers_cartesian_matrix = np.array(
             [
                 [
-                    self.base.origo
+                    self.base.origin
                     + np.array(
                         [
                             (i + 0.5) * patch_width_metric,
@@ -225,7 +225,7 @@ class Patches:
                             ],
                         ]
                     )
-                    + self.base.origo[np.newaxis, :]
+                    + self.base.origin[np.newaxis, :]
                     for j in range(self.num_patches_y)
                 ]
                 for i in range(self.num_patches_x)
@@ -484,7 +484,7 @@ class Patches:
         # Define resulting darsia image
         da_assembled_img = da.Image(
             img=assembled_img,
-            origo=self.base.origo,
+            origin=self.base.origin,
             width=self.base.width,
             height=self.base.height,
             color_space=self.base.colorspace,
@@ -575,7 +575,7 @@ class Patches:
         # Define resulting darsia image
         da_assembled_img = da.Image(
             img=assembled_img,
-            origo=self.base.origo,
+            origin=self.base.origin,
             width=self.base.width,
             height=self.base.height,
             color_space=self.base.colorspace,

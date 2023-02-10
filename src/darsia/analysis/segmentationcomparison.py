@@ -9,6 +9,7 @@ as well as methods for comparing them and visualizing the result.
 from __future__ import annotations
 
 from typing import Optional, Union
+from warnings import warn
 
 import cv2
 import matplotlib.patches as mpatches
@@ -45,7 +46,7 @@ class SegmentationComparison:
 
     """
 
-    def __init__(self, number_of_segmented_images: int, **kwargs) -> None:
+    def __init__(self, number_of_segmented_images: int = 2, **kwargs) -> None:
         """
         Constructor of compare segmentations class.
 
@@ -270,6 +271,146 @@ class SegmentationComparison:
 
         return return_image
 
+    def compare_segmentations_binary_array(
+        self, *segmentations: tuple[np.ndarray, ...], **kwargs
+    ) -> np.ndarray:
+        """
+        Compares segmentations and returns an an array
+        with pixels that containing an array of 1s and 0s depending on
+        which segmentations are present there. At the current state it
+        does not distinguish between the different kind of components,
+
+        Args:
+            *segmentations (tuple[np.ndarray, ...]): The segmentations to be compared.
+            **kwargs: Optional keyword arguments.
+                roi (Union[tuple, np.ndarray]): roi where the segmentations should be
+                    compared, default is the maximal roi that fits in all segmentations.
+                    Should be provided in pixel coordinates using matrix indexing, either
+                    as a tuple of slices, or an array of corner points.
+                components (tuple[int, ...]): The components that should be recognized in
+                    the segmentations, default is [1,2].
+
+        """
+        # NOTE: At the moment both components are counted as the same.
+
+        # Checks whether roi is provided and if it is as a tuple (of slices)
+        # or an array of corner points
+        if "roi" in kwargs:
+            roi_input = kwargs["roi"]
+            if isinstance(roi_input, tuple):
+                roi: tuple = roi_input
+            elif isinstance(roi_input, np.ndarray):
+                roi = da.bounding_box(roi_input)
+            elif isinstance(roi_input, list):
+                roi = da.bounding_box(np.array(roi_input))
+            else:
+                raise Exception(
+                    f"{type(roi_input)} is not a valid type for roi. Please provide it as"
+                    " a tuple of slices, or an array or list of corner points"
+                )
+            return_image: np.ndarray = np.zeros(
+                (roi[0].stop - roi[0].start, roi[1].stop - roi[1].start)
+                + (len(segmentations),),
+                dtype=np.uint8,
+            )
+
+        # If roi is not provided the largest roi that fits all segmentations are chosen.
+        else:
+            if all([isinstance(seg, np.ndarray) for seg in segmentations]):
+                rows = min([seg.shape[0] for seg in segmentations])
+                cols = min([seg.shape[1] for seg in segmentations])
+            elif all([isinstance(seg, da.Image) for seg in segmentations]):
+                rows = min([seg.img.shape[0] for seg in segmentations])
+                cols = min([seg.img.shape[1] for seg in segmentations])
+            roi = (slice(0, rows), slice(0, cols))
+            return_image = np.zeros(
+                (rows, cols) + (len(segmentations),), dtype=np.uint8
+            )
+
+        # Determine whether segmentations are arrays of darsia images.
+        # They should all be the same.
+        if all([isinstance(seg, np.ndarray) for seg in segmentations]):
+            segmentation_arrays: tuple[np.ndarray, ...] = segmentations
+        elif all([isinstance(seg, da.Image) for seg in segmentations]):
+            segmentation_arrays = tuple([seg.img for seg in segmentations])
+        else:
+            raise Exception(
+                "Segmentation types are not allowed. They should"
+                "all be the same, and either arrays, or darsia images."
+            )
+
+        # Extract components
+        components = kwargs.pop("components", [1, 2])
+
+        # Go through segmentations and enter 1 in correct position at the
+        # pixels where they are present
+        for k in range(len(segmentations)):
+            k_arr = np.zeros((len(segmentations)), dtype=np.uint8)
+            k_arr[k] = 1
+            return_image[
+                np.logical_or(
+                    segmentation_arrays[k][roi] == components[0],
+                    segmentation_arrays[k][roi] == components[1],
+                )
+            ] += k_arr
+
+        return return_image
+
+    def get_combinations(
+        self, *segmentation_numbers: tuple[int, ...], num_segmentations: int = 5
+    ) -> list[list[int]]:
+        """
+        Returns a list of all possible combinations of segmentations.
+
+        Args:
+            num_segmentations (int, optional): Number of segmentations. Defaults to 5.
+            *segmentation_numbers (tuple[int, ...]): The segmentation numbers that
+                should be included in the combinations. Defaults to ().
+
+        Returns:
+            list[list[int]]: List of all possible combinations of segmentations.
+        """
+
+        # Create an empty list of all possible combinations of segmentations
+        combinations: list[list[int]] = []
+
+        # Create the base of a full combination
+        base: list = np.ones(num_segmentations, dtype=np.ubyte).tolist()
+
+        # Create a list of the segmentations that should be included in the combinations
+        segs: list[int] = [
+            i for i in range(num_segmentations) if i not in segmentation_numbers
+        ]
+
+        # Create a recursive function that loops through all possible combinations
+        def loop_rec_bool(n, max=True, tmp=None):
+            if n >= 1:
+                if max:
+                    for i in [0, 1]:
+                        tmp = base.copy()
+                        tmp[segs[n]] = i
+                        loop_rec_bool(n - 1, False, tmp)
+                else:
+                    for i in [0, 1]:
+                        tmp[segs[n]] = i
+                        loop_rec_bool(n - 1, False, tmp)
+            elif n == 0:
+                if max:
+                    for i in [0, 1]:
+                        tmp = base.copy()
+                        tmp[segs[n]] = i
+                        combinations.append(tmp.copy())
+                else:
+                    for i in [0, 1]:
+                        tmp[segs[n]] = i
+                        combinations.append(tmp.copy())
+            else:
+                combinations.append(base)
+
+        # Loop through all possible combinations
+        loop_rec_bool(len(segs) - 1)
+        return combinations
+
     def plot(
         self,
         image: np.ndarray,
@@ -449,6 +590,7 @@ class SegmentationComparison:
         figure_name: str = "Comparison",
         opacity: float = 0.6,
         legend_anchor: tuple[float, float] = (1.0, 1.0),
+        custom_legend: Optional[list[mpatches.Patch]] = None,
         custom_legend_text: Optional[list[str]] = None,
     ) -> None:
         """
@@ -461,6 +603,8 @@ class SegmentationComparison:
             opacity (float): Tha opacity value for the comparison image.
             legend_anchor (tuple): tuple of coordinates (x,y) in euclidean style that
                 determines legend anchor.
+            custom_legend (Optional[list[mpatches.Patch]]): in case it is desirable to create
+                a custom legend.
             custom_legend_text (Optional[list[str]]): in case it is desirable
                 to customize legend.
         """
@@ -487,8 +631,10 @@ class SegmentationComparison:
         plt.figure(figure_name)
         plt.imshow(base_image)
         plt.imshow(processed_comparison_image)
-        if custom_legend_text is None:
+        if (custom_legend_text is None) and (custom_legend is None):
             patches = self._get_legend_patches(unique_colors=unique_colors)
+        elif custom_legend is not None:
+            patches = custom_legend
         else:
             patches = self._get_legend_patches(
                 unique_colors=unique_colors, custom_legend_text=custom_legend_text
@@ -498,31 +644,77 @@ class SegmentationComparison:
         )
         plt.show()
 
-    def color_fractions(self, comparison_image: np.ndarray) -> dict:
+    def color_fractions(
+        self, comparison_image: np.ndarray, **kwargs
+    ) -> tuple[list[float], np.ndarray[int], float, np.ndarray]:
         """
         Returns color fractions.
 
         Arguments:
             comparison_image (np.ndarray): Comparison of segmentations
+            **kwargs:
+                colors (np.ndarray): array of color values in the comparison image
+                width (float): width of the physical image object
+                height (float): height of the physical image object
+                depth_map (np.ndarray): depth map for the image
+                depth_measurements (tuple[np.ndarray]): Depth measurements for the
+                    physical object.
 
         Returns:
             (dict): Dictionary relating each color to the fraction of
                 the number of pixels that the color occupies and the
                 total number of occupied pixels in the image.
         """
-        unique_colors, counts = self._get_unique_colors(
-            comparison_image, return_counts=True
+        # Create empty list for color fractions
+        fractions: list = []
+
+        # Get unique colors
+        colors: np.ndarray = kwargs.pop(
+            "colors", self._get_unique_colors(comparison_image)
         )
 
-        total_color_pixels = np.sum(counts)
-
-        fractions: dict = {}
-        for i, c in enumerate(unique_colors):
-            fractions[self._get_key(c, self.color_dictionary)] = (
-                counts[i] / total_color_pixels
+        # Get depth map
+        if "depth_map" in kwargs:
+            depth_map: np.ndarray = kwargs["depth_map"]
+        elif "depth_measurements" in kwargs:
+            # create darsia copy of comparison image
+            width = kwargs.pop("width", 1)
+            height = kwargs.pop("height", 1)
+            comparison_image_da = da.Image(
+                comparison_image, width=width, height=height, color_space="RGB"
             )
+            # Compute depth map
+            depth_map = da.compute_depth_map(
+                comparison_image_da, kwargs["depth_measurements"]
+            )
+        else:
+            warn(
+                "No depth map provided. Color fractions"
+                " will be calculated without depth information."
+            )
+            depth_map = np.ones(comparison_image.shape[:2])
 
-        return fractions
+        # Check if depth map and comparison image have the same shape
+        assert depth_map.shape == comparison_image.shape[:2]
+
+        # Get total number of pixels weighted by depth
+        total_image = np.zeros(comparison_image.shape[:2])
+        total_image[np.any(comparison_image != [0, 0, 0], axis=2)] = 1
+        total_colored = np.sum(depth_map * total_image)
+
+        # get weighted number of pixels for each color
+        for c in colors:
+            # Get only the pixels of color c
+            only_c = np.zeros(comparison_image.shape[:2])
+            only_c[np.all(comparison_image == c, axis=2)] = 1
+
+            # weight the pixels by depth and sum
+            weighted_colors = np.sum(only_c * depth_map)
+
+            # Append to fractions
+            fractions.append(weighted_colors / total_colored)
+
+        return fractions, colors, total_colored, depth_map
 
     def _get_key(self, val, dictionary: dict):
         """
