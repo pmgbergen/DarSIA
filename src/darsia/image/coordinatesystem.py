@@ -27,7 +27,7 @@ class CoordinateSystem:
 
         # Determine the coordinate, corresponding to the origin pixel (0,0), i.e.,
         # the top left corner.
-        self._coordinate_of_origin_pixel: np.ndarray = img.origo + np.array(
+        self._coordinate_of_origin_pixel: np.ndarray = img.origin + np.array(
             [0, img.height]
         )
 

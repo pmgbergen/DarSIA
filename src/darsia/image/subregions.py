@@ -51,7 +51,7 @@ def extractROI(
         warnings.warn("Provided coordinates lie outside image.")
 
     # Define metadata (all quantities in metric units)
-    origo = [np.min(pts[:, 0]), np.min(pts[:, 1])]
+    origin = [np.min(pts[:, 0]), np.min(pts[:, 1])]
     width = np.max(pts[:, 0]) - np.min(pts[:, 0])
     height = np.max(pts[:, 1]) - np.min(pts[:, 1])
 
@@ -60,7 +60,7 @@ def extractROI(
         return (
             darsia.Image(
                 img=img.img[roi],
-                origo=origo,
+                origin=origin,
                 width=width,
                 height=height,
                 color_space=img.colorspace,
@@ -70,7 +70,7 @@ def extractROI(
     else:
         return darsia.Image(
             img=img.img[roi],
-            origo=origo,
+            origin=origin,
             width=width,
             height=height,
             color_space=img.colorspace,
@@ -87,9 +87,9 @@ def extractROIPixel(img: darsia.Image, roi: tuple) -> darsia.Image:
     Returns:
         darsia.Image: image object restricted to the ROI.
     """
-    # Define metadata; Note that img.origo uses a Cartesian indexing, while the
+    # Define metadata; Note that img.origin uses a Cartesian indexing, while the
     # roi uses the conventional matrix indexing
-    origo = img.origo + np.array(
+    origin = img.origin + np.array(
         [roi[1].start * img.dx, (img.num_pixels_height - roi[0].stop) * img.dy]
     )
     height = (roi[0].stop - roi[0].start) * img.dy
@@ -98,7 +98,7 @@ def extractROIPixel(img: darsia.Image, roi: tuple) -> darsia.Image:
     # Construct and return image corresponding to ROI
     return darsia.Image(
         img=img.img[roi],
-        origo=origo,
+        origin=origin,
         width=width,
         height=height,
         color_space=img.colorspace,
