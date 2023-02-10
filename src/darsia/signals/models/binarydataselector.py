@@ -3,7 +3,7 @@ Module containing several utils operating on binary signals.
 """
 
 import abc
-from typing import Optional, Union, Callable
+from typing import Callable, Optional, Union
 
 import cv2
 import numpy as np
