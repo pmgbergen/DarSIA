@@ -189,7 +189,7 @@ class ConcentrationAnalysis:
         signal = self._extract_scalar_information(diff)
 
         # Provide possibility for tuning and inspection of intermediate results
-        self._inspect_signal(signal)
+        self._inspect_scalar_signal(signal)
 
         # Clean signal
         clean_signal = self._clean_signal(signal)
@@ -221,9 +221,11 @@ class ConcentrationAnalysis:
         Args:
             img (np.ndarray): image
         """
-        pass
+        if self.verbosity >= 2:
+            plt.figure("Difference")
+            plt.imshow(img)
 
-    def _inspect_signal(self, img: np.ndarray) -> None:
+    def _inspect_scalar_signal(self, img: np.ndarray) -> None:
         """
         Routine allowing for plotting of intermediate results.
         Requires overwrite.
@@ -231,7 +233,9 @@ class ConcentrationAnalysis:
         Args:
             img (np.ndarray): image
         """
-        pass
+        if self.verbosity >= 2:
+            plt.figure("Scalar signal")
+            plt.imshow(img)
 
     def _inspect_clean_signal(self, img: np.ndarray) -> None:
         """
@@ -241,7 +245,9 @@ class ConcentrationAnalysis:
         Args:
             img (np.ndarray): image
         """
-        pass
+        if self.verbosity >= 2:
+            plt.figure("Clean signal")
+            plt.imshow(img)
 
     # ! ---- Pre- and post-processing methods
     def _subtract_background(self, img: darsia.Image) -> darsia.Image:
@@ -323,10 +329,6 @@ class ConcentrationAnalysis:
         # Apply restoration
         if self.apply_restoration:
             signal = self.restoration(signal)
-
-            if self.verbosity >= 2:
-                plt.figure("Smoothed signal")
-                plt.imshow(signal)
 
         return signal
 
