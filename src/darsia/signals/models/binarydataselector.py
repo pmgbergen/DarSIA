@@ -3,7 +3,7 @@ Module containing several utils operating on binary signals.
 """
 
 import abc
-from typing import Optional
+from typing import Optional, Union, Callable
 
 import cv2
 import numpy as np
@@ -74,7 +74,7 @@ class TransformedValueCriterion(BaseCriterion):
         return np.max(self.processed_signal[roi]) > self.threshold
 
 
-class GradientCriterion(BaseCriterion):
+class GradientModulusCriterion(BaseCriterion):
     """
     Criterion checking for absolute maximal value of the
     gradient modulus of the signal.

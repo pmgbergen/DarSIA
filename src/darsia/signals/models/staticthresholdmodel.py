@@ -124,7 +124,8 @@ class StaticThresholdModel(darsia.Model):
 
     def _call_heterogeneous(self, img: np.ndarray) -> np.ndarray:
         """
-        Convert signal to binary data through thresholding, tailored for the heterogeneous case.
+        Convert signal to binary data through thresholding, tailored for the
+        heterogeneous case.
 
         Args:
             img (np.ndarray): signal

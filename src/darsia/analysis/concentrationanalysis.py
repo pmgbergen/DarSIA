@@ -5,21 +5,15 @@ analyze concentrations/saturation profiles based on image comparison.
 
 import abc
 import copy
-import json
-from itertools import combinations
 from pathlib import Path
-from typing import Callable, Optional, Union, cast
+from typing import Optional, Union
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.ndimage as ndi
 import scipy.optimize as optimize
-import scipy.sparse as sps
 import skimage
 from scipy import interpolate
-from scipy.optimize import bisect
-from scipy.signal import find_peaks
 from sklearn.linear_model import RANSACRegressor
 
 import darsia
@@ -368,7 +362,8 @@ class ConcentrationAnalysis:
             images (list of darsia.Image): calibration images
             geometry (darsia.Geometry): geometry for integration
             injection_rate (float): known injection rate in ml/hr
-            options (dict): container holding tuning information for the numerical calibration routine
+            options (dict): container holding tuning information for the numerical
+                calibration routine
 
         Returns:
             bool: success of the calibration study.
@@ -397,8 +392,9 @@ class ConcentrationAnalysis:
             for homogenized_signal in images_homogenized_signal
         ]
 
-        # NOTE: The only step missing from __call__ is the conversion of the signal applying the
-        # provided model. This step will be used to tune the model -> calibration.
+        # NOTE: The only step missing from __call__ is the conversion of the signal
+        # applying the provided model. This step will be used to tune the
+        # model -> calibration.
 
         # Fetch calibration options
         initial_guess = options.get("initial_guess")
@@ -451,7 +447,12 @@ class ConcentrationAnalysis:
 #        initial_guess = [1,10]
 #        xtol = 1e-1
 #        maxiter = 10
-#        calibrated_scaling = bisect(_scaling_vs_deviation, *initial_guess, xtol=xtol, maxiter=maxiter)
+#        calibrated_scaling = bisect(
+#            _scaling_vs_deviation,
+#            *initial_guess,
+#            xtol=xtol,
+#            maxiter=maxiter
+#        )
 #        print(calibrated_scaling)
 #        print("bisection", time.time() - st_time)
 #        self.model.update(scaling = calibrated_scaling)

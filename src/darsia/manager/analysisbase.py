@@ -133,7 +133,8 @@ class AnalysisBase:
         Args:
             img (darsia.Image): image
             path (Path): path to file
-            cartesian_indexing (bool): flag controlling whether data is stored with matrix indexing
+            cartesian_indexing (bool): flag controlling whether data is stored with
+                matrix indexing
             store_jpg (bool): flag controlling whether a jpg representation is stored
             suffix_jpg (str): suffix to be added to the jpg file
             suffix_npy (str): suffix to be added to the npy file

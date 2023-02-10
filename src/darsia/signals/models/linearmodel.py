@@ -44,8 +44,10 @@ class LinearModel(darsia.Model):
         Args:
             scaling (float, optional): slope
             offset (float, optional): offset
-            threshold_lower (float, optional): lower threshold parameter, effective after scaling
-            threshold_upper (float, optional): upper threshold parameter, effective after scaling
+            threshold_lower (float, optional): lower threshold parameter,
+                effective after scaling
+            threshold_upper (float, optional): upper threshold parameter,
+                effective after scaling
 
         """
 
@@ -90,4 +92,4 @@ class LinearModel(darsia.Model):
         )
 
     def calibrate(self, images: list[np.ndarray], option: str = "rate", **kwargs):
-        pass # TODO
+        pass  # TODO
