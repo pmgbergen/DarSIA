@@ -457,7 +457,7 @@ class ConcentrationAnalysis:
 #        self.model.update(scaling = calibrated_scaling)
 
 
-class PriorPosteriorConcentrationAnalysis(NewConcentrationAnalysis):
+class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
     """
     Special case of the ConcentrationAnalysis performing a
     prior-posterior analysis, i.e., allowing to review the
