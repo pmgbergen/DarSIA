@@ -13,12 +13,17 @@ import darsia
 class MonochromaticReduction(darsia.SignalReduction):
     def __init__(self, **kwargs) -> None:
         self.color = kwargs.get("color", "gray")
+        self.verbosity = kwargs.get("verbosity", 0)
 
-        if self.color in ["hsv-after"]:
+        if self.color in ["hsv"]:
             self.hue_lower_bound = kwargs.get("hue lower bound", 0.0)
             self.hue_upper_bound = kwargs.get("hue upper bound", 360.0)
             self.saturation_lower_bound = kwargs.get("saturation lower bound", 0.0)
             self.saturation_upper_bound = kwargs.get("saturation upper bound", 1.0)
+
+        # FIXME and remove
+        if self.color == "hsv-after":
+            raise ValueError("Rename to 'hsv'.")
 
     def __call__(self, img: np.ndarray) -> np.ndarray:
         """
@@ -30,13 +35,13 @@ class MonochromaticReduction(darsia.SignalReduction):
         Returns:
             np.ndarray: monochromatic reduction of the array
         """
-        if self.color == "hsv-after":
+        if self.color == "hsv":
 
             hsv = skimage.color.rgb2hsv(img)
 
             # Plot Hue and Saturation channels, allowing to manually tune
             # the concentration analysis.
-            if self.verbosity >= 3:
+            if self.verbosity >= 2:
                 plt.figure("hue")
                 plt.imshow(hsv[:, :, 0])
                 plt.figure("saturation")
