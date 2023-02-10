@@ -46,7 +46,7 @@ class Patches:
 
         # Instance of base image and relative_overlap
         self.base = img
-        self.relative_overlap = kwargs.pop("rel_overlap", 0.0)
+        self.relative_overlap = kwargs.get("rel_overlap", 0.0)
 
         # Define number of patches in each direction
         if len(args) == 1:

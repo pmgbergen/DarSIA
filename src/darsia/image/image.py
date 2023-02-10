@@ -97,7 +97,7 @@ class Image:
             self.metadata = metadata
 
         elif "metadata_source" in kwargs:
-            metadata_source = kwargs.pop("metadata_source")
+            metadata_source = kwargs.get("metadata_source")
             with open(str(Path(metadata_source)), "r") as openfile:
                 self.metadata = json.load(openfile)
 
@@ -120,8 +120,8 @@ class Image:
             self.metadata["origin"] = np.array(kwargs.pop("origin", np.array([0, 0])))
 
             no_colorspace_given = "color_space" not in kwargs
-            self.metadata["color_space"] = kwargs.pop("color_space", "BGR")
-            self.metadata["timestamp"] = kwargs.pop("timestamp", None)
+            self.metadata["color_space"] = kwargs.get("color_space", "BGR")
+            self.metadata["timestamp"] = kwargs.get("timestamp", None)
 
         # Fetch image
         if isinstance(img, np.ndarray):
