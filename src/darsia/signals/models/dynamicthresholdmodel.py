@@ -469,6 +469,9 @@ class DynamicThresholdModel(darsia.StaticThresholdModel):
         # Only allow for lower threshold values. Deactive upper thresholding
         self._threshold_upper = None
 
+        # Verbosity
+        self.verbosity = kwargs.get("verbosity", 0)
+
     def __call__(
         self, img: np.ndarray, mask: Optional[np.ndarray] = None
     ) -> np.ndarray:
@@ -548,3 +551,7 @@ class DynamicThresholdModel(darsia.StaticThresholdModel):
                     # Set self.threshold_lower is used in self.__call__ as effective lower
                     # threshold value
                     self._threshold_lower[label_count] = bounded_threshold_value
+
+        # Display the threshold value
+        if self.verbosity >= 1:
+            print(f"Threshold value: {self._threshold_lower}")
