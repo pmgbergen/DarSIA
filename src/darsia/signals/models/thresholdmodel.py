@@ -28,7 +28,7 @@ class ThresholdModel:
         self, labels: Optional[np.ndarray] = None, key: str = "", **kwargs
     ) -> None:
 
-        apply_dynamic_thresholding: bool = kwargs.get(key + "threshold dynamic", True)
+        apply_dynamic_thresholding: bool = kwargs.get(key + "threshold dynamic", False)
 
         if apply_dynamic_thresholding:
 
