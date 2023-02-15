@@ -97,7 +97,7 @@ class Image:
             self.metadata = metadata
 
         elif "metadata_source" in kwargs:
-            metadata_source = kwargs.pop("metadata_source")
+            metadata_source = kwargs.get("metadata_source")
             with open(str(Path(metadata_source)), "r") as openfile:
                 self.metadata = json.load(openfile)
 
@@ -120,8 +120,8 @@ class Image:
             self.metadata["origin"] = np.array(kwargs.pop("origin", np.array([0, 0])))
 
             no_colorspace_given = "color_space" not in kwargs
-            self.metadata["color_space"] = kwargs.pop("color_space", "BGR")
-            self.metadata["timestamp"] = kwargs.pop("timestamp", None)
+            self.metadata["color_space"] = kwargs.get("color_space", "BGR")
+            self.metadata["timestamp"] = kwargs.get("timestamp", None)
 
         # Fetch image
         if isinstance(img, np.ndarray):
@@ -228,7 +228,24 @@ class Image:
     def original_dtype(self) -> np.dtype:
         return self.metadata["original_dtype"]
 
-    # ! ---- Corresponding setter functions for metadata
+    # ! ---- Operation overloaders
+    def __sub__(self, other: da.Image):
+        """Subtract two images.
+
+        Arguments:
+            other (Image): image to subtract from self
+
+        Returns:
+            Image: difference image
+        """
+        if self.img.shape != other.img.shape:
+            warn("Images have different shapes. Resizing second argument to match.")
+            return da.Image(
+                self.img - cv2.resize(other.img, tuple(reversed(self.img.shape[:2]))),
+                copy.copy(self.metadata),
+            )
+        else:
+            return da.Image(self.img - other.img, copy.copy(self.metadata))
 
     def write(
         self,

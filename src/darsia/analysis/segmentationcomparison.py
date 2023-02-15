@@ -9,7 +9,6 @@ as well as methods for comparing them and visualizing the result.
 from __future__ import annotations
 
 from typing import Optional, Union
-from warnings import warn
 
 import cv2
 import matplotlib.patches as mpatches
@@ -395,9 +394,17 @@ class SegmentationComparison:
                         tmp[segs[n]] = i
                         loop_rec_bool(n - 1, False, tmp)
             elif n == 0:
-                for i in [0, 1]:
-                    tmp[segs[n]] = i
-                    combinations.append(tmp.copy())
+                if max:
+                    for i in [0, 1]:
+                        tmp = base.copy()
+                        tmp[segs[n]] = i
+                        combinations.append(tmp.copy())
+                else:
+                    for i in [0, 1]:
+                        tmp[segs[n]] = i
+                        combinations.append(tmp.copy())
+            else:
+                combinations.append(base)
 
         # Loop through all possible combinations
         loop_rec_bool(len(segs) - 1)
@@ -637,20 +644,18 @@ class SegmentationComparison:
         plt.show()
 
     def color_fractions(
-        self, comparison_image: np.ndarray, **kwargs
-    ) -> tuple[list[float], np.ndarray[int], float, np.ndarray]:
+        self,
+        comparison_image: np.ndarray,
+        colors: Optional[np.ndarray] = None,
+        depth_map: Optional[np.ndarray] = None,
+    ) -> tuple[list[float], list[float], np.ndarray[int], float, np.ndarray]:
         """
         Returns color fractions.
 
         Arguments:
             comparison_image (np.ndarray): Comparison of segmentations
-            **kwargs:
-                colors (np.ndarray): array of color values in the comparison image
-                width (float): width of the physical image object
-                height (float): height of the physical image object
-                depth_map (np.ndarray): depth map for the image
-                depth_measurements (tuple[np.ndarray]): Depth measurements for the
-                    physical object.
+            colors (np.ndarray): array of color values in the comparison image
+            depth_map (np.ndarray, optional): depth map for the image
 
         Returns:
             (dict): Dictionary relating each color to the fraction of
@@ -661,29 +666,11 @@ class SegmentationComparison:
         fractions: list = []
 
         # Get unique colors
-        colors: np.ndarray = kwargs.pop(
-            "colors", self._get_unique_colors(comparison_image)
-        )
+        if colors is None:
+            colors = self._get_unique_colors(comparison_image)
 
         # Get depth map
-        if "depth_map" in kwargs:
-            depth_map: np.ndarray = kwargs["depth_map"]
-        elif "depth_measurements" in kwargs:
-            # create darsia copy of comparison image
-            width = kwargs.pop("width", 1)
-            height = kwargs.pop("height", 1)
-            comparison_image_da = da.Image(
-                comparison_image, width=width, height=height, color_space="RGB"
-            )
-            # Compute depth map
-            depth_map = da.compute_depth_map(
-                comparison_image_da, kwargs["depth_measurements"]
-            )
-        else:
-            warn(
-                "No depth map provided. Color fractions"
-                " will be calculated without depth information."
-            )
+        if depth_map is None:
             depth_map = np.ones(comparison_image.shape[:2])
 
         # Check if depth map and comparison image have the same shape
@@ -695,18 +682,20 @@ class SegmentationComparison:
         total_colored = np.sum(depth_map * total_image)
 
         # get weighted number of pixels for each color
+        weighted_colors = []
         for c in colors:
             # Get only the pixels of color c
             only_c = np.zeros(comparison_image.shape[:2])
             only_c[np.all(comparison_image == c, axis=2)] = 1
 
             # weight the pixels by depth and sum
-            weighted_colors = np.sum(only_c * depth_map)
+            weighted_color = np.sum(only_c * depth_map)
 
             # Append to fractions
-            fractions.append(weighted_colors / total_colored)
+            fractions.append(weighted_color / total_colored)
+            weighted_colors.append(weighted_color)
 
-        return fractions, colors, total_colored, depth_map
+        return weighted_colors, fractions, colors, total_colored, depth_map
 
     def _get_key(self, val, dictionary: dict):
         """

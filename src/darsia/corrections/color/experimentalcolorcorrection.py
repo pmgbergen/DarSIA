@@ -10,6 +10,8 @@ to double-check the results of the any of the color correction
 routines by setting verbosity to True once.
 """
 
+import copy
+import warnings
 from typing import Optional, Union, cast
 
 import colour
@@ -18,6 +20,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 from colour_checker_detection import detect_colour_checkers_segmentation
+
+import darsia
 
 
 class ClassicColorChecker:
@@ -97,6 +101,7 @@ class EOTF:
 class ExperimentalColorCorrection:
     def __init__(
         self,
+        config: Optional[dict] = None,
         roi: Optional[Union[tuple, np.ndarray]] = None,
         verbosity: bool = False,
         whitebalancing: bool = True,
@@ -105,7 +110,8 @@ class ExperimentalColorCorrection:
         Constructor of converter, setting up a priori all data needed for fast conversion.
 
         Attributes:
-            eotf: LUTs for standard electro-optical transfer function
+            config (dict, str, Path): config file for initialization of images. Can be
+                used instead of roi, but roi is always prefered if it is present.
             roi (tuple of slices, np.ndarray, or None): ROI containing a colour checker,
                 provided either as intervals, corner points, or nothing.
             verbosity (bool): displays corrected color checker on top of the reference one if
@@ -113,6 +119,15 @@ class ExperimentalColorCorrection:
             whitebalancing (bool): apply white balancing based on the third bottom left swatch
                 if True, default is True
         """
+
+        # Define config
+        if config is not None:
+            self.config = copy.deepcopy(config)
+        else:
+            self.config = {}
+
+        # Check whether colorchecker active
+        self.active = self.config.get("active", True)
 
         # Define look up tables approximating the standard electro-optical
         # transfer function for sRGB.
@@ -122,7 +137,21 @@ class ExperimentalColorCorrection:
         self.colorchecker = ClassicColorChecker()
 
         # Define ROI
-        self.roi = roi
+        self.roi: Optional[Union[tuple, np.ndarray]] = None
+        if "roi" in self.config:
+            self.roi = np.array(self.config["roi"])
+        elif isinstance(roi, np.ndarray):
+            self.roi = roi
+            self.config["roi"] = self.roi.tolist()
+        elif isinstance(roi, list):
+            self.roi = np.array(roi)
+            self.config["roi"] = roi
+        elif isinstance(roi, tuple):
+            warnings.warn(
+                "An array of corner points is preferred.\
+                The tuple will not be stored in the config file."
+            )
+            self.roi = roi
 
         # Store flags
         self.verbosity = verbosity
@@ -144,6 +173,9 @@ class ExperimentalColorCorrection:
             np.ndarray: corrected image with uint8 values in (linear) RGB color space,
                 with colors matched based on the color checker within the roi
         """
+        if not self.active:
+            return skimage.img_as_float(image).astype(np.float32)
+
         # Make sure that the image is in uint8 format
         if image.dtype != np.uint8:
             raise ValueError("Provide image in uint8 format.")
@@ -276,7 +308,17 @@ class ExperimentalColorCorrection:
             return_img: np.ndarray = img
         elif isinstance(self.roi, tuple):
             return_img = img[self.roi]
-        else:
-            raise ValueError("ROI not supported.")
+        elif isinstance(self.roi, np.ndarray):
+            assert self.roi.shape == (4, 2)
+            # Use width and height (in cm - irrelevant) as provided by the manufacturer Xrite.
+            return_img = darsia.extract_quadrilateral_ROI(
+                img, pts_src=self.roi, width=27.3, height=17.8
+            )
+
+        # For debugging puposes provide the possibility to plot the extracted image.
+        if self.verbosity:
+            plt.figure()
+            plt.imshow(return_img)
+            plt.show()
 
         return return_img
