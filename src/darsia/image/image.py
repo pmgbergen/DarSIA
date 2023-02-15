@@ -19,7 +19,7 @@ import numpy as np
 import skimage
 from PIL import Image as PIL_Image
 
-import darsia as da
+import darsia
 
 
 class Image:
@@ -53,10 +53,11 @@ class Image:
         self,
         img: Union[np.ndarray, str, Path],
         metadata: Optional[dict] = None,
-        drift_correction: Optional[da.DriftCorrection] = None,
-        translation_correction: Optional[da.TranslationCorrection] = None,
-        color_correction: Optional[da.ColorCorrection] = None,
-        curvature_correction: Optional[da.CurvatureCorrection] = None,
+        drift_correction: Optional[darsia.DriftCorrection] = None,
+        translation_correction: Optional[darsia.TranslationCorrection] = None,
+        deformation_correction: Optional[darsia.DeformationCorrection] = None,
+        color_correction: Optional[darsia.ColorCorrection] = None,
+        curvature_correction: Optional[darsia.CurvatureCorrection] = None,
         **kwargs,
     ) -> None:
         """Constructor of Image object.
@@ -71,6 +72,8 @@ class Image:
             metadata (dict, Optional): metadata dictionary, default is None.
             drift_correction (darsia.DriftCorrection, Optional): Drift correction object.
             translation_correction (darsia.TranslationCorrection, Optional): Translation
+                correction object.
+            deformation_correction (darsia.DeformationCorrection, Optional): Deformation
                 correction object.
             color_correction (darsia.ColorCorrection, Optional): Color correction object.
                 Default is none, but should be included if the image is to be color
@@ -166,6 +169,7 @@ class Image:
         if drift_correction is not None:
             self.img = drift_correction(self.img)
 
+        # Move after shape correction objects.
         if color_correction is not None:
             self.img = color_correction(self.img)
 
@@ -180,6 +184,11 @@ class Image:
             assert (
                 self.metadata["height"] == curvature_correction.config["crop"]["height"]
             )
+
+        # FIXME: Deformation correction is defined on the corrected baseline...
+        # Would make more sense to move this up.
+        if deformation_correction is not None:
+            self.img = deformation_correction(self.img)
 
         # Determine numbers of cells in each dimension and cell size
         self.num_pixels_height: int = self.img.shape[:2][0]
@@ -196,7 +205,7 @@ class Image:
         }
 
         # Establish a coordinate system based on the metadata
-        self.coordinatesystem: da.CoordinateSystem = da.CoordinateSystem(self)
+        self.coordinatesystem: darsia.CoordinateSystem = darsia.CoordinateSystem(self)
 
     # ! ---- Fast-access getter functions for metadata
 
@@ -229,7 +238,7 @@ class Image:
         return self.metadata["original_dtype"]
 
     # ! ---- Operation overloaders
-    def __sub__(self, other: da.Image):
+    def __sub__(self, other: darsia.Image):
         """Subtract two images.
 
         Arguments:
@@ -240,12 +249,12 @@ class Image:
         """
         if self.img.shape != other.img.shape:
             warn("Images have different shapes. Resizing second argument to match.")
-            return da.Image(
+            return darsia.Image(
                 self.img - cv2.resize(other.img, tuple(reversed(self.img.shape[:2]))),
                 copy.copy(self.metadata),
             )
         else:
-            return da.Image(self.img - other.img, copy.copy(self.metadata))
+            return darsia.Image(self.img - other.img, copy.copy(self.metadata))
 
     def write(
         self,
@@ -260,7 +269,7 @@ class Image:
             path (str): path to image, including image name and file format
         """
         # cv2 requires BGR format
-        write_image = cast(da.Image, self.toBGR(return_image=True)).img
+        write_image = cast(darsia.Image, self.toBGR(return_image=True)).img
 
         # Write image, using the conventional matrix indexing
         if self.original_dtype == np.uint8:
@@ -443,15 +452,15 @@ class Image:
         # Update parameters and coordinate system
         self.dx *= 1 / cx
         self.dy *= 1 / cy
-        self.coordinatesystem = da.CoordinateSystem(self)
+        self.coordinatesystem = darsia.CoordinateSystem(self)
 
-    def copy(self) -> da.Image:
+    def copy(self) -> darsia.Image:
         """
         Returns a copy of the image object.
         """
         return Image(np.copy(self.img), copy.copy(self.metadata))
 
-    def toBGR(self, return_image: bool = False) -> Optional[da.Image]:
+    def toBGR(self, return_image: bool = False) -> Optional[darsia.Image]:
         """
         Transforms image to BGR if it is in RGB
 
@@ -475,7 +484,7 @@ class Image:
         else:
             return None
 
-    def toRGB(self, return_image: bool = False) -> Optional[da.Image]:
+    def toRGB(self, return_image: bool = False) -> Optional[darsia.Image]:
         """
         Transforms image to RGB if it is in BGR.
 
@@ -500,7 +509,7 @@ class Image:
         else:
             return None
 
-    def toGray(self, return_image: bool = False) -> Optional[da.Image]:
+    def toGray(self, return_image: bool = False) -> Optional[darsia.Image]:
         """
         Returns a greyscale version of the darsia image.
 
@@ -540,7 +549,7 @@ class Image:
             self.metadata["color_space"] = "GRAY"
             return None
 
-    def toRed(self, return_image: bool = False) -> Optional[da.Image]:
+    def toRed(self, return_image: bool = False) -> Optional[darsia.Image]:
         """
         Returns a red channel version of the darsia image.
 
@@ -579,7 +588,7 @@ class Image:
             self.metadata["color_space"] = "RED"
             return None
 
-    def toBlue(self, return_image: bool = False) -> Optional[da.Image]:
+    def toBlue(self, return_image: bool = False) -> Optional[darsia.Image]:
         """
         Returns a blue channel version of the darsia image.
 
@@ -618,7 +627,7 @@ class Image:
             self.metadata["color_space"] = "BLUE"
             return None
 
-    def toGreen(self, return_image: bool = False) -> Optional[da.Image]:
+    def toGreen(self, return_image: bool = False) -> Optional[darsia.Image]:
         """
         Returns a green channel version of the darsia image.
 
@@ -657,7 +666,7 @@ class Image:
             self.metadata["color_space"] = "GREEN"
             return None
 
-    def toHue(self, return_image: bool = False) -> Optional[da.Image]:
+    def toHue(self, return_image: bool = False) -> Optional[darsia.Image]:
         """
         Returns a hue channel version of the darsia image.
 
@@ -681,7 +690,7 @@ class Image:
             self.metadata["color_space"] = "HUE"
             return None
 
-    def toSaturation(self, return_image: bool = False) -> Optional[da.Image]:
+    def toSaturation(self, return_image: bool = False) -> Optional[darsia.Image]:
         """
         Returns a saturation channel version of the darsia image.
 
@@ -705,7 +714,7 @@ class Image:
             self.metadata["color_space"] = "SATURATION"
             return None
 
-    def toValue(self, return_image: bool = False) -> Optional[da.Image]:
+    def toValue(self, return_image: bool = False) -> Optional[darsia.Image]:
         """
         Returns a value channel version of the darsia image
 

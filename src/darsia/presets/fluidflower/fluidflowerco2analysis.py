@@ -50,19 +50,6 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
         """
         darsia.CO2Analysis.__init__(self, baseline, config, update_setup)
 
-        # Add possibility to apply deformation correction for each image
-        # TODO integrate this as correction
-        if "image registration" in self.config.keys():
-            self.apply_deformation_correction = self.config["image registration"].get(
-                "apply", False
-            )
-            if self.apply_deformation_correction:
-                self.image_registration = darsia.DiffeomorphicImageRegistration(
-                    self.base, **self.config["image registration"]
-                )
-        else:
-            self.apply_deformation_correction = False
-
         # Create folder for results if not existent
         self.path_to_results: Path = Path(results)
 
@@ -192,14 +179,6 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
             self.img = img.copy()
         else:
             self.load_and_process_image(img)
-
-        # Compaction correction
-        if self.apply_deformation_correction:
-            # Apply compaction analysis, providing the deformed image
-            # matching the baseline image, as well as the required
-            # translations on each patch, characterizing the total
-            # deformation. Also plot the deformation as vector field.
-            self.img = self.image_registration(self.img)
 
         # ! ----  Segmentation
 
