@@ -1,9 +1,9 @@
 """
-Determine compaction of FluidFlower by comparing two different images.
+Determine deformation of FluidFlower by comparing two different images.
 
 The images correpsond to the baseline image of the official well test
 performed under the benchmark, and one of the other baseline images,
-most likely close to C1. Between these two images, compaction/sedimentation
+most likely close to C1. Between these two images, settling/sedimentation
 has occurred, i.e., to most degree the sand sunk from the src (well test)
 to dst (C1 like) scenarios.
 """
@@ -14,7 +14,7 @@ import skimage
 
 import darsia
 
-# ! ----- Preliminaries - prepare two images for compaction analysis
+# ! ----- Preliminaries - prepare two images for image registration
 
 # Paths to two images of interest. NOTE: These images are not part of the GH repo.
 path_src = (
@@ -65,10 +65,10 @@ roi_crop = (slice(470, img_src.img.shape[0]), slice(60, 7940))
 da_img_src = darsia.extractROIPixel(img_src, roi_crop)
 da_img_dst = darsia.extractROIPixel(img_dst, roi_crop)
 
-# ! ----- Actual analysis: Determine the compaction between img_dst and aligned_img_src
+# ! ----- Actual analysis: Determine the deformation between img_dst and aligned_img_src
 
-# Define compaction analysis tool
-config["compaction"] = {
+# Define image registration tool
+config["image registration"] = {
     # Define the number of patches in x and y directions
     "N_patches": [20, 10],
     # Define a relative overlap, this makes it often slightly easier for the feature detection.
@@ -78,20 +78,20 @@ config["compaction"] = {
     "max_features": 200,
     "tol": 0.05,
 }
-compaction_analysis = darsia.ReversedCompactionAnalysis(
-    da_img_dst, **config["compaction"]
+image_registration = darsia.DiffeomorphicImageRegistration(
+    da_img_dst, **config["image registration"]
 )
 
-# Apply compaction analysis, providing the deformed image matching the baseline image,
+# Apply image registration, providing the deformed image matching the baseline image,
 # as well as the required translations on each patch, characterizing the total
 # deformation. Also plot the deformation as vector field.
-da_new_image, patch_translation = compaction_analysis(
+da_new_image, patch_translation = image_registration(
     da_img_src, plot_patch_translation=True, return_patch_translation=True
 )
 
 # One can also apply the learned displacement, here to the input,
 # but any other field can also be applied.
-da_new_src_image = compaction_analysis.apply(da_img_src)
+da_new_src_image = image_registration.apply(da_img_src)
 
 print("The centers of the 20 x 10 patches are translated:")
 print(patch_translation)
@@ -107,10 +107,10 @@ ax.imshow(
 )
 plt.show()
 
-## Plot the displacement - same as when calling the compaction analysis
-# compaction_analysis.plot(scaling=1.0)
+## Plot the displacement - same as when calling the image registration
+# image_registration.plot(scaling=1.0)
 
-# It is also possible to evaluate the compaction approximation in arbitrary points.
+# It is also possible to evaluate the deformation approximation in arbitrary points.
 # For instance, consider 4 points in metric coordinates (provided in x, y format):
 pts = np.array(
     [
@@ -124,7 +124,7 @@ pts = np.array(
 print("Consider the points:")
 print(pts)
 
-deformation = compaction_analysis.evaluate(pts)
+deformation = image_registration.evaluate(pts)
 print("Deformation evaluated:")
 print(deformation)
 
@@ -154,7 +154,7 @@ print(patch_centers_box_B)
 # deformation map in a patch object. The result uses conventional matrix indexing.
 # Entry [row,col] is associated to patch with coordinate [row,col], with [0,0]
 # denoting the top left corner of the image/patch.
-deformation_patch_centers_box_B = compaction_analysis.evaluate(patched_box_B)
+deformation_patch_centers_box_B = image_registration.evaluate(patched_box_B)
 
 print("The deformation in the centers of the patches of Box B:")
 print(deformation_patch_centers_box_B)

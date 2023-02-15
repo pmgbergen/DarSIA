@@ -1,7 +1,8 @@
 """
-Module containing tools for studying compaction.
-"""
+Module containing a diffeomorphic image registration tool.
 
+"""
+import time
 from typing import Optional, Union
 
 import matplotlib.pyplot as plt
@@ -10,18 +11,19 @@ import numpy as np
 import darsia
 
 
-class ReversedCompactionAnalysis:
+class DiffeomorphicImageRegistration:
     """
-    Class to analyze compaction between different images.
+    Class to detect the deformation between different images.
 
-    After all, CompactionAnalysis is a wrapper using TranslationAnalysis.
+    After all, DiffeomorphicImageRegistration is a wrapper using TranslationAnalysis.
     """
 
     def __init__(self, dst: darsia.Image, **kwargs) -> None:
-        """Constructor for CompactionAnalysis.
+        """Constructor for DiffeomorphicImageRegistration.
 
         Args:
-            dst (darsia.Image): reference image which is supposed to be fixed in the compaction
+            dst (darsia.Image): reference image which is supposed to be fixed in the analysis,
+                serves as destination object.
             optional keyword arguments:
                 N_patches (list of two int): number of patches in x and y direction
                 rel_overlap (float): relative overlap in each direction, related to the
@@ -56,34 +58,38 @@ class ReversedCompactionAnalysis:
         """
         self.translation_analysis.update_base(dst)
 
-    def deduct(self, compaction_analysis) -> None:  #: CompactionAnalysis
+    def deduct(
+        self, diffeomorphic_image_registration
+    ) -> None:  #: DiffeomorphicImageRegistration
         """
-        Effectviely copy from external CompactionAnalysis.
+        Effectviely copy from external DiffeomorphicImageRegistration.
 
         Args:
-            compaction_analysis (darsia.ReversedCompactionAnalysis): Compaction
-                analysis holding a translation analysis.
+            diffeomorphic_image_registration (darsia.DiffeomorphicImageRegistration): Diffeomorphic
+                image registration object holding a translation analysis.
 
         """
         # The displacement is stored in the translation analysis as callable.
         # Thus, the current translation analysis has to be updated.
         self.translation_analysis.deduct_translation_analysis(
-            compaction_analysis.translation_analysis
+            diffeomorphic_image_registration.translation_analysis
         )
 
-    def add(self, compaction_analysis) -> None:  #: CompactionAnalysis
+    def add(
+        self, diffeomorphic_image_registration
+    ) -> None:  #: DiffeomorphicImageRegistration
         """
         Update the store translation by adding the translation
-        of an external compaction analysis.
+        of an external diffeomorphic image registration.
 
         Args:
-            compaction_analysis (darsia.ReversedCompactionAnalysis): Compaction
-                analysis holding a translation analysis.
+            diffeomorphic_image_registration (darsia.DiffeomorphicImageRegistration): Diffeomorphic
+                image registraton object holding a translation analysis.
         """
         # The displacement is stored in the translation analysis as callable.
         # Thus, the current translation analysis has to be updated.
         self.translation_analysis.add_translation_analysis(
-            compaction_analysis.translation_analysis
+            diffeomorphic_image_registration.translation_analysis
         )
 
     def __call__(
@@ -94,8 +100,8 @@ class ReversedCompactionAnalysis:
         mask: Optional[darsia.Image] = None,
     ):
         """
-        Determine the compaction pattern and apply compaction to the image
-        aiming at matching the reference (dst) image.
+        Determine the deformation pattern and apply diffeomorphism to the image
+        aiming at matching the reference/destination (dst) image.
 
         This in the end only a wrapper for the translation analysis.
 
@@ -132,7 +138,7 @@ class ReversedCompactionAnalysis:
         units: str = "metric",
     ) -> np.ndarray:
         """
-        Evaluate compaction in arbitrary points.
+        Evaluate diffeormorphism in arbitrary points.
 
         Args:
             coords (np.ndarray, or darsia.Patches): coordinate array with shape num_pts x 2,
@@ -145,7 +151,7 @@ class ReversedCompactionAnalysis:
                 to be "pixel".
 
         Returns:
-            np.ndarray: compaction vectors for all coordinates.
+            np.ndarray: deformation vectors for all coordinates.
 
         """
         if isinstance(coords, darsia.Patches):
@@ -204,7 +210,12 @@ class ReversedCompactionAnalysis:
 
     def plot(self, scaling: float = 1.0, mask: Optional[darsia.Image] = None) -> None:
         """
-        Plots total compaction.
+        Plots diffeomorphism.
+
+        Args:
+            scaling (float): scaling for vectors.
+            mask (darsia.Image, optional): active set.
+
         """
         # Warpper for translation_analysis.
         self.translation_analysis.plot_translation(
@@ -214,6 +225,7 @@ class ReversedCompactionAnalysis:
     def displacement(self) -> np.ndarray:
         """
         Return displacement in metric units on all pixels.
+
         """
         # Define coordinates for each pixel
         Ny, Nx = self.translation_analysis.base.img.shape[:2]
@@ -228,8 +240,6 @@ class ReversedCompactionAnalysis:
         pixel_coords = pixel_vector.reshape(-1, 2)
 
         # Interpolate at provided values - expect reverse matrix indexing
-        import time
-
         tic = time.time()
         translation = self.translation_analysis.translation(pixel_coords)
         print(f"translation evaluation: {time.time() - tic}")
