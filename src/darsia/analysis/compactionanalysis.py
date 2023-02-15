@@ -296,7 +296,7 @@ class ReversedCompactionAnalysis:
     def evaluate(
         self,
         coords: Union[np.ndarray, darsia.Patches],
-        reverse: bool = True,
+        reverse: bool = False,
         units: str = "metric",
     ) -> np.ndarray:
         """
@@ -316,9 +316,6 @@ class ReversedCompactionAnalysis:
             np.ndarray: compaction vectors for all coordinates.
 
         """
-        # TODO
-        assert False
-
         if isinstance(coords, darsia.Patches):
             coords = coords.global_centers_cartesian_matrix
 
@@ -345,7 +342,6 @@ class ReversedCompactionAnalysis:
 
         # Collect results, use ordering of components consistent with matrix
         # indexing (i.e. flip of components needed)
-
         displacement = np.transpose(np.vstack((translation[1], translation[0])))
 
         # Convert to metric units if required; for pixels, use matrix indexing.
