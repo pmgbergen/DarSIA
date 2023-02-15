@@ -81,7 +81,7 @@ class CurvatureCorrection:
             self.config = {}
 
         if "image" in kwargs:
-            im_source = kwargs.pop("image")
+            im_source = kwargs.get("image")
             if isinstance(im_source, np.ndarray):
                 self.reference_image = im_source
 
@@ -97,9 +97,9 @@ class CurvatureCorrection:
                 )
             self.current_image = np.copy(self.reference_image)
             self.dtype = self.current_image.dtype
-            self.in_meters = kwargs.pop("in_meters", True)
-            self.width = kwargs.pop("width", 1.0)
-            self.height = kwargs.pop("height", 1.0)
+            self.in_meters = kwargs.get("in_meters", True)
+            self.width = kwargs.get("width", 1.0)
+            self.height = kwargs.get("height", 1.0)
 
         else:
             if config is None:
@@ -110,7 +110,7 @@ class CurvatureCorrection:
 
         # The internally stored config file is tailored to when resize_factor is equal to 1.
         # For other values, it has to be adapted.
-        self.resize_factor = kwargs.pop("resize_factor", 1.0)
+        self.resize_factor = kwargs.get("resize_factor", 1.0)
         if not math.isclose(self.resize_factor, 1.0):
             self._adapt_config()
 
@@ -128,7 +128,7 @@ class CurvatureCorrection:
 
         # Hardcode the interpolation order, used when mapping pixels to transformed
         # coordinates
-        self.interpolation_order: int = kwargs.pop("interpolation_order", 1)
+        self.interpolation_order: int = kwargs.get("interpolation_order", 1)
 
     # ! ---- I/O routines
 
@@ -193,10 +193,10 @@ class CurvatureCorrection:
                     y-direction, as compared to the numerical center
         """
         self.config["init"] = {
-            "horizontal_bulge": kwargs.pop("horizontal_bulge", 0),
-            "horizontal_center_offset": kwargs.pop("horizontal_center_offset", 0),
-            "vertical_bulge": kwargs.pop("verical_bulge", 0),
-            "vertical_center_offset": kwargs.pop("vertical_center_offset", 0),
+            "horizontal_bulge": kwargs.get("horizontal_bulge", 0),
+            "horizontal_center_offset": kwargs.get("horizontal_center_offset", 0),
+            "vertical_bulge": kwargs.get("verical_bulge", 0),
+            "vertical_center_offset": kwargs.get("vertical_center_offset", 0),
         }
         self.current_image = self.simple_curvature_correction(
             self.current_image, **self.config["init"]
@@ -318,10 +318,10 @@ class CurvatureCorrection:
                               has been displaced on the bottom
         """
 
-        left = kwargs.pop("left", 0)
-        right = kwargs.pop("right", 0)
-        top = kwargs.pop("top", 0)
-        bottom = kwargs.pop("bottom", 0)
+        left = kwargs.get("left", 0)
+        right = kwargs.get("right", 0)
+        top = kwargs.get("top", 0)
+        bottom = kwargs.get("bottom", 0)
 
         if img is None:
             Ny, Nx = self.current_image.shape[:2]
@@ -382,9 +382,9 @@ class CurvatureCorrection:
         else:
             Ny, Nx = img.shape[:2]
 
-        pt_src = kwargs.pop("point_source", [Ny, Nx])
-        pt_dst = kwargs.pop("point_destination", [Ny, Nx])
-        stretch_center = kwargs.pop("stretch_center", [round(Ny / 2), round(Nx / 2)])
+        pt_src = kwargs.get("point_source", [Ny, Nx])
+        pt_dst = kwargs.get("point_destination", [Ny, Nx])
+        stretch_center = kwargs.get("stretch_center", [round(Ny / 2), round(Nx / 2)])
 
         # Update the offset to the center
         horizontal_stretch_center_offset = stretch_center[0] - round(Nx / 2)
@@ -699,12 +699,12 @@ class CurvatureCorrection:
             tuple of arrays: the transformed coordinates; first x and second y.
         """
         # Read in tuning parameters
-        horizontal_bulge: float = kwargs.pop("horizontal_bulge", 0.0)
-        horizontal_stretch: float = kwargs.pop("horizontal_stretch", 0.0)
-        horizontal_center_offset: int = kwargs.pop("horizontal_center_offset", 0)
-        vertical_bulge: float = kwargs.pop("vertical_bulge", 0.0)
-        vertical_stretch: float = kwargs.pop("vertical_stretch", 0.0)
-        vertical_center_offset: int = kwargs.pop("vertical_center_offset", 0)
+        horizontal_bulge: float = kwargs.get("horizontal_bulge", 0.0)
+        horizontal_stretch: float = kwargs.get("horizontal_stretch", 0.0)
+        horizontal_center_offset: int = kwargs.get("horizontal_center_offset", 0)
+        vertical_bulge: float = kwargs.get("vertical_bulge", 0.0)
+        vertical_stretch: float = kwargs.get("vertical_stretch", 0.0)
+        vertical_center_offset: int = kwargs.get("vertical_center_offset", 0)
 
         Ny, Nx = X.shape[:2]
 

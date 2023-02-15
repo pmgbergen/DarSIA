@@ -16,7 +16,6 @@ class TracerAnalysis(ABC, darsia.ConcentrationAnalysisBase):
     def __init__(
         self,
         baseline: Union[str, Path, list[str], list[Path]],
-        # TODO volumes
         config: Union[str, Path],
         update_setup: bool = False,
     ) -> None:
@@ -27,19 +26,25 @@ class TracerAnalysis(ABC, darsia.ConcentrationAnalysisBase):
             baseline (str, Path or list of such): see darsia.GeneralAnalysis.
             config_source (str or Path): see darsia.GeneralAnalysis.
             update_setup (bool): see darsia.GeneralAnalysis.
+
         """
         super().__init__(baseline, config, update_setup)
 
-        # Define tracer analysis including determining a cleaning filter.
+        # Define tracer analysis.
         self.tracer_analysis = self.define_tracer_analysis()
 
         # Safety check
         if not isinstance(self.tracer_analysis, darsia.ConcentrationAnalysis):
             raise ValueError("tracer_analysis has wrong type.")
 
+        # Setup standard data including the cleaning filter
+        tracer_config = self.config.get("tracer", {})
+        tracer_cleaning_filter = tracer_config.get(
+            "cleaning_filter", "cache/cleaning_filter_tracer.npy"
+        )
         self._setup_concentration_analysis(
             self.tracer_analysis,
-            self.config["tracer"]["cleaning_filter"],
+            tracer_cleaning_filter,
             baseline,
             update_setup,
         )
@@ -112,7 +117,7 @@ class SegmentedTracerAnalysis(ABC, darsia.ConcentrationAnalysisBase):
         )
 
     @abstractmethod
-    def define_tracer_analysis(self) -> darsia.SegmentedConcentrationAnalysis:
+    def define_tracer_analysis(self) -> darsia.ConcentrationAnalysis:
         """
         The main purpose of this routine is to define self.tracer_analysis,
         which lies at the heart of this class. It is supposed to determine tracers

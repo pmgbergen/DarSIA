@@ -46,7 +46,12 @@ co2_image = darsia.Image(
 )
 
 # Construct concentration analysis for detecting the co2 concentration
-co2_analysis = darsia.ConcentrationAnalysis(baseline_co2)
+co2_analysis = darsia.ConcentrationAnalysis(
+    baseline_co2,
+    darsia.MonochromaticReduction(color="red"),
+    darsia.TVD(),
+    darsia.LinearModel(),
+)
 
 # Given a series of baseline images one can setup a cleaning mask,
 # which is used as lower threshold in the concentration analysis.
@@ -66,7 +71,7 @@ co2_analysis = darsia.ConcentrationAnalysis(baseline_co2)
 # The initial guesses are initial guesses for the internal scaling factor
 # for converting signals to concentrations. Here, we simply set a scaling
 # factor from outside without calibration.
-co2_analysis.update(scaling=4.0)
+co2_analysis.model.update(scaling=4.0)
 
 # Determine co2
 co2 = co2_analysis(co2_image)
@@ -89,8 +94,16 @@ tracer_image = darsia.Image(
     color_correction=color_correction,
 )
 
+# Define restoration routine
+
+
 # Construct concentration analysis for detecting the tracer concentration
-tracer_analysis = darsia.ConcentrationAnalysis(baseline_tracer)
+tracer_analysis = darsia.ConcentrationAnalysis(
+    baseline_tracer,
+    darsia.MonochromaticReduction(color="gray"),
+    darsia.TVD(),
+    darsia.LinearModel(),
+)
 
 # Determine tracer
 tracer = tracer_analysis(tracer_image)

@@ -72,7 +72,7 @@ def segment(
     # Require scalar representation - the most natural general choice is either to
     # use a grayscale representation or the value component of the HSV version,
     # when.
-    monochromatic = kwargs.pop("monochromatic_color", "gray")
+    monochromatic = kwargs.get("monochromatic_color", "gray")
     if monochromatic == "gray":
         monochromatic_basis = cv2.cvtColor(
             skimage.img_as_ubyte(basis), cv2.COLOR_RGB2GRAY
@@ -97,11 +97,11 @@ def segment(
     basis_ubyte = skimage.img_as_ubyte(monochromatic_basis)
 
     # Smooth the image to get rid of sand grains
-    smoothing_method = kwargs.pop("method", "median")
+    smoothing_method = kwargs.get("method", "median")
     assert smoothing_method in ["median", "tvd"]
 
     if smoothing_method == "median":
-        median_disk_radius = kwargs.pop("median disk radius", 20)
+        median_disk_radius = kwargs.get("median disk radius", 20)
         denoised = skimage.filters.rank.median(
             basis_ubyte, skimage.morphology.disk(median_disk_radius)
         )
@@ -115,7 +115,7 @@ def segment(
         plt.imshow(denoised)
 
     # Resize image
-    rescaling_factor = kwargs.pop("rescaling factor", 1.0)
+    rescaling_factor = kwargs.get("rescaling factor", 1.0)
     rescaled = skimage.img_as_ubyte(
         cv2.resize(
             denoised,
@@ -259,13 +259,13 @@ def _detect_markers_from_gradient(img, verbosity, **kwargs) -> np.ndarray:
     """
 
     # Find continuous region, i.e., areas with low local gradient
-    markers_disk_radius = kwargs.pop("markers disk radius")
+    markers_disk_radius = kwargs.get("markers disk radius")
     markers_basis = skimage.filters.rank.gradient(
         img, skimage.morphology.disk(markers_disk_radius)
     )
 
     # Apply thresholding - requires fine tuning
-    threshold = kwargs.pop("threshold")
+    threshold = kwargs.get("threshold")
     markers = markers_basis < threshold
 
     # Label the marked regions
@@ -301,8 +301,8 @@ def _detect_markers_from_input(shape, **kwargs) -> np.ndarray:
     """
 
     # Fetch user-defined coordinates of markers
-    patch: int = kwargs.pop("region_size", 1)
-    pts: np.ndarray = kwargs.pop("marker_points")
+    patch: int = kwargs.get("region_size", 1)
+    pts: np.ndarray = kwargs.get("marker_points")
 
     # Mark squares with points providing the top left corner.
     markers = np.zeros(shape, dtype=bool)
@@ -327,7 +327,7 @@ def _detect_edges_from_gradient(img, **kwargs) -> np.ndarray:
         keyword arguments (optional): tuning parameters for the watershed algorithm
             "gradient disk radius" (int): disk radius to define edges via gradients.
     """
-    gradient_disk_radius = kwargs.pop("gradient disk radius", 2)
+    gradient_disk_radius = kwargs.get("gradient disk radius", 2)
 
     # Find edges
     edges = skimage.filters.rank.gradient(
@@ -350,7 +350,7 @@ def _detect_edges_from_scharr(img, **kwargs) -> np.ndarray:
             np.ndarray: edge array in terms of intensity.
     """
     # Fetch mask from file
-    mask = kwargs.pop("scharr mask", np.ones(img.shape[:2], dtype=bool))
+    mask = kwargs.get("scharr mask", np.ones(img.shape[:2], dtype=bool))
 
     # Resize mask if necessary
     if mask.shape[:2] != img.shape[:2]:
@@ -382,8 +382,8 @@ def _cleanup(labels: np.ndarray, **kwargs) -> np.ndarray:
     # Monitor number of labels prior and after the cleanup.
     num_labels_prior = np.unique(labels).shape[0]
 
-    dilation_size = kwargs.pop("dilation size", 0)
-    boundary_size = kwargs.pop("boundary size", 0)
+    dilation_size = kwargs.get("dilation size", 0)
+    boundary_size = kwargs.get("boundary size", 0)
     labels = _reset_labels(labels)
     labels = _dilate_by_size(labels, dilation_size, False)
     labels = _reset_labels(labels)
@@ -391,7 +391,7 @@ def _cleanup(labels: np.ndarray, **kwargs) -> np.ndarray:
     labels = _reset_labels(labels)
     labels = _dilate_by_size(labels, dilation_size, True)
     labels = _reset_labels(labels)
-    boundary: list[str] = kwargs.pop("boundary", ["top", "left", "bottom", "right"])
+    boundary: list[str] = kwargs.get("boundary", ["top", "left", "bottom", "right"])
     labels = _boundary(labels, boundary_size, boundary)
 
     # Inform the user if labels are removed - in particular, when using
