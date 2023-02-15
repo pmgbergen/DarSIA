@@ -1,15 +1,17 @@
 """
 Module containing class which manages performing a translation based on
 a provided pointwise translation map.
+
 """
 
+import time
+from math import ceil
 from typing import Callable
 
 import cv2
 import numpy as np
 
 import darsia
-from math import ceil
 
 
 class PiecewisePerspectiveTransform:
@@ -18,14 +20,21 @@ class PiecewisePerspectiveTransform:
     The final transformation is continuous.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         """
         Constructor method.
 
-        Stores exteranl inputs as patches.
+        Stores external inputs as patches.
+
+        Args:
+            **kwargs (optional):
+                verbosity (int): if larger than 0, statements regarding timings
+                are printed.
+
         """
         # Initialize flag
         self.have_transform = False
+        self.verbosity = kwargs.get("verbosity", 0)
 
     def find_and_warp(
         self, patches: darsia.Patches, displacement: Callable, reverse: bool = False
@@ -45,18 +54,16 @@ class PiecewisePerspectiveTransform:
 
         Returns:
             darsia.Image: transformed image
+
         """
         # Initialize empty image of same type as the original image.
         # Need float for cv2.warpPerspective.
         (h, w) = patches.base.img.shape[:2]
         dtype = patches.base.img.dtype
-        transformed_img = np.zeros(patches.base.img.shape, dtype=np.float32)
         transformed_img_new = np.zeros(patches.base.img.shape, dtype=np.float32)
 
-        import time
-
-        total = 0
-        total_new = 0
+        # Init time tracker
+        total_time = 0
 
         # Loop over all patches in a grid fashion:
         for i in range(patches.num_patches_x):
@@ -74,22 +81,6 @@ class PiecewisePerspectiveTransform:
                     global_corners
                     + (-1.0 if reverse else 1.0) * displacement(global_corners).T
                 )
-
-                # TODO rm and rename the eff variables?
-
-                # # Find perspective transform mapping src to dst pixels in reverse matrix format
-                # P = cv2.getPerspectiveTransform(
-                #     pts_src.astype(np.float32), pts_dst.astype(np.float32)
-                # )
-
-                # # Map patch onto transformed region
-                # patch_img = patches.images[i][j].img.astype(np.float32)
-                # tic = time.time()
-                # print(patch_img.shape, w, h)
-                # transformed_img += cv2.warpPerspective(
-                #     patch_img, P, (w, h), flags=cv2.INTER_LINEAR
-                # )
-                # total += time.time() - tic
 
                 # Find effective origin, width and height of the transformed patch
                 origin_eff = np.array(
@@ -129,12 +120,17 @@ class PiecewisePerspectiveTransform:
                     patch_img, P_eff, (w_eff, h_eff), flags=cv2.INTER_LINEAR
                 )
                 transformed_img_new[roi_eff] += tmp[roi_patch_eff]
-                total_new += time.time() - tic
+
+                # Update time
+                total_time += time.time() - tic
 
         # Convert to the same data type as the input image
         transformed_img = transformed_img_new.astype(dtype)
+
+        # TODO rm print or use verbosity.
         # print(f"total time: {total}")
-        print(f"total time new: {total_new}")
+        if self.verbosity > 0:
+            print(f"total time new: {total_time}")
 
         # Use same metadata as for the base of the patches
         metadata = patches.base.metadata
