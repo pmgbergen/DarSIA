@@ -17,7 +17,9 @@ import darsia
 # ! ----- Preliminaries - prepare two images for compaction analysis
 
 # Paths to two images of interest. NOTE: These images are not part of the GH repo.
-path_src = "/home/jakub/images/ift/benchmark/well_test/from_description/pulse1.jpg"
+path_src = (
+    "/media/jakub/Elements/Jakub/benchmark/data/well_test/from_description/pulse1.jpg"
+)
 path_dst = "/home/jakub/images/ift/benchmark/baseline/original/Baseline.jpg"
 
 # Setup curvature correction (here only cropping)
@@ -52,6 +54,12 @@ img_dst = darsia.Image(
     curvature_correction=curvature_correction,
 )
 
+plt.figure("src")
+plt.imshow(img_src.img)
+plt.figure("dst")
+plt.imshow(img_dst.img)
+plt.show()
+
 # Extract ROI to cut away the color palette. Use pixel ranges to crop the image.
 roi_crop = (slice(470, img_src.img.shape[0]), slice(60, 7940))
 da_img_src = darsia.extractROIPixel(img_src, roi_crop)
@@ -70,14 +78,20 @@ config["compaction"] = {
     "max_features": 200,
     "tol": 0.05,
 }
-compaction_analysis = darsia.CompactionAnalysis(da_img_src, **config["compaction"])
+compaction_analysis = darsia.ReversedCompactionAnalysis(
+    da_img_dst, **config["compaction"]
+)
 
 # Apply compaction analysis, providing the deformed image matching the baseline image,
 # as well as the required translations on each patch, characterizing the total
 # deformation. Also plot the deformation as vector field.
 da_new_image, patch_translation = compaction_analysis(
-    da_img_dst, plot_patch_translation=True, return_patch_translation=True
+    da_img_src, plot_patch_translation=True, return_patch_translation=True
 )
+
+# One can also apply the learned displacement, here to the input,
+# but any other field can also be applied.
+da_new_src_image = compaction_analysis.apply(da_img_src)
 
 print("The centers of the 20 x 10 patches are translated:")
 print(patch_translation)
@@ -86,8 +100,15 @@ print(patch_translation)
 fig, ax = plt.subplots(1, num=1)
 ax.imshow(skimage.util.compare_images(da_img_src.img, da_img_dst.img, method="blend"))
 fig, ax = plt.subplots(1, num=2)
-ax.imshow(skimage.util.compare_images(da_img_src.img, da_new_image.img, method="blend"))
+ax.imshow(skimage.util.compare_images(da_img_dst.img, da_new_image.img, method="blend"))
+fig, ax = plt.subplots(1, num=3)
+ax.imshow(
+    skimage.util.compare_images(da_new_src_image.img, da_new_image.img, method="blend")
+)
 plt.show()
+
+## Plot the displacement - same as when calling the compaction analysis
+# compaction_analysis.plot(scaling=1.0)
 
 # It is also possible to evaluate the compaction approximation in arbitrary points.
 # For instance, consider 4 points in metric coordinates (provided in x, y format):
