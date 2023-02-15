@@ -545,7 +545,7 @@ class TranslationAnalysis:
                 method="blend",
             )
         )
-        #plt.savefig("success.svg", format="svg", dpi=1000)
+        # plt.savefig("success.svg", format="svg", dpi=1000)
 
         # Plot deformation in number of pixels
         plt.figure("deformation x pixels")

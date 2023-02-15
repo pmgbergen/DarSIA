@@ -54,6 +54,7 @@ class PiecewisePerspectiveTransform:
         transformed_img_new = np.zeros(patches.base.img.shape, dtype=np.float32)
 
         import time
+
         total = 0
         total_new = 0
 
@@ -91,13 +92,12 @@ class PiecewisePerspectiveTransform:
                 # total += time.time() - tic
 
                 # Find effective origin, width and height of the transformed patch
-                origin_eff = np.array([
-                    max(0, np.min(pts_dst[:,0])),
-                    max(0, np.min(pts_dst[:,1]))
-                ]).astype(np.int32)
+                origin_eff = np.array(
+                    [max(0, np.min(pts_dst[:, 0])), max(0, np.min(pts_dst[:, 1]))]
+                ).astype(np.int32)
                 pts_dst_eff = pts_dst - origin_eff
-                w_eff = ceil(min(w, np.max(pts_dst[:,0])) - max(0, origin_eff[0]))
-                h_eff = ceil(min(h, np.max(pts_dst[:,1])) - max(0, origin_eff[1]))
+                w_eff = ceil(min(w, np.max(pts_dst[:, 0])) - max(0, origin_eff[0]))
+                h_eff = ceil(min(h, np.max(pts_dst[:, 1])) - max(0, origin_eff[1]))
 
                 # Continue with the next patch, if the effective size becomes at most a single pixel.
                 if min(h_eff, w_eff) <= 1:
@@ -105,11 +105,16 @@ class PiecewisePerspectiveTransform:
 
                 # NOTE: Flip of x and y to row and col.
                 roi_eff = (
-                    slice(max(0, int(origin_eff[1])), min(h, int(origin_eff[1] + h_eff))),
-                    slice(max(0, int(origin_eff[0])), min(w, int(origin_eff[0] + w_eff))))
+                    slice(
+                        max(0, int(origin_eff[1])), min(h, int(origin_eff[1] + h_eff))
+                    ),
+                    slice(
+                        max(0, int(origin_eff[0])), min(w, int(origin_eff[0] + w_eff))
+                    ),
+                )
                 roi_patch_eff = (
                     slice(0, int(min(origin_eff[1] + h_eff, h) - origin_eff[1])),
-                    slice(0, min(origin_eff[0] + w_eff, w) - origin_eff[0])
+                    slice(0, min(origin_eff[0] + w_eff, w) - origin_eff[0]),
                 )
 
                 # Find perspective transform mapping src to dst pixels in reverse matrix format
@@ -128,7 +133,7 @@ class PiecewisePerspectiveTransform:
 
         # Convert to the same data type as the input image
         transformed_img = transformed_img_new.astype(dtype)
-        #print(f"total time: {total}")
+        # print(f"total time: {total}")
         print(f"total time new: {total_new}")
 
         # Use same metadata as for the base of the patches

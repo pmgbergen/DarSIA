@@ -256,12 +256,17 @@ class Patches:
         self.local_corners_reverse_matrix = np.array(
             [
                 [
-                    np.array([
-                        [0, 0],
-                        [0, min(nh, (j+1) * ph) - j * ph],
-                        [min(nw, (i + 1) * pw) - i * pw, min(nh, (j+1) * ph) - j * ph],
-                        [min(nw, (i+1) * pw) - i*pw, 0]
-                    ])
+                    np.array(
+                        [
+                            [0, 0],
+                            [0, min(nh, (j + 1) * ph) - j * ph],
+                            [
+                                min(nw, (i + 1) * pw) - i * pw,
+                                min(nh, (j + 1) * ph) - j * ph,
+                            ],
+                            [min(nw, (i + 1) * pw) - i * pw, 0],
+                        ]
+                    )
                     for j in range(self.num_patches_y)
                 ]
                 for i in range(self.num_patches_x)
