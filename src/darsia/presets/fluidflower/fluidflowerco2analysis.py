@@ -57,7 +57,7 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
                 "apply", False
             )
             if self.apply_compaction_analysis:
-                self.compaction_analysis = darsia.CompactionAnalysis(
+                self.compaction_analysis = darsia.ReversedCompactionAnalysis(
                     self.base, **self.config["compaction"]
                 )
         else:
