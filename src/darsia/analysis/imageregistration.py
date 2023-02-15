@@ -98,7 +98,7 @@ class DiffeomorphicImageRegistration:
         plot_patch_translation: bool = False,
         return_patch_translation: bool = False,
         mask: Optional[darsia.Image] = None,
-    ):
+    ) -> darsia.Image:
         """
         Determine the deformation pattern and apply diffeomorphism to the image
         aiming at matching the reference/destination (dst) image.
