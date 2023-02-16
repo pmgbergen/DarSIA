@@ -78,23 +78,38 @@ config["image registration"] = {
     "max_features": 200,
     "tol": 0.05,
 }
-image_registration = darsia.DiffeomorphicImageRegistration(
-    da_img_dst, **config["image registration"]
-)
 
-# Apply image registration, providing the deformed image matching the baseline image,
-# as well as the required translations on each patch, characterizing the total
-# deformation. Also plot the deformation as vector field.
-da_new_image, patch_translation = image_registration(
-    da_img_src, plot_patch_translation=True, return_patch_translation=True
-)
+construction_specialized = True
+
+if construction_specialized:
+    # One can directly address the special class with slightly more specialized routines.
+    image_registration = darsia.DiffeomorphicImageRegistration(
+        da_img_dst, **config["image registration"]
+    )
+
+    # Apply image registration, providing the deformed image matching the baseline image,
+    # as well as the required translations on each patch, characterizing the total
+    # deformation. Also plot the deformation as vector field.
+    da_new_image, patch_translation = image_registration.call_with_output(
+        da_img_src, plot_patch_translation=True, return_patch_translation=True
+    )
+    print("The centers of the 20 x 10 patches are translated:")
+    print(patch_translation)
+
+else:
+    # Using the general interface:
+    image_registration = darsia.ImageRegistration(
+        da_img_dst, **config["image registration"]
+    )
+
+    # Apply image registration, providing the deformed image matching the baseline image,
+    # as well as the required translations on each patch, characterizing the total
+    # deformation. Also plot the deformation as vector field.
+    da_new_image = image_registration(da_img_src)
 
 # One can also apply the learned displacement, here to the input,
 # but any other field can also be applied.
 da_new_src_image = image_registration.apply(da_img_src)
-
-print("The centers of the 20 x 10 patches are translated:")
-print(patch_translation)
 
 # Plot the differences between the two original images and after the transformation.
 fig, ax = plt.subplots(1, num=1)
