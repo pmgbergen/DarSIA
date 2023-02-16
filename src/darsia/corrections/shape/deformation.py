@@ -39,9 +39,7 @@ class DeformationCorrection:
             self.base = base
             if config is None:
                 config = {}
-            self.image_registration = darsia.ImageRegistration(
-                self.base, **config
-            )
+            self.image_registration = darsia.ImageRegistration(self.base, **config)
 
     def __call__(self, img: np.ndarray) -> np.ndarray:
         """
