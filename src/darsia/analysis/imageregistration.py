@@ -7,6 +7,7 @@ from typing import Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+import skimage
 
 import darsia
 
@@ -18,7 +19,7 @@ class DiffeomorphicImageRegistration:
     After all, DiffeomorphicImageRegistration is a wrapper using TranslationAnalysis.
     """
 
-    def __init__(self, dst: darsia.Image, **kwargs) -> None:
+    def __init__(self, img_dst: darsia.Image, **kwargs) -> None:
         """Constructor for DiffeomorphicImageRegistration.
 
         Args:
@@ -42,21 +43,21 @@ class DiffeomorphicImageRegistration:
         self.rel_overlap = kwargs.pop("rel_overlap", 0.0)
         mask: Optional[darsia.Image] = kwargs.get("mask", None)
         self.translation_analysis = darsia.TranslationAnalysis(
-            dst,
+            img_dst,
             N_patches=self.N_patches,
             rel_overlap=self.rel_overlap,
             translationEstimator=self.translation_estimator,
             mask=mask,
         )
 
-    def update_dst(self, dst: darsia.Image) -> None:
+    def update_dst(self, img_dst: darsia.Image) -> None:
         """
         Update of dst image.
 
         Args:
             dst (np.ndarray): image array
         """
-        self.translation_analysis.update_base(dst)
+        self.translation_analysis.update_base(img_dst)
 
     def deduct(
         self, diffeomorphic_image_registration
@@ -65,8 +66,8 @@ class DiffeomorphicImageRegistration:
         Effectviely copy from external DiffeomorphicImageRegistration.
 
         Args:
-            diffeomorphic_image_registration (darsia.DiffeomorphicImageRegistration): Diffeomorphic
-                image registration object holding a translation analysis.
+            diffeomorphic_image_registration (darsia.DiffeomorphicImageRegistration):
+                Diffeomorphic image registration object holding a translation analysis.
 
         """
         # The displacement is stored in the translation analysis as callable.
@@ -83,8 +84,8 @@ class DiffeomorphicImageRegistration:
         of an external diffeomorphic image registration.
 
         Args:
-            diffeomorphic_image_registration (darsia.DiffeomorphicImageRegistration): Diffeomorphic
-                image registraton object holding a translation analysis.
+            diffeomorphic_image_registration (darsia.DiffeomorphicImageRegistration):
+                Diffeomorphic image registraton object holding a translation analysis.
         """
         # The displacement is stored in the translation analysis as callable.
         # Thus, the current translation analysis has to be updated.
@@ -217,7 +218,7 @@ class DiffeomorphicImageRegistration:
             mask (darsia.Image, optional): active set.
 
         """
-        # Warpper for translation_analysis.
+        # Wrapper for translation_analysis.
         self.translation_analysis.plot_translation(
             reverse=False, scaling=scaling, mask=mask
         )
@@ -264,3 +265,167 @@ class DiffeomorphicImageRegistration:
         self.displacement = displacement
 
         return displacement
+
+
+class MultiscaleDiffeomorphicImageRegistration:
+    """
+    Class for multiscale diffeomorphic image registration
+    being capable of tracking larger deformations.
+
+    """
+
+    def __init__(
+        self,
+        img_dst: darsia.Image,
+        config: Union[dict, list[dict]],
+        mask_dst: Optional[np.ndarray] = None,
+        total_config: Optional[dict] = None,
+        **kwargs,
+    ) -> None:
+        """
+        Args:
+            img_dst (darsia.Image): reference image which is supposed to be
+                fixed in the analysis, serves as destination object.
+            config (list of config): hierrachy of config dictionaries.
+            mask_dst (np.ndarray): active mask
+            total_config (dict): parameters for image registration for the
+                overall image registration.
+
+        """
+        # Cache inputs
+        self.img_dst = img_dst
+        self.mask_dst = np.ones(img_dst.img.shape[:2]) if mask_dst is None else mask_dst
+
+        assert isinstance(config, list) and all(
+            [isinstance(config[i], dict) for i in range(len(config))]
+        )
+        self.config = config
+        self.num_levels = len(self.config)
+
+        # Make sure to have a fine config for the final image registration
+        self.total_config = self.config[-1] if total_config is None else total_config
+
+        # Cache verbosity
+        self.verbosity = kwargs.get("verbosity", 0)
+
+    def __call__(
+        self,
+        img: darsia.Image,
+        mask: Optional[np.ndarray] = None,
+        return_transformed_dst: bool = False,
+    ) -> darsia.Image:
+        """
+        Image registration routine.
+
+        Args:
+            img (darsia.Image): test image
+            mask (np.ndaray): active mask
+
+        Returns:
+            darsia.Image: transformed test image
+            darsia.Image: transformed reference image #TODO?
+        """
+        # Store inputs
+        transformed_img = img.copy()
+        transformed_mask = (
+            np.ones(img.img.shape[:2], dtype=bool) if mask is None else mask.copy()
+        )
+
+        # Initialize combined image registration
+        self.combined_image_registration = DiffeomorphicImageRegistration(
+            transformed_img, **self.total_config
+        )
+
+        # Multi level approach succesively updating the combined image registration
+        for level in range(self.num_levels):
+            # Determine deformation for current level
+            _, image_registration = self._single_level_iteration(
+                transformed_img, transformed_mask, self.config[level]
+            )
+
+            # Update inputs
+            if level == 0:
+                self.combined_image_registration.deduct(image_registration)
+            else:
+                self.combined_image_registration.add(image_registration)
+            transformed_mask = image_registration.apply(transformed_mask)
+            transformed_img = self.combined_image_registration.apply(img)
+
+        # Return results
+        if return_transformed_dst:
+            transformed_dst = self.combined_image_registration.apply(
+                self.dst, reverse=True
+            )
+            return transformed_img, transformed_dst
+        else:
+            return transformed_img
+
+    def _single_level_iteration(
+        self,
+        img: darsia.Image,
+        mask: np.ndarray,
+        config: dict,
+    ) -> tuple[darsia.Image, DiffeomorphicImageRegistration]:
+        """One iteration of multiscale image registration.
+
+        Args:
+            img (darsia.Image): test image
+            mask (np.ndarray): active mask
+            config (dict): parameters for image registration
+
+        Returns:
+            darsia.Image: transformed image
+            darsia.DiffeomorphicImageRegistration: resulting image registration
+
+        """
+        # Find image registration
+        image_registration = DiffeomorphicImageRegistration(
+            self.img_dst, mask=self.mask_dst, **config
+        )
+
+        plot = self.verbosity >= 2
+        transformed_img, patch_translation = image_registration(
+            img, plot_patch_translation=plot, return_patch_translation=True, mask=mask
+        )
+
+        if self.verbosity >= 2:
+            plt.figure("comparison")
+            plt.imshow(
+                skimage.util.compare_images(
+                    self.img_dst.img, transformed_img.img, method="blend"
+                )
+            )
+            plt.show()
+
+        return transformed_img, image_registration
+
+    def apply(self, img: darsia.Image, reverse: bool = False) -> darsia.Image:
+        """
+        Apply computed transformation onto arbitrary image.
+
+        Args:
+            img (np.ndarray or darsia.Image): image
+            reverse (bool): flag whether the translation is understood as from the
+                test image to the baseline image, or reversed. The default is the
+                latter.
+
+        Returns:
+            np.ndarray, optional: transformed image, if input is array; no output otherwise
+
+        """
+        if not hasattr(self, "combined_image_registration"):
+            raise ValueError("Construct the deformation first.")
+        return self.combined_image_registration.apply(img, reverse)
+
+    def plot(self, scaling: float, mask: np.ndarray) -> None:
+        """
+        Plot the dislacement stored in the current image registration.
+
+        Args:
+            scaling (float): scaling parameter to controll the length of the arrows.
+            mask (np.ndarray): active mask
+
+        """
+        if not hasattr(self, "combined_image_registration"):
+            raise ValueError("Construct the deformation first.")
+        self.combined_image_registration.plot(scaling=scaling, mask=mask)
