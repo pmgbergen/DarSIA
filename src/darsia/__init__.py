@@ -44,11 +44,11 @@ from darsia.signals.reduction.monochromatic import *
 from darsia.restoration.tvd import *
 from darsia.restoration.resize import *
 from darsia.restoration.binaryinpaint import *
-from darsia.analysis.translationanalysis import *
-from darsia.analysis.concentrationanalysis import *
-from darsia.analysis.imageregistration import *
-from darsia.analysis.segmentationcomparison import *
-from darsia.analysis.contouranalysis import *
+from darsia.multi_image_analysis.translationanalysis import *
+from darsia.multi_image_analysis.concentrationanalysis import *
+from darsia.multi_image_analysis.imageregistration import *
+from darsia.multi_image_analysis.segmentationcomparison import *
+from darsia.single_image_analysis.contouranalysis import *
 from darsia.manager.analysisbase import *
 from darsia.manager.concentrationanalysisbase import *
 from darsia.manager.traceranalysis import *
