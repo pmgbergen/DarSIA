@@ -82,8 +82,20 @@ class AnalysisBase:
             else None
         )
 
+        # NOTE: Need to initialize deformation correction to call _read; OK as
+        # base is used as baseline.
+        self.deformation_correction = None
+
         # Define baseline image as corrected darsia Image
         self.base = self._read(reference_base)
+
+        # Define deformation correction for the corrected image
+        # FIXME: More meaningful would be a definition based on
+        # reference_base - FIXME: Needs rewrite of translation analysis.
+        self.deformation_correction = darsia.DeformationCorrection(
+            base=self.base,
+            config=self.config["deformation"] if "deformation" in self.config else None,
+        )
 
     # ! ----- I/O
 
@@ -102,6 +114,7 @@ class AnalysisBase:
             img=path,
             drift_correction=self.drift_correction,
             translation_correction=self.translation_correction,
+            deformation_correction=self.deformation_correction,
             curvature_correction=self.curvature_correction,
             color_correction=self.color_correction,
         )

@@ -29,6 +29,7 @@ from darsia.corrections.shape.translation import *
 from darsia.corrections.shape.piecewiseperspective import *
 from darsia.corrections.shape.curvature import *
 from darsia.corrections.shape.drift import *
+from darsia.corrections.shape.deformation import *
 from darsia.corrections.color.colorcorrection import *
 from darsia.corrections.color.experimentalcolorcorrection import *
 from darsia.signals.models.basemodel import *
@@ -45,7 +46,7 @@ from darsia.restoration.resize import *
 from darsia.restoration.binaryinpaint import *
 from darsia.analysis.translationanalysis import *
 from darsia.analysis.concentrationanalysis import *
-from darsia.analysis.compactionanalysis import *
+from darsia.analysis.imageregistration import *
 from darsia.analysis.segmentationcomparison import *
 from darsia.analysis.contouranalysis import *
 from darsia.manager.analysisbase import *

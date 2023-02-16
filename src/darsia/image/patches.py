@@ -86,6 +86,7 @@ class Patches:
 
         # Some abbreviation for better overview
         nh = self.base.num_pixels_height
+        nw = self.base.num_pixels_width
         pw = patch_width_pixels
         ph = patch_height_pixels
         ow = overlap_width_pixels
@@ -238,10 +239,10 @@ class Patches:
                 [
                     np.array(
                         [
-                            [i * pw, nh - (j + 1) * ph],
+                            [i * pw, max(0, nh - (j + 1) * ph)],
                             [i * pw, nh - j * ph],
-                            [(i + 1) * pw, nh - j * ph],
-                            [(i + 1) * pw, nh - (j + 1) * ph],
+                            [min(nw, (i + 1) * pw), nh - j * ph],
+                            [min(nw, (i + 1) * pw), max(0, nh - (j + 1) * ph)],
                         ]
                     )
                     for j in range(self.num_patches_y)
@@ -255,7 +256,17 @@ class Patches:
         self.local_corners_reverse_matrix = np.array(
             [
                 [
-                    np.array([[0, 0], [0, ph], [pw, ph], [pw, 0]])
+                    np.array(
+                        [
+                            [0, 0],
+                            [0, min(nh, (j + 1) * ph) - j * ph],
+                            [
+                                min(nw, (i + 1) * pw) - i * pw,
+                                min(nh, (j + 1) * ph) - j * ph,
+                            ],
+                            [min(nw, (i + 1) * pw) - i * pw, 0],
+                        ]
+                    )
                     for j in range(self.num_patches_y)
                 ]
                 for i in range(self.num_patches_x)

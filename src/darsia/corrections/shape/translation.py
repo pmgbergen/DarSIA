@@ -21,7 +21,7 @@ class TranslationEstimator:
     Images.
     """
 
-    def __init__(self, max_features: int = 200, tol: float = 0.05):
+    def __init__(self, max_features: int = 200, tol: float = 0.05, keep_percent=0.1):
         """
         Setup of user-defined tuning parameters.
 
@@ -31,6 +31,7 @@ class TranslationEstimator:
                 translation
         """
         self._max_features = max_features
+        self._keep_percent = keep_percent
         self._tol = tol
 
     def find_effective_translation(
@@ -39,6 +40,8 @@ class TranslationEstimator:
         img_dst: np.ndarray,
         roi_src: Optional[tuple] = None,
         roi_dst: Optional[tuple] = None,
+        mask_src: Optional[np.ndarray] = None,
+        mask_dst: Optional[np.ndarray] = None,
         plot_matches: bool = False,
     ) -> tuple:
         """
@@ -52,6 +55,10 @@ class TranslationEstimator:
             img_dst (np.ndarray): destination image
             roi_src (tuple of slices): region of interested associated to the source image
             roi_dst (tuple of slices): region of interested associated to the destination image
+            mask_src (np.ndarray, optional): boolean mask detecting considered pixels in
+                the analysis; if None, all pixels are considered.
+            mask_dst (np.ndarray, optional): boolean mask detecting considered pixels in
+                the analysis; if None, all pixels are considered.
             plot_matches (bool): flag controlling whether the matching features are plotted;
                 useful for debugging; default value is False
 
@@ -78,7 +85,10 @@ class TranslationEstimator:
                 img_dst,
                 roi_src,
                 roi_dst,
+                mask_src,
+                mask_dst,
                 transformation_type=transformation_type,
+                keep_percent=self._keep_percent,
                 return_matches=True,
                 plot_matches=plot_matches,
             )
@@ -160,7 +170,7 @@ class TranslationEstimator:
         """
         # Determine effective translation
         translation, intact_translation = self.find_effective_translation(
-            img_src, img_dst, roi_src, roi_dst, plot_matches
+            img_src, img_dst, roi_src, roi_dst, None, None, plot_matches
         )
 
         if not intact_translation:
@@ -194,7 +204,7 @@ class TranslationEstimator:
         """
         # Determine effective translation
         translation, intact_translation = self.find_effective_translation(
-            img_src.img, img_dst.img, roi_src, roi_dst, plot_matches
+            img_src.img, img_dst.img, roi_src, roi_dst, None, None, plot_matches
         )
 
         if not intact_translation:
@@ -211,6 +221,8 @@ class TranslationEstimator:
         img_dst: np.ndarray,
         roi_src: Optional[tuple] = None,
         roi_dst: Optional[tuple] = None,
+        mask_src: Optional[np.ndarray] = None,
+        mask_dst: Optional[np.ndarray] = None,
         transformation_type: str = "homography",
         keep_percent: float = 0.1,
         return_matches: bool = False,
@@ -225,6 +237,10 @@ class TranslationEstimator:
             img_dst (np.ndarry): destination image
             roi_src (tuple of slices, optional): region of interest for the source image
             roi_dst (tuple of slices, optional): region of interest for the destination image
+            mask_src (np.ndarray, optional): boolean mask detecting considered pixels in
+                the analysis; if None, all pixels are considered.
+            mask_dst (np.ndarray, optional): boolean mask detecting considered pixels in
+                the analysis; if None, all pixels are considered.
             transformation_type (str): either "homography" or "partial_affine"
             keep_percent (float): how much of the features should be considered for finding
                 the transformation
@@ -251,14 +267,18 @@ class TranslationEstimator:
             # Only cover the case of compatible ROIs for now.
             assert img_src[roi_src].shape == img_dst[roi_dst].shape
 
-        # Extract features for both images restricted to the ROI.
-        # Pixel coordinates are prescibed using reverse matrix indexing.
-        features_src, have_features_src = FeatureDetection.extract_features(
-            img_src, roi_src, self._max_features
-        )
-        features_dst, have_features_dst = FeatureDetection.extract_features(
-            img_dst, roi_dst
-        )
+        # Only continue if images contain a sufficient amount of pixels.
+        if min(img_src.shape[:2]) < 2:
+            have_features_src = have_features_dst = False
+        else:
+            # Extract features for both images restricted to the ROI.
+            # Pixel coordinates are prescibed using reverse matrix indexing.
+            features_src, have_features_src = FeatureDetection.extract_features(
+                img_src, roi_src, mask_src, self._max_features
+            )
+            features_dst, have_features_dst = FeatureDetection.extract_features(
+                img_dst, roi_dst, mask_dst, self._max_features
+            )
 
         # Check whether features are valid
         if not (have_features_src and have_features_dst):
