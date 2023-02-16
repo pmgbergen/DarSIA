@@ -90,7 +90,8 @@ class PiecewisePerspectiveTransform:
                 w_eff = ceil(min(w, np.max(pts_dst[:, 0])) - max(0, origin_eff[0]))
                 h_eff = ceil(min(h, np.max(pts_dst[:, 1])) - max(0, origin_eff[1]))
 
-                # Continue with the next patch, if the effective size becomes at most a single pixel.
+                # Continue with the next patch, if the effective size becomes at most
+                # a single pixel.
                 if min(h_eff, w_eff) <= 1:
                     continue
 
