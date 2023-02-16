@@ -39,7 +39,7 @@ class DeformationCorrection:
             self.base = base
             if config is None:
                 config = {}
-            self.image_registration = darsia.DiffeomorphicImageRegistration(
+            self.image_registration = darsia.ImageRegistration(
                 self.base, **config
             )
 
