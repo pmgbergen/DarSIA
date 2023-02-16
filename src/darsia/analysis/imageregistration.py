@@ -34,20 +34,20 @@ class DiffeomorphicImageRegistration:
                 mask (np.ndarray, optional): roi in which features are considered.
         """
         # Create translation estimator
-        max_features = kwargs.pop("max_features", 200)
-        tol = kwargs.pop("tol", 0.05)
+        max_features = kwargs.get("max_features", 200)
+        tol = kwargs.get("tol", 0.05)
         self.translation_estimator = darsia.TranslationEstimator(max_features, tol)
 
         # Create translation analysis tool, and use the baseline image as reference point
-        self.N_patches = kwargs.pop("N_patches", [1, 1])
-        self.rel_overlap = kwargs.pop("rel_overlap", 0.0)
-        mask: Optional[darsia.Image] = kwargs.get("mask", None)
+        self.N_patches = kwargs.get("N_patches", [1, 1])
+        self.rel_overlap = kwargs.get("rel_overlap", 0.0)
+        mask_dst: Optional[darsia.Image] = kwargs.get("mask_dst", None)
         self.translation_analysis = darsia.TranslationAnalysis(
             img_dst,
             N_patches=self.N_patches,
             rel_overlap=self.rel_overlap,
             translationEstimator=self.translation_estimator,
-            mask=mask,
+            mask=mask_dst,
         )
 
     def update_dst(self, img_dst: darsia.Image) -> None:
@@ -94,6 +94,34 @@ class DiffeomorphicImageRegistration:
         )
 
     def __call__(
+        self,
+        img: darsia.Image,
+        mask: Optional[np.ndarray] = None,
+        return_transformed_dst: bool = False,
+    ) -> darsia.Image:
+        """
+        Image registration routine.
+
+        Args:
+            img (darsia.Image): test image
+            mask (np.ndaray): active mask
+            return_transformed_dst (bool): flag whether the transform is also applied
+                to dst (inversely)
+
+        Returns:
+            darsia.Image: transformed test image
+            darsia.Image: transformed reference image #TODO?
+        """
+        transformed_img = self.translation_analysis(img, mask=mask)
+
+        # Return results
+        if return_transformed_dst:
+            transformed_dst = self.apply(self.dst, reverse=True)
+            return transformed_img, transformed_dst
+        else:
+            return transformed_img
+
+    def call_with_output(
         self,
         img: darsia.Image,
         plot_patch_translation: bool = False,
@@ -294,7 +322,7 @@ class MultiscaleDiffeomorphicImageRegistration:
         """
         # Cache inputs
         self.img_dst = img_dst
-        self.mask_dst = np.ones(img_dst.img.shape[:2]) if mask_dst is None else mask_dst
+        self.mask_dst = mask_dst
 
         assert isinstance(config, list) and all(
             [isinstance(config[i], dict) for i in range(len(config))]
@@ -320,6 +348,8 @@ class MultiscaleDiffeomorphicImageRegistration:
         Args:
             img (darsia.Image): test image
             mask (np.ndaray): active mask
+            return_transformed_dst (bool): flag whether the transform is also applied
+                to dst (inversely)
 
         Returns:
             darsia.Image: transformed test image
@@ -384,7 +414,7 @@ class MultiscaleDiffeomorphicImageRegistration:
         )
 
         plot = self.verbosity >= 2
-        transformed_img, patch_translation = image_registration(
+        transformed_img, patch_translation = image_registration.call_with_output(
             img, plot_patch_translation=plot, return_patch_translation=True, mask=mask
         )
 
@@ -429,3 +459,184 @@ class MultiscaleDiffeomorphicImageRegistration:
         if not hasattr(self, "combined_image_registration"):
             raise ValueError("Construct the deformation first.")
         self.combined_image_registration.plot(scaling=scaling, mask=mask)
+
+    def evaluate(
+        self,
+        coords: Union[np.ndarray, darsia.Patches],
+        reverse: bool = False,
+        units: str = "metric",
+    ) -> np.ndarray:
+        """See evaluate in DiffeomorphicImageRegistration."""
+        return self.combined_image_registration.evaluate(coords, reverse, units)
+
+
+# ! ---- Administrator of Image Registration algorithms
+
+
+class ImageRegistration:
+    def __init__(
+        self, img_dst: darsia.Image, method: Optional[str] = None, **kwargs
+    ) -> None:
+        """Constructor for DiffeomorphicImageRegistration.
+
+        Args:
+            dst (darsia.Image): reference image which is supposed to be fixed in the analysis,
+                serves as destination object.
+            optional keyword arguments:
+                N_patches (list of two int, or lits of such): number of patches in x and
+                    y direction
+                rel_overlap (float, or list of such): relative overlap in each direction,
+                    related to the patch size
+                max_features (int, or list of such) maximal number of features in the
+                    feature detection
+                tol (float, or list of such): tolerance
+                mask (np.ndarray, optional): roi in which features are considered.
+        """
+        assert method in [None, "multilevel", "onelevel"]
+
+        # Fetch keyword arguments
+        N_patches = kwargs.get("N_patches", [1, 1])
+        max_features = kwargs.get("max_features", 200)
+        tol = kwargs.get("tol", 0.05)
+        rel_overlap = kwargs.get("rel_overlap", 0.0)
+        mask_dst: Optional[darsia.Image] = kwargs.get("mask_dst", None)
+        verbosity = kwargs.get("verbosity", 0)
+
+        # Method provided through N_patches
+        if method is None:
+            method = (
+                "multilevel"
+                if isinstance(N_patches, list)
+                and all([isinstance(N_patches[i], list) for i in range(len(N_patches))])
+                else "onelevel"
+            )
+
+        if method == "multilevel":
+            if not isinstance(N_patches, list):
+                N_patches = [N_patches]
+            num_levels = len(N_patches)
+
+            # Check compatibility
+            compatibility = True
+            if isinstance(max_features, int):
+                max_features = num_levels * [max_features]
+            else:
+                compatibility = (
+                    compatibility
+                    and isinstance(max_features, list)
+                    and len(max_features) == num_levels
+                )
+
+            if isinstance(tol, float):
+                tol = num_levels * [tol]
+            else:
+                compatibility = (
+                    compatibility and isinstance(tol, list) and len(tol) == num_levels
+                )
+
+            if isinstance(rel_overlap, float):
+                rel_overlap = num_levels * [rel_overlap]
+            else:
+                compatibility = (
+                    compatibility
+                    and isinstance(rel_overlap, list)
+                    and len(rel_overlap) == num_levels
+                )
+
+            if not compatibility:
+                raise ValueError(
+                    "Input for the multilevel image registration is not compatible."
+                )
+
+            # Prepare hierarchy of config dictionaries
+            config = [
+                {
+                    "N_patches": N_patches[i],
+                    "max_features": max_features[i],
+                    "tol": tol[i],
+                    "rel_overlap": rel_overlap[i],
+                }
+                for i in range(num_levels)
+            ]
+
+            self.image_registration = MultiscaleDiffeomorphicImageRegistration(
+                img_dst, config, mask_dst, verbosity=verbosity
+            )
+
+        elif method == "onelevel":
+
+            # Extract possibly the first value from list, if list is provided
+            if isinstance(N_patches, list) and all(
+                [isinstance(N_patches[i], list) for i in range(len(N_patches))]
+            ):
+                N_patches = N_patches[0]
+
+            if isinstance(max_features, list):
+                max_features = max_features[0]
+
+            if isinstance(tol, list):
+                tol = tol[0]
+
+            if isinstance(rel_overlap, list):
+                rel_overlap = rel_overlap[0]
+
+            # Construct feasible config
+            config = {
+                "N_patches": N_patches,
+                "max_features": max_features,
+                "tol": tol,
+                "rel_overlap": rel_overlap,
+                "mask": mask_dst,
+                "verbosity": verbosity,
+            }
+
+            self.image_registration = DiffeomorphicImageRegistration(img_dst, **config)
+
+        else:
+            raise NotImplementedError(
+                f"Method {method} is not implemented for ImageRegistration."
+            )
+
+    def __call__(
+        self,
+        img: darsia.Image,
+        mask: Optional[np.ndarray] = None,
+        return_transformed_dst: bool = False,
+    ) -> darsia.Image:
+        return self.image_registration(img, mask, return_transformed_dst)
+
+    def apply(self, img: darsia.Image, reverse: bool = False) -> darsia.Image:
+        """
+        Apply computed transformation onto arbitrary image.
+
+        Args:
+            img (np.ndarray or darsia.Image): image
+            reverse (bool): flag whether the translation is understood as from the
+                test image to the baseline image, or reversed. The default is the
+                latter.
+
+        Returns:
+            np.ndarray, optional: transformed image, if input is array; no output otherwise
+
+        """
+        return self.image_registration.apply(img, reverse)
+
+    def plot(self, scaling: float, mask: np.ndarray) -> None:
+        """
+        Plot the dislacement stored in the current image registration.
+
+        Args:
+            scaling (float): scaling parameter to controll the length of the arrows.
+            mask (np.ndarray): active mask
+
+        """
+        self.image_registration.plot(scaling=scaling, mask=mask)
+
+    def evaluate(
+        self,
+        coords: Union[np.ndarray, darsia.Patches],
+        reverse: bool = False,
+        units: str = "metric",
+    ) -> np.ndarray:
+        """See evaluate in DiffeomorphicImageRegistration."""
+        return self.image_registration.evaluate(coords, reverse, units)
