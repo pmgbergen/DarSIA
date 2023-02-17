@@ -6,6 +6,7 @@ taking into account width, height and depth of pixels.
 
 from typing import Optional, Union
 
+import cv2
 import numpy as np
 
 import darsia
@@ -39,15 +40,15 @@ class Geometry:
         self.Nz = Nz
 
         # Define width, height and depth of each voxel
-        self.voxel_width = kwargs.get("voxel_width", None)
+        self.voxel_width = kwargs.get("voxel width", None)
         if self.voxel_width is None:
             self.voxel_width = kwargs.get("width") / Nx
 
-        self.voxel_height = kwargs.get("voxel_height", None)
+        self.voxel_height = kwargs.get("voxel height", None)
         if self.voxel_height is None:
             self.voxel_height = kwargs.get("height") / Ny
 
-        self.voxel_depth = kwargs.get("voxel_depth", None)
+        self.voxel_depth = kwargs.get("voxel depth", None)
         if self.voxel_depth is None:
             self.voxel_depth = kwargs.get("depth") / Nz
 
@@ -67,10 +68,17 @@ class Geometry:
         """
 
         # Check compatibility of data formats
-        if isinstance(self.voxel_area, np.ndarray):
-            assert data.shape[:2] == self.voxel_area.shape[:2]
-            # TODO apply cv2.resize with the inter_area option
-            return np.sum(np.multiply(self.voxel_volume, data))
+        if isinstance(self.voxel_volume, np.ndarray):
+            _voxel_volume = (
+                self.voxel_volume
+                if data.shape[:2] == self.voxel_volume.shape[:2]
+                else cv2.resize(
+                    self.voxel_volume,
+                    tuple(reversed(data.shape[:2])),
+                    interpolation=cv2.INTER_AREA,
+                )
+            )
+            return np.sum(np.multiply(_voxel_volume, data))
         else:
             # TODO 3d
             Ny_data, Nx_data = data.shape[:2]
