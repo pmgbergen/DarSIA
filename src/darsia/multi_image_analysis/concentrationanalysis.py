@@ -350,7 +350,6 @@ class ConcentrationAnalysis:
     def calibrate_model(
         self,
         images: list[darsia.Image],
-        geometry: darsia.Geometry,
         options: dict,
     ) -> bool:
         """
@@ -360,7 +359,6 @@ class ConcentrationAnalysis:
 
         Args:
             images (list of darsia.Image): calibration images
-            geometry (darsia.Geometry): geometry for integration
             injection_rate (float): known injection rate in ml/hr
             options (dict): container holding tuning information for the numerical
                 calibration routine
@@ -415,7 +413,7 @@ class ConcentrationAnalysis:
             )
         else:
             calibration_objective = self.define_objective_function(
-                images_smooth_signal, images_diff, relative_times, geometry, options
+                images_smooth_signal, images_diff, relative_times, options
             )
 
         # Perform optimization step
@@ -525,7 +523,6 @@ class CalibrationModel:
         input_images: list[np.ndarray],
         images_diff: list[np.ndarray],
         relative_times: list[float],
-        geometry: darsia.Geometry,
         options: dict,
     ):
         pass
@@ -543,7 +540,6 @@ class InjectionRateObjectiveMixin(CalibrationModel):
         input_images: list[np.ndarray],
         images_diff: list[np.ndarray],
         relative_times: list[float],
-        geometry: darsia.Geometry,
         options: dict,
     ):
         """
@@ -553,7 +549,6 @@ class InjectionRateObjectiveMixin(CalibrationModel):
             input_images (list of np.ndarray): input for _convert_signal
             images_diff (list of np.ndarray): plain differences wrt background image
             relative_times (list of float): times
-            geometry (darsia.Geometry): geometry object for integration
             options (dict): dictionary with objective value, here the injection rate
 
         Returns:
@@ -561,8 +556,9 @@ class InjectionRateObjectiveMixin(CalibrationModel):
 
         """
 
-        # Fetch the injection rate
+        # Fetch the injection rate and geometry
         injection_rate = options.get("injection_rate")
+        geometry = options.get("geometry")
 
         # Define the objective function
         def objective_function(params: np.ndarray) -> float:
@@ -612,7 +608,6 @@ class AbsoluteVolumeObjectiveMixin(CalibrationModel):
         input_images: list[np.ndarray],
         images_diff: list[np.ndarray],
         relative_times: list[float],
-        geometry: darsia.Geometry,
         options: dict,
     ):
         """
@@ -622,13 +617,15 @@ class AbsoluteVolumeObjectiveMixin(CalibrationModel):
             input_images (list of np.ndarray): input for _convert_signal
             images_diff (list of np.ndarray): plain differences wrt background image
             relative_times (list of float): times
-            geometry (darsia.Geometry): geometry object for integration
             options (dict): dictionary with objective value, here the injection rate
 
         Returns:
             callable: objetive function
 
         """
+
+        # Fetch the geometry for integration
+        geometry = options.get("geometry")
 
         # Fetch input data
         input_times = np.array(options.get("times"))
