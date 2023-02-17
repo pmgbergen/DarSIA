@@ -11,23 +11,18 @@ import darsia
 
 class LinearModel(darsia.Model):
     """
-    Linear model, applying an affine conversion for signals to data,
-    with additional possibility for thresholding.
+    Linear model, applying an affine conversion for signals to data.
 
     """
 
     def __init__(
         self,
-        scaling: float = 1,
-        offset: float = 0,
-        # TODO add possibility for None.
-        threshold_lower: float = 0,
-        threshold_upper: float = 1,
-    ):
-        self._scaling = scaling
-        self._offset = offset
-        self._threshold_lower = threshold_lower
-        self._threshold_upper = threshold_upper
+        key: str = "",
+        **kwargs,
+    ) -> None:
+
+        self._scaling = kwargs.get(key + "scaling", 1.0)
+        self._offset = kwargs.get(key + "offset", 0.0)
 
         self.volumes = None
 
@@ -35,8 +30,6 @@ class LinearModel(darsia.Model):
         self,
         scaling: Optional[float] = None,
         offset: Optional[float] = None,
-        threshold_lower: Optional[float] = None,
-        threshold_upper: Optional[float] = None,
     ) -> None:
         """
         Update of internal parameters.
@@ -44,10 +37,6 @@ class LinearModel(darsia.Model):
         Args:
             scaling (float, optional): slope
             offset (float, optional): offset
-            threshold_lower (float, optional): lower threshold parameter,
-                effective after scaling
-            threshold_upper (float, optional): upper threshold parameter,
-                effective after scaling
 
         """
 
@@ -56,12 +45,6 @@ class LinearModel(darsia.Model):
 
         if offset is not None:
             self._offset = offset
-
-        if threshold_lower is not None:
-            self._threshold_lower = threshold_lower
-
-        if threshold_upper is not None:
-            self._threshold_upper = threshold_upper
 
     def update_model_parameters(self, parameters: np.ndarray) -> None:
         """
@@ -76,7 +59,7 @@ class LinearModel(darsia.Model):
 
     def __call__(self, img: np.ndarray) -> np.ndarray:
         """
-        Application of linear model and additional thresholding.
+        Application of linear model.
 
         Args:
             img (np.ndarray): image
@@ -85,11 +68,7 @@ class LinearModel(darsia.Model):
             np.ndarray: converted signal
 
         """
-        return np.clip(
-            self._scaling * img + self._offset,
-            self._threshold_lower,
-            self._threshold_upper,
-        )
+        return self._scaling * img + self._offset
 
     def calibrate(self, images: list[np.ndarray], option: str = "rate", **kwargs):
         pass  # TODO
