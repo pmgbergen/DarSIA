@@ -69,6 +69,10 @@ def benchmark_concentration_analysis_preset(
     signal_reduction = darsia.MonochromaticReduction(**options)
 
     ########################################################################
+    # Treat all facies the same
+    balancing = None
+
+    ########################################################################
     # Define restoration object - coarsen, tvd, resize
     original_size = base.img.shape[:2]
     restoration = darsia.CombinedModel(
@@ -103,6 +107,7 @@ def benchmark_concentration_analysis_preset(
     concentration_analysis = darsia.PriorPosteriorConcentrationAnalysis(
         base,
         signal_reduction,
+        balancing,
         restoration,
         prior_model,
         posterior_model,
