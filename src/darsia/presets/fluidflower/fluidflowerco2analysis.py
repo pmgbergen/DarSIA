@@ -162,7 +162,7 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
 
     # ! ---- Segmentation routines
 
-    def single_image_segmentation(
+    def single_image_analysis(
         self, img: Union[Path, darsia.Image], **kwargs
     ) -> None:
         """
@@ -170,7 +170,17 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
 
         Args:
             image (Path or Image): path to single image.
-            kwargs: optional keyword arguments, see batch_segmentation.
+            kwargs: optional keyword arguments:
+                plot_contours (bool): flag controlling whether the original image
+                    is plotted with contours of the two CO2 phases; default False.
+                write_contours_to_file (bool): flag controlling whether the plot from
+                    plot_contours is written to file; default False.
+                write_segmentation_to_file (bool): flag controlling whether the
+                    CO2 segmentation is written to file, where water, dissolved CO2
+                    and CO2(g) get decoded 0, 1, 2, respectively; default False.
+                write_coarse_segmentation_to_file (bool): flag controlling whether
+                    a coarse (280 x 150) representation of the CO2 segmentation from
+                    write_segmentation_to_file is written to file; default False.
         """
         # ! ----  Pre-processing
 
@@ -318,34 +328,3 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
                 #    coarse_segmentation,
                 #    img.name,
                 # )
-
-    def batch_segmentation(self, images: list[Path], **kwargs) -> None:
-        """
-        Standard batch segmentation.
-
-        Args:
-            images (list of Path): paths to batch of images.
-            kwargs: optional keyword arguments:
-                plot_contours (bool): flag controlling whether the original image
-                    is plotted with contours of the two CO2 phases; default False.
-                write_contours_to_file (bool): flag controlling whether the plot from
-                    plot_contours is written to file; default False.
-                write_segmentation_to_file (bool): flag controlling whether the
-                    CO2 segmentation is written to file, where water, dissolved CO2
-                    and CO2(g) get decoded 0, 1, 2, respectively; default False.
-                write_coarse_segmentation_to_file (bool): flag controlling whether
-                    a coarse (280 x 150) representation of the CO2 segmentation from
-                    write_segmentation_to_file is written to file; default False.
-
-        """
-
-        for img in images:
-
-            tic = time.time()
-
-            # Determine binary mask detecting any(!) CO2, and CO2(g)
-            self.single_image_segmentation(img, **kwargs)
-
-            # Information to the user
-            if self.verbosity:
-                print(f"Elapsed time for {img.name}: {time.time()- tic}.")
