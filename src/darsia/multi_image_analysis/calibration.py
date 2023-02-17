@@ -38,7 +38,7 @@ class AbstractObjective:
         """
         pass
 
-    def _update_model_for_calibration(
+    def update_model_for_calibration(
         self, parameters: np.ndarray, options: dict
     ) -> None:
         """
@@ -103,7 +103,7 @@ class InjectionRateObjectiveMixin(AbstractObjective):
             """
 
             # Set the stage
-            self._update_model_for_calibration(params, options)
+            self.update_model_for_calibration(params, options)
 
             # For each image, compute the total concentration, based on the currently
             # set tuning parameters, and compute the relative time.
@@ -183,7 +183,7 @@ class AbsoluteVolumeObjectiveMixin(AbstractObjective):
 
             """
             # Set the stage
-            self._update_model_for_calibration(params, options)
+            self.update_model_for_calibration(params, options)
 
             # For each image, compute the total concentration, based on the currently
             # set tuning parameters, and compute the relative time.

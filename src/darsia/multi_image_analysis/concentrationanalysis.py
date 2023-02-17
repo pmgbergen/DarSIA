@@ -29,6 +29,7 @@ class ConcentrationAnalysis:
         self,
         base: Union[darsia.Image, list[darsia.Image]],
         signal_reduction: darsia.SignalReduction,
+        balancing: Optional[darsia.Model] = None,
         restoration: Optional[darsia.TVD] = None,
         model: darsia.Model = darsia.Identity,
         labels: Optional[np.ndarray] = None,
@@ -40,6 +41,12 @@ class ConcentrationAnalysis:
         Args:
             base (darsia.Image or list of such): baseline image(s); if multiple provided,
                 these are used to define a cleaning filter.
+            signal_reduction (darsia.SignalReduction): reduction from multi-dimensional to
+                1-dimensional data.
+            balancing (darsia.Model, optional): operator balancing the signal, e.g., in
+                different facies.
+            restoration (darsia.TVD): regularizer.
+            model (darsia.Model): Conversion of signals to actual physical data.
             labels (array, optional): labeled image of domain
             kwargs (keyword arguments): interface to all tuning parameters
         """
@@ -54,7 +61,8 @@ class ConcentrationAnalysis:
         # Define scalar space.
         self.signal_reduction = signal_reduction
 
-        # Initialize the threshold values.
+        # Cache balance and model
+        self.balancing = balancing
         self.model = model
 
         # TVD parameters for pre and post smoothing
@@ -188,11 +196,11 @@ class ConcentrationAnalysis:
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_clean_signal(clean_signal)
 
-        # Homogenize signal (take into account possible heterogeneous effects)
-        homogenized_signal = self._homogenize_signal(clean_signal)
+        # Balance signal (take into account possible heterogeneous effects)
+        balanced_signal = self._balance_signal(clean_signal)
 
         # Regularize/upscale signal to Darcy scale
-        smooth_signal = self._prepare_signal(homogenized_signal)
+        smooth_signal = self._prepare_signal(balanced_signal)
 
         # Convert from signal to concentration
         concentration = self._convert_signal(smooth_signal, diff)
@@ -292,7 +300,7 @@ class ConcentrationAnalysis:
             else np.clip(img - self.threshold_cleaning_filter, 0, None)
         )
 
-    def _homogenize_signal(self, img: np.ndarray) -> np.ndarray:
+    def _balance_signal(self, img: np.ndarray) -> np.ndarray:
         """
         Routine responsible for rescaling wrt segments.
 
@@ -303,9 +311,12 @@ class ConcentrationAnalysis:
             img (np.ndarray): image
 
         Returns:
-            np.ndarray: homogenized image
+            np.ndarray: balanced image
         """
-        return img
+        if self.balancing is not None:
+            return self.balancing(img)
+        else:
+            return img
 
     def _prepare_signal(self, signal: np.ndarray) -> np.ndarray:
         """
@@ -375,16 +386,16 @@ class ConcentrationAnalysis:
         # Clean signal
         images_clean_signal = [self._clean_signal(signal) for signal in images_signal]
 
-        # Homogenize signal (take into account possible heterogeneous effects)
-        images_homogenized_signal = [
-            self._homogenize_signal(clean_signal)
+        # Balance signal (take into account possible heterogeneous effects)
+        images_balanced_signal = [
+            self._balance_signal(clean_signal)
             for clean_signal in images_clean_signal
         ]
 
         # Smoothen the signals
         images_smooth_signal = [
-            self._prepare_signal(homogenized_signal)
-            for homogenized_signal in images_homogenized_signal
+            self._prepare_signal(balanced_signal)
+            for balanced_signal in images_balanced_signal
         ]
 
         # NOTE: The only step missing from __call__ is the conversion of the signal
@@ -427,8 +438,8 @@ class ConcentrationAnalysis:
         else:
             print("Calibration not successful.")
 
-        # Update model
-        self.model.update_model_parameters(opt_result.x)
+        # Update model (use functionality from calibration)
+        self.update_model_for_calibration(opt_result.x, options)
 
         return opt_result.success
 
@@ -465,6 +476,7 @@ class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
         self,
         base: Union[darsia.Image, list[darsia.Image]],
         signal_reduction: darsia.SignalReduction,
+        balancing: Optional[darsia.Model],
         restoration: darsia.TVD,
         prior_model: darsia.Model,
         posterior_model: darsia.Model,
@@ -477,7 +489,7 @@ class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
 
         # Define the concentration analysis (note the prior_model is stored under self.model)
         super().__init__(
-            base, signal_reduction, restoration, prior_model, labels, **kwargs
+            base, signal_reduction, balancing, restoration, prior_model, labels, **kwargs
         )
 
     def _convert_signal(self, signal: np.ndarray, diff: np.ndarray) -> np.ndarray:
