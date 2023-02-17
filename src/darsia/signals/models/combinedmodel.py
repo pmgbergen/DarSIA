@@ -40,3 +40,14 @@ class CombinedModel(darsia.Model):
                 result = model(result, *args[: all_args - 2])
 
         return result
+
+    def update_model_parameters(self, parameters: np.ndarray, pos_model) -> None:
+        """
+        Wrapper of update routines of single models.
+
+        Args:
+            parameters (np.ndarray): parameter array
+            pos_model (int): position index addressing a single model.
+
+        """
+        self.models[pos_model].update_model_parameters(parameters)
