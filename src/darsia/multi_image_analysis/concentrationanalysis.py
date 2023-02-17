@@ -527,6 +527,26 @@ class CalibrationModel:
     ):
         pass
 
+    def _update_model_for_calibration(
+        self, parameters: np.ndarray, options: dict
+    ) -> None:
+        """
+        Wrapper for updating the model, depending on
+        whether it is a single model or a combined model.
+
+        Args:
+            parameters (np.ndarray): model parameters,
+            options (dict): further tuning parameters and extra info.
+
+        """
+        # Check whether the model is part of a combined model,
+        # and possibly determine position of the model
+        if isinstance(self.model, darsia.CombinedModel):
+            pos_model = options.get("model position")
+            self.model.update_model_parameters(parameters, pos_model)
+        else:
+            self.model.update_model_parameters(parameters)
+
 
 class InjectionRateObjectiveMixin(CalibrationModel):
     """
@@ -572,7 +592,7 @@ class InjectionRateObjectiveMixin(CalibrationModel):
             """
 
             # Set the stage
-            self.model.update_model_parameters(params)
+            self._update_model_for_calibration(params, options)
 
             # For each image, compute the total concentration, based on the currently
             # set tuning parameters, and compute the relative time.
@@ -652,7 +672,7 @@ class AbsoluteVolumeObjectiveMixin(CalibrationModel):
 
             """
             # Set the stage
-            self.model.update_model_parameters(params)
+            self._update_model_for_calibration(params, options)
 
             # For each image, compute the total concentration, based on the currently
             # set tuning parameters, and compute the relative time.
