@@ -35,6 +35,7 @@ from darsia.corrections.color.experimentalcolorcorrection import *
 from darsia.signals.models.basemodel import *
 from darsia.signals.models.combinedmodel import *
 from darsia.signals.models.linearmodel import *
+from darsia.signals.models.clipmodel import *
 from darsia.signals.models.thresholdmodel import *
 from darsia.signals.models.staticthresholdmodel import *
 from darsia.signals.models.dynamicthresholdmodel import *
