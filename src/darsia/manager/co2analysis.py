@@ -43,7 +43,7 @@ class CO2Analysis(ABC, darsia.ConcentrationAnalysisBase):
         # Define the specific components - use external methods to allow for further tailoring.
         # The main philosophy is to first separate water from the rest, which here will be
         # simply called CO2. In the CO2 region, additional separation will be required to
-        # separate CO(g) from CO2 saturated water.
+        # separate CO2(g) from CO2 saturated water.
 
         # Yet, only proceed if the config contains required keywords.
         if "co2" in self.config.keys():
