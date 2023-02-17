@@ -14,7 +14,7 @@ import numpy as np
 import skimage
 
 import darsia
-
+import time
 
 class AnalysisBase:
     """
@@ -175,3 +175,39 @@ class AnalysisBase:
         )
 
         return True
+
+    # ! ---- Analysis tools
+
+    def single_image_analysis(
+        self, img: Union[Path, darsia.Image], **kwargs
+    ) -> None:
+        """
+        Standard workflow to analyze CO2 phases.
+
+        Args:
+            image (Path or Image): path to single image.
+            kwargs: optional keyword arguments
+
+        """
+        raise NotImplementedError("Has to be implemented for each special case.")
+
+    def batch_analysis(self, images: list[Path], **kwargs) -> None:
+        """
+        Standard batch analysis.
+
+        Args:
+            images (list of Path): paths to batch of images.
+            kwargs: optional keyword arguments used in single_image_analysis.
+
+        """
+
+        for img in images:
+
+            tic = time.time()
+
+            # Determine binary mask detecting any(!) CO2, and CO2(g)
+            self.single_image_analysis(img, **kwargs)
+
+            # Information to the user
+            if self.verbosity:
+                print(f"Elapsed time for {img.name}: {time.time()- tic}.")
