@@ -6,6 +6,7 @@ provide the approach for how to set up tailored analysis classes.
 """
 
 import json
+import time
 from pathlib import Path
 from typing import Union, cast
 
@@ -14,7 +15,7 @@ import numpy as np
 import skimage
 
 import darsia
-import time
+
 
 class AnalysisBase:
     """
@@ -119,17 +120,22 @@ class AnalysisBase:
             color_correction=self.color_correction,
         )
 
-    def load_and_process_image(self, path: Union[str, Path]) -> None:
+    def load_and_process_image(self, path: Union[str, Path]) -> darsia.Image:
         """
         Load image for further analysis. Do all corrections and processing needed.
 
         Args:
             path (str or Path): path to image
 
+        Returns:
+            darsia.Image: processed image
+
         """
 
         # Read and process
         self.img = self._read(path)
+
+        return self.img
 
     def store(
         self,
@@ -178,9 +184,7 @@ class AnalysisBase:
 
     # ! ---- Analysis tools
 
-    def single_image_analysis(
-        self, img: Union[Path, darsia.Image], **kwargs
-    ) -> None:
+    def single_image_analysis(self, img: Union[Path, darsia.Image], **kwargs) -> None:
         """
         Standard workflow to analyze CO2 phases.
 
