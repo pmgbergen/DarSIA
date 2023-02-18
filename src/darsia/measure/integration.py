@@ -60,6 +60,9 @@ class Geometry:
             else np.multiply(self.voxel_area, self.voxel_depth)
         )
 
+        # Cache voxel volume
+        self.cached_voxel_volume = self.voxel_volume.copy()
+
     def integrate(
         self, data: Union[darsia.Image, np.ndarray], mask: Optional[np.ndarray] = None
     ) -> float:
@@ -69,16 +72,14 @@ class Geometry:
 
         # Check compatibility of data formats
         if isinstance(self.voxel_volume, np.ndarray):
-            _voxel_volume = (
-                self.voxel_volume
-                if data.shape[:2] == self.voxel_volume.shape[:2]
-                else cv2.resize(
+            if data.shape[:2] != self.cached_voxel_volume.shape[:2]:
+                scaling = np.prod(self.voxel_volume.shape[:2]) / np.prod(data.shape[:2])
+                self.cached_voxel_volume = cv2.resize(
                     self.voxel_volume,
                     tuple(reversed(data.shape[:2])),
                     interpolation=cv2.INTER_AREA,
-                )
-            )
-            return np.sum(np.multiply(_voxel_volume, data))
+                ) * scaling
+            return np.sum(np.multiply(self.cached_voxel_volume, data))
         else:
             # TODO 3d
             Ny_data, Nx_data = data.shape[:2]
