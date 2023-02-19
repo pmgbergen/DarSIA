@@ -1,0 +1,8 @@
+The presets in this folder contain standardized setups
+useful for general image analyses of co2 experiments
+in two-dimensional physical assets. A prominent example
+are the FluidFlower experiments, providing here also
+the name (only chosen due to historical reasons).
+
+The setups are e.g. heavily used in the image analysis
+of the FluidFlower International Benchmark Dataset.
