@@ -79,7 +79,7 @@ class InjectionRateObjectiveMixin(AbstractObjective):
         Args:
             input_images (list of np.ndarray): input for _convert_signal
             images_diff (list of np.ndarray): plain differences wrt background image
-            relative_times (list of float): times
+            relative_times (list of float): times in hrs
             options (dict): dictionary with objective value, here the injection rate
 
         Returns:
@@ -88,7 +88,7 @@ class InjectionRateObjectiveMixin(AbstractObjective):
         """
 
         # Fetch the injection rate and geometry
-        injection_rate = options.get("injection_rate")
+        injection_rate = options.get("injection_rate")  # in ml/hrs
         geometry = options.get("geometry")
 
         # Define the objective function
