@@ -447,7 +447,7 @@ class MultiscaleDiffeomorphicImageRegistration:
             raise ValueError("Construct the deformation first.")
         return self.combined_image_registration.apply(img, reverse)
 
-    def plot(self, scaling: float, mask: np.ndarray) -> None:
+    def plot(self, scaling: float, mask: Optional[darsia.Image] = None) -> None:
         """
         Plot the dislacement stored in the current image registration.
 
@@ -621,7 +621,7 @@ class ImageRegistration:
         """
         return self.image_registration.apply(img, reverse)
 
-    def plot(self, scaling: float, mask: np.ndarray) -> None:
+    def plot(self, scaling: float, mask: Optional[darsia.Image] = None) -> None:
         """
         Plot the dislacement stored in the current image registration.
 
