@@ -21,6 +21,7 @@ class ConcentrationAnalysis:
     Class providing the capabilities to determine concentration/saturation
     profiles based on image comparison, and tuning of concentration-intensity
     maps.
+
     """
 
     # ! ---- Setter methods
@@ -388,8 +389,7 @@ class ConcentrationAnalysis:
 
         # Balance signal (take into account possible heterogeneous effects)
         images_balanced_signal = [
-            self._balance_signal(clean_signal)
-            for clean_signal in images_clean_signal
+            self._balance_signal(clean_signal) for clean_signal in images_clean_signal
         ]
 
         # Smoothen the signals
@@ -489,7 +489,13 @@ class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
 
         # Define the concentration analysis (note the prior_model is stored under self.model)
         super().__init__(
-            base, signal_reduction, balancing, restoration, prior_model, labels, **kwargs
+            base,
+            signal_reduction,
+            balancing,
+            restoration,
+            prior_model,
+            labels,
+            **kwargs,
         )
 
     def _convert_signal(self, signal: np.ndarray, diff: np.ndarray) -> np.ndarray:
