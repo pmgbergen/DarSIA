@@ -18,7 +18,6 @@ from darsia.mathematics.regularization import *
 from darsia.measure.norms import *
 from darsia.measure.integration import *
 from darsia.utils.conversions import *
-from darsia.utils.resolution import *
 from darsia.utils.box import *
 from darsia.utils.computedepthmap import *
 from darsia.utils.segmentation import *
