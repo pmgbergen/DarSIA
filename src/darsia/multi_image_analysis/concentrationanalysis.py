@@ -368,7 +368,6 @@ class ConcentrationAnalysis:
 
         Args:
             images (list of darsia.Image): calibration images
-            injection_rate (float): known injection rate in ml/hr
             options (dict): container holding tuning information for the numerical
                 calibration routine
 
@@ -417,12 +416,12 @@ class ConcentrationAnalysis:
         # Double check an objective has been provided for calibration
         if not hasattr(self, "define_objective_function"):
             raise NotImplementedError(
-                "The concentration analysis is not equipped with a calibration model."
+                """The defined concentration analysis is not equipped with the
+                functionality to calibrate a model."""
             )
-        else:
-            calibration_objective = self.define_objective_function(
-                images_smooth_signal, images_diff, relative_times, options
-            )
+        calibration_objective = self.define_objective_function(
+            images_smooth_signal, images_diff, relative_times, options
+        )
 
         # Perform optimization step
         opt_result = optimize.minimize(
