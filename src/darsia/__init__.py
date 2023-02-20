@@ -47,7 +47,7 @@ from darsia.restoration.resize import *
 from darsia.restoration.binaryinpaint import *
 from darsia.multi_image_analysis.translationanalysis import *
 from darsia.multi_image_analysis.concentrationanalysis import *
-from darsia.multi_image_analysis.calibration import *
+from darsia.multi_image_analysis.model_calibration import *
 from darsia.multi_image_analysis.imageregistration import *
 from darsia.multi_image_analysis.segmentationcomparison import *
 from darsia.single_image_analysis.contouranalysis import *
