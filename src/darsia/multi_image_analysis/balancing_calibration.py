@@ -61,6 +61,60 @@ class AbstractBalancingCalibration:
         else:
             self.balancing.update_model_parameters(parameters)
 
+    def calibrate_balancing(
+        self,
+        images: list[darsia.Image],
+        options: dict,
+    ) -> bool:
+        """
+        Utility for calibrating the balancing used in darsia.ConcentrationAnalysis.
+
+        NOTE: Require to combine darsia.ConcentrationAnalysis with a calibration
+        model mixin via multiple inheritance.
+
+        Args:
+            images (list of darsia.Image): calibration images
+            options (dict): container holding tuning information for the numerical
+                calibration routine
+
+        Returns:
+            bool: success of the calibration study.
+
+        """
+        # Apply the same steps as in __call__ to all images, until before balancing is applied.
+
+        # Prepare calibration and determine fixed data
+        images_diff = [self._subtract_background(img) for img in images]
+
+        # Extract monochromatic version and take difference wrt the baseline image
+        images_signal = [self._extract_scalar_information(diff) for diff in images_diff]
+
+        # Clean signal
+        images_clean_signal = [self._clean_signal(signal) for signal in images_signal]
+
+        # The missing steps: balancing, restoration, and the model are not applied.
+        # Instead, the balancing and a lightweight restoration will be part of
+        # a calibration routine.
+        if not hasattr(self, "optimize_balancing"):
+            raise NotImplementedError(
+                """The concentration analysis is not equipped with a calibration model
+                for balancing."""
+            )
+        opt_result, opt_success = self.optimize_balancing(images_clean_signal, options)
+
+        # Report results
+        if opt_success:
+            print(
+                f"Calibration successful with obtained model parameters {opt_result}."
+            )
+        else:
+            print("Calibration not successful.")
+
+        # Update model
+        self.update_balancing_for_calibration(opt_result, options)
+
+        return opt_success
+
 
 class ContinuityBasedBalancingCalibrationMixin(AbstractBalancingCalibration):
     """
