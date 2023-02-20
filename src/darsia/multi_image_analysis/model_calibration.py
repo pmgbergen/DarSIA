@@ -14,7 +14,7 @@ from sklearn.linear_model import RANSACRegressor
 import darsia
 
 
-class AbstractObjective:
+class AbstractModelObjective:
     """
     Abstract class for defining an objective function
     to be called in ConcentrationAnalysis.calibrate_model().
@@ -59,7 +59,7 @@ class AbstractObjective:
             self.model.update_model_parameters(parameters)
 
 
-class InjectionRateObjectiveMixin(AbstractObjective):
+class InjectionRateModelObjectiveMixin(AbstractModelObjective):
     """
     Calibration model based on matching injection rates.
     Has to be combined with ConcentrationAnalysis.
@@ -127,7 +127,7 @@ class InjectionRateObjectiveMixin(AbstractObjective):
         return objective_function
 
 
-class AbsoluteVolumeObjectiveMixin(AbstractObjective):
+class AbsoluteVolumeModelObjectiveMixin(AbstractModelObjective):
     """
     Calibration model based on matching injection rates.
     Has to be combined with ConcentrationAnalysis.
