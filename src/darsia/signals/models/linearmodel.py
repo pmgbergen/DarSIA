@@ -52,6 +52,8 @@ class LinearModel(darsia.Model):
         Short cut to update scaling and offset parameters using a
         general function signature.
 
+        The main use is the model calibration. Do not update the offset.
+
         Args:
             parameters (np.ndarray): 2-array containing scaling and offset values.
 
@@ -90,11 +92,13 @@ class HeterogeneousLinearModel(darsia.Model):
         **kwargs,
     ) -> None:
 
+        # Organize label info
         self.labels = labels
         self.unique_labels = np.unique(labels)
         self.num_labels = len(self.unique_labels)
         self.cached_labels = self.labels.copy()
 
+        # Read model parameters from options
         self._scaling = kwargs.get(
             key + "scaling", np.ones(self.num_labels, dtype=float)
         )
@@ -102,6 +106,13 @@ class HeterogeneousLinearModel(darsia.Model):
             key + "offset", np.zeros(self.num_labels, dtype=float)
         )
 
+        # Convert to arrays
+        if isinstance(self._scaling, list):
+            self._scaling = np.array(self._scaling)
+        if isinstance(self._offset, list):
+            self._offset = np.array(self._offset)
+
+        # Check compatibility
         self._compatibility()
 
     def _compatibility(self) -> None:
