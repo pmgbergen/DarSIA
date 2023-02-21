@@ -8,6 +8,7 @@ in ConcentrationAnalysis.calibrate_model()
 import abc
 
 import numpy as np
+import scipy.optimize as optimize
 from scipy import interpolate
 from sklearn.linear_model import RANSACRegressor
 
@@ -57,6 +58,113 @@ class AbstractModelObjective:
             self.model.update_model_parameters(parameters, pos_model)
         else:
             self.model.update_model_parameters(parameters)
+
+    def calibrate_model(
+        self,
+        images: list[darsia.Image],
+        options: dict,
+    ) -> bool:
+        """
+        Utility for calibrating the model used in darsia.ConcentrationAnalysis.
+
+        NOTE: Require to combine darsia.ConcentrationAnalysis with a calibration
+        model mixin via multiple inheritance.
+
+        Args:
+            images (list of darsia.Image): calibration images
+            options (dict): container holding tuning information for the numerical
+                calibration routine
+
+        Returns:
+            bool: success of the calibration study.
+
+        """
+        # Apply the same steps as in __call__ to all images.
+
+        # Prepare calibration and determine fixed data
+        images_diff = [self._subtract_background(img) for img in images]
+
+        # Extract monochromatic version and take difference wrt the baseline image
+        images_signal = [self._extract_scalar_information(diff) for diff in images_diff]
+
+        # Clean signal
+        images_clean_signal = [self._clean_signal(signal) for signal in images_signal]
+
+        # Balance signal (take into account possible heterogeneous effects)
+        images_balanced_signal = [
+            self._balance_signal(clean_signal) for clean_signal in images_clean_signal
+        ]
+
+        # Smoothen the signals
+        images_smooth_signal = [
+            self._prepare_signal(balanced_signal)
+            for balanced_signal in images_balanced_signal
+        ]
+
+        # NOTE: The only step missing from __call__ is the conversion of the signal
+        # applying the provided model. This step will be used to tune the
+        # model -> calibration.
+
+        # Fetch calibration options
+        initial_guess = options.get("initial_guess")
+        tol = options.get("tol")
+        maxiter = options.get("maxiter")
+
+        # Define reference time (not important which image serves as basis)
+        SECONDS_TO_HOURS = 1.0 / 3600.0
+        relative_times = [
+            (img.timestamp - self.base_time).total_seconds() * SECONDS_TO_HOURS
+            for img in images
+        ]
+
+        # Double check an objective has been provided for calibration
+        if not hasattr(self, "define_objective_function"):
+            raise NotImplementedError(
+                """The defined concentration analysis is not equipped with the
+                functionality to calibrate a model."""
+            )
+        calibration_objective = self.define_objective_function(
+            images_smooth_signal, images_diff, relative_times, options
+        )
+
+        # Perform optimization step
+        opt_result = optimize.minimize(
+            calibration_objective,
+            initial_guess,
+            tol=tol,
+            options={"maxiter": maxiter, "disp": True},
+        )
+        if opt_result.success:
+            print(
+                f"Calibration successful with obtained model parameters {opt_result.x}."
+            )
+        else:
+            print("Calibration not successful.")
+
+        # Update model (use functionality from calibration)
+        self.update_model_for_calibration(opt_result.x, options)
+
+        return opt_result.success
+
+
+# Old approach using bisection only...
+#        def _scaling_vs_deviation(scaling: float) -> float:
+#            return _deviation([scaling, 0.], input_images, images_diff, relative_times)
+#
+#        st_time = time.time()
+#        # Perform bisection
+#        initial_guess = [1,10]
+#        xtol = 1e-1
+#        maxiter = 10
+#        calibrated_scaling = bisect(
+#            _scaling_vs_deviation,
+#            *initial_guess,
+#            xtol=xtol,
+#            maxiter=maxiter
+#        )
+#        print(calibrated_scaling)
+#        print("bisection", time.time() - st_time)
+#        self.model.update(scaling = calibrated_scaling)
 
 
 class InjectionRateModelObjectiveMixin(AbstractModelObjective):
