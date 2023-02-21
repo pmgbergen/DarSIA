@@ -112,8 +112,11 @@ class AbstractModelObjective:
 
         # Define reference time (not important which image serves as basis)
         SECONDS_TO_HOURS = 1.0 / 3600.0
+        ref_time = images[
+            0
+        ].timestamp  # some reference time as only relative times relevant
         relative_times = [
-            (img.timestamp - self.base_time).total_seconds() * SECONDS_TO_HOURS
+            (img.timestamp - ref_time).total_seconds() * SECONDS_TO_HOURS
             for img in images
         ]
 
