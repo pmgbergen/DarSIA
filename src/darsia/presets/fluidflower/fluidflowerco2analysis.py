@@ -21,9 +21,9 @@ from darsia.presets.fluidflower.benchmarkco2model import (
 
 class FluidFlowerCO2Analysis(darsia.CO2Analysis):
     """
-    Class for managing the FluidFlower benchmark analysis.
-    Identifiers for CO2 dissolved in water and CO2(g) are
-    tailored to the benchmark set of the large rig.
+    Class for managing the FluidFlower CO2 images as those
+    acquired in the benchmark analysis.
+
     """
 
     def __init__(
@@ -32,10 +32,10 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
         config: Union[str, Path],
         results: Union[str, Path],
         update_setup: bool = False,
-        verbosity: bool = True,
+        verbosity: int = 0,
     ) -> None:
         """
-        Sets up fixed config file required for preprocessing.
+        Setup of analysis.
 
         Args:
             baseline (str, Path or list of such): baseline images, used to
@@ -49,8 +49,13 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
         """
         darsia.CO2Analysis.__init__(self, baseline, config, update_setup)
 
+        # Add labels
+        if not hasattr(self, "labels"):
+            self.labels = np.ones(self.base.img.shape[:2], dtype=int)
+
         # Create folder for results if not existent
         self.path_to_results: Path = Path(results)
+        self.path_to_results.parents[0].mkdir(parents=True, exist_ok=True)
 
         # Store verbosity
         self.verbosity = verbosity
