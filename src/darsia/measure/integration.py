@@ -115,23 +115,5 @@ class PorousGeometry(Geometry):
         self.voxel_area = np.multiply(self.voxel_area, self.porosity)
         self.voxel_volume = np.multiply(self.voxel_volume, self.porosity)
 
-
-def integrate(
-    data: Union[darsia.Image, np.ndarray],
-    geometry: Optional[Geometry] = None,
-    mask: Optional[np.ndarray] = None,
-) -> float:
-    """
-    Integrate data over the entire geometry.
-    """
-
-    # TODO extend to darsia.Image
-    if isinstance(data, np.ndarray):
-        assert geometry is not None
-
-    # Check compatibility of data formats
-    if isinstance(geometry.voxel_area, np.ndarray):
-        assert data.shape[:2] == geometry.voxel_area.shape[:2]
-
-    # Perform weighted sum
-    return geometry.integrate(data)
+        # Update cached voxel volume due to involvement of the porosity
+        self.cached_voxel_volume = self.voxel_volume.copy()
