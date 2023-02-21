@@ -56,7 +56,6 @@ class ConcentrationAnalysis:
         if not isinstance(base, list):
             base = [base]
         self.base: darsia.Image = base[0].copy()
-        self.base_time = self.base.timestamp
 
         # Define scalar space.
         self.signal_reduction = signal_reduction
