@@ -5,6 +5,17 @@
 # DarSIA
 Darcy scale image analysis toolbox
 
+# Citing
+
+If you use DarSIA in your research, we ask you to cite the following publication:
+
+Nordbotten, J. M., Benali, B., Both, J. W., Brattekås, B., Storvik, E., & Fernø, M. A. (2023).
+DarSIA: An open-source Python toolbox for two-scale image processing of dynamics in porous media.
+arXiv preprint arXiv:2301.05455.
+
+The first release can be also found on Zenodo:
+10.5281/zenodo.7515016
+
 ## Installation
 Clone the repository from github and enter the DarSIA folder. Then, run the following command to install:
 
