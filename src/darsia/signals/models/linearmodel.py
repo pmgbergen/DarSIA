@@ -72,7 +72,9 @@ class LinearModel(darsia.Model):
         return self._scaling * img + self._offset
 
     def calibrate(self, images: list[np.ndarray], option: str = "rate", **kwargs):
-        raise NotImplementedError("Calibration is not implemented internal to the linear model.")
+        raise NotImplementedError(
+            "Calibration is not implemented internal to the linear model."
+        )
 
 
 class HeterogeneousLinearModel(darsia.Model):
