@@ -101,6 +101,8 @@ class FluidFlowerTracerAnalysis(darsia.TracerAnalysis):
         ):
             pass
 
+        verbosity = self.config["tracer"].get("verbosity", 0)
+
         tracer_analysis = TailoredConcentrationAnalysis(
             self.base,
             signal_reduction,
@@ -108,6 +110,7 @@ class FluidFlowerTracerAnalysis(darsia.TracerAnalysis):
             restoration,
             model,
             self.labels,
+            verbosity=verbosity,
         )
 
         return tracer_analysis
