@@ -4,7 +4,6 @@ It will require further information for specific rigs
 to be obtained through multiple inheritance.
 
 """
-import time
 from pathlib import Path
 from typing import Union
 
@@ -162,9 +161,7 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
 
     # ! ---- Segmentation routines
 
-    def single_image_analysis(
-        self, img: Union[Path, darsia.Image], **kwargs
-    ) -> None:
+    def single_image_analysis(self, img: Union[Path, darsia.Image], **kwargs) -> None:
         """
         Standard workflow to analyze CO2 phases.
 

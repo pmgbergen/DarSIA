@@ -74,11 +74,14 @@ class Geometry:
         if isinstance(self.voxel_volume, np.ndarray):
             if data.shape[:2] != self.cached_voxel_volume.shape[:2]:
                 scaling = np.prod(self.voxel_volume.shape[:2]) / np.prod(data.shape[:2])
-                self.cached_voxel_volume = cv2.resize(
-                    self.voxel_volume,
-                    tuple(reversed(data.shape[:2])),
-                    interpolation=cv2.INTER_AREA,
-                ) * scaling
+                self.cached_voxel_volume = (
+                    cv2.resize(
+                        self.voxel_volume,
+                        tuple(reversed(data.shape[:2])),
+                        interpolation=cv2.INTER_AREA,
+                    )
+                    * scaling
+                )
             return np.sum(np.multiply(self.cached_voxel_volume, data))
         else:
             # TODO 3d
