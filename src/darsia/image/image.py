@@ -207,6 +207,16 @@ class Image:
         # Establish a coordinate system based on the metadata
         self.coordinatesystem: darsia.CoordinateSystem = darsia.CoordinateSystem(self)
 
+    def copy(self) -> darsia.Image:
+        """
+        Copy constructor.
+
+        Returns:
+            darsia.Image: Copy of the image object.
+
+        """
+        return Image(np.copy(self.img), copy.copy(self.metadata))
+
     # ! ---- Fast-access getter functions for metadata
 
     @property
@@ -255,6 +265,8 @@ class Image:
             )
         else:
             return darsia.Image(self.img - other.img, copy.copy(self.metadata))
+
+    # ! ---- I/O
 
     def write(
         self,
@@ -344,6 +356,8 @@ class Image:
             plt.imshow(rgbim)
             plt.show()
 
+    # ! ---- Utilities
+
     # Seems like something that should read an image and return a new one with grid.
     def add_grid(
         self,
@@ -427,10 +441,9 @@ class Image:
         # Return image with grid as Image object
         return Image(img=gridimg, metadata=self.metadata)
 
-    # resize image by using cv2's resize command
     def resize(self, cx: float, cy: Optional[float] = None) -> None:
         """ "
-        Coarsen the image object
+        Resize routine.
 
         Arguments:
             cx (float): the amount of which to scale in x direction
@@ -454,11 +467,7 @@ class Image:
         self.dy *= 1 / cy
         self.coordinatesystem = darsia.CoordinateSystem(self)
 
-    def copy(self) -> darsia.Image:
-        """
-        Returns a copy of the image object.
-        """
-        return Image(np.copy(self.img), copy.copy(self.metadata))
+    # ! ---- Color transformations
 
     def toBGR(self, return_image: bool = False) -> Optional[darsia.Image]:
         """
