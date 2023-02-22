@@ -7,7 +7,6 @@ Earth Mover's distance between images.
 from typing import Optional, Union
 
 import cv2
-import matplotlib.pyplot as plt
 
 # import ot
 import numpy as np
@@ -21,9 +20,7 @@ class EMD:
 
     """
 
-    def __init__(
-        self, preprocess: Optional[callable] = None, **kwargs
-    ) -> None:
+    def __init__(self, preprocess: Optional[callable] = None, **kwargs) -> None:
         """
         Args:
             preprocess (callable, optional): preprocessing routine
