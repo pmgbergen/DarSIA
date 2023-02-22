@@ -5,10 +5,12 @@ objects.
 
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 import cv2
 import numpy as np
+
+import darsia
 
 
 class Resize:
@@ -63,6 +65,9 @@ class Resize:
             self.fy = 1 if self.fy is None else self.fy
 
         # Convert to CV2 format
+        # NOTE: The default value for interpolation in cv2 is depending on whether
+        # the image is shrinked or enlarged. In case of shrinking, cv2.INTER_NEAREST
+        # is chosen, as opposed to cv2.INTER_LINEAR in the case of enlarging.
         interpolation_pre = (
             kwargs.get(key + "resize interpolation", None)
             if interpolation is None
@@ -81,33 +86,62 @@ class Resize:
                 f"Interpolation option {interpolation_pre} is not implemented."
             )
 
-    def __call__(self, img: np.ndarray) -> np.ndarray:
+        # Check for conservative rescaling
+        self.is_conservative = kwargs.get(key + "resize conservative", False)
+
+    def __call__(
+        self, img: Union[np.ndarray, darsia.Image]
+    ) -> Union[np.ndarray, darsia.Image]:
         """
         Wrapper to cv2.resize.
 
         Args:
-            img (np.ndarray): image
+            img (np.ndarray, or darsia.Image): image
 
         Returns:
-            np.ndarray: resized image
+            np.ndarray, or darsia.Image: resized image, same format as input
 
         """
+        # Extract original image
+        input_is_image = isinstance(img, darsia.Image)
+        img_array = img.img.copy() if input_is_image else img.copy()
+
         # Convert data type
-        img = img if self.dtype is None else img.astype(self.dtype)
+        img_array = (
+            img_array.copy() if self.dtype is None else img_array.astype(self.dtype)
+        )
 
         # Apply resizing
         if self.interpolation is None:
-            return cv2.resize(
-                img,
+            resized_img_array = cv2.resize(
+                img_array,
                 dsize=self.dsize,
                 fx=self.fx,
                 fy=self.fy,
             )
         else:
-            return cv2.resize(
-                img,
+            resized_img_array = cv2.resize(
+                img_array,
                 dsize=self.dsize,
                 fx=self.fx,
                 fy=self.fy,
                 interpolation=self.interpolation,
             )
+
+        # Conserve the (weighted) sum
+        if self.is_conservative:
+            resized_img_array *= np.prod(img_array.shape[:2]) / np.prod(
+                resized_img_array.shape[:2]
+            )
+
+        # Return resized image
+        if input_is_image:
+            # Update metadata of the darsia.Image
+            resized_image = img.copy()
+            resized_image.img = resized_img_array
+            resized_image.dx *= img_array.shape[1] / resized_img_array.shape[1]
+            resized_image.dy *= img_array.shape[0] / resized_img_array.shape[0]
+            return resized_image
+
+        else:
+            return resized_img_array
