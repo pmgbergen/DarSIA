@@ -22,16 +22,14 @@ class EMD:
     """
 
     def __init__(
-        self, base: darsia.Image, preprocess: Optional[callable] = None, **kwargs
+        self, preprocess: Optional[callable] = None, **kwargs
     ) -> None:
         """
         Args:
-            base (darsia.Image): baseline image
             preprocess (callable, optional): preprocessing routine
 
         """
         # Cache
-        self.base = base
         self.preprocess = preprocess
 
     def __call__(self, img_1: darsia.Image, img_2: darsia.Image) -> float:
@@ -182,3 +180,29 @@ class EMD:
                 distance_matrix[i, j] = distance_matrix[j, i]
 
         return distance_matrix
+
+
+## Determine EMD using ot
+# if True:
+#    # OT takes 1d arrays as inputs
+#    a_flat = a.flatten(order = "F")
+#    b_flat = b.flatten(order = "F")
+#
+#    # Cell centers of all cells - x and y coordinates.
+#    cc_x = np.zeros((Nx,Ny), dtype=float).flatten("F")
+#    cc_y = np.zeros((Nx,Ny), dtype=float).flatten("F")
+#
+#    cc_x, cc_y = np.meshgrid(np.arange(Nx), np.arange(Ny), indexing="ij")
+#
+#    cc_x_flat = cc_x.flatten("F")
+#    cc_y_flat = cc_y.flatten("F")
+#
+#    cc = np.vstack((cc_x_flat, cc_y_flat)).T
+#
+#    # Distance matrix
+#    # NOTE the definition of this distance matrix is memory consuming and
+#    # does not allow for too large distributions.
+#    M = ot.dist(cc, cc, metric="euclidean")
+#
+#    dist_ot = ot.emd2(a_flat,b_flat,M)
+#    print(dist_ot)
