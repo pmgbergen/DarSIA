@@ -17,6 +17,7 @@ from darsia.mathematics.solvers import *
 from darsia.mathematics.regularization import *
 from darsia.measure.norms import *
 from darsia.measure.integration import *
+from darsia.measure.emd import *
 from darsia.utils.conversions import *
 from darsia.utils.box import *
 from darsia.utils.computedepthmap import *
