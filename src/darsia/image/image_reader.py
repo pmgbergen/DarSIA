@@ -193,3 +193,14 @@ class ImageReader:
         ]
 
         return images
+
+    def from_vtu(
+        self, path: list[Path], options: dict
+    ) -> Union[darsia.Image, list[darsia.Image]]:
+        raise NotImplementedError
+
+
+    def from_optical(
+        self, path: list[Path], options: dict
+    ) -> Union[darsia.Image, list[darsia.Image]]:
+        raise NotImplementedError
