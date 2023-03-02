@@ -4,7 +4,7 @@ from typing import Union, cast
 
 import numpy as np
 
-import darsia as da
+import darsia
 
 
 class CoordinateSystem:
@@ -18,7 +18,7 @@ class CoordinateSystem:
 
     """
 
-    def __init__(self, img: da.Image, dim: int = 2):
+    def __init__(self, img: darsia.Image):
         """Generate a coordinate system based on the metadata of an existing image."""
 
         # Copy metadata from image. Will be used for conversions.
