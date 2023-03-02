@@ -158,6 +158,27 @@ class ColorCorrection:
 
     def __call__(
         self,
+        image: Union[np.ndarray, darsia.Image, darsia.SpaceTimeImage],
+        return_image: bool = False,
+    ) -> Union[np.ndarray, darsia.Image, darsia.SpaceTimeImage]:
+        """
+        Manager for color correction depending on the input type.
+
+        Args:
+            image (array or Image): image
+            return_image (bool): flag controlling whether the image is returned,
+                only relevant for input of type Image.
+
+        """
+        if isinstance(image, np.ndarray):
+            return self._correct_array(image)
+        else:
+            image.img = self._correct_array(image.img)
+            if return_image:
+                return image
+
+    def _correct_array(
+        self,
         image: np.ndarray,
     ) -> np.ndarray:
         """
