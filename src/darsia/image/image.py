@@ -746,3 +746,281 @@ class Image:
             self.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2HSV)[:, :, 2]
             self.metadata["color_space"] = "VALUE"
             return None
+
+
+class GeneralImage:
+    """
+    Develop version of a general, potential space-time Image class.
+
+    """
+
+    # ! ---- Constructors
+
+    def __init__(
+        self,
+        img: np.ndarray,
+        time: Optional[Union[float, list[float], np.ndarray]] = None,
+        transformations: Optional[list] = None,
+        **kwargs,
+    ) -> None:
+        """
+        Initalization of a physical space-time image.
+
+        Allows for scalar and vector-values  2d, 3d, 4d, images, including
+        time-slices as well as time-series. The boolean flag 'scalar' stores
+        whether the data is stored in an additional dimension of the Image or not
+        (note scalar data can be in general also encoded as multichromatic image
+        with 1d data). Furthermore, 'series' holds this information, while
+
+        Args:
+            img (array): space_dim+time_dim+range_dim space-time data array
+            time (float, list or array): times corresponding to image or slices.
+            transformations (list of callable): transformations as reduction
+                and correction routines. Called in order.
+            kwargs:
+                keyword arguments controlling many of the attributes, mostly
+                having default values targeting conventional optical images.
+
+        Attributes:
+            dim (int): dimensionality of the physical space
+            scalar (boolean): flag storing whether data is scalar-valued and does
+                effectivley does not use any extra axis.
+            series (boolean): flag storing whether the array is a space-time array
+            orientation (str): axis orientation of the first dim entries
+            img (array): (space-time) image array
+
+        Example:
+            multichromatic_3d_image_series = np.array((Nx, Ny, Nz, Nt, Nd), dtype=float)
+            image = darsia.Image(multichromatic_3d_image_series, scalar = False, series = True, dim = 3)
+
+        """
+
+        # ! ---- Cache data
+        self.img = img
+        self.shape = img.shape
+        self.original_dtype = img.dtype
+
+        # ! ---- Apply transformations
+
+        # TODO rm this list.
+
+        # NOTE: Recommended order of transformations:
+        # 1. Reduction from 3d to 2d
+
+        # For 2d images:
+        # 1. drift correction to some baseline image
+        # 2. color correction
+        # 3. translation correction to some baseline image
+        # 4. curvature correction calibrated based on a baseline image
+        # 5. deformation correction wrt. corrected baseline image
+
+        # NOTE: Require mapping format:
+        # darsia.SpaceTimeImage -> darsia.SpaceTimeImage
+        if transformations is not None:
+            for transformation in transformations:
+                transformation(self)
+
+        # ! ---- Spatial meta information
+        self.space_dim: int = kwargs.get("dim", 2)
+        """Dimension of the spatial domain."""
+
+        self.space_num: int = np.prod(self.shape[: self.space_dim])
+        """Spatial resolution, i.e., number of voxels."""
+
+        self.orientation = kwargs.get("orientation", "ij")
+        """Orientation of each axis in context of matrix indexing (ijk)
+        or Cartesian coordinates (xyz)."""
+
+        self.dimensions: list[float] = kwargs.get("dimensions", self.space_dim * [1])
+        """Dimension in the directions corresponding to the orientations."""
+
+        self.num_voxels: int = self.img.shape[: self.space_dim]
+        """Number of voxels in each dimension."""
+
+        self.voxel_size: list[float] = [
+            self.dimensions[i] / self.num_voxels[i] for i in range(self.space_dim)
+        ]
+        """Size of each voxel in each direction, ordered as orientation."""
+
+        self.origin = np.array(kwargs.pop("origin", np.array(self.space_dim * [0])))
+        """Cartesian coordinates associated to the [0,0,0] voxel."""
+
+        self.coordinatesystem: darsia.GeneralCoordinateSystem = (
+            darsia.GeneralCoordinateSystem(self)
+        )
+        """Physical coordinate system with equipped tranformation from voxel to
+        Cartesian space."""
+
+        # ! ---- Temporal meta information
+        self.series = kwargs.get("series", False)
+        """Flag controlling whether the data array corresponds to a time series."""
+
+        if self.series:
+            self.time_dim = 1
+            """Dimensionality of the image in temporal sense."""
+
+            self.time_num = self.img.shape[self.space_dim]
+            """Number of time points."""
+
+            self.time: np.ndarray = np.array(time)
+            """Time data."""
+
+        else:
+            self.time_dim = 0
+            self.time_num = 1
+            self.time = time
+
+        # ! ---- Data meta information
+        self.scalar = kwargs.get("scalar", False)
+        """Flag controlling whether the data array is scalar, i.e., it does not
+        use an extra axis to encode the range."""
+
+        if self.scalar:
+            self.range_dim: int = 0
+            """Dimensionality of the image in data sense."""
+
+            self.range_num: int = 1
+            """Number of entries for each data entry."""
+
+        else:
+            self.range_dim = len(self.shape[self.space_dim + self.time_dim :])
+            self.range_num = np.prod(self.shape[self.space_dim + self.time_dim :])
+
+        # Safety check on dimensionality and resolution of image.
+        assert len(self.shape) == self.space_dim + self.time_dim + self.range_dim
+        assert np.prod(self.shape) == self.space_num * self.time_num * self.range_num
+
+    def copy(self) -> darsia.Image:
+        """
+        Copy constructor.
+
+        Returns:
+            darsia.Image: Copy of the image object.
+
+        """
+        return GeneralImage(np.copy(self.img), copy.copy(self.metadata))
+
+    # ! ---- Transformations
+
+    def resize(self, cx: float, cy: Optional[float] = None) -> None:
+        raise NotImplementedError
+
+    def astype(self, data_type) -> Any:
+        """For scalar data types, change the data type of the data array.
+        For Image data types, cast the entire image.
+
+        Args:
+            data_type: target data type
+
+        Returns:
+            GeneralImage: image with transformed data type
+
+        """
+        copy_image = self.copy()
+        if data_type in [
+            int,
+            float,
+            np.uint8,
+            np.uint16,
+            np.float16,
+            np.float32,
+            np.float64,
+            bool,
+        ]:
+            copy_image.img = copy_image.img.astype(data_type)
+        else:
+            # TODO test
+            copy_image = cast(data_type, copy_image)
+            raise NotImplementedError
+
+        return copy_image
+
+    # ! ---- Extraction routines
+
+    def metadata(self):
+        raise NotImplementedError
+
+    def extract_time_slice(self):
+        raise NotImplementedError
+
+    def extract_subregion(self):
+        raise NotImplementedError
+
+    # ! ---- I/O
+
+    def write_to_numpy(
+        self,
+        path: Union[str, Path],
+    ) -> None:
+        """Write image to file in numpy format.
+
+        Here, the BGR-format is used. Image path, name and format
+        can be changed by passing them as strings to the method.
+
+        Arguments:
+            path (str): path to image, including image name and file format
+
+        """
+        np.save(path, self.img)
+
+    def write_metadata_to_file(self, path: Union[str, Path]) -> None:
+        """
+        Writes the metadata dictionary to a json-file.
+
+        Arguments:
+            path (str): path to the json file
+        """
+        metadata = self.extract_metadata()
+        with open(str(Path(path)), "w") as outfile:
+            json.dump(metadata, outfile, indent=4)
+
+    # ! ---- Arithmetics
+
+    def __add__(self, other: GeneralImage) -> GeneralImage:
+        """Add two images of same size.
+
+        Arguments:
+            other (GeneralImage): image to subtract from self
+
+        Returns:
+            GeneralImage: sum of images
+
+        """
+        if self.img.shape != other.img.shape:
+            raise ValueError("Images have different shapes.")
+        else:
+            return GeneralImage(self.img + other.img, copy.copy(self.metadata))
+
+    def __sub__(self, other: GeneralImage) -> GeneralImage:
+        """Subtract two images of same size.
+
+        Arguments:
+            other (GeneralImage): image to subtract from self
+
+        Returns:
+            GeneralImage: difference image
+
+        """
+        if self.img.shape != other.img.shape:
+            raise ValueError("Images have different shapes.")
+        else:
+            return GeneralImage(self.img - other.img, copy.copy(self.metadata))
+
+    def __mul__(self, scalar: Union[float, int]) -> GeneralImage:
+        """Scaling of image.
+
+        Arguments:
+            scalar (float or int): scaling parameter
+
+        Returns:
+            GeneralImage: scaled image
+
+        """
+        if not isinstance(scalar, float) or isinstance(scalar, int):
+            raise ValueError
+
+        result_image = self.copy()
+        result_image.img *= scalar
+        return result_image
+
+    __rmul__ = __mul__
