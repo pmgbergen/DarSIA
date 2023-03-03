@@ -6,6 +6,7 @@ import numpy as np
 import scipy.sparse as sps
 import skimage
 from scipy.sparse.linalg import LinearOperator
+import matplotlib.pyplot as plt
 
 import darsia as da
 
@@ -16,11 +17,12 @@ def tv_denoising(
     ell: float,
     tvd_stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(1e-2, 100),
     cg_stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(1e-2, 100),
+    dim: int = 2,
     verbose: bool = False,
 ) -> da.Image:
     """
     Anisotropic TV denoising using the Bregman split from Goldstein and Osher:
-        min_u = |dxu|+|dyu|+mu/2||u-f||^2_2
+        min_u = sum_i|d_iu|+mu/2||u-f||^2_2
 
     NOTE: In contrast to skimage.restoration.denoise_tv_bregman, pixel-wise definition of
           the regularization parameter mu is allowed.
@@ -49,28 +51,25 @@ def tv_denoising(
     # Extract the two images
     rhs = skimage.img_as_float(img.img)
     im = skimage.img_as_float(img.img)
-
-    # Create algorithm specific functionality
-    dx = np.zeros(rhs.shape)
-    dy = np.zeros(rhs.shape)
-    bx = np.zeros(rhs.shape)
-    by = np.zeros(rhs.shape)
+    plt.imshow(im)
+    plt.show()
+    # Initialize the anisotropic derivatives
+    ani_deriv_top = [np.zeros(rhs.shape) for _ in range(dim)]
+    ani_deriv_bot = [np.zeros(rhs.shape) for _ in range(dim)]
 
     # Left-hand-side operator defined as a linear operator acting on flat images
     def mv(x: np.ndarray) -> np.ndarray:
         # Since the Laplace operator acts on 2d images, need to reshape
-        # first # FIXME try to rewrite laplace?
-        x = np.reshape(x, im.shape[:2])
+        # first
+        x = np.reshape(x, im.shape[:dim])
         return (np.multiply(mu, x) - ell * da.laplace(x)).flatten()
 
-    im_size = im.shape[0] * im.shape[1]
+    im_size = np.prod(im.shape)
     lhsoperator = LinearOperator((im_size, im_size), matvec=mv)
 
     # Right-hand-side operator
-    def rhsoperator(rhs, dx, dy, bx, by):
-        return np.multiply(mu, rhs) + ell * (
-            da.forward_diff_x(dx - bx) + da.backward_diff_y(dy - by)
-        )
+    def rhsoperator(rhs, dt, db):
+        return np.multiply(mu, rhs) + ell * sum([da.backward_diff(dt[i]-db[i],i) for i in range(dim)])
 
     def shrink(x):
         n = np.linalg.norm(x, ord="fro")
@@ -85,21 +84,23 @@ def tv_denoising(
         im = np.reshape(
             sps.linalg.cg(
                 lhsoperator,
-                rhsoperator(rhs, dx, dy, bx, by).flatten(),
+                rhsoperator(rhs, ani_deriv_top, ani_deriv_bot).flatten(),
                 im.flatten(),
                 tol=cg_stoppingCriterion.tolerance,
                 maxiter=cg_stoppingCriterion.max_iterations,
             )[0],
-            im.shape[:2],
+            im.shape[:dim],
         )
-        dx = shrink(da.backward_diff_x(im) + bx)
-        dy = shrink(da.backward_diff_y(im) + by)
-        bx = bx + da.backward_diff_x(im) - dx
-        by = by + da.backward_diff_y(im) - dy
+
+        for i in range(dim):
+            ani_deriv_top[i] = shrink(da.backward_diff(im,i)-ani_deriv_bot[i])
+            ani_deriv_bot[i] += da.backward_diff(im,i)-ani_deriv_top[i]
         increment = im - im_old
         iterations += 1
 
     # Convert to correct format
+    plt.imshow(im)
+    plt.show()
     if img.original_dtype == np.uint8:
         img.img = skimage.img_as_ubyte(im)
     elif img.original_dtype == np.uint16:
