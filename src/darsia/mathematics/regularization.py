@@ -51,8 +51,7 @@ def tv_denoising(
     # Extract the two images
     rhs = skimage.img_as_float(img.img)
     im = skimage.img_as_float(img.img)
-    plt.imshow(im)
-    plt.show()
+
     # Initialize the anisotropic derivatives
     ani_deriv_top = [np.zeros(rhs.shape) for _ in range(dim)]
     ani_deriv_bot = [np.zeros(rhs.shape) for _ in range(dim)]
@@ -99,8 +98,6 @@ def tv_denoising(
         iterations += 1
 
     # Convert to correct format
-    plt.imshow(im)
-    plt.show()
     if img.original_dtype == np.uint8:
         img.img = skimage.img_as_ubyte(im)
     elif img.original_dtype == np.uint16:
