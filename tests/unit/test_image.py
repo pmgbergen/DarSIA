@@ -4,11 +4,12 @@ and the access to its attributes.
 
 """
 
-from pathlib import Path
 import os
-import numpy as np
-import darsia
+
 import cv2
+import numpy as np
+
+import darsia
 
 
 def test_initialize_image():
@@ -57,35 +58,10 @@ def test_initialize_general_image():
         "orientation": "ij",
     }
 
-    #############################################################################
-    # Transformation.
-
-    # ! ---- Setup color correction
-
-    # Need to specify the pixel coordines in (x,y), i.e., (col,row) format, of the
-    # marks on the color checker.
-    roi_cc = np.array(
-        [
-            [154, 176],
-            [222, 176],
-            [222, 68],
-            [154, 68],
-        ]
-    )
-    color_correction = darsia.ColorCorrection(
-        roi=roi_cc,
-    )
-
-    # ! ---- Order of transformations
-
-    transformations = [
-        color_correction,
-    ]
-
     # ! ---- Initialize darsia image
 
     # Create the color correction and apply it at initialization of image class
-    image = darsia.GeneralImage(img=array, transformations=transformations, **info)
+    image = darsia.GeneralImage(img=array, **info)
 
     assert hasattr(image, "img")
     assert hasattr(image, "coordinatesystem")
