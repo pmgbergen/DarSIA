@@ -90,10 +90,10 @@ def laplace(im: np.ndarray, axis: Optional[int] = None) -> np.ndarray:
     if axis is None:
         laplace = 0
         for ax in range(dimension):
-            laplace += 0.5*(backward_diff(forward_diff(im, ax, dimension),ax, dimension) + forward_diff(backward_diff(im, ax, dimension),ax, dimension))
+            laplace += 0.5*(backward_diff(forward_diff(im, ax),ax) + forward_diff(backward_diff(im, ax),ax))
 
     else:
         assert axis < dimension, "axis must be smaller than dimension"
-        laplace = 0.5*(backward_diff(forward_diff(im, axis, dimension), axis, dimension) + forward_diff(backward_diff(im, axis, dimension), axis, dimension))
+        laplace = 0.5*(backward_diff(forward_diff(im, axis), axis) + forward_diff(backward_diff(im, axis), axis))
 
     return laplace
