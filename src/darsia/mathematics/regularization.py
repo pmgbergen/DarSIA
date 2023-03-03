@@ -76,8 +76,11 @@ def tv_denoising(
     def rhsoperator(rhs, dt, db):
         return np.multiply(mu, rhs) + ell * sum([da.forward_diff(dt[i]-db[i],i) for i in range(dim)])
 
-    def shrink(x):
-        n = np.linalg.norm(x, ord="fro")
+    def shrink(x: np.ndarray):
+        if dim == 2:
+            n = np.linalg.norm(x, ord='fro')
+        else:
+            n = np.linalg.norm(x.flatten(), ord=2)
         return x / n * max(n - 1.0 / ell, 0.0)
 
     iterations: int = 0
