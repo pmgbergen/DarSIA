@@ -12,7 +12,7 @@ import darsia as da
 
 
 def tv_denoising(
-    img: da.Image,
+    img: Union[da.Image, np.ndarray],
     mu: Union[float, np.ndarray],
     ell: float,
     tvd_stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(1e-2, 100),
@@ -44,12 +44,17 @@ def tv_denoising(
     # Set verbosity of stopping criterion
     tvd_stoppingCriterion.verbose = verbose
 
-    # Copy the input image
-    img = img.copy()
+    if isinstance(img, da.Image):
+        # Copy the input image
+        img = img.copy()
 
-    # Extract the two images
-    rhs = skimage.img_as_float(img.img)
-    im = skimage.img_as_float(img.img)
+        # Extract the two images
+        rhs = skimage.img_as_float(img.img)
+        im = skimage.img_as_float(img.img)
+    elif isinstance(img, np.ndarray):
+        img = np.copy(img)
+        rhs = skimage.img_as_float(img)
+        im = skimage.img_as_float(img)
 
     dim = im.ndim
 
@@ -99,11 +104,20 @@ def tv_denoising(
         iterations += 1
 
     # Convert to correct format
-    if img.original_dtype == np.uint8:
-        img.img = skimage.img_as_ubyte(im)
-    elif img.original_dtype == np.uint16:
-        img.img = skimage.img_as_uint(im)
-    else:
-        raise Exception(f"Conversion back to {img.original_dtype} is unknown.")
+    if isinstance(img, da.Image):
+        if img.original_dtype == np.uint8:
+            img.img = skimage.img_as_ubyte(im)
+        elif img.original_dtype == np.uint16:
+            img.img = skimage.img_as_uint(im)
+        else:
+            raise Exception(f"Conversion back to {img.original_dtype} is unknown.")
+    
+    if isinstance(img, np.ndarray):
+        if img.dtype == np.uint8:
+            img = skimage.img_as_ubyte(im)
+        elif img.dtype == np.uint16:
+            img = skimage.img_as_uint(im)
+        else:
+            raise Exception(f"Conversion back to {img.dtype} is unknown.")
 
     return img
