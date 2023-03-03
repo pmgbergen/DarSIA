@@ -68,7 +68,7 @@ def tv_denoising(
 
     # Right-hand-side operator
     def rhsoperator(rhs, dt, db):
-        return np.multiply(mu, rhs) + ell * sum([da.backward_diff(dt[i]-db[i],i) for i in range(dim)])
+        return np.multiply(mu, rhs) + ell * sum([da.forward_diff(dt[i]-db[i],i) for i in range(dim)])
 
     def shrink(x):
         n = np.linalg.norm(x, ord="fro")
