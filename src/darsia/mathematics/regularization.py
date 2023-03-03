@@ -17,7 +17,6 @@ def tv_denoising(
     ell: float,
     tvd_stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(1e-2, 100),
     cg_stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(1e-2, 100),
-    dim: int = 2,
     verbose: bool = False,
 ) -> da.Image:
     """
@@ -51,6 +50,8 @@ def tv_denoising(
     # Extract the two images
     rhs = skimage.img_as_float(img.img)
     im = skimage.img_as_float(img.img)
+
+    dim = im.ndim
 
     # Initialize the anisotropic derivatives
     ani_deriv_top = [np.zeros(rhs.shape) for _ in range(dim)]
@@ -92,7 +93,7 @@ def tv_denoising(
         )
 
         for i in range(dim):
-            ani_deriv_top[i] = shrink(da.backward_diff(im,i)-ani_deriv_bot[i])
+            ani_deriv_top[i] = shrink(da.backward_diff(im,i)+ani_deriv_bot[i])
             ani_deriv_bot[i] += da.backward_diff(im,i)-ani_deriv_top[i]
         increment = im - im_old
         iterations += 1
