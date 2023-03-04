@@ -87,7 +87,7 @@ class CustomColorChecker:
             np.save(path, reference_colors)
 
 
-class ColorCorrection:
+class ColorCorrection(darsia.BaseCorrection):
     """ML-free color correction.
 
     Precise user-input is required for detecting the color checker. The Calibrite/
@@ -156,30 +156,9 @@ class ColorCorrection:
         # a custom one - assist in creating the latter with tools from ColorCorrection.
         self._setup_colorchecker()
 
-    def __call__(
+    def correct_array(
         self,
-        image: Union[np.ndarray, darsia.Image, darsia.SpaceTimeImage],
-        return_image: bool = False,
-    ) -> Union[np.ndarray, darsia.Image, darsia.SpaceTimeImage]:
-        """
-        Manager for color correction depending on the input type.
-
-        Args:
-            image (array or Image): image
-            return_image (bool): flag controlling whether the image is returned,
-                only relevant for input of type Image.
-
-        """
-        if isinstance(image, np.ndarray):
-            return self._correct_array(image)
-        else:
-            image.img = self._correct_array(image.img)
-            if return_image:
-                return image
-
-    def _correct_array(
-        self,
-        image: np.ndarray,
+        img: np.ndarray,
     ) -> np.ndarray:
         """
         Similar workflow as by colour-science to match the colors of the color checker with
@@ -188,33 +167,33 @@ class ColorCorrection:
         https://github.com/colour-science/colour-checker-detection/blob/master/colour_checker_detection/examples/examples_detection.ipynb
 
         Args:
-            image (np.ndarray): image in RGB space, with values in uint8,
+            img (np.ndarray): image in RGB space, with values in uint8,
                 uint16, float32, or float64.
 
         Returns:
             np.ndarray: corrected image
         """
         if not self.active:
-            return skimage.img_as_float(image).astype(np.float32)
+            return skimage.img_as_float(img).astype(np.float32)
 
         # Make sure that the image is in uint8 or uint16 format
-        if image.dtype in [np.uint8, np.uint16]:
-            image = skimage.img_as_float(image)
-        if image.dtype not in [np.float32, np.float64]:
+        if img.dtype in [np.uint8, np.uint16]:
+            img = skimage.img_as_float(img)
+        if img.dtype not in [np.float32, np.float64]:
             raise ValueError(
                 "Provide image in np.uint8, np.uint16, np.float32, or np.float64 format."
             )
 
         # Extract part of the image containing a color checker.
-        colorchecker_img: np.ndarray = self._restrict_to_roi(image)
+        colorchecker_img: np.ndarray = self._restrict_to_roi(img)
 
         # Determine swatch colors
         swatches = self._detect_colour_checkers_segmentation(colorchecker_img)
 
         # Apply color correction onto full image based on the swatch colors in comparison with
         # the standard colors
-        corrected_image = colour.colour_correction(
-            skimage.img_as_float(image),
+        corrected_img = colour.colour_correction(
+            skimage.img_as_float(img),
             swatches,
             self.colorchecker.reference_swatches_rgb,
             method="Cheung 2004",
@@ -224,30 +203,30 @@ class ColorCorrection:
         # is exact. As swatch colors are stored column-by-column, this particular swatch is
         # at position 11.
         if self.whitebalancing:
-            corrected_colorchecker_image: np.ndarray = self._restrict_to_roi(
-                corrected_image
+            corrected_colorchecker_img: np.ndarray = self._restrict_to_roi(
+                corrected_img
             )
             swatches = self._detect_colour_checkers_segmentation(
-                corrected_colorchecker_image
+                corrected_colorchecker_img
             )
             pos = 11
-            corrected_image *= (
+            corrected_img *= (
                 self.colorchecker.reference_swatches_rgb[pos, :] / swatches[pos, :]
             )
 
         # For debugging, double-check once more the swatches.
         if self.verbosity:
-            corrected_colorchecker_image = self._restrict_to_roi(corrected_image)
+            corrected_colorchecker_img = self._restrict_to_roi(corrected_img)
             swatches = self._detect_colour_checkers_segmentation(
-                corrected_colorchecker_image
+                corrected_colorchecker_img
             )
 
         # The correction may result in values outside the feasible range [0., 1.].
         # Thus, simply clip the values for consistency.
-        corrected_image = np.clip(corrected_image, 0, 1)
+        corrected_img = np.clip(corrected_img, 0, 1)
 
         # Ensure a data format which can be used by cv2 etc.
-        return corrected_image.astype(np.float32)
+        return corrected_img.astype(np.float32)
 
     def write_config_to_file(self, path: Union[Path, str]) -> None:
         """
