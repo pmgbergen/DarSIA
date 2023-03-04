@@ -141,6 +141,12 @@ class TranslationEstimator:
             return self._match_roi_images(
                 img_src, img_dst, roi_src, roi_dst, plot_matches
             )
+        elif isinstance(img_src, darsia.GeneralImage) and isinstance(
+            img_dst, darsia.GeneralImage
+        ):
+            return self._match_roi_images(
+                img_src, img_dst, roi_src, roi_dst, plot_matches
+            )
         else:
             raise ValueError("Provide images either as numpy arrays or darsia Images.")
 
@@ -183,8 +189,8 @@ class TranslationEstimator:
 
     def _match_roi_images(
         self,
-        img_src: darsia.Image,
-        img_dst: darsia.Image,
+        img_src: Union[darsia.Image, darsia.GeneralImage],
+        img_dst: Union[darsia.Image, darsia.GeneralImage],
         roi_src: Optional[tuple],
         roi_dst: Optional[tuple],
         plot_matches: bool = False,
@@ -194,8 +200,8 @@ class TranslationEstimator:
         features.
 
         Args:
-            img_src (darsia.Image): source image, which will be modified and aligned
-            img_dst (darsia.Image): destination image
+            img_src (image): source image, which will be modified and aligned
+            img_dst (image): destination image
             roi_src (tuple of slices): region of interested associated to the source image
             roi_dst (tuple of slices): region of interested associated to the destination image
                 translation
@@ -210,7 +216,7 @@ class TranslationEstimator:
         if not intact_translation:
             raise ValueError("ROIs cannot be aligned by translation.")
 
-        # Apply translation - Modify darsia Image internally
+        # Apply translation - Modify image internally
         (h, w) = img_dst.img.shape[:2]
         aligned_img_src = cv2.warpAffine(img_src.img, translation, (w, h))
         return aligned_img_src
@@ -378,7 +384,7 @@ class TranslationEstimator:
         return affine_translation, True
 
 
-class TranslationCorrection:
+class TranslationCorrection(darsia.BaseCorrection):
     """Correction object performing a user-prescribed translation to provided image."""
 
     def __init__(self, translation: Optional[Union[str, Path]] = None):
@@ -390,25 +396,16 @@ class TranslationCorrection:
         else:
             self.active = False
 
-    def __call__(self, img: Union[np.ndarray, darsia.Image]) -> Optional[np.ndarray]:
+    def correct_array(self, img: np.ndarray) -> np.ndarray:
         """
         Perform translation.
 
         Args:
-            img (np.ndarray or darsia.Image): image to be corrected.
+            img (np.ndarray): image to be corrected.
 
         Returns:
-            Corrected image as np.ndarray if input has been an array,
-            otherwise None.
+            array: Corrected image.
         """
-
-        # Apply translation - Modify darsia Image internally
-        if isinstance(img, np.ndarray):
-            (h, w) = img.shape[:2]
-            translated_img = cv2.warpAffine(img, self.translation, (w, h))
-            return translated_img
-        elif isinstance(img, darsia.Image):
-            (h, w) = img.img.shape[:2]
-            img.img = cv2.warpAffine(img.img, self.translation, (w, h))
-        else:
-            raise ValueError("Input has non-supported type.")
+        (h, w) = img.shape[:2]
+        translated_img = cv2.warpAffine(img, self.translation, (w, h))
+        return translated_img
