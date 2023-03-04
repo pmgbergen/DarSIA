@@ -19,10 +19,10 @@ import numpy as np
 import skimage
 from scipy.ndimage import map_coordinates
 
-import darsia as da
+import darsia
 
 
-class CurvatureCorrection:
+class CurvatureCorrection(darsia.BaseCorrection):
     """Class for curvature correction of curved images.
 
     Contains routines for setting up the curvature correction, as well as applying
@@ -154,11 +154,11 @@ class CurvatureCorrection:
 
             self.config = json.load(openfile)
 
-    def return_image(self) -> da.Image:
+    def return_image(self) -> darsia.Image:
         """
         Returns the current image as a darsia image width provided width and height.
         """
-        return da.Image(self.temporary_image, width=self.width, height=self.height)
+        return darsia.Image(self.temporary_image, width=self.width, height=self.height)
 
     def show_image(self) -> None:
         """
@@ -222,7 +222,7 @@ class CurvatureCorrection:
             "in meters": self.in_meters,
         }
 
-        self.current_image = da.extract_quadrilateral_ROI(
+        self.current_image = darsia.extract_quadrilateral_ROI(
             self.current_image, **self.config["crop"]
         )
 
@@ -487,10 +487,11 @@ class CurvatureCorrection:
 
     # ! ---- Main correction routines
 
-    def __call__(
+    # TODO add __call__ and change coordinate system?
+
+    def correct_array(
         self,
-        img: Union[str, Path, np.ndarray],
-        update_cache: bool = False,
+        img: np.ndarray,
     ) -> np.ndarray:
         """
         Call method of the curvature correction.
@@ -501,33 +502,16 @@ class CurvatureCorrection:
 
         Arguments:
             img (np.ndarray): image array
-            update_cache (bool): flag controlling whether the transformed coordinates are
-                precomputed even if already existent; default is False.
 
         Returns:
             np.ndarray: curvature corrected image.
+
         """
-        # FIXME: I suggest to remove the possibility of calling images via str outside
-        # of darsia.Image. Opening an image comes with a pre-defined choice of the
-        # colorspace. This control is lost if we do not further pass this information.
-        # Also, modular thinking has had its success in software development for a reason.
-        # I would also say, either the user is loading the image him/herself but then
-        # is required to provide all other necessary information. Other than that, I am
-        # in favor of centralizing opening images from file. This be either in darsia.Image
-        # or if need in utils (in addition). But I think, only darsia.Image is the right
-        # place for it.
-
-        # Read image
-        if isinstance(img, str) or isinstance(img, Path):
-            img = cv2.imread(str(img), cv2.IMREAD_UNCHANGED)
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        assert isinstance(img, np.ndarray)
-
         # Precompute transformed coordinates based on self.config, if required.
-        if not (self.use_cache and self.cache_path.exists()) and (
-            update_cache or "grid" not in self.cache
+        if (
+            not (self.use_cache and self.cache_path.exists())
+            and "grid" not in self.cache
         ):
-
             self._precompute_transformed_coordinates(img)
 
             # Store in cache
@@ -619,7 +603,7 @@ class CurvatureCorrection:
             if "init" in self.config:
                 pixels = self.simple_curvature_correction(pixels, **self.config["init"])
             if "crop" in self.config:
-                pixels = da.extract_quadrilateral_ROI(pixels, **self.config["crop"])
+                pixels = darsia.extract_quadrilateral_ROI(pixels, **self.config["crop"])
             if "bulge" in self.config:
                 pixels = self.simple_curvature_correction(
                     pixels, **self.config["bulge"]
