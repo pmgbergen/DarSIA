@@ -1,8 +1,10 @@
-from pathlib import Path
+import json
 import os
-import numpy as np
-import darsia
+
 import cv2
+import numpy as np
+
+import darsia
 
 # def test_color_correction():
 #
@@ -42,12 +44,18 @@ import cv2
 #    assert np.all(np.isclose(reference_image, corrected_image.img))
 
 
-def test_color_correction():
+def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
+    """Centralize reading of test image.
 
-    #############################################################################
-    # ! ---- Define image array
-    path = f"{os.path.dirname(__file__)}/../../examples/images/baseline.jpg"
-    array = cv2.imread(path)
+    Returns:
+        array: image array in RGB format read from jpg.
+        dict: metadata
+
+    """
+
+    # ! ---- Define image array in RGB format
+    path = f"{os.path.dirname(__file__)}/../../examples/images/{img_id}.jpg"
+    array = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
 
     # ! ---- Define some metadata corresponding to the input array
     info = {
@@ -55,35 +63,34 @@ def test_color_correction():
         "orientation": "ij",
     }
 
-    #############################################################################
-    # Transformation.
+    return array, info
+
+
+def test_color_correction():
+    """Test color correction, effectively converting from BGR to RGB."""
+
+    # ! ---- Fetch test image
+    array, info = read_test_image("baseline")
 
     # ! ---- Setup color correction
 
     # Need to specify the pixel coordines in (x,y), i.e., (col,row) format, of the
     # marks on the color checker.
-    roi_cc = np.array(
-        [
-            [154, 176],
-            [222, 176],
-            [222, 68],
-            [154, 68],
-        ]
-    )
-    color_correction = darsia.ColorCorrection(
-        roi=roi_cc,
-    )
+    config = {
+        "roi": np.array(
+            [
+                [154, 176],
+                [222, 176],
+                [222, 68],
+                [154, 68],
+            ]
+        )
+    }
+    color_correction = darsia.ColorCorrection(**config)
 
-    # ! ---- Order of transformations
+    # ! ---- Define corrected image
 
-    transformations = [
-        color_correction,
-    ]
-
-    # ! ---- Initialize darsia image
-
-    # Create the color correction and apply it at initialization of image class
-    image = darsia.GeneralImage(img=array, transformations=transformations, **info)
+    image = darsia.GeneralImage(img=array, transformations=[color_correction], **info)
 
     # ! ---- Compare corrected image with reference
 
@@ -94,3 +101,63 @@ def test_color_correction():
 
     # Make a direct comparison
     assert np.all(np.isclose(reference_image, image.img))
+
+
+def test_curvature_correction():
+    """Test of curvature correction applied to a numpy array. The correction
+    routine contains all relevant operations, incl. bulging, stretching, and
+    cropping."""
+
+    # ! ---- Fetch test image
+    array, info = read_test_image("co2_2")
+
+    # ! ---- Setup correction
+
+    # Fetch config file, holding info to several correction routines.
+    config_path = f"{os.path.dirname(__file__)}/../../examples/images/config.json"
+    with open(config_path, "r") as openfile:
+        config = json.load(openfile)
+
+    # Define curvature correction object, initiated with config file
+    curvature_correction = darsia.CurvatureCorrection(config=config["curvature"])
+
+    # ! ---- Define corrected image
+
+    image = darsia.GeneralImage(
+        img=array, transformations=[curvature_correction], **info
+    )
+
+    # ! ---- Compare corrected image with reference
+
+    reference_image = np.load(
+        "../reference/curvature_corrected_co2_2.npy", allow_pickle=True
+    )
+    assert np.all(np.isclose(reference_image, image.img))
+
+
+def test_drift_correction():
+    """Test the relative aligning of images via a drift."""
+
+    # ! ---- Fetch test images
+    original_array, info = read_test_image("baseline")
+    original_image = darsia.GeneralImage(img=original_array, **info)
+
+    # ! ---- Define drift correction
+    roi = (slice(0, 600), slice(0, 600))
+    drift_correction = darsia.DriftCorrection(base=original_image, roi=roi)
+
+    # ! ---- Apply affine transformation
+    affine_matrix = np.array([[1, 0, 10], [0, 1, -6]]).astype(np.float32)
+    translated_array = cv2.warpAffine(
+        original_array, affine_matrix, tuple(reversed(original_array.shape[:2]))
+    )
+    corrected_image = darsia.GeneralImage(
+        img=translated_array, transformations=[drift_correction], **info
+    )
+
+    # ! ---- Compare original and corrected image, but remove the boundary.
+    assert np.all(
+        np.isclose(
+            original_image.img[10:-10, 10:-10], corrected_image.img[10:-10, 10:-10]
+        )
+    )
