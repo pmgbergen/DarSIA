@@ -98,7 +98,7 @@ class EOTF:
         return cv2.LUT(skimage.img_as_ubyte(image), self.table_eotf_inverse)
 
 
-class ExperimentalColorCorrection:
+class ExperimentalColorCorrection(darsia.BaseCorrection):
     def __init__(
         self,
         config: Optional[dict] = None,
@@ -157,7 +157,7 @@ class ExperimentalColorCorrection:
         self.verbosity = verbosity
         self.whitebalancing = whitebalancing
 
-    def __call__(
+    def correct_array(
         self,
         image: np.ndarray,
     ) -> np.ndarray:
