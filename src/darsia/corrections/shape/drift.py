@@ -9,20 +9,19 @@ import json
 from pathlib import Path
 from typing import Optional, Union
 
-import cv2
 import numpy as np
 
 import darsia
 
 
-class DriftCorrection:
+class DriftCorrection(darsia.BaseCorrection):
     """
     Class for drift correction of images wrt. a baseline image.
     """
 
     def __init__(
         self,
-        base: Union[str, Path, np.ndarray, darsia.Image],
+        base: Union[np.ndarray, darsia.Image],
         config: Optional[dict] = None,
         roi: Optional[Union[np.ndarray, tuple, list]] = None,
         **kwargs
@@ -44,16 +43,10 @@ class DriftCorrection:
                     applied or not, default is True.
         """
 
-        # Check whether the drift correction is active
-        self.active: bool = kwargs.get("active", True)
-
         # Read baseline image
-        if isinstance(base, str) or isinstance(base, Path):
-            base_BGR = cv2.imread(str(Path(base)), cv2.IMREAD_UNCHANGED)
-            self.base = cv2.cvtColor(base_BGR, cv2.COLOR_BGR2RGB)
-        elif isinstance(base, np.ndarray):
+        if isinstance(base, np.ndarray):
             self.base = np.copy(base)
-        elif isinstance(base, darsia.Image):
+        elif isinstance(base, darsia.Image) or isinstance(base, darsia.GeneralImage):
             self.base = np.copy(base.img)
         else:
             raise ValueError("Data type for baseline image not supported.")
@@ -89,7 +82,12 @@ class DriftCorrection:
         # Define a translation estimator
         self.translation_estimator = darsia.TranslationEstimator()
 
-    def __call__(self, img: np.ndarray, roi: Optional[tuple] = None) -> np.ndarray:
+        # Check whether the drift correction is active
+        self.active: bool = kwargs.get("active", True)
+
+    # ! ---- Main correction routines
+
+    def correct_array(self, img: np.ndarray, roi: Optional[tuple] = None) -> np.ndarray:
         """
         Main routine for aligning image with baseline image.
 
@@ -110,6 +108,8 @@ class DriftCorrection:
             )
         else:
             return img
+
+    # ! ---- I/O
 
     def write_config_to_file(self, path: Union[Path, str]) -> None:
         """
