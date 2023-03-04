@@ -9,6 +9,7 @@ isort:skip_file
 """
 from darsia.image.coordinatesystem import *
 from darsia.image.image import *
+from darsia.image.orientation import *
 from darsia.image.patches import *
 from darsia.image.subregions import *
 from darsia.mathematics.derivatives import *
@@ -24,6 +25,7 @@ from darsia.utils.computedepthmap import *
 from darsia.utils.segmentation import *
 from darsia.utils.coloranalysis import *
 from darsia.utils.identity import *
+from darsia.corrections.basecorrection import *
 from darsia.corrections.shape.curvature import *
 from darsia.corrections.shape.translation import *
 from darsia.corrections.shape.piecewiseperspective import *
