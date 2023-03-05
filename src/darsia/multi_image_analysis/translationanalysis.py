@@ -251,7 +251,7 @@ class TranslationAnalysis:
                     if units[1] == "metric":
                         displacement = (
                             self.base.coordinatesystem.pixelToCoordinateVector(
-                                displacement, reverse=True
+                                np.flip(displacement) # Standard matrix indexing
                             )
                         )
 
