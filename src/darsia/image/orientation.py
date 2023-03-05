@@ -23,6 +23,54 @@ the x-axis.
 """
 
 
+def to_matrix_indexing(axis: Union[str, int]) -> str:
+    """Conversion of single axis in Cartesian to matrix indexing.
+
+    Args:
+        axis (str or int): input axis in Cartesian indexing sense.
+
+    Returns:
+        str: converted axis in matrix indexing sense.
+
+    """
+    # Convert numeric axis description
+    if isinstance(axis, int):
+        axis = "xyz"[axis]
+
+    if axis == "x":
+        return "j"
+    elif axis == "y":
+        return "i"
+    elif axis == "z":
+        return "k"
+    else:
+        raise ValueError
+
+
+def to_cartesian_indexing(axis: Union[str, int]) -> str:
+    """Conversion of single axis in matrix indexing to Cartesian indexing.
+
+    Args:
+        axis (str or int): input axis in matrix indexing sense.
+
+    Returns:
+        str: converted axis in Cartesian indexing sense.
+
+    """
+    # Convert numeric axis description
+    if isinstance(axis, int):
+        axis = "ijk"[axis]
+
+    if axis == "i":
+        return "y"
+    elif axis == "j":
+        return "x"
+    elif axis == "k":
+        return "z"
+    else:
+        raise ValueError
+
+
 def interpret_orientation(axis: str, orientation: str) -> tuple[int, bool]:
     """Interpretation of axes and their orientation.
 
