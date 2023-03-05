@@ -1,6 +1,6 @@
 """
 Module containing auxiliary interpreters
-for orientation of axes used for images.
+for indexing of axes used for images.
 
 Conventions. For unified use in the code base,
 we introduce conventions of coordinate systems.
@@ -9,18 +9,20 @@ In 2d: The Cartesian coordinate system is
 defined as x-y-coordinate system. E.g.
 for an image with ij-matrix indexing the first
 component corresponds to the y-axis with reversed
-orientation, while the second axis corresponds
+indexing, while the second axis corresponds
 to the standard x-axis.
 
 In 3d: The Cartesian coordinate system is
 defines as xyz coordinate system. E.g.
 for an image with ijk-matrix indexing, the first
 component corresponds to the z axis with
-reversed orientation, the second component corresponds
+reversed indexing, the second component corresponds
 to the y-axis, and the third component corresponds to
 the x-axis.
 
 """
+
+from typing import Union
 
 
 def to_matrix_indexing(axis: Union[str, int]) -> str:
@@ -71,12 +73,12 @@ def to_cartesian_indexing(axis: Union[str, int]) -> str:
         raise ValueError
 
 
-def interpret_orientation(axis: str, orientation: str) -> tuple[int, bool]:
-    """Interpretation of axes and their orientation.
+def interpret_indexing(axis: str, indexing: str) -> tuple[int, bool]:
+    """Interpretation of axes and their indexing.
 
     Args:
         axis (str): target axis, e.g., "x"
-        orientation (str): orientation of an image, e.g., "ijk"
+        indexing (str): indexing of an image, e.g., "ijk"
 
     Returns:
         int: component corresponding to the axis. Covered: "x", "y", "z",
@@ -90,7 +92,7 @@ def interpret_orientation(axis: str, orientation: str) -> tuple[int, bool]:
 
     # ! ---- 2D Cartesian indexing
 
-    if orientation == "xy":
+    if indexing == "xy":
         if axis == "x":
             return 0, False
         elif axis == "y":
@@ -102,7 +104,7 @@ def interpret_orientation(axis: str, orientation: str) -> tuple[int, bool]:
 
     # ! ---- 2D matrix indexing
 
-    elif orientation == "ij":
+    elif indexing == "ij":
         if axis == "x":
             return 1, False
         elif axis == "y":
@@ -114,7 +116,7 @@ def interpret_orientation(axis: str, orientation: str) -> tuple[int, bool]:
 
     # ! ---- 3D Cartesian indexing
 
-    if orientation == "xyz":
+    if indexing == "xyz":
         if axis == "x":
             return 0, False
         elif axis == "y":
@@ -130,7 +132,7 @@ def interpret_orientation(axis: str, orientation: str) -> tuple[int, bool]:
 
     # ! ---- 3D atrix indexing
 
-    elif orientation == "ijk":
+    elif indexing == "ijk":
         if axis == "x":
             return 1, False
         elif axis == "y":
