@@ -22,7 +22,7 @@ def heterogeneous_tv_denoising(
         1e-4, 100
     ),
     verbosity: int = 0,
-) -> darsia.Image:
+) -> np.ndarray:
     """
     Anisotropic TV denoising using the split Bregman from Goldstein and Osher:
         min_u = weight * (|dxu|+|dyu|) +  1 / 2 * ||u-f||^{2, omega}_2.
@@ -31,7 +31,7 @@ def heterogeneous_tv_denoising(
           the effective regularization parameter mu = omega / weight is allowed.
 
     Arguments:
-        img (darsia.Image): Image that should be regularized
+        img (array): image that should be regularized
         weight (float or array): regularization
         omega (float or array): pore space indicator
         penalty (float): Penalty coefficient from Goldstein and Osher's algorithm
