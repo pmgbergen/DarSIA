@@ -4,12 +4,10 @@ taking into account width, height and depth of pixels.
 
 """
 
-from typing import Optional, Union
+from typing import Optional
 
 import cv2
 import numpy as np
-
-import darsia
 
 # TODO 3d?
 
@@ -63,9 +61,7 @@ class Geometry:
         # Cache voxel volume
         self.cached_voxel_volume = self.voxel_volume.copy()
 
-    def integrate(
-        self, data: np.ndarray, mask: Optional[np.ndarray] = None
-    ) -> float:
+    def integrate(self, data: np.ndarray, mask: Optional[np.ndarray] = None) -> float:
         """
         Integrate data over the entire geometry.
         """
