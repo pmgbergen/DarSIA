@@ -10,7 +10,7 @@ import json
 import math
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Union, cast
+from typing import Optional, Union, cast, Any
 from warnings import warn
 
 import cv2
@@ -93,6 +93,7 @@ class Image:
                 timestamp (datetime.datetime): timestamp of the image. If it is not
                     provided, and available in the image file it will be read by pillow.
         """
+        self.space_dim = 2
 
         # Read metadata.
         no_colorspace_given = False
@@ -786,12 +787,17 @@ class GeneralImage:
             scalar (boolean): flag storing whether data is scalar-valued and does
                 effectivley does not use any extra axis.
             series (boolean): flag storing whether the array is a space-time array
-            orientation (str): axis orientation of the first dim entries
+            indexing (str): axis indexing of the first dim entries
             img (array): (space-time) image array
 
         Example:
             multichromatic_3d_image_series = np.array((Nx, Ny, Nz, Nt, Nd), dtype=float)
-            image = darsia.Image(multichromatic_3d_image_series, scalar = False, series = True, dim = 3)
+            image = darsia.Image(
+                multichromatic_3d_image_series,
+                scalar = False,
+                series = True,
+                dim = 3
+            )
 
         """
 
@@ -827,12 +833,12 @@ class GeneralImage:
         self.space_num: int = np.prod(self.shape[: self.space_dim])
         """Spatial resolution, i.e., number of voxels."""
 
-        self.orientation = kwargs.get("orientation", "ij")
-        """Orientation of each axis in context of matrix indexing (ijk)
+        self.indexing = kwargs.get("indexing", "ij")
+        """Indexing of each axis in context of matrix indexing (ijk)
         or Cartesian coordinates (xyz)."""
 
         self.dimensions: list[float] = kwargs.get("dimensions", self.space_dim * [1])
-        """Dimension in the directions corresponding to the orientations."""
+        """Dimension in the directions corresponding to the indexings."""
 
         self.num_voxels: int = self.img.shape[: self.space_dim]
         """Number of voxels in each dimension."""
@@ -840,15 +846,15 @@ class GeneralImage:
         self.voxel_size: list[float] = [
             self.dimensions[i] / self.num_voxels[i] for i in range(self.space_dim)
         ]
-        """Size of each voxel in each direction, ordered as orientation."""
+        """Size of each voxel in each direction, ordered as indexing."""
 
-        self.origin = np.array(kwargs.pop("origin", np.array(self.space_dim * [0])))
+        self.origin = np.array(kwargs.pop("origin", self.space_dim * [0]))
         """Cartesian coordinates associated to the [0,0,0] voxel."""
 
         self.coordinatesystem: darsia.GeneralCoordinateSystem = (
             darsia.GeneralCoordinateSystem(self)
         )
-        """Physical coordinate system with equipped tranformation from voxel to
+        """Physical coordinate system with equipped transformation from voxel to
         Cartesian space."""
 
         # ! ---- Temporal meta information
@@ -937,8 +943,24 @@ class GeneralImage:
 
     # ! ---- Extraction routines
 
-    def metadata(self):
-        raise NotImplementedError
+    def metadata(self) -> dict:
+        """Return all metadata required to initiate an image via keyword
+        arguments.
+
+        Returns:
+            dict: metadata with keys equal to all keywords agurments.
+
+        """
+        metadata = {
+            "dim": self.space_dim,
+            "indexing": self.indexing,
+            "dimensions": self.dimensions,
+            "origin": self.origin,
+            "series": self.series,
+            "scalar": self.scalar,
+            # TODO color_space in optical image
+        }
+        return copy.copy(metadata)
 
     def extract_time_slice(self):
         raise NotImplementedError
