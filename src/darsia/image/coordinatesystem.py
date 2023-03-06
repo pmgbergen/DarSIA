@@ -222,7 +222,7 @@ class GeneralCoordinateSystem:
     A coordinate system has knowledge about the conversion of voxels (in standard format),
     i.e., ijk format with (0,0,0) being identified with the top left front corner.
     This implicitly concludes that the coordinate system is directly related
-    to a certain fixed orientation, provided at initialization. Conversion maps
+    to a certain fixed indexing, provided at initialization. Conversion maps
     from voxels to coordinates and vice-versa are provided.
 
     Attributes:
@@ -234,10 +234,10 @@ class GeneralCoordinateSystem:
     def __init__(self, img: darsia.GeneralImage):
         """Generate a coordinate system based on the metadata of an existing image."""
 
-        # Cache orientation - NOTE: The c
-        # TODO allow for other orientations than matrix indexing?
-        assert img.orientation in ["ij", "ijk"]
-        self.orientation = img.orientation
+        # Cache indexing.
+        # TODO allow for other indexings than matrix indexing?
+        assert img.indexing in ["ij", "ijk"]
+        self.indexing = img.indexing
 
         # TODO generalize to darsia.Image.
         assert isinstance(img, darsia.GeneralImage)
@@ -249,18 +249,12 @@ class GeneralCoordinateSystem:
         # Determine voxel size in x, y, z directions
         self.voxel_size = {}
         for axis in self.axes:
-            pos, _ = darsia.interpret_orientation(axis, self.orientation)
+            pos, _ = darsia.interpret_indexing(axis, self.indexing)
             self.voxel_size[axis] = img.voxel_size[pos]
 
-        # Determine the coordinate, corresponding to the origin of the matrix indexing.
-        # Need to add the dimension of the image for axis with reverse orientation.
+        # Fetch the coordinate, corresponding to the origin voxel,
+        # and at the opposite corner.
         self._coordinate_of_origin_voxel: np.ndarray = img.origin
-        for axis in self.axes:
-            pos, revert = darsia.interpret_orientation(axis, self.orientation)
-            if revert:
-                self._coordinate_of_origin_voxel[pos] += img.dimensions[pos]
-
-        # Go towards the other end of the image.
         opposite_corner_voxel = img.img.shape[:dim]
         self._coordinate_of_opposite_voxel = self.coordinate(opposite_corner_voxel)
 
@@ -272,7 +266,7 @@ class GeneralCoordinateSystem:
         # also defining the effective boundaries of the coordinate system.
         self.domain = {}
         for i, axis in enumerate(self.axes):
-            pos, _ = darsia.interpret_orientation(axis, self.orientation)
+            pos, _ = darsia.interpret_indexing(axis, self.indexing)
             self.domain[axis + "min"] = self._coordinate_of_origin_voxel[i]
             self.domain[axis + "max"] = self._coordinate_of_opposite_voxel[i]
 
@@ -321,7 +315,7 @@ class GeneralCoordinateSystem:
         Handles both single and multiple voxels.
 
         Arguments:
-            voxel (np.ndarray): voxel location in the same format as the orientation
+            voxel (np.ndarray): voxel location in the same format as the indexing
                 of the underlying baseline image (see __init__); one voxel per row.
 
         Returns:
@@ -342,7 +336,7 @@ class GeneralCoordinateSystem:
         # Determine coordinates with the help of the origin
         coordinate = np.empty_like(voxel_array, dtype=float)
         for i, axis in enumerate(self.axes):
-            pos, revert = darsia.interpret_orientation(axis, self.orientation)
+            pos, revert = darsia.interpret_indexing(axis, self.indexing)
             scaling = -1 if revert else 1
             coordinate[:, i] = (
                 self._coordinate_of_origin_voxel[i]
@@ -379,7 +373,7 @@ class GeneralCoordinateSystem:
         # Inverse of self.coordinate().
         pixel = np.empty_like(coordinate_array, dtype=int)
         for i, axis in enumerate(self.axes):
-            pos, revert = darsia.interpret_orientation(axis, self.orientation)
+            pos, revert = darsia.interpret_indexing(axis, self.indexing)
             scaling = -1 if revert else 1
             pixel[:, pos] = np.floor(
                 scaling
@@ -401,20 +395,6 @@ class GeneralCoordinateSystem:
             np.ndarray: coordinate vector(s) in Cartesian format.
 
         """
-        # Vectors are relative, and hence do not involve any information
-        # on any fixed points as the origin. Yet, the conversion requires
-        # to conform with the switch from Cartesian to matrix indexing
-        # and thereby also the orientation of the vertical axis. Additionally,
-        # the scaling from pixels to metric units is required.
-        coordinate_vector = (
-            np.atleast_2d(pixel_vector)
-            if reverse
-            else np.fliplr(np.atleast_2d(pixel_vector))
-        ) * np.array([self._dx, -self._dy])
-
-        # Reshape needed if only a single vector has been used in the argument.
-        return coordinate_vector.reshape(pixel_vector.shape)
-
         # Aim at handling both single coordinates stored in a 1d array as well as
         # multiple coordinates stored in a 2d array. Convert to the more general
         # case.
@@ -422,7 +402,7 @@ class GeneralCoordinateSystem:
 
         coordinate_vector = np.empty_like(pixel_vector_array, dtype=float)
         for i, axis in enumerate(self.axes):
-            pos, revert = darsia.interpret_orientation(axis, self.orientation)
+            pos, revert = darsia.interpret_indexing(axis, self.indexing)
             scaling = -1 if revert else 1
             coordinate_vector[:, i] = (
                 scaling * pixel_vector_array[:, pos] * self.voxel_size[axis]
