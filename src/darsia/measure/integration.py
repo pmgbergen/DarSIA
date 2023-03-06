@@ -64,7 +64,7 @@ class Geometry:
         self.cached_voxel_volume = self.voxel_volume.copy()
 
     def integrate(
-        self, data: Union[darsia.Image, np.ndarray], mask: Optional[np.ndarray] = None
+        self, data: np.ndarray, mask: Optional[np.ndarray] = None
     ) -> float:
         """
         Integrate data over the entire geometry.
