@@ -13,6 +13,8 @@ import numpy as np
 
 import darsia
 
+Image = Union[darsia.Image, darsia.GeneralImage]
+
 
 class EMD:
     """
@@ -29,13 +31,13 @@ class EMD:
         # Cache
         self.preprocess = preprocess
 
-    def __call__(self, img_1: darsia.Image, img_2: darsia.Image) -> float:
+    def __call__(self, img_1: Image, img_2: Image) -> float:
         """
         Earth mover's distance between images with same total sum.
 
         Args:
-            img_1 (darsia.Image or array): image 1
-            img_2 (darsia.Image or array): image 2
+            img_1 (Image): image 1
+            img_2 (Image): image 2
 
         Returns:
             float: distance between img_1 and img_2.
@@ -67,28 +69,28 @@ class EMD:
 
         return dist * integral_1
 
-    def _preprocess(self, img: darsia.Image) -> darsia.Image:
+    def _preprocess(self, img: Image) -> Image:
         """
         Preprocessing routine, incl. extraction of array.
 
         Args:
-            img (darsia.Image): image
+            img (Image): image
 
         Returns:
-            darsia.Image: image array under provided preprocessing
+            Image: image array under provided preprocessing
         """
         preprocessed_img = img.copy()
         if self.preprocess is not None:
             preprocessed_img = self.preprocess(preprocessed_img)
         return preprocessed_img
 
-    def _compatibility_check(self, img_1: darsia.Image, img_2: darsia.Image) -> bool:
+    def _compatibility_check(self, img_1: Image, img_2: Image) -> bool:
         """
         Compatibility check.
 
         Args:
-            img_1 (darsia.Image): image 1
-            img_2 (darsia.Image): image 2
+            img_1 (Image): image 1
+            img_2 (Image): image 2
 
         Returns:
             bool: flag whether images 1 and 2 can be compared.
@@ -101,12 +103,12 @@ class EMD:
         assert np.prod(img_1.img.shape) == np.prod(img_1.img.shape[:2])
         assert np.prod(img_2.img.shape) == np.prod(img_2.img.shape[:2])
 
-    def _normalize(self, img: darsia.Image) -> tuple[float, np.ndarray]:
+    def _normalize(self, img: Image) -> tuple[float, np.ndarray]:
         """
         Normalization of images to images with sum 1.
 
         Args:
-            img (darsia.Image): image
+            img (Image): image
 
         Returns:
             float: original sum
@@ -145,7 +147,7 @@ class EMD:
 
         return sig
 
-    def distance_matrix(self, images: list[darsia.Image]) -> np.ndarray:
+    def distance_matrix(self, images: list[Image]) -> np.ndarray:
         """
         Compute the distance between each iteam of a list.
 
