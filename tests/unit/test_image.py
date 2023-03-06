@@ -100,7 +100,6 @@ def test_initialize_general_image():
 
 def test_initialize_optical_image():
 
-    #############################################################################
     # ! ---- Define image array
     path = f"{os.path.dirname(__file__)}/../../examples/images/baseline.jpg"
     array = cv2.imread(path)
@@ -138,3 +137,41 @@ def test_initialize_optical_image():
     assert optical_image.indexing == "ij"
     assert np.all(np.isclose(optical_image.dimensions, np.array([1.5, 2.8])))
     assert np.all(np.isclose(optical_image.origin, np.array([0.0, 1.5])))
+
+
+def test_monochromatic_optical_images():
+
+    # ! ---- Define image array
+    path = f"{os.path.dirname(__file__)}/../../examples/images/baseline.jpg"
+    array = cv2.imread(path)
+
+    # ! ---- Define some metadata corresponding to the input array
+    optical_info = {
+        "series": False,
+        "dimensions": [1.5, 2.8],
+        "origin": [0.0, 1.5],
+    }
+
+    # ! ---- Initialize darsia image
+
+    # Create the color correction and apply it at initialization of image class
+    optical_image = darsia.OpticalImage(img=array, **optical_info)
+
+    # ! ---- Monochromatic versions
+    red_image = optical_image.to_monochromatic("red")
+    green_image = optical_image.to_monochromatic("green")
+    blue_image = optical_image.to_monochromatic("blue")
+
+    assert np.all(np.isclose(red_image.img, optical_image.img[:, :, 0]))
+    assert np.all(np.isclose(green_image.img, optical_image.img[:, :, 1]))
+    assert np.all(np.isclose(blue_image.img, optical_image.img[:, :, 2]))
+
+    assert red_image.scalar
+    assert not red_image.series
+    assert red_image.space_dim == 2
+    assert red_image.time_dim == 0
+    assert red_image.range_dim == 0
+    assert red_image.range_num == 1
+    assert red_image.indexing == "ij"
+    assert np.all(np.isclose(red_image.dimensions, np.array([1.5, 2.8])))
+    assert np.all(np.isclose(red_image.origin, np.array([0.0, 1.5])))
