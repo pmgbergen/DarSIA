@@ -1146,3 +1146,369 @@ class ScalarImage(GeneralImage):
         metadata["name"] = self.name
 
         return copy.copy(metadata)
+
+
+class OpticalImage(GeneralImage):
+    """
+    Special case of 2d trichromatic optical images, typically originating from photographs.
+
+    """
+
+    # ! ---- Constructors.
+
+    def __init__(
+        self,
+        img: np.ndarray,
+        time: Optional[Union[float, list[float], np.ndarray]] = None,
+        transformations: Optional[list] = None,
+        **kwargs,
+    ) -> None:
+        """Specialized constructor for optical images.
+
+        In addition to the constructor of general images,
+        the color space is required to be specified through
+        the keyword arguments.
+
+        """
+        # Define metadata specific for optical images
+        optical_metadata = {
+            "dim": 2,
+            "indexing": "ij",
+            "scalar": False,
+        }
+        kwargs.pop("dim", None)
+        kwargs.pop("indexing", None)
+        kwargs.pop("scalar", None)
+
+        # Construct a general image with the specs of an optical image
+        super().__init__(img, time, transformations, **optical_metadata, **kwargs)
+
+        assert self.range_dim == 1 and self.range_num == 3
+
+        # Add info on color space
+        self.color_space = kwargs.get("color_space", "RGB")
+        """Color space of the trichromatic data space."""
+
+        if self.color_space not in ["RGB", "BGR", "HSV"]:
+            raise NotImplementedError
+
+        if "color_space" not in kwargs:
+            warn("No color space provided. The color space RGB is implicitly assumed.")
+
+    def copy(self) -> OpticalImage:
+        """Copy constructor.
+
+        Returns:
+            OpticalImage: Copy of the image object.
+
+        """
+        return copy.deepcopy(self)
+
+    # ! ---- Fast access.
+
+    def metadata(self) -> dict:
+        """Generator of metadata; can be used to init a new optical image with same specs.
+
+        Returns:
+            dict: metadata with keys equal to all keywords agurments.
+
+        """
+        # Start with generic metadata.
+        metadata = super().metadata()
+
+        # Add specs specific to optical images.
+        metadata["color_space"] = self.color_space
+
+        return copy.copy(metadata)
+
+    # ! ---- I/O
+
+    def write(
+        self,
+        path,
+    ) -> None:
+        """Write image to file.
+
+        Arguments:
+            path (str): full path to image.
+
+        """
+        # To prepare for the use of cv2.imwrite, convert to BGR color space.
+        bgr_image = self.to_bgr(return_image=True)
+        bgr_array = bgr_image.img
+
+        # Write image, using the conventional matrix indexing
+        if self.original_dtype == np.uint8:
+
+            write_image = skimage.img_as_ubyte(bgr_array)
+            cv2.imwrite(str(Path(path)), write_image)
+
+        elif self.original_dtype == np.uint16:
+
+            write_image = skimage.img_as_uint(bgr_array)
+            cv2.imwrite(
+                str(Path(path)),
+                write_image,
+                [
+                    cv2.IMWRITE_TIFF_COMPRESSION,
+                    1,
+                    cv2.IMWRITE_TIFF_XDPI,
+                    350,
+                    cv2.IMWRITE_TIFF_YDPI,
+                    350,
+                ],
+            )
+
+        else:
+            raise NotImplementedError
+
+        print("Image saved as: " + str(Path(path)))
+
+    # ! ---- Color transformations
+
+    def to_rgb(self, return_image: bool = False) -> Optional[OpticalImage]:
+        """
+        Transforms image to RGB.
+
+        Args:
+            return_image (bool): flag controlling whether the converted image
+                is returned, or converted internally.
+
+        Returns:
+            OpticalImage (optional): converted image, if requested
+
+        """
+
+        if self.color_space not in ["RGB", "BGR", "HSV"]:
+            raise NotImplementedError
+
+        # If an image is returned, do not change the image attribute.
+        if return_image:
+
+            image: OpticalImage = self.copy()
+            if self.color_space == "RGB":
+                pass
+            elif self.color_space == "BGR":
+                image.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
+            elif self.color_space == "HSV":
+                image.img = cv2.cvtColor(self.img, cv2.COLOR_HSV2RGB)
+            image.color_space = "RGB"
+            return image
+
+        else:
+
+            if self.color_space == "RGB":
+                pass
+            elif self.color_space == "BGR":
+                self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
+            elif self.color_space == "HSV":
+                self.img = cv2.cvtColor(self.img, cv2.COLOR_HSV2RGB)
+            self.color_space = "RGB"
+
+    def to_bgr(self, return_image: bool = False) -> Optional[OpticalImage]:
+        """
+        Transforms image to BGR.
+
+        Args:
+            return_image (bool): flag controlling whether the converted image
+                is returned, or converted internally.
+
+        Returns:
+            OpticalImage (optional): converted image, if requested
+
+        """
+
+        if self.color_space not in ["RGB", "BGR", "HSV"]:
+            raise NotImplementedError
+
+        # If an image is returned, do not change the image attribute.
+        if return_image:
+
+            image: OpticalImage = self.copy()
+            if self.color_space == "BGR":
+                pass
+            if self.color_space == "RGB":
+                image.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
+            elif self.color_space == "HSV":
+                image.img = cv2.cvtColor(self.img, cv2.COLOR_HSV2BGR)
+            image.color_space = "BGR"
+            return image
+
+        else:
+
+            if self.color_space == "BGR":
+                pass
+            elif self.color_space == "RGB":
+                self.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
+            elif self.color_space == "HSV":
+                self.img = cv2.cvtColor(self.img, cv2.COLOR_HSV2BGR)
+            self.color_space = "BGR"
+
+    def to_hsv(self, return_image: bool = False) -> Optional[OpticalImage]:
+        """
+        Transforms image to HSV.
+
+        Args:
+            return_image (bool): flag controlling whether the converted image
+                is returned, or converted internally.
+
+        Returns:
+            OpticalImage (optional): converted image, if requested
+
+        """
+
+        if self.color_space not in ["RGB", "BGR", "HSV"]:
+            raise NotImplementedError
+
+        # If an image is returned, do not change the image attribute.
+        if return_image:
+
+            image: OpticalImage = self.copy()
+            if self.color_space == "HSV":
+                pass
+            if self.color_space == "RGB":
+                image.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2HSV)
+            elif self.color_space == "BGR":
+                image.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)
+            image.color_space = "HSV"
+            return image
+
+        else:
+
+            if self.color_space == "HSV":
+                pass
+            elif self.color_space == "RGB":
+                self.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2HSV)
+            elif self.color_space == "BGR":
+                self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)
+            self.color_space = "HSV"
+
+    def to_monochromatic(self, key: str) -> ScalarImage:
+        """Returns monochromatic version of the image.
+
+        Returns:
+            ScalarImage: monochromatic image.
+
+        """
+        # Do not alter underlying image, as this operation cannot be reversed.
+        image = self.copy()
+
+        # Add robustness.
+        key = key.lower()
+
+        # Adapt data array
+        if key in ["gray", "red", "green", "blue"]:
+
+            image.to_rgb()
+            if key == "gray":
+                img = cv2.cvtColor(image.img, cv2.COLOR_RGB2GRAY)
+            elif key == "red":
+                img = image.img[:, :, 0]
+            elif key == "green":
+                img = image.img[:, :, 1]
+            elif key == "blue":
+                img = image.img[:, :, 2]
+
+        elif key in ["hue", "saturation", "value"]:
+
+            image.to_hsv()
+            if key == "hue":
+                img = image.img[:, :, 0]
+            elif key == "saturation":
+                img = image.img[:, :, 1]
+            elif key == "value":
+                img = image.img[:, :, 2]
+
+        # Adapt specs.
+        metadata = image.metadata()
+        del metadata["color_space"]
+        metadata["name"] = key
+        metadata["scalar"] = True
+
+        # Return scalar image
+        return ScalarImage(img, **metadata)
+
+    # ! ---- Utilities
+
+    def add_grid(
+        self,
+        origin: Optional[Union[np.ndarray, list[float]]] = None,
+        dx: float = 1,
+        dy: float = 1,
+        color: tuple = (0, 0, 125),
+        thickness: int = 9,
+    ) -> OpticalImage:
+        """
+        Adds a grid on the image and returns new image.
+
+        Arguments:
+            origin (np.ndarray): origin of the grid, in physical units - the reference
+                coordinate system is provided by the corresponding attribute coordinatesystem
+            dx (float): grid size in x-direction, in physical units
+            dy (float): grid size in y-direction, in physical units
+            color (tuple of int): BGR color of the grid
+            thickness (int): thickness of the grid lines
+
+        Returns:
+            OpticalImage: original image with grid on top
+
+        """
+        # Set origin if it was not provided
+        if origin is None:
+            origin = self.origin
+        origin = np.array(origin)
+
+        # Determine the number of grid lines required
+        num_horizontal_lines: int = math.ceil(self.dimensions[0] / dy) + 1
+        num_vertical_lines: int = math.ceil(self.dimensions[1] / dx) + 1
+
+        # Start from original image
+        gridimg: np.array = self.img.copy()
+        metadata = self.metadata()
+
+        # Add horizontal grid lines (line by line)
+        for i in range(num_horizontal_lines):
+
+            # Determine the outer boundaries in x directions
+            xmin = self.coordinatesystem.domain["xmin"]
+            xmax = self.coordinatesystem.domain["xmax"]
+
+            # Determine the y coordinate of the line
+            y = origin[1] + i * dy
+
+            # Determine the pixels corresponding to the end points of the horizontal line
+            # (xmin,y) - (xmax,y), in (row,col) format.
+            start = self.coordinatesystem.voxel([xmin, y])
+            end = self.coordinatesystem.voxel([xmax, y])
+
+            # Add single line. NOTE: cv2.line takes pixels as inputs with the reversed
+            # matrix indexing, i.e., (col,row) instead of (row,col). Furthermore,
+            # it requires tuples.
+            gridimg = cv2.line(
+                gridimg, tuple(reversed(start)), tuple(reversed(end)), color, thickness
+            )
+
+        # Add vertical grid lines (line by line)
+        for j in range(num_vertical_lines):
+
+            # Determine the outer boundaries in x directions
+            ymin = self.coordinatesystem.domain["ymin"]
+            ymax = self.coordinatesystem.domain["ymax"]
+
+            # Determine the y coordinate of the line
+            x = origin[0] + j * dx
+
+            # Determine the pixels corresponding to the end points of the vertical line
+            # (x, ymin) - (x, ymax), in (row,col) format.
+            start = self.coordinatesystem.voxel([x, ymin])
+            end = self.coordinatesystem.voxel([x, ymax])
+
+            # Add single line. NOTE: cv2.line takes pixels as inputs with the reversed
+            # matrix indexing, i.e., (col,row) instead of (row,col). Furthermore,
+            # it requires tuples.
+            gridimg = cv2.line(
+                gridimg, tuple(reversed(start)), tuple(reversed(end)), color, thickness
+            )
+
+        # Return image with grid as Image object
+        return OpticalImage(img=gridimg, **metadata)
