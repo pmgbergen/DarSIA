@@ -10,7 +10,7 @@ import json
 import math
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Union, cast, Any
+from typing import Any, Optional, Union, cast
 from warnings import warn
 
 import cv2
@@ -837,6 +837,9 @@ class GeneralImage:
         """Indexing of each axis in context of matrix indexing (ijk)
         or Cartesian coordinates (xyz)."""
 
+        # For now, only anticipate matrix indexing.
+        assert self.indexing == "ijk"[: self.space_dim]
+
         self.dimensions: list[float] = kwargs.get("dimensions", self.space_dim * [1])
         """Dimension in the directions corresponding to the indexings."""
 
@@ -896,16 +899,15 @@ class GeneralImage:
         assert len(self.shape) == self.space_dim + self.time_dim + self.range_dim
         assert np.prod(self.shape) == self.space_num * self.time_num * self.range_num
 
-    def copy(self) -> darsia.Image:
+    def copy(self) -> GeneralImage:
         """
         Copy constructor.
 
         Returns:
-            darsia.Image: Copy of the image object.
+            GeneralImage: Copy of the image object.
 
         """
-        metadata = self.metadata()
-        return GeneralImage(np.copy(self.img), **metadata)
+        return copy.deepcopy(self)
 
     # ! ---- Transformations
 
@@ -986,12 +988,13 @@ class GeneralImage:
         """
         np.save(path, self.img)
 
-    def write_metadata_to_file(self, path: Union[str, Path]) -> None:
+    def write_metadata_to_json(self, path: Union[str, Path]) -> None:
         """
         Writes the metadata dictionary to a json-file.
 
         Arguments:
             path (str): path to the json file
+
         """
         metadata = self.extract_metadata()
         with open(str(Path(path)), "w") as outfile:
@@ -1012,7 +1015,8 @@ class GeneralImage:
         if self.img.shape != other.img.shape:
             raise ValueError("Images have different shapes.")
         else:
-            return GeneralImage(self.img + other.img, copy.copy(self.metadata))
+            metadata = self.metadta()
+            return GeneralImage(self.img + other.img, **metadata)
 
     def __sub__(self, other: GeneralImage) -> GeneralImage:
         """Subtract two images of same size.
@@ -1027,7 +1031,8 @@ class GeneralImage:
         if self.img.shape != other.img.shape:
             raise ValueError("Images have different shapes.")
         else:
-            return GeneralImage(self.img - other.img, copy.copy(self.metadata))
+            metadata = self.metadta()
+            return GeneralImage(self.img - other.img, **metadata)
 
     def __mul__(self, scalar: Union[float, int]) -> GeneralImage:
         """Scaling of image.
@@ -1047,3 +1052,37 @@ class GeneralImage:
         return result_image
 
     __rmul__ = __mul__
+
+    # TODO add more standard routines with NotImplementedError
+    # TODO try TVD.
+
+    # ! ---- Display methods
+
+    def show(
+        self, name: Optional[str] = None, time: Optional[int] = None, show: bool = True
+    ) -> None:
+        """Show image using matplotlib.pyplots built-in methods.
+
+        Args:
+            name (str, optional): name in the displayed window.
+            time (int, optional): number of seconds, for which the image
+                is displayed.
+            show (bool): flag controlling whether the plot is forced to be
+                displayed.
+
+        """
+        # Only works for optical and scalar images.
+        assert self.scalar or self.range_num in [1, 3]
+
+        if name is None:
+            name = ""
+
+        plt.figure(name)
+        plt.imshow(self.img)
+        if show:
+            if time is None:
+                plt.show()
+            elif isinstance(time, int):
+                plt.show(block=False)
+                plt.pause(time)
+                plt.close()
