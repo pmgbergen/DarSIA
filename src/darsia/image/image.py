@@ -904,7 +904,8 @@ class GeneralImage:
             darsia.Image: Copy of the image object.
 
         """
-        return GeneralImage(np.copy(self.img), copy.copy(self.metadata))
+        metadata = self.metadata()
+        return GeneralImage(np.copy(self.img), **metadata)
 
     # ! ---- Transformations
 
