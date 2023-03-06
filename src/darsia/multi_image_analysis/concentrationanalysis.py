@@ -27,7 +27,12 @@ class ConcentrationAnalysis:
 
     def __init__(
         self,
-        base: Union[darsia.Image, list[darsia.Image]],
+        base: Union[
+            darsia.Image,
+            list[darsia.Image],
+            darsia.GeneralImage,
+            list[darsia.GeneralImage],
+        ],
         signal_reduction: darsia.SignalReduction,
         balancing: Optional[darsia.Model] = None,
         restoration: Optional[darsia.TVD] = None,
@@ -39,7 +44,7 @@ class ConcentrationAnalysis:
         Constructor of ConcentrationAnalysis.
 
         Args:
-            base (darsia.Image or list of such): baseline image(s); if multiple provided,
+            base (Image or list of such): baseline image(s); if multiple provided,
                 these are used to define a cleaning filter.
             signal_reduction (darsia.SignalReduction): reduction from multi-dimensional to
                 1-dimensional data.
@@ -55,7 +60,10 @@ class ConcentrationAnalysis:
         # Fix single baseline image and reference time
         if not isinstance(base, list):
             base = [base]
-        self.base: darsia.Image = base[0].copy()
+        self.base: Union[darsia.Image, darsia.GeneralImage] = base[0].copy()
+
+        if self.base.space_dim != 2:
+            raise NotImplementedError
 
         # Define scalar space.
         self.signal_reduction = signal_reduction
@@ -86,14 +94,14 @@ class ConcentrationAnalysis:
 
     def update(
         self,
-        base: Optional[darsia.Image] = None,
+        base: Optional[Union[darsia.Image, darsia.GeneralImage]] = None,
         mask: Optional[np.ndarray] = None,
     ) -> None:
         """
         Update of the baseline image or parameters.
 
         Args:
-            base (darsia.Image, optional): image array
+            base (Image, optional): image array
             mask (np.ndarray, optional): boolean mask, detecting which pixels
                 will be considered, all other will be ignored in the analysis.
         """
@@ -105,7 +113,9 @@ class ConcentrationAnalysis:
     # ! ---- Cleaning filter methods
 
     def find_cleaning_filter(
-        self, baseline_images: list[darsia.Image], reset: bool = False
+        self,
+        baseline_images: Union[list[darsia.Image], list[darsia.GeneralImage]],
+        reset: bool = False,
     ) -> None:
         """
         Determine natural noise by studying a series of baseline images.
@@ -114,7 +124,7 @@ class ConcentrationAnalysis:
         as thresholding mask.
 
         Args:
-            baseline_images (list of darsia.Image): series of baseline_images.
+            baseline_images (list of images): series of baseline_images.
             reset (bool): flag whether the cleaning filter shall be reset.
         """
         # Initialize cleaning filter
@@ -166,7 +176,9 @@ class ConcentrationAnalysis:
 
     # ! ---- Main method
 
-    def __call__(self, img: darsia.Image) -> darsia.Image:
+    def __call__(
+        self, img: Union[darsia.Image, darsia.GeneralImage]
+    ) -> Union[darsia.Image, darsia.GeneralImage]:
         """Extract concentration based on a reference image and rescaling.
 
         Args:
@@ -208,7 +220,11 @@ class ConcentrationAnalysis:
         if self.verbosity >= 1:
             plt.show()
 
-        return darsia.Image(concentration, img.metadata)
+        if isinstance(img, darsia.Image):
+            return darsia.Image(concentration, img.metadata)
+        elif isinstance(img, darsia.GeneralImage):
+            metadata = img.metadata()
+            return darsia.GeneralImage(concentration, **metadata)
 
     # ! ---- Inspection routines
     def _inspect_diff(self, img: np.ndarray) -> None:
@@ -248,7 +264,9 @@ class ConcentrationAnalysis:
             plt.imshow(img)
 
     # ! ---- Pre- and post-processing methods
-    def _subtract_background(self, img: darsia.Image) -> darsia.Image:
+    def _subtract_background(
+        self, img: Union[darsia.Image, darsia.GeneralImage]
+    ) -> Union[darsia.Image, darsia.GeneralImage]:
         """
         Take difference between input image and baseline image, based
         on cached option.
@@ -363,7 +381,12 @@ class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
 
     def __init__(
         self,
-        base: Union[darsia.Image, list[darsia.Image]],
+        base: Union[
+            darsia.Image,
+            list[darsia.Image],
+            darsia.GeneralImage,
+            list[darsia.GeneralImage],
+        ],
         signal_reduction: darsia.SignalReduction,
         balancing: Optional[darsia.Model],
         restoration: darsia.TVD,
