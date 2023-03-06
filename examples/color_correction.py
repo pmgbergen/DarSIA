@@ -1,9 +1,13 @@
 import os
 
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
 import darsia
+
+# Control
+use_general_images = False
 
 # ! ---- Read uncorrected image
 
@@ -11,7 +15,13 @@ import darsia
 image = f"{os.path.dirname(__file__)}/images/baseline.jpg"
 
 # Create an uncorrected image for comparison
-uncorrected_baseline = darsia.Image(image, width=2.8, height=1.5)
+if use_general_images:
+    image_array = cv2.cvtColor(cv2.imread(image), cv2.COLOR_BGR2RGB)
+    uncorrected_baseline = darsia.GeneralImage(
+        image_array, dimensions=[1.5, 2.8], origin=[0, 1.5]
+    )
+else:
+    uncorrected_baseline = darsia.Image(image, width=2.8, height=1.5, color_space="BGR")
 
 # ! ---- Setup the machine learning based color correction
 
@@ -26,12 +36,20 @@ experimental_color_correction = darsia.ExperimentalColorCorrection(
 # of the details/progress of the color checker.
 
 # Create the color correction and apply it at initialization of image class
-experimental_corrected_baseline = darsia.Image(
-    image,
-    color_correction=experimental_color_correction,
-    width=2.8,
-    height=1.5,
-)
+if use_general_images:
+    experimental_corrected_baseline = darsia.GeneralImage(
+        image_array,
+        transformations=[experimental_color_correction],
+        dimensions=[1.5, 2.8],
+        origin=[0.0, 1.5],
+    )
+else:
+    experimental_corrected_baseline = darsia.Image(
+        image,
+        color_correction=experimental_color_correction,
+        width=2.8,
+        height=1.5,
+    )
 
 # ! ---- Setup the manual color correction
 
@@ -58,15 +76,22 @@ color_correction = darsia.ColorCorrection(
 # the final color checker after calibration is displayed.
 
 # Create the color correction and apply it at initialization of image class
-corrected_baseline = darsia.Image(
-    image,
-    color_correction=color_correction,
-    width=2.8,
-    height=1.5,
-)
+if use_general_images:
+    corrected_baseline = darsia.GeneralImage(
+        image_array,
+        transformations=[color_correction],
+        dimensions=[1.5, 2.8],
+        origin=[0.0, 1.5],
+    )
+else:
+    corrected_baseline = darsia.Image(
+        image,
+        color_correction=color_correction,
+        width=2.8,
+        height=1.5,
+    )
 
 # -------- Plot corrected and uncorrected images
-uncorrected_baseline.toRGB()
 plt.figure()
 plt.imshow(uncorrected_baseline.img)
 plt.figure()
