@@ -11,8 +11,10 @@ import darsia
 
 
 def extractROI(
-    img: darsia.Image, pts: Union[np.ndarray, list], return_roi: bool = False
-) -> Union[darsia.Image, tuple[darsia.Image, tuple[slice, slice]]]:
+    img: Union[darsia.Image, darsia.GeneralImage],
+    pts: Union[np.ndarray, list],
+    return_roi: bool = False,
+) -> Union[darsia.Image, tuple[darsia.Image, tuple[slice, slice]]]:  # TODO GeneralImage
     """Extracts region of interest based on physical coordinates.
 
     Args:
@@ -34,8 +36,14 @@ def extractROI(
     # of x and y coordinates.
     top_left_coordinate = [np.min(pts[:, 0]), np.max(pts[:, 1])]
     bottom_right_coordinate = [np.max(pts[:, 0]), np.min(pts[:, 1])]
-    top_left_pixel = img.coordinatesystem.coordinateToPixel(top_left_coordinate)
-    bottom_right_pixel = img.coordinatesystem.coordinateToPixel(bottom_right_coordinate)
+    if isinstance(img, darsia.Image):
+        top_left_pixel = img.coordinatesystem.coordinateToPixel(top_left_coordinate)
+        bottom_right_pixel = img.coordinatesystem.coordinateToPixel(
+            bottom_right_coordinate
+        )
+    elif isinstance(img, darsia.GeneralImage):
+        top_left_pixel = img.coordinatesystem.voxel(top_left_coordinate)
+        bottom_right_pixel = img.coordinatesystem.voxel(bottom_right_coordinate)
 
     # Define the ROI in terms of pixels, using matrix indexing, i.e., the (row,col) format
     roi = (
@@ -50,34 +58,58 @@ def extractROI(
     ):
         warnings.warn("Provided coordinates lie outside image.")
 
-    # Define metadata (all quantities in metric units)
-    origin = [np.min(pts[:, 0]), np.min(pts[:, 1])]
-    width = np.max(pts[:, 0]) - np.min(pts[:, 0])
-    height = np.max(pts[:, 1]) - np.min(pts[:, 1])
-
     # Construct and return image corresponding to ROI
-    if return_roi:
-        return (
-            darsia.Image(
+    if isinstance(img, darsia.Image):
+        # Define metadata (all quantities in metric units)
+        origin = [np.min(pts[:, 0]), np.min(pts[:, 1])]
+        width = np.max(pts[:, 0]) - np.min(pts[:, 0])
+        height = np.max(pts[:, 1]) - np.min(pts[:, 1])
+
+        if return_roi:
+            return (
+                darsia.Image(
+                    img=img.img[roi],
+                    origin=origin,
+                    width=width,
+                    height=height,
+                    color_space=img.colorspace,
+                ),
+                roi,
+            )
+        else:
+            return darsia.Image(
                 img=img.img[roi],
                 origin=origin,
                 width=width,
                 height=height,
                 color_space=img.colorspace,
-            ),
-            roi,
-        )
-    else:
-        return darsia.Image(
-            img=img.img[roi],
-            origin=origin,
-            width=width,
-            height=height,
-            color_space=img.colorspace,
-        )
+            )
+    elif isinstance(img, darsia.GeneralImage):
+
+        # Define metadata (all quantities in metric units)
+        origin = [np.min(pts[:, 0]), np.max(pts[:, 1])]
+        width = np.max(pts[:, 0]) - np.min(pts[:, 0])
+        height = np.max(pts[:, 1]) - np.min(pts[:, 1])
+
+        # Fetch old metadata
+        metadata = img.metadata()
+
+        # Update metadata
+        metadata["origin"] = origin
+        metadata["dimensions"] = [height, width]
+
+        if return_roi:
+            return (
+                darsia.GeneralImage(img=img.img[roi], **metadata),
+                roi,
+            )
+        else:
+            return darsia.GeneralImage(img=img.img[roi], **metadata)
 
 
-def extractROIPixel(img: darsia.Image, roi: tuple) -> darsia.Image:
+def extractROIPixel(
+    img: Union[darsia.Image, darsia.GeneralImage], roi: tuple
+) -> Union[darsia.Image, darsia.GeneralImage]:
     """Extracts region of interest based on pixel info.
 
     Arguments:
@@ -86,23 +118,40 @@ def extractROIPixel(img: darsia.Image, roi: tuple) -> darsia.Image:
 
     Returns:
         darsia.Image: image object restricted to the ROI.
-    """
-    # Define metadata; Note that img.origin uses a Cartesian indexing, while the
-    # roi uses the conventional matrix indexing
-    origin = img.origin + np.array(
-        [roi[1].start * img.dx, (img.num_pixels_height - roi[0].stop) * img.dy]
-    )
-    height = (roi[0].stop - roi[0].start) * img.dy
-    width = (roi[1].stop - roi[1].start) * img.dx
 
-    # Construct and return image corresponding to ROI
-    return darsia.Image(
-        img=img.img[roi],
-        origin=origin,
-        width=width,
-        height=height,
-        color_space=img.colorspace,
-    )
+    """
+    if isinstance(img, darsia.Image):
+        # Define metadata; Note that img.origin uses a Cartesian indexing, while the
+        # roi uses the conventional matrix indexing
+        origin = img.origin + np.array(
+            [roi[1].start * img.dx, (img.num_pixels_height - roi[0].stop) * img.dy]
+        )
+        height = (roi[0].stop - roi[0].start) * img.dy
+        width = (roi[1].stop - roi[1].start) * img.dx
+
+        # Construct and return image corresponding to ROI
+        return darsia.Image(
+            img=img.img[roi],
+            origin=origin,
+            width=width,
+            height=height,
+            color_space=img.colorspace,
+        )
+
+    elif isinstance(img, darsia.GeneralImage):
+
+        # Fetch old metadata
+        metadata = img.metadata()
+
+        # Update metadata - origin and dimensions.
+        new_origin_voxel = [slic.start for slic in roi]
+        metadata["origin"] = img.coordinatesystem.coordinate(new_origin_voxel)
+        metadata["dimensions"] = [
+            (slic.stop - slic.start) * img.voxel_size[i] for i, slic in enumerate(roi)
+        ]
+
+        # Construct and return image corresponding to ROI
+        return darsia.GeneralImage(img=img.img[roi], time=img.time, **metadata)
 
 
 def extract_quadrilateral_ROI(img_src: np.ndarray, **kwargs) -> np.ndarray:
