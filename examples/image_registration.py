@@ -11,16 +11,22 @@ to dst (C1 like) scenarios.
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
+import cv2
 
 import darsia
+
+# Control
+use_general_images = True
 
 # ! ----- Preliminaries - prepare two images for image registration
 
 # Paths to two images of interest. NOTE: These images are not part of the GH repo.
-path_src = (
-    "/media/jakub/Elements/Jakub/benchmark/data/well_test/from_description/pulse1.jpg"
-)
+path_src = "/home/jakub/images/ift/more/welltest/pulse1.jpg"
 path_dst = "/home/jakub/images/ift/benchmark/baseline/original/Baseline.jpg"
+
+# Find corresponding arrays in RGB color channels
+array_src = cv2.cvtColor(cv2.imread(path_src), cv2.COLOR_BGR2RGB)
+array_dst = cv2.cvtColor(cv2.imread(path_dst), cv2.COLOR_BGR2RGB)
 
 # Setup curvature correction (here only cropping)
 config = {
@@ -38,21 +44,41 @@ curvature_correction = darsia.CurvatureCorrection(config)
 # Setup drift correction taking care of moving camera in between taking photos.
 # Use the color checker as reference in both images, and make the src image
 # the anker.
-roi_cc = (slice(0, 600), slice(0, 600))
-drift_correction = darsia.DriftCorrection(base=path_src, roi=roi_cc)
+roi = (slice(0, 600), slice(0, 600))
+drift_correction = darsia.DriftCorrection(base=array_src, roi=roi)
 
 # Create darsia images with integrated cropping. Note: the drift correction
 # applied to img_src is without effect.
-img_src = darsia.Image(
-    img=path_src,
-    drift_correction=drift_correction,
-    curvature_correction=curvature_correction,
-)
-img_dst = darsia.Image(
-    img=path_dst,
-    drift_correction=drift_correction,
-    curvature_correction=curvature_correction,
-)
+if use_general_images:
+    img_src = darsia.GeneralImage(
+        img=array_src,
+        transformations = [
+            drift_correction,
+            curvature_correction,
+        ],
+        dimensions = [1.5, 2.8],
+        origin = [0., 1.5],
+    )
+    img_dst = darsia.GeneralImage(
+        img=array_dst,
+        transformations = [
+            drift_correction,
+            curvature_correction,
+        ],
+        dimensions = [1.5, 2.8],
+        origin = [0., 1.5],
+    )
+else:
+    img_src = darsia.Image(
+        img=path_src,
+        drift_correction=drift_correction,
+        curvature_correction=curvature_correction,
+    )
+    img_dst = darsia.Image(
+        img=path_dst,
+        drift_correction=drift_correction,
+        curvature_correction=curvature_correction,
+    )
 
 plt.figure("src")
 plt.imshow(img_src.img)
@@ -67,10 +93,12 @@ da_img_dst = darsia.extractROIPixel(img_dst, roi_crop)
 
 # ! ----- Actual analysis: Determine the deformation between img_dst and aligned_img_src
 
+num_patches = [10, 20] if use_general_images else [20, 10]
+
 # Define image registration tool
 config["image registration"] = {
     # Define the number of patches in x and y directions
-    "N_patches": [20, 10],
+    "N_patches": num_patches,
     # Define a relative overlap, this makes it often slightly easier for the feature detection.
     "rel_overlap": 0.1,
     # Add some tuning parameters for the feature detection (these are actually the default
@@ -158,12 +186,17 @@ plt.imshow(img_box_B.img)
 plt.show()
 
 # Now we patch box B, the number of patches is arbitrary (here chosen to be 5 x 3):
-patched_box_B = darsia.Patches(img_box_B, 5, 3)
+if use_general_images:
+    patched_box_B = darsia.GeneralPatches(img_box_B, [3, 5])
+else:
+    patched_box_B = darsia.Patches(img_box_B, 5, 3)
 
 # The patch centers can be accessed - actually not required here, but these correspond
 # to the subsequent deformations.
-patch_centers_box_B = patched_box_B.global_centers_cartesian_matrix
-print(patch_centers_box_B)
+if use_general_images:
+    patch_centers_box_B = patched_box_B.global_centers_cartesian
+else:
+    patch_centers_box_B = patched_box_B.global_centers_cartesian_matrix
 
 # The deformation in the centers of these points can be obtained by evaluating the
 # deformation map in a patch object. The result uses conventional matrix indexing.
