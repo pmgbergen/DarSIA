@@ -45,6 +45,24 @@ def test_initialize_image():
     assert hasattr(image, "coordinatesystem")
 
 
+def test_initialize_simple_general_image():
+
+    #############################################################################
+    # ! ---- Define image array
+    path = f"{os.path.dirname(__file__)}/../../examples/images/baseline.jpg"
+    array = cv2.imread(path)
+
+    # ! ---- Initialize darsia image
+
+    # Create the color correction and apply it at initialization of image class
+    image = darsia.GeneralImage(img=array)
+
+    assert hasattr(image, "img")
+    assert hasattr(image, "coordinatesystem")
+    assert image.space_dim == 2
+    assert image.indexing == "ij"
+
+
 def test_initialize_general_image():
 
     #############################################################################
@@ -54,8 +72,12 @@ def test_initialize_general_image():
 
     # ! ---- Define some metadata corresponding to the input array
     info = {
+        "scalar": False,
+        "series": False,
         "dim": 2,
-        "orientation": "ij",
+        "indexing": "ij",
+        "dimensions": [1.5, 2.8],
+        "origin": [0.0, 1.5],
     }
 
     # ! ---- Initialize darsia image
@@ -65,5 +87,54 @@ def test_initialize_general_image():
 
     assert hasattr(image, "img")
     assert hasattr(image, "coordinatesystem")
+    assert not image.scalar
+    assert not image.series
     assert image.space_dim == 2
-    assert image.orientation == "ij"
+    assert image.time_dim == 0
+    assert image.range_dim == 1
+    assert image.range_num == 3
+    assert image.indexing == "ij"
+    assert np.all(np.isclose(image.dimensions, np.array([1.5, 2.8])))
+    assert np.all(np.isclose(image.origin, np.array([0.0, 1.5])))
+
+
+def test_initialize_optical_image():
+
+    #############################################################################
+    # ! ---- Define image array
+    path = f"{os.path.dirname(__file__)}/../../examples/images/baseline.jpg"
+    array = cv2.imread(path)
+
+    # ! ---- Define some metadata corresponding to the input array
+    info = {
+        "series": False,
+        "scalar": False,
+        "dim": 2,
+        "indexing": "ij",
+        "dimensions": [1.5, 2.8],
+        "origin": [0.0, 1.5],
+    }
+
+    optical_info = {
+        "series": False,
+        "dimensions": [1.5, 2.8],
+        "origin": [0.0, 1.5],
+    }
+
+    # ! ---- Initialize darsia image
+
+    # Create the color correction and apply it at initialization of image class
+    image = darsia.GeneralImage(img=array, **info)
+    optical_image = darsia.OpticalImage(img=array, **optical_info)
+
+    assert np.all(np.isclose(image.img, optical_image.img))
+    assert hasattr(image, "coordinatesystem")
+    assert not image.scalar
+    assert not image.series
+    assert optical_image.space_dim == 2
+    assert optical_image.time_dim == 0
+    assert optical_image.range_dim == 1
+    assert optical_image.range_num == 3
+    assert optical_image.indexing == "ij"
+    assert np.all(np.isclose(optical_image.dimensions, np.array([1.5, 2.8])))
+    assert np.all(np.isclose(optical_image.origin, np.array([0.0, 1.5])))
