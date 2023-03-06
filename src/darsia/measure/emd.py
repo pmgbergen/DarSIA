@@ -13,8 +13,6 @@ import numpy as np
 
 import darsia
 
-Image = Union[darsia.Image, darsia.GeneralImage]
-
 
 class EMD:
     """
@@ -31,13 +29,17 @@ class EMD:
         # Cache
         self.preprocess = preprocess
 
-    def __call__(self, img_1: Image, img_2: Image) -> float:
+    def __call__(
+        self,
+        img_1: Union[darsia.Image, darsia.GeneralImage],
+        img_2: Union[darsia.Image, darsia.GeneralImage],
+    ) -> float:
         """
         Earth mover's distance between images with same total sum.
 
         Args:
-            img_1 (Image): image 1
-            img_2 (Image): image 2
+            img_1 (Union[darsia.Image, darsia.GeneralImage]): image 1
+            img_2 (Union[darsia.Image, darsia.GeneralImage]): image 2
 
         Returns:
             float: distance between img_1 and img_2.
@@ -48,8 +50,12 @@ class EMD:
         preprocessed_img_2 = self._preprocess(img_2)
 
         # Pixel dimensions
-        dx_1 = (preprocessed_img_1.dy, preprocessed_img_1.dx)
-        dx_2 = (preprocessed_img_2.dy, preprocessed_img_2.dx)
+        if isinstance(preprocessed_img_1, darsia.Image):
+            dx_1 = (preprocessed_img_1.dy, preprocessed_img_1.dx)
+            dx_2 = (preprocessed_img_2.dy, preprocessed_img_2.dx)
+        elif isinstance(preprocessed_img_1, darsia.GeneralImage):
+            dx_1 = tuple(preprocessed_img_1.voxel_size)
+            dx_2 = tuple(preprocessed_img_2.voxel_size)
         assert np.isclose(dx_1[0], dx_2[0])
         assert np.isclose(dx_1[1], dx_2[1])
 
@@ -69,7 +75,9 @@ class EMD:
 
         return dist * integral_1
 
-    def _preprocess(self, img: Image) -> Image:
+    def _preprocess(
+        self, img: Union[darsia.Image, darsia.GeneralImage]
+    ) -> Union[darsia.Image, darsia.GeneralImage]:
         """
         Preprocessing routine, incl. extraction of array.
 
@@ -84,7 +92,11 @@ class EMD:
             preprocessed_img = self.preprocess(preprocessed_img)
         return preprocessed_img
 
-    def _compatibility_check(self, img_1: Image, img_2: Image) -> bool:
+    def _compatibility_check(
+        self,
+        img_1: Union[darsia.Image, darsia.GeneralImage],
+        img_2: Union[darsia.Image, darsia.GeneralImage],
+    ) -> bool:
         """
         Compatibility check.
 
@@ -103,7 +115,9 @@ class EMD:
         assert np.prod(img_1.img.shape) == np.prod(img_1.img.shape[:2])
         assert np.prod(img_2.img.shape) == np.prod(img_2.img.shape[:2])
 
-    def _normalize(self, img: Image) -> tuple[float, np.ndarray]:
+    def _normalize(
+        self, img: Union[darsia.Image, darsia.GeneralImage]
+    ) -> tuple[float, np.ndarray]:
         """
         Normalization of images to images with sum 1.
 
@@ -147,7 +161,9 @@ class EMD:
 
         return sig
 
-    def distance_matrix(self, images: list[Image]) -> np.ndarray:
+    def distance_matrix(
+        self, images: list[Union[darsia.Image, darsia.GeneralImage]]
+    ) -> np.ndarray:
         """
         Compute the distance between each iteam of a list.
 
