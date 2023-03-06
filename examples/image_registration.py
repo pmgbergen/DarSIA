@@ -8,10 +8,10 @@ has occurred, i.e., to most degree the sand sunk from the src (well test)
 to dst (C1 like) scenarios.
 """
 
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
-import cv2
 
 import darsia
 
@@ -50,30 +50,35 @@ drift_correction = darsia.DriftCorrection(base=array_src, roi=roi)
 # Create darsia images with integrated cropping. Note: the drift correction
 # applied to img_src is without effect.
 if use_general_images:
+
     img_src = darsia.GeneralImage(
         img=array_src,
-        transformations = [
+        transformations=[
             drift_correction,
             curvature_correction,
         ],
-        dimensions = [1.5, 2.8],
-        origin = [0., 1.5],
+        dimensions=[1.5, 2.8],
+        origin=[0.0, 1.5],
     )
+
     img_dst = darsia.GeneralImage(
         img=array_dst,
-        transformations = [
+        transformations=[
             drift_correction,
             curvature_correction,
         ],
-        dimensions = [1.5, 2.8],
-        origin = [0., 1.5],
+        dimensions=[1.5, 2.8],
+        origin=[0.0, 1.5],
     )
+
 else:
+
     img_src = darsia.Image(
         img=path_src,
         drift_correction=drift_correction,
         curvature_correction=curvature_correction,
     )
+
     img_dst = darsia.Image(
         img=path_dst,
         drift_correction=drift_correction,
