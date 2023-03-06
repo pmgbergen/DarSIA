@@ -104,12 +104,7 @@ co2 = co2_analysis(co2_image)
 
 # Plot change 10 to larger number (or remove it) if it is desired to
 # keep the images longer on the screen
-plt.figure("co2")
-plt.imshow(co2.img)
-plt.show(block=False)
-# Pause longer if it is desired to keep the images on the screen
-plt.pause(10)
-plt.close()
+co2.show("co2", 10)
 
 # !----- Main routine for tracer analysis
 
@@ -163,9 +158,4 @@ tracer_analysis = darsia.ConcentrationAnalysis(
 tracer = tracer_analysis(tracer_image)
 
 # Plot
-plt.figure("tracer")
-plt.imshow(tracer.img)
-plt.show(block=False)
-# Pause longer if it is desired to keep the images on the screen
-plt.pause(10)
-plt.close()
+tracer.show("tracer", 10)
