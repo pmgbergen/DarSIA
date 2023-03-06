@@ -46,7 +46,7 @@ class DiffeomorphicImageRegistration:
             img_dst,
             N_patches=self.N_patches,
             rel_overlap=self.rel_overlap,
-            translationEstimator=self.translation_estimator,
+            translation_estimator=self.translation_estimator,
             mask=mask_dst,
         )
 
@@ -56,6 +56,7 @@ class DiffeomorphicImageRegistration:
 
         Args:
             dst (np.ndarray): image array
+
         """
         self.translation_analysis.update_base(img_dst)
 
@@ -183,22 +184,33 @@ class DiffeomorphicImageRegistration:
             np.ndarray: deformation vectors for all coordinates.
 
         """
-        if isinstance(coords, darsia.Patches):
-            coords = coords.global_centers_cartesian_matrix
-
-        assert units in ["metric", "pixel"]
-        assert coords.shape[-1] == 2
 
         # Reshape coords using a num_pts x 2 format.
+        if isinstance(coords, darsia.Patches):
+            coords = coords.global_centers_cartesian_matrix
+        elif isinstance(coords, darsia.GeneralPatches):
+            coords = coords.global_centers_cartesian
+
+        assert coords.shape[-1] == 2
         coords_shape = coords.shape
         coords = coords.reshape(-1, 2)
 
-        # Convert coordinates to pixels with matrix indexing, if provided in metric units
+        # Convert coordinates to pixels with reverse matrix indexing,
+        # if provided in metric units.
         if units == "metric":
             base = self.translation_analysis.base
-            pixel_coords = base.coordinatesystem.coordinateToPixel(coords, reverse=True)
-        else:
+            if isinstance(base, darsia.Image):
+                pixel_coords = base.coordinatesystem.coordinateToPixel(
+                    coords, reverse=True
+                )
+            elif isinstance(base, darsia.GeneralImage):
+                pixel_coords = base.coordinatesystem.voxel(coords)
+                pixel_coords = np.fliplr(pixel_coords)  # Reverse matrix ind.
+
+        elif units == "pixel":
             pixel_coords = coords
+        else:
+            raise ValueError
 
         # Interpolate at provided values - expect reverse matrix indexing
         translation = self.translation_analysis.translation(pixel_coords)
@@ -213,7 +225,12 @@ class DiffeomorphicImageRegistration:
 
         # Convert to metric units if required; for pixels, use matrix indexing.
         if units == "metric":
-            displacement = base.coordinatesystem.pixelToCoordinateVector(displacement)
+            if isinstance(base, darsia.Image):
+                displacement = base.coordinatesystem.pixelToCoordinateVector(
+                    displacement
+                )
+            elif isinstance(base, darsia.GeneralImage):
+                displacement = base.coordinatesystem.coordinate_vector(displacement)
 
         # Reshape to format used at input
         return displacement.reshape(coords_shape)
@@ -237,7 +254,11 @@ class DiffeomorphicImageRegistration:
         # Apply the transformation, stored in translation_analysis
         return self.translation_analysis.translate_image(reverse)
 
-    def plot(self, scaling: float = 1.0, mask: Optional[darsia.Image] = None) -> None:
+    def plot(
+        self,
+        scaling: float = 1.0,
+        mask: Optional[Union[darsia.Image, darsia.GeneralImage]] = None,
+    ) -> None:
         """
         Plots diffeomorphism.
 
@@ -282,11 +303,18 @@ class DiffeomorphicImageRegistration:
 
         # Convert to metric units
         tic = time.time()
-        displacement = (
-            self.translation_analysis.base.coordinatesystem.pixelToCoordinateVector(
-                displacement
+        if isinstance(self.translation_analysis.base, darsia.Image):
+            displacement = (
+                self.translation_analysis.base.coordinatesystem.pixelToCoordinateVector(
+                    displacement
+                )
             )
-        )
+        elif isinstance(self.translation_analysis.base, darsia.GeneralImage):
+            displacement = (
+                self.translation_analysis.base.coordinatesystem.coordinate_vector(
+                    displacement
+                )
+            )
         print(f"coordinate system: {time.time() - tic}")
 
         # Cache
@@ -338,22 +366,21 @@ class MultiscaleDiffeomorphicImageRegistration:
 
     def __call__(
         self,
-        img: darsia.Image,
+        img: Union[darsia.Image, darsia.GeneralImage],
         mask: Optional[np.ndarray] = None,
         return_transformed_dst: bool = False,
-    ) -> darsia.Image:
+    ) -> darsia.Image:  # TODO typing.
         """
         Image registration routine.
 
         Args:
-            img (darsia.Image): test image
+            img (Image): test image
             mask (np.ndaray): active mask
             return_transformed_dst (bool): flag whether the transform is also applied
                 to dst (inversely)
 
         Returns:
-            darsia.Image: transformed test image
-            darsia.Image: transformed reference image #TODO?
+            Image: transformed test image
         """
         # Store inputs
         transformed_img = img.copy()
@@ -392,10 +419,10 @@ class MultiscaleDiffeomorphicImageRegistration:
 
     def _single_level_iteration(
         self,
-        img: darsia.Image,
+        img: Union[darsia.Image, darsia.GeneralImage],
         mask: np.ndarray,
         config: dict,
-    ) -> tuple[darsia.Image, DiffeomorphicImageRegistration]:
+    ) -> tuple[darsia.Image, DiffeomorphicImageRegistration]:  # TODO typing
         """One iteration of multiscale image registration.
 
         Args:
@@ -429,7 +456,9 @@ class MultiscaleDiffeomorphicImageRegistration:
 
         return transformed_img, image_registration
 
-    def apply(self, img: darsia.Image, reverse: bool = False) -> darsia.Image:
+    def apply(
+        self, img: Union[darsia.Image, darsia.GeneralImage], reverse: bool = False
+    ) -> Union[darsia.Image, darsia.GeneralImage]:
         """
         Apply computed transformation onto arbitrary image.
 
@@ -447,7 +476,11 @@ class MultiscaleDiffeomorphicImageRegistration:
             raise ValueError("Construct the deformation first.")
         return self.combined_image_registration.apply(img, reverse)
 
-    def plot(self, scaling: float, mask: Optional[darsia.Image] = None) -> None:
+    def plot(
+        self,
+        scaling: float,
+        mask: Optional[Union[darsia.Image, darsia.GeneralImage]] = None,
+    ) -> None:
         """
         Plot the dislacement stored in the current image registration.
 
@@ -462,7 +495,7 @@ class MultiscaleDiffeomorphicImageRegistration:
 
     def evaluate(
         self,
-        coords: Union[np.ndarray, darsia.Patches],
+        coords: Union[np.ndarray, darsia.Patches, darsia.GeneralPatches],
         reverse: bool = False,
         units: str = "metric",
     ) -> np.ndarray:
@@ -475,7 +508,10 @@ class MultiscaleDiffeomorphicImageRegistration:
 
 class ImageRegistration:
     def __init__(
-        self, img_dst: darsia.Image, method: Optional[str] = None, **kwargs
+        self,
+        img_dst: Union[darsia.Image, darsia.GeneralImage],
+        method: Optional[str] = None,
+        **kwargs,
     ) -> None:
         """Constructor for DiffeomorphicImageRegistration.
 
@@ -599,13 +635,15 @@ class ImageRegistration:
 
     def __call__(
         self,
-        img: darsia.Image,
+        img: Union[darsia.Image, darsia.GeneralImage],
         mask: Optional[np.ndarray] = None,
         return_transformed_dst: bool = False,
-    ) -> darsia.Image:
+    ) -> Union[darsia.Image, darsia.GeneralImage]:
         return self.image_registration(img, mask, return_transformed_dst)
 
-    def apply(self, img: darsia.Image, reverse: bool = False) -> darsia.Image:
+    def apply(
+        self, img: Union[darsia.Image, darsia.GeneralImage], reverse: bool = False
+    ) -> Union[darsia.Image, darsia.GeneralImage]:
         """
         Apply computed transformation onto arbitrary image.
 
@@ -634,7 +672,7 @@ class ImageRegistration:
 
     def evaluate(
         self,
-        coords: Union[np.ndarray, darsia.Patches],
+        coords: Union[np.ndarray, darsia.Patches, darsia.GeneralPatches],
         reverse: bool = False,
         units: str = "metric",
     ) -> np.ndarray:
