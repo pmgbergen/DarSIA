@@ -9,6 +9,7 @@ import abc
 from itertools import combinations
 from pathlib import Path
 
+from typing import Union
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -63,7 +64,7 @@ class AbstractBalancingCalibration:
 
     def calibrate_balancing(
         self,
-        images: list[darsia.Image],
+        images: Union[list[darsia.Image], list[darsia.GeneralImage]],
         options: dict,
     ) -> bool:
         """
