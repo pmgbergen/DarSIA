@@ -11,19 +11,19 @@ import numpy as np
 import darsia
 
 
-class DeformationCorrection:
+class DeformationCorrection(darsia.BaseCorrection):
     """Class for deformation correction by comparison to a reference image.
 
     Attributes:
-        base (darsia.Image): reference (baseline) image.
+        base (darsia.GeneralImage): reference (baseline) image.
 
     """
 
-    def __init__(self, base: darsia.Image, config: Optional[dict]) -> None:
+    def __init__(self, base: darsia.GeneralImage, config: Optional[dict]) -> None:
         """Constructor.
 
         Args:
-            base (darsia.Image): baseline image
+            base (darsia.GeneralImage): baseline image
             config (dict, optional): contains all tuning parameters.
 
         """
@@ -41,7 +41,7 @@ class DeformationCorrection:
                 config = {}
             self.image_registration = darsia.ImageRegistration(self.base, **config)
 
-    def __call__(self, img: np.ndarray) -> np.ndarray:
+    def correct_array(self, img: np.ndarray) -> np.ndarray:
         """
         Main routine for aligning image with baseline image.
 
@@ -53,8 +53,9 @@ class DeformationCorrection:
 
         """
         if self.active:
-            transformed_img: darsia.Image = self.image_registration(
-                darsia.Image(img, metadata=self.base.metadata)
+            metadata = self.base.metadata()
+            transformed_img: darsia.GeneralImage = self.image_registration(
+                darsia.GeneralImage(img, **metadata)
             )
             return transformed_img.img
         else:
