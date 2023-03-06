@@ -1086,3 +1086,63 @@ class GeneralImage:
                 plt.show(block=False)
                 plt.pause(time)
                 plt.close()
+
+
+class ScalarImage(GeneralImage):
+    """Special case of a space-time image, with 1d data, e.g., monochromatic photograps."""
+
+    # ! ---- Constructors.
+
+    def __init__(
+        self,
+        img: np.ndarray,
+        time: Optional[Union[float, list[float], np.ndarray]] = None,
+        transformations: Optional[list] = None,
+        **kwargs,
+    ) -> None:
+        """Specialized constructor for optical images.
+
+        In addition to the constructor of general images,
+        the color space is required to be specified through
+        the keyword arguments.
+
+        """
+        # Define metadata specific for optical images
+        scalar_metadata = {
+            "scalar": True,
+        }
+        kwargs.pop("scalar", None)
+
+        # Construct a general image with the specs of an optical image
+        super().__init__(img, time, transformations, **scalar_metadata, **kwargs)
+
+        assert self.range_dim == 0
+
+        self.name = kwargs.get("name", None)
+        """Name of image, e.g., used to describe the origin."""
+
+    def copy(self) -> ScalarImage:
+        """Copy constructor.
+
+        Returns:
+            ScalarImage: Copy of the image object.
+
+        """
+        return copy.deepcopy(self)
+
+    # ! ---- Fast access.
+
+    def metadata(self) -> dict:
+        """Generator of metadata; can be used to init a new optical image with same specs.
+
+        Returns:
+            dict: metadata with keys equal to all keywords agurments.
+
+        """
+        # Start with generic metadata.
+        metadata = super().metadata()
+
+        # Add specs specific to optical images.
+        metadata["name"] = self.name
+
+        return copy.copy(metadata)
