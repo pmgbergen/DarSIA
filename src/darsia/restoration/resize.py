@@ -90,8 +90,8 @@ class Resize:
         self.is_conservative = kwargs.get(key + "resize conservative", False)
 
     def __call__(
-        self, img: Union[np.ndarray, darsia.Image]
-    ) -> Union[np.ndarray, darsia.Image]:
+        self, img: Union[np.ndarray, darsia.Image, darsia.GeneralImage]
+    ) -> Union[np.ndarray, darsia.Image, darsia.GeneralImage]:
         """
         Wrapper to cv2.resize.
 
@@ -103,7 +103,9 @@ class Resize:
 
         """
         # Extract original image
-        input_is_image = isinstance(img, darsia.Image)
+        input_is_image = isinstance(img, darsia.Image) or isinstance(
+            img, darsia.GeneralImage
+        )
         img_array = img.img.copy() if input_is_image else img.copy()
 
         # Convert data type
@@ -139,8 +141,15 @@ class Resize:
             # Update metadata of the darsia.Image
             resized_image = img.copy()
             resized_image.img = resized_img_array
-            resized_image.dx *= img_array.shape[1] / resized_img_array.shape[1]
-            resized_image.dy *= img_array.shape[0] / resized_img_array.shape[0]
+            if isinstance(img, darsia.Image):
+                resized_image.dx *= img_array.shape[1] / resized_img_array.shape[1]
+                resized_image.dy *= img_array.shape[0] / resized_img_array.shape[0]
+            elif isinstance(img, darsia.GeneralImage):
+                for i in range(2):
+                    resized_image.voxel_size[i] *= (
+                        img_array.shape[i] / resized_img_array.shape[i]
+                    )
+
             return resized_image
 
         else:
