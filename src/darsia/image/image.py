@@ -1059,20 +1059,21 @@ class GeneralImage:
     # ! ---- Display methods
 
     def show(
-        self, name: Optional[str] = None, time: Optional[int] = None, show: bool = True
+        self, name: Optional[str] = None, duration: Optional[int] = None, show: bool = True
     ) -> None:
         """Show image using matplotlib.pyplots built-in methods.
 
         Args:
             name (str, optional): name in the displayed window.
-            time (int, optional): number of seconds, for which the image
-                is displayed.
+            duration (int, optional): display duration in seconds.
             show (bool): flag controlling whether the plot is forced to be
                 displayed.
 
         """
         # Only works for optical and scalar images.
         assert self.scalar or self.range_num in [1, 3]
+        assert self.space_dim == 2
+        assert self.time_dim == 0
 
         if name is None:
             name = ""
@@ -1080,11 +1081,11 @@ class GeneralImage:
         plt.figure(name)
         plt.imshow(self.img)
         if show:
-            if time is None:
+            if duration is None:
                 plt.show()
-            elif isinstance(time, int):
+            else:
                 plt.show(block=False)
-                plt.pause(time)
+                plt.pause(int(duration))
                 plt.close()
 
 
