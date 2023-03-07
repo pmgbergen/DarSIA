@@ -115,12 +115,13 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
         path (Path): path to single optical image.
 
     Returns:
-        np.ndarray: data array
+        np.ndarray: data array in RGB format
         datetime (optional): timestamp
 
     """
     # Read image and convert to RGB
-    array = cv2.cvtColor(cv2.imread(str(path)), cv2.COLOR_BGR2RGB)
+    array = cv2.cvtColor(
+        cv2.imread(str(path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB)
 
     # Prefered: Read time from exif metafile.
     pil_img = PIL_Image.open(path)
@@ -366,10 +367,8 @@ def imread(
     # Depending on the ending run the corresponding routine.
     if suffix == ".npy":
         raise NotImplementedError
-    elif suffix in [".jpg", ".png"]:
+    elif suffix in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]:
         return imread_from_optical(path, **kwargs)
-    elif suffix in [".tif", ".tiff"]:
-        raise NotImplementedError
     elif suffix in [".dcm"]:
         raise NotImplementedError
     elif suffix in [".vtu"]:
