@@ -1124,20 +1124,38 @@ class GeneralImage:
         # Only works for optical and scalar images.
         assert self.scalar or self.range_num in [1, 3]
         assert self.space_dim == 2
-        assert self.time_dim == 0
 
-        if name is None:
-            name = ""
+        if self.series:
 
-        plt.figure(name)
-        plt.imshow(self.img)
-        if show:
-            if duration is None:
-                plt.show()
-            else:
+            if name is None:
+                name = ""
+
+            for time_index in range(self.time_num):
+                time = "" if self.time[time_index] is None else " - " + str(self.time[time_index])
+                plt.figure(name + f" - {time_index}" + time)
+                if self.scalar:
+                    plt.imshow(self.img[..., time_index])
+                else:
+                    plt.imshow(self.img[..., time_index, :])
+                if duration is None:
+                    duration = 3
                 plt.show(block=False)
                 plt.pause(int(duration))
                 plt.close()
+
+        else:
+            if name is None:
+                name = ""
+
+            plt.figure(name)
+            plt.imshow(self.img)
+            if show:
+                if duration is None:
+                    plt.show()
+                else:
+                    plt.show(block=False)
+                    plt.pause(int(duration))
+                    plt.close()
 
 
 class ScalarImage(GeneralImage):
