@@ -1336,122 +1336,44 @@ class OpticalImage(GeneralImage):
 
     # ! ---- Color transformations
 
-    def to_rgb(self, return_image: bool = False) -> Optional[OpticalImage]:
-        """
-        Transforms image to RGB.
+    def to_trichromatic(self, color_space: str, return_image: bool = False) -> None:
+        """Transforms image to another trichromatic color space.
 
         Args:
+            color_space: target color space.
             return_image (bool): flag controlling whether the converted image
                 is returned, or converted internally.
 
         Returns:
-            OpticalImage (optional): converted image, if requested
+            OpticalImage (optional): converted image, if requested via 'return_image'.
 
         """
 
-        if self.color_space not in ["RGB", "BGR", "HSV"]:
+        if color_space.upper() not in ["RGB", "BGR", "HSV"]:
             raise NotImplementedError
+
+        if color_space.upper() == self.color_space:
+            img: np.ndarray = self.img.copy()
+        else:
+            option = eval("cv2.COLOR_" + self.color_space + "2" + color_space.upper())
+            if self.series:
+                slices = []
+                for time_index in range(self.time_num):
+                    slices.append(cv2.cvtColor(self.img[..., time_index, :], option))
+                img = np.stack(slices, axis = self.space_dim)
+
+            else:
+                img = cv2.cvtColor(self.img, option)
 
         # If an image is returned, do not change the image attribute.
         if return_image:
-
-            image: OpticalImage = self.copy()
-            if self.color_space == "RGB":
-                pass
-            elif self.color_space == "BGR":
-                image.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
-            elif self.color_space == "HSV":
-                image.img = cv2.cvtColor(self.img, cv2.COLOR_HSV2RGB)
-            image.color_space = "RGB"
+            image = self.copy()
+            image.img = img
+            image.color_space = color_space.upper()
             return image
-
         else:
-
-            if self.color_space == "RGB":
-                pass
-            elif self.color_space == "BGR":
-                self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
-            elif self.color_space == "HSV":
-                self.img = cv2.cvtColor(self.img, cv2.COLOR_HSV2RGB)
-            self.color_space = "RGB"
-
-    def to_bgr(self, return_image: bool = False) -> Optional[OpticalImage]:
-        """
-        Transforms image to BGR.
-
-        Args:
-            return_image (bool): flag controlling whether the converted image
-                is returned, or converted internally.
-
-        Returns:
-            OpticalImage (optional): converted image, if requested
-
-        """
-
-        if self.color_space not in ["RGB", "BGR", "HSV"]:
-            raise NotImplementedError
-
-        # If an image is returned, do not change the image attribute.
-        if return_image:
-
-            image: OpticalImage = self.copy()
-            if self.color_space == "BGR":
-                pass
-            if self.color_space == "RGB":
-                image.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
-            elif self.color_space == "HSV":
-                image.img = cv2.cvtColor(self.img, cv2.COLOR_HSV2BGR)
-            image.color_space = "BGR"
-            return image
-
-        else:
-
-            if self.color_space == "BGR":
-                pass
-            elif self.color_space == "RGB":
-                self.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2BGR)
-            elif self.color_space == "HSV":
-                self.img = cv2.cvtColor(self.img, cv2.COLOR_HSV2BGR)
-            self.color_space = "BGR"
-
-    def to_hsv(self, return_image: bool = False) -> Optional[OpticalImage]:
-        """
-        Transforms image to HSV.
-
-        Args:
-            return_image (bool): flag controlling whether the converted image
-                is returned, or converted internally.
-
-        Returns:
-            OpticalImage (optional): converted image, if requested
-
-        """
-
-        if self.color_space not in ["RGB", "BGR", "HSV"]:
-            raise NotImplementedError
-
-        # If an image is returned, do not change the image attribute.
-        if return_image:
-
-            image: OpticalImage = self.copy()
-            if self.color_space == "HSV":
-                pass
-            if self.color_space == "RGB":
-                image.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2HSV)
-            elif self.color_space == "BGR":
-                image.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)
-            image.color_space = "HSV"
-            return image
-
-        else:
-
-            if self.color_space == "HSV":
-                pass
-            elif self.color_space == "RGB":
-                self.img = cv2.cvtColor(self.img, cv2.COLOR_RGB2HSV)
-            elif self.color_space == "BGR":
-                self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)
-            self.color_space = "HSV"
+            self.img = img
+            self.color_space = color_space.upper()
 
     def to_monochromatic(self, key: str) -> ScalarImage:
         """Returns monochromatic version of the image.
@@ -1467,36 +1389,47 @@ class OpticalImage(GeneralImage):
         key = key.lower()
 
         # Adapt data array
-        if key in ["gray", "red", "green", "blue"]:
+        if key == "gray":
 
-            image.to_rgb()
-            if key == "gray":
-                img = cv2.cvtColor(image.img, cv2.COLOR_RGB2GRAY)
-            elif key == "red":
-                img = image.img[:, :, 0]
+            option = eval("cv2.COLOR_" + self.color_space + "2GRAY")
+            if self.series:
+                slices = []
+                for time_index in range(self.time_num):
+                    slices.append(cv2.cvtColor(self.img[..., time_index, :], option))
+                img = np.stack(slices, axis = self.space_dim)
+
+            else:
+                img = cv2.cvtColor(self.img, option)
+
+        elif key in ["red", "green", "blue"]:
+
+            image.to_trichromatic("rgb")
+            if key == "red":
+                img = image.img[..., 0]
             elif key == "green":
-                img = image.img[:, :, 1]
+                img = image.img[..., 1]
             elif key == "blue":
-                img = image.img[:, :, 2]
+                img = image.img[..., 2]
 
         elif key in ["hue", "saturation", "value"]:
 
-            image.to_hsv()
+            image.to_trichromatic("hsv")
             if key == "hue":
-                img = image.img[:, :, 0]
+                img = image.img[..., 0]
             elif key == "saturation":
-                img = image.img[:, :, 1]
+                img = image.img[..., 1]
             elif key == "value":
-                img = image.img[:, :, 2]
+                img = image.img[..., 2]
 
         # Adapt specs.
+        time = self.time
         metadata = image.metadata()
         del metadata["color_space"]
         metadata["name"] = key
         metadata["scalar"] = True
 
         # Return scalar image
-        return ScalarImage(img, **metadata)
+        return ScalarImage(img, time = time, **metadata)
 
     # ! ---- Utilities
 
