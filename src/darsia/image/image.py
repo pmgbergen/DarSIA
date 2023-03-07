@@ -1064,8 +1064,9 @@ class GeneralImage:
         if self.img.shape != other.img.shape:
             raise ValueError("Images have different shapes.")
         else:
-            metadata = self.metadta()
-            return GeneralImage(self.img + other.img, **metadata)
+            metadata = self.metadata()
+            time = self.time
+            return type(self)(self.img + other.img, time = time, **metadata)
 
     def __sub__(self, other: GeneralImage) -> GeneralImage:
         """Subtract two images of same size.
@@ -1080,8 +1081,9 @@ class GeneralImage:
         if self.img.shape != other.img.shape:
             raise ValueError("Images have different shapes.")
         else:
-            metadata = self.metadta()
-            return GeneralImage(self.img - other.img, **metadata)
+            metadata = self.metadata()
+            time = self.time
+            return type(self)(self.img - other.img, time = time, **metadata)
 
     def __mul__(self, scalar: Union[float, int]) -> GeneralImage:
         """Scaling of image.
