@@ -1229,7 +1229,7 @@ class OpticalImage(GeneralImage):
     def __init__(
         self,
         img: np.ndarray,
-        time: Optional[Union[float, list[float], np.ndarray]] = None,
+        time: Optional[Union[datetime, float, list[float], np.ndarray]] = None,
         transformations: Optional[list] = None,
         **kwargs,
     ) -> None:
@@ -1256,7 +1256,7 @@ class OpticalImage(GeneralImage):
         assert self.range_dim == 1 and self.range_num == 3
 
         # Add info on color space
-        self.color_space = kwargs.get("color_space", "RGB")
+        self.color_space = kwargs.get("color_space", "RGB").upper()
         """Color space of the trichromatic data space."""
 
         if self.color_space not in ["RGB", "BGR", "HSV"]:
