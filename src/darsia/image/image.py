@@ -987,8 +987,35 @@ class GeneralImage:
         }
         return copy.copy(metadata)
 
-    def extract_time_slice(self):
-        raise NotImplementedError
+    def time_slice(self, time_index: int) -> GeneralImage:
+        """Extraction of single time slice.
+
+        Args:
+            time_index (int): time index in interval [0, ..., time_num-1].
+
+        Returns:
+            GeneralImage: single-timed image.
+
+        """
+        if not self.series:
+            raise ValueError
+
+        # Fetch data and return corresponding datatype
+        if self.scalar:
+            img = self.img[..., time_index]
+
+        else:
+            img = self.img[..., time_index, :]
+
+        # Fetch time
+        time = self.time[time_index]
+
+        # Fetch and update metadata
+        metadata = self.metadata()
+        metadata["series"] = False
+
+        # Create image with same data type but updates image data and metadata
+        return type(self)(img =img, time = time, **metadata)
 
     def extract_subregion(self):
         raise NotImplementedError
