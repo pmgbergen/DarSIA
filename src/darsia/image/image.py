@@ -760,7 +760,7 @@ class GeneralImage:
     def __init__(
         self,
         img: np.ndarray,
-        time: Optional[Union[float, list[float], np.ndarray]] = None,
+        time: Optional[Union[datetime, float, list[datetime], list[float]]] = None,
         transformations: Optional[list] = None,
         **kwargs,
     ) -> None:
@@ -806,26 +806,6 @@ class GeneralImage:
         self.shape = img.shape
         self.original_dtype = img.dtype
 
-        # ! ---- Apply transformations
-
-        # TODO rm this list.
-
-        # NOTE: Recommended order of transformations:
-        # 1. Reduction from 3d to 2d
-
-        # For 2d images:
-        # 1. drift correction to some baseline image
-        # 2. color correction
-        # 3. translation correction to some baseline image
-        # 4. curvature correction calibrated based on a baseline image
-        # 5. deformation correction wrt. corrected baseline image
-
-        # NOTE: Require mapping format:
-        # darsia.SpaceTimeImage -> darsia.SpaceTimeImage
-        if transformations is not None:
-            for transformation in transformations:
-                transformation(self)
-
         # ! ---- Spatial meta information
         self.space_dim: int = kwargs.get("dim", 2)
         """Dimension of the spatial domain."""
@@ -852,7 +832,8 @@ class GeneralImage:
         """Size of each voxel in each direction, ordered as indexing."""
 
         self.origin = np.array(kwargs.pop("origin", self.space_dim * [0]))
-        """Cartesian coordinates associated to the [0,0,0] voxel."""
+        """Cartesian coordinates associated to the [0,0,0] voxel (after
+        applying transformations)."""
 
         self.coordinatesystem: darsia.GeneralCoordinateSystem = (
             darsia.GeneralCoordinateSystem(self)
@@ -871,8 +852,11 @@ class GeneralImage:
             self.time_num = self.img.shape[self.space_dim]
             """Number of time points."""
 
-            self.time: np.ndarray = np.array(time)
-            """Time data."""
+            if time is None:
+                self.time: list = self.time_num * [None]
+                """Time data."""
+            else:
+                self.time = time
 
         else:
             self.time_dim = 0
@@ -895,7 +879,45 @@ class GeneralImage:
             self.range_dim = len(self.shape[self.space_dim + self.time_dim :])
             self.range_num = np.prod(self.shape[self.space_dim + self.time_dim :])
 
-        # Safety check on dimensionality and resolution of image.
+        # ! ---- Apply transformations
+
+        # TODO rm this list.
+
+        # NOTE: Recommended order of transformations:
+        # 1. Reduction from 3d to 2d
+
+        # For 2d images:
+        # 1. drift correction to some baseline image
+        # 2. color correction
+        # 3. translation correction to some baseline image
+        # 4. curvature correction calibrated based on a baseline image
+        # 5. deformation correction wrt. corrected baseline image
+
+        # NOTE: Require mapping format:
+        # darsia.SpaceTimeImage -> darsia.SpaceTimeImage
+        if transformations is not None:
+            for transformation in transformations:
+                transformation(self)
+
+        # ! ---- Update spatial metadata, after shape-altering transformations
+        self.space_num: int = np.prod(self.shape[: self.space_dim])
+        """Spatial resolution, i.e., number of voxels."""
+
+        self.num_voxels: int = self.img.shape[: self.space_dim]
+        """Number of voxels in each dimension."""
+
+        self.voxel_size: list[float] = [
+            self.dimensions[i] / self.num_voxels[i] for i in range(self.space_dim)
+        ]
+        """Size of each voxel in each direction, ordered as indexing."""
+
+        self.coordinatesystem: darsia.GeneralCoordinateSystem = (
+            darsia.GeneralCoordinateSystem(self)
+        )
+        """Physical coordinate system with equipped transformation from voxel to
+        Cartesian space."""
+
+        # ! ---- Safety check on dimensionality and resolution of image.
         assert len(self.shape) == self.space_dim + self.time_dim + self.range_dim
         assert np.prod(self.shape) == self.space_num * self.time_num * self.range_num
 
