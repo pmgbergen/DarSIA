@@ -1467,6 +1467,7 @@ class OpticalImage(GeneralImage):
 
         # Start from original image
         gridimg: np.array = self.img.copy()
+        time = self.time
         metadata = self.metadata()
 
         # Add horizontal grid lines (line by line)
@@ -1514,4 +1515,4 @@ class OpticalImage(GeneralImage):
             )
 
         # Return image with grid as Image object
-        return OpticalImage(img=gridimg, **metadata)
+        return OpticalImage(img=gridimg, time=time, **metadata)
