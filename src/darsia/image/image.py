@@ -1015,7 +1015,7 @@ class GeneralImage:
         metadata["series"] = False
 
         # Create image with same data type but updates image data and metadata
-        return type(self)(img =img, time = time, **metadata)
+        return type(self)(img=img, time=time, **metadata)
 
     def extract_subregion(self):
         raise NotImplementedError
@@ -1066,7 +1066,7 @@ class GeneralImage:
         else:
             metadata = self.metadata()
             time = self.time
-            return type(self)(self.img + other.img, time = time, **metadata)
+            return type(self)(self.img + other.img, time=time, **metadata)
 
     def __sub__(self, other: GeneralImage) -> GeneralImage:
         """Subtract two images of same size.
@@ -1083,7 +1083,7 @@ class GeneralImage:
         else:
             metadata = self.metadata()
             time = self.time
-            return type(self)(self.img - other.img, time = time, **metadata)
+            return type(self)(self.img - other.img, time=time, **metadata)
 
     def __mul__(self, scalar: Union[float, int]) -> GeneralImage:
         """Scaling of image.
@@ -1110,7 +1110,10 @@ class GeneralImage:
     # ! ---- Display methods
 
     def show(
-        self, name: Optional[str] = None, duration: Optional[int] = None, show: bool = True
+        self,
+        name: Optional[str] = None,
+        duration: Optional[int] = None,
+        show: bool = True,
     ) -> None:
         """Show image using matplotlib.pyplots built-in methods.
 
@@ -1131,7 +1134,11 @@ class GeneralImage:
                 name = ""
 
             for time_index in range(self.time_num):
-                time = "" if self.time[time_index] is None else " - " + str(self.time[time_index])
+                time = (
+                    ""
+                    if self.time[time_index] is None
+                    else " - " + str(self.time[time_index])
+                )
                 plt.figure(name + f" - {time_index}" + time)
                 if self.scalar:
                     plt.imshow(self.img[..., time_index])
@@ -1360,7 +1367,7 @@ class OpticalImage(GeneralImage):
                 slices = []
                 for time_index in range(self.time_num):
                     slices.append(cv2.cvtColor(self.img[..., time_index, :], option))
-                img = np.stack(slices, axis = self.space_dim)
+                img = np.stack(slices, axis=self.space_dim)
 
             else:
                 img = cv2.cvtColor(self.img, option)
@@ -1396,7 +1403,7 @@ class OpticalImage(GeneralImage):
                 slices = []
                 for time_index in range(self.time_num):
                     slices.append(cv2.cvtColor(self.img[..., time_index, :], option))
-                img = np.stack(slices, axis = self.space_dim)
+                img = np.stack(slices, axis=self.space_dim)
 
             else:
                 img = cv2.cvtColor(self.img, option)
@@ -1429,7 +1436,7 @@ class OpticalImage(GeneralImage):
         metadata["scalar"] = True
 
         # Return scalar image
-        return ScalarImage(img, time = time, **metadata)
+        return ScalarImage(img, time=time, **metadata)
 
     # ! ---- Utilities
 
