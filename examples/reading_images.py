@@ -1,7 +1,8 @@
 """Example demonstrating the I/O capabilities of
 DarSIA, and in particular the reading functionality
-to read multiple images from file, with various
-file types.
+to read multiple images from file, here demonstrated
+for optical images. Extensions to DICOM and vtu files
+exists as well.
 
 """
 
