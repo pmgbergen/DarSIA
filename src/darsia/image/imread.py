@@ -347,24 +347,21 @@ def imread(
 
     """
 
-    # Determine file type of images
+    # Convert to path
     if isinstance(path, list):
-
-        # Convert paths to Path format
         path = [Path(p) for p in path]
-
-        # Determine file format
-        suffix = path[0].suffix
-
-        # Check consistency
-        assert all([p.suffix == suffix for p in path])
-
-    else:
-
-        # Convert path to Path format
+    elif isinstance(path, str):
         path = Path(path)
 
-        # Determine file format
+    # Extract content of folder if folder provided.
+    if isinstance(path, Path) and path.is_dir():
+        path = sorted(list(path.glob("*")))
+
+    # Determine file type of images
+    if isinstance(path, list):
+        suffix = path[0].suffix
+        assert all([p.suffix == suffix for p in path])
+    else:
         suffix = path.suffix
 
     # Use lowercase for robustness
