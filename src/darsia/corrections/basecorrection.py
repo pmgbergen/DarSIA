@@ -25,10 +25,37 @@ class BaseCorrection(ABC):
         """
         if isinstance(image, np.ndarray):
             return self.correct_array(image)
-        else:
+        elif isinstance(image, darsia.Image):
             image.img = self.correct_array(image.img)
             if return_image:
                 return image
+        elif isinstance(image, darsia.GeneralImage):
+            if image.series and hasattr(self, "correct_array_series"):
+                # Apply transformation to entrie space time image
+                image.img = self.correct_array_series(image.img)
+            elif image.series:
+                # Use external data container for shape altering corrections
+                corrected_slices = []
+
+                # Consider each time slice separately
+                for time_index in range(image.time_num):
+                    if image.scalar:
+                        # Apply transformation to single time slices for scalar data
+                        corrected_slices.append(self.correct_array(image.img[..., time_index]))
+                    else:
+                        # Apply transformation to single time slices for vectorial data
+                        corrected_slices.append(self.correct_array(image.img[..., time_index, :]))
+
+                # Stack slices together again
+                image.img = np.stack(corrected_slices, axis = image.space_dim)
+
+            else:
+                # Apply transformation to single image
+                image.img = self.correct_array(image.img)
+
+            if return_image:
+                return image
+
 
     @abstractmethod
     def correct_array(
