@@ -4,8 +4,8 @@ Several file types are supported.
 
 """
 
-
 from datetime import datetime
+from operator import itemgetter
 from pathlib import Path
 from subprocess import check_output
 from typing import Optional, Union
@@ -120,8 +120,7 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
 
     """
     # Read image and convert to RGB
-    array = cv2.cvtColor(
-        cv2.imread(str(path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB)
+    array = cv2.cvtColor(cv2.imread(str(path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB)
 
     # Prefered: Read time from exif metafile.
     pil_img = PIL_Image.open(path)
@@ -150,19 +149,34 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
     return array, timestamp
 
 
-def imread_from_dicom(
-    path: list[Path], options: dict
-) -> Union[darsia.Image, list[darsia.Image]]:
+def imread_from_dicom(path: Union[Path, list[Path]], **kwargs) -> darsia.ScalarImage:
     """
-    Initialization of DICOMImage by reading the DICOM format and translating it
-    into 2d darsia format.
+    Initialization of Image by reading from DICOM format.
+
+    Assumptions: Coordinate systems in DICOM format are
+    organized in an ijk format, which is different from
+    the ijk format used for general images. DICOM images
+    come in slices, and conventionally the coordinate system
+    is associated relatively to the object to be scanned,
+    which is not the coordinate system according to gravity,
+    since objects usually lie horizontally in a medical scanner.
+    In DarSIA we translate to the standard Cartesian coordinate
+    system such that the z-coordinate is aligned with the
+    gravitational force. Therefore the ijk indexing of
+    standard DICOM images is not consistent with the matrix
+    indexing of darsia.GeneralImage. The transformation of
+    coordinate axes is performed here.
 
     Args:
-        path (Path): path to dicom stacks
-        options (dict): options for data reduction
+        path (Path, or list of such): path to dicom stacks
+        keyword arguments:
+            orientation (str): orientation of DICOM
+                coordinate system, i.e., row, cols, page
+                in DICOM format wrt "xyz"; e.g., if rows,
+                cols, page correspond to.
 
     Returns:
-        darsia.Image or list of such: 2d images
+        darsia.GeneralImage: 3d space-time image
 
     """
     # PYDICOM specific tags for addressing dicom data from dicom files
@@ -173,10 +187,10 @@ def imread_from_dicom(
     tag_slice_thickness = pydicom.tag.BaseTag(0x00180050)
     tag_acquisition_date = pydicom.tag.BaseTag(0x00080022)
     tag_acquisition_time = pydicom.tag.BaseTag(0x00080032)
+    tag_number_time_slices = pydicom.tag.BaseTag(0x00540101)
 
     # Good to have for future safety checks.
     tag_number_slices = pydicom.tag.BaseTag(0x00540081)
-    tag_number_time_slices = pydicom.tag.BaseTag(0x00540101)
 
     # ! ---- 1. Step: Get overview of number of images
 
@@ -186,12 +200,13 @@ def imread_from_dicom(
 
     # Initialize arrays for DICOM data
     pixel_data = []  # actual signal
-    y_positions = []  # the position of the sample, relevant for sorting
-    rows = []  # image size in x-direction
-    cols = []  # image size in z-direction
+    slice_positions = []  # the position in page direction, i.e., of each slice.
+    num_rows = []  # image size in row/z direction.
+    num_cols = []  # image size in col/y direction.
+    num_slices = []  # image size in page/x direction
+    num_times = []  # image size in temporal direction
     acq_times = []  # acquisition time of samples
     acq_date_time_tuples = []  # acquision (date, time) of samples
-    # voxel_size = []     # dimensions of voxels in meters # TODO rm or allow for different dimensions?
 
     # Consider each dicom file by itself (each file is a sample and has to
     # be sorted into the larger picture.
@@ -200,40 +215,59 @@ def imread_from_dicom(
         # Read the dicom sample
         dataset = pydicom.dcmread(p)
 
-        # Extract the actual signal
+        # The matrix indexing of DICOM images uses a different convention
+        # in translating row/col/page (ijk) to xyz. To remain consistent,
+        # we employ standard Cartesian xyz. This requires some reorganization.
+        # rows corresponds to the positive y axis (j in standard matrix indexing);
+        # cols corresponds to the negative z axis (i in standard matrix indexing);
+        # page corresponds to the negative x axis (k in standard matrix indexing);
+        # In summary, a conversion from one matrix indexing to another has to be
+        # performed: DICOM data -> GeneralImage data, [0, 1, 2] -> [1,0,2]
+
+        # Extract the actual signal. And flip the axis to comply with
+        # the convention of the row/col/page indexing, also denoted
+        # standard matrix indexing, or ijk in DarSIA, or also matlab.
         pixel_data.append(dataset.pixel_array)
 
-        # Extract y positions for each frame
-        # NOTE: Positions are stored as (x,z,y) coordinate
-        y_positions.append(np.array(dataset[tag_position].value)[2])
+        # Extract position for each slice; corresponds to "z_dicom" direction
+        # DICOM languag, but assumed to be negative x direction in
+        # Cartesian coordinates. After all stored as third component
+        # as 'page' corresponds to "z_dicom".
+        slice_positions.append(np.array(dataset[tag_position].value)[2])
 
-        # Extract number of rows for each frame
-        rows.append(dataset[tag_rows].value)
+        # Extract number of datapoints in each direction.
+        num_rows.append(dataset[tag_rows].value)
+        num_cols.append(dataset[tag_cols].value)
+        num_slices.append(dataset[tag_number_slices].value)
+        num_times.append(dataset[tag_number_time_slices].value)
 
-        # Extract number of columns for each frame
-        cols.append(dataset[tag_cols].value)
-
-        # Extract acquisition time for each frame
+        # Extract acquisition time for each slice
         acq_date_time_tuples.append(
             dataset[tag_acquisition_date].value + dataset[tag_acquisition_time].value
         )
         acq_times.append(dataset[tag_acquisition_time].value)
-        number_times = dataset[tag_number_time_slices].value
 
         # Extract pixel size - assume constant for all files - and assume info in mm
         conversion_mm_to_m = 10 ** (-3)
-        dimensions = np.zeros(3)
-        dimensions[:2] = np.array(dataset[tag_pixel_size].value) * conversion_mm_to_m
-        dimensions[2] = dataset[tag_slice_thickness].value * conversion_mm_to_m
+        voxel_size = np.zeros(3)
+        # pixels are assumed to have the same dimensions in both directions.
+        voxel_size[:2] = np.array(dataset[tag_pixel_size].value) * conversion_mm_to_m
+        # k corresponds to the slice thickness
+        voxel_size[2] = dataset[tag_slice_thickness].value * conversion_mm_to_m
+
+    # Assume constant image size.
+    assert all([num_rows[i] == num_rows[0] for i in range(len(num_rows))])
+    assert all([num_cols[i] == num_cols[0] for i in range(len(num_cols))])
+    assert all([num_slices[i] == num_slices[0] for i in range(len(num_slices))])
+    assert all([num_times[i] == num_times[0] for i in range(len(num_times))])
+    shape = (num_rows[0], num_cols[0], num_slices[0], num_times[0])
 
     # ! ---- 2. Step: Sort input wrt datetime
 
-    # Convert data to numpy arrays
-    pixel_data = np.array(pixel_data)
-    y_positions = np.array(y_positions)
-    acq_times = np.array(acq_times)
-    unique_acq_datetimes = set(acq_date_time_tuples)
-    acq_date_time_tuples = np.array(acq_date_time_tuples, dtype=object)
+    # Convert data to numpy arrays.
+    voxel_data = np.stack(pixel_data, axis=2)  # comes in standard matrix indexing
+    slice_positions = np.array(slice_positions)  # only used to sort slices.
+    acq_times = np.array(acq_times)  # used to distinguish between images.
 
     # Convert date time strings to datetime format. Expect a data format
     # for the input as ('20210222133538.000'), where the first entry
@@ -241,79 +275,51 @@ def imread_from_dicom(
     # the time 13 hours, 35 minutes, and 38 seconds. Sort the list of
     # datetimes, starting with earliest datetime.
     def datetime_conversion(date_time: str) -> datetime:
-        return datetime.strptime(date_time[:12], "%Y%m%d%H%M%S")
+        return datetime.strptime(date_time[:14], "%Y%m%d%H%M%S")
 
-    acq_datetimes = [
-        datetime_conversion(date_time) for date_time in unique_acq_datetimes
+    # Convert times to different formats, forcing uniqueness and search possibilties.
+    acq_date_time_tuples = np.array(acq_date_time_tuples, dtype=object)
+    unique_acq_datetimes = list(set(acq_date_time_tuples))
+    times_indices = [
+        (datetime_conversion(u), i) for i, u in enumerate(unique_acq_datetimes)
     ]
-    acq_datetimes = sorted(acq_datetimes)
+    sorted_times_indices = sorted(times_indices, key=itemgetter(0))
+    sorted_times = [t for t, _ in sorted_times_indices]
+    sorted_indices = [i for _, i in sorted_times_indices]
 
-    # User input. Order of dimensions. Default is (x, y, z)
-    # assigned to (depth, width, height).
-    order_of_dimensions = options.get("order of dimensions", None)
-    if order_of_dimensions is None:
-        reordering = [1, 2, 0]
-    else:
-        reordering = [-1, -1, -1]
-        raise NotImplementedError("Other orderings not implemented, yet.")
+    # Group and sort data into the time frames, converting the 3d tensor
+    # into a 4d img
+    img = np.zeros(shape, dtype=voxel_data.dtype)
+    time = sorted_times
+    for i, date_time in enumerate(sorted_times):
 
-    # TODO Adapt comment
-    # Apply similar operations for global data: reordering, and reduction from 3d to 2d
-    dimensions = dimensions[np.array([1, 2, 0])]
-    # dimensions = dimensions[:2]
-
-    # Group data into the time frames.
-    sorted_pixel_data = dict()
-    for i, date_time in enumerate(unique_acq_datetimes):
+        # Fetch corresponding datetime in original format
+        index = sorted_indices[i]
+        unique_date_time = unique_acq_datetimes[index]
 
         # Fetch all frames corresponding to the current time frame
-        time_frame = np.argwhere(acq_date_time_tuples == date_time).flatten()
+        time_frame = np.argwhere(acq_date_time_tuples == unique_date_time).flatten()
 
-        # For each time frame, sort data in y-direction (stored as third component)
-        sorted_time_frame = np.argsort(y_positions[time_frame])
+        # For each time frame, sort data in slice-direction (stored as third component)
+        sorted_time_frame = np.argsort(slice_positions[time_frame])
 
         # Apply sorting to the time frames
         sorted_time_frame = time_frame[sorted_time_frame]
 
-        # Fetch the corresponding, sorted pixel data
-        sorted_pixel_data_cache = pixel_data[sorted_time_frame, :, :]
+        # Store data at right time
+        img[..., i] = voxel_data[..., sorted_time_frame]
 
-        # Resort the indices: y,z,x -> x,y,z
-        # TODO generalize, see above.
-        sorted_pixel_data_cache = np.moveaxis(
-            sorted_pixel_data_cache, [0, 1, 2], [1, 2, 0]
-        )
+    # ! ---- 3. Convert to Image
+    meta = {
+        "dim": 3,
+        "indexing": "ijk",
+        "dimensions": [voxel_size[i] * shape[i] for i in range(3)],
+        "origin": [0, 0, 0],  # TODO?
+        "series": True,
+        "datetime": unique_acq_datetimes,  # TODO
+    }
 
-        # Restrict to a ROI if provided and reduce the dimension - sum over z axis
-        # TODO Move this to an external routine - project_3d_to_2d(data, axis=2)
-        # TODO darsia.signal.reduction.dimension
-        roi = options.get("roi", None)
-        if roi is None:
-            sorted_2d_pixel_data = np.sum(sorted_pixel_data_cache, axis=2)
-        else:
-            sorted_2d_pixel_data = np.sum(sorted_pixel_data_cache[:, :, roi], axis=2)
-
-        # TODO Rm
-        shape = sorted_pixel_data_cache.shape
-
-        # Store
-        # TODO allow for general format, also 3d.
-        sorted_pixel_data[datetime_conversion(date_time)] = sorted_2d_pixel_data.copy()
-
-    # ! ---- 3. Convert to darsia.Image
-    # TODO include orientation? assignment of (x,y,z) to (width, height, depth)
-    # shape = sorted_2d_pixel_data.shape
-    width = dimensions[0] * shape[0]
-    height = dimensions[1] * shape[1]
-    depth = dimensions[2] * shape[2]
-    images = [
-        darsia.Image(
-            sorted_pixel_data[time], width=width, height=height, timestamp=time
-        )
-        for time in acq_datetimes
-    ]
-
-    return images
+    return darsia.ScalarImage(img=img, time=time, **meta)
 
 
 def imread_from_vtu(
@@ -370,6 +376,6 @@ def imread(
     elif suffix in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]:
         return imread_from_optical(path, **kwargs)
     elif suffix in [".dcm"]:
-        raise NotImplementedError
+        return imread_from_dicom(path, **kwargs)
     elif suffix in [".vtu"]:
         raise NotImplementedError
