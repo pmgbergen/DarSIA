@@ -50,7 +50,9 @@ corrected_image_with_grid.show("corrected image with deformed grid", 5)
 
 # ! ---- Convert color space
 
-hsv_image: darsia.OpticalImage = corrected_image.to_trichromatic("hsv", return_image=True)
+hsv_image: darsia.OpticalImage = corrected_image.to_trichromatic(
+    "hsv", return_image=True
+)
 hsv_image.show("hsv", 5)
 
 corrected_image.to_trichromatic("bgr")
