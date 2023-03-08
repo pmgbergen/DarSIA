@@ -672,9 +672,12 @@ class GeneralPatches:
             for i in range(self.num_active_spatial_axes)
         ]
 
+        indexing = self.base.indexing
+
         patch_dimensions_voxels = [
             self.base.coordinatesystem.num_voxels(
-                length=patch_dimensions_metric[i], axis=darsia.to_cartesian_indexing(i)
+                length=patch_dimensions_metric[i],
+                axis=darsia.to_cartesian_indexing(i, indexing),
             )
             for i in range(self.num_active_spatial_axes)
         ]
@@ -687,7 +690,7 @@ class GeneralPatches:
 
         overlap_voxels = [
             self.base.coordinatesystem.num_voxels(
-                length=overlap_metric[i], axis=darsia.to_cartesian_indexing(i)
+                length=overlap_metric[i], axis=darsia.to_cartesian_indexing(i, indexing)
             )
             for i in range(self.num_active_spatial_axes)
         ]
