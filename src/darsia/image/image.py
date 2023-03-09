@@ -1061,8 +1061,81 @@ class GeneralImage:
         # Create image with same data type but updates image data and metadata
         return type(self)(img=img, time=time, **metadata)
 
-    def extract_subregion(self):
-        raise NotImplementedError
+    def subregion(
+        self,
+        voxels: Optional[tuple[slice]] = None,
+        coordinates: Optional[np.ndarray] = None,
+    ) -> GeneralImage:
+        """Extraction of spatial subregion.
+
+        Args:
+            voxels (tuple of slices, optional): voxel intervals in all dimensions.
+            coordinates (array, optional): points in space, in Cartesian coordinates,
+                uniquely defining a box.
+
+        Returns:
+            GeneralImage: image with restricted spatial domain.
+
+        Raises:
+            ValueError: if both voxels and coordinates are not None, or if neither voxels
+                nor coordinates are provide
+
+        """
+        # ! ---- Safety checks
+
+        if (voxels is not None) == (coordinates is not None):
+            raise ValueError("Use (only) one way of specifying the subregion.")
+
+        # ! ---- Translate coordinates to voxels
+
+        if coordinates is not None:
+
+            # Translate coordinates to voxels
+            voxels_box = self.coordinatesystem.voxel(coordinates)
+
+            # Extract slices
+            voxels = [
+                slice(
+                    max(0, voxels_coordinates.min(axis=d)),
+                    min(voxels_coordinates.max(axis=d), self.num_voxels[d]),
+                )
+                for d in range(self.space_dim)
+            ]
+
+            # Convert to tuple
+            voxels = tuple(voxels)
+
+        assert len(voxels) == self.space_dim
+
+        # ! ---- Extract dimensions and new origin from voxels
+
+        origin_voxel = [0 if sl.start is None else sl.start for sl in voxels]
+        origin = self.coordinatesystem.coordinate(origin_voxel)
+
+        opposite_voxel = [
+            self.num_voxels[i] if sl.stop is None else sl.stop
+            for i, sl in enumerate(voxels)
+        ]
+        opposite = self.coordinatesystem.coordinate(opposite_voxel)
+
+        cartesian_dimensions = np.absolute(opposite - origin)
+        dimensions = []
+        for matrix_index in range(self.space_dim):
+            axis = "ijk"[matrix_index]
+            indexing = "xyz"[: self.space_dim]
+            cartesian_index, _ = darsia.interpret_indexing(axis, indexing)
+            dimensions.append(cartesian_dimensions[cartesian_index])
+
+        # ! ---- Fetch data and time
+        img = self.img[voxels]
+        time = copy.copy(self.time)
+
+        # ! ---- Fetch and adapt metadata
+        metadata = self.metadata()
+        metadata["dimensions"] = dimensions
+        metadata["origin"] = origin
+
+        return type(self)(img=img, time=time, **metadata)
 
     # ! ---- I/O
 
