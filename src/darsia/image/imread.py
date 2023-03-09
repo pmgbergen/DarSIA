@@ -149,7 +149,9 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
     return array, timestamp
 
 
-def imread_from_dicom(path: Union[Path, list[Path]], **kwargs) -> darsia.ScalarImage:
+def imread_from_dicom(
+    path: Union[Path, list[Path]], **kwargs
+) -> Union[darsia.ScalarImage, list[darsia.ScalarImage]]:
     """
     Initialization of Image by reading from DICOM format.
 
@@ -310,6 +312,8 @@ def imread_from_dicom(path: Union[Path, list[Path]], **kwargs) -> darsia.ScalarI
         img[..., i] = voxel_data[..., sorted_time_frame]
 
     # ! ---- 3. Convert to Image
+
+    # Collect all meta information for a space time image
     meta = {
         "dim": 3,
         "indexing": "ijk",
@@ -319,7 +323,19 @@ def imread_from_dicom(path: Union[Path, list[Path]], **kwargs) -> darsia.ScalarI
         "datetime": unique_acq_datetimes,  # TODO
     }
 
-    return darsia.ScalarImage(img=img, time=time, **meta)
+    # Full space time image
+    spacetime_image = darsia.ScalarImage(img=img, time=time, **meta)
+
+    # Return as 4d image, or return list of slices
+    series = kwargs.get("series", False)
+    if series:
+        return spacetime_image
+
+    else:
+        image_slices = [
+            spacetime_image.time_slice(i) for i in range(spacetime_image.time_num)
+        ]
+        return image_slices
 
 
 def imread_from_vtu(
