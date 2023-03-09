@@ -940,7 +940,16 @@ class GeneralImage:
 
         """
 
-        # ---- Update data
+        # ! ---- Safety checks
+
+        assert self.space_dim == image.space_dim
+        assert self.scalar == image.scalar
+        assert np.all(np.isclose(np.array(self.num_voxels), np.array(image.num_voxels)))
+        assert self.time[-1] < image.time[0]
+        assert np.all(np.isclose(np.array(self.dimensions), np.array(image.dimensions)))
+        assert np.all(np.isclose(np.array(self.origin), np.array(image.origin)))
+
+        # ! ---- Update data
 
         # Auxiliary routine for slicing images
         def slice_image(im: GeneralImage) -> list[np.ndarray]:
@@ -961,8 +970,6 @@ class GeneralImage:
         self.series = True
 
         # ! ---- Update time
-        if not self.time[-1] < image.time[0]:
-            raise ValueError
         self.time = self.time + image.time
         self.time
         self.time_dim = 1
