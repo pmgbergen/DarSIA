@@ -85,27 +85,7 @@ def extractROI(
                 color_space=img.colorspace,
             )
     elif isinstance(img, darsia.GeneralImage):
-
-        # Define metadata (all quantities in metric units)
-        origin = [np.min(pts[:, 0]), np.max(pts[:, 1])]
-        width = np.max(pts[:, 0]) - np.min(pts[:, 0])
-        height = np.max(pts[:, 1]) - np.min(pts[:, 1])
-
-        # Fetch old metadata
-        metadata = img.metadata()
-
-        # Update metadata
-        metadata["origin"] = origin
-        metadata["dimensions"] = [height, width]
-
-        if return_roi:
-            return (
-                darsia.GeneralImage(img=img.img[roi], **metadata),
-                roi,
-            )
-        else:
-            return darsia.GeneralImage(img=img.img[roi], **metadata)
-
+        raise NotImplementedError("Use internal functionality.")
 
 def extractROIPixel(
     img: Union[darsia.Image, darsia.GeneralImage], roi: tuple
@@ -139,19 +119,7 @@ def extractROIPixel(
         )
 
     elif isinstance(img, darsia.GeneralImage):
-
-        # Fetch old metadata
-        metadata = img.metadata()
-
-        # Update metadata - origin and dimensions.
-        new_origin_voxel = [slic.start for slic in roi]
-        metadata["origin"] = img.coordinatesystem.coordinate(new_origin_voxel)
-        metadata["dimensions"] = [
-            (slic.stop - slic.start) * img.voxel_size[i] for i, slic in enumerate(roi)
-        ]
-
-        # Construct and return image corresponding to ROI
-        return darsia.GeneralImage(img=img.img[roi], time=img.time, **metadata)
+        raise NotImplementedError("Use internal functionality.")
 
 
 def extract_quadrilateral_ROI(img_src: np.ndarray, **kwargs) -> np.ndarray:
