@@ -18,15 +18,16 @@ import darsia
 folder = f"{os.path.dirname(__file__)}/images"
 dicom_paths = folder + "/dicom"
 
-# Read spacetime dicom image
-dicom_image = darsia.imread(dicom_paths)
+# Read dicom images as 4d space-time, or list of 3d images.
+dicom_image_4d = darsia.imread(dicom_paths, series=True)
+dicom_images_3d = darsia.imread(dicom_paths, series=False)
 
 # Print some of the specs
-print(f"The dimensions of the space time dicom image are: {dicom_image.dimensions}")
+print(f"The dimensions of the space time dicom image are: {dicom_image_4d.dimensions}")
 
 # Display each time slice, integrated over the z-axis
-for time_index in range(dicom_image.time_num):
-   dicom_slice: darsia.OpticalImage = dicom_image.time_slice(time_index)
+for time_index in range(dicom_image_4d.time_num):
+   dicom_slice: darsia.OpticalImage = dicom_image_4d.time_slice(time_index)
    z_axis, _ = darsia.interpret_indexing(axis="z", indexing="ijk")
    int_img = np.sum(dicom_slice.img, axis=z_axis)
    plt.imshow(int_img)
