@@ -931,6 +931,43 @@ class GeneralImage:
         """
         return copy.deepcopy(self)
 
+    def append(self, image: GeneralImage) -> None:
+        """Append other image to current image. Makes in particular
+        a non-space-time image to a space-time image.
+
+        Args:
+            image (GeneralImage): image to be appended.
+
+        """
+
+        # ---- Update data
+
+        # Auxiliary routine for slicing images
+        def slice_image(im: GeneralImage) -> list[np.ndarray]:
+            if im.series:
+                slices = [
+                    im.img[..., i] if im.scalar else im.img[..., i, :]
+                    for i in range(im.time_num)
+                ]
+            else:
+                slices = [im.img]
+            return slices
+
+        # Slice the current and input images
+        slices = slice_image(self) + slice_image(image)
+
+        # Stack images together
+        self.img = np.stack(slices, axis=self.space_dim)
+        self.series = True
+
+        # ! ---- Update time
+        if not self.time[-1] < image.time[0]:
+            raise ValueError
+        self.time = self.time + image.time
+        self.time
+        self.time_dim = 1
+        self.time_num = len(self.time)
+
     # ! ---- Transformations
 
     def resize(self, cx: float, cy: Optional[float] = None) -> None:
