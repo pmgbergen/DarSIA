@@ -945,7 +945,14 @@ class GeneralImage:
         assert self.space_dim == image.space_dim
         assert self.scalar == image.scalar
         assert np.all(np.isclose(np.array(self.num_voxels), np.array(image.num_voxels)))
-        assert self.time[-1] < image.time[0]
+        if self.series and image.series:
+            assert self.time[-1] < image.time[0]
+        elif self.series:
+            assert self.time[-1] < image.time
+        elif image.series:
+            assert self.time <  image.time[0]
+        else:
+            assert self.time < image.time
         assert np.all(np.isclose(np.array(self.dimensions), np.array(image.dimensions)))
         assert np.all(np.isclose(np.array(self.origin), np.array(image.origin)))
 
