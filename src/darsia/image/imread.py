@@ -359,16 +359,24 @@ def imread(
     # Extract content of folder if folder provided.
     if isinstance(path, Path) and path.is_dir():
         path = sorted(list(path.glob("*")))
+    elif isinstance(path, list) and all([p.is_dir() for p in path]):
+        tmp_path = []
+        for p in path:
+            tmp_path = tmp_path + list(p.glob("*"))
+        path = sorted(tmp_path)
 
     # Determine file type of images
-    if isinstance(path, list):
-        suffix = path[0].suffix
-        assert all([p.suffix == suffix for p in path])
-    else:
-        suffix = path.suffix
+    suffix = kwargs.get("suffix", None)
 
-    # Use lowercase for robustness
-    suffix = str(suffix).lower()
+    if suffix is None:
+        if isinstance(path, list):
+            suffix = path[0].suffix
+            assert all([p.suffix == suffix for p in path])
+        else:
+            suffix = path.suffix
+
+        # Use lowercase for robustness
+        suffix = str(suffix).lower()
 
     # Depending on the ending run the corresponding routine.
     if suffix == ".npy":
