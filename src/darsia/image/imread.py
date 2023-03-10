@@ -172,15 +172,18 @@ def imread_from_dicom(
     Args:
         path (Path, or list of such): path to dicom stacks
         keyword arguments:
-            orientation (str): orientation of DICOM
-                coordinate system, i.e., row, cols, page
-                in DICOM format wrt "xyz"; e.g., if rows,
-                cols, page correspond to.
+            dim (int): spatial dimensionality of the images.
+
+    NOTE: Merely scalar data can be handled.
 
     Returns:
         darsia.GeneralImage: 3d space-time image
 
     """
+
+    # ! ---- Image type
+    dim = kwargs.get("dim", 2)
+
     # PYDICOM specific tags for addressing dicom data from dicom files
     tag_position = pydicom.tag.BaseTag(0x00200032)
     tag_rows = pydicom.tag.BaseTag(0x00280010)
@@ -189,10 +192,10 @@ def imread_from_dicom(
     tag_slice_thickness = pydicom.tag.BaseTag(0x00180050)
     tag_acquisition_date = pydicom.tag.BaseTag(0x00080022)
     tag_acquisition_time = pydicom.tag.BaseTag(0x00080032)
-    tag_number_time_slices = pydicom.tag.BaseTag(0x00540101)
+    tag_number_slices = pydicom.tag.BaseTag(0x00540081)
 
     # Good to have for future safety checks.
-    tag_number_slices = pydicom.tag.BaseTag(0x00540081)
+    # tag_number_time_slices = pydicom.tag.BaseTag(0x00540101)
 
     # ! ---- 1. Step: Get overview of number of images
 
@@ -206,7 +209,6 @@ def imread_from_dicom(
     num_rows = []  # image size in row/z direction.
     num_cols = []  # image size in col/y direction.
     num_slices = []  # image size in page/x direction
-    num_times = []  # image size in temporal direction
     acq_times = []  # acquisition time of samples
     acq_date_time_tuples = []  # acquision (date, time) of samples
 
@@ -216,15 +218,6 @@ def imread_from_dicom(
 
         # Read the dicom sample
         dataset = pydicom.dcmread(p)
-
-        # The matrix indexing of DICOM images uses a different convention
-        # in translating row/col/page (ijk) to xyz. To remain consistent,
-        # we employ standard Cartesian xyz. This requires some reorganization.
-        # rows corresponds to the positive y axis (j in standard matrix indexing);
-        # cols corresponds to the negative z axis (i in standard matrix indexing);
-        # page corresponds to the negative x axis (k in standard matrix indexing);
-        # In summary, a conversion from one matrix indexing to another has to be
-        # performed: DICOM data -> GeneralImage data, [0, 1, 2] -> [1,0,2]
 
         # Extract the actual signal. And flip the axis to comply with
         # the convention of the row/col/page indexing, also denoted
@@ -240,8 +233,10 @@ def imread_from_dicom(
         # Extract number of datapoints in each direction.
         num_rows.append(dataset[tag_rows].value)
         num_cols.append(dataset[tag_cols].value)
-        num_slices.append(dataset[tag_number_slices].value)
-        num_times.append(dataset[tag_number_time_slices].value)
+        if tag_number_slices in dataset:  # may only extist for 2d images
+            num_slices.append(dataset[tag_number_slices].value)
+        else:
+            num_slices.append(1)
 
         # Extract acquisition time for each slice
         acq_date_time_tuples.append(
@@ -251,18 +246,17 @@ def imread_from_dicom(
 
         # Extract pixel size - assume constant for all files - and assume info in mm
         conversion_mm_to_m = 10 ** (-3)
-        voxel_size = np.zeros(3)
+        voxel_size = np.zeros(dim)
         # pixels are assumed to have the same dimensions in both directions.
         voxel_size[:2] = np.array(dataset[tag_pixel_size].value) * conversion_mm_to_m
-        # k corresponds to the slice thickness
-        voxel_size[2] = dataset[tag_slice_thickness].value * conversion_mm_to_m
+        if dim == 3:
+            # k corresponds to the slice thickness
+            voxel_size[2] = dataset[tag_slice_thickness].value * conversion_mm_to_m
 
     # Assume constant image size.
     assert all([num_rows[i] == num_rows[0] for i in range(len(num_rows))])
     assert all([num_cols[i] == num_cols[0] for i in range(len(num_cols))])
     assert all([num_slices[i] == num_slices[0] for i in range(len(num_slices))])
-    assert all([num_times[i] == num_times[0] for i in range(len(num_times))])
-    shape = (num_rows[0], num_cols[0], num_slices[0], num_times[0])
 
     # ! ---- 2. Step: Sort input wrt datetime
 
@@ -291,8 +285,9 @@ def imread_from_dicom(
 
     # Group and sort data into the time frames, converting the 3d tensor
     # into a 4d img
-    img = np.zeros(shape, dtype=voxel_data.dtype)
     time = sorted_times
+    shape = (num_rows[0], num_cols[0], num_slices[0], len(time))
+    img = np.zeros(shape, dtype=voxel_data.dtype)
     for i, date_time in enumerate(sorted_times):
 
         # Fetch corresponding datetime in original format
@@ -311,37 +306,29 @@ def imread_from_dicom(
         # Store data at right time
         img[..., i] = voxel_data[..., sorted_time_frame]
 
+    # Reduce to sufficient size in special cases
+    if dim == 2:
+        img = img[:, :, 0]
+
+    # Automatically reduce to non space-time setting if only a single time step is accessible.
+    series = img.shape[-1] > 1
+    if not series:
+        img = img[..., 0]
+        time = time[0]
+
     # ! ---- 3. Convert to Image
 
     # Collect all meta information for a space time image
     meta = {
-        "dim": 3,
-        "indexing": "ijk",
-        "dimensions": [voxel_size[i] * shape[i] for i in range(3)],
-        "origin": [0, 0, 0],  # TODO?
-        "series": True,
-        "datetime": unique_acq_datetimes,  # TODO
+        "dim": dim,
+        "indexing": "ijk"[:dim],
+        "dimensions": [voxel_size[i] * shape[i] for i in range(dim)],
+        "origin": dim * [0],  # TODO?
+        "series": series,
     }
 
     # Full space time image
-    spacetime_image = darsia.ScalarImage(img=img, time=time, **meta)
-
-    # Return as 4d image, or return list of slices
-    series = kwargs.get("series", False)
-    if series:
-        return spacetime_image
-
-    else:
-        image_slices = [
-            spacetime_image.time_slice(i) for i in range(spacetime_image.time_num)
-        ]
-        return image_slices
-
-
-def imread_from_vtu(
-    path: list[Path], options: dict
-) -> Union[darsia.Image, list[darsia.Image]]:
-    raise NotImplementedError
+    return darsia.ScalarImage(img=img, time=time, **meta)
 
 
 # ! ---- Main interface
