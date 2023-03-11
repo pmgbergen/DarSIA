@@ -27,8 +27,7 @@ class BaseCorrection(ABC):
             return self.correct_array(image)
         elif isinstance(image, darsia.Image):
             image.img = self.correct_array(image.img)
-            if return_image:
-                return image
+            return image
         elif isinstance(image, darsia.GeneralImage):
             if image.series and hasattr(self, "correct_array_series"):
                 # Apply transformation to entrie space time image
@@ -53,8 +52,7 @@ class BaseCorrection(ABC):
                 # Apply transformation to single image
                 image.img = self.correct_array(image.img)
 
-            if return_image:
-                return image
+            return image
 
 
     @abstractmethod
