@@ -45,6 +45,7 @@ from darsia.signals.models.dynamicthresholdmodel import *
 from darsia.signals.models.binarydataselector import *
 from darsia.signals.reduction.signalreduction import *
 from darsia.signals.reduction.monochromatic import *
+from darsia.signals.reduction.dimensionreduction import *
 from darsia.restoration.tvd import *
 from darsia.restoration.median import *
 from darsia.restoration.resize import *
