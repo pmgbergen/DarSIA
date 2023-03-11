@@ -60,7 +60,7 @@ def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
     # ! ---- Define some metadata corresponding to the input array
     info = {
         "dim": 2,
-        "orientation": "ij",
+        "indexing": "ij",
     }
 
     return array, info
@@ -161,3 +161,38 @@ def test_drift_correction():
             original_image.img[10:-10, 10:-10], corrected_image.img[10:-10, 10:-10]
         )
     )
+
+
+def test_rotation():
+    """Test rotation of images."""
+
+    # Generate simple image with white line
+    img_array = np.zeros((10, 10))
+    img_array[4:6, 2:8] = 1
+
+    info = {
+        "dim": 2,
+        "indexing": "ij",
+    }
+
+    # Rotation
+    rotation = darsia.RotationCorrection(dim=2, anchor=[5, 5], rotations=[0.5 * np.pi])
+
+    image = darsia.ScalarImage(img=img_array, transformations=[rotation], **info)
+
+    image_ref = np.array(
+        [
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        ]
+    )
+
+    assert np.isclose(image.img, image_ref)
