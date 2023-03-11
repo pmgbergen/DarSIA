@@ -30,7 +30,7 @@ from darsia.corrections.basecorrection import *
 from darsia.corrections.shape.curvature import *
 from darsia.corrections.shape.translation import *
 from darsia.corrections.shape.piecewiseperspective import *
-from darsia.corrections.shape.curvature import *
+from darsia.corrections.shape.rotation import *
 from darsia.corrections.shape.drift import *
 from darsia.corrections.shape.deformation import *
 from darsia.corrections.color.colorcorrection import *
