@@ -1,6 +1,11 @@
 """
 Module containing routines to read images from file to DarSIA.
-Several file types are supported.
+Several file types are supported:
+
+* optical images: *jpg, *jpeg, *png, *tif, *tiff
+* DICOM images: *dcm
+* vtu images: (TODO)
+* numpy images: (TODO)
 
 """
 
@@ -17,6 +22,63 @@ from PIL import Image as PIL_Image
 
 import darsia
 
+# ! ---- Interface to subroutines - general reading routine
+
+def imread(
+    path: Union[str, Path, list[str], list[Path]], **kwargs
+) -> darsia.GeneralImage:
+    """Determine and call reading routine depending on filetype.
+    Provide interface for numpy arrays, standard optical image formats,
+    dicom images, and vtu images.
+
+    Args:
+        path (str, Path or list of such): path(s) to file(s).
+        kwargs: keyword arguments tailored to the file format.
+
+    Returns:
+        GeneralImage, or list of such: image of collection of images.
+
+    """
+
+    # Convert to path
+    if isinstance(path, list):
+        path = [Path(p) for p in path]
+    elif isinstance(path, str):
+        path = Path(path)
+
+    # Extract content of folder if folder provided.
+    if isinstance(path, Path) and path.is_dir():
+        path = sorted(list(path.glob("*")))
+    elif isinstance(path, list) and all([p.is_dir() for p in path]):
+        tmp_path = []
+        for p in path:
+            tmp_path = tmp_path + list(p.glob("*"))
+        path = sorted(tmp_path)
+
+    # Determine file type of images
+    suffix = kwargs.get("suffix", None)
+
+    if suffix is None:
+        if isinstance(path, list):
+            suffix = path[0].suffix
+            assert all([p.suffix == suffix for p in path])
+        else:
+            suffix = path.suffix
+
+        # Use lowercase for robustness
+        suffix = str(suffix).lower()
+
+    # Depending on the ending run the corresponding routine.
+    if suffix == ".npy":
+        raise NotImplementedError
+    elif suffix in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]:
+        return imread_from_optical(path, **kwargs)
+    elif suffix in [".dcm"]:
+        return imread_from_dicom(path, **kwargs)
+    elif suffix in [".vtu"]:
+        return NotImplementedError
+
+# ! ---- Numpy arrays
 
 def imread_from_npy(
     path: Union[Path, list[Path]], **kwargs
@@ -31,6 +93,8 @@ def imread_from_npy(
     """
     raise NotImplementedError
 
+
+# ! ---- Optical images
 
 def imread_from_optical(
     path: Union[Path, list[Path]],
@@ -148,6 +212,8 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
 
     return array, timestamp
 
+
+# ! ---- DICOM images
 
 def imread_from_dicom(
     path: Union[Path, list[Path]], **kwargs
@@ -329,61 +395,3 @@ def imread_from_dicom(
 
     # Full space time image
     return darsia.ScalarImage(img=img, time=time, **meta)
-
-
-# ! ---- Main interface
-
-
-def imread(
-    path: Union[str, Path, list[str], list[Path]], **kwargs
-) -> Union[darsia.GeneralImage, list[darsia.GeneralImage]]:
-    """Determine and call reading routine depending on filetype.
-    Provide interface for numpy arrays, standard optical image formats,
-    dicom images, and vtu images.
-
-    Args:
-        path (str, Path or list of such): path(s) to file(s).
-        kwargs: keyword arguments tailored to the file format.
-
-    Returns:
-        GeneralImage, or list of such: image of collection of images.
-
-    """
-
-    # Convert to path
-    if isinstance(path, list):
-        path = [Path(p) for p in path]
-    elif isinstance(path, str):
-        path = Path(path)
-
-    # Extract content of folder if folder provided.
-    if isinstance(path, Path) and path.is_dir():
-        path = sorted(list(path.glob("*")))
-    elif isinstance(path, list) and all([p.is_dir() for p in path]):
-        tmp_path = []
-        for p in path:
-            tmp_path = tmp_path + list(p.glob("*"))
-        path = sorted(tmp_path)
-
-    # Determine file type of images
-    suffix = kwargs.get("suffix", None)
-
-    if suffix is None:
-        if isinstance(path, list):
-            suffix = path[0].suffix
-            assert all([p.suffix == suffix for p in path])
-        else:
-            suffix = path.suffix
-
-        # Use lowercase for robustness
-        suffix = str(suffix).lower()
-
-    # Depending on the ending run the corresponding routine.
-    if suffix == ".npy":
-        raise NotImplementedError
-    elif suffix in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]:
-        return imread_from_optical(path, **kwargs)
-    elif suffix in [".dcm"]:
-        return imread_from_dicom(path, **kwargs)
-    elif suffix in [".vtu"]:
-        raise NotImplementedError
