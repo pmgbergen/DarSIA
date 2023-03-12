@@ -16,6 +16,7 @@ from subprocess import check_output
 from typing import Optional, Union
 
 import cv2
+import meshio
 import numpy as np
 import pydicom
 from PIL import Image as PIL_Image
@@ -23,6 +24,7 @@ from PIL import Image as PIL_Image
 import darsia
 
 # ! ---- Interface to subroutines - general reading routine
+
 
 def imread(
     path: Union[str, Path, list[str], list[Path]], **kwargs
@@ -76,9 +78,11 @@ def imread(
     elif suffix in [".dcm"]:
         return imread_from_dicom(path, **kwargs)
     elif suffix in [".vtu"]:
-        return NotImplementedError
+        return imread_from_vtu(path, **kwargs)
+
 
 # ! ---- Numpy arrays
+
 
 def imread_from_npy(
     path: Union[Path, list[Path]], **kwargs
@@ -95,6 +99,7 @@ def imread_from_npy(
 
 
 # ! ---- Optical images
+
 
 def imread_from_optical(
     path: Union[Path, list[Path]],
@@ -214,6 +219,7 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
 
 
 # ! ---- DICOM images
+
 
 def imread_from_dicom(
     path: Union[Path, list[Path]], **kwargs
@@ -395,3 +401,174 @@ def imread_from_dicom(
 
     # Full space time image
     return darsia.ScalarImage(img=img, time=time, **meta)
+
+
+# ! ---- VTU images
+
+
+def imread_from_vtu(
+    path: Union[Path, list[Path]],
+    key: str,
+    shape: tuple[int],
+    origin,
+    **kwargs,
+) -> Union[darsia.GeneralImage, list[darsia.GeneralImage]]:
+    """Reading routine for vtu input.
+
+    NOTE: Only for 1d and 2d vtu images.
+
+    Includes mapping onto a pixelated grid.
+
+    Args:
+        path (Path or list of such): path(s) to file(s).
+        key (str): identifier to address the data in the vtu file.
+        shape (tuple of int): shape of target 2d pixelated array, in matrix indexing.
+            series (bool): flag controlling whether a time series of images
+                is created.
+
+    Returns:
+
+    Raises:
+        NotImplementedError: if 3d VTU image is provided.
+
+
+    """
+    # VTU data comes in 3d. The user-input voxel_size implicitly informs on the
+    # true ambient dimension.
+    dim = len(shape)
+    if dim != 2:
+        raise NotImplementedError
+
+    # Fix indexing: aim for matrix indexing in the target image
+    indexing = "ijk"[:dim]
+
+    # At the same time, the vtu image may represent a lower-dimensional object
+    # in ambient dimensional space (of dimension dim).
+    vtu_dim = kwargs.get("vtu_dim", dim)
+
+    # Fetch origin
+
+    if isinstance(path, Path):
+
+        # Fetch vtu data
+        vtu_data = meshio.read(path)
+
+        # Fetch grid information and data as array
+        points = vtu_data.points[:, :dim]
+        cells = vtu_data.cells[0].data
+        data = vtu_data.cell_data[key][0]
+
+        # Fetch origin from points - take into account orientation of axes
+        cartesian_origin = np.array([np.min(points[:, i]) for i in range(dim)])
+        cartesian_opposite = np.array([np.max(points[:, i]) for i in range(dim)])
+        origin = []
+        for i, index in enumerate(indexing):
+            cartesian_index, revert = darsia.interpret_indexing(index, "xyz"[:dim])
+            origin.append(
+                cartesian_opposite[cartesian_index]
+                if revert
+                else cartesian_origin[cartesian_index]
+            )
+
+        # Fetch dimensions from points - need to reshuffle to matrix indexing
+        cartesian_dimensions = [
+            np.max(points[:, i]) - np.min(points[:, i]) for i in range(dim)
+        ]
+        dimensions = [
+            cartesian_dimensions[darsia.interpret_indexing(axis, indexing)[0]]
+            for axis in "xyz"[:dim]
+        ]
+
+        # Collect all metadata
+        meta = {
+            "dim": dim,
+            "indexing": indexing,
+            "dimensions": dimensions,
+            "origin": origin,
+            "series": False,
+        }
+
+        # Create actual pixelated data
+        if dim == vtu_dim:
+            data = _resample_data(data, points, cells, shape, meta)
+        else:
+            raise NotImplementedError
+
+        # Read time
+        time = kwargs.get("time", None)
+        # TODO from pvd file
+
+        return darsia.ScalarImage(data, time=time, **meta)
+
+    elif isinstance(path, list):
+        raise NotImplementedError
+
+
+def _resample_data(
+    data: np.ndarray,
+    points: np.ndarray,
+    cells: np.ndarray,
+    shape: tuple[int],
+    meta: dict,
+) -> np.ndarray:
+    """
+    Projection of data on arbitrary mesh to regular voxel grids (in 2d and 3d).
+
+    Args:
+        data (array): data array.
+        points (array): coordinates of triangulation.
+        cells (array): connectivity of triangulation.
+        shape (tuple of int): size of the target quad mesh in matrix indexing.
+        meta (dict): meta data dictionary associated to image.
+
+    """
+    # Fetch meta data
+    dim = meta["dim"]
+    indexing = meta["indexing"]
+
+    # Problem size
+    num_cells, num_points_per_cell = cells.shape
+    num_points, _ = points.shape
+
+    # Corners of each cell
+    corners = [points[cells[:, i]] for i in range(num_points_per_cell)]
+
+    # Centroid as average of corners
+    centroids = sum(corners) / num_points_per_cell
+
+    # Find associated Cartesian voxel to each centroid
+    cartesian_origin = np.array([np.min(points[:, i]) for i in range(dim)])
+    cartesian_dimensions = np.array(
+        [np.max(points[:, i]) - np.min(points[:, i]) for i in range(dim)]
+    )
+    cart_ind = np.array(
+        [darsia.interpret_indexing(axis, indexing)[0] for axis in "xyz"[:dim]]
+    )
+    cartesian_shape = np.array(shape)[cart_ind]
+    cartesian_voxels = np.floor(
+        np.multiply(
+            np.divide(
+                centroids - np.outer(np.ones(num_cells), cartesian_origin),
+                np.outer(np.ones(num_cells), cartesian_dimensions),
+            ),
+            np.outer(np.ones(num_cells), cartesian_shape),
+        )
+    ).astype(int)
+
+    # Translate between Cartesian and matrix indexing.
+    # Requires two operations: reshuffling axes, reoirenting axis.
+    voxels = np.zeros_like(cartesian_voxels, dtype=int)
+    for i, index in enumerate(indexing):
+        cartesian_index, revert = darsia.interpret_indexing(index, "xyz"[:dim])
+        voxels[:, i] = (
+            shape[i] - 1 - cartesian_voxels[:, cartesian_index]
+            if revert
+            else cartesian_voxels[:, cartesian_index]
+        )
+
+    # Associate cell data to voxel data
+    pixelated_data = np.zeros(shape, dtype=data.dtype)
+    voxels_indexing = tuple(voxels[:, j] for j in range(dim))
+    pixelated_data[voxels_indexing] += data
+
+    return pixelated_data
