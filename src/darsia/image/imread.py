@@ -390,12 +390,14 @@ def imread_from_dicom(
 
     # ! ---- 3. Convert to Image
 
+    origin = kwargs.get("origin", dim * [0])
+
     # Collect all meta information for a space time image
     meta = {
         "dim": dim,
         "indexing": "ijk"[:dim],
         "dimensions": [voxel_size[i] * shape[i] for i in range(dim)],
-        "origin": dim * [0],  # TODO?
+        "origin": origin,
         "series": series,
     }
 
@@ -410,7 +412,6 @@ def imread_from_vtu(
     path: Union[Path, list[Path]],
     key: str,
     shape: tuple[int],
-    origin,
     **kwargs,
 ) -> Union[darsia.GeneralImage, list[darsia.GeneralImage]]:
     """Reading routine for vtu input.
@@ -462,13 +463,9 @@ def imread_from_vtu(
         cartesian_origin = np.array([np.min(points[:, i]) for i in range(dim)])
         cartesian_opposite = np.array([np.max(points[:, i]) for i in range(dim)])
         origin = []
-        for i, index in enumerate(indexing):
-            cartesian_index, revert = darsia.interpret_indexing(index, "xyz"[:dim])
-            origin.append(
-                cartesian_opposite[cartesian_index]
-                if revert
-                else cartesian_origin[cartesian_index]
-            )
+        for i, axis in enumerate("xyz"[:dim]):
+            _, revert = darsia.interpret_indexing(axis, indexing)
+            origin.append(cartesian_opposite[i] if revert else cartesian_origin[i])
 
         # Fetch dimensions from points - need to reshuffle to matrix indexing
         cartesian_dimensions = [
@@ -493,9 +490,10 @@ def imread_from_vtu(
             data = _resample_data(data, points, cells, shape, meta)
         elif vtu_dim < dim:
             width = kwargs.get("width")  # effective width of lower-dimension object
-            data = _embed_data(
+            data, updated_dimensions = _embed_data(
                 data, points, cells, shape, meta, width
-            )  # TODO arguments?
+            )
+            meta["dimensions"] = updated_dimensions
 
         # Read time
         time = kwargs.get("time", None)
@@ -758,4 +756,11 @@ def _embed_data(
         # Rescale
         embedded_data *= integrated_data / integrated_embedded_data
 
-    return embedded_data
+    # Due to the effective widening of the lower-dimensional object,
+    # the dimensions have possibly changed.
+    to_matrix_indexing = [
+        darsia.interpret_indexing("ijk"[i], "xyz"[:dim])[0] for i in range(dim)
+    ]
+    dimensions = [cartesian_dimensions[i] for i in to_matrix_indexing]
+
+    return embedded_data, dimensions
