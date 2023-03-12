@@ -264,11 +264,13 @@ class GeneralCoordinateSystem:
 
         # Determine the bounding box of the image, in physical dimensions,
         # also defining the effective boundaries of the coordinate system.
+        corners = np.vstack(
+            (self._coordinate_of_origin_voxel, self._coordinate_of_opposite_voxel)
+        )
         self.domain = {}
         for i, axis in enumerate(self.axes):
-            pos, _ = darsia.interpret_indexing(axis, self.indexing)
-            self.domain[axis + "min"] = self._coordinate_of_origin_voxel[i]
-            self.domain[axis + "max"] = self._coordinate_of_opposite_voxel[i]
+            self.domain[axis + "min"] = np.min(corners[:, i])
+            self.domain[axis + "max"] = np.max(corners[:, i])
 
     def length(self, num: Union[int, np.ndarray], axis: str) -> float:
         """
