@@ -833,7 +833,7 @@ class GeneralImage:
 
         self.origin = np.array(kwargs.pop("origin", self.space_dim * [0]))
         """Cartesian coordinates associated to the [0,0,0] voxel (after
-        applying transformations)."""
+        applying transformations), using Cartesian indexing."""
 
         self.coordinatesystem: darsia.GeneralCoordinateSystem = (
             darsia.GeneralCoordinateSystem(self)
@@ -916,6 +916,9 @@ class GeneralImage:
         )
         """Physical coordinate system with equipped transformation from voxel to
         Cartesian space."""
+
+        self.opposite_corner = self.coordinatesystem.coordinate(self.shape[:self.space_dim])
+        """Cartesian coordinate of the corner opposite to orgin."""
 
         # ! ---- Safety check on dimensionality and resolution of image.
         assert len(self.shape) == self.space_dim + self.time_dim + self.range_dim
