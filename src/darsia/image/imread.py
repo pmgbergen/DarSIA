@@ -491,8 +491,11 @@ def imread_from_vtu(
         # Create actual pixelated data
         if dim == vtu_dim:
             data = _resample_data(data, points, cells, shape, meta)
-        else:
-            raise NotImplementedError
+        elif vtu_dim < dim:
+            width = kwargs.get("width")  # effective width of lower-dimension object
+            data = _embed_data(
+                data, points, cells, shape, meta, width
+            )  # TODO arguments?
 
         # Read time
         time = kwargs.get("time", None)
@@ -572,3 +575,187 @@ def _resample_data(
     pixelated_data[voxels_indexing] += data
 
     return pixelated_data
+
+
+def _embed_data(
+    data: np.ndarray,
+    points: np.ndarray,
+    cells: np.ndarray,
+    shape: tuple[int],
+    meta: dict,
+    width: float,
+    conservative: bool = True,
+    resolution: int = 10,
+    tol: float = None,
+    #    dimensions,
+    #    roi=None,
+) -> np.ndarray:
+    """
+    Auxiliary routine to embed lower dimensional data into ambient
+    dimension. Use sampling in normal direction.
+
+    NOTE: 1. Only implemented for 1d to 2d.
+
+    NOTE: 2. A quite crude approximation is made, essentially making each
+        voxel, which is sufficiently close, a fully equivalent representation
+        of the lower dimensional object. One can imagine, that a weighted
+        interpolation approach is more accurate. TODO.
+
+    Args:
+        data (array): data array.
+        points (array): coordinates of triangulation.
+        cells (array): connectivity of triangulation.
+        shape (tuple of int): size of the target quad mesh in matrix indexing.
+        meta (dict): meta data dictionary associated to image.
+        width (float): width of the lower dimensional object.
+
+    Raises:
+        NotImplementedError: if ambient dimension is not 2d.
+
+    """
+    # Fetch meta data
+    dim = meta["dim"]
+    if dim != 2:
+        raise NotImplementedError
+    indexing = meta["indexing"]
+
+    # Problem size
+    num_cells, num_points_per_cell = cells.shape
+    num_points, _ = points.shape
+
+    # Corners of each cell
+    corners = [points[cells[:, i]] for i in range(num_points_per_cell)]
+
+    # Centroid as average of corners
+    centroids = sum(corners) / num_points_per_cell
+
+    # Normals to each centroid - only works for 1d in 2d images
+    tangentials = points[cells[:, 1]] - points[cells[:, 0]]
+    rotation = np.array([[0, -1], [1, 0]], dtype=float)
+    normals = np.transpose(rotation.dot(np.transpose(tangentials)))
+    normals_length = np.linalg.norm(normals, axis=1)
+    unit_normals = np.diag(1.0 / normals_length).dot(normals)
+
+    # Provide a point cloud effectively lying on the higher-dimensional
+    # representation of the lower-dimensional object.
+    points_lower = np.vstack(
+        (
+            points[cells[:, i]] - 0.5 * width * unit_normals
+            for i in range(num_points_per_cell)
+        )
+    )
+    points_upper = np.vstack(
+        (
+            points[cells[:, i]] + 0.5 * width * unit_normals
+            for i in range(num_points_per_cell)
+        )
+    )
+    extruded_points = np.vstack((points, points_lower, points_upper))
+
+    # Determine origin and dimensions of the point cloud.
+    cartesian_origin = np.min(extruded_points, axis=0)
+    cartesian_dimensions = np.array(
+        [
+            np.max(extruded_points[:, i]) - np.min(extruded_points[:, i])
+            for i in range(dim)
+        ]
+    )
+    cart_ind = np.array(
+        [darsia.interpret_indexing(axis, indexing)[0] for axis in "xyz"[:dim]]
+    )
+    cartesian_shape = np.array(shape)[cart_ind]
+
+    # Sample the centroids in normal and tangential direction,
+    # according to the effective width, size and correpsonding
+    # resolution of the target image. This necessary to provide
+    # continuous data without holes.
+    cartesian_voxel_size = cartesian_dimensions / cartesian_shape
+    min_voxel_size = np.min(cartesian_voxel_size)
+
+    # In normal direction.
+    normal_resolution = np.ceil(width / min_voxel_size).astype(int)
+    extruded_centroids = centroids.copy()
+    extruded_data = data.copy()
+    extruded_tangentials = tangentials.copy()
+    for i in range(normal_resolution):
+        fraction = 0.5 * width * i / normal_resolution
+        centroids_lower = centroids - fraction * unit_normals
+        centroids_upper = centroids + fraction * unit_normals
+        extruded_centroids = np.vstack(
+            (extruded_centroids, centroids_lower, centroids_upper)
+        )
+        extruded_data = np.hstack((extruded_data, data, data))
+        extruded_tangentials = np.vstack(
+            (extruded_tangentials, tangentials, tangentials)
+        )
+
+    normally_extruded_centroids = extruded_centroids.copy()
+    normally_extruded_data = extruded_data.copy()
+
+    # In tangential direction.
+    tangential_resolution = np.ceil(np.max(normals_length / min_voxel_size)).astype(int)
+    for i in range(tangential_resolution):
+        fraction = 0.5 * (i + 1) / tangential_resolution
+        extruded_centroids_along_tangential_lower = (
+            normally_extruded_centroids - fraction * extruded_tangentials
+        )
+        extruded_centroids_along_tangential_upper = (
+            normally_extruded_centroids + fraction * extruded_tangentials
+        )
+        extruded_centroids = np.vstack(
+            (
+                extruded_centroids,
+                extruded_centroids_along_tangential_lower,
+                extruded_centroids_along_tangential_upper,
+            )
+        )
+        extruded_data = np.hstack(
+            (extruded_data, normally_extruded_data, normally_extruded_data)
+        )
+
+    num_extruded_centroids = extruded_centroids.shape[0]
+
+    # Determine the corresponding Cartesian voxels of the extruded centroids.
+    cartesian_voxels = np.floor(
+        np.multiply(
+            np.divide(
+                extruded_centroids
+                - np.outer(np.ones(num_extruded_centroids), cartesian_origin),
+                np.outer(np.ones(num_extruded_centroids), cartesian_dimensions),
+            ),
+            np.outer(np.ones(num_extruded_centroids), cartesian_shape),
+        )
+    ).astype(int)
+
+    # Translate between Cartesian and matrix indexing.
+    # Requires two operations: reshuffling axes, reoirenting axis.
+    voxels = np.zeros_like(cartesian_voxels, dtype=int)
+    for i, index in enumerate(indexing):
+        cartesian_index, revert = darsia.interpret_indexing(index, "xyz"[:dim])
+        voxels[:, i] = (
+            shape[i] - 1 - cartesian_voxels[:, cartesian_index]
+            if revert
+            else cartesian_voxels[:, cartesian_index]
+        )
+
+    # Allocate space for embedded data - use matrix indexing
+    # Associate cell data to voxel data
+    embedded_data = np.zeros(shape, dtype=data.dtype)
+    voxels_indexing = tuple(voxels[:, j] for j in range(dim))
+    embedded_data[voxels_indexing] += extruded_data
+
+    # If the option 'conservative' is chosen, rescale the image such that the
+    # volumetric integrals are identical.
+    if conservative:
+        # Integrate input data
+        extruded_cell_volumes = np.linalg.norm(normals, axis=1) * width
+        integrated_data = np.sum(np.multiply(data, extruded_cell_volumes))
+
+        # Integrated reconstructed data
+        voxel_volume = np.prod(cartesian_voxel_size)
+        integrated_embedded_data = np.sum(embedded_data) * voxel_volume
+
+        # Rescale
+        embedded_data *= integrated_data / integrated_embedded_data
+
+    return embedded_data
