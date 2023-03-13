@@ -14,26 +14,30 @@ import darsia as da
 def tv_denoising(
     img: Union[da.Image, np.ndarray],
     mu: Union[float, np.ndarray],
-    ell: float,
+    omega: Union[float, np.ndarray] = 1.0,
+    ell: float = 1.0,
     tvd_stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(1e-2, 100),
     cg_stoppingCriterion: da.StoppingCriterion = da.StoppingCriterion(1e-2, 100),
     verbose: bool = False,
 ) -> da.Image:
     """
     Anisotropic TV denoising using the Bregman split from Goldstein and Osher:
-        min_u = sum_i|d_iu|+mu/2||u-f||^2_2
+        min_u = mu * sum_i|d_iu|+1/2||omega*(u-f)||^2_2
 
     NOTE: In contrast to skimage.restoration.denoise_tv_bregman, pixel-wise definition of
           the regularization parameter mu is allowed.
 
     Arguments:
-        img (darsia.Image): Image that should be regularized
-        mu (float or array): Regularization coefficient / matrix
-        ell (float): Penalty coefficient from Goldstein and Osher's algorithm
+        img (darsia.Image): Image that should be regularized.
+        mu (float or array): Regularization coefficient / matrix.
+        omega (float or array): Inpainting matrix. Default is no inpainting through the 
+                                                        float value 1.0.
+        ell (float): Penalty coefficient from Goldstein and Osher's algorithm. Default value 
+                                                        is 1.0.
         tvd_stoppingCriterion (darsia.StoppingCriterion): stopping criterion for the Bregman
-                                                         split containing information about
-                                                         tolerance, maximum number of
-                                                         iterations and norm
+                                                        split containing information about
+                                                        tolerance, maximum number of
+                                                        iterations and norm
         cg_stoppingCriterion (darsia.StoppingCriterion): stopping criterion for the inner CG
                                                         solve containing information about
                                                         tolerance, maximum number of
@@ -49,8 +53,8 @@ def tv_denoising(
         img = img.copy()
 
         # Extract the two images
-        rhs = skimage.img_as_float(img.img)
-        im = skimage.img_as_float(img.img)
+        rhs: np.ndarray = skimage.img_as_float(img.img)
+        im: np.ndarray = skimage.img_as_float(img.img)
     elif isinstance(img, np.ndarray):
         img = np.copy(img)
         rhs = skimage.img_as_float(img)
@@ -67,21 +71,22 @@ def tv_denoising(
         # Since the Laplace operator acts on 2d images, need to reshape
         # first
         x = np.reshape(x, im.shape[:dim])
-        return (np.multiply(mu, x) - ell * da.laplace(x)).flatten()
+        return (np.multiply(omega, x) - ell * da.Derivatives.laplace(x)).flatten()
 
     im_size = np.prod(im.shape)
     lhsoperator = LinearOperator((im_size, im_size), matvec=mv)
 
     # Right-hand-side operator
     def rhsoperator(rhs, dt, db):
-        return np.multiply(mu, rhs) + ell * sum([da.forward_diff(dt[i]-db[i],i) for i in range(dim)])
+        return np.multiply(omega, rhs) + ell * sum([da.Derivatives.forward_diff(dt[i]-db[i],i) for i in range(dim)])
 
-    def shrink(x: np.ndarray):
-        if dim == 2:
-            n = np.linalg.norm(x, ord='fro')
-        else:
-            n = np.linalg.norm(x.flatten(), ord=2)
-        return x / n * max(n - 1.0 / ell, 0.0)
+    def shrink(x: np.ndarray, l: Union[float, np.ndarray] = 1.0):
+        """
+        Element wise shrinkage operator for the anisotropic TV denoising
+        """
+        if isinstance(l, np.ndarray):
+            assert l.shape == x.shape, "mu must have the same shape as x, or be a float."
+        return np.sign(x)*np.maximum(np.absolute(x) - l, 0.0)
 
     iterations: int = 0
     increment: np.ndarray = im.copy()
@@ -101,8 +106,8 @@ def tv_denoising(
         )
 
         for i in range(dim):
-            ani_deriv_top[i] = shrink(da.backward_diff(im,i)+ani_deriv_bot[i])
-            ani_deriv_bot[i] += da.backward_diff(im,i)-ani_deriv_top[i]
+            ani_deriv_top[i] = shrink(da.Derivatives.backward_diff(im,i)+ani_deriv_bot[i],mu/ell)
+            ani_deriv_bot[i] += da.Derivatives.backward_diff(im,i)-ani_deriv_top[i]
         increment = im - im_old
         iterations += 1
 
