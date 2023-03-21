@@ -877,6 +877,9 @@ class GeneralImage:
 
         # ! ---- Retrieve relative time from absolute date
 
+        self.time = None
+        """Relative time in scalar format."""
+
         time: Optional[Union[float, int, list]] = kwargs.pop("time", None)
         self.set_time(time)
 
@@ -962,9 +965,7 @@ class GeneralImage:
             if self.series:
                 if self._is_none(self.date):
                     self.time = self.time_num * [None]
-                    """Relative time in scalar format."""
                 else:
-                    base_time = self.date[0]
                     self.time = [
                         (self.date[i] - self.date[0]).total_seconds()
                         for i in range(self.time_num)
