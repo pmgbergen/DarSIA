@@ -42,24 +42,13 @@ curvature_correction = darsia.CurvatureCorrection(config=config["curvature"])
 single_optical_image = darsia.imread(
     optical_paths[0], transformations=[curvature_correction], **optical_metadata
 )
-single_optical_image.show(f"single image - {single_optical_image.time}", 5)
-
-# List of images
-list_optical_images = darsia.imread_from_optical(
-    optical_paths,
-    transformations=[curvature_correction],
-    **optical_metadata,
-    series=False,
-)
-for i, im in enumerate(list_optical_images):
-    im.show(f"image {i} in list - {im.time}.", 5)
+single_optical_image.show(f"single image - {single_optical_image.time} - {single_optical_image.date}", 5)
 
 # Space-time image
 spacetime_optical_image = darsia.imread_from_optical(
     optical_paths,
     transformations=[curvature_correction],
     **optical_metadata,
-    series=True,
 )
 print(f"Shape of the space-time image: {spacetime_optical_image.img.shape}.")
 
@@ -68,7 +57,7 @@ for time_index in range(spacetime_optical_image.time_num):
     spacetime_slice: darsia.OpticalImage = spacetime_optical_image.time_slice(
         time_index
     )
-    spacetime_slice.show(f"slice {i} in space time image - {spacetime_slice.time}", 5)
+    spacetime_slice.show(f"slice {time_index} in space time image - {spacetime_slice.time} - {spacetime_slice.date}", 5)
 
 # Change color for an entire image.
 spacetime_optical_image.to_trichromatic("hsv")
