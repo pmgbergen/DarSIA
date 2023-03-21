@@ -195,4 +195,4 @@ def test_rotation():
         ]
     )
 
-    assert np.isclose(image.img, image_ref)
+    assert np.all(np.isclose(image.img, image_ref))
