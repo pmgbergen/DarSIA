@@ -817,11 +817,21 @@ class GeneralImage:
         """Indexing of each axis in context of matrix indexing (ijk)
         or Cartesian coordinates (xyz)."""
 
-        # For now, only anticipate matrix indexing.
+        # NOTE: For now, only anticipate matrix indexing.
         assert self.indexing == "ijk"[: self.space_dim]
 
         self.dimensions: list[float] = kwargs.get("dimensions", self.space_dim * [1])
         """Dimension in the directions corresponding to the indexings."""
+
+        # Accept keywords 'dimensions' and 'height', 'width', 'depth', with the latter
+        # over-writing the former. In both 2d and 3d, the three keywords address the
+        # first, seconds, and third (if applicable) dimension.
+        if "height" in kwargs:
+            self.dimensions[0] = kwargs.get("height")
+        if "width" in kwargs:
+            self.dimensions[1] = kwargs.get("width")
+        if "depth" in kwargs:
+            self.dimenions[2] = kwargs.get("depth")
 
         self.num_voxels: int = self.img.shape[: self.space_dim]
         """Number of voxels in each dimension."""
