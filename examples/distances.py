@@ -9,9 +9,6 @@ import numpy as np
 
 import darsia
 
-# Control
-use_general_images = True
-
 # Create two mass distributions with identical mass, equal to 1
 mass1_array = np.zeros((100, 200), dtype=float)
 mass2_array = np.zeros((100, 200), dtype=float)
@@ -24,12 +21,8 @@ mass2_array *= np.sum(mass1_array) / np.sum(mass2_array)
 assert np.sum(mass1_array) == np.sum(mass2_array)
 
 # Convert the arrays to actual DarSIA Images
-if use_general_images:
-    mass1 = darsia.GeneralImage(mass1_array, dimensions=[1.0, 2.0])
-    mass2 = darsia.GeneralImage(mass2_array, dimensions=[1.0, 2.0])
-else:
-    mass1 = darsia.Image(mass1_array, width=2, height=1)
-    mass2 = darsia.Image(mass2_array, width=2, height=1)
+mass1 = darsia.GeneralImage(mass1_array, width=2, height=1)
+mass2 = darsia.GeneralImage(mass2_array, width=2, height=1)
 
 # Plot if requested
 if False:
