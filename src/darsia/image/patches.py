@@ -751,7 +751,7 @@ class GeneralPatches:
 
             self.patches = [
                 [
-                    darsia.extractROIPixel(self.base, self.rois[i][j])
+                    self.base.subregion(voxels=self.rois[i][j])
                     for j in range(self.num_patches[1])
                 ]
                 for i in range(self.num_patches[0])
