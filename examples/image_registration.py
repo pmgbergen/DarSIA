@@ -15,9 +15,6 @@ import skimage
 
 import darsia
 
-# Control
-use_general_images = True
-
 # ! ----- Preliminaries - prepare two images for image registration
 
 # Paths to two images of interest. NOTE: These images are not part of the GH repo.
@@ -49,41 +46,27 @@ drift_correction = darsia.DriftCorrection(base=array_src, roi=roi)
 
 # Create darsia images with integrated cropping. Note: the drift correction
 # applied to img_src is without effect.
-if use_general_images:
+img_src = darsia.GeneralImage(
+    img=array_src,
+    transformations=[
+        drift_correction,
+        curvature_correction,
+    ],
+    width = 2.8,
+    height = 1.5,
+    origin=[0.0, 1.5],
+)
 
-    img_src = darsia.GeneralImage(
-        img=array_src,
-        transformations=[
-            drift_correction,
-            curvature_correction,
-        ],
-        dimensions=[1.5, 2.8],
-        origin=[0.0, 1.5],
-    )
-
-    img_dst = darsia.GeneralImage(
-        img=array_dst,
-        transformations=[
-            drift_correction,
-            curvature_correction,
-        ],
-        dimensions=[1.5, 2.8],
-        origin=[0.0, 1.5],
-    )
-
-else:
-
-    img_src = darsia.Image(
-        img=path_src,
-        drift_correction=drift_correction,
-        curvature_correction=curvature_correction,
-    )
-
-    img_dst = darsia.Image(
-        img=path_dst,
-        drift_correction=drift_correction,
-        curvature_correction=curvature_correction,
-    )
+img_dst = darsia.GeneralImage(
+    img=array_dst,
+    transformations=[
+        drift_correction,
+        curvature_correction,
+    ],
+    width = 2.8,
+    height = 1.5,
+    origin=[0.0, 1.5],
+)
 
 plt.figure("src")
 plt.imshow(img_src.img)
@@ -92,18 +75,16 @@ plt.imshow(img_dst.img)
 plt.show()
 
 # Extract ROI to cut away the color palette. Use pixel ranges to crop the image.
-roi_crop = (slice(470, img_src.img.shape[0]), slice(60, 7940))
-da_img_src = darsia.extractROIPixel(img_src, roi_crop)
-da_img_dst = darsia.extractROIPixel(img_dst, roi_crop)
+roi_crop = (slice(470, img_src.img.shape[0]), slice(0, 7940))
+da_img_src = img_src.subregion(voxels = roi_crop)
+da_img_dst = img_dst.subregion(voxels = roi_crop)
 
 # ! ----- Actual analysis: Determine the deformation between img_dst and aligned_img_src
 
-num_patches = [10, 20] if use_general_images else [20, 10]
-
 # Define image registration tool
 config["image registration"] = {
-    # Define the number of patches in x and y directions
-    "N_patches": num_patches,
+    # Define the number of patches in matrix indexin
+    "N_patches": [10, 20],
     # Define a relative overlap, this makes it often slightly easier for the feature detection.
     "rel_overlap": 0.1,
     # Add some tuning parameters for the feature detection (these are actually the default
@@ -126,7 +107,7 @@ if construction_specialized:
     da_new_image, patch_translation = image_registration.call_with_output(
         da_img_src, plot_patch_translation=True, return_patch_translation=True
     )
-    print("The centers of the 20 x 10 patches are translated:")
+    print("The centers of the 10 x 20 patches are translated:")
     print(patch_translation)
 
 else:
@@ -179,11 +160,11 @@ print(deformation)
 # One can also use a patched ROI and evaluate the deformation in the patch centers.
 # For this, we start extracting a roi, here we choose a box, which in the end
 # corresponds to box B from the benchmark analysis. This it is sufficient to
-# define two corner points of the box:
-box_B = np.array([[0.0, 1.2], [1.1, 0.6]])
+# define two corner points of the box.
+box_B = np.array([[0.0, 0.6], [1.2, 1.1]])
 
 # and extract the corresponding ROI as darsia.Image (based on da_img_src):
-img_box_B = darsia.extractROI(da_img_src, box_B)
+img_box_B = da_img_src.subregion(coordinates= box_B)
 
 # To double check the box, we plot the resulting box.
 plt.figure("Box B")
@@ -191,17 +172,11 @@ plt.imshow(img_box_B.img)
 plt.show()
 
 # Now we patch box B, the number of patches is arbitrary (here chosen to be 5 x 3):
-if use_general_images:
-    patched_box_B = darsia.GeneralPatches(img_box_B, [3, 5])
-else:
-    patched_box_B = darsia.Patches(img_box_B, 5, 3)
+patched_box_B = darsia.GeneralPatches(img_box_B, [3, 5])
 
 # The patch centers can be accessed - actually not required here, but these correspond
 # to the subsequent deformations.
-if use_general_images:
-    patch_centers_box_B = patched_box_B.global_centers_cartesian
-else:
-    patch_centers_box_B = patched_box_B.global_centers_cartesian_matrix
+patch_centers_box_B = patched_box_B.global_centers_cartesian
 
 # The deformation in the centers of these points can be obtained by evaluating the
 # deformation map in a patch object. The result uses conventional matrix indexing.
