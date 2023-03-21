@@ -87,6 +87,7 @@ def extractROI(
     elif isinstance(img, darsia.GeneralImage):
         raise NotImplementedError("Use internal functionality.")
 
+
 def extractROIPixel(
     img: Union[darsia.Image, darsia.GeneralImage], roi: tuple
 ) -> Union[darsia.Image, darsia.GeneralImage]:
