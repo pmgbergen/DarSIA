@@ -85,8 +85,8 @@ def test_image_registration():
 
     # Extract ROI to cut away the color palette. Use pixel ranges to crop the image.
     roi_crop = (slice(470, img_src.img.shape[0]), slice(60, 7940))
-    da_img_src = darsia.extractROIPixel(img_src, roi_crop)
-    da_img_dst = darsia.extractROIPixel(img_dst, roi_crop)
+    da_img_src = img_src.subregion(voxels=roi_crop)
+    da_img_dst = img_dst.subregion(voxels=roi_crop)
 
     # ! ---- Setup image registration
     # Define image registration tool
@@ -114,38 +114,36 @@ def test_image_registration():
 
     # ! ---- Evaluate deformation in patches
 
-    box = np.array([[0.0, 1.2], [1.1, 0.6]])
-    img_box = darsia.extractROI(da_img_src, box)
+    box = np.array([[0.05, 0.6], [1.2, 1.1]])  # two coordinate-pairs
+    img_box = da_img_src.subregion(coordinates=box)
     patched_box = darsia.GeneralPatches(img_box, [3, 5])
     deformation_patch_centers = image_registration.evaluate(patched_box)
 
     # ! ---- Compare with reference
-    print(deformation_patch_centers)
 
     reference_deformation = np.array(
         [
             [
-                [-4.93091415e-05, -1.93677716e-02],
-                [4.60359794e-05, -1.97569753e-02],
-                [-1.60386595e-04, -1.67867149e-02],
-                [7.15840122e-04, -1.45076868e-02],
-                [1.56396856e-03, -1.55768394e-02],
+                [6.0347117003798296e-05, -0.01703448285839166],
+                [0.00012434595037347882, -0.016906950613570997],
+                [8.030563791059885e-05, -0.012484352531479302],
+                [0.0015754651382501482, -0.012268694374474686],
+                [0.0008378176672299626, -0.01097122986760357],
             ],
             [
-                [-4.01095481e-05, -1.41275267e-02],
-                [6.56553419e-05, -1.42395756e-02],
-                [7.89620574e-05, -1.19017095e-02],
-                [5.72394208e-04, -9.23458292e-03],
-                [1.24946312e-03, -1.01292181e-02],
+                [6.585765517047654e-05, -0.013220317002590529],
+                [8.026821250043336e-05, -0.013459138660144325],
+                [0.0001926195259653129, -0.009916008955465279],
+                [0.0008098157753585142, -0.008293671811481499],
+                [0.0004426604970706542, -0.009092187934429676],
             ],
             [
-                [1.55575358e-04, -1.09349365e-02],
-                [3.20850540e-05, -1.13698501e-02],
-                [1.79619414e-04, -8.78894088e-03],
-                [5.37285985e-04, -7.11758117e-03],
-                [4.46936144e-04, -5.99474517e-03],
+                [7.384206208350228e-05, -0.01067977940474071],
+                [0.00012197954791242723, -0.010401261630327941],
+                [0.0002285961592267303, -0.007916737316360068],
+                [0.0005695112760614377, -0.0065475789514414864],
+                [0.00024251334847527218, -0.00496866802155904],
             ],
         ]
     )
-    print(reference_deformation)
     assert np.all(np.isclose(reference_deformation, deformation_patch_centers))
