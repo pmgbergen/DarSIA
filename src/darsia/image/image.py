@@ -760,7 +760,6 @@ class GeneralImage:
     def __init__(
         self,
         img: np.ndarray,
-        time: Optional[Union[datetime, float, list[datetime], list[float]]] = None,
         transformations: Optional[list] = None,
         **kwargs,
     ) -> None:
@@ -775,7 +774,6 @@ class GeneralImage:
 
         Args:
             img (array): space_dim+time_dim+range_dim space-time data array
-            time (float, list or array): times corresponding to image or slices.
             transformations (list of callable): transformations as reduction
                 and correction routines. Called in order.
             kwargs:
@@ -789,6 +787,8 @@ class GeneralImage:
             series (boolean): flag storing whether the array is a space-time array
             indexing (str): axis indexing of the first dim entries
             img (array): (space-time) image array
+            datetime (list): absolute times for all slices
+            time (list): relative times for all slices
 
         Example:
             multichromatic_3d_image_series = np.array((Nx, Ny, Nz, Nt, Nd), dtype=float)
@@ -852,16 +852,29 @@ class GeneralImage:
             self.time_num = self.img.shape[self.space_dim]
             """Number of time points."""
 
-            if time is None:
-                self.time: list = self.time_num * [None]
-                """Time data."""
-            else:
-                self.time = time
-
         else:
             self.time_dim = 0
             self.time_num = 1
-            self.time = time
+
+        # ! ---- Add absolute time data in datetime format
+
+        default_date_time = self.time_num * [None] if self.series else None
+        date_time: Union[Optional[datetime], list[Optional[datetime]]] = kwargs.get(
+            "datetime", default_date_time
+        )
+        self.datetime = date_time
+        """Time in datetime format."""
+
+        # ! ---- Retrieve relative time from absolute datetime
+
+        time: Optional[Union[float, int, list]] = kwargs.pop("time", None)
+        self.set_time(time)
+
+        # ! ---- Time related safety check
+
+        # Require definition of some time.
+        if self.series:
+            assert not (self._is_none(self.datetime) and self._is_none(self.time))
 
         # ! ---- Data meta information
         self.scalar = kwargs.get("scalar", False)
@@ -894,7 +907,7 @@ class GeneralImage:
         # 5. deformation correction wrt. corrected baseline image
 
         # NOTE: Require mapping format:
-        # darsia.SpaceTimeImage -> darsia.SpaceTimeImage
+        # darsia.GeneralImage -> darsia.GeneralImage
         if transformations is not None:
             for transformation in transformations:
                 transformation(self)
@@ -917,16 +930,44 @@ class GeneralImage:
         """Physical coordinate system with equipped transformation from voxel to
         Cartesian space."""
 
-        self.opposite_corner = self.coordinatesystem.coordinate(self.shape[:self.space_dim])
+        self.opposite_corner = self.coordinatesystem.coordinate(
+            self.shape[: self.space_dim]
+        )
         """Cartesian coordinate of the corner opposite to orgin."""
 
         # ! ---- Safety check on dimensionality and resolution of image.
         assert len(self.shape) == self.space_dim + self.time_dim + self.range_dim
         assert np.prod(self.shape) == self.space_num * self.time_num * self.range_num
 
-    def copy(self) -> GeneralImage:
+    def set_time(self, time: Optional[Union[float, int, list]] = None) -> None:
+        """Setter for time array.
+
+        Args:
+            time (scalar or list, optional): time to be set; if None, time is retrieved
+                from datetime.
+
         """
-        Copy constructor.
+        if time is None:
+            # From datetime
+            if self.series:
+                if self._is_none(self.datetime):
+                    self.time = self.time_num * [None]
+                    """Relative time in scalar format."""
+                else:
+                    base_time = self.datetime[0]
+                    self.time = [
+                        (self.datetime[i] - self.datetime[0]).total_seconds()
+                        for i in range(self.time_num)
+                    ]
+            else:
+                self.time = 0
+
+        else:
+            # From argument
+            self.time = time
+
+    def copy(self) -> GeneralImage:
+        """Copy constructor.
 
         Returns:
             GeneralImage: Copy of the image object.
@@ -934,12 +975,15 @@ class GeneralImage:
         """
         return copy.deepcopy(self)
 
-    def append(self, image: GeneralImage) -> None:
+    def append(
+        self, image: GeneralImage, offset: Optional[Union[float, int]] = None
+    ) -> None:
         """Append other image to current image. Makes in particular
         a non-space-time image to a space-time image.
 
         Args:
             image (GeneralImage): image to be appended.
+            offset (float or int, optional): time increment between last and next slice.
 
         """
 
@@ -948,14 +992,10 @@ class GeneralImage:
         assert self.space_dim == image.space_dim
         assert self.scalar == image.scalar
         assert np.all(np.isclose(np.array(self.num_voxels), np.array(image.num_voxels)))
-        if self.series and image.series:
-            assert self.time[-1] < image.time[0]
-        elif self.series:
-            assert self.time[-1] < image.time
-        elif image.series:
-            assert self.time <  image.time[0]
-        else:
-            assert self.time < image.time
+        if not self._is_none(self.datetime) and not self._is_none(image.datetime):
+            self_last_datetime = self.datetime[-1] if self.series else self.datetime
+            image_first_datetime = image.datetime[0] if image.series else image.datetime
+            assert self_last_datetime < image_first_datetime
         assert np.all(np.isclose(np.array(self.dimensions), np.array(image.dimensions)))
         assert np.all(np.isclose(np.array(self.origin), np.array(image.origin)))
 
@@ -980,10 +1020,32 @@ class GeneralImage:
         self.series = True
 
         # ! ---- Update time
-        self.time = self.time + image.time
-        self.time
+
+        # Time in datetime format
+        if not isinstance(self.datetime, list):
+            self.datetime = [self.datetime]
+        if isinstance(image.datetime, list):
+            self.datetime = self.datetime + image.datetime
+        else:
+            self.datetime.append(image.datetime)
+
+        # Specs
         self.time_dim = 1
         self.time_num = len(self.time)
+
+        # Relative time - combine internal stored times
+        if self._is_none(self.time) or self._is_none(image.time) or offset is None:
+            time = None
+        else:
+            # Append relative times, plus offset
+            time = self.time if isinstance(self.time, list) else [self.time]
+            if isinstance(image.time, list):
+                time = time + [t + offset for t in image.time]
+            else:
+                time.append(image.time + offset)
+
+        # Update relative time
+        self.set_time(time)
 
     # ! ---- Transformations
 
@@ -1037,6 +1099,8 @@ class GeneralImage:
             "origin": self.origin,
             "series": self.series,
             "scalar": self.scalar,
+            "datetime": self.datetime,
+            "time": self.time,
             # TODO color_space in optical image
         }
         return copy.copy(metadata)
@@ -1061,15 +1125,14 @@ class GeneralImage:
         else:
             img = self.img[..., time_index, :]
 
-        # Fetch time
-        time = self.time[time_index]
-
         # Fetch and update metadata
         metadata = self.metadata()
         metadata["series"] = False
+        metadata["datetime"] = self.datetime[time_index]
+        metadata["time"] = self.time[time_index]
 
         # Create image with same data type but updates image data and metadata
-        return type(self)(img=img, time=time, **metadata)
+        return type(self)(img=img, **metadata)
 
     def subregion(
         self,
@@ -1136,16 +1199,15 @@ class GeneralImage:
             cartesian_index, _ = darsia.interpret_indexing(axis, indexing)
             dimensions.append(cartesian_dimensions[cartesian_index])
 
-        # ! ---- Fetch data and time
+        # ! ---- Fetch data
         img = self.img[voxels]
-        time = copy.copy(self.time)
 
         # ! ---- Fetch and adapt metadata
         metadata = self.metadata()
         metadata["dimensions"] = dimensions
         metadata["origin"] = origin
 
-        return type(self)(img=img, time=time, **metadata)
+        return type(self)(img=img, **metadata)
 
     # ! ---- I/O
 
@@ -1192,8 +1254,7 @@ class GeneralImage:
             raise ValueError("Images have different shapes.")
         else:
             metadata = self.metadata()
-            time = self.time
-            return type(self)(self.img + other.img, time=time, **metadata)
+            return type(self)(self.img + other.img, **metadata)
 
     def __sub__(self, other: GeneralImage) -> GeneralImage:
         """Subtract two images of same size.
@@ -1209,8 +1270,7 @@ class GeneralImage:
             raise ValueError("Images have different shapes.")
         else:
             metadata = self.metadata()
-            time = self.time
-            return type(self)(self.img - other.img, time=time, **metadata)
+            return type(self)(self.img - other.img, **metadata)
 
     def __mul__(self, scalar: Union[float, int]) -> GeneralImage:
         """Scaling of image.
@@ -1261,12 +1321,17 @@ class GeneralImage:
                 name = ""
 
             for time_index in range(self.time_num):
-                time = (
+                abs_time = (
+                    ""
+                    if self.datetime[time_index] is None
+                    else " - " + str(self.datetime[time_index])
+                )
+                rel_time = (
                     ""
                     if self.time[time_index] is None
                     else " - " + str(self.time[time_index])
                 )
-                plt.figure(name + f" - {time_index}" + time)
+                plt.figure(name + f" - {time_index} - {abs_time} -  {rel_time} sec.")
                 if self.scalar:
                     plt.imshow(self.img[..., time_index])
                 else:
@@ -1291,6 +1356,21 @@ class GeneralImage:
                     plt.pause(int(duration))
                     plt.close()
 
+    # ! ---- Auxiliary routines
+
+    def _is_none(self, item) -> bool:
+        """Repeated routine used to check the status of time and datetime
+        attributes.
+
+        Returns:
+            bool: True if item is None or a list containing None.
+
+        """
+        if isinstance(item, list):
+            return None in item
+        else:
+            return item is None
+
 
 class ScalarImage(GeneralImage):
     """Special case of a space-time image, with 1d data, e.g., monochromatic photograps."""
@@ -1300,7 +1380,6 @@ class ScalarImage(GeneralImage):
     def __init__(
         self,
         img: np.ndarray,
-        time: Optional[Union[float, list[float], np.ndarray]] = None,
         transformations: Optional[list] = None,
         **kwargs,
     ) -> None:
@@ -1318,7 +1397,7 @@ class ScalarImage(GeneralImage):
         kwargs.pop("scalar", None)
 
         # Construct a general image with the specs of an optical image
-        super().__init__(img, time, transformations, **scalar_metadata, **kwargs)
+        super().__init__(img, transformations, **scalar_metadata, **kwargs)
 
         assert self.range_dim == 0
 
@@ -1363,7 +1442,6 @@ class OpticalImage(GeneralImage):
     def __init__(
         self,
         img: np.ndarray,
-        time: Optional[Union[datetime, float, list[float], np.ndarray]] = None,
         transformations: Optional[list] = None,
         **kwargs,
     ) -> None:
@@ -1385,7 +1463,7 @@ class OpticalImage(GeneralImage):
         kwargs.pop("scalar", None)
 
         # Construct a general image with the specs of an optical image
-        super().__init__(img, time, transformations, **optical_metadata, **kwargs)
+        super().__init__(img, transformations, **optical_metadata, **kwargs)
 
         assert self.range_dim == 1 and self.range_num == 3
 
@@ -1556,14 +1634,13 @@ class OpticalImage(GeneralImage):
                 img = image.img[..., 2]
 
         # Adapt specs.
-        time = self.time
         metadata = image.metadata()
         del metadata["color_space"]
         metadata["name"] = key
         metadata["scalar"] = True
 
         # Return scalar image
-        return ScalarImage(img, time=time, **metadata)
+        return ScalarImage(img, **metadata)
 
     # ! ---- Utilities
 
@@ -1601,7 +1678,6 @@ class OpticalImage(GeneralImage):
 
         # Start from original image
         gridimg: np.array = self.img.copy()
-        time = self.time
         metadata = self.metadata()
 
         # Add horizontal grid lines (line by line)
@@ -1649,4 +1725,4 @@ class OpticalImage(GeneralImage):
             )
 
         # Return image with grid as Image object
-        return OpticalImage(img=gridimg, time=time, **metadata)
+        return OpticalImage(img=gridimg, **metadata)
