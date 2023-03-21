@@ -274,6 +274,4 @@ class GeneralPiecewisePerspectiveTransform:
 
         # Use same metadata as for the base of the patches
         metadata = copy.copy(patches.base.metadata())
-        timestamp = None if patches.base.time is None else patches.base.time.copy()
-
-        return darsia.GeneralImage(img=transformed_img, time=timestamp, **metadata)
+        return darsia.GeneralImage(img=transformed_img, **metadata)
