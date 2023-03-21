@@ -12,9 +12,6 @@ import numpy as np
 
 import darsia
 
-# Control
-use_general_images = True
-
 # Define path to image folder
 image_folder = f"{os.path.dirname(__file__)}/images/"
 
@@ -39,32 +36,22 @@ color_correction = darsia.ColorCorrection(roi=roi_cc)
 # !----- Main routine for co2 analysis
 
 # Read baseline and co2 image and correct color and curvature
-if use_general_images:
-    base_array = cv2.cvtColor(cv2.imread(image_folder + "co2_0.jpg"), cv2.COLOR_BGR2RGB)
-    co2_array = cv2.cvtColor(cv2.imread(image_folder + "co2_2.jpg"), cv2.COLOR_BGR2RGB)
-    baseline_co2 = darsia.GeneralImage(
-        base_array,
-        transformations=[color_correction, curvature_correction],
-        dimensions=[1.5, 2.8],
-        origin=[0.0, 1.5],
-    )
-    co2_image = darsia.GeneralImage(
-        co2_array,
-        transformations=[color_correction, curvature_correction],
-        dimensions=[1.5, 2.8],
-        origin=[0.0, 1.5],
-    )
-else:
-    baseline_co2 = darsia.Image(
-        image_folder + "co2_0.jpg",
-        curvature_correction=curvature_correction,
-        color_correction=color_correction,
-    )
-    co2_image = darsia.Image(
-        image_folder + "co2_2.jpg",
-        curvature_correction=curvature_correction,
-        color_correction=color_correction,
-    )
+base_array = cv2.cvtColor(cv2.imread(image_folder + "co2_0.jpg"), cv2.COLOR_BGR2RGB)
+co2_array = cv2.cvtColor(cv2.imread(image_folder + "co2_2.jpg"), cv2.COLOR_BGR2RGB)
+baseline_co2 = darsia.GeneralImage(
+    base_array,
+    transformations=[color_correction, curvature_correction],
+    width = 2.8,
+    height = 1.5,
+    origin=[0.0, 1.5],
+)
+co2_image = darsia.GeneralImage(
+    co2_array,
+    transformations=[color_correction, curvature_correction],
+    width = 2.8,
+    height = 1.5,
+    origin=[0.0, 1.5],
+)
 
 # Construct concentration analysis for detecting the co2 concentration
 co2_analysis = darsia.ConcentrationAnalysis(
@@ -109,36 +96,26 @@ co2.show("co2", 10)
 # !----- Main routine for tracer analysis
 
 # Read in baseline and tracer image and correct color and curvature
-if use_general_images:
-    base_tracer_array = cv2.cvtColor(
-        cv2.imread(image_folder + "tracer_0.jpg"), cv2.COLOR_BGR2RGB
-    )
-    tracer_array = cv2.cvtColor(
-        cv2.imread(image_folder + "tracer_3.jpg"), cv2.COLOR_BGR2RGB
-    )
-    baseline_tracer = darsia.GeneralImage(
-        base_tracer_array,
-        transformations=[color_correction, curvature_correction],
-        dimensions=[1.5, 2.8],
-        origin=[0.0, 1.5],
-    )
-    tracer_image = darsia.GeneralImage(
-        tracer_array,
-        transformations=[color_correction, curvature_correction],
-        dimensions=[1.5, 2.8],
-        origin=[0.0, 1.5],
-    )
-else:
-    baseline_tracer = darsia.Image(
-        image_folder + "tracer_0.jpg",
-        curvature_correction=curvature_correction,
-        color_correction=color_correction,
-    )
-    tracer_image = darsia.Image(
-        image_folder + "tracer_3.jpg",
-        curvature_correction=curvature_correction,
-        color_correction=color_correction,
-    )
+base_tracer_array = cv2.cvtColor(
+    cv2.imread(image_folder + "tracer_0.jpg"), cv2.COLOR_BGR2RGB
+)
+tracer_array = cv2.cvtColor(
+    cv2.imread(image_folder + "tracer_3.jpg"), cv2.COLOR_BGR2RGB
+)
+baseline_tracer = darsia.GeneralImage(
+    base_tracer_array,
+    transformations=[color_correction, curvature_correction],
+    width = 2.8,
+    height = 1.5,
+    origin=[0.0, 1.5],
+)
+tracer_image = darsia.GeneralImage(
+    tracer_array,
+    transformations=[color_correction, curvature_correction],
+    width = 2.8,
+    height = 1.5,
+    origin=[0.0, 1.5],
+)
 
 # Define restoration routine
 
