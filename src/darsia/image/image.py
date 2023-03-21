@@ -1169,8 +1169,8 @@ class GeneralImage:
             # Extract slices
             voxels = [
                 slice(
-                    max(0, voxels_coordinates.min(axis=d)),
-                    min(voxels_coordinates.max(axis=d), self.num_voxels[d]),
+                    max(0, np.min(voxels_box[:,d])),
+                    min(np.max(voxels_box[:,d]), self.num_voxels[d]),
                 )
                 for d in range(self.space_dim)
             ]
