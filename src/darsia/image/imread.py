@@ -136,7 +136,7 @@ def imread_from_optical(
         # Define image
         image = darsia.OpticalImage(
             img=array,
-            datetime=timestamp,
+            date=timestamp,
             time=time,
             transformations=transformations,
             **kwargs,
@@ -160,7 +160,7 @@ def imread_from_optical(
         # Define image
         image = darsia.OpticalImage(
             img=space_time_array,
-            datetime=timestamps,
+            date=timestamps,
             time=time,
             transformations=transformations,
             **kwargs,
@@ -179,7 +179,7 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
 
     Returns:
         np.ndarray: data array in RGB format
-        datetime (optional): timestamp
+        date (optional): timestamp
 
     """
     # Read image and convert to RGB
@@ -341,9 +341,9 @@ def imread_from_dicom(
 
     # Convert times to different formats, forcing uniqueness and search possibilties.
     acq_date_time_tuples = np.array(acq_date_time_tuples, dtype=object)
-    unique_acq_datetimes = list(set(acq_date_time_tuples))
+    unique_acq_dates = list(set(acq_date_time_tuples))
     times_indices = [
-        (datetime_conversion(u), i) for i, u in enumerate(unique_acq_datetimes)
+        (datetime_conversion(u), i) for i, u in enumerate(unique_acq_dates)
     ]
     sorted_times_indices = sorted(times_indices, key=itemgetter(0))
     sorted_times = [t for t, _ in sorted_times_indices]
@@ -358,7 +358,7 @@ def imread_from_dicom(
 
         # Fetch corresponding datetime in original format
         index = sorted_indices[i]
-        unique_date_time = unique_acq_datetimes[index]
+        unique_date_time = unique_acq_dates[index]
 
         # Fetch all frames corresponding to the current time frame
         time_frame = np.argwhere(acq_date_time_tuples == unique_date_time).flatten()
@@ -396,7 +396,7 @@ def imread_from_dicom(
     }
 
     # Full space time image
-    return darsia.ScalarImage(img=img, datetime=time, **meta)
+    return darsia.ScalarImage(img=img, date=time, **meta)
 
 
 # ! ---- VTU images

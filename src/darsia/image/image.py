@@ -787,7 +787,7 @@ class GeneralImage:
             series (boolean): flag storing whether the array is a space-time array
             indexing (str): axis indexing of the first dim entries
             img (array): (space-time) image array
-            datetime (list): absolute times for all slices
+            date (list): absolute times for all slices
             time (list): relative times for all slices
 
         Example:
@@ -858,14 +858,14 @@ class GeneralImage:
 
         # ! ---- Add absolute time data in datetime format
 
-        default_date_time = self.time_num * [None] if self.series else None
-        date_time: Union[Optional[datetime], list[Optional[datetime]]] = kwargs.get(
-            "datetime", default_date_time
+        default_date = self.time_num * [None] if self.series else None
+        date: Union[Optional[datetime], list[Optional[datetime]]] = kwargs.get(
+            "date", default_date
         )
-        self.datetime = date_time
+        self.date = date
         """Time in datetime format."""
 
-        # ! ---- Retrieve relative time from absolute datetime
+        # ! ---- Retrieve relative time from absolute date
 
         time: Optional[Union[float, int, list]] = kwargs.pop("time", None)
         self.set_time(time)
@@ -874,7 +874,7 @@ class GeneralImage:
 
         # Require definition of some time.
         if self.series:
-            assert not (self._is_none(self.datetime) and self._is_none(self.time))
+            assert not (self._is_none(self.date) and self._is_none(self.time))
 
         # ! ---- Data meta information
         self.scalar = kwargs.get("scalar", False)
@@ -944,19 +944,19 @@ class GeneralImage:
 
         Args:
             time (scalar or list, optional): time to be set; if None, time is retrieved
-                from datetime.
+                from date.
 
         """
         if time is None:
-            # From datetime
+            # From date
             if self.series:
-                if self._is_none(self.datetime):
+                if self._is_none(self.date):
                     self.time = self.time_num * [None]
                     """Relative time in scalar format."""
                 else:
-                    base_time = self.datetime[0]
+                    base_time = self.date[0]
                     self.time = [
-                        (self.datetime[i] - self.datetime[0]).total_seconds()
+                        (self.date[i] - self.date[0]).total_seconds()
                         for i in range(self.time_num)
                     ]
             else:
@@ -992,10 +992,10 @@ class GeneralImage:
         assert self.space_dim == image.space_dim
         assert self.scalar == image.scalar
         assert np.all(np.isclose(np.array(self.num_voxels), np.array(image.num_voxels)))
-        if not self._is_none(self.datetime) and not self._is_none(image.datetime):
-            self_last_datetime = self.datetime[-1] if self.series else self.datetime
-            image_first_datetime = image.datetime[0] if image.series else image.datetime
-            assert self_last_datetime < image_first_datetime
+        if not self._is_none(self.date) and not self._is_none(image.date):
+            self_last_date = self.date[-1] if self.series else self.date
+            image_first_date = image.date[0] if image.series else image.date
+            assert self_last_date < image_first_date
         assert np.all(np.isclose(np.array(self.dimensions), np.array(image.dimensions)))
         assert np.all(np.isclose(np.array(self.origin), np.array(image.origin)))
 
@@ -1022,12 +1022,12 @@ class GeneralImage:
         # ! ---- Update time
 
         # Time in datetime format
-        if not isinstance(self.datetime, list):
-            self.datetime = [self.datetime]
-        if isinstance(image.datetime, list):
-            self.datetime = self.datetime + image.datetime
+        if not isinstance(self.date, list):
+            self.date = [self.date]
+        if isinstance(image.date, list):
+            self.date = self.date + image.date
         else:
-            self.datetime.append(image.datetime)
+            self.date.append(image.date)
 
         # Specs
         self.time_dim = 1
@@ -1099,7 +1099,7 @@ class GeneralImage:
             "origin": self.origin,
             "series": self.series,
             "scalar": self.scalar,
-            "datetime": self.datetime,
+            "date": self.date,
             "time": self.time,
             # TODO color_space in optical image
         }
@@ -1128,7 +1128,7 @@ class GeneralImage:
         # Fetch and update metadata
         metadata = self.metadata()
         metadata["series"] = False
-        metadata["datetime"] = self.datetime[time_index]
+        metadata["date"] = self.date[time_index]
         metadata["time"] = self.time[time_index]
 
         # Create image with same data type but updates image data and metadata
@@ -1323,8 +1323,8 @@ class GeneralImage:
             for time_index in range(self.time_num):
                 abs_time = (
                     ""
-                    if self.datetime[time_index] is None
-                    else " - " + str(self.datetime[time_index])
+                    if self.date[time_index] is None
+                    else " - " + str(self.date[time_index])
                 )
                 rel_time = (
                     ""
@@ -1359,7 +1359,7 @@ class GeneralImage:
     # ! ---- Auxiliary routines
 
     def _is_none(self, item) -> bool:
-        """Repeated routine used to check the status of time and datetime
+        """Repeated routine used to check the status of time and date
         attributes.
 
         Returns:
