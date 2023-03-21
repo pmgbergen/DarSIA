@@ -103,7 +103,7 @@ def imread_from_npy(
 
 def imread_from_optical(
     path: Union[Path, list[Path]],
-    time: Optional[Union[datetime, list[datetime]]] = None,
+    time: Optional[Union[int, float, list]] = None,
     transformations: Optional[list] = None,
     **kwargs,
 ) -> Union[darsia.OpticalImage, list[darsia.OpticalImage]]:
@@ -111,7 +111,7 @@ def imread_from_optical(
 
     Args:
         path (Path or list of such): path(s) to image(s).
-        time (datetime or list of such): user-specified physical times;
+        time (scalar or list of such): user-specified physical times;
             automatically detected from metadata if 'None'.
         transformations (list of callables): transformations for 2d images.
         keyword arguments:
@@ -129,11 +129,17 @@ def imread_from_optical(
         # Single image
 
         array, timestamp = _read_single_optical_image(path)
-        if time is None:
-            time = timestamp
 
+        # Fix metadata
+        kwargs["series"] = False
+
+        # Define image
         image = darsia.OpticalImage(
-            img=array, time=time, transformations=transformations, **kwargs
+            img=array,
+            datetime=timestamp,
+            time=time,
+            transformations=transformations,
+            **kwargs,
         )
 
         return image
@@ -144,35 +150,23 @@ def imread_from_optical(
         # Read from file
         data = [_read_single_optical_image(p) for p in path]
 
-        # Split into data arrays and times
-        arrays = [d[0] for d in data]
+        # Create a space-time optical image through stacking along the time axis
+        space_time_array = np.stack([d[0] for d in data], axis=2)
         timestamps = [d[1] for d in data]
-        if time is None:
-            time = timestamps
 
-        series = kwargs.get("series", False)
-        if series:
-            # Create a space-time optical image through stacking along the time axis
-            space_dim = 2
-            space_time_array = np.stack(arrays, axis=space_dim)
+        # Fix metadata
+        kwargs["series"] = True
 
-            image = darsia.OpticalImage(
-                img=space_time_array,
-                time=time,
-                transformations=transformations,
-                **kwargs,
-            )
-            return image
+        # Define image
+        image = darsia.OpticalImage(
+            img=space_time_array,
+            datetime=timestamps,
+            time=time,
+            transformations=transformations,
+            **kwargs,
+        )
+        return image
 
-        else:
-            # Create list of optical images
-            images = [
-                darsia.OpticalImage(
-                    img=array, time=timestamp, transformations=transformations, **kwargs
-                )
-                for array, timestamp in zip(arrays, time)
-            ]
-            return images
     else:
         raise NotImplementedError
 
@@ -402,7 +396,7 @@ def imread_from_dicom(
     }
 
     # Full space time image
-    return darsia.ScalarImage(img=img, time=time, **meta)
+    return darsia.ScalarImage(img=img, datetime=time, **meta)
 
 
 # ! ---- VTU images
