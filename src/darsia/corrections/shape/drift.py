@@ -44,21 +44,32 @@ class DriftCorrection(darsia.BaseCorrection):
         """
 
         # Read baseline image
-        if isinstance(base, np.ndarray):
-            self.base = np.copy(base)
-        elif isinstance(base, darsia.Image) or isinstance(base, darsia.GeneralImage):
+        if isinstance(base, darsia.Image) or isinstance(base, darsia.GeneralImage):
             self.base = np.copy(base.img)
+            """Base image array."""
+
+        elif isinstance(base, np.ndarray):
+            self.base = np.copy(base)
+
         else:
             raise ValueError("Data type for baseline image not supported.")
 
         # Cache config
-        if config is not None:
-            self.config = copy.deepcopy(config)
-        else:
+        if config is None:
             self.config = {}
+            """Config file storing all specs for correction."""
+
+            self.active = False
+            """Flag controlling whether correction is active."""
+
+        else:
+            self.config = copy.deepcopy(config)
+            self.active: bool = kwargs.get("active", True)
 
         # Cache ROI
         self.roi = None
+        """ROI used for determining dynamic drift correction."""
+
         if "roi" in self.config:
             self.roi = darsia.bounding_box(np.array(self.config["roi"]))
         elif isinstance(roi, np.ndarray):
@@ -81,9 +92,6 @@ class DriftCorrection(darsia.BaseCorrection):
 
         # Define a translation estimator
         self.translation_estimator = darsia.TranslationEstimator()
-
-        # Check whether the drift correction is active
-        self.active: bool = kwargs.get("active", True)
 
     # ! ---- Main correction routines
 
