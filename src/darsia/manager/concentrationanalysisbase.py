@@ -41,6 +41,10 @@ class ConcentrationAnalysisBase(darsia.AnalysisBase):
         if not update and Path(cleaning_filter).exists():
             concentration_analysis.read_cleaning_filter_from_file(cleaning_filter)
         else:
+            # Expect multiple baseline images
+            if not isinstance(baseline_images, list):
+                baseline_images = [baseline_images]
+
             # Process baseline images used for setting up the cleaning filter
             if self.processed_baseline_images is None:
                 self.processed_baseline_images: list[darsia.Image] = [
