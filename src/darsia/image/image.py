@@ -923,7 +923,8 @@ class GeneralImage:
         # darsia.GeneralImage -> darsia.GeneralImage
         if transformations is not None:
             for transformation in transformations:
-                transformation(self)
+                if transformation is not None and hasattr(transformation, "__call__"):
+                    transformation(self)
 
         # ! ---- Update spatial metadata, after shape-altering transformations
         self.space_num: int = np.prod(self.shape[: self.space_dim])
