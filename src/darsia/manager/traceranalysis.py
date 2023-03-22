@@ -26,6 +26,7 @@ class TracerAnalysis(ABC, darsia.ConcentrationAnalysisBase):
             update_setup (bool): see darsia.GeneralAnalysis.
 
         """
+        # Call constructor of AnalysisBase
         super().__init__(baseline, config, update_setup)
 
         # Define tracer analysis.
@@ -47,6 +48,8 @@ class TracerAnalysis(ABC, darsia.ConcentrationAnalysisBase):
                 baseline,
                 update_setup,
             )
+        else:
+            raise ValueError("Tracer analysis not well defined.")
 
     @abstractmethod
     def define_tracer_analysis(self) -> darsia.ConcentrationAnalysis:
