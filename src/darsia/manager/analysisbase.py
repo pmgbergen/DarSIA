@@ -114,7 +114,7 @@ class AnalysisBase:
 
         # ! ---- Corrected baseline
 
-        # Define baseline image as corrected darsia Image
+        # Define baseline image as corrected image
         self.base = self._read(reference_base)
 
         # ! ---- Relative correction objects
@@ -124,8 +124,6 @@ class AnalysisBase:
             config=self.config["drift"] if "drift" in self.config else None,
         )
 
-        # FIXME: More meaningful would be a definition based on
-        # reference_base - FIXME: Needs rewrite of translation analysis.
         self.deformation_correction = darsia.DeformationCorrection(
             base=self.base,
             config=self.config["deformation"] if "deformation" in self.config else None,
@@ -159,7 +157,7 @@ class AnalysisBase:
             origin=self.origin,
         )
 
-    def load_and_process_image(self, path: Union[str, Path]) -> darsia.Image:
+    def load_and_process_image(self, path: Union[str, Path]) -> darsia.GeneralImage:
         """
         Load image for further analysis. Do all corrections and processing needed.
 
@@ -167,7 +165,7 @@ class AnalysisBase:
             path (str or Path): path to image
 
         Returns:
-            darsia.Image: processed image
+            darsia.GeneralImage: processed image
 
         """
 
