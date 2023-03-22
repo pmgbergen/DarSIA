@@ -41,19 +41,44 @@ class AnalysisBase:
             update_setup (bool): flag controlling whether cache in setup
                 routines is emptied.
         """
-        # Read general config file
+
+        # ! ---- Config
+
         f = open(config, "r")
         self.config = json.load(f)
+        """Config dict from file."""
         f.close()
 
-        # Define set of baseline images and initiate object for caching
-        # processed baseline images.
+        # ! ---- General specs
+
+        # Deduct specs from the transformations
+        if (
+            "physical_asset" in self.config
+            and "dimensions" in self.config["physical_asset"]
+        ):
+            self.width = self.config["physical_asset"]["dimensions"]["width"]
+            """Physical width of image."""
+
+            self.height = self.config["physical_asset"]["dimensions"]["height"]
+            """Physical height of image."""
+
+            self.origin = [0.0, self.height]
+            """Physical origin of origin voxel."""
+
+        else:
+            raise ValueError("Dimensions and origin not specified.")
+
+        # ! ---- Reference to baseline images
+
         if not isinstance(baseline, list):
             reference_base = cast(Union[str, Path], baseline)
 
         else:
             reference_base = cast(Union[str, Path], baseline[0])
         self.processed_baseline_images = None
+        """List of corrected baseline images."""
+
+        # ! ---- Define absolute correction objects
 
         # Define correction objects
         self.translation_correction = (
@@ -61,36 +86,44 @@ class AnalysisBase:
             if "translation" in self.config
             else None
         )
-
-        self.drift_correction = (
-            darsia.DriftCorrection(base=reference_base, config=self.config["drift"])
-            if "drift" in self.config
-            else None
-        )
+        """Translation correction using some absolute translation."""
 
         # Define color correction and provide baseline to colorchecker
+        self.color_correction = None
+        """Color correction."""
+
         if "color" in self.config:
             if "baseline" not in self.config["color"]:
                 self.config["color"]["baseline"] = reference_base
             self.color_correction = darsia.ColorCorrection(config=self.config["color"])
-        else:
-            self.color_correction = None
 
-        # Define curvature correction
         self.curvature_correction = (
             darsia.CurvatureCorrection(config=self.config["curvature"])
             if "curvature" in self.config
             else None
         )
+        """Curvature correction."""
 
-        # NOTE: Need to initialize deformation correction to call _read; OK as
-        # base is used as baseline.
+        # ! ---- Pre-define empty relative correction objects.
+
+        self.drift_correction = None
+        """Drift correction wrt. baseline image."""
+
         self.deformation_correction = None
+        """Local deformation correction wrt. baseline image."""
+
+        # ! ---- Corrected baseline
 
         # Define baseline image as corrected darsia Image
         self.base = self._read(reference_base)
 
-        # Define deformation correction for the corrected image
+        # ! ---- Relative correction objects
+
+        self.drift_correction = darsia.DriftCorrection(
+            base=self.base,
+            config=self.config["drift"] if "drift" in self.config else None,
+        )
+
         # FIXME: More meaningful would be a definition based on
         # reference_base - FIXME: Needs rewrite of translation analysis.
         self.deformation_correction = darsia.DeformationCorrection(
@@ -100,7 +133,7 @@ class AnalysisBase:
 
     # ! ----- I/O
 
-    def _read(self, path: Union[str, Path]) -> darsia.Image:
+    def _read(self, path: Union[str, Path]) -> darsia.GeneralImage:
         """
         Auxiliary reading methods for darsia Images.
 
@@ -108,16 +141,22 @@ class AnalysisBase:
             path (str or Path): path to file.
 
         Returns:
-            darsia.Image: image corrected for curvature and color.
+            darsia.GeneralImage: image corrected for curvature and color.
 
         """
-        return darsia.Image(
-            img=path,
-            drift_correction=self.drift_correction,
-            translation_correction=self.translation_correction,
-            deformation_correction=self.deformation_correction,
-            curvature_correction=self.curvature_correction,
-            color_correction=self.color_correction,
+        # Use general interface to read image from file and apply correction
+        return darsia.imread(
+            path,
+            transformations=[
+                self.drift_correction,
+                self.color_correction,
+                self.translation_correction,
+                self.curvature_correction,
+                self.deformation_correction,
+            ],
+            width=self.width,
+            height=self.height,
+            origin=self.origin,
         )
 
     def load_and_process_image(self, path: Union[str, Path]) -> darsia.Image:
