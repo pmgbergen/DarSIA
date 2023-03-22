@@ -61,36 +61,41 @@ class ConcentrationAnalysis:
         if not isinstance(base, list):
             base = [base]
         self.base: Union[darsia.Image, darsia.GeneralImage] = base[0].copy()
+        """Baseline image."""
 
         if self.base.space_dim != 2:
             raise NotImplementedError
 
-        # Define scalar space.
         self.signal_reduction = signal_reduction
+        """Reduction to scalar signal."""
 
-        # Cache balance and model
         self.balancing = balancing
+        """Balancing for heterogeneous signals."""
+
         self.model = model
+        """Signal to data conversion model."""
 
-        # TVD parameters for pre and post smoothing
         self.apply_restoration = restoration is not None
+        """Flag controlling whether restoration shall be applied."""
+
         self.restoration = restoration
+        """Restoration model."""
 
-        # Cache heterogeneous distribution
         self.labels = labels
+        """Indicator for heterogeneous image."""
 
-        # Option for defining differences of images.
         self._diff_option = kwargs.get("diff option", "absolute")
+        """Option for defining differences of images."""
 
         # Define a cleaning filter based on remaining images.
         self.find_cleaning_filter(base[1:])
 
-        # Mask
         self.mask: np.ndarray = np.ones(self.base.img.shape[:2], dtype=bool)
+        """Mask."""
 
-        # Fetch verbosity. With increasing number, more intermediate results
-        # are displayed. Useful for parameter tuning.
         self.verbosity: int = kwargs.get("verbosity", 0)
+        """Fetch verbosity. With increasing number, more intermediate results
+        are displayed. Useful for parameter tuning."""
 
     def update(
         self,
@@ -127,8 +132,9 @@ class ConcentrationAnalysis:
             baseline_images (list of images): series of baseline_images.
             reset (bool): flag whether the cleaning filter shall be reset.
         """
-        # Initialize cleaning filter
+
         self.threshold_cleaning_filter = np.zeros(self.base.img.shape[:2], dtype=float)
+        """Cleaning filter."""
 
         # Combine the results of a series of images
         for img in baseline_images:
