@@ -10,10 +10,6 @@ import time
 from pathlib import Path
 from typing import Union, cast
 
-import cv2
-import numpy as np
-import skimage
-
 import darsia
 
 
@@ -30,7 +26,7 @@ class AnalysisBase:
         update_setup: bool = False,
     ) -> None:
         """
-        Constructor for GeneralAnalysis.
+        Constructor.
 
         Sets up fixed config file required for preprocessing.
 
@@ -131,7 +127,7 @@ class AnalysisBase:
 
     # ! ----- I/O
 
-    def _read(self, path: Union[str, Path]) -> darsia.GeneralImage:
+    def _read(self, path: Union[str, Path]) -> darsia.Image:
         """
         Auxiliary reading methods for darsia Images.
 
@@ -139,7 +135,7 @@ class AnalysisBase:
             path (str or Path): path to file.
 
         Returns:
-            darsia.GeneralImage: image corrected for curvature and color.
+            darsia.Image: image corrected for curvature and color.
 
         """
         # Use general interface to read image from file and apply correction
@@ -157,7 +153,7 @@ class AnalysisBase:
             origin=self.origin,
         )
 
-    def load_and_process_image(self, path: Union[str, Path]) -> darsia.GeneralImage:
+    def load_and_process_image(self, path: Union[str, Path]) -> darsia.Image:
         """
         Load image for further analysis. Do all corrections and processing needed.
 
@@ -165,7 +161,7 @@ class AnalysisBase:
             path (str or Path): path to image
 
         Returns:
-            darsia.GeneralImage: processed image
+            darsia.Image: processed image
 
         """
 
