@@ -64,7 +64,7 @@ class AbstractBalancingCalibration:
 
     def calibrate_balancing(
         self,
-        images: Union[list[darsia.Image], list[darsia.GeneralImage]],
+        images: list[darsia.Image],
         options: dict,
     ) -> bool:
         """
