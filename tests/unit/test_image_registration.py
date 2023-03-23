@@ -63,7 +63,7 @@ def test_image_registration():
 
     # ! ---- Corrected images
 
-    img_src = darsia.GeneralImage(
+    img_src = darsia.Image(
         img=array_src,
         transformations=[
             drift_correction,
@@ -73,7 +73,7 @@ def test_image_registration():
         origin=[0.0, 1.5],
     )
 
-    img_dst = darsia.GeneralImage(
+    img_dst = darsia.Image(
         img=array_dst,
         transformations=[
             drift_correction,
@@ -116,7 +116,7 @@ def test_image_registration():
 
     box = np.array([[0.05, 0.6], [1.2, 1.1]])  # two coordinate-pairs
     img_box = da_img_src.subregion(coordinates=box)
-    patched_box = darsia.GeneralPatches(img_box, [3, 5])
+    patched_box = darsia.Patches(img_box, [3, 5])
     deformation_patch_centers = image_registration.evaluate(patched_box)
 
     # ! ---- Compare with reference

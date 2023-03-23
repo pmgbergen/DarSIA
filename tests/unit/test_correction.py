@@ -6,43 +6,6 @@ import numpy as np
 
 import darsia
 
-# def test_color_correction():
-#
-#    # Define path to image
-#    image = f"{os.path.dirname(__file__)}/../examples/images/baseline.jpg"
-#
-#    # ! ---- Setup the manual color correction
-#
-#    # Need to specify the pixel coordines in (x,y), i.e., (col,row) format, of the
-#    # marks on the color checker.
-#    roi_cc = np.array(
-#        [
-#            [154, 176],
-#            [222, 176],
-#            [222, 68],
-#            [154, 68],
-#        ]
-#    )
-#    color_correction = darsia.ColorCorrection(
-#        roi=roi_cc,
-#    )
-#
-#    # Create the color correction and apply it at initialization of image class
-#    corrected_image = darsia.Image(
-#        image,
-#        color_correction=color_correction,
-#        width=2.8,
-#        height=1.5,
-#    )
-#
-#    # Load reference image
-#    reference_image = np.load(
-#        "./reference/color_corrected_baseline.npy", allow_pickle=True
-#    )
-#
-#    # Make a direct comparison
-#    assert np.all(np.isclose(reference_image, corrected_image.img))
-
 
 def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
     """Centralize reading of test image.
@@ -90,7 +53,7 @@ def test_color_correction():
 
     # ! ---- Define corrected image
 
-    image = darsia.GeneralImage(img=array, transformations=[color_correction], **info)
+    image = darsia.Image(img=array, transformations=[color_correction], **info)
 
     # ! ---- Compare corrected image with reference
 
@@ -123,9 +86,7 @@ def test_curvature_correction():
 
     # ! ---- Define corrected image
 
-    image = darsia.GeneralImage(
-        img=array, transformations=[curvature_correction], **info
-    )
+    image = darsia.Image(img=array, transformations=[curvature_correction], **info)
 
     # ! ---- Compare corrected image with reference
 
@@ -140,7 +101,7 @@ def test_drift_correction():
 
     # ! ---- Fetch test images
     original_array, info = read_test_image("baseline")
-    original_image = darsia.GeneralImage(img=original_array, **info)
+    original_image = darsia.Image(img=original_array, **info)
 
     # ! ---- Define drift correction
     roi = (slice(0, 600), slice(0, 600))
@@ -151,7 +112,7 @@ def test_drift_correction():
     translated_array = cv2.warpAffine(
         original_array, affine_matrix, tuple(reversed(original_array.shape[:2]))
     )
-    corrected_image = darsia.GeneralImage(
+    corrected_image = darsia.Image(
         img=translated_array, transformations=[drift_correction], **info
     )
 
