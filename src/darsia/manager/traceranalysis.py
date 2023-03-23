@@ -21,9 +21,9 @@ class TracerAnalysis(ABC, darsia.ConcentrationAnalysisBase):
         Constructor for TracerAnalysis.
 
         Args:
-            baseline (str, Path or list of such): see darsia.GeneralAnalysis.
-            config_source (str or Path): see darsia.GeneralAnalysis.
-            update_setup (bool): see darsia.GeneralAnalysis.
+            baseline (str, Path or list of such): see darsia.AnalysisBase.
+            config_source (str or Path): see darsia.AnalysisBase.
+            update_setup (bool): see darsia.AnalysisBase.
 
         """
         # Call constructor of AnalysisBase
