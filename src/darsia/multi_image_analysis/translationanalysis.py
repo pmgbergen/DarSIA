@@ -3,7 +3,7 @@ Module containing class for translation analysis, relevant e.g. for
 studying compaction of porous media.
 """
 
-from typing import Optional, Union, cast
+from typing import Optional, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,11 +20,11 @@ class TranslationAnalysis:
 
     def __init__(
         self,
-        base: Union[darsia.Image, darsia.GeneralImage],
+        base: darsia.Image,
         N_patches: list[int],
         rel_overlap: float,
         translation_estimator: darsia.TranslationEstimator,
-        mask: Optional[Union[darsia.Image, darsia.GeneralImage]] = None,
+        mask: Optional[darsia.Image] = None,
     ) -> None:
         """
         Constructor for TranslationAnalysis.
@@ -59,17 +59,10 @@ class TranslationAnalysis:
 
         # Cache mask
         if mask is None:
-            if isinstance(base, darsia.Image):
-                self.mask_base = darsia.Image(
-                    np.ones(base.img.shape[:2], dtype=bool),
-                    width=base.width,
-                    height=base.height,
-                )
-            elif isinstance(base, darsia.GeneralImage):
-                self.mask_base = darsia.GeneralImage(
-                    np.ones(base.img.shape[:2], dtype=bool),
-                    dimensions=base.dimensions,
-                )
+            self.mask_base = darsia.Image(
+                np.ones(base.img.shape[:2], dtype=bool),
+                dimensions=base.dimensions,
+            )
 
         else:
             self.mask_base = mask.copy()
@@ -105,7 +98,7 @@ class TranslationAnalysis:
         if need_update_N_patches or need_update_rel_overlap:
             self.update_base_patches()
 
-    def update_base(self, base: Union[darsia.Image, darsia.GeneralImage]) -> None:
+    def update_base(self, base: darsia.Image) -> None:
         """Update baseline image.
 
         Args:
@@ -117,19 +110,14 @@ class TranslationAnalysis:
     def update_base_patches(self) -> None:
         """Update patches of baseline."""
         # Create new patches of the base image.
-        if isinstance(self.base, darsia.Image):
-            self.patches_base = darsia.Patches(
-                self.base, *self.N_patches, rel_overlap=self.rel_overlap
-            )
-        elif isinstance(self.base, darsia.GeneralImage):
-            self.patches_base = darsia.GeneralPatches(
-                self.base, self.N_patches, rel_overlap=self.rel_overlap
-            )
+        self.patches_base = darsia.Patches(
+            self.base, self.N_patches, rel_overlap=self.rel_overlap
+        )
 
     def load_image(
         self,
-        img: Union[darsia.Image, darsia.GeneralImage],
-        mask: Optional[Union[darsia.Image, darsia.GeneralImage]] = None,
+        img: darsia.Image,
+        mask: Optional[darsia.Image] = None,
     ) -> None:
         """Load an image to be inspected in futher analysis.
 
@@ -142,17 +130,10 @@ class TranslationAnalysis:
 
         # Cache mask
         if mask is None:
-            if isinstance(img, darsia.Image):
-                self.mask_img = darsia.Image(
-                    np.ones(img.img.shape[:2], dtype=bool),
-                    width=img.width,
-                    height=img.height,
-                )
-            elif isinstance(img, darsia.GeneralImage):
-                self.mask_img = darsia.GeneralImage(
-                    np.ones(img.img.shape[:2], dtype=bool),
-                    dimensions=img.dimensions,
-                )
+            self.mask_img = darsia.Image(
+                np.ones(img.img.shape[:2], dtype=bool),
+                dimensions=img.dimensions,
+            )
         else:
             self.mask_img = mask.copy()
 
@@ -189,14 +170,9 @@ class TranslationAnalysis:
         # ! ---- Step 1. Patch analysis.
 
         # Construct patches of the test image
-        if isinstance(self.img, darsia.Image):
-            patches_img = darsia.Patches(
-                self.img, *self.N_patches, rel_overlap=self.rel_overlap
-            )
-        elif isinstance(self.img, darsia.GeneralImage):
-            patches_img = darsia.GeneralPatches(
-                self.img, self.N_patches, rel_overlap=self.rel_overlap
-            )
+        patches_img = darsia.Patches(
+            self.img, self.N_patches, rel_overlap=self.rel_overlap
+        )
 
         # Monitor success of finding a translation/homography for each patch
         have_translation = np.zeros(tuple(self.N_patches), dtype=bool)
@@ -220,20 +196,12 @@ class TranslationAnalysis:
         # some effort in how to access patches. try first with fixed params.
 
         # Create patches of masks
-        if isinstance(self.mask_base, darsia.Image):
-            patches_mask_base = darsia.Patches(
-                self.mask_base, *self.N_patches, rel_overlap=self.rel_overlap
-            )
-            patches_mask_img = darsia.Patches(
-                self.mask_img, *self.N_patches, rel_overlap=self.rel_overlap
-            )
-        elif isinstance(self.mask_base, darsia.GeneralImage):
-            patches_mask_base = darsia.GeneralPatches(
-                self.mask_base, self.N_patches, rel_overlap=self.rel_overlap
-            )
-            patches_mask_img = darsia.GeneralPatches(
-                self.mask_img, self.N_patches, rel_overlap=self.rel_overlap
-            )
+        patches_mask_base = darsia.Patches(
+            self.mask_base, self.N_patches, rel_overlap=self.rel_overlap
+        )
+        patches_mask_img = darsia.Patches(
+            self.mask_img, self.N_patches, rel_overlap=self.rel_overlap
+        )
 
         # Loop over all patches.
         for i in range(self.N_patches[0]):
@@ -276,13 +244,8 @@ class TranslationAnalysis:
 
                     # Convert to pixel units using reverse matrix indexing, if required
                     if units[0] == "pixel":
-                        if isinstance(self.base, darsia.Image):
-                            center = self.base.coordinatesystem.coordinateToPixel(
-                                center, reverse=True
-                            )
-                        elif isinstance(self.base, darsia.GeneralImage):
-                            center = self.base.coordinatesystem.voxel(center)
-                            center = np.flip(center)
+                        center = self.base.coordinatesystem.voxel(center)
+                        center = np.flip(center)
 
                     # Extract the effective displacement, stored in the constant part of
                     # the affine map, in pixel units, using reverse matrix indexing.
@@ -291,18 +254,9 @@ class TranslationAnalysis:
                     # Convert to metric units if required - note that displacement is a
                     # vector, and that it is given using reverse matrix indexing
                     if units[1] == "metric":
-                        if isinstance(self.base, darsia.Image):
-                            displacement = (
-                                self.base.coordinatesystem.pixelToCoordinateVector(
-                                    np.flip(displacement)  # Standard matrix indexing
-                                )
-                            )
-                        elif isinstance(self.base, darsia.GeneralImage):
-                            displacement = (
-                                self.base.coordinatesystem.cooridinate_vector(
-                                    np.flip(displacement)  # Standard matrix indexing
-                                )
-                            )
+                        displacement = self.base.coordinatesystem.coordinate_vector(
+                            np.flip(displacement)  # Standard matrix indexing
+                        )
 
                     # Store the displacement for the centers of the patch.
                     # NOTE: In any case, the first and second components
@@ -367,66 +321,37 @@ class TranslationAnalysis:
         # as they will get assigned the same translation.
         vertical_boundary: list[np.ndarray] = []
 
-        if isinstance(self.base, darsia.Image):
-            if units[0] == "metric":
-                # Add the left vertical boundary
-                vertical_boundary += [
-                    self.base.origin + np.array([0, y_pos])
-                    for y_pos in np.linspace(0, self.base.height, self.N_patches[1] + 1)
-                ]
-                # Add the right vertical boundary
-                vertical_boundary += [
-                    self.base.origin + np.array([self.base.width, y_pos])
-                    for y_pos in np.linspace(0, self.base.height, self.N_patches[1] + 1)
-                ]
+        if units[0] == "metric":
+            # Add the left vertical boundary
+            vertical_boundary += [
+                self.base.origin + np.array([0, -y_pos])
+                for y_pos in np.linspace(
+                    0, self.base.dimensions[0], self.N_patches[0] + 1
+                )
+            ]
+            # Add the right vertical boundary
+            vertical_boundary += [
+                self.base.origin + np.array([self.base.dimensions[1], -y_pos])
+                for y_pos in np.linspace(
+                    0, self.base.dimensions[0], self.N_patches[0] + 1
+                )
+            ]
 
-            elif units[0] == "pixel":
-                # Add the left vertical boundary - comply to reverse matrix indexing
-                vertical_boundary += [
-                    np.array([0, y_pos])
-                    for y_pos in np.linspace(
-                        0, self.base.num_pixels_height, self.N_patches[1] + 1
-                    )
-                ]
-                # Add the right vertical boundary - comply to reverse matrix indexing
-                vertical_boundary += [
-                    np.array([self.base.num_pixels_width, y_pos])
-                    for y_pos in np.linspace(
-                        0, self.base.num_pixels_height, self.N_patches[1] + 1
-                    )
-                ]
-        elif isinstance(self.base, darsia.GeneralImage):
-            if units[0] == "metric":
-                # Add the left vertical boundary
-                vertical_boundary += [
-                    self.base.origin + np.array([0, -y_pos])
-                    for y_pos in np.linspace(
-                        0, self.base.dimensions[0], self.N_patches[0] + 1
-                    )
-                ]
-                # Add the right vertical boundary
-                vertical_boundary += [
-                    self.base.origin + np.array([self.base.dimensions[1], -y_pos])
-                    for y_pos in np.linspace(
-                        0, self.base.dimensions[0], self.N_patches[0] + 1
-                    )
-                ]
-
-            elif units[0] == "pixel":
-                # Add the left vertical boundary - comply to reverse matrix indexing
-                vertical_boundary += [
-                    np.array([0, y_pos])
-                    for y_pos in np.linspace(
-                        0, self.base.num_voxels[0], self.N_patches[0] + 1
-                    )
-                ]
-                # Add the right vertical boundary - comply to reverse matrix indexing
-                vertical_boundary += [
-                    np.array([self.base.num_voxels[1], y_pos])
-                    for y_pos in np.linspace(
-                        0, self.base.num_voxels[0], self.N_patches[0] + 1
-                    )
-                ]
+        elif units[0] == "pixel":
+            # Add the left vertical boundary - comply to reverse matrix indexing
+            vertical_boundary += [
+                np.array([0, y_pos])
+                for y_pos in np.linspace(
+                    0, self.base.num_voxels[0], self.N_patches[0] + 1
+                )
+            ]
+            # Add the right vertical boundary - comply to reverse matrix indexing
+            vertical_boundary += [
+                np.array([self.base.num_voxels[1], y_pos])
+                for y_pos in np.linspace(
+                    0, self.base.num_voxels[0], self.N_patches[0] + 1
+                )
+            ]
 
         return vertical_boundary, len(vertical_boundary) * [0.0]
 
@@ -451,40 +376,23 @@ class TranslationAnalysis:
         # sets here, and combine left and right vertical boundaries for simplicity,
         # as they will get assigned the same translation.
         horizontal_boundary: list[np.ndarray] = []
-        if isinstance(self.base, darsia.Image):
-            if units[0] == "metric":
-                # Add the bottom horizontal boundary
-                horizontal_boundary += [
-                    self.base.origin + np.array([x_pos, 0])
-                    for x_pos in np.linspace(0, self.base.width, self.N_patches[0] + 1)
-                ]
+        if units[0] == "metric":
+            # Add the bottom horizontal boundary
+            horizontal_boundary += [
+                self.base.origin + np.array([x_pos, -self.base.dimensions[0]])
+                for x_pos in np.linspace(
+                    0, self.base.dimensions[1], self.N_patches[1] + 1
+                )
+            ]
 
-            elif units[0] == "pixel":
-                # Add the bottom horizontal boundary - comply to reverse matrix indexing
-                horizontal_boundary += [
-                    np.array([x_pos, self.base.num_pixels_height])
-                    for x_pos in np.linspace(
-                        0, self.base.num_pixels_width, self.N_patches[0] + 1
-                    )
-                ]
-        elif isinstance(self.base, darsia.GeneralImage):
-            if units[0] == "metric":
-                # Add the bottom horizontal boundary
-                horizontal_boundary += [
-                    self.base.origin + np.array([x_pos, -self.base.dimensions[0]])
-                    for x_pos in np.linspace(
-                        0, self.base.dimensions[1], self.N_patches[1] + 1
-                    )
-                ]
-
-            elif units[0] == "pixel":
-                # Add the bottom horizontal boundary - comply to reverse matrix indexing
-                horizontal_boundary += [
-                    np.array([x_pos, self.base.num_voxels[1]])
-                    for x_pos in np.linspace(
-                        0, self.base.num_voxels[1], self.N_patches[1] + 1
-                    )
-                ]
+        elif units[0] == "pixel":
+            # Add the bottom horizontal boundary - comply to reverse matrix indexing
+            horizontal_boundary += [
+                np.array([x_pos, self.base.num_voxels[1]])
+                for x_pos in np.linspace(
+                    0, self.base.num_voxels[1], self.N_patches[1] + 1
+                )
+            ]
 
         return horizontal_boundary, len(horizontal_boundary) * [0.0]
 
@@ -507,15 +415,10 @@ class TranslationAnalysis:
         # assert self.have_translation.any()
 
         # Interpolate at patch centers (pixel coordinates with reverse matrix indexing)
-        if isinstance(self.base, darsia.Image):
-            patch_centers = self.patches_base.global_centers_reverse_matrix
-            patch_centers_shape = patch_centers.shape
-            patch_centers = patch_centers.reshape((-1, 2))
-        elif isinstance(self.base, darsia.GeneralImage):
-            patch_centers = self.patches_base.global_centers_voxels
-            patch_centers_shape = patch_centers.shape
-            patch_centers = patch_centers.reshape((-1, 2))
-            patch_centers = np.fliplr(patch_centers)
+        patch_centers = self.patches_base.global_centers_voxels
+        patch_centers_shape = patch_centers.shape
+        patch_centers = patch_centers.reshape((-1, 2))
+        patch_centers = np.fliplr(patch_centers)
         interpolated_patch_translation = self.translation(patch_centers)
 
         # Flip, if required
@@ -529,14 +432,9 @@ class TranslationAnalysis:
 
         # Convert units if needed and provide in metric units
         if units == "metric":
-            if isinstance(self.base, darsia.Image):
-                patch_translation = self.base.coordinatesystem.pixelToCoordinateVector(
-                    patch_translation
-                )
-            elif isinstance(self.base, darsia.GeneralImage):
-                patch_translation = self.base.coordinatesystem.coordinate_vector(
-                    patch_translation
-                )
+            patch_translation = self.base.coordinatesystem.coordinate_vector(
+                patch_translation
+            )
 
         # Return in patch format
         return patch_translation.reshape(patch_centers_shape)
@@ -545,19 +443,14 @@ class TranslationAnalysis:
         self,
         reverse: bool = True,
         scaling: float = 1.0,
-        mask: Optional[Union[darsia.Image, darsia.GeneralImage]] = None,
+        mask: Optional[darsia.Image] = None,
     ) -> None:
         """
         Translate centers of the test image and plot in terms of displacement arrows.
         """
         # Fetch the patch centers in reverse matrix indexing format
-        if isinstance(self.base, darsia.Image):
-            patch_centers = self.patches_base.global_centers_reverse_matrix.reshape(
-                (-1, 2)
-            )
-        elif isinstance(self.base, darsia.GeneralImage):
-            patch_centers = self.patches_base.global_centers_voxels.reshape((-1, 2))
-            patch_centers = np.fliplr(patch_centers)
+        patch_centers = self.patches_base.global_centers_voxels.reshape((-1, 2))
+        patch_centers = np.fliplr(patch_centers)
 
         # Determine patch translation in matrix ordering (and with flipped y-direction
         # to comply with the orientation of the y-axis in imaging.
@@ -584,21 +477,9 @@ class TranslationAnalysis:
                 # Fetch the position
                 pixel_pos_patch = patch_centers[i, :2]
 
-                if isinstance(self.base, darsia.Image):
-                    coord_pos_patch = self.base.coordinatesystem.pixelToCoordinate(
-                        pixel_pos_patch, reverse=True
-                    )
-                    # Find pixel coordinate in mask
-                    pixel_pos_mask = mask.coordinatesystem.coordinateToPixel(
-                        coord_pos_patch
-                    )
-
-                elif isinstance(self.base, darsia.GeneralImage):
-                    coord_pos_patch = self.base.coordinatesystem.coordinate(
-                        pixel_pos_patch
-                    )
-                    # Find pixel coordinate in mask
-                    pixel_pos_mask = mask.coordinatesystem.voxel(coord_pos_patch)
+                coord_pos_patch = self.base.coordinatesystem.coordinate(pixel_pos_patch)
+                # Find pixel coordinate in mask
+                pixel_pos_mask = mask.coordinatesystem.voxel(coord_pos_patch)
 
                 if not mask.img[pixel_pos_mask[0], pixel_pos_mask[1]]:
                     active_set[i] = False
@@ -684,79 +565,43 @@ class TranslationAnalysis:
         # )
 
         plt.figure("Success")
-        if isinstance(self.base, darsia.Image):
-            plt.imshow(
-                skimage.util.compare_images(
-                    self.base.img,
-                    skimage.transform.resize(
-                        np.flipud(self.have_translation.T), self.base.img.shape
-                    ),
-                    method="blend",
-                )
+        plt.imshow(
+            skimage.util.compare_images(
+                self.base.img,
+                skimage.transform.resize(self.have_translation, self.base.img.shape),
+                method="blend",
             )
-        elif isinstance(self.base, darsia.GeneralImage):
-            print(self.have_translation.shape)
-            plt.imshow(
-                skimage.util.compare_images(
-                    self.base.img,
-                    skimage.transform.resize(
-                        self.have_translation, self.base.img.shape
-                    ),
-                    method="blend",
-                )
-            )
+        )
 
         # Plot deformation in number of pixels
         plt.figure("deformation x pixels")
         plt.title("Deformation in x-direction in pixels")
-        if isinstance(self.base, darsia.Image):
-            plt.imshow(
-                patch_translation_x.reshape(self.N_patches[1], self.N_patches[0])
-            )
-        elif isinstance(self.base, darsia.GeneralImage):
-            plt.imshow(patch_translation_x.reshape(self.N_patches))
+        plt.imshow(patch_translation_x.reshape(self.N_patches))
         plt.colorbar()
         plt.figure("deformation y pixels")
         plt.title("Deformation in y-direction in pixels")
-        if isinstance(self.base, darsia.Image):
-            plt.imshow(
-                patch_translation_y.reshape(self.N_patches[1], self.N_patches[0])
-            )
-        elif isinstance(self.base, darsia.GeneralImage):
-            plt.imshow(patch_translation_y.reshape(self.N_patches))
+        plt.imshow(patch_translation_y.reshape(self.N_patches))
         plt.colorbar()
 
         # Plot deformation in meters
         plt.figure("deformation x meters")
         plt.title("Deformation in x-direction in meters")
-        if isinstance(self.base, darsia.Image):
-            plt.imshow(
-                patch_translation_x.reshape(self.N_patches[1], self.N_patches[0])
-                * self.base.dx
-            )
-        elif isinstance(self.base, darsia.GeneralImage):
-            plt.imshow(
-                patch_translation_x.reshape(self.N_patches) * self.base.voxel_size[1]
-            )
+        plt.imshow(
+            patch_translation_x.reshape(self.N_patches) * self.base.voxel_size[1]
+        )
         plt.colorbar()
         plt.figure("deformation y meters")
         plt.title("Deformation in y-direction in meters")
-        if isinstance(self.base, darsia.Image):
-            plt.imshow(
-                patch_translation_y.reshape(self.N_patches[1], self.N_patches[0])
-                * self.base.dy
-            )
-        elif isinstance(self.base, darsia.GeneralImage):
-            plt.imshow(
-                patch_translation_y.reshape(self.N_patches) * self.base.voxel_size[0]
-            )
+        plt.imshow(
+            patch_translation_y.reshape(self.N_patches) * self.base.voxel_size[0]
+        )
         plt.colorbar()
         plt.show()
 
     def translate_image(
         self,
         reverse: bool = True,
-    ) -> Union[darsia.Image, darsia.GeneralImage]:
+    ) -> darsia.Image:
         """
         Apply translation to an entire image by using piecwise perspective transformation.
 
@@ -771,40 +616,26 @@ class TranslationAnalysis:
         """
 
         # Segment the test image into cells by patching without overlap
-        if isinstance(self.img, darsia.Image):
-            patches = darsia.Patches(self.img, *self.N_patches, rel_overlap=0.0)
+        patches = darsia.Patches(self.img, self.N_patches, rel_overlap=0.0)
 
-            # Create piecewise perspective transform on the patches
-            perspectiveTransform = darsia.PiecewisePerspectiveTransform()
-            import time
+        # Create piecewise perspective transform on the patches
+        perspectiveTransform = darsia.PiecewisePerspectiveTransform()
+        import time
 
-            tic = time.time()
-            transformed_img: darsia.Image = perspectiveTransform.find_and_warp(
-                patches, self.translation, reverse
-            )
-            print(f"find and warp takes {time.time() - tic}")
-
-        elif isinstance(self.img, darsia.GeneralImage):
-            patches = darsia.GeneralPatches(self.img, self.N_patches, rel_overlap=0.0)
-
-            # Create piecewise perspective transform on the patches
-            perspectiveTransform = darsia.GeneralPiecewisePerspectiveTransform()
-            import time
-
-            tic = time.time()
-            transformed_img: darsia.GeneralImage = perspectiveTransform.find_and_warp(
-                patches, self.translation, reverse
-            )
-            print(f"find and warp takes {time.time() - tic}")
+        tic = time.time()
+        transformed_img: darsia.Image = perspectiveTransform.find_and_warp(
+            patches, self.translation, reverse
+        )
+        print(f"find and warp takes {time.time() - tic}")
 
         return transformed_img
 
     def __call__(
         self,
-        img: Union[darsia.Image, darsia.GeneralImage],
+        img: darsia.Image,
         reverse: bool = False,
-        mask: Optional[Union[darsia.Image, darsia.GeneralImage]] = None,
-    ) -> Union[darsia.Image, darsia.GeneralImage]:
+        mask: Optional[darsia.Image] = None,
+    ) -> darsia.Image:
         """
         Standard workflow, starting with loading the test image, finding
         the translation required to match the baseline image,
@@ -860,13 +691,8 @@ class TranslationAnalysis:
 
                 # Convert to pixel units using reverse matrix indexing, if required
                 if True:
-                    if isinstance(self.base, darsia.Image):
-                        center = self.base.coordinatesystem.coordinateToPixel(
-                            center, reverse=True
-                        )
-                    elif isinstance(self.base, darsia.GeneralImage):
-                        center = self.base.coordinatesystem.voxel(center)
-                        center = np.flip(center)
+                    center = self.base.coordinatesystem.voxel(center)
+                    center = np.flip(center)
 
                 # Evaluate translation provided by the external translation analysis
                 displacement = translation_analysis.translation(center.reshape(-1, 2))
@@ -936,13 +762,8 @@ class TranslationAnalysis:
                 # Fetch the center of the patch in metric units, which will be the input
                 # for later construction of the interpolator
                 center = patch_centers_cartesian[i, j]
-                if isinstance(self.base, darsia.Image):
-                    pixel_center = self.base.coordinatesystem.coordinateToPixel(
-                        center, reverse=True
-                    )
-                elif isinstance(self.base, darsia.GeneralImage):
-                    pixel_center = self.base.coordinatesystem.voxel(center)
-                    pixel_center = np.flip(pixel_center)
+                pixel_center = self.base.coordinatesystem.voxel(center)
+                pixel_center = np.flip(pixel_center)
 
                 # Find displaced center
                 pixel_displacement = self.translation(pixel_center.reshape(-1, 2))
