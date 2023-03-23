@@ -12,40 +12,7 @@ import numpy as np
 import darsia
 
 
-def test_initialize_image():
-
-    # Define path to image
-    path = f"{os.path.dirname(__file__)}/../../examples/images/baseline.jpg"
-
-    # ! ---- Setup the manual color correction
-
-    # Need to specify the pixel coordines in (x,y), i.e., (col,row) format, of the
-    # marks on the color checker.
-    roi_cc = np.array(
-        [
-            [154, 176],
-            [222, 176],
-            [222, 68],
-            [154, 68],
-        ]
-    )
-    color_correction = darsia.ColorCorrection(
-        roi=roi_cc,
-    )
-
-    # Create the color correction and apply it at initialization of image class
-    image = darsia.Image(
-        path,
-        color_correction=color_correction,
-        width=2.8,
-        height=1.5,
-    )
-
-    assert hasattr(image, "img")
-    assert hasattr(image, "coordinatesystem")
-
-
-def test_initialize_simple_general_image():
+def test_initialize_image_without_meta():
 
     #############################################################################
     # ! ---- Define image array
@@ -54,8 +21,7 @@ def test_initialize_simple_general_image():
 
     # ! ---- Initialize darsia image
 
-    # Create the color correction and apply it at initialization of image class
-    image = darsia.GeneralImage(img=array)
+    image = darsia.Image(img=array)
 
     assert hasattr(image, "img")
     assert hasattr(image, "coordinatesystem")
@@ -82,8 +48,7 @@ def test_initialize_general_image():
 
     # ! ---- Initialize darsia image
 
-    # Create the color correction and apply it at initialization of image class
-    image = darsia.GeneralImage(img=array, **info)
+    image = darsia.Image(img=array, **info)
 
     assert hasattr(image, "img")
     assert hasattr(image, "coordinatesystem")
@@ -123,7 +88,7 @@ def test_initialize_optical_image():
     # ! ---- Initialize darsia image
 
     # Create the color correction and apply it at initialization of image class
-    image = darsia.GeneralImage(img=array, **info)
+    image = darsia.Image(img=array, **info)
     optical_image = darsia.OpticalImage(img=array, **optical_info)
 
     assert np.all(np.isclose(image.img, optical_image.img))
