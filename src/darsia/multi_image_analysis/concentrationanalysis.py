@@ -230,7 +230,7 @@ class ConcentrationAnalysis:
             return darsia.Image(concentration, img.metadata)
         elif isinstance(img, darsia.GeneralImage):
             metadata = img.metadata()
-            return darsia.GeneralImage(concentration, **metadata)
+            return darsia.ScalarImage(concentration, **metadata)
 
     # ! ---- Inspection routines
     def _inspect_diff(self, img: np.ndarray) -> None:
