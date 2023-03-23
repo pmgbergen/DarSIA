@@ -176,3 +176,4 @@ cython_debug/
 *.png
 *.PNG
 images/metadata/*.txt
+*.npy
