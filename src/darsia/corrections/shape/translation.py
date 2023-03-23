@@ -141,12 +141,6 @@ class TranslationEstimator:
             return self._match_roi_images(
                 img_src, img_dst, roi_src, roi_dst, plot_matches
             )
-        elif isinstance(img_src, darsia.GeneralImage) and isinstance(
-            img_dst, darsia.GeneralImage
-        ):
-            return self._match_roi_images(
-                img_src, img_dst, roi_src, roi_dst, plot_matches
-            )
         else:
             raise ValueError("Provide images either as numpy arrays or darsia Images.")
 
@@ -189,8 +183,8 @@ class TranslationEstimator:
 
     def _match_roi_images(
         self,
-        img_src: Union[darsia.Image, darsia.GeneralImage],
-        img_dst: Union[darsia.Image, darsia.GeneralImage],
+        img_src: darsia.Image,
+        img_dst: darsia.Image,
         roi_src: Optional[tuple],
         roi_dst: Optional[tuple],
         plot_matches: bool = False,
