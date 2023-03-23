@@ -28,7 +28,7 @@ import darsia
 
 def imread(
     path: Union[str, Path, list[str], list[Path]], **kwargs
-) -> darsia.GeneralImage:
+) -> darsia.Image:
     """Determine and call reading routine depending on filetype.
     Provide interface for numpy arrays, standard optical image formats,
     dicom images, and vtu images.
@@ -38,7 +38,7 @@ def imread(
         kwargs: keyword arguments tailored to the file format.
 
     Returns:
-        GeneralImage, or list of such: image of collection of images.
+        Image, or list of such: image of collection of images.
 
     """
 
@@ -86,7 +86,7 @@ def imread(
 
 def imread_from_npy(
     path: Union[Path, list[Path]], **kwargs
-) -> Union[darsia.GeneralImage, list[darsia.GeneralImage]]:
+) -> Union[darsia.Image, list[darsia.Image]]:
     """Converter from npy format to darsia.Image.
 
     Args:
@@ -232,7 +232,7 @@ def imread_from_dicom(
     system such that the z-coordinate is aligned with the
     gravitational force. Therefore the ijk indexing of
     standard DICOM images is not consistent with the matrix
-    indexing of darsia.GeneralImage. The transformation of
+    indexing of darsia.Image. The transformation of
     coordinate axes is performed here.
 
     Args:
@@ -243,7 +243,7 @@ def imread_from_dicom(
     NOTE: Merely scalar data can be handled.
 
     Returns:
-        darsia.GeneralImage: 3d space-time image
+        darsia.Image: 3d space-time image
 
     """
 
@@ -407,7 +407,7 @@ def imread_from_vtu(
     key: str,
     shape: tuple[int],
     **kwargs,
-) -> Union[darsia.GeneralImage, list[darsia.GeneralImage]]:
+) -> Union[darsia.Image, list[darsia.Image]]:
     """Reading routine for vtu input.
 
     NOTE: Only for 1d and 2d vtu images.
