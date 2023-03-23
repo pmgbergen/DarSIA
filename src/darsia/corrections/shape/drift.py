@@ -44,7 +44,7 @@ class DriftCorrection(darsia.BaseCorrection):
         """
 
         # Read baseline image
-        if isinstance(base, darsia.Image) or isinstance(base, darsia.GeneralImage):
+        if isinstance(base, darsia.Image):
             self.base = np.copy(base.img)
             """Base image array."""
 
