@@ -30,8 +30,6 @@ class ConcentrationAnalysis:
         base: Union[
             darsia.Image,
             list[darsia.Image],
-            darsia.GeneralImage,
-            list[darsia.GeneralImage],
         ],
         signal_reduction: darsia.SignalReduction,
         balancing: Optional[darsia.Model] = None,
@@ -60,7 +58,7 @@ class ConcentrationAnalysis:
         # Fix single baseline image and reference time
         if not isinstance(base, list):
             base = [base]
-        self.base: Union[darsia.Image, darsia.GeneralImage] = base[0].copy()
+        self.base: darsia.Image = base[0].copy()
         """Baseline image."""
 
         if self.base.space_dim != 2:
@@ -99,7 +97,7 @@ class ConcentrationAnalysis:
 
     def update(
         self,
-        base: Optional[Union[darsia.Image, darsia.GeneralImage]] = None,
+        base: Optional[darsia.Image] = None,
         mask: Optional[np.ndarray] = None,
     ) -> None:
         """
@@ -119,7 +117,7 @@ class ConcentrationAnalysis:
 
     def find_cleaning_filter(
         self,
-        baseline_images: Union[list[darsia.Image], list[darsia.GeneralImage]],
+        baseline_images: list[darsia.Image],
         reset: bool = False,
     ) -> None:
         """
@@ -182,9 +180,7 @@ class ConcentrationAnalysis:
 
     # ! ---- Main method
 
-    def __call__(
-        self, img: Union[darsia.Image, darsia.GeneralImage]
-    ) -> Union[darsia.Image, darsia.GeneralImage]:
+    def __call__(self, img: darsia.Image) -> darsia.Image:
         """Extract concentration based on a reference image and rescaling.
 
         Args:
@@ -226,11 +222,8 @@ class ConcentrationAnalysis:
         if self.verbosity >= 1:
             plt.show()
 
-        if isinstance(img, darsia.Image):
-            return darsia.Image(concentration, img.metadata)
-        elif isinstance(img, darsia.GeneralImage):
-            metadata = img.metadata()
-            return darsia.ScalarImage(concentration, **metadata)
+        metadata = img.metadata()
+        return darsia.ScalarImage(concentration, **metadata)
 
     # ! ---- Inspection routines
     def _inspect_diff(self, img: np.ndarray) -> None:
@@ -270,9 +263,7 @@ class ConcentrationAnalysis:
             plt.imshow(img)
 
     # ! ---- Pre- and post-processing methods
-    def _subtract_background(
-        self, img: Union[darsia.Image, darsia.GeneralImage]
-    ) -> Union[darsia.Image, darsia.GeneralImage]:
+    def _subtract_background(self, img: darsia.Image) -> darsia.Image:
         """
         Take difference between input image and baseline image, based
         on cached option.
@@ -390,8 +381,6 @@ class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
         base: Union[
             darsia.Image,
             list[darsia.Image],
-            darsia.GeneralImage,
-            list[darsia.GeneralImage],
         ],
         signal_reduction: darsia.SignalReduction,
         balancing: Optional[darsia.Model],
