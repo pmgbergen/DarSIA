@@ -163,7 +163,7 @@ class FluidFlowerTracerAnalysis(darsia.TracerAnalysis):
 
     # ! ----- Analysis tools
 
-    def single_image_analysis(self, img: Path, **kwargs) -> darsia.GeneralImage:
+    def single_image_analysis(self, img: Path, **kwargs) -> darsia.Image:
         """
         Standard workflow to analyze the tracer concentration.
 
