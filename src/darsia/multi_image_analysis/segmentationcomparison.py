@@ -208,7 +208,7 @@ class SegmentationComparison:
             if all([isinstance(seg, np.ndarray) for seg in segmentations]):
                 rows = min([seg.shape[0] for seg in segmentations])
                 cols = min([seg.shape[1] for seg in segmentations])
-            elif all([isinstance(seg, da.Image) or isinstance(seg, da.GeneralImage) for seg in segmentations]):
+            elif all([isinstance(seg, da.Image) for seg in segmentations]):
                 rows = min([seg.img.shape[0] for seg in segmentations])
                 cols = min([seg.img.shape[1] for seg in segmentations])
             roi = (slice(0, rows), slice(0, cols))
@@ -218,7 +218,7 @@ class SegmentationComparison:
         # They should all be the same.
         if all([isinstance(seg, np.ndarray) for seg in segmentations]):
             segmentation_arrays: tuple[np.ndarray, ...] = segmentations
-        elif all([isinstance(seg, da.Image) or isinstance(seg, da.GeneralImage) for seg in segmentations]):
+        elif all([isinstance(seg, da.Image) for seg in segmentations]):
             segmentation_arrays = tuple([seg.img for seg in segmentations])
         else:
             raise Exception(
@@ -318,7 +318,7 @@ class SegmentationComparison:
             if all([isinstance(seg, np.ndarray) for seg in segmentations]):
                 rows = min([seg.shape[0] for seg in segmentations])
                 cols = min([seg.shape[1] for seg in segmentations])
-            elif all([isinstance(seg, da.Image) or isinstance(seg, da.GeneralImage) for seg in segmentations]):
+            elif all([isinstance(seg, da.Image) for seg in segmentations]):
                 rows = min([seg.img.shape[0] for seg in segmentations])
                 cols = min([seg.img.shape[1] for seg in segmentations])
             roi = (slice(0, rows), slice(0, cols))
@@ -330,7 +330,7 @@ class SegmentationComparison:
         # They should all be the same.
         if all([isinstance(seg, np.ndarray) for seg in segmentations]):
             segmentation_arrays: tuple[np.ndarray, ...] = segmentations
-        elif all([isinstance(seg, da.Image) or isinstance(seg, da.GeneralImage) for seg in segmentations]):
+        elif all([isinstance(seg, da.Image) for seg in segmentations]):
             segmentation_arrays = tuple([seg.img for seg in segmentations])
         else:
             raise Exception(
