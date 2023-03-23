@@ -10,13 +10,13 @@ import darsia
 
 
 def benchmark_binary_cleaning_preset(
-    base: darsia.Image, options: dict
+    base: darsia.GeneralImage, options: dict
 ) -> darsia.CombinedModel:
     """
     Cleaning methods also used in the benchmark_concentration_analysis_preset.
 
     Args:
-        base (darsia.Image): baseline image
+        base (darsia.GeneralImage): baseline image
         options (dict): options same as in benchmark_concentration_analysis_preset.
 
     """
@@ -39,7 +39,7 @@ def benchmark_binary_cleaning_preset(
 
 
 def benchmark_concentration_analysis_preset(
-    base: darsia.Image, labels: np.ndarray, options: dict
+    base: darsia.GeneralImage, labels: np.ndarray, options: dict
 ) -> darsia.PriorPosteriorConcentrationAnalysis:
     """
     The strategy for identifying any phase is constructed as a pipeline
@@ -55,7 +55,7 @@ def benchmark_concentration_analysis_preset(
     4. Posterior strategy reviewing the first three steps.
 
     Args:
-        base (darsia.Image): baseline image
+        base (darsia.GeneralImage): baseline image
         labels (np.ndarray): labeling of domain in facies
         options (dict): dictionary holding all tuning parameters
 

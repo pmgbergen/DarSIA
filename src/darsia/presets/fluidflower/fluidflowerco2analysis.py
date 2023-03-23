@@ -108,12 +108,12 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
         """
         return np.ones(self.base.img.shape[:2], dtype=bool)
 
-    def _expert_knowledge_co2_gas(self, co2: np.ndarray) -> np.ndarray:
+    def _expert_knowledge_co2_gas(self, co2: darsia.GeneralImage) -> np.ndarray:
         """
         Retrieve expert knowledge, i.e., areas with possibility for CO2(g).
 
         Args:
-            co2 (darsia.Image): mask of CO2.
+            co2 (darsia.GeneralImage): mask of CO2.
 
         Returns:
             np.ndarray: mask with possibility for CO2(g)
@@ -121,11 +121,11 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
         """
         return co2.img
 
-    def determine_co2_mask(self) -> darsia.Image:
+    def determine_co2_mask(self) -> darsia.GeneralImage:
         """Determine CO2.
 
         Returns:
-            darsia.Image: boolean image detecting CO2.
+            darsia.GeneralImage: boolean image detecting CO2.
         """
         # Apply expert knowledge
         expert_knowledge = self._expert_knowledge_co2()
@@ -141,14 +141,14 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
 
         return co2
 
-    def determine_co2_gas_mask(self, co2: darsia.Image) -> darsia.Image:
+    def determine_co2_gas_mask(self, co2: darsia.GeneralImage) -> darsia.GeneralImage:
         """Determine CO2.
 
         Args:
-            co2 (darsia.Image): boolean image detecting all co2.
+            co2 (darsia.GeneralImage): boolean image detecting all co2.
 
         Returns:
-            darsia.Image: boolean image detecting CO2(g).
+            darsia.GeneralImage: boolean image detecting CO2(g).
         """
         # Apply expert knowledge.
         expert_knowledge = self._expert_knowledge_co2_gas(co2)
@@ -166,7 +166,9 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
 
     # ! ---- Segmentation routines
 
-    def single_image_analysis(self, img: Union[Path, darsia.Image], **kwargs) -> None:
+    def single_image_analysis(
+        self, img: Union[Path, darsia.GeneralImage], **kwargs
+    ) -> None:
         """
         Standard workflow to analyze CO2 phases.
 
@@ -187,7 +189,7 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
         # ! ----  Pre-processing
 
         # Load the current image
-        if isinstance(img, darsia.Image):
+        if isinstance(img, darsia.GeneralImage):
             self.img = img.copy()
         else:
             self.load_and_process_image(img)
