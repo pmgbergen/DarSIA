@@ -22,7 +22,8 @@ from PIL import Image as PIL_Image
 import darsia
 
 
-class Image:
+class OldImage:
+    # NOTE: The processes of removing the previous Image class is initiated.
     """Base image class.
 
     Contains the actual image, as well as meta data, i.e., base properties such as
@@ -208,12 +209,12 @@ class Image:
         # Establish a coordinate system based on the metadata
         self.coordinatesystem: darsia.CoordinateSystem = darsia.CoordinateSystem(self)
 
-    def copy(self) -> darsia.Image:
+    def copy(self) -> darsia.OldImage:
         """
         Copy constructor.
 
         Returns:
-            darsia.Image: Copy of the image object.
+            darsia.OldImage: Copy of the image object.
 
         """
         return Image(np.copy(self.img), copy.copy(self.metadata))
@@ -249,7 +250,7 @@ class Image:
         return self.metadata["original_dtype"]
 
     # ! ---- Operation overloaders
-    def __sub__(self, other: darsia.Image):
+    def __sub__(self, other: darsia.OldImage):
         """Subtract two images.
 
         Arguments:
@@ -260,12 +261,12 @@ class Image:
         """
         if self.img.shape != other.img.shape:
             warn("Images have different shapes. Resizing second argument to match.")
-            return darsia.Image(
+            return darsia.OldImage(
                 self.img - cv2.resize(other.img, tuple(reversed(self.img.shape[:2]))),
                 copy.copy(self.metadata),
             )
         else:
-            return darsia.Image(self.img - other.img, copy.copy(self.metadata))
+            return darsia.OldImage(self.img - other.img, copy.copy(self.metadata))
 
     # ! ---- I/O
 
@@ -282,7 +283,7 @@ class Image:
             path (str): path to image, including image name and file format
         """
         # cv2 requires BGR format
-        write_image = cast(darsia.Image, self.toBGR(return_image=True)).img
+        write_image = cast(darsia.OldImage, self.toBGR(return_image=True)).img
 
         # Write image, using the conventional matrix indexing
         if self.original_dtype == np.uint8:
@@ -470,7 +471,7 @@ class Image:
 
     # ! ---- Color transformations
 
-    def toBGR(self, return_image: bool = False) -> Optional[darsia.Image]:
+    def toBGR(self, return_image: bool = False) -> Optional[darsia.OldImage]:
         """
         Transforms image to BGR if it is in RGB
 
@@ -479,7 +480,7 @@ class Image:
                 is returned, or converted internally.
 
         Returns:
-            darsia.Image (optional): converted image, if requested
+            darsia.OldImage (optional): converted image, if requested
         """
         if self.metadata["color_space"] == "RGB":
             if not return_image:
@@ -494,7 +495,7 @@ class Image:
         else:
             return None
 
-    def toRGB(self, return_image: bool = False) -> Optional[darsia.Image]:
+    def toRGB(self, return_image: bool = False) -> Optional[darsia.OldImage]:
         """
         Transforms image to RGB if it is in BGR.
 
@@ -503,7 +504,7 @@ class Image:
                 is returned, or converted internally.
 
         Returns:
-            darsia.Image (optional): converted image, if requested
+            darsia.OldImage (optional): converted image, if requested
         """
         if self.metadata["color_space"] == "BGR":
             if not return_image:
@@ -519,7 +520,7 @@ class Image:
         else:
             return None
 
-    def toGray(self, return_image: bool = False) -> Optional[darsia.Image]:
+    def toGray(self, return_image: bool = False) -> Optional[darsia.OldImage]:
         """
         Returns a greyscale version of the darsia image.
 
@@ -528,7 +529,7 @@ class Image:
                 is returned, or converted internally.
 
         Returns:
-            darsia.Image (optional): converted image, if requested
+            darsia.OldImage (optional): converted image, if requested
         """
 
         if return_image:
@@ -559,7 +560,7 @@ class Image:
             self.metadata["color_space"] = "GRAY"
             return None
 
-    def toRed(self, return_image: bool = False) -> Optional[darsia.Image]:
+    def toRed(self, return_image: bool = False) -> Optional[darsia.OldImage]:
         """
         Returns a red channel version of the darsia image.
 
@@ -568,7 +569,7 @@ class Image:
                 is returned, or converted internally.
 
         Returns:
-            darsia.Image (optional): converted image, if requested
+            darsia.OldImage (optional): converted image, if requested
         """
         if return_image:
             red_img = self.copy()
@@ -598,7 +599,7 @@ class Image:
             self.metadata["color_space"] = "RED"
             return None
 
-    def toBlue(self, return_image: bool = False) -> Optional[darsia.Image]:
+    def toBlue(self, return_image: bool = False) -> Optional[darsia.OldImage]:
         """
         Returns a blue channel version of the darsia image.
 
@@ -607,7 +608,7 @@ class Image:
                 is returned, or converted internally.
 
         Returns:
-            darsia.Image (optional): converted image, if requested
+            darsia.OldImage (optional): converted image, if requested
         """
         if return_image:
             blue_img = self.copy()
@@ -637,7 +638,7 @@ class Image:
             self.metadata["color_space"] = "BLUE"
             return None
 
-    def toGreen(self, return_image: bool = False) -> Optional[darsia.Image]:
+    def toGreen(self, return_image: bool = False) -> Optional[darsia.OldImage]:
         """
         Returns a green channel version of the darsia image.
 
@@ -646,7 +647,7 @@ class Image:
                 is returned, or converted internally.
 
         Returns:
-            darsia.Image (optional): converted image, if requested
+            darsia.OldImage (optional): converted image, if requested
         """
         if return_image:
             green_img = self.copy()
@@ -676,7 +677,7 @@ class Image:
             self.metadata["color_space"] = "GREEN"
             return None
 
-    def toHue(self, return_image: bool = False) -> Optional[darsia.Image]:
+    def toHue(self, return_image: bool = False) -> Optional[darsia.OldImage]:
         """
         Returns a hue channel version of the darsia image.
 
@@ -685,7 +686,7 @@ class Image:
                 is returned, or converted internally.
 
         Returns:
-            darsia.Image (optional): converted image, if requested
+            darsia.OldImage (optional): converted image, if requested
         """
         # Only for RGB images for now.
         assert self.metadata["color_space"] == "RGB"
@@ -700,7 +701,7 @@ class Image:
             self.metadata["color_space"] = "HUE"
             return None
 
-    def toSaturation(self, return_image: bool = False) -> Optional[darsia.Image]:
+    def toSaturation(self, return_image: bool = False) -> Optional[darsia.OldImage]:
         """
         Returns a saturation channel version of the darsia image.
 
@@ -709,7 +710,7 @@ class Image:
                 is returned, or converted internally.
 
         Returns:
-            darsia.Image (optional): converted image, if requested
+            darsia.OldImage (optional): converted image, if requested
         """
         # Only for RGB images for now.
         assert self.metadata["color_space"] == "RGB"
@@ -724,7 +725,7 @@ class Image:
             self.metadata["color_space"] = "SATURATION"
             return None
 
-    def toValue(self, return_image: bool = False) -> Optional[darsia.Image]:
+    def toValue(self, return_image: bool = False) -> Optional[darsia.OldImage]:
         """
         Returns a value channel version of the darsia image
 
@@ -733,7 +734,7 @@ class Image:
                 is returned, or converted internally.
 
         Returns:
-            darsia.Image (optional): converted image, if requested
+            darsia.OldImage (optional): converted image, if requested
         """
         # Only for RGB images for now.
         assert self.metadata["color_space"] == "RGB"
@@ -749,9 +750,9 @@ class Image:
             return None
 
 
-class GeneralImage:
+class Image:
     """
-    Develop version of a general, potential space-time Image class.
+    Base image class.
 
     """
 
@@ -920,7 +921,7 @@ class GeneralImage:
         # 5. deformation correction wrt. corrected baseline image
 
         # NOTE: Require mapping format:
-        # darsia.GeneralImage -> darsia.GeneralImage
+        # darsia.Image -> darsia.Image
         if transformations is not None:
             for transformation in transformations:
                 if transformation is not None and hasattr(transformation, "__call__"):
@@ -978,23 +979,23 @@ class GeneralImage:
             # From argument
             self.time = time
 
-    def copy(self) -> GeneralImage:
+    def copy(self) -> Image:
         """Copy constructor.
 
         Returns:
-            GeneralImage: Copy of the image object.
+            Image: Copy of the image object.
 
         """
         return copy.deepcopy(self)
 
     def append(
-        self, image: GeneralImage, offset: Optional[Union[float, int]] = None
+        self, image: Image, offset: Optional[Union[float, int]] = None
     ) -> None:
         """Append other image to current image. Makes in particular
         a non-space-time image to a space-time image.
 
         Args:
-            image (GeneralImage): image to be appended.
+            image (Image): image to be appended.
             offset (float or int, optional): time increment between last and next slice.
 
         """
@@ -1014,7 +1015,7 @@ class GeneralImage:
         # ! ---- Update data
 
         # Auxiliary routine for slicing images
-        def slice_image(im: GeneralImage) -> list[np.ndarray]:
+        def slice_image(im: Image) -> list[np.ndarray]:
             if im.series:
                 slices = [
                     im.img[..., i] if im.scalar else im.img[..., i, :]
@@ -1072,7 +1073,7 @@ class GeneralImage:
             data_type: target data type
 
         Returns:
-            GeneralImage: image with transformed data type
+            Image: image with transformed data type
 
         """
         copy_image = self.copy()
@@ -1117,14 +1118,14 @@ class GeneralImage:
         }
         return copy.copy(metadata)
 
-    def time_slice(self, time_index: int) -> GeneralImage:
+    def time_slice(self, time_index: int) -> Image:
         """Extraction of single time slice.
 
         Args:
             time_index (int): time index in interval [0, ..., time_num-1].
 
         Returns:
-            GeneralImage: single-timed image.
+            Image: single-timed image.
 
         """
         if not self.series:
@@ -1150,7 +1151,7 @@ class GeneralImage:
         self,
         voxels: Optional[tuple[slice]] = None,
         coordinates: Optional[np.ndarray] = None,
-    ) -> GeneralImage:
+    ) -> Image:
         """Extraction of spatial subregion.
 
         Args:
@@ -1159,7 +1160,7 @@ class GeneralImage:
                 uniquely defining a box.
 
         Returns:
-            GeneralImage: image with restricted spatial domain.
+            Image: image with restricted spatial domain.
 
         Raises:
             ValueError: if both voxels and coordinates are not None, or if neither voxels
@@ -1252,14 +1253,14 @@ class GeneralImage:
 
     # ! ---- Arithmetics
 
-    def __add__(self, other: GeneralImage) -> GeneralImage:
+    def __add__(self, other: Image) -> Image:
         """Add two images of same size.
 
         Arguments:
-            other (GeneralImage): image to subtract from self
+            other (Image): image to subtract from self
 
         Returns:
-            GeneralImage: sum of images
+            Image: sum of images
 
         """
         if self.img.shape != other.img.shape:
@@ -1268,14 +1269,14 @@ class GeneralImage:
             metadata = self.metadata()
             return type(self)(self.img + other.img, **metadata)
 
-    def __sub__(self, other: GeneralImage) -> GeneralImage:
+    def __sub__(self, other: Image) -> Image:
         """Subtract two images of same size.
 
         Arguments:
-            other (GeneralImage): image to subtract from self
+            other (Image): image to subtract from self
 
         Returns:
-            GeneralImage: difference image
+            Image: difference image
 
         """
         if self.img.shape != other.img.shape:
@@ -1284,14 +1285,14 @@ class GeneralImage:
             metadata = self.metadata()
             return type(self)(self.img - other.img, **metadata)
 
-    def __mul__(self, scalar: Union[float, int]) -> GeneralImage:
+    def __mul__(self, scalar: Union[float, int]) -> Image:
         """Scaling of image.
 
         Arguments:
             scalar (float or int): scaling parameter
 
         Returns:
-            GeneralImage: scaled image
+            Image: scaled image
 
         """
         if not isinstance(scalar, float) or isinstance(scalar, int):
@@ -1408,7 +1409,7 @@ class GeneralImage:
             return item is None
 
 
-class ScalarImage(GeneralImage):
+class ScalarImage(Image):
     """Special case of a space-time image, with 1d data, e.g., monochromatic photographs."""
 
     # ! ---- Constructors.
@@ -1501,7 +1502,7 @@ class ScalarImage(GeneralImage):
         print("Image saved as: " + str(Path(path)))
 
 
-class OpticalImage(GeneralImage):
+class OpticalImage(Image):
     """
     Special case of 2d trichromatic optical images, typically originating from photographs.
 
