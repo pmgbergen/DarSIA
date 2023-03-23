@@ -6,7 +6,6 @@ in ConcentrationAnalysis.calibrate_model()
 """
 
 import abc
-from typing import Union
 
 import numpy as np
 import scipy.optimize as optimize
@@ -62,7 +61,7 @@ class AbstractModelObjective:
 
     def calibrate_model(
         self,
-        images: Union[list[darsia.Image], list[darsia.GeneralImage]],
+        images: list[darsia.Image],
         options: dict,
     ) -> bool:
         """
