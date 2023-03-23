@@ -1306,7 +1306,7 @@ class GeneralImage:
     # TODO add more standard routines with NotImplementedError
     # TODO try TVD.
 
-    # ! ---- Display methods
+    # ! ---- Display methods and I/O
 
     def show(
         self,
@@ -1368,6 +1368,30 @@ class GeneralImage:
                     plt.pause(int(duration))
                     plt.close()
 
+    def write_array(
+        self, path: Path, indexing: str = "matrix", allow_pickle: bool = True
+    ) -> None:
+        """Auxiliary routine for storing the current image array as npy array.
+
+        Args:
+            path (Path): path to file.
+            indexing (str): If "matrix", the array is stored using matrix indexing,
+                if "Cartesian", the array is stored using Cartesian indexing.
+            allow_pickle (bool): Flag controlling whether pickle is allowed.
+
+        """
+        assert indexing.lower() in ["matrix", "cartesian"]
+
+        plain_path = Path(path).with_suffix("")
+
+        np.save(
+            str(plain_path) + ".npy",
+            darsia.matrixToCartesianIndexing(self.img)
+            if indexing.lower() == "cartesian"
+            else self.img,
+            allow_pickle=allow_pickle,
+        )
+
     # ! ---- Auxiliary routines
 
     def _is_none(self, item) -> bool:
@@ -1385,7 +1409,7 @@ class GeneralImage:
 
 
 class ScalarImage(GeneralImage):
-    """Special case of a space-time image, with 1d data, e.g., monochromatic photograps."""
+    """Special case of a space-time image, with 1d data, e.g., monochromatic photographs."""
 
     # ! ---- Constructors.
 
@@ -1441,6 +1465,40 @@ class ScalarImage(GeneralImage):
         metadata["name"] = self.name
 
         return copy.copy(metadata)
+
+    # ! ---- I/O
+
+    def write(self, path: Path, **kwargs) -> None:
+        """Write image to file.
+
+        Arguments:
+            path (Path): full path to image.
+            keyword arguments:
+                quality (int): number between 0 and 100, indicating
+                    the resolution used to store a jpg image
+                compression (int): number between 0 and 9, indicating
+                    the level of compression used for storing in
+                    png format.
+
+        """
+        # Write image, using the conventional matrix indexing
+        ubyte_image = skimage.img_as_ubyte(self.img)
+        suffix = Path(path).suffix.lower()
+
+        if suffix in [".jpg", ".jpeg"]:
+            quality = kwargs.get("quality", 90)
+            cv2.imwrite(
+                str(Path(path)), ubyte_image, [int(cv2.IMWRITE_JPEG_QUALITY), quality]
+            )
+        elif suffix == ".png":
+            compression = kwargs.get("compression", 6)
+            cv2.imwrite(
+                str(Path(path)), ubyte_image, [cv2.IMWRITE_PNG_COMPRESSION, compression]
+            )
+        else:
+            cv2.imwrite(str(Path(path)), ubyte_image)
+
+        print("Image saved as: " + str(Path(path)))
 
 
 class OpticalImage(GeneralImage):
@@ -1517,14 +1575,17 @@ class OpticalImage(GeneralImage):
 
     # ! ---- I/O
 
-    def write(
-        self,
-        path,
-    ) -> None:
+    def write(self, path: Path, **kwargs) -> None:
         """Write image to file.
 
         Arguments:
-            path (str): full path to image.
+            path (Path): full path to image.
+            keyword arguments:
+                quality (int): number between 0 and 100, indicating
+                    the resolution used to store a jpg image
+                compression (int): number between 0 and 9, indicating
+                    the level of compression used for storing in
+                    png format.
 
         """
         # To prepare for the use of cv2.imwrite, convert to BGR color space.
@@ -1534,15 +1595,32 @@ class OpticalImage(GeneralImage):
         # Write image, using the conventional matrix indexing
         if self.original_dtype == np.uint8:
 
-            write_image = skimage.img_as_ubyte(bgr_array)
-            cv2.imwrite(str(Path(path)), write_image)
+            ubyte_image = skimage.img_as_ubyte(bgr_array)
+            suffix = Path(path).suffix.lower()
+
+            if suffix in [".jpg", ".jpeg"]:
+                quality = kwargs.get("quality", 90)
+                cv2.imwrite(
+                    str(Path(path)),
+                    ubyte_image,
+                    [int(cv2.IMWRITE_JPEG_QUALITY), quality],
+                )
+            elif suffix == ".png":
+                compression = kwargs.get("compression", 6)
+                cv2.imwrite(
+                    str(Path(path)),
+                    ubyte_image,
+                    [cv2.IMWRITE_PNG_COMPRESSION, compression],
+                )
+            else:
+                cv2.imwrite(str(Path(path)), ubyte_image)
 
         elif self.original_dtype == np.uint16:
 
-            write_image = skimage.img_as_uint(bgr_array)
+            ubyte_image = skimage.img_as_uint(bgr_array)
             cv2.imwrite(
                 str(Path(path)),
-                write_image,
+                ubyte_image,
                 [
                     cv2.IMWRITE_TIFF_COMPRESSION,
                     1,
