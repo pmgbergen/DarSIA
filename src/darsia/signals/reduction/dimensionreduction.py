@@ -27,14 +27,14 @@ class AxisAveraging:
         self.axis = axis
         """Axis along which averaging is performed."""
 
-    def __call__(self, img: darsia.GeneralImage) -> darsia.GeneralImage:
+    def __call__(self, img: darsia.Image) -> darsia.Image:
         """Averaging routine.
 
         Args:
-            img (GeneralImage): 3d image.
+            img (Image): 3d image.
 
         Returns:
-            GeneralImage: 2d image.
+            Image: 2d image.
 
         """
         assert img.space_dim == 3
