@@ -15,15 +15,15 @@ class DeformationCorrection(darsia.BaseCorrection):
     """Class for deformation correction by comparison to a reference image.
 
     Attributes:
-        base (darsia.GeneralImage): reference (baseline) image.
+        base (darsia.Image): reference (baseline) image.
 
     """
 
-    def __init__(self, base: darsia.GeneralImage, config: Optional[dict]) -> None:
+    def __init__(self, base: darsia.Image, config: Optional[dict]) -> None:
         """Constructor.
 
         Args:
-            base (darsia.GeneralImage): baseline image
+            base (darsia.Image): baseline image
             config (dict, optional): contains all tuning parameters.
 
         """
@@ -54,8 +54,8 @@ class DeformationCorrection(darsia.BaseCorrection):
         """
         if self.active:
             metadata = self.base.metadata()
-            transformed_img: darsia.GeneralImage = self.image_registration(
-                darsia.GeneralImage(img, **metadata)
+            transformed_img: darsia.Image = self.image_registration(
+                darsia.Image(img, **metadata)
             )
             return transformed_img.img
         else:
