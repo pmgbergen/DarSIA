@@ -7,7 +7,7 @@ import numpy as np
 import darsia
 
 
-class CoordinateSystem:
+class OldCoordinateSystem:
     """Class for coordinate system for images.
 
     A coordinate system has knowledge about the conversion of pixels (in standard format),
@@ -20,6 +20,8 @@ class CoordinateSystem:
 
     def __init__(self, img: darsia.Image):
         """Generate a coordinate system based on the metadata of an existing image."""
+
+        raise NotImplementedError("Deprecated.")
 
         assert isinstance(img, darsia.Image)
 
@@ -216,7 +218,7 @@ class CoordinateSystem:
         return coordinate_vector.reshape(pixel_vector.shape)
 
 
-class GeneralCoordinateSystem:
+class CoordinateSystem:
     """Class for coordinate system for general space-time images.
 
     A coordinate system has knowledge about the conversion of voxels (in standard format),
@@ -229,18 +231,14 @@ class GeneralCoordinateSystem:
 
     """
 
-    # TODO replace CoordinateSystem with GeneralCoordinateSystem
-
-    def __init__(self, img: darsia.GeneralImage):
+    def __init__(self, img: darsia.Image):
         """Generate a coordinate system based on the metadata of an existing image."""
 
         # Cache indexing.
-        # TODO allow for other indexings than matrix indexing?
         assert img.indexing in ["ij", "ijk"]
         self.indexing = img.indexing
 
-        # TODO generalize to darsia.Image.
-        assert isinstance(img, darsia.GeneralImage)
+        assert isinstance(img, darsia.Image)
 
         # Identify relevant Cartesian axes.
         dim = img.space_dim
