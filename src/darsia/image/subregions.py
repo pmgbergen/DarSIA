@@ -11,22 +11,24 @@ import darsia
 
 
 def extractROI(
-    img: Union[darsia.Image, darsia.GeneralImage],
+    img: Union[darsia.OldImage, darsia.Image],
     pts: Union[np.ndarray, list],
     return_roi: bool = False,
-) -> Union[darsia.Image, tuple[darsia.Image, tuple[slice, slice]]]:  # TODO GeneralImage
+) -> Union[darsia.Image, tuple[darsia.Image, tuple]]:
     """Extracts region of interest based on physical coordinates.
 
     Args:
-        img (darsia.Image): image to be cropped.
+        img (darsia.OldImage): image to be cropped.
         pts (np.ndarray or list): coordinates (x,y) with metric units implicitly defining a
             bounding box, which again defines a ROI.
         return_roi (bool): flag controlling whether the determined ROI should be returned;
             default is False.
 
     Returns:
-        darsia.Image: image object restricted to the ROI.
+        darsia.OldImage: image object restricted to the ROI.
     """
+    raise NotImplementedError("Deprecated.")
+
     # Convert coordinates to array
     if isinstance(pts, list):
         pts = np.array(pts)
@@ -36,12 +38,12 @@ def extractROI(
     # of x and y coordinates.
     top_left_coordinate = [np.min(pts[:, 0]), np.max(pts[:, 1])]
     bottom_right_coordinate = [np.max(pts[:, 0]), np.min(pts[:, 1])]
-    if isinstance(img, darsia.Image):
+    if isinstance(img, darsia.OldImage):
         top_left_pixel = img.coordinatesystem.coordinateToPixel(top_left_coordinate)
         bottom_right_pixel = img.coordinatesystem.coordinateToPixel(
             bottom_right_coordinate
         )
-    elif isinstance(img, darsia.GeneralImage):
+    elif isinstance(img, darsia.Image):
         top_left_pixel = img.coordinatesystem.voxel(top_left_coordinate)
         bottom_right_pixel = img.coordinatesystem.voxel(bottom_right_coordinate)
 
@@ -59,7 +61,7 @@ def extractROI(
         warnings.warn("Provided coordinates lie outside image.")
 
     # Construct and return image corresponding to ROI
-    if isinstance(img, darsia.Image):
+    if isinstance(img, darsia.OldImage):
         # Define metadata (all quantities in metric units)
         origin = [np.min(pts[:, 0]), np.min(pts[:, 1])]
         width = np.max(pts[:, 0]) - np.min(pts[:, 0])
@@ -67,7 +69,7 @@ def extractROI(
 
         if return_roi:
             return (
-                darsia.Image(
+                darsia.OldImage(
                     img=img.img[roi],
                     origin=origin,
                     width=width,
@@ -77,20 +79,20 @@ def extractROI(
                 roi,
             )
         else:
-            return darsia.Image(
+            return darsia.OldImage(
                 img=img.img[roi],
                 origin=origin,
                 width=width,
                 height=height,
                 color_space=img.colorspace,
             )
-    elif isinstance(img, darsia.GeneralImage):
+    elif isinstance(img, darsia.Image):
         raise NotImplementedError("Use internal functionality.")
 
 
 def extractROIPixel(
-    img: Union[darsia.Image, darsia.GeneralImage], roi: tuple
-) -> Union[darsia.Image, darsia.GeneralImage]:
+    img: Union[darsia.OldImage, darsia.Image], roi: tuple
+) -> Union[darsia.OldImage, darsia.Image]:
     """Extracts region of interest based on pixel info.
 
     Arguments:
@@ -98,10 +100,12 @@ def extractROIPixel(
             using the conventional matrix indexing, i.e., (row,col).
 
     Returns:
-        darsia.Image: image object restricted to the ROI.
+        darsia.OldImage: image object restricted to the ROI.
 
     """
-    if isinstance(img, darsia.Image):
+    raise NotImplementedError("Deprecated.")
+
+    if isinstance(img, darsia.OldImage):
         # Define metadata; Note that img.origin uses a Cartesian indexing, while the
         # roi uses the conventional matrix indexing
         origin = img.origin + np.array(
@@ -111,7 +115,7 @@ def extractROIPixel(
         width = (roi[1].stop - roi[1].start) * img.dx
 
         # Construct and return image corresponding to ROI
-        return darsia.Image(
+   return darsia.OldImage(
             img=img.img[roi],
             origin=origin,
             width=width,
@@ -119,7 +123,7 @@ def extractROIPixel(
             color_space=img.colorspace,
         )
 
-    elif isinstance(img, darsia.GeneralImage):
+    elif isinstance(img, darsia.Image):
         raise NotImplementedError("Use internal functionality.")
 
 
