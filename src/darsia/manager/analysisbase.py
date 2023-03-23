@@ -174,51 +174,6 @@ class AnalysisBase:
 
         return self.img
 
-    def store(
-        self,
-        img: darsia.Image,
-        path: Path,
-        cartesian_indexing: bool = False,
-        store_jpg: bool = False,
-        suffix_jpg: str = "",
-        suffix_npy: str = "",
-    ) -> bool:
-        """Convert to correct format (use Cartesian indexing by default)
-        and store to file (both as image and numpy array).
-
-        Args:
-            img (darsia.Image): image
-            path (Path): path to file
-            cartesian_indexing (bool): flag controlling whether data is stored with
-                matrix indexing
-            store_jpg (bool): flag controlling whether a jpg representation is stored
-            suffix_jpg (str): suffix to be added to the jpg file
-            suffix_npy (str): suffix to be added to the npy file
-
-        Returns:
-            bool: success of the routine (always True).
-
-        """
-        plain_path = path.with_suffix("")
-
-        # Store the image
-        if store_jpg:
-            cv2.imwrite(
-                str(plain_path) + suffix_jpg + ".jpg",
-                skimage.util.img_as_ubyte(img.img),
-                [int(cv2.IMWRITE_JPEG_QUALITY), 90],
-            )
-
-        # Store numpy array
-        np.save(
-            str(plain_path) + suffix_npy + ".npy",
-            darsia.matrixToCartesianIndexing(img.img)
-            if cartesian_indexing
-            else img.img,
-        )
-
-        return True
-
     # ! ---- Analysis tools
 
     def single_image_analysis(self, img: Union[Path, darsia.Image], **kwargs) -> None:
