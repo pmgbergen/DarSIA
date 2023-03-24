@@ -186,7 +186,8 @@ class DiffeomorphicImageRegistration:
         """
 
         # Reshape coords using a num_pts x 2 format.
-        coords = coords.global_centers_cartesian
+        if isinstance(coords, darsia.Patches):
+            coords = coords.global_centers_cartesian
 
         assert coords.shape[-1] == 2
         coords_shape = coords.shape
