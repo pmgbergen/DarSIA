@@ -46,9 +46,6 @@ class AxisAveraging:
         origin.pop(self.axis)
         dimensions.pop(self.axis)
 
-        # Fetch time
-        time = img.time
-
         # Fetch and adapt metadata
         metadata = img.metadata()
         metadata["dim"] = 2
@@ -56,4 +53,4 @@ class AxisAveraging:
         metadata["origin"] = origin
         metadata["dimensions"] = dimensions
 
-        return type(img)(img=img_arr, time=time, **metadata)
+        return type(img)(img=img_arr, **metadata)
