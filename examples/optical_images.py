@@ -43,7 +43,7 @@ original_image = darsia.OpticalImage(array, **metadata)
 original_image_with_grid = original_image.add_grid(origin=[0.0, 0.0], dx=0.1, dy=0.1)
 original_image_with_grid.show("original image with grid", 5)
 
-corrected_image_with_grid = darsia.GeneralImage(
+corrected_image_with_grid = darsia.OpticalImage(
     img=original_image_with_grid.img, transformations=[curvature_correction], **metadata
 )
 corrected_image_with_grid.show("corrected image with deformed grid", 5)
