@@ -105,7 +105,7 @@ def test_drift_correction():
 
     # ! ---- Define drift correction
     roi = (slice(0, 600), slice(0, 600))
-    drift_correction = darsia.DriftCorrection(base=original_image, roi=roi)
+    drift_correction = darsia.DriftCorrection(base=original_image, config={"roi": roi})
 
     # ! ---- Apply affine transformation
     affine_matrix = np.array([[1, 0, 10], [0, 1, -6]]).astype(np.float32)
