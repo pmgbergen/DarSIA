@@ -66,11 +66,10 @@ class AnalysisBase:
 
         # ! ---- Reference to baseline images
 
-        if not isinstance(baseline, list):
-            reference_base = cast(Union[str, Path], baseline)
-
-        else:
+        if isinstance(baseline, list):
             reference_base = cast(Union[str, Path], baseline[0])
+        else:
+            reference_base = cast(Union[str, Path], baseline)
         self.processed_baseline_images = None
         """List of corrected baseline images."""
 
