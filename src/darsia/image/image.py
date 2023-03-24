@@ -846,9 +846,7 @@ class Image:
         """Cartesian coordinates associated to the [0,0,0] voxel (after
         applying transformations), using Cartesian indexing."""
 
-        self.coordinatesystem: darsia.CoordinateSystem = (
-            darsia.CoordinateSystem(self)
-        )
+        self.coordinatesystem: darsia.CoordinateSystem = darsia.CoordinateSystem(self)
         """Physical coordinate system with equipped transformation from voxel to
         Cartesian space."""
 
@@ -939,9 +937,7 @@ class Image:
         ]
         """Size of each voxel in each direction, ordered as indexing."""
 
-        self.coordinatesystem: darsia.CoordinateSystem = (
-            darsia.CoordinateSystem(self)
-        )
+        self.coordinatesystem: darsia.CoordinateSystem = darsia.CoordinateSystem(self)
         """Physical coordinate system with equipped transformation from voxel to
         Cartesian space."""
 
@@ -988,9 +984,7 @@ class Image:
         """
         return copy.deepcopy(self)
 
-    def append(
-        self, image: Image, offset: Optional[Union[float, int]] = None
-    ) -> None:
+    def append(self, image: Image, offset: Optional[Union[float, int]] = None) -> None:
         """Append other image to current image. Makes in particular
         a non-space-time image to a space-time image.
 
