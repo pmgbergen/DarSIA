@@ -42,29 +42,29 @@ curvature_correction = darsia.CurvatureCorrection(config)
 # Use the color checker as reference in both images, and make the src image
 # the anker.
 roi = (slice(0, 600), slice(0, 600))
-drift_correction = darsia.DriftCorrection(base=array_src, roi=roi)
+drift_correction = darsia.DriftCorrection(base=array_src, config={"roi": roi})
 
 # Create darsia images with integrated cropping. Note: the drift correction
 # applied to img_src is without effect.
-img_src = darsia.GeneralImage(
+img_src = darsia.Image(
     img=array_src,
     transformations=[
         drift_correction,
         curvature_correction,
     ],
-    width = 2.8,
-    height = 1.5,
+    width=2.8,
+    height=1.5,
     origin=[0.0, 1.5],
 )
 
-img_dst = darsia.GeneralImage(
+img_dst = darsia.Image(
     img=array_dst,
     transformations=[
         drift_correction,
         curvature_correction,
     ],
-    width = 2.8,
-    height = 1.5,
+    width=2.8,
+    height=1.5,
     origin=[0.0, 1.5],
 )
 
@@ -76,8 +76,8 @@ plt.show()
 
 # Extract ROI to cut away the color palette. Use pixel ranges to crop the image.
 roi_crop = (slice(470, img_src.img.shape[0]), slice(0, 7940))
-da_img_src = img_src.subregion(voxels = roi_crop)
-da_img_dst = img_dst.subregion(voxels = roi_crop)
+da_img_src = img_src.subregion(voxels=roi_crop)
+da_img_dst = img_dst.subregion(voxels=roi_crop)
 
 # ! ----- Actual analysis: Determine the deformation between img_dst and aligned_img_src
 
@@ -164,7 +164,7 @@ print(deformation)
 box_B = np.array([[0.0, 0.6], [1.2, 1.1]])
 
 # and extract the corresponding ROI as darsia.Image (based on da_img_src):
-img_box_B = da_img_src.subregion(coordinates= box_B)
+img_box_B = da_img_src.subregion(coordinates=box_B)
 
 # To double check the box, we plot the resulting box.
 plt.figure("Box B")
@@ -172,7 +172,7 @@ plt.imshow(img_box_B.img)
 plt.show()
 
 # Now we patch box B, the number of patches is arbitrary (here chosen to be 5 x 3):
-patched_box_B = darsia.GeneralPatches(img_box_B, [3, 5])
+patched_box_B = darsia.Patches(img_box_B, [3, 5])
 
 # The patch centers can be accessed - actually not required here, but these correspond
 # to the subsequent deformations.

@@ -4,9 +4,6 @@ when restricted to a significant ROI. By this correction for drift
 is taking care of.
 """
 
-import copy
-import json
-from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
@@ -23,22 +20,20 @@ class DriftCorrection(darsia.BaseCorrection):
         self,
         base: Union[np.ndarray, darsia.Image],
         config: Optional[dict] = None,
-        roi: Optional[Union[np.ndarray, tuple, list]] = None,
-        **kwargs
     ) -> None:
         """
         Constructor for DriftCorrection.
 
         Args:
-            base (str, Path, or array): path to baseline array, or array.
-            config (dict, str, Path): config file for initialization of
-                images.
-            roi (2-tuple of slices or array): region of interest defining
-                the considered area for detecting features and aligning
-                images. Either as tuple of ranges, or array of points.
-                Can also be provided in config; roi in config is
-                prioritized.
-            kwargs (optional keyword arguments):
+            base (array or Image): baseline.
+            config (dict): config file for initialization of images. Main
+                attribute:
+                "roi" (2-tuple of slices or array): region of interest defining
+                    the considered area for detecting features and aligning
+                    images. Either as tuple of ranges, or array of points.
+                    Can also be provided in config; roi in config is
+                    prioritized.
+                "padding" (float): relative factor for padding.
                 active (bool): flag whether drift correction should be
                     applied or not, default is True.
         """
@@ -48,6 +43,9 @@ class DriftCorrection(darsia.BaseCorrection):
             self.base = np.copy(base.img)
             """Base image array."""
 
+            if base.space_dim != 2:
+                raise NotImplementedError
+
         elif isinstance(base, np.ndarray):
             self.base = np.copy(base)
 
@@ -56,39 +54,35 @@ class DriftCorrection(darsia.BaseCorrection):
 
         # Cache config
         if config is None:
-            self.config = {}
             """Config file storing all specs for correction."""
 
             self.active = False
             """Flag controlling whether correction is active."""
 
         else:
-            self.config = copy.deepcopy(config)
-            self.active: bool = kwargs.get("active", True)
+            self.active: bool = config.get("active", True)
 
         # Cache ROI
-        self.roi = None
-        """ROI used for determining dynamic drift correction."""
+        roi: Optional[Union[list, tuple]] = config.get("roi", None)
+        relative_padding: float = config.get("padding", 0.0)
 
-        if "roi" in self.config:
-            self.roi = darsia.bounding_box(np.array(self.config["roi"]))
-        elif isinstance(roi, np.ndarray):
-            self.roi = darsia.bounding_box(roi)
-            self.config["roi"] = roi.tolist()
-        elif isinstance(roi, list):
-            # If a list is added as the roi, it is assumed that it comes from
-            # the color correction roi and some padding might be needed in
-            # order to apply the drift correction. Here 5% of the picture is
-            # added as padding to the roi.
-            self.roi = darsia.bounding_box(
-                np.array(roi),
-                padding=round(0.05 * self.base.shape[0]),
-                max_size=[self.base.shape[0], self.base.shape[1]],
+        if isinstance(roi, list) or isinstance(roi, np.ndarray):
+            self.roi = (
+                darsia.bounding_box(
+                    np.array(roi),
+                    padding=round(relative_padding * np.min(self.base.shape[:2])),
+                    max_size=self.base.shape[:2],
+                )
+                if roi is not None
+                else None
             )
-            self.config["roi"] = darsia.bounding_box_inverse(self.roi).tolist()
+            """ROI used for determining dynamic drift correction."""
         elif isinstance(roi, tuple):
             self.roi = roi
-            self.config["roi"] = darsia.bounding_box_inverse(roi).tolist()
+        elif roi is None:
+            self.roi = None
+        else:
+            raise ValueError
 
         # Define a translation estimator
         self.translation_estimator = darsia.TranslationEstimator()
@@ -116,16 +110,3 @@ class DriftCorrection(darsia.BaseCorrection):
             )
         else:
             return img
-
-    # ! ---- I/O
-
-    def write_config_to_file(self, path: Union[Path, str]) -> None:
-        """
-        Writes the config dictionary to a json-file.
-
-        Arguments:
-            path (Path): path to the json file
-        """
-
-        with open(Path(path), "w") as outfile:
-            json.dump(self.config, outfile, indent=4)

@@ -59,7 +59,7 @@ def test_image_registration():
     # Use the color checker as reference in both images, and make the src image
     # the anker.
     roi = (slice(0, 600), slice(0, 600))
-    drift_correction = darsia.DriftCorrection(base=array_src, roi=roi)
+    drift_correction = darsia.DriftCorrection(base=array_src, config={"roi": roi})
 
     # ! ---- Corrected images
 
