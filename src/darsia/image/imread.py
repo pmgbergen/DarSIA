@@ -26,9 +26,7 @@ import darsia
 # ! ---- Interface to subroutines - general reading routine
 
 
-def imread(
-    path: Union[str, Path, list[str], list[Path]], **kwargs
-) -> darsia.Image:
+def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Image:
     """Determine and call reading routine depending on filetype.
     Provide interface for numpy arrays, standard optical image formats,
     dicom images, and vtu images.
