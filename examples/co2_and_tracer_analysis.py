@@ -38,14 +38,14 @@ color_correction = darsia.ColorCorrection(roi=roi_cc)
 # Read baseline and co2 image and correct color and curvature
 base_array = cv2.cvtColor(cv2.imread(image_folder + "co2_0.jpg"), cv2.COLOR_BGR2RGB)
 co2_array = cv2.cvtColor(cv2.imread(image_folder + "co2_2.jpg"), cv2.COLOR_BGR2RGB)
-baseline_co2 = darsia.GeneralImage(
+baseline_co2 = darsia.Image(
     base_array,
     transformations=[color_correction, curvature_correction],
     width = 2.8,
     height = 1.5,
     origin=[0.0, 1.5],
 )
-co2_image = darsia.GeneralImage(
+co2_image = darsia.Image(
     co2_array,
     transformations=[color_correction, curvature_correction],
     width = 2.8,
@@ -102,14 +102,14 @@ base_tracer_array = cv2.cvtColor(
 tracer_array = cv2.cvtColor(
     cv2.imread(image_folder + "tracer_3.jpg"), cv2.COLOR_BGR2RGB
 )
-baseline_tracer = darsia.GeneralImage(
+baseline_tracer = darsia.Image(
     base_tracer_array,
     transformations=[color_correction, curvature_correction],
     width = 2.8,
     height = 1.5,
     origin=[0.0, 1.5],
 )
-tracer_image = darsia.GeneralImage(
+tracer_image = darsia.Image(
     tracer_array,
     transformations=[color_correction, curvature_correction],
     width = 2.8,

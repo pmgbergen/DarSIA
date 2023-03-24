@@ -13,7 +13,7 @@ image = f"{os.path.dirname(__file__)}/images/baseline.jpg"
 
 # Create an uncorrected image for comparison
 image_array = cv2.cvtColor(cv2.imread(image), cv2.COLOR_BGR2RGB)
-uncorrected_baseline = darsia.GeneralImage(
+uncorrected_baseline = darsia.Image(
     image_array, width=2.8, height=1.5, origin=[0, 1.5]
 )
 
@@ -30,7 +30,7 @@ experimental_color_correction = darsia.ExperimentalColorCorrection(
 # of the details/progress of the color checker.
 
 # Create the color correction and apply it at initialization of image class
-experimental_corrected_baseline = darsia.GeneralImage(
+experimental_corrected_baseline = darsia.Image(
     image_array,
     transformations=[experimental_color_correction],
     width=2.8,
@@ -63,7 +63,7 @@ color_correction = darsia.ColorCorrection(
 # the final color checker after calibration is displayed.
 
 # Create the color correction and apply it at initialization of image class
-corrected_baseline = darsia.GeneralImage(
+corrected_baseline = darsia.Image(
     image_array,
     transformations=[color_correction],
     width=2.8,
