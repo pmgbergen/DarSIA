@@ -1,9 +1,5 @@
 """Root directory for DarSIA.
 
-Includes:
-
-    conversion, image class, subregions, coordinate system, and curvature correction
-
 isort:skip_file
 
 """
@@ -20,7 +16,6 @@ from darsia.mathematics.regularization import *
 from darsia.measure.norms import *
 from darsia.measure.integration import *
 from darsia.measure.emd import *
-from darsia.utils.conversions import *
 from darsia.utils.box import *
 from darsia.utils.computedepthmap import *
 from darsia.utils.segmentation import *
