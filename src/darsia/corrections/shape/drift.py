@@ -2,6 +2,7 @@
 Module containing objects to align images with a baseline image,
 when restricted to a significant ROI. By this correction for drift
 is taking care of.
+
 """
 
 from typing import Optional, Union
@@ -14,6 +15,7 @@ import darsia
 class DriftCorrection(darsia.BaseCorrection):
     """
     Class for drift correction of images wrt. a baseline image.
+
     """
 
     def __init__(
@@ -27,15 +29,16 @@ class DriftCorrection(darsia.BaseCorrection):
         Args:
             base (array or Image): baseline.
             config (dict): config file for initialization of images. Main
-                attribute:
-                "roi" (2-tuple of slices or array): region of interest defining
+                attributes:
+                - roi (2-tuple of slices or array): region of interest defining
                     the considered area for detecting features and aligning
                     images. Either as tuple of ranges, or array of points.
                     Can also be provided in config; roi in config is
                     prioritized.
-                "padding" (float): relative factor for padding.
-                active (bool): flag whether drift correction should be
+                - padding (float): relative factor for padding.
+                - active (bool): flag whether drift correction should be
                     applied or not, default is True.
+
         """
 
         # Read baseline image
@@ -52,7 +55,6 @@ class DriftCorrection(darsia.BaseCorrection):
         else:
             raise ValueError("Data type for baseline image not supported.")
 
-        # Cache config
         if config is None:
             """Config file storing all specs for correction."""
 
@@ -62,30 +64,25 @@ class DriftCorrection(darsia.BaseCorrection):
         else:
             self.active: bool = config.get("active", True)
 
-        # Cache ROI
-        roi: Optional[Union[list, tuple]] = config.get("roi", None)
-        relative_padding: float = config.get("padding", 0.0)
+        if self.active:
+            roi: Optional[Union[list, tuple]] = config.get("roi", None)
+            relative_padding: float = config.get("padding", 0.0)
+            self.roi: Optional[tuple] = None
+            """Basis/ROI for feature detection."""
 
-        if isinstance(roi, list) or isinstance(roi, np.ndarray):
-            self.roi = (
-                darsia.bounding_box(
+            if isinstance(roi, tuple):
+                self.roi = roi
+            elif isinstance(roi, list) or isinstance(roi, np.ndarray):
+                self.roi = darsia.bounding_box(
                     np.array(roi),
                     padding=round(relative_padding * np.min(self.base.shape[:2])),
                     max_size=self.base.shape[:2],
                 )
-                if roi is not None
-                else None
-            )
-            """ROI used for determining dynamic drift correction."""
-        elif isinstance(roi, tuple):
-            self.roi = roi
-        elif roi is None:
-            self.roi = None
-        else:
-            raise ValueError
+            elif roi is not None:
+                raise ValueError
 
-        # Define a translation estimator
-        self.translation_estimator = darsia.TranslationEstimator()
+            self.translation_estimator = darsia.TranslationEstimator()
+            """Detection of effective translation based on feature detection."""
 
     # ! ---- Main correction routines
 
