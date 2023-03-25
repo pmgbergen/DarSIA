@@ -54,7 +54,7 @@ class AbstractModelObjective:
         # Check whether the model is part of a combined model,
         # and possibly determine position of the model
         if isinstance(self.model, darsia.CombinedModel):
-            pos_model = options.get("model position")
+            pos_model = options.get("model_position")
             self.model.update_model_parameters(parameters, pos_model)
         else:
             self.model.update_model_parameters(parameters)

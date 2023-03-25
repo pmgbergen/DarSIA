@@ -158,7 +158,7 @@ class FluidFlowerTracerAnalysis(darsia.TracerAnalysis):
         print("Calibration: Model...")
         self.tracer_analysis.calibrate_model(
             images,
-            options=dict(options, **{"model position": 0, "geometry": self.geometry}),
+            options=dict(options, **{"model_position": 0, "geometry": self.geometry}),
         )
 
     # ! ----- Analysis tools
