@@ -200,7 +200,7 @@ class Image:
         self.space_num: int = np.prod(self.shape[: self.space_dim])
         """Spatial resolution, i.e., number of voxels."""
 
-        self.num_voxels: int = self.img.shape[: self.space_dim]
+        self.num_voxels: list[int] = list(self.img.shape[: self.space_dim])
         """Number of voxels in each dimension."""
 
         self.voxel_size: list[float] = [
