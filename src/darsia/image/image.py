@@ -367,7 +367,7 @@ class Image:
         arguments.
 
         Returns:
-            dict: metadata with keys equal to all keywords agurments.
+            dict: metadata with keys equal to all keywords arguments.
 
         """
         metadata = {
@@ -504,35 +504,6 @@ class Image:
 
         return type(self)(img=img, **metadata)
 
-    # ! ---- I/O
-
-    def write_to_numpy(
-        self,
-        path: Union[str, Path],
-    ) -> None:
-        """Write image to file in numpy format.
-
-        Here, the BGR-format is used. Image path, name and format
-        can be changed by passing them as strings to the method.
-
-        Arguments:
-            path (str): path to image, including image name and file format
-
-        """
-        np.save(path, self.img)
-
-    def write_metadata_to_json(self, path: Union[str, Path]) -> None:
-        """
-        Writes the metadata dictionary to a json-file.
-
-        Arguments:
-            path (str): path to the json file
-
-        """
-        metadata = self.extract_metadata()
-        with open(str(Path(path)), "w") as outfile:
-            json.dump(metadata, outfile, indent=4)
-
     # ! ---- Arithmetics
 
     def __add__(self, other: Image) -> Image:
@@ -650,6 +621,18 @@ class Image:
                     plt.show(block=False)
                     plt.pause(int(duration))
                     plt.close()
+
+    def write_metadata(self, path: Union[str, Path]) -> None:
+        """
+        Writes the metadata dictionary to a json-file.
+
+        Arguments:
+            path (str): path to the json file
+
+        """
+        metadata = self.extract_metadata()
+        with open(str(Path(path)), "w") as outfile:
+            json.dump(metadata, outfile, indent=4)
 
     def write_array(
         self, path: Path, indexing: str = "matrix", allow_pickle: bool = True
