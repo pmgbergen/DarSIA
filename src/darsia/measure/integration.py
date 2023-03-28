@@ -4,12 +4,12 @@ taking into account width, height and depth of pixels.
 
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 import cv2
 import numpy as np
 
-# TODO 3d?
+import darsia
 
 
 class Geometry:
@@ -26,90 +26,229 @@ class Geometry:
 
     """
 
-    def __init__(self, shape: tuple[int], **kwargs) -> None:
+    def __init__(
+        self,
+        space_dim: int,
+        num_voxels: Union[tuple[int], list[int]],
+        dimensions: Optional[list] = None,
+        voxel_size: Optional[list] = None,
+        **kwargs
+    ) -> None:
+        """
+        Constructor.
 
-        # Determine number of voxels in each dimension
-        Ny, Nx = shape[:2]
-        Nz = 1 if len(shape) < 3 else shape[2]
+        Args:
+            space_dim (int): spatial dimensions of the geometry.
+            shape (tuple of int): shape of voxelization of the geometry.
+            dimensions (list, optional): dimensions of the entire geometry.
+            voxel_size (list, optional): dimensions of single voxel.
 
-        # Cache
-        self.Nx = Nx
-        self.Ny = Ny
-        self.Nz = Nz
+        """
 
-        # Define width, height and depth of each voxel
-        self.voxel_width = kwargs.get("voxel width", None)
-        if self.voxel_width is None:
-            self.voxel_width = kwargs.get("width") / Nx
+        self.space_dim = space_dim
+        """Spatial dimension of geometry."""
 
-        self.voxel_height = kwargs.get("voxel height", None)
-        if self.voxel_height is None:
-            self.voxel_height = kwargs.get("height") / Ny
+        self.num_voxels = list(num_voxels[:space_dim])
+        """Number of voxels in each spatial direction."""
 
-        self.voxel_depth = kwargs.get("voxel depth", None)
-        if self.voxel_depth is None:
-            self.voxel_depth = kwargs.get("depth") / Nz
+        # NOTE: dimensions overrules voxel_size for retrieving dimensions
+        # of geometry and voxels.
+        if dimensions is None:
+            assert voxel_size is not None
+            self.voxel_size = voxel_size
+            """Dimensions of a single voxel."""
+            self.dimensions = [
+                self.num_voxels[i] * self.voxel_size[i] for i in range(self.space_dim)
+            ]
+            """Dimensions of geometry."""
+        else:
+            self.dimensions = dimensions
+            self.voxel_size = [
+                self.dimensions[i] / self.num_voxels[i] for i in range(self.space_dim)
+            ]
 
-        # Determine effective pixel and voxel measures
-        self.voxel_area = np.multiply(self.voxel_width, self.voxel_height)
-        self.voxel_volume = (
-            self.voxel_area
-            if self.voxel_depth is None
-            else np.multiply(self.voxel_area, self.voxel_depth)
-        )
-
-        # Cache voxel volume
+        self.voxel_volume = np.prod(self.voxel_size)
+        """Volume (area in 2d) of a single voxel."""
         self.cached_voxel_volume = self.voxel_volume.copy()
+        """Internal copy of the voxel volume for efficient integration."""
 
-    def integrate(self, data: np.ndarray, mask: Optional[np.ndarray] = None) -> float:
+    def integrate(self, data: Union[darsia.Image, np.ndarray]) -> float:
         """
         Integrate data over the entire geometry.
-        """
 
-        # Check compatibility of data formats
+        Args:
+            data (np.ndarray): data attached to voxels.
+
+        Returns:
+            float: integral of data over geometry.
+
+        """
+        # Fetch data
+        fetched_data = data if isinstance(data, np.ndarray) else data.img
+        fetched_shape = list(fetched_data.shape[: self.space_dim])
+        scaling = np.prod(np.divide(self.num_voxels, fetched_shape))
+
+        # Resize the voxel volumes using conservative resizing.
         if isinstance(self.voxel_volume, np.ndarray):
-            if data.shape[:2] != self.cached_voxel_volume.shape[:2]:
-                scaling = np.prod(self.voxel_volume.shape[:2]) / np.prod(data.shape[:2])
+
+            cached_shape = list(self.cached_voxel_volume.shape)
+            if not all([i == j for i, j in zip(fetched_shape, cached_shape)]):
+
+                if not self.space_dim == 2:
+                    raise ValueError("Incompatible data format only supported in 2d.")
+
+                # To cover the most general case, a weighted sum is required. The weight is
+                # essentially provided by the voxel volume. Due to a possible spatial
+                # variability however, reshaping and rescaling is required. In ordert to
+                # increase efficiency use a cache, assuming frequently similar data as input.
+                # In the case, a fixed (scalar) depth had been provided, the base class can be
+                # utilized. Otherwise, a more involved reshape of the effective volume is
+                # required.
                 self.cached_voxel_volume = (
                     cv2.resize(
                         self.voxel_volume,
-                        tuple(reversed(data.shape[:2])),
-                        interpolation=cv2.INTER_AREA,
+                        tuple(reversed(fetched_data.shape[:2])),
+                        interpolation=cv2.INTER_AREA,  # conservative.
                     )
                     * scaling
                 )
-            return np.sum(np.multiply(self.cached_voxel_volume, data))
+
         else:
-            # TODO 3d
-            Ny_data, Nx_data = data.shape[:2]
-            rescaled_voxel_volume = (
-                self.voxel_volume * self.Nx / Nx_data * self.Ny / Ny_data
-            )
-            return rescaled_voxel_volume * np.sum(data)
+            # Scalar case.
+            if not all([i == j for i, j in zip(fetched_shape, self.num_voxels)]):
+                self.cached_voxel_volume = self.voxel_volume * scaling
+
+        # Perform spatial integration
+        return np.sum(np.multiply(self.cached_voxel_volume, data))
 
 
-class PorousGeometry(Geometry):
-    """
-    Class containing information of a porous geometry.
+class WeightedGeometry(Geometry):
+    """Geometry with weighted volume."""
 
-    Also allows for geometrical integration over pore space.
+    def __init__(
+        self,
+        weight: Union[float, np.ndarray],
+        space_dim: int,
+        num_voxels: Union[tuple[int], list[int]],
+        dimensions: Optional[list] = None,
+        voxel_size: Optional[list] = None,
+        **kwargs
+    ) -> None:
+        """
+        Constructor for extruded two-dimensional geometry.
 
-    Example:
+        Args:
+            weight (float or array): weight compatible with geometry.
+            space_dim (int): see Geometry.
+            num_voxels (tuple): see Geometry.
+            dimensions (list): see Geometry.
+            voxel_size (list): see Geometry.
 
-    asset = {"porosity": 0.2, "width": 1., "height": 2., "depth": 0.1}
-    shape = (20,10)
-    geometry = darsia.PorousGeometry(shape, **asset)
+        Raises:
+            ValueError: if weight has wrong dimensions.
 
-    """
+        """
+        super().__init__(space_dim, num_voxels, dimensions, voxel_size)
 
-    def __init__(self, shape: np.ndarray, **kwargs) -> None:
+        # Sanity check
+        if isinstance(weight, np.ndarray) and len(weight.shape) != self.space_dim:
+            raise ValueError
 
-        super().__init__(shape, **kwargs)
-        self.porosity = kwargs.get("porosity")
-
-        # Determine effective pixel and voxel measures
-        self.voxel_area = np.multiply(self.voxel_area, self.porosity)
-        self.voxel_volume = np.multiply(self.voxel_volume, self.porosity)
-
-        # Update cached voxel volume due to involvement of the porosity
+        # Add weight
+        self.voxel_volume = np.multiply(self.voxel_volume, weight)
+        """Effective voxel volume in 3d."""
         self.cached_voxel_volume = self.voxel_volume.copy()
+        """Internal copy of the voxel volume for efficient integration."""
+
+
+class ExtrudedGeometry(WeightedGeometry):
+    """Two-dimensional geometry extruded in third dimension with
+    possibly variable depth.
+
+    """
+
+    def __init__(
+        self,
+        depth: Union[float, np.ndarray],
+        space_dim: int,
+        num_voxels: Union[tuple[int], list[int]],
+        dimensions: Optional[list] = None,
+        voxel_size: Optional[list] = None,
+        **kwargs
+    ) -> None:
+        """
+        Constructor for extruded two-dimensional geometry.
+
+        Args:
+            depth (float or array): effective depth of geometry.
+            space_dim (int): see Geometry.
+            num_voxels (tuple): see Geometry.
+            dimensions (list): see Geometry.
+            voxel_size (list): see Geometry.
+
+        Raises:
+            ValueError: if spatial dimension not 2.
+
+        """
+        # Sanity check
+        if space_dim != 2:
+            raise ValueError("Extruded geometries only defined for 2d domains.")
+
+        super().__init__(depth, space_dim, num_voxels, dimensions, voxel_size)
+
+
+class PorousGeometry(WeightedGeometry):
+    """Class containing information of a porous geometry."""
+
+    def __init__(
+        self,
+        porosity: Union[float, np.ndarray],
+        space_dim: int,
+        num_voxels: Union[tuple[int], list[int]],
+        dimensions: Optional[list] = None,
+        voxel_size: Optional[list] = None,
+        **kwargs
+    ) -> None:
+        """
+        Constructor for extruded two-dimensional geometry.
+
+        Args:
+            porosity (float or array): porosity.
+            space_dim (int): see Geometry.
+            num_voxels (tuple): see Geometry.
+            dimensions (list): see Geometry.
+            voxel_size (list): see Geometry.
+
+        """
+        super().__init__(porosity, space_dim, num_voxels, dimensions, voxel_size)
+
+
+class ExtrudedPorousGeometry(ExtrudedGeometry):
+    """Class containing information of a porous geometry."""
+
+    def __init__(
+        self,
+        porosity: Union[float, np.ndarray],
+        depth: Union[float, np.ndarray],
+        space_dim: int,
+        num_voxels: Union[tuple[int], list[int]],
+        dimensions: Optional[list] = None,
+        voxel_size: Optional[list] = None,
+        **kwargs
+    ) -> None:
+        """
+        Constructor for extruded, porous, two-dimensional geometry.
+
+        Args:
+            porosity (float or array): porosity.
+            depth (float or array): effective depth.
+            space_dim (int): see Geometry.
+            num_voxels (tuple): see Geometry.
+            dimensions (list): see Geometry.
+            voxel_size (list): see Geometry.
+
+        """
+        integrated_porosity = np.multiply(porosity, depth)
+        super().__init__(
+            integrated_porosity, space_dim, num_voxels, dimensions, voxel_size
+        )
