@@ -383,6 +383,23 @@ class Image:
         }
         return copy.copy(metadata)
 
+    def shape_metadata(self) -> dict:
+        """Return all metadata connected to dimensions of image and voxels.
+
+        Useful to define darsia.Geometry from darsia.Image.
+
+        Returns:
+            dict: metadata with keys to instantiate a Geometry.
+
+        """
+        metadata = {
+            "space_dim": self.space_dim,
+            "dimensions": self.dimensions,
+            "num_voxels": self.num_voxels,
+            "voxel_size": self.voxel_size,
+        }
+        return metadata
+
     def time_slice(self, time_index: int) -> Image:
         """Extraction of single time slice.
 
