@@ -27,7 +27,7 @@ class AbstractModelObjective:
         self,
         input_images: list[np.ndarray],
         images_diff: list[np.ndarray],
-        relative_times: list[float],
+        times: list[float],
         options: dict,
     ):
         """
@@ -111,14 +111,10 @@ class AbstractModelObjective:
         maxiter = options.get("maxiter")
 
         # Define reference time (not important which image serves as basis)
-        SECONDS_TO_HOURS = 1.0 / 3600.0
-        ref_time = images[
-            0
-        ].date  # some reference time as only relative times relevant
-        relative_times = [im
-            (img.date - ref_time).total_seconds() * SECONDS_TO_HOURS
-            for img in images
-        ]
+        SECONDS_TO_HOURS = 1.0 / 3600
+        times = [img.time * SECONDS_TO_HOURS for img in images]
+        if any([time is None for time in times]):
+            raise ValueError("Provide images with well-defined reference time.")
 
         # Double check an objective has been provided for calibration
         if not hasattr(self, "define_objective_function"):
@@ -127,7 +123,7 @@ class AbstractModelObjective:
                 functionality to calibrate a model."""
             )
         calibration_objective = self.define_objective_function(
-            images_smooth_signal, images_diff, relative_times, options
+            images_smooth_signal, images_diff, times, options
         )
 
         # Perform optimization step
@@ -152,7 +148,7 @@ class AbstractModelObjective:
 
 # Old approach using bisection only...
 #        def _scaling_vs_deviation(scaling: float) -> float:
-#            return _deviation([scaling, 0.], input_images, images_diff, relative_times)
+#            return _deviation([scaling, 0.], input_images, images_diff, times)
 #
 #        st_time = time.time()
 #        # Perform bisection
@@ -181,7 +177,7 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
         self,
         input_images: list[np.ndarray],
         images_diff: list[np.ndarray],
-        relative_times: list[float],
+        times: list[float],
         options: dict,
     ):
         """
@@ -190,7 +186,7 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
         Args:
             input_images (list of np.ndarray): input for _convert_signal
             images_diff (list of np.ndarray): plain differences wrt background image
-            relative_times (list of float): times in hrs
+            times (list of float): times in hrs
             options (dict): dictionary with objective value, here the injection rate
 
         Returns:
@@ -226,7 +222,7 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
 
             # Determine slope in time by linear regression
             ransac = RANSACRegressor()
-            ransac.fit(np.array(relative_times).reshape(-1, 1), np.array(volumes))
+            ransac.fit(np.array(times).reshape(-1, 1), np.array(volumes))
 
             # Extract the slope and convert to
             effective_injection_rate = ransac.estimator_.coef_[0]
@@ -249,7 +245,7 @@ class AbsoluteVolumeModelObjectiveMixin(AbstractModelObjective):
         self,
         input_images: list[np.ndarray],
         images_diff: list[np.ndarray],
-        relative_times: list[float],
+        times: list[float],
         options: dict,
     ):
         """
@@ -258,7 +254,7 @@ class AbsoluteVolumeModelObjectiveMixin(AbstractModelObjective):
         Args:
             input_images (list of np.ndarray): input for _convert_signal
             images_diff (list of np.ndarray): plain differences wrt background image
-            relative_times (list of float): times
+            times (list of float): times
             options (dict): dictionary with objective value, here the injection rate
 
         Returns:
@@ -305,7 +301,7 @@ class AbsoluteVolumeModelObjectiveMixin(AbstractModelObjective):
             ]
 
             # Create interpolation
-            estimated_data = interpolate.interp1d(relative_times, volumes)
+            estimated_data = interpolate.interp1d(times, volumes)
 
             # Sample data
             sampled_estimated_volumes = estimated_data(sampled_times)
