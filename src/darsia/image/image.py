@@ -151,7 +151,8 @@ class Image:
         """Relative time in scalar format."""
 
         time: Optional[Union[float, int, list]] = kwargs.pop("time", None)
-        self.set_time(time)
+        reference_date: Optional[datetime] = kwargs.pop("reference_date", None)
+        self.set_time(time, reference_date)
 
         # ! ---- Time related safety check
 
@@ -221,7 +222,11 @@ class Image:
         assert len(self.shape) == self.space_dim + self.time_dim + self.range_dim
         assert np.prod(self.shape) == self.space_num * self.time_num * self.range_num
 
-    def set_time(self, time: Optional[Union[float, int, list]] = None) -> None:
+    def set_time(
+        self,
+        time: Optional[Union[float, int, list]] = None,
+        reference_date: Optional[datetime] = None,
+    ) -> None:
         """Setter for time array.
 
         Args:
@@ -240,7 +245,11 @@ class Image:
                         for i in range(self.time_num)
                     ]
             else:
-                self.time = 0
+                self.time = (
+                    None
+                    if reference_date is None
+                    else (self.date - reference_date).total_seconds()
+                )
 
         else:
             # From argument
