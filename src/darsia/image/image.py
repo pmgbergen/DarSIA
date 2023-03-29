@@ -640,11 +640,14 @@ class Image:
 
         """
         metadata = self.extract_metadata()
-        with open(str(Path(path)), "w") as outfile:
+        with open(Path(path), "w") as outfile:
             json.dump(metadata, outfile, indent=4)
 
     def write_array(
-        self, path: Path, indexing: str = "matrix", allow_pickle: bool = True
+        self,
+        path: Union[str, Path],
+        indexing: str = "matrix",
+        allow_pickle: bool = True,
     ) -> None:
         """Auxiliary routine for storing the current image array as npy array.
 
@@ -656,6 +659,8 @@ class Image:
 
         """
         assert indexing.lower() in ["matrix", "cartesian"]
+
+        Path(path).parents[0].mkdir(parents=True, exist_ok=True)
 
         plain_path = Path(path).with_suffix("")
 
@@ -863,6 +868,8 @@ class OpticalImage(Image):
                     png format.
 
         """
+        Path(path).parents[0].mkdir(parents=True, exist_ok=True)
+
         # To prepare for the use of cv2.imwrite, convert to BGR color space.
         bgr_image = self.to_bgr(return_image=True)
         bgr_array = bgr_image.img
