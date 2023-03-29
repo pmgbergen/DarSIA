@@ -70,7 +70,7 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
 
     # Depending on the ending run the corresponding routine.
     if suffix == ".npy":
-        raise NotImplementedError
+        return imread_from_numpy(path, **kwargs)
     elif suffix in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]:
         return imread_from_optical(path, **kwargs)
     elif suffix in [".dcm"]:
@@ -82,7 +82,7 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
 # ! ---- Numpy arrays
 
 
-def imread_from_npy(
+def imread_from_numpy(
     path: Union[Path, list[Path]], **kwargs
 ) -> Union[darsia.Image, list[darsia.Image]]:
     """Converter from npy format to darsia.Image.
@@ -93,7 +93,12 @@ def imread_from_npy(
 
 
     """
-    raise NotImplementedError
+    if isinstance(path, list):
+        raise NotImplementedError
+
+    array = np.load(path, allow_pickle=True)
+    image = darsia.Image(array, **kwargs)
+    return image
 
 
 # ! ---- Optical images
