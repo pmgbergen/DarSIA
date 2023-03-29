@@ -114,9 +114,9 @@ class AbstractModelObjective:
         SECONDS_TO_HOURS = 1.0 / 3600.0
         ref_time = images[
             0
-        ].timestamp  # some reference time as only relative times relevant
-        relative_times = [
-            (img.timestamp - ref_time).total_seconds() * SECONDS_TO_HOURS
+        ].date  # some reference time as only relative times relevant
+        relative_times = [im
+            (img.date - ref_time).total_seconds() * SECONDS_TO_HOURS
             for img in images
         ]
 

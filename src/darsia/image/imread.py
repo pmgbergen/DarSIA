@@ -131,7 +131,7 @@ def imread_from_optical(
     if isinstance(path, Path):
         # Single image
 
-        array, timestamp = _read_single_optical_image(path)
+        array, date = _read_single_optical_image(path)
 
         # Fix metadata
         kwargs["series"] = False
@@ -139,7 +139,7 @@ def imread_from_optical(
         # Define image
         image = darsia.OpticalImage(
             img=array,
-            date=timestamp,
+            date=date,
             time=time,
             transformations=transformations,
             **kwargs,
@@ -155,7 +155,7 @@ def imread_from_optical(
 
         # Create a space-time optical image through stacking along the time axis
         space_time_array = np.stack([d[0] for d in data], axis=2)
-        timestamps = [d[1] for d in data]
+        dates = [d[1] for d in data]
 
         # Fix metadata
         kwargs["series"] = True
@@ -163,7 +163,7 @@ def imread_from_optical(
         # Define image
         image = darsia.OpticalImage(
             img=space_time_array,
-            date=timestamps,
+            date=dates,
             time=time,
             transformations=transformations,
             **kwargs,
@@ -182,7 +182,7 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
 
     Returns:
         np.ndarray: data array in RGB format
-        date (optional): timestamp
+        date (optional): date
 
     """
     # Read image and convert to RGB
@@ -192,14 +192,15 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
     pil_img = PIL_Image.open(path)
     exif = pil_img.getexif()
     if exif.get(306) is not None:
-        timestamp = datetime.strptime(exif.get(306), "%Y:%m:%d %H:%M:%S")
+        # Hardcoded way of retrieving the datetime of "2022:08:29 23:10:27"
+        date = datetime.strptime(exif.get(306), "%Y:%m:%d %H:%M:%S")
     else:
-        timestamp = None
+        date = None
 
     # Alternatively, use terminal output.
     # Credit to: https://stackoverflow.com/questions/27929025/...
     # ...exif-python-pil-return-empty-dictionary
-    if timestamp is None:
+    if date is None:
         output = check_output(f"identify -verbose {str(path)}".split())
         meta = {}
         for line in output.splitlines()[:-1]:
@@ -207,12 +208,12 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
             k, v = spl
             meta[k.lstrip()] = v.strip()
 
-        timestamp_with_info = meta["date"]
-        spl = timestamp_with_info.split(":", 1)
+        date_with_info = meta["date"]
+        spl = date_with_info.split(":", 1)
         # Hardcoded way of retrieving the datetime of "2022-10-12T11:02:40+02:00"
-        timestamp = datetime.strptime(spl[1][1:], "%Y-%m-%dT%H:%M:%S%z")
+        date = datetime.strptime(spl[1][1:], "%Y-%m-%dT%H:%M:%S%z")
 
-    return array, timestamp
+    return array, date
 
 
 # ! ---- DICOM images
