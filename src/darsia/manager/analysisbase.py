@@ -7,6 +7,7 @@ provide the approach for how to set up tailored analysis classes.
 
 import json
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Union, cast
 
@@ -107,6 +108,14 @@ class AnalysisBase:
         self.deformation_correction = None
         """Local deformation correction wrt. baseline image."""
 
+        # ! ---- Time
+        reference_date_str: str = self.config.get("reference_date", None)
+        self.reference_date: Optional[datetime] = (
+            None
+            if reference_date_str is None
+            else datetime.strptime(reference_date_str, "%Y-%m-%d %H:%M:%S")
+        )
+
         # ! ---- Corrected baseline
 
         # Define baseline image as corrected image
@@ -150,6 +159,7 @@ class AnalysisBase:
             width=self.width,
             height=self.height,
             origin=self.origin,
+            reference_date=self.reference_date,
         )
 
     def load_and_process_image(self, path: Union[str, Path]) -> darsia.Image:
