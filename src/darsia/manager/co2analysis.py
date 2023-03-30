@@ -10,6 +10,7 @@ International FluidFlower Benchmark study.
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Union
+from warnings import warn
 
 import darsia
 
@@ -65,7 +66,7 @@ class CO2Analysis(ABC, darsia.ConcentrationAnalysisBase):
                 update_setup,
             )
         else:
-            raise ValueError("CO2 analysis not well-defined.")
+            warn("CO2 analysis not well-defined.")
 
         if "co2(g)" in self.config.keys():
             # Define the concentration analysis
@@ -86,7 +87,7 @@ class CO2Analysis(ABC, darsia.ConcentrationAnalysisBase):
                 update_setup,
             )
         else:
-            raise ValueError("CO2(g) analysis not well-defined.")
+            warn("CO2(g) analysis not well-defined.")
 
     @abstractmethod
     def define_co2_analysis(self) -> darsia.ConcentrationAnalysis:
