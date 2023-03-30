@@ -17,7 +17,7 @@ from darsia.measure.norms import *
 from darsia.measure.integration import *
 from darsia.measure.emd import *
 from darsia.utils.box import *
-from darsia.utils.computedepthmap import *
+from darsia.utils.interpolation import *
 from darsia.utils.segmentation import *
 from darsia.utils.coloranalysis import *
 from darsia.utils.identity import *
