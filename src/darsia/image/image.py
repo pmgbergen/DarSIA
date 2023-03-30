@@ -178,20 +178,7 @@ class Image:
 
         # ! ---- Apply transformations
 
-        # TODO rm this list.
-
-        # NOTE: Recommended order of transformations:
-        # 1. Reduction from 3d to 2d
-
-        # For 2d images:
-        # 1. drift correction to some baseline image
-        # 2. color correction
-        # 3. translation correction to some baseline image
-        # 4. curvature correction calibrated based on a baseline image
-        # 5. deformation correction wrt. corrected baseline image
-
-        # NOTE: Require mapping format:
-        # darsia.Image -> darsia.Image
+        # NOTE: Require mapping format: darsia.Image -> darsia.Image
         if transformations is not None:
             for transformation in transformations:
                 if transformation is not None and hasattr(transformation, "__call__"):
@@ -388,7 +375,6 @@ class Image:
             "scalar": self.scalar,
             "date": self.date,
             "time": self.time,
-            # TODO color_space in optical image
         }
         return copy.copy(metadata)
 
