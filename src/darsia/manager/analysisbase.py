@@ -9,7 +9,7 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Union, Optional, cast
+from typing import Optional, Union, cast
 
 import darsia
 
@@ -65,6 +65,14 @@ class AnalysisBase:
         else:
             raise ValueError("Dimensions and origin not specified.")
 
+        # ! ---- Time
+        reference_date_str: str = self.config.get("reference_date", None)
+        self.reference_date: Optional[datetime] = (
+            None
+            if reference_date_str is None
+            else datetime.strptime(reference_date_str, "%Y-%m-%d %H:%M:%S")
+        )
+
         # ! ---- Reference to baseline images
 
         if isinstance(baseline, list):
@@ -74,64 +82,64 @@ class AnalysisBase:
         self.processed_baseline_images = None
         """List of corrected baseline images."""
 
+        # ! ---- Pre-define empty correction objects.
+
+        self.drift_correction = None
+        """Drift correction wrt. baseline image."""
+        self.color_correction = None
+        """Color correction based on reference colors."""
+        self.translation_correction = None
+        """Translation correction based on fixed absolute translation."""
+        self.curvature_correction = None
+        """Curvature correction."""
+        self.deformation_correction = None
+        """Local deformation correction wrt. baseline image."""
+
+        # ! ---- Define uncorrected baseline image.
+
+        self.uncorrected_base = self._read(reference_base)
+        """Baseline image stored as physical image but without corrections."""
+
         # ! ---- Define absolute correction objects
 
-        # Define correction objects
-        self.translation_correction = (
-            darsia.TranslationCorrection(translation=self.config["translation"])
-            if "translation" in self.config
-            else None
-        )
-        """Translation correction using some absolute translation."""
-
-        # Define color correction and provide baseline to colorchecker
-        self.color_correction = None
-        """Color correction."""
+        if "translation" in self.config:
+            self.translation_correction = darsia.TranslationCorrection(
+                translation=self.config["translation"]
+            )
 
         if "color" in self.config:
             if "baseline" not in self.config["color"]:
                 self.config["color"]["baseline"] = reference_base
             self.color_correction = darsia.ColorCorrection(config=self.config["color"])
 
-        self.curvature_correction = (
-            darsia.CurvatureCorrection(config=self.config["curvature"])
-            if "curvature" in self.config
-            else None
-        )
-        """Curvature correction."""
+        if "curvature" in self.config:
+            self.curvature_correction = darsia.CurvatureCorrection(
+                config=self.config["curvature"]
+            )
 
-        # ! ---- Pre-define empty relative correction objects.
+        # ! ---- Relative correction objects
 
-        self.drift_correction = None
-        """Drift correction wrt. baseline image."""
+        # NOTE: The order of application of the transformations decides over which
+        # reference baseline image shall be chosen. Here, both corrections are applied
+        # before applying any curvature correction. Thus, the uncorrected baseline
+        # image is chosen as reference.
 
-        self.deformation_correction = None
-        """Local deformation correction wrt. baseline image."""
+        if "drift" in self.config:
+            self.drift_correction = darsia.DriftCorrection(
+                base=self.uncorrected_base,
+                config=self.config["drift"],
+            )
 
-        # ! ---- Time
-        reference_date_str: str = self.config.get("reference_date", None)
-        self.reference_date: Optional[datetime] = (
-            None
-            if reference_date_str is None
-            else datetime.strptime(reference_date_str, "%Y-%m-%d %H:%M:%S")
-        )
+        if "deformation" in self.config:
+            self.deformation_correction = darsia.DeformationCorrection(
+                base=self.uncorrected_base,
+                config=self.config["deformation"],
+            )
 
         # ! ---- Corrected baseline
 
         # Define baseline image as corrected image
         self.base = self._read(reference_base)
-
-        # ! ---- Relative correction objects
-
-        self.drift_correction = darsia.DriftCorrection(
-            base=self.base,
-            config=self.config["drift"] if "drift" in self.config else None,
-        )
-
-        self.deformation_correction = darsia.DeformationCorrection(
-            base=self.base,
-            config=self.config["deformation"] if "deformation" in self.config else None,
-        )
 
     # ! ----- I/O
 
