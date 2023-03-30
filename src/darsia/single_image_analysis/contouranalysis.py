@@ -46,7 +46,9 @@ def contour_length(
     """
     # Make copy of image and restrict to region of interest
     img_roi = (
-        img.copy() if roi is None else cast(darsia.Image, darsia.extractROI(img, roi))
+        img.copy()
+        if roi is None
+        else cast(darsia.Image, img.subregion(coordinates=roi))
     )
 
     # Extract boolean mask covering pixels of interest.
@@ -86,9 +88,7 @@ def contour_length(
         contour_length += props[counter].perimeter
 
     # Convert contour length from pixel units to metric units
-    metric_contour_length = cast(
-        float, img_roi.coordinatesystem.pixelsToLength(contour_length)
-    )
+    metric_contour_length = cast(float, img_roi.coordinatesystem.length(contour_length))
 
     # Plot masks and print contour length if requested.
     if verbosity:
@@ -105,8 +105,18 @@ def contour_length(
 
 
 class ContourAnalysis:
+    """Contour analysis object."""
+
     def __init__(self, verbosity: bool) -> None:
+        """Constructor.
+
+        Args:
+            verbosity (bool): Verbosity flag.
+
+        """
+
         self.verbosity = verbosity
+        """Vebosity flag."""
 
     def load_labels(
         self,
@@ -115,17 +125,22 @@ class ContourAnalysis:
         values_of_interest: Optional[Union[int, list[int]]] = None,
         fill_holes: bool = True,
     ) -> None:
+        """Read labeled image and restrict to values of interest.
+
+        Args:
+            img (Image): labeled image.
+            roi (array, optional): set of points defining a box.
+            values_of_interest (int, list of int, optional): label values of interest.
+            fill_holes (bool): flag controlling whether holes in labels are filles.
+
+        """
 
         # Make copy of image and restrict to region of interest
         img_roi = (
             img.copy()
             if roi is None
-            else cast(darsia.Image, darsia.extractROI(img, roi))
+            else cast(darsia.Image, img.subregion(coordinates=roi))
         )
-
-        assert (
-            roi is not None
-        )  # TODO include the possibility to consider the entire image.
 
         # Extract boolean mask covering values of interest.
         if img_roi.img.dtype == bool:
@@ -150,17 +165,17 @@ class ContourAnalysis:
         if fill_holes:
             mask = ndi.binary_fill_holes(mask)
 
-        # Cache coordinate system
         self.coordinatesystem = img_roi.coordinatesystem
+        """Coordinate system of subimage."""
 
-        # Cache the mask
         self.mask = mask
+        """Mask."""
 
-        # Cache roi
         self.roi = roi
+        """Region of interest."""
 
-        # Cache image
         self.img = img_roi
+        """Subimage."""
 
         # Plot masks and print contour length if requested.
         if self.verbosity:
@@ -171,9 +186,12 @@ class ContourAnalysis:
             plt.show()
 
     def length(self) -> float:
-        """
-        Return length of the interface between values of interest and others.
-        Output in metric units.
+        """Determine length of loaded labeled image.
+
+        Returns:
+            float: length of the interface between values of interest and others.
+                Output in metric units.
+
         """
         # Determine the actual contour length of the different regions in
         # the mask - includes boundary.
@@ -194,8 +212,7 @@ class ContourAnalysis:
         return interface_length
 
     def _length_value(self, value: bool) -> float:
-        """
-        Auxiliary function to determine the length of the contour
+        """Auxiliary function to determine the length of the contour
         of the regions with presribed value within self.mask.
 
         Args:
@@ -203,6 +220,7 @@ class ContourAnalysis:
 
         Returns:
             float: contour length.
+
         """
         # Fix mask depending on the value of interest.
         mask = self.mask if value else np.logical_not(self.mask)
@@ -219,7 +237,7 @@ class ContourAnalysis:
 
         # Convert contour length from pixel units to metric units
         metric_contour_length = cast(
-            float, self.coordinatesystem.pixelsToLength(contour_length)
+            float, self.coordinatesystem.length(contour_length, axis="x")
         )
 
         return metric_contour_length
@@ -231,6 +249,11 @@ class ContourAnalysis:
 
         Args:
             direction (np.ndarray): direction vector with orientation
+
+        Returns:
+            array: pixels of peaks.
+            array: pixels of valleys.
+
         """
         # TODO extend to directions other than [0., -1.]
         assert np.isclose(direction, np.array([0, -1])).all()
@@ -341,6 +364,12 @@ class ContourAnalysis:
         return reshaped_peaks_pixels, reshaped_valleys_pixels
 
     def number_peaks(self) -> int:
+        """Determine number of peaks.
+
+        Returns:
+            int: number of peaks.
+
+        """
         peaks_pixels, _ = self.fingers()
         return len(peaks_pixels)
 
@@ -359,6 +388,7 @@ class ContourEvolutionAnalysis:
         """
         Args:
             verbosity (bool): verbosity - mostly useful for debugging.
+
         """
 
         self.index = 0
