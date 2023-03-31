@@ -42,10 +42,12 @@ class TranslationAnalysis:
         if base.space_dim != 2:
             raise NotImplementedError
 
-        # Store parameters
         self.N_patches = N_patches
+        """Number of patches in matrix indexing."""
         self.rel_overlap = rel_overlap
+        """Relative overlap."""
         self.translation_estimator = translation_estimator
+        """Translation estimator."""
 
         # Construct patches of the base image
         self.update_base(base)
@@ -55,7 +57,9 @@ class TranslationAnalysis:
             return np.transpose(np.zeros_like(arg))
 
         self.translation = zero_translation
+        """Cache of current translation."""
         self.have_translation = np.zeros(tuple(self.N_patches), dtype=bool)
+        """Mask of flags storing success of finding translations for patches."""
 
         # Cache mask
         if mask is None:
@@ -63,11 +67,10 @@ class TranslationAnalysis:
                 np.ones(base.img.shape[:2], dtype=bool),
                 dimensions=base.dimensions,
             )
+            """Mask."""
 
         else:
             self.mask_base = mask.copy()
-
-    # TOOD add update_base methods similar to other tools
 
     def update_params(
         self, N_patches: Optional[list[int]] = None, rel_overlap: Optional[float] = None
@@ -80,6 +83,7 @@ class TranslationAnalysis:
         Args:
             N_patches (list of two int): number of patches in x and y direction
             rel_overlap (float): relative overal related to patch size in each direction
+
         """
         # Check if any update is needed
         need_update_N_patches = N_patches is not None and N_patches != self.N_patches
@@ -103,6 +107,7 @@ class TranslationAnalysis:
 
         Args:
             base (darsia.Image): baseline image
+
         """
         self.base = base
         self.update_base_patches()
@@ -447,10 +452,18 @@ class TranslationAnalysis:
     ) -> None:
         """
         Translate centers of the test image and plot in terms of displacement arrows.
+
+        Args:
+            reverse (bool): flag whether the translation is understood as from the
+                test image to the baseline image, or reversed. The default is the
+                former latter.
+            scaling (float): scaling factor for visual comfort.
+            mask (Image): mask of interest for arrows.
+
         """
         # Fetch the patch centers in reverse matrix indexing format
         patch_centers = self.patches_base.global_centers_voxels.reshape((-1, 2))
-        patch_centers = np.fliplr(patch_centers)
+        patch_centers_reversed = np.fliplr(patch_centers)
 
         # Determine patch translation in matrix ordering (and with flipped y-direction
         # to comply with the orientation of the y-axis in imaging.
@@ -490,12 +503,12 @@ class TranslationAnalysis:
             patch_translation_y[inactive_set] = 0
 
             # Deactive unmasked points
-            active_patch_centers = patch_centers[active_set]
+            active_patch_centers_reversed = patch_centers_reversed[active_set]
             active_patch_translation_x = patch_translation_x[active_set]
             active_patch_translation_y = patch_translation_y[active_set]
 
         else:
-            active_patch_centers = patch_centers
+            active_patch_centers_reversed = patch_centers_reversed
             active_patch_translation_x = patch_translation_x
             active_patch_translation_y = patch_translation_y
 
@@ -507,8 +520,8 @@ class TranslationAnalysis:
         # Plot the interpolated translation
         fig, ax = plt.subplots(1, num=1)
         ax.quiver(
-            active_patch_centers[:, 0],
-            active_patch_centers[:, 1],
+            active_patch_centers_reversed[:, 0],
+            active_patch_centers_reversed[:, 1],
             active_patch_translation_x * scaling,
             active_patch_translation_y * scaling,
             c,
@@ -523,8 +536,8 @@ class TranslationAnalysis:
         )
         plt.figure("Deformation arrow")
         plt.quiver(
-            active_patch_centers[:, 0],
-            active_patch_centers[:, 1],
+            active_patch_centers_reversed[:, 0],
+            active_patch_centers_reversed[:, 1],
             active_patch_translation_x * scaling,
             active_patch_translation_y * scaling,
             c,
