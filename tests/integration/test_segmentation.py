@@ -16,6 +16,7 @@ from typing import Union
 
 import cv2
 import numpy as np
+import pytest
 
 from darsia.presets.fluidflower.fluidflowerco2analysis import FluidFlowerCO2Analysis
 from darsia.presets.fluidflower.fluidflowerrig import FluidFlowerRig
@@ -102,6 +103,7 @@ class LargeRigCO2Analysis(LargeFluidFlower, FluidFlowerCO2Analysis):
         return np.logical_and(co2.img, np.logical_not(self.esf_sand))
 
 
+@pytest.mark.skip(reason="Requires files which are only locally available.")
 def test_integrated_segmentation():
     """Test whether phase segmentation prodcues a reference result.
 
