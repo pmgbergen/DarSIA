@@ -113,7 +113,8 @@ class Image:
         ]
         """Size of each voxel in each direction, ordered as indexing."""
 
-        self.origin = np.array(kwargs.pop("origin", self.space_dim * [0]))
+        default_origin = [0, self.dimensions[0]]
+        self.origin = np.array(kwargs.pop("origin", default_origin))
         """Cartesian coordinates associated to the [0,0,0] voxel (after
         applying transformations), using Cartesian indexing."""
 
