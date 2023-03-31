@@ -95,11 +95,6 @@ class AnalysisBase:
         self.deformation_correction = None
         """Local deformation correction wrt. baseline image."""
 
-        # ! ---- Define uncorrected baseline image.
-
-        self.uncorrected_base = self._read(reference_base)
-        """Baseline image stored as physical image but without corrections."""
-
         # ! ---- Define absolute correction objects
 
         if "translation" in self.config:
@@ -124,15 +119,21 @@ class AnalysisBase:
         # before applying any curvature correction. Thus, the uncorrected baseline
         # image is chosen as reference.
 
+        self.uncorrected_base = self._read(reference_base)
+        """Baseline image stored as physical image but without corrections."""
+
         if "drift" in self.config:
             self.drift_correction = darsia.DriftCorrection(
                 base=self.uncorrected_base,
                 config=self.config["drift"],
             )
 
+        self.drift_corrected_base = self._read(reference_base)
+        """Baseline image corrected for drift only."""
+
         if "deformation" in self.config:
             self.deformation_correction = darsia.DeformationCorrection(
-                base=self.uncorrected_base,
+                base=self.drift_corrected_base,
                 config=self.config["deformation"],
             )
 
