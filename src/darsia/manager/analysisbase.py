@@ -200,7 +200,7 @@ class AnalysisBase:
         """
         raise NotImplementedError("Has to be implemented for each special case.")
 
-    def batch_analysis(self, images: list[Path], **kwargs) -> None:
+    def batch_analysis(self, images: Union[Path, list[Path]], **kwargs) -> None:
         """
         Standard batch analysis.
 
@@ -209,6 +209,9 @@ class AnalysisBase:
             kwargs: optional keyword arguments used in single_image_analysis.
 
         """
+
+        if not isinstance(images, list):
+            images = [images]
 
         for img in images:
 
