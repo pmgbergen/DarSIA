@@ -159,10 +159,10 @@ class AnalysisBase:
             path,
             transformations=[
                 self.drift_correction,
+                self.deformation_correction,
                 self.color_correction,
                 self.translation_correction,
                 self.curvature_correction,
-                self.deformation_correction,
             ],
             width=self.width,
             height=self.height,
