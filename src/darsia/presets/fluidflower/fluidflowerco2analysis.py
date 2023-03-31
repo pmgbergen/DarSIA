@@ -213,7 +213,7 @@ class FluidFlowerCO2Analysis(darsia.CO2Analysis):
         if plot_contours or write_contours_to_file:
 
             # Start with the original image
-            original_img = np.copy(self.img.img)
+            original_img = np.clip(np.copy(self.img.img), 0, 1)
             original_img = skimage.img_as_ubyte(original_img)
 
             # Overlay the original image with contours for CO2
