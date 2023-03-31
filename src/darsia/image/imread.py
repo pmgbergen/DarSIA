@@ -16,9 +16,7 @@ from subprocess import check_output
 from typing import Optional, Union
 
 import cv2
-import meshio
 import numpy as np
-import pydicom
 import skimage
 from PIL import Image as PIL_Image
 
@@ -253,7 +251,14 @@ def imread_from_dicom(
     Returns:
         darsia.Image: 3d space-time image
 
+    Raises:
+        ImportError: if pydicom is not installed
+
     """
+    try:
+        import pydicom
+    except ImportError:
+        raise ImportError("pydicom not available on this system")
 
     # ! ---- Image type
     dim = kwargs.get("dim", 2)
@@ -432,10 +437,15 @@ def imread_from_vtu(
     Returns:
 
     Raises:
+        ImportError: if meshio is not installed
         NotImplementedError: if 3d VTU image is provided.
 
-
     """
+    try:
+        import meshio
+    except ImportError:
+        raise ImportError("meshio not available on this system")
+
     # VTU data comes in 3d. The user-input voxel_size implicitly informs on the
     # true ambient dimension.
     dim = len(shape)
