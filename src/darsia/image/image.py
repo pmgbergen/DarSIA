@@ -595,9 +595,9 @@ class Image:
                 )
                 plt.figure(name + f" - {time_index} - {abs_time} -  {rel_time} sec.")
                 if self.scalar:
-                    plt.imshow(self.img[..., time_index])
+                    plt.imshow(skimage.img_as_float(self.img[..., time_index]))
                 else:
-                    plt.imshow(self.img[..., time_index, :])
+                    plt.imshow(skimage.img_as_float(self.img[..., time_index, :]))
                 if duration is None:
                     duration = 3
                 plt.show(block=False)
@@ -609,7 +609,7 @@ class Image:
                 name = ""
 
             plt.figure(name)
-            plt.imshow(self.img)
+            plt.imshow(skimage.img_as_float(self.img))
             if show:
                 if duration is None:
                     plt.show()
