@@ -19,6 +19,7 @@ import cv2
 import meshio
 import numpy as np
 import pydicom
+import skimage
 from PIL import Image as PIL_Image
 
 import darsia
@@ -186,8 +187,10 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
         date (optional): date
 
     """
-    # Read image and convert to RGB
-    array = cv2.cvtColor(cv2.imread(str(path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB)
+    # Read image and convert to RGB and float ([0,1])
+    array = skimage.img_as_float(
+        cv2.cvtColor(cv2.imread(str(path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB)
+    )
 
     # Prefered: Read time from exif metafile.
     pil_img = PIL_Image.open(path)
