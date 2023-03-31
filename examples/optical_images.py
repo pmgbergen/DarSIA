@@ -6,19 +6,10 @@ Perform curvature correction as in the unit tests.
 import json
 import os
 
-import cv2
-
 import darsia
 
-# ! ---- Define image array in RGB format
+# ! ---- Define path to image
 path = f"{os.path.dirname(__file__)}/images/co2_2.jpg"
-array = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
-
-# ! ---- Define physical specs
-metadata = {
-    "dimensions": [1.5, 2.8],
-    "origin": [0.0, 1.5],
-}
 
 # ! ---- Setup correction
 
@@ -32,19 +23,23 @@ curvature_correction = darsia.CurvatureCorrection(config=config["curvature"])
 
 # ! ---- Define corrected image
 
-corrected_image = darsia.OpticalImage(
-    img=array, transformations=[curvature_correction], **metadata
+corrected_image = darsia.imread(
+    path=path, transformations=[curvature_correction], width=2.8, height=1.5
 )
 corrected_image.show("corrected image", 5)
 
 # ! ---- Demonstrate effect of curvature correction
 
-original_image = darsia.OpticalImage(array, **metadata)
+original_image = darsia.imread(path, width=2.8, height=1.5)
 original_image_with_grid = original_image.add_grid(origin=[0.0, 0.0], dx=0.1, dy=0.1)
 original_image_with_grid.show("original image with grid", 5)
 
 corrected_image_with_grid = darsia.OpticalImage(
-    img=original_image_with_grid.img, transformations=[curvature_correction], **metadata
+    img=original_image_with_grid.img,
+    transformations=[curvature_correction],
+    width=2.8,
+    height=1.5,
+    color_space="RGB",
 )
 corrected_image_with_grid.show("corrected image with deformed grid", 5)
 
