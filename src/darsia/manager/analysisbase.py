@@ -116,7 +116,7 @@ class AnalysisBase:
 
         if "deformation" in self.config:
             self.deformation_correction = darsia.DeformationCorrection(
-                base=self.uncorrected_base,
+                base=self.drift_corrected_base,
                 config=self.config["deformation"],
             )
 
