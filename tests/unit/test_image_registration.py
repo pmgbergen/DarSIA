@@ -31,16 +31,20 @@ def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
         "orientation": "ij",
     }
 
-    return array, info
+    success = array is not None
+
+    return array, info, success
 
 
-@pytest.mark.skip(reason="Requires files which are only locally available.")
 def test_image_registration():
     """Test the local patchwise affine correction."""
 
     # ! ---- Fetch image arrays
-    array_dst, info = read_test_image("fine/Baseline")
-    array_src, _ = read_test_image("fine/pulse1")
+    array_dst, info, success_dst = read_test_image("fine/Baseline")
+    array_src, _, success_src = read_test_image("fine/pulse1")
+
+    if not (success_dst and success_src):
+        pytest.xfail("Files required for test not available.")
 
     # ! ---- Transformations
 

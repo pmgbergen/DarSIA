@@ -27,15 +27,19 @@ def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
         "indexing": "ij",
     }
 
-    return array, info
+    success = array is not None
+
+    return array, info, success
 
 
-@pytest.mark.skip(reason="Requires files which are only locally available.")
 def test_color_correction():
     """Test color correction, effectively converting from BGR to RGB."""
 
     # ! ---- Fetch test image
-    array, info = read_test_image("baseline")
+    array, info, success = read_test_image("baseline")
+
+    if not success:
+        pytest.xfail("Image required for test not available.")
 
     # ! ---- Setup color correction
 
@@ -68,14 +72,16 @@ def test_color_correction():
     assert np.all(np.isclose(reference_image, image.img))
 
 
-@pytest.mark.skip(reason="Requires files which are only locally available.")
 def test_curvature_correction():
     """Test of curvature correction applied to a numpy array. The correction
     routine contains all relevant operations, incl. bulging, stretching, and
     cropping."""
 
     # ! ---- Fetch test image
-    array, info = read_test_image("co2_2")
+    array, info, success = read_test_image("co2_2")
+
+    if not success:
+        pytest.xfail("Image required for test not available.")
 
     # ! ---- Setup correction
 
@@ -103,7 +109,11 @@ def test_drift_correction():
     """Test the relative aligning of images via a drift."""
 
     # ! ---- Fetch test images
-    original_array, info = read_test_image("baseline")
+    original_array, info, success = read_test_image("baseline")
+
+    if not success:
+        pytest.xfail("Image required for test not available.")
+
     original_image = darsia.Image(img=original_array, **info)
 
     # ! ---- Define drift correction
