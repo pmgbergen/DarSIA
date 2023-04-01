@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -64,9 +65,10 @@ def test_color_correction():
     # ! ---- Compare corrected image with reference
 
     # Load reference image
-    reference_image = np.load(
-        "../reference/color_corrected_baseline.npy", allow_pickle=True
-    )
+    reference_path = "../reference/color_corrected_baseline.npy"
+    if not Path(reference_path).exists():
+        pytest.xfail("Image required for test not available.")
+    reference_image = np.load(reference_path, allow_pickle=True)
 
     # Make a direct comparison
     assert np.all(np.isclose(reference_image, image.img))
@@ -99,9 +101,12 @@ def test_curvature_correction():
 
     # ! ---- Compare corrected image with reference
 
-    reference_image = np.load(
-        "../reference/curvature_corrected_co2_2.npy", allow_pickle=True
-    )
+    reference_path = "../reference/curvature_corrected_co2_2.npy"
+    if not Path(reference_path).exists():
+        pytest.xfail("Image required for test not available.")
+    reference_image = np.load(reference_path, allow_pickle=True)
+
+    # Make a direct comparison
     assert np.all(np.isclose(reference_image, image.img))
 
 
