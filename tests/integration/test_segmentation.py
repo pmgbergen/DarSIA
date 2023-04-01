@@ -103,7 +103,6 @@ class LargeRigCO2Analysis(LargeFluidFlower, FluidFlowerCO2Analysis):
         return np.logical_and(co2.img, np.logical_not(self.esf_sand))
 
 
-@pytest.mark.skip(reason="Requires files which are only locally available.")
 def test_integrated_segmentation():
     """Test whether phase segmentation prodcues a reference result.
 
@@ -117,37 +116,40 @@ def test_integrated_segmentation():
     folder = Path("segmentation")
     images_folder = folder / Path("images")
     images_exist = len(list(sorted(images_folder.glob("*.TIF")))) > 0
-    if images_exist:
-        images = list(sorted(images_folder.glob("*.TIF")))[10]
-        baseline = list(sorted(images_folder.glob("*.TIF")))[:10]
-        config = folder / Path("config.json")
-        results = folder / Path("results")
-        results.mkdir(parents=True, exist_ok=True)
 
-        # Define FluidFlower based on a full set of basline images
-        analysis = LargeRigCO2Analysis(
-            baseline=baseline,  # paths to baseline images
-            config=config,  # path to config file
-            results=results,  # path to results directory
-        )
+    if not images_exist:
+        pytest.xfail("Images required for test not available.")
 
-        # Perform standardized CO2 batch analysis
-        analysis.batch_analysis(images, plot_contours=False, write_contours=True)
+    images = list(sorted(images_folder.glob("*.TIF")))[10]
+    baseline = list(sorted(images_folder.glob("*.TIF")))[:10]
+    config = folder / Path("config.json")
+    results = folder / Path("results")
+    results.mkdir(parents=True, exist_ok=True)
 
-        # Compare reference phase segmentation with newly computed - make a
-        # pixel-by-pixel comparison
-        ref_results = Path("segmentation/results/contour_plots/reference.jpg")
-        new_results = Path(
-            "segmentation/results/contour_plots/211124_time124600_DSC00842_with_contours.jpg"
-        )
-        ref = cv2.imread(str(ref_results))
-        new = cv2.imread(str(new_results))
-        diff = np.linalg.norm(ref - new)
-        assert np.isclose(diff, 0.0)
+    # Define FluidFlower based on a full set of basline images
+    analysis = LargeRigCO2Analysis(
+        baseline=baseline,  # paths to baseline images
+        config=config,  # path to config file
+        results=results,  # path to results directory
+    )
 
-        # Remove new results
-        new_results.unlink()
+    # Perform standardized CO2 batch analysis
+    analysis.batch_analysis(images, plot_contours=False, write_contours=True)
 
-        # Remove cache folder
-        cache_folder = Path("cache")
-        shutil.rmtree(cache_folder)
+    # Compare reference phase segmentation with newly computed - make a
+    # pixel-by-pixel comparison
+    ref_results = Path("segmentation/results/contour_plots/reference.jpg")
+    new_results = Path(
+        "segmentation/results/contour_plots/211124_time124600_DSC00842_with_contours.jpg"
+    )
+    ref = cv2.imread(str(ref_results))
+    new = cv2.imread(str(new_results))
+    diff = np.linalg.norm(ref - new)
+    assert np.isclose(diff, 0.0)
+
+    # Remove new results
+    new_results.unlink()
+
+    # Remove cache folder
+    cache_folder = Path("cache")
+    shutil.rmtree(cache_folder)
