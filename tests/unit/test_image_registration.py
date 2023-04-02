@@ -4,6 +4,8 @@ Module testing the image registration and local warping of images.
 """
 
 import os
+from pathlib import Path
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -12,7 +14,7 @@ import pytest
 import darsia
 
 
-def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
+def read_test_image(img_id: str) -> tuple[Optional[np.ndarray], Optional[dict], bool]:
     """Centralize reading of test image.
 
     Returns:
@@ -23,24 +25,29 @@ def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
 
     # ! ---- Define image array in RGB format
     path = f"{os.path.dirname(__file__)}/../../examples/images/{img_id}.jpg"
-    array = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
+    if Path(path).exists():
+        array = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
 
-    # ! ---- Define some metadata corresponding to the input array
-    info = {
-        "dim": 2,
-        "orientation": "ij",
-    }
+        # ! ---- Define some metadata corresponding to the input array
+        info = {
+            "dim": 2,
+            "orientation": "ij",
+        }
 
-    return array, info
+        return array, info, True
+    else:
+        return None, None, False
 
 
-@pytest.mark.skip(reason="Requires files which are only locally available.")
 def test_image_registration():
     """Test the local patchwise affine correction."""
 
     # ! ---- Fetch image arrays
-    array_dst, info = read_test_image("fine/Baseline")
-    array_src, _ = read_test_image("fine/pulse1")
+    array_dst, info, success_dst = read_test_image("fine/Baseline")
+    array_src, _, success_src = read_test_image("fine/pulse1")
+
+    if not (success_dst and success_src):
+        pytest.xfail("Files required for test not available.")
 
     # ! ---- Transformations
 
