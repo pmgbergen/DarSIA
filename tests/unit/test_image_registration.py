@@ -4,6 +4,8 @@ Module testing the image registration and local warping of images.
 """
 
 import os
+from pathlib import Path
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -12,7 +14,7 @@ import pytest
 import darsia
 
 
-def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
+def read_test_image(img_id: str) -> tuple[Optional[np.ndarray], Optional[dict], bool]:
     """Centralize reading of test image.
 
     Returns:
@@ -23,17 +25,18 @@ def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
 
     # ! ---- Define image array in RGB format
     path = f"{os.path.dirname(__file__)}/../../examples/images/{img_id}.jpg"
-    array = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
+    if Path(path).exists():
+        array = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
 
-    # ! ---- Define some metadata corresponding to the input array
-    info = {
-        "dim": 2,
-        "orientation": "ij",
-    }
+        # ! ---- Define some metadata corresponding to the input array
+        info = {
+            "dim": 2,
+            "orientation": "ij",
+        }
 
-    success = array is not None
-
-    return array, info, success
+        return array, info, True
+    else:
+        return None, None, False
 
 
 def test_image_registration():
