@@ -16,9 +16,7 @@ from subprocess import check_output
 from typing import Optional, Union
 
 import cv2
-import meshio
 import numpy as np
-import pydicom
 from PIL import Image as PIL_Image
 
 import darsia
@@ -135,6 +133,7 @@ def imread_from_optical(
 
         # Fix metadata
         kwargs["series"] = False
+        kwargs["color_space"] = "RGB"
 
         # Define image
         image = darsia.OpticalImage(
@@ -185,7 +184,7 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
         date (optional): date
 
     """
-    # Read image and convert to RGB
+    # Read image and convert to RGB and float ([0,1])
     array = cv2.cvtColor(cv2.imread(str(path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB)
 
     # Prefered: Read time from exif metafile.
@@ -249,7 +248,14 @@ def imread_from_dicom(
     Returns:
         darsia.Image: 3d space-time image
 
+    Raises:
+        ImportError: if pydicom is not installed
+
     """
+    try:
+        import pydicom
+    except ImportError:
+        raise ImportError("pydicom not available on this system")
 
     # ! ---- Image type
     dim = kwargs.get("dim", 2)
@@ -428,10 +434,15 @@ def imread_from_vtu(
     Returns:
 
     Raises:
+        ImportError: if meshio is not installed
         NotImplementedError: if 3d VTU image is provided.
 
-
     """
+    try:
+        import meshio
+    except ImportError:
+        raise ImportError("meshio not available on this system")
+
     # VTU data comes in 3d. The user-input voxel_size implicitly informs on the
     # true ambient dimension.
     dim = len(shape)

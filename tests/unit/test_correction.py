@@ -3,6 +3,7 @@ import os
 
 import cv2
 import numpy as np
+import pytest
 
 import darsia
 
@@ -29,6 +30,7 @@ def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
     return array, info
 
 
+@pytest.mark.skip(reason="Requires files which are only locally available.")
 def test_color_correction():
     """Test color correction, effectively converting from BGR to RGB."""
 
@@ -66,6 +68,7 @@ def test_color_correction():
     assert np.all(np.isclose(reference_image, image.img))
 
 
+@pytest.mark.skip(reason="Requires files which are only locally available.")
 def test_curvature_correction():
     """Test of curvature correction applied to a numpy array. The correction
     routine contains all relevant operations, incl. bulging, stretching, and

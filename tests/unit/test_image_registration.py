@@ -7,6 +7,7 @@ import os
 
 import cv2
 import numpy as np
+import pytest
 
 import darsia
 
@@ -33,6 +34,7 @@ def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
     return array, info
 
 
+@pytest.mark.skip(reason="Requires files which are only locally available.")
 def test_image_registration():
     """Test the local patchwise affine correction."""
 

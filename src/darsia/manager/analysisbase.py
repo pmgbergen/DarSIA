@@ -86,43 +86,24 @@ class AnalysisBase:
 
         self.drift_correction = None
         """Drift correction wrt. baseline image."""
+        self.deformation_correction = None
+        """Local deformation correction wrt. baseline image."""
         self.color_correction = None
         """Color correction based on reference colors."""
         self.translation_correction = None
         """Translation correction based on fixed absolute translation."""
         self.curvature_correction = None
         """Curvature correction."""
-        self.deformation_correction = None
-        """Local deformation correction wrt. baseline image."""
 
-        # ! ---- Define uncorrected baseline image.
-
-        self.uncorrected_base = self._read(reference_base)
-        """Baseline image stored as physical image but without corrections."""
-
-        # ! ---- Define absolute correction objects
-
-        if "translation" in self.config:
-            self.translation_correction = darsia.TranslationCorrection(
-                translation=self.config["translation"]
-            )
-
-        if "color" in self.config:
-            if "baseline" not in self.config["color"]:
-                self.config["color"]["baseline"] = reference_base
-            self.color_correction = darsia.ColorCorrection(config=self.config["color"])
-
-        if "curvature" in self.config:
-            self.curvature_correction = darsia.CurvatureCorrection(
-                config=self.config["curvature"]
-            )
-
-        # ! ---- Relative correction objects
+        # ! ---- Define correction objects
 
         # NOTE: The order of application of the transformations decides over which
         # reference baseline image shall be chosen. Here, both corrections are applied
         # before applying any curvature correction. Thus, the uncorrected baseline
         # image is chosen as reference.
+
+        self.uncorrected_base = self._read(reference_base)
+        """Baseline image stored as physical image but without corrections."""
 
         if "drift" in self.config:
             self.drift_correction = darsia.DriftCorrection(
@@ -130,10 +111,28 @@ class AnalysisBase:
                 config=self.config["drift"],
             )
 
+        self.drift_corrected_base = self._read(reference_base)
+        """Baseline image corrected for drift only."""
+
         if "deformation" in self.config:
             self.deformation_correction = darsia.DeformationCorrection(
-                base=self.uncorrected_base,
+                base=self.drift_corrected_base,
                 config=self.config["deformation"],
+            )
+
+        if "color" in self.config:
+            if "baseline" not in self.config["color"]:
+                self.config["color"]["baseline"] = reference_base
+            self.color_correction = darsia.ColorCorrection(config=self.config["color"])
+
+        if "translation" in self.config:
+            self.translation_correction = darsia.TranslationCorrection(
+                translation=self.config["translation"]
+            )
+
+        if "curvature" in self.config:
+            self.curvature_correction = darsia.CurvatureCorrection(
+                config=self.config["curvature"]
             )
 
         # ! ---- Corrected baseline
@@ -159,10 +158,10 @@ class AnalysisBase:
             path,
             transformations=[
                 self.drift_correction,
+                self.deformation_correction,
                 self.color_correction,
                 self.translation_correction,
                 self.curvature_correction,
-                self.deformation_correction,
             ],
             width=self.width,
             height=self.height,
