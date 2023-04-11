@@ -33,4 +33,4 @@ porosity_1d = 1.0
 vtu_image = darsia.superpose(
     [darsia.weight(vtu_image_2d, porosity_2d), darsia.weight(vtu_image_1d, porosity_1d)]
 )
-vtu_image.show("equi-dimensionsional reconstruction")
+vtu_image.show("equi-dimensionsional reconstruction", 5)
