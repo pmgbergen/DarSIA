@@ -18,7 +18,7 @@ def test_imread_from_numpy():
     np_image = darsia.imread(path, dim=2, width=2, height=1)
 
     # Compare arrays.
-    assert np.all(np.isclose(np_image.img, array))
+    assert np.allclose(np_image.img, array)
 
     # Clean up
     path.unlink()
