@@ -204,7 +204,7 @@ class Image:
         self.opposite_corner = self.coordinatesystem.coordinate(
             self.shape[: self.space_dim]
         )
-        """Cartesian coordinate of the corner opposite to orgin."""
+        """Cartesian coordinate of the corner opposite to origin."""
 
         # ! ---- Safety check on dimensionality and resolution of image.
         assert len(self.shape) == self.space_dim + self.time_dim + self.range_dim
