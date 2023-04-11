@@ -9,6 +9,7 @@ from darsia.image.indexing import *
 from darsia.image.patches import *
 from darsia.image.subregions import *
 from darsia.image.imread import *
+from darsia.image.arithmetics import *
 from darsia.mathematics.derivatives import *
 from darsia.mathematics.stoppingcriterion import *
 from darsia.mathematics.solvers import *
