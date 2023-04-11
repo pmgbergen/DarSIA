@@ -71,7 +71,7 @@ def test_color_correction():
     reference_image = np.load(reference_path, allow_pickle=True)
 
     # Make a direct comparison
-    assert np.all(np.isclose(reference_image, image.img))
+    assert np.allclose(reference_image, image.img)
 
 
 def test_curvature_correction():
@@ -107,7 +107,7 @@ def test_curvature_correction():
     reference_image = np.load(reference_path, allow_pickle=True)
 
     # Make a direct comparison
-    assert np.all(np.isclose(reference_image, image.img))
+    assert np.allclose(reference_image, image.img)
 
 
 def test_drift_correction():
@@ -135,10 +135,8 @@ def test_drift_correction():
     )
 
     # ! ---- Compare original and corrected image, but remove the boundary.
-    assert np.all(
-        np.isclose(
-            original_image.img[10:-10, 10:-10], corrected_image.img[10:-10, 10:-10]
-        )
+    assert np.allclose(
+        original_image.img[10:-10, 10:-10], corrected_image.img[10:-10, 10:-10]
     )
 
 
@@ -174,4 +172,4 @@ def test_rotation():
         ]
     )
 
-    assert np.all(np.isclose(image.img, image_ref))
+    assert np.allclose(image.img, image_ref)

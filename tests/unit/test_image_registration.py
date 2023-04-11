@@ -119,7 +119,7 @@ def test_image_registration():
 
     # ! --- Compare reference
     ref_img = np.load("../reference/image_registration.npy", allow_pickle=True)
-    assert np.all(np.isclose(ref_img, da_new_image.img))
+    assert np.allclose(ref_img, da_new_image.img)
 
     # ! ---- Evaluate deformation in patches
 
@@ -155,4 +155,4 @@ def test_image_registration():
             ],
         ]
     )
-    assert np.all(np.isclose(reference_deformation, deformation_patch_centers))
+    assert np.allclose(reference_deformation, deformation_patch_centers)
