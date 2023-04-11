@@ -499,10 +499,11 @@ def imread_from_vtu(
             data = _resample_data(data, points, cells, shape, meta)
         elif vtu_dim < dim:
             width = kwargs.get("width")  # effective width of lower-dimension object
-            data, updated_dimensions = _embed_data(
+            data, updated_dimensions, updated_origin = _embed_data(
                 data, points, cells, shape, meta, width
             )
             meta["dimensions"] = updated_dimensions
+            meta["origin"] = updated_origin
 
         # Read time
         time = kwargs.get("time", None)
@@ -596,7 +597,7 @@ def _embed_data(
     tol: float = None,
     #    dimensions,
     #    roi=None,
-) -> np.ndarray:
+) -> tuple[np.ndarray, list[float], list[float]]:
     """
     Auxiliary routine to embed lower dimensional data into ambient
     dimension. Use sampling in normal direction.
@@ -615,6 +616,11 @@ def _embed_data(
         shape (tuple of int): size of the target quad mesh in matrix indexing.
         meta (dict): meta data dictionary associated to image.
         width (float): width of the lower dimensional object.
+
+    Returns:
+        np.ndarray: embedded data array complying with embedded space.
+        list of float: dimenions of embedded data (Cartesian indexing)
+        list of float: Cartesian coordinates of the voxel origin of the embedded data.
 
     Raises:
         NotImplementedError: if ambient dimension is not 2d.
@@ -659,7 +665,7 @@ def _embed_data(
     )
     extruded_points = np.vstack((points, points_lower, points_upper))
 
-    # Determine origin and dimensions of the point cloud.
+    # Determine origin and dimensions of the point cloud - all in Cartesian indexing.
     cartesian_origin = np.min(extruded_points, axis=0)
     cartesian_dimensions = np.array(
         [
@@ -671,6 +677,7 @@ def _embed_data(
         [darsia.interpret_indexing(axis, indexing)[0] for axis in "xyz"[:dim]]
     )
     cartesian_shape = np.array(shape)[cart_ind]
+    voxel_origin = [np.min(extruded_points[:, 0]), np.max(extruded_points[:, 1])]
 
     # Sample the centroids in normal and tangential direction,
     # according to the effective width, size and correpsonding
@@ -772,4 +779,4 @@ def _embed_data(
     ]
     dimensions = [cartesian_dimensions[i] for i in to_matrix_indexing]
 
-    return embedded_data, dimensions
+    return embedded_data, dimensions, voxel_origin
