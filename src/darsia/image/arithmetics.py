@@ -122,7 +122,7 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
         "dimensions": dimensions,
         "origin": origin,
         "series": series,
-        # "date": date,
+        "date": date,
         "time": time,
     }
 
