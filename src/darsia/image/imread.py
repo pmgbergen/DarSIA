@@ -652,13 +652,13 @@ def _embed_data(
     # Provide a point cloud effectively lying on the higher-dimensional
     # representation of the lower-dimensional object.
     points_lower = np.vstack(
-        (
+        tuple(
             points[cells[:, i]] - 0.5 * width * unit_normals
             for i in range(num_points_per_cell)
         )
     )
     points_upper = np.vstack(
-        (
+        tuple(
             points[cells[:, i]] + 0.5 * width * unit_normals
             for i in range(num_points_per_cell)
         )
