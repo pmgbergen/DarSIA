@@ -32,10 +32,9 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
         weighted_img.img *= weight
 
     elif isinstance(weight, darsia.Image):
-        # TODO add safety check whether the coordinate systems are the same
+        assert np.allclose(img.origin, weight.origin)
+        assert np.allclose(img.dimensions, weight.dimensions)
         space_dim = img.space_dim
-        assert np.isclose(img.origin, weight.origin)
-        assert np.isclose(img.dimensions, weight.dimensions)
         assert len(weight.img.shape) == space_dim
 
         # Reshape if needed.
@@ -50,7 +49,10 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
                 raise NotImplementedError
 
         # Rescale
-        weighted_img.img = np.mulitply(weighted_img.img, weight.img)
+        weighted_img.img = np.multiply(weighted_img.img, weight.img)
+
+    else:
+        raise ValueError
 
     return weighted_img
 
