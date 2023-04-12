@@ -277,13 +277,13 @@ class Image:
 
         assert self.space_dim == image.space_dim
         assert self.scalar == image.scalar
-        assert np.all(np.isclose(np.array(self.num_voxels), np.array(image.num_voxels)))
+        assert np.allclose(np.array(self.num_voxels), np.array(image.num_voxels))
         if not self._is_none(self.date) and not self._is_none(image.date):
             self_last_date = self.date[-1] if self.series else self.date
             image_first_date = image.date[0] if image.series else image.date
             assert self_last_date < image_first_date
-        assert np.all(np.isclose(np.array(self.dimensions), np.array(image.dimensions)))
-        assert np.all(np.isclose(np.array(self.origin), np.array(image.origin)))
+        assert np.allclose(np.array(self.dimensions), np.array(image.dimensions))
+        assert np.allclose(self.origin, image.origin)
 
         # ! ---- Update data
 
