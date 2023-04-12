@@ -710,13 +710,13 @@ class ScalarImage(Image):
         }
         kwargs.pop("scalar", None)
 
+        self.name = kwargs.get("name", None)
+        """Name of image, e.g., used to describe the origin."""
+
         # Construct a general image with the specs of an optical image
         super().__init__(img, transformations, **scalar_metadata, **kwargs)
 
         assert self.range_dim == 0
-
-        self.name = kwargs.get("name", None)
-        """Name of image, e.g., used to describe the origin."""
 
     def copy(self) -> ScalarImage:
         """Copy constructor.
