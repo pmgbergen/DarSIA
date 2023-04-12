@@ -22,10 +22,15 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
     Returns:
         Image: weighted image.
 
+    Raises:
+        NotImplementedError: if the weight has incompatible size and the images are 3d.
+        ValueError: if the weight is of unsopported type
+
     """
     weighted_img = img.copy()
     if isinstance(weight, float) or isinstance(weight, int):
         weighted_img.img *= weight
+
     elif isinstance(weight, darsia.Image):
         # TODO add safety check whether the coordinate systems are the same
         space_dim = img.space_dim
@@ -59,6 +64,9 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
     Returns:
         Image: superposed image.
 
+    Raises:
+        NotImplementedError: If dimension of images is not 2.
+
     """
     # ! ---- Commonalities.
 
@@ -81,6 +89,9 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
     indexing = images[0].indexing
     series = images[0].series
     scalar = images[0].scalar
+
+    if not space_dim == 2:
+        raise NotImplementedError
 
     # TODO double check
     date = images[0].date
