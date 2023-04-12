@@ -423,7 +423,7 @@ def imread_from_vtu(
     key: str,
     shape: tuple[int],
     **kwargs,
-) -> Union[darsia.Image, list[darsia.Image]]:
+) -> darsia.Image:
     """Reading routine for vtu input.
 
     NOTE: Only for 1d and 2d vtu images.
@@ -438,6 +438,52 @@ def imread_from_vtu(
                 is created.
 
     Returns:
+        darsia.Image: scalar image (space-time if list provided)
+
+    """
+    if isinstance(path, Path):
+
+        # Read from file
+        data, meta = _read_single_vtu_image(path, key, shape, **kwargs)
+
+        # Update metadata
+        meta["series"] = False
+
+    elif isinstance(path, list):
+        # Read from file
+        data_collection = [
+            _read_single_vtu_image(p, key, shape, **kwargs) for p in path
+        ]
+
+        # Create a space-time optical image through stacking along the time axis
+        meta = data_collection[0][1]  # NOTE: No safety check
+        dim = meta["dim"]
+        data = np.stack([d[0] for d in data_collection], axis=dim)
+
+        # Fix metadata
+        meta["series"] = True
+
+    meta["time"] = kwargs.get("time", None)  # TODO from pvd file
+
+    # Define image
+    return darsia.ScalarImage(data, **meta)
+
+
+def _read_single_vtu_image(
+    path: Path, key: str, shape: tuple[int], **kwargs
+) -> tuple[np.ndarray, dict]:
+    """Utility function for setting up a single vtu image.
+
+    Args:
+        path (Path): path to single vtu file.
+        key (str): key to address data.
+        shape (tuple of int): shape of target 2d pixelated array, in matrix indexing.
+            series (bool): flag controlling whether a time series of images
+                is created.
+
+    Returns:
+        np.ndarray: data array
+        dict: meta
 
     Raises:
         ImportError: if meshio is not installed
@@ -462,63 +508,51 @@ def imread_from_vtu(
     # in ambient dimensional space (of dimension dim).
     vtu_dim = kwargs.get("vtu_dim", dim)
 
-    # Fetch origin
+    # Fetch vtu data
+    vtu_data = meshio.read(path)
 
-    if isinstance(path, Path):
+    # Fetch grid information and data as array
+    points = vtu_data.points[:, :dim]
+    cells = vtu_data.cells[0].data
+    data = vtu_data.cell_data[key][0]
 
-        # Fetch vtu data
-        vtu_data = meshio.read(path)
+    # Fetch origin from points - take into account orientation of axes
+    cartesian_origin = np.array([np.min(points[:, i]) for i in range(dim)])
+    cartesian_opposite = np.array([np.max(points[:, i]) for i in range(dim)])
+    origin = []
+    for i, axis in enumerate("xyz"[:dim]):
+        _, revert = darsia.interpret_indexing(axis, indexing)
+        origin.append(cartesian_opposite[i] if revert else cartesian_origin[i])
 
-        # Fetch grid information and data as array
-        points = vtu_data.points[:, :dim]
-        cells = vtu_data.cells[0].data
-        data = vtu_data.cell_data[key][0]
+    # Fetch dimensions from points - need to reshuffle to matrix indexing
+    cartesian_dimensions = [
+        np.max(points[:, i]) - np.min(points[:, i]) for i in range(dim)
+    ]
+    dimensions = [
+        cartesian_dimensions[darsia.interpret_indexing(axis, indexing)[0]]
+        for axis in "xyz"[:dim]
+    ]
 
-        # Fetch origin from points - take into account orientation of axes
-        cartesian_origin = np.array([np.min(points[:, i]) for i in range(dim)])
-        cartesian_opposite = np.array([np.max(points[:, i]) for i in range(dim)])
-        origin = []
-        for i, axis in enumerate("xyz"[:dim]):
-            _, revert = darsia.interpret_indexing(axis, indexing)
-            origin.append(cartesian_opposite[i] if revert else cartesian_origin[i])
+    # Collect all metadata
+    meta = {
+        "dim": dim,
+        "indexing": indexing,
+        "dimensions": dimensions,
+        "origin": origin,
+    }
 
-        # Fetch dimensions from points - need to reshuffle to matrix indexing
-        cartesian_dimensions = [
-            np.max(points[:, i]) - np.min(points[:, i]) for i in range(dim)
-        ]
-        dimensions = [
-            cartesian_dimensions[darsia.interpret_indexing(axis, indexing)[0]]
-            for axis in "xyz"[:dim]
-        ]
+    # Create actual pixelated data
+    if dim == vtu_dim:
+        data = _resample_data(data, points, cells, shape, meta)
+    elif vtu_dim < dim:
+        width = kwargs.get("width")  # effective width of lower-dimension object
+        data, updated_dimensions, updated_origin = _embed_data(
+            data, points, cells, shape, meta, width
+        )
+        meta["dimensions"] = updated_dimensions
+        meta["origin"] = updated_origin
 
-        # Collect all metadata
-        meta = {
-            "dim": dim,
-            "indexing": indexing,
-            "dimensions": dimensions,
-            "origin": origin,
-            "series": False,
-        }
-
-        # Create actual pixelated data
-        if dim == vtu_dim:
-            data = _resample_data(data, points, cells, shape, meta)
-        elif vtu_dim < dim:
-            width = kwargs.get("width")  # effective width of lower-dimension object
-            data, updated_dimensions, updated_origin = _embed_data(
-                data, points, cells, shape, meta, width
-            )
-            meta["dimensions"] = updated_dimensions
-            meta["origin"] = updated_origin
-
-        # Read time
-        time = kwargs.get("time", None)
-        # TODO from pvd file
-
-        return darsia.ScalarImage(data, time=time, **meta)
-
-    elif isinstance(path, list):
-        raise NotImplementedError
+    return data, meta
 
 
 def _resample_data(
