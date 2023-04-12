@@ -158,6 +158,7 @@ def imread_from_optical(
 
         # Fix metadata
         kwargs["series"] = True
+        kwargs["color_space"] = "RGB"
 
         # Define image
         image = darsia.OpticalImage(
