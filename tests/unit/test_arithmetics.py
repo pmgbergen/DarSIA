@@ -9,8 +9,7 @@ import darsia
 
 def test_scalar_weight_3d():
 
-    array = np.ones((3, 4, 5), dtype=float)
-    image = darsia.Image(array, dim=3)
+    image = darsia.Image(np.ones((3, 4, 5), dtype=float), dim=3)
     weight = 2.0
     weighted_image = darsia.weight(image, weight)
     assert np.allclose(weighted_image.img, 2 * np.ones((3, 4, 5)))
@@ -39,3 +38,12 @@ def test_array_weight_3d():
     weight = darsia.Image(np.random.rand(3, 4, 5), dim=3)
     weighted_image = darsia.weight(image, weight)
     assert np.allclose(weighted_image.img, weight.img)
+
+
+def test_superposition_2d():
+
+    image1 = darsia.ScalarImage(np.ones((3, 4), dtype=float), dim=2)
+    image2 = darsia.ScalarImage(2 * np.ones((3, 4), dtype=float), dim=2)
+    image3 = darsia.ScalarImage(3 * np.ones((3, 4), dtype=float), dim=2)
+    superposed_image = darsia.superpose([image1, image2, image3])
+    assert np.allclose(superposed_image.img, 6 * np.ones((3, 4)))
