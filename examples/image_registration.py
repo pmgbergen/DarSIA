@@ -54,7 +54,6 @@ img_src = darsia.Image(
     ],
     width=2.8,
     height=1.5,
-    origin=[0.0, 1.5],
 )
 
 img_dst = darsia.Image(
@@ -65,7 +64,6 @@ img_dst = darsia.Image(
     ],
     width=2.8,
     height=1.5,
-    origin=[0.0, 1.5],
 )
 
 plt.figure("src")

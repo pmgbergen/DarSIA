@@ -41,16 +41,14 @@ co2_array = cv2.cvtColor(cv2.imread(image_folder + "co2_2.jpg"), cv2.COLOR_BGR2R
 baseline_co2 = darsia.Image(
     base_array,
     transformations=[color_correction, curvature_correction],
-    width = 2.8,
-    height = 1.5,
-    origin=[0.0, 1.5],
+    width=2.8,
+    height=1.5,
 )
 co2_image = darsia.Image(
     co2_array,
     transformations=[color_correction, curvature_correction],
-    width = 2.8,
-    height = 1.5,
-    origin=[0.0, 1.5],
+    width=2.8,
+    height=1.5,
 )
 
 # Construct concentration analysis for detecting the co2 concentration
@@ -105,16 +103,14 @@ tracer_array = cv2.cvtColor(
 baseline_tracer = darsia.Image(
     base_tracer_array,
     transformations=[color_correction, curvature_correction],
-    width = 2.8,
-    height = 1.5,
-    origin=[0.0, 1.5],
+    width=2.8,
+    height=1.5,
 )
 tracer_image = darsia.Image(
     tracer_array,
     transformations=[color_correction, curvature_correction],
-    width = 2.8,
-    height = 1.5,
-    origin=[0.0, 1.5],
+    width=2.8,
+    height=1.5,
 )
 
 # Define restoration routine
