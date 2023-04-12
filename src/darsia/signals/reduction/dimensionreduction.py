@@ -46,7 +46,8 @@ class AxisAveraging:
         elif index is not None:
 
             index_alpha = "ijk"[index]
-            axis, _ = darsia.interpret_indexing(index_alpha, "xyz"[:dim])
+            cartesian_index, _ = darsia.interpret_indexing(index_alpha, "xyz"[:dim])
+            axis = "xyz"[cartesian_index]
 
         self.index: int = index
         """Matrix index along which averaging is performed."""
