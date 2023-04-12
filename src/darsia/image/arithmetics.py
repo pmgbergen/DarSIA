@@ -22,15 +22,19 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
     Returns:
         Image: weighted image.
 
+    Raises:
+        NotImplementedError: if the weight has incompatible size and the images are 3d.
+        ValueError: if the weight is of unsopported type
+
     """
     weighted_img = img.copy()
     if isinstance(weight, float) or isinstance(weight, int):
         weighted_img.img *= weight
+
     elif isinstance(weight, darsia.Image):
-        # TODO add safety check whether the coordinate systems are the same
+        assert np.allclose(img.origin, weight.origin)
+        assert np.allclose(img.dimensions, weight.dimensions)
         space_dim = img.space_dim
-        assert np.isclose(img.origin, weight.origin)
-        assert np.isclose(img.dimensions, weight.dimensions)
         assert len(weight.img.shape) == space_dim
 
         # Reshape if needed.
@@ -45,7 +49,10 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
                 raise NotImplementedError
 
         # Rescale
-        weighted_img.img = np.mulitply(weighted_img.img, weight.img)
+        weighted_img.img = np.multiply(weighted_img.img, weight.img)
+
+    else:
+        raise ValueError
 
     return weighted_img
 
@@ -59,6 +66,9 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
     Returns:
         Image: superposed image.
 
+    Raises:
+        NotImplementedError: If dimension of images is not 2.
+
     """
     # ! ---- Commonalities.
 
@@ -66,6 +76,8 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
     assert all([img.space_dim == images[0].space_dim for img in images])
     assert all([img.indexing == images[0].indexing for img in images])
     assert all([img.series == images[0].series for img in images])
+    assert all([img.scalar == images[0].scalar for img in images])
+    assert all([img.time_num == images[0].time_num for img in images])
     assert all([isinstance(img, type(images[0])) for img in images])
     assert all([img.original_dtype == images[0].original_dtype for img in images])
 
@@ -74,13 +86,19 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
 
     # Fetch common specs
     # TODO use meta and update? fetch from images[0]
+    # meta = images[0].metadata()
     space_dim = images[0].space_dim
     indexing = images[0].indexing
     series = images[0].series
+    scalar = images[0].scalar
+
+    if not space_dim == 2:
+        raise NotImplementedError
 
     # TODO double check
     date = images[0].date
     time = images[0].time
+    time_num = images[0].time_num
 
     # TODO make the following two part of metadata? better not...
     # they are directly encoded in Image and array...
@@ -131,28 +149,21 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
     # Find the correct shape and initialize image, and coordinatesystem
     collection_voxel_size = np.vstack(tuple(img.voxel_size for img in images))
     voxel_size = np.min(collection_voxel_size, axis=0)
-    shape = tuple(
+    space_shape = tuple(
         np.ceil(dimensions[i] / voxel_size[i]).astype(int) for i in range(space_dim)
     )
+    if series:
+        shape = *space_shape, time_num
+    else:
+        shape = space_shape
+    if not scalar:
+        raise NotImplementedError("Need to extend shape")
     img_arr = np.zeros(shape, dtype=dtype)
     image = ImageType(img=img_arr, **meta)
 
     # Successively add images to the right voxels - essentially use resample
     # Approach from imread_from_vtu, but now voxel grids are provided.
     for img in images:
-        # Get array and shape
-        array = img.img
-        rows, cols = array.shape
-
-        # Use corners as pts_src
-        pts_src = np.array(
-            [
-                [0, 0],
-                [rows, 0],
-                [rows, cols],
-                [0, cols],
-            ]
-        )
 
         # Get origin and opposite corner for img
         origin = img.origin
@@ -171,17 +182,37 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
             ]
         )
 
-        # Warp array
-        warped_array = darsia.extract_quadrilateral_ROI(
-            img_src=array,
-            pts_src=pts_src,
-            pts_dst=pts_dst,
-            indexing="matrix",
-            interpolation="inter_area",
-            shape=shape,
-        )
+        # Visit each time slab separately
+        for time_counter in range(time_num):
 
-        # Add warped_array to image.img
-        image.img += warped_array
+            # Get array and shape (for
+            array = img.img[..., time_counter] if series else img.img
+            rows, cols = array.shape
+
+            # Use corners as pts_src
+            pts_src = np.array(
+                [
+                    [0, 0],
+                    [rows, 0],
+                    [rows, cols],
+                    [0, cols],
+                ]
+            )
+
+            # Warp array
+            warped_array = darsia.extract_quadrilateral_ROI(
+                img_src=array,
+                pts_src=pts_src,
+                pts_dst=pts_dst,
+                indexing="matrix",
+                interpolation="inter_area",
+                shape=space_shape,
+            )
+
+            # Add warped_array to image.img
+            if series:
+                image.img[..., time_counter] += warped_array
+            else:
+                image.img += warped_array
 
     return image

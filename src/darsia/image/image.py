@@ -75,8 +75,13 @@ class Image:
 
         # ! ---- Cache data
         self.img = img
-        self.shape = img.shape
+        """Data array."""
+
+        self.shape = img.shape  # TODO - not attribute of self.
+        """Shape of the image."""
+
         self.original_dtype = img.dtype
+        """Original dtype at construction of the object."""
 
         # ! ---- Spatial meta information
         self.space_dim: int = kwargs.get("dim", 2)
@@ -85,7 +90,7 @@ class Image:
         self.space_num: int = np.prod(self.shape[: self.space_dim])
         """Spatial resolution, i.e., number of voxels."""
 
-        self.indexing = kwargs.get("indexing", "ij")
+        self.indexing = kwargs.get("indexing", "ijk"[: self.space_dim])
         """Indexing of each axis in context of matrix indexing (ijk)
         or Cartesian coordinates (xyz)."""
 
@@ -103,7 +108,7 @@ class Image:
         if "width" in kwargs:
             self.dimensions[1] = kwargs.get("width")
         if "depth" in kwargs:
-            self.dimenions[2] = kwargs.get("depth")
+            self.dimensions[2] = kwargs.get("depth")
 
         self.num_voxels: int = self.img.shape[: self.space_dim]
         """Number of voxels in each dimension."""
@@ -113,7 +118,13 @@ class Image:
         ]
         """Size of each voxel in each direction, ordered as indexing."""
 
-        default_origin = [0, self.dimensions[0]]
+        default_origin = self.space_dim * [0]
+        for index_counter, index in enumerate(self.indexing):
+            axis, reverse_axis = darsia.interpret_indexing(
+                index, "xyz"[: self.space_dim]
+            )
+            if reverse_axis:
+                default_origin[axis] = self.dimensions[index_counter]
         self.origin = np.array(kwargs.pop("origin", default_origin))
         """Cartesian coordinates associated to the [0,0,0] voxel (after
         applying transformations), using Cartesian indexing."""
@@ -266,13 +277,13 @@ class Image:
 
         assert self.space_dim == image.space_dim
         assert self.scalar == image.scalar
-        assert np.all(np.isclose(np.array(self.num_voxels), np.array(image.num_voxels)))
+        assert np.allclose(np.array(self.num_voxels), np.array(image.num_voxels))
         if not self._is_none(self.date) and not self._is_none(image.date):
             self_last_date = self.date[-1] if self.series else self.date
             image_first_date = image.date[0] if image.series else image.date
             assert self_last_date < image_first_date
-        assert np.all(np.isclose(np.array(self.dimensions), np.array(image.dimensions)))
-        assert np.all(np.isclose(np.array(self.origin), np.array(image.origin)))
+        assert np.allclose(np.array(self.dimensions), np.array(image.dimensions))
+        assert np.allclose(self.origin, image.origin)
 
         # ! ---- Update data
 
@@ -699,13 +710,13 @@ class ScalarImage(Image):
         }
         kwargs.pop("scalar", None)
 
+        self.name = kwargs.get("name", None)
+        """Name of image, e.g., used to describe the origin."""
+
         # Construct a general image with the specs of an optical image
         super().__init__(img, transformations, **scalar_metadata, **kwargs)
 
         assert self.range_dim == 0
-
-        self.name = kwargs.get("name", None)
-        """Name of image, e.g., used to describe the origin."""
 
     def copy(self) -> ScalarImage:
         """Copy constructor.

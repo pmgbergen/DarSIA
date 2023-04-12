@@ -43,7 +43,6 @@ def test_initialize_general_image():
         "dim": 2,
         "indexing": "ij",
         "dimensions": [1.5, 2.8],
-        "origin": [0.0, 1.5],
     }
 
     # ! ---- Initialize darsia image
@@ -76,13 +75,11 @@ def test_initialize_optical_image():
         "dim": 2,
         "indexing": "ij",
         "dimensions": [1.5, 2.8],
-        "origin": [0.0, 1.5],
     }
 
     optical_info = {
         "series": False,
         "dimensions": [1.5, 2.8],
-        "origin": [0.0, 1.5],
     }
 
     # ! ---- Initialize darsia image
@@ -114,7 +111,6 @@ def test_monochromatic_optical_images():
     optical_info = {
         "series": False,
         "dimensions": [1.5, 2.8],
-        "origin": [0.0, 1.5],
     }
 
     # ! ---- Initialize darsia image
