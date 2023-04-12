@@ -14,7 +14,9 @@ image = f"{os.path.dirname(__file__)}/images/baseline.jpg"
 # Create an uncorrected image for comparison
 image_array = cv2.cvtColor(cv2.imread(image), cv2.COLOR_BGR2RGB)
 uncorrected_baseline = darsia.Image(
-    image_array, width=2.8, height=1.5, origin=[0, 1.5]
+    image_array,
+    width=2.8,
+    height=1.5,
 )
 
 # ! ---- Setup the machine learning based color correction
@@ -35,7 +37,6 @@ experimental_corrected_baseline = darsia.Image(
     transformations=[experimental_color_correction],
     width=2.8,
     height=1.5,
-    origin=[0.0, 1.5],
 )
 
 # ! ---- Setup the manual color correction
@@ -68,7 +69,6 @@ corrected_baseline = darsia.Image(
     transformations=[color_correction],
     width=2.8,
     height=1.5,
-    origin=[0.0, 1.5],
 )
 
 # -------- Plot corrected and uncorrected images
