@@ -47,3 +47,21 @@ def test_superposition_2d():
     image3 = darsia.ScalarImage(3 * np.ones((3, 4), dtype=float), dim=2)
     superposed_image = darsia.superpose([image1, image2, image3])
     assert np.allclose(superposed_image.img, 6 * np.ones((3, 4)))
+
+
+def test_superposition_2d_spacetime():
+
+    meta = {
+        "dim": 2,
+        "series": True,
+        "time": [0, 1, 2, 3, 4],
+    }
+    image1 = darsia.ScalarImage(np.ones((3, 4, 5), dtype=float), **meta)
+    image2 = darsia.ScalarImage(2 * np.ones((3, 4, 5), dtype=float), **meta)
+    image3 = darsia.ScalarImage(3 * np.ones((3, 4, 5), dtype=float), **meta)
+    superposed_image = darsia.superpose([image1, image2, image3])
+
+    assert np.allclose(superposed_image.img, 6 * np.ones((3, 4, 5)))
+    superposed_meta = superposed_image.metadata()
+    for key, value in meta.items():
+        assert np.allclose(value, superposed_meta[key])
