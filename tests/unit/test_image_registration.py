@@ -79,7 +79,6 @@ def test_image_registration():
             curvature_correction,
         ],
         dimensions=[1.5, 2.8],
-        origin=[0.0, 1.5],
     )
 
     img_dst = darsia.Image(
@@ -89,7 +88,6 @@ def test_image_registration():
             curvature_correction,
         ],
         dimensions=[1.5, 2.8],
-        origin=[0.0, 1.5],
     )
 
     # Extract ROI to cut away the color palette. Use pixel ranges to crop the image.
