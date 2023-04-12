@@ -154,6 +154,8 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
     )
     if series:
         shape = *space_shape, time_num
+    else:
+        shape = space_shape
     if not scalar:
         raise NotImplementedError("Need to extend shape")
     img_arr = np.zeros(shape, dtype=dtype)
