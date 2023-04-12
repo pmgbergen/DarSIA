@@ -108,7 +108,7 @@ class Image:
         if "width" in kwargs:
             self.dimensions[1] = kwargs.get("width")
         if "depth" in kwargs:
-            self.dimenions[2] = kwargs.get("depth")
+            self.dimensions[2] = kwargs.get("depth")
 
         self.num_voxels: int = self.img.shape[: self.space_dim]
         """Number of voxels in each dimension."""
