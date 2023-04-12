@@ -90,7 +90,7 @@ class Image:
         self.space_num: int = np.prod(self.shape[: self.space_dim])
         """Spatial resolution, i.e., number of voxels."""
 
-        self.indexing = kwargs.get("indexing", "ij")
+        self.indexing = kwargs.get("indexing", "ijk"[: self.space_dim])
         """Indexing of each axis in context of matrix indexing (ijk)
         or Cartesian coordinates (xyz)."""
 
