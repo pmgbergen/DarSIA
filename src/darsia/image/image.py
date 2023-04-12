@@ -75,8 +75,13 @@ class Image:
 
         # ! ---- Cache data
         self.img = img
-        self.shape = img.shape
+        """Data array."""
+
+        self.shape = img.shape  # TODO - not attribute of self.
+        """Shape of the image."""
+
         self.original_dtype = img.dtype
+        """Original dtype at construction of the object."""
 
         # ! ---- Spatial meta information
         self.space_dim: int = kwargs.get("dim", 2)
