@@ -220,7 +220,10 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
 
 
 def imread_from_dicom(
-    path: Union[Path, list[Path]], **kwargs
+    path: Union[Path, list[Path]],
+    dim: int = 2,
+    transformations: Optional[list] = None,
+    **kwargs,
 ) -> Union[darsia.ScalarImage, list[darsia.ScalarImage]]:
     """
     Initialization of Image by reading from DICOM format.
@@ -259,7 +262,6 @@ def imread_from_dicom(
         raise ImportError("pydicom not available on this system")
 
     # ! ---- Image type
-    dim = kwargs.get("dim", 2)
 
     # PYDICOM specific tags for addressing dicom data from dicom files
     tag_position = pydicom.tag.BaseTag(0x00200032)
@@ -395,19 +397,22 @@ def imread_from_dicom(
 
     # ! ---- 3. Convert to Image
 
-    origin = kwargs.get("origin", dim * [0])
-
     # Collect all meta information for a space time image
+    dimensions = [voxel_size[i] * shape[i] for i in range(dim)]
     meta = {
         "dim": dim,
         "indexing": "ijk"[:dim],
-        "dimensions": [voxel_size[i] * shape[i] for i in range(dim)],
-        "origin": origin,
+        "dimensions": dimensions,
         "series": series,
+        "date": time,
     }
 
+    # Add metadata which get provided default values if not provided.
+    if "origin" in kwargs:
+        meta["origin"] = kwargs.get("origin")
+
     # Full space time image
-    return darsia.ScalarImage(img=img, date=time, **meta)
+    return darsia.ScalarImage(img=img, transformations=transformations, **meta)
 
 
 # ! ---- VTU images
