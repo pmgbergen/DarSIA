@@ -10,9 +10,7 @@ import darsia
 
 # Read two-dimensional vtu image (standard)
 vtu_2d_path = Path("images/fracture_flow_2.vtu")
-vtu_image_2d = darsia.imread(
-    vtu_2d_path, key="c", shape=(200, 200), origin=[0, 0], vtu_dim=2
-)
+vtu_image_2d = darsia.imread(vtu_2d_path, key="c", shape=(200, 200), vtu_dim=2)
 
 # Read one-dimensional vtu image (two-dimensional reconstruction
 # through conservative embedding)
@@ -22,7 +20,6 @@ vtu_image_1d = darsia.imread(
     vtu_1d_path,
     key="c",
     shape=(1001, 51),
-    origin=[0, 0],
     vtu_dim=1,
     width=fracture_aperture,
 )
