@@ -32,11 +32,13 @@ class CoordinateSystem:
         self.indexing = img.indexing
         """Indexing of the underlying image."""
 
-        dim = img.space_dim
-        self.axes = "xyz"[:dim]
+        self.dim = img.space_dim
+        """Dimension of the underlying space."""
+
+        self.axes = "xyz"[: self.dim]
         """Axes of the underlying space."""
 
-        self.shape = img.img.shape[:dim]
+        self.shape = img.img.shape[: self.dim]
         """Dimensions of the underlying images in terms of voxels."""
 
         self.voxel_size = {}
@@ -48,7 +50,7 @@ class CoordinateSystem:
         self._coordinate_of_origin_voxel: np.ndarray = img.origin
         """Coordinate of origin voxel."""
 
-        opposite_corner_voxel = img.img.shape[:dim]
+        opposite_corner_voxel = img.img.shape[: self.dim]
         self._coordinate_of_opposite_voxel = self.coordinate(opposite_corner_voxel)
         """Coordinate of opposite voxel."""
 
