@@ -21,40 +21,43 @@ class CoordinateSystem:
     """
 
     def __init__(self, img: darsia.Image):
-        """Generate a coordinate system based on the metadata of an existing image."""
+        """Generate a coordinate system based on the metadata of an existing image.
 
-        # Cache indexing.
+        Args:
+            img (darsia.Image): image for which a coordinate system shall be constructed.
+
+        """
+
         assert img.indexing in ["ij", "ijk"]
         self.indexing = img.indexing
+        """Indexing of the underlying image."""
 
-        assert isinstance(img, darsia.Image)
-
-        # Identify relevant Cartesian axes.
         dim = img.space_dim
-        self.axes = ["x", "y"] if dim == 2 else ["x", "y", "z"]
+        self.axes = "xyz"[:dim]
+        """Axes of the underlying space."""
 
-        # Determine voxel size in x, y, z directions
         self.voxel_size = {}
+        """Voxel size in each dimension/axis."""
         for axis in self.axes:
             pos, _ = darsia.interpret_indexing(axis, self.indexing)
             self.voxel_size[axis] = img.voxel_size[pos]
 
-        # Fetch the coordinate, corresponding to the origin voxel,
-        # and at the opposite corner.
         self._coordinate_of_origin_voxel: np.ndarray = img.origin
+        """Coordinate of origin voxel."""
+
         opposite_corner_voxel = img.img.shape[:dim]
         self._coordinate_of_opposite_voxel = self.coordinate(opposite_corner_voxel)
+        """Coordinate of opposite voxel."""
 
-        # Determine the voxel, corresponding to the physical origin.
         origin_coordinate = img.origin
         self._voxel_of_origin_coordinate: np.ndarray = self.voxel(origin_coordinate)
+        """Voxel corresponding to the origin."""
 
-        # Determine the bounding box of the image, in physical dimensions,
-        # also defining the effective boundaries of the coordinate system.
         corners = np.vstack(
             (self._coordinate_of_origin_voxel, self._coordinate_of_opposite_voxel)
         )
         self.domain = {}
+        """Extremal points/bounding box of the active coordinate system / the image."""
         for i, axis in enumerate(self.axes):
             self.domain[axis + "min"] = np.min(corners[:, i])
             self.domain[axis + "max"] = np.max(corners[:, i])
