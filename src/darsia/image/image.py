@@ -315,10 +315,6 @@ class Image:
         else:
             self.date.append(image.date)
 
-        # Specs
-        self.time_dim = 1
-        self.time_num = len(self.time)
-
         # Relative time - combine internal stored times
         if self._is_none(self.time) or self._is_none(image.time) or offset is None:
             time = None
@@ -329,6 +325,10 @@ class Image:
                 time = time + [t + offset for t in image.time]
             else:
                 time.append(image.time + offset)
+
+        # Specs
+        self.time_dim = 1
+        self.time_num = len(time)
 
         # Update relative time
         self.set_time(time)
