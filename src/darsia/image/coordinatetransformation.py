@@ -25,13 +25,13 @@ class AngularConservativeAffineMap:
         pts_src: Optional[list] = None,
         pts_dst: Optional[list] = None,
         shape: Optional[tuple] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Constructor.
 
         Args:
-            pts_src (list): voxel coordinates corresponding to source data
-            pts_dst (list): voxel coordinates corresponding to destination data
+            pts_src (list): coordinates corresponding to source data
+            pts_dst (list): coordinates corresponding to destination data
 
         NOTE: If no input is provided, an identity is constructed.
 
@@ -154,7 +154,7 @@ class AngularConservativeAffineMap:
         assert len(parameters) == self.dim + 1 + rotations_dofs
         translation = parameters[0 : self.dim]
         scaling = parameters[self.dim]
-        rotations = parameters[-rotations_dofs]
+        rotations = parameters[-rotations_dofs:]
 
         self.set_parameters(translation, scaling, rotations)
 
@@ -168,11 +168,14 @@ class AngularConservativeAffineMap:
             np.ndarray: function values of affine map
 
         """
-        dim, num = np.atleast_2d(array).shape
+        num, dim = np.atleast_2d(array).shape
         assert dim == self.dim
-        return np.outer(
-            self.translation, np.ones(num)
-        ) + self.scaling * self.rotation.map(array)
+        return np.transpose(
+            np.outer(self.translation, np.ones(num))
+            + self.scaling * self.rotation.dot(np.transpose(np.atleast_2d(array)))
+        )
+
+        # TODO use same shape for output as for input
 
     def inverse(self, array: np.ndarray) -> np.ndarray:
         """Application of inverse of the map.
@@ -184,12 +187,18 @@ class AngularConservativeAffineMap:
             np.ndarray: function values of affine inverse map
 
         """
-        dim, num = np.atleast_2d(array).shape
+        num, dim = np.atleast_2d(array).shape
         assert dim == self.dim
+        return np.transpose(
+            1.0
+            / self.scaling
+            * self.rotation_inv.dot(
+                np.transpose(np.atleast_2d(array))
+                - np.outer(self.translation, np.ones(num))
+            )
+        )
 
-        return -np.outer(
-            self.translation, np.ones(num)
-        ) + 1.0 / self.scaling * self.rotation_inv.dot(array)
+        # TODO use same shape for output as for input
 
     def fit(self, pts_src: list, pts_dst: list, options: dict = {}) -> bool:
         """Least-squares parameter fit based on source and target coordinates.
@@ -253,13 +262,15 @@ class CoordinateTransformation(darsia.BaseCorrection):
         """Constructor.
 
         Args:
-            pts_src (list): voxel coordinates corresponding to source data
-            pts_dst (list): voxel coordinates corresponding to destination data
+            pts_src (list): voxel coordinates corresponding to source data; in matrix
+                indexing
+            pts_dst (list): voxel coordinates corresponding to destination data; use
+                matrix indexing
 
         """
         # Construct
         self.angular_conservative_map = AngularConservativeAffineMap(
-            pts_src=None, pts_dst=None, dim=2
+            pts_src, pts_dst, dim=2
         )
 
     def correct_array(self, array_src: np.ndarray) -> np.ndarray:
@@ -281,14 +292,14 @@ class CoordinateTransformation(darsia.BaseCorrection):
         shape = array_src.shape  # TODO use shape...
         num_voxels = np.prod(array_src.shape[: self.dim])
 
-        # Collect all voxels in dim x num_voxels format
+        # Collect all voxels in num_voxels x dim format
         if self.dim == 2:
             voxels_dst = list(itertools.product(*[range(shape[0]), range(shape[1])]))
         elif self.dim == 3:
             voxels_dst = list(
                 itertools.product(*[range(shape[0]), range(shape[1]), range(shape[2])])
             )
-        voxels_dst = np.transpose(np.array(voxels_dst))
+        voxels_dst = np.array(voxels_dst)
 
         # Find corresponding voxels in the original image by applying the inverse map
         voxels_src = self.angular_conservative_map.inverse(voxels_dst)
@@ -297,13 +308,13 @@ class CoordinateTransformation(darsia.BaseCorrection):
         voxels_src = np.clip(
             voxels_src.astype(int),
             0,
-            np.outer(np.array(shape) - 1, np.ones(num_voxels)),
+            np.outer(np.ones(num_voxels), np.array(shape) - 1),
         ).astype(int)
 
         # Assign pixel values (no interpolation)
         array_dst = np.zeros(shape)
-        array_dst[tuple(voxels_dst[j] for j in range(self.dim))] = array_src[
-            tuple(voxels_src[j] for j in range(self.dim))
+        array_dst[tuple(voxels_dst[:, j] for j in range(self.dim))] = array_src[
+            tuple(voxels_src[:, j] for j in range(self.dim))
         ]
         return array_dst
 
