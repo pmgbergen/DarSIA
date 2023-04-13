@@ -8,6 +8,7 @@ import itertools
 from typing import Optional, Union
 
 import numpy as np
+import scipy.optimize as optimize
 from scipy.spatial.transform import Rotation
 
 import darsia
@@ -190,15 +191,52 @@ class AngularConservativeAffineMap:
             self.translation, np.ones(num)
         ) + 1.0 / self.scaling * self.rotation_inv.dot(array)
 
-    def fit(self, pts_src, pts_dst) -> None:
+    def fit(self, pts_src: list, pts_dst: list, options: dict = {}) -> bool:
         """Least-squares parameter fit based on source and target coordinates.
 
         Args:
             pts_src (list): coordinates corresponding to source data
             pts_dst (list): coordinates corresponding to destination data
+            options (dict): optimization parameters
+
+        Returns:
+            bool: success of parameter fit
 
         """
-        pass
+        # Define least squares objective function
+        def objective_function(params: np.ndarray):
+            self.set_parameters_as_vector(params)
+            pts_mapped = self.__call__(np.array(pts_src))
+            diff = np.array(pts_dst) - pts_mapped
+            defect = np.sum(diff**2)
+            return defect
+
+        # Fetch calibration options
+        identity_parameters = np.array(
+            [0, 0, 1, 0] if self.dim == 2 else [0, 0, 0, 1, 0, 0, 0]
+        )
+        initial_guess = options.get("initial_guess", identity_parameters)
+        tol = options.get("tol", 0.1)
+        maxiter = options.get("maxiter", 100)
+
+        # Perform optimization step
+        opt_result = optimize.minimize(
+            objective_function,
+            initial_guess,
+            tol=tol,
+            options={"maxiter": maxiter, "disp": True},
+        )
+        if opt_result.success:
+            print(
+                f"Calibration successful with obtained model parameters {opt_result.x}."
+            )
+        else:
+            raise ValueError("Calibration not successful.")
+
+        # Final update of model parameters
+        self.set_parameters_as_vector(opt_result.x)
+
+        return opt_result.success
 
 
 class CoordinateTransformation(darsia.BaseCorrection):
