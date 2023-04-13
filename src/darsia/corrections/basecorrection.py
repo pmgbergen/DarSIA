@@ -9,13 +9,14 @@ import darsia
 
 
 class BaseCorrection(ABC):
+    """Abstract base correction, providing workflow and template for tailored corrections."""
+
     def __call__(
         self,
         image: Union[np.ndarray, darsia.Image],
         return_image: bool = False,
     ) -> Union[np.ndarray, darsia.Image]:
-        """
-        Manager for color correction depending on the input type.
+        """Workflow for any correction routine, applied to any type of images.
 
         Args:
             image (array or Image): image
