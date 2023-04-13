@@ -31,7 +31,7 @@ from darsia.corrections.shape.drift import *
 from darsia.corrections.shape.deformation import *
 from darsia.corrections.color.colorcorrection import *
 from darsia.corrections.color.experimentalcolorcorrection import *
-from darsia.image.coordinatetransformation import * # requires basecorrection
+from darsia.image.coordinatetransformation import *  # requires basecorrection
 from darsia.signals.models.basemodel import *
 from darsia.signals.models.combinedmodel import *
 from darsia.signals.models.linearmodel import *
