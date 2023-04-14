@@ -276,6 +276,7 @@ class CoordinateTransformation(darsia.BaseCorrection):
         coordinatesystem_dst: darsia.CoordinateSystem,
         voxels_src: list,
         voxels_dst: list,
+        use_cartesian: bool = False,
         **kwargs,
     ) -> None:
         """Constructor.
@@ -289,6 +290,8 @@ class CoordinateTransformation(darsia.BaseCorrection):
                 indexing
             voxels_dst (list): voxel coordinates corresponding to destination data; use
                 matrix indexing
+            use_cartesian (bool): Flag controlling whether the coordinate transformation
+                uses Cartesian or  voxel coordinates for the actual map
 
         """
         # Cache coordinate systems
@@ -300,20 +303,26 @@ class CoordinateTransformation(darsia.BaseCorrection):
 
         # Construct optimal coordinate transform in the Cartesian coordinate space.
         # Thus, need to base the construction on the actual relative coordinates.
-        coordinates_src = self.coordinatesystem_src.coordinate(voxels_src)
-        coordinates_dst = self.coordinatesystem_dst.coordinate(voxels_dst)
+        isometry = kwargs.get("isometry", False)
+        self.use_cartesian = use_cartesian or isometry
+        """Flag controlling whether the coordinate transformation uses Cartesian or
+        voxel coordinates for the actual map. Overwritten if isometry is activated."""
+        if self.use_cartesian:
+            pts_src = self.coordinatesystem_src.coordinate(voxels_src)
+            pts_dst = self.coordinatesystem_dst.coordinate(voxels_dst)
+        else:
+            pts_src = voxels_src
+            pts_dst = voxels_dst
 
         # Fetch additional properties
         assert self.coordinatesystem_src.dim == self.coordinatesystem_dst.dim
         self.dim = self.coordinatesystem_src.dim
         """Dimension of the underlying Euclidean spaces."""
 
-        isometry = kwargs.get("isometry", False)
         options = kwargs.get("fit_options", {})
-
         self.angular_conservative_map = AngularConservativeAffineMap(
-            coordinates_src,
-            coordinates_dst,
+            pts_src,
+            pts_dst,
             dim=self.dim,
             isometry=isometry,
             options=options,
@@ -404,11 +413,16 @@ class CoordinateTransformation(darsia.BaseCorrection):
         voxels_dst = np.array(
             list(itertools.product(*[range(shape_dst[i]) for i in range(self.dim)]))
         )
-        coordinates_dst = self.coordinatesystem_dst.coordinate(voxels_dst)
 
         # Find corresponding voxels in the original image by applying the inverse map
-        coordinates_src = self.angular_conservative_map.inverse(coordinates_dst)
-        voxels_src = self.coordinatesystem_src.voxel(coordinates_src)
+        if self.use_cartesian:
+            coordinates_dst = self.coordinatesystem_dst.coordinate(voxels_dst)
+            coordinates_src = self.angular_conservative_map.inverse(coordinates_dst)
+            voxels_src = self.coordinatesystem_src.voxel(coordinates_src)
+        else:
+            voxels_src = np.round(
+                self.angular_conservative_map.inverse(voxels_dst)
+            ).astype(int)
         num_voxels = len(voxels_src)
 
         # Determine active voxels - have to lie within active coordinate system
