@@ -35,11 +35,14 @@ class CoordinateSystem:
         self.dim = img.space_dim
         """Dimension of the underlying space."""
 
-        self.axes = "xyz"[: self.dim]
-        """Axes of the underlying space."""
-
         self.shape = img.img.shape[: self.dim]
         """Dimensions of the underlying images in terms of voxels."""
+
+        self.dimensions = img.dimensions
+        """Physical dimensions in each index direction."""
+
+        self.axes = "xyz"[: self.dim]
+        """Axes of the underlying space."""
 
         self.voxel_size = {}
         """Voxel size in each dimension/axis."""
