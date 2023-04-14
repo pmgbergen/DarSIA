@@ -444,10 +444,10 @@ class CoordinateTransformation(darsia.BaseCorrection):
         meta_dst = copy.copy(meta_src)
 
         # Modify dimensions
-        meta_dst["dimensions"] = meta_src["dimensions"]
+        meta_dst["dimensions"] = self.coordinatesystem_dst.dimensions
 
         # Modify origin
-        meta_dst["origin"] = meta_src["origin"]
+        meta_dst["origin"] = self.coordinatesystem_dst._coordinate_of_origin_voxel
 
         return meta_dst
 
@@ -468,8 +468,8 @@ class CoordinateTransformation(darsia.BaseCorrection):
         )
 
         # Transform the meta
-        meta = image.metadata()
-        transformed_meta = self.correct_metadata(meta)
+        meta_src = image.metadata()
+        transformed_meta = self.correct_metadata(meta_src)
 
         # Define the transformed image with tranformed meta
         return type(image)(transformed_image_with_original_meta.img, **transformed_meta)
