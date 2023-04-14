@@ -182,7 +182,7 @@ class CoordinateSystem:
             )
 
         # Return in same format as the input, and force int dtype.
-        return pixel.reshape(coordinate.shape).astype(int)
+        return np.round(pixel.reshape(coordinate.shape)).astype(int)
 
     def coordinate_vector(self, pixel_vector: np.ndarray) -> np.ndarray:
         """
