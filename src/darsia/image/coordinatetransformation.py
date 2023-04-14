@@ -329,12 +329,6 @@ class CoordinateTransformation(darsia.BaseCorrection):
         )
         """Actual coordinate transformation operating between Cartesian spaces."""
 
-        self.intersection = kwargs.get("intersection", False)
-        """Flag whether the intersection of active canvas is returned."""
-
-        if self.intersection:
-            self.find_intersection()
-
     def find_intersection(self) -> tuple[slice]:
         """Determine the active canvas in coordinatesystem_dst, covered by
         coordinatesystem_src after transformed onto the target canvas.
@@ -470,7 +464,6 @@ class CoordinateTransformation(darsia.BaseCorrection):
 
         Args:
             image (darsia.Image): input image
-            shape (tuple): target shape
 
         Returns:
             darsia.Image: transformed image
