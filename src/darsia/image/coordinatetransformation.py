@@ -309,7 +309,7 @@ class CoordinateTransformation(darsia.BaseCorrection):
         """Dimension of the underlying Euclidean spaces."""
 
         isometry = kwargs.get("isometry", False)
-        options = kwargs.get("options", {})
+        options = kwargs.get("fit_options", {})
 
         self.angular_conservative_map = AngularConservativeAffineMap(
             coordinates_src,
@@ -397,13 +397,14 @@ class CoordinateTransformation(darsia.BaseCorrection):
             darsia.Image: transformed image
 
         """
-        # Transform the image data
-        self.dim = image.space_dim
-
-        transformed_image = super().__call__(image, return_image=True)
+        # Transform the image data (without touching the meta)
+        transformed_image_with_original_meta = super().__call__(
+            image, return_image=True
+        )
 
         # Transform the meta
         meta = image.metadata()
         transformed_meta = self.correct_metadata(meta)
 
-        return type(image)(transformed_image.img, **transformed_meta)
+        # Define the transformed image with tranformed meta
+        return type(image)(transformed_image_with_original_meta.img, **transformed_meta)
