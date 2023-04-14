@@ -320,6 +320,71 @@ class CoordinateTransformation(darsia.BaseCorrection):
         )
         """Actual coordinate transformation operating between Cartesian spaces."""
 
+        self.intersection = kwargs.get("intersection", False)
+        """Flag whether the intersection of active canvas is returned."""
+
+        if self.intersection:
+            self.find_intersection()
+
+    def find_intersection(self) -> tuple[slice]:
+        """Determine the active canvas in coordinatesystem_dst, covered by
+        coordinatesystem_src after transformed onto the target canvas.
+
+        NOTE: Only supported for 2d.
+        NOTE: Requires extra dependency.
+
+        Returns:
+            tuple of slices: voxel intervals ready to be used to extract subregions.
+
+        Raises:
+            NotImplementedError: if dimension not 2
+            ImportError: if Python package largestinteriorrectangle not installed.
+
+        """
+
+        if not self.dim == 2:
+            raise NotImplementedError("Intersection option only supported in 2d.")
+
+        try:
+            import largestinteriorrectangle as lir
+        except ImportError:
+            raise ImportError("largestinteriorrectangle not available")
+
+        # Find the voxel locations of the corners in the source array - need them sorted.
+        shape_src = self.coordinatesystem_src.shape
+        corner_voxels_src = np.array(
+            [
+                [0, 0],
+                [shape_src[0], 0],
+                [shape_src[0], shape_src[1]],
+                [0, shape_src[1]],
+            ]
+        )
+
+        # Map these to the target canvas
+        corner_coordinates_src = self.coordinatesystem_src.coordinate(corner_voxels_src)
+        corner_coordinates_dst = self.angular_conservative_map(corner_coordinates_src)
+        corner_voxels_dst = self.coordinatesystem_dst.voxel(corner_coordinates_dst)
+
+        # Clip to active canvas
+        num_corners = len(corner_voxels_src)
+        shape_dst = self.coordinatesystem_dst.shape
+        active_corner_voxels_dst = np.clip(
+            corner_voxels_dst,
+            0,
+            np.outer(np.ones(num_corners), np.array(shape_dst) - 1),
+        )
+
+        # Determine the largest interior rectangle - require to transform to format
+        # expected by lir
+        lir_dst = lir.lir(np.array([active_corner_voxels_dst]).astype(np.int32))
+        rectangle_mask_corners = [lir.pt1(lir_dst), lir.pt2(lir_dst)]
+
+        return (
+            slice(rectangle_mask_corners[0][0], rectangle_mask_corners[1][0]),
+            slice(rectangle_mask_corners[0][1], rectangle_mask_corners[1][1]),
+        )
+
     def correct_array(self, array_src: np.ndarray) -> np.ndarray:
         """Correction routine of array data.
 
