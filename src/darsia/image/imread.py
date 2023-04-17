@@ -272,6 +272,8 @@ def imread_from_dicom(
     tag_acquisition_date = pydicom.tag.BaseTag(0x00080022)
     tag_acquisition_time = pydicom.tag.BaseTag(0x00080032)
     tag_number_slices = pydicom.tag.BaseTag(0x00540081)
+    tag_rescale_intercept = pydicom.tag.BaseTag(0x00281053)
+    tag_rescale_slope = pydicom.tag.BaseTag(0x00281053)
 
     # Good to have for future safety checks.
     # tag_number_time_slices = pydicom.tag.BaseTag(0x00540101)
@@ -298,10 +300,20 @@ def imread_from_dicom(
         # Read the dicom sample
         dataset = pydicom.dcmread(p)
 
-        # Extract the actual signal. And flip the axis to comply with
-        # the convention of the row/col/page indexing, also denoted
-        # standard matrix indexing, or ijk in DarSIA, or also matlab.
-        pixel_data.append(dataset.pixel_array)
+        # Extract the actual signal.
+        signal = dataset.pixel_array
+
+        # Rescale
+        intercept = dataset[tag_rescale_intercept].value
+        slope = dataset[tag_rescale_slope].value
+        rescaled_signal = intercept + slope * signal
+
+        # NOTE: In practice, corrections used to reconstruct the DICOM images (decay,
+        # dead time) do not need to be the same for all images. This is not taken care
+        # of in DarSIA at the moment.
+
+        # Store
+        pixel_data.append(rescaled_signal)
 
         # Extract position for each slice; corresponds to "z_dicom" direction
         # DICOM languag, but assumed to be negative x direction in
@@ -416,6 +428,9 @@ def imread_from_dicom(
 
 
 # ! ---- VTU images
+
+# NOTE: Actually since meshio is used here, any format should work, but it is only
+# tested for vtu images.
 
 
 def imread_from_vtu(
