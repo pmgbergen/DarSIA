@@ -289,8 +289,13 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
         plt.legend(["rescaled signal", "reference"])
         plt.show()
 
-    def model_calibration_postanalysis(self) -> None:
-        """Interpret calibration result."""
+    def model_calibration_postanalysis(self) -> float:
+        """Interpret calibration result.
+
+        Returns:
+            float: time at which the signal is zero (based on calibration)
+
+        """
 
         # Interpret the results of the regression
         print(
@@ -301,6 +306,8 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
         # Determine the time of zero signal
         time_zero_signal = -self._intercept / self._slope
         print(f"The time of zero signal is deducted to be {time_zero_signal} hrs.")
+
+        return time_zero_signal
 
 
 class AbsoluteVolumeModelObjectiveMixin(AbstractModelObjective):
