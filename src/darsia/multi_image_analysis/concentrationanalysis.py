@@ -321,9 +321,9 @@ class ConcentrationAnalysis:
         else:
 
             if self._diff_option == "positive":
-                diff = np.clip(img.img - reference, 0, None)
+                diff = np.clip(img.img - self.base.img, 0, None)
             elif self._diff_option == "negative":
-                diff = np.clip(reference - img.img, 0, None)
+                diff = np.clip(self.base.img - img.img, 0, None)
             elif self._diff_option == "absolute":
                 diff = skimage.util.compare_images(
                     img.img, self.base.img, method="diff"
