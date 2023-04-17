@@ -239,7 +239,7 @@ class Image:
         # ! ---- Safety check
 
         # Only allow to use one of the two input arguments.
-        if (reference_date is not None and reference_time is not None):
+        if reference_date is not None and reference_time is not None:
             raise ValueError("Choose only one reference.")
 
         if time is None:
@@ -495,7 +495,6 @@ class Image:
             metadata["time"] = [time - times[0] for time in times]
         else:
             metadata["time"] = times
-
 
         return type(self)(img=img, **metadata)
 
