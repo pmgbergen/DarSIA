@@ -1,5 +1,6 @@
 """
 Module containing a linear (affine) conversion from signals to data.
+
 """
 
 from typing import Optional
@@ -10,11 +11,63 @@ import numpy as np
 import darsia
 
 
-class LinearModel(darsia.Model):
-    """
-    Linear model, applying an affine conversion for signals to data.
+class ScalingModel(darsia.Model):
+    """Linear model (plain scaling)."""
 
-    """
+    def __init__(
+        self,
+        key: str = "",
+        **kwargs,
+    ) -> None:
+
+        self._scaling = kwargs.get(key + "scaling", 1.0)
+
+        self.volumes = None
+
+    def update(
+        self,
+        scaling: Optional[float] = None,
+    ) -> None:
+        """
+        Update of internal parameters.
+
+        Args:
+            scaling (float, optional): slope
+
+        """
+
+        if scaling is not None:
+            self._scaling = scaling
+
+    def update_model_parameters(self, parameters: np.ndarray) -> None:
+        """
+        Short cut to update scaling and offset parameters using a
+        general function signature.
+
+        The main use is the model calibration. Do not update the offset.
+
+        Args:
+            parameters (np.ndarray): 2-array containing scaling and offset values.
+
+        """
+        self.update(scaling=parameters[0])
+
+    def __call__(self, img: np.ndarray) -> np.ndarray:
+        """
+        Application of linear model.
+
+        Args:
+            img (np.ndarray): image
+
+        Returns:
+            np.ndarray: converted signal
+
+        """
+        return self._scaling * img
+
+
+class LinearModel(darsia.Model):
+    """Linear model, applying an affine conversion for signals to data."""
 
     def __init__(
         self,
