@@ -448,7 +448,10 @@ class Image:
         metadata = self.metadata()
         metadata["series"] = False
         metadata["date"] = self.date[time_index]
-        metadata["time"] = self.time[time_index]
+        if self.time is None:
+            metadata["time"] = None
+        else:
+            metadata["time"] = self.time[time_index]
 
         # Create image with same data type but updates image data and metadata
         return type(self)(img=img, **metadata)
