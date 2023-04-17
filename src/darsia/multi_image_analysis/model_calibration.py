@@ -7,6 +7,7 @@ in ConcentrationAnalysis.calibrate_model()
 
 import abc
 
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize as optimize
 from scipy import interpolate
@@ -60,9 +61,7 @@ class AbstractModelObjective:
             self.model.update_model_parameters(parameters)
 
     def calibrate_model(
-        self,
-        images: list[darsia.Image],
-        options: dict,
+        self, images: list[darsia.Image], options: dict, plot_result: bool = False
     ) -> bool:
         """
         Utility for calibrating the model used in darsia.ConcentrationAnalysis.
@@ -74,6 +73,8 @@ class AbstractModelObjective:
             images (list of darsia.Image): calibration images
             options (dict): container holding tuning information for the numerical
                 calibration routine
+            plot_result (bool): flag controlling whether the calibration is displayed
+                in a plot.
 
         Returns:
             bool: success of the calibration study.
@@ -143,6 +144,12 @@ class AbstractModelObjective:
         # Update model (use functionality from calibration)
         self.update_model_for_calibration(opt_result.x, options)
 
+        # Allow for post-analysis. Plot the result.
+        if plot_result:
+            self._visualize_model_calibration(
+                images_smooth_signal, images_diff, times, options
+            )
+
         return opt_result.success
 
 
@@ -190,13 +197,13 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
             options (dict): dictionary with objective value, here the injection rate
 
         Returns:
-            callable: objetive function
+            callable: objective function
 
         """
 
         # Fetch the injection rate and geometry
-        injection_rate = options.get("injection_rate")  # in ml/hrs
-        geometry = options.get("geometry")
+        injection_rate = options["injection_rate"]  # in ml/hrs
+        geometry = options["geometry"]
 
         # Define the objective function
         def objective_function(params: np.ndarray) -> float:
@@ -227,11 +234,73 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
             # Extract the slope and convert to
             effective_injection_rate = ransac.estimator_.coef_[0]
 
+            # Cache result for possible post-analysis
+            self._slope = ransac.estimator_.coef_[0]
+            self._intercept = ransac.estimator_.intercept_
+
             # Measure deffect
             defect = effective_injection_rate - injection_rate
             return defect**2
 
         return objective_function
+
+    def _visualize_model_calibration(
+        self,
+        input_images: list[np.ndarray],
+        images_diff: list[np.ndarray],
+        times: list[float],
+        options: dict,
+    ) -> None:
+        """
+        Illustrate result of calibration.
+
+        Args:
+            input_images (list of np.ndarray): input for _convert_signal
+            images_diff (list of np.ndarray): plain differences wrt background image
+            times (list of float): times in hrs
+            options (dict): dictionary with objective value, here the injection rate
+
+        """
+        # Fetch the injection rate and geometry
+        geometry = options["geometry"]
+
+        # For each image, compute the total concentration, based on the currently
+        # set tuning parameters, and compute the relative time.
+        M3_TO_ML = 1e6
+        volumes = [
+            geometry.integrate(self._convert_signal(img, diff)) * M3_TO_ML
+            for img, diff in zip(input_images, images_diff)
+        ]
+
+        ## ! ---- Find intercept through RANSAC analysis
+
+        # Plot the evolution of the rescaled signal over time, and in addtion a dashed
+        # line corresponding to the reference injection rate.
+        plt.figure("Model calibration")
+        plt.plot(times, volumes)
+        plt.plot(
+            times,
+            [self._intercept + self._slope * time for time in times],
+            color="black",
+            linestyle=(0, (5, 5)),
+        )
+        plt.xlabel("time [hrs]")
+        plt.ylabel("volume [ml]")
+        plt.legend(["rescaled signal", "reference"])
+        plt.show()
+
+    def model_calibration_postanalysis(self) -> None:
+        """Interpret calibration result."""
+
+        # Interpret the results of the regression
+        print(
+            f"The effective injection rate for the calibration images is {self._slope} ml/hrs."
+        )
+        print(f"The signal at absolute time 0 is {self._intercept} ml.")
+
+        # Determine the time of zero signal
+        time_zero_signal = -self._intercept / self._slope
+        print(f"The time of zero signal is deducted to be {time_zero_signal} hrs.")
 
 
 class AbsoluteVolumeModelObjectiveMixin(AbstractModelObjective):
