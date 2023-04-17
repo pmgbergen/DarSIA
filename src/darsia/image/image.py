@@ -160,7 +160,7 @@ class Image:
         # ! ---- Retrieve relative time from absolute date
 
         self.time = None
-        """Relative time in scalar format."""
+        """Relative time in scalar format (in seconds)."""
 
         time: Optional[Union[float, int, list]] = kwargs.pop("time", None)
         reference_date: Optional[datetime] = kwargs.pop("reference_date", None)
