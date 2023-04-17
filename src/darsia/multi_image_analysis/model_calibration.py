@@ -6,6 +6,7 @@ in ConcentrationAnalysis.calibrate_model()
 """
 
 import abc
+from typing import Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -61,7 +62,10 @@ class AbstractModelObjective:
             self.model.update_model_parameters(parameters)
 
     def calibrate_model(
-        self, images: list[darsia.Image], options: dict, plot_result: bool = False
+        self,
+        images: Union[darsia.Image, list[darsia.Image]],
+        options: dict,
+        plot_result: bool = False,
     ) -> bool:
         """
         Utility for calibrating the model used in darsia.ConcentrationAnalysis.
@@ -80,6 +84,12 @@ class AbstractModelObjective:
             bool: success of the calibration study.
 
         """
+        # Convert to list of images, if space time image provided.
+        if not isinstance(images, list):
+            assert images.series
+            image_series = images.copy()
+            images = [image_series.time_slice(i) for i in range(image_series.time_num)]
+
         # Apply the same steps as in __call__ to all images.
 
         # Prepare calibration and determine fixed data
