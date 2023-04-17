@@ -459,11 +459,13 @@ class Image:
     def time_interval(
         self,
         time_indices: Optional[slice] = None,
+        reset_time: bool = False,
     ) -> Image:
         """Extraction of temporal subregion.
 
         Args:
             time_indices (slice, optional): time interval; only for space-time images.
+            reset_time (bool): flag controlling whether relative time is reset.
 
         Returns:
             Image: image with restricted temporal domain.
@@ -488,7 +490,12 @@ class Image:
         # ! ---- Fetch and adapt metadata
         metadata = self.metadata()
         metadata["date"] = self.date[time_indices]
-        metadata["time"] = self.time[time_indices]
+        times = self.time[time_indices]
+        if reset_time:
+            metadata["time"] = [time - times[0] for time in times]
+        else:
+            metadata["time"] = times
+
 
         return type(self)(img=img, **metadata)
 
