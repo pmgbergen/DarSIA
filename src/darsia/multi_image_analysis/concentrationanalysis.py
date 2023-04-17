@@ -65,11 +65,13 @@ class ConcentrationAnalysis:
 
         self.base: Optional[darsia.Image] = None
         """Baseline image."""
+        self._base_collection: list[darsia.Image] = []
+        """Collection of baseline images."""
         if base is not None:
             if not isinstance(base, list):
                 base = [base]
             self.base = base[0].copy()
-            # FIXME
+            self._base_collection = base
             if self.base.space_dim != 2:
                 raise NotImplementedError
 
@@ -148,7 +150,7 @@ class ConcentrationAnalysis:
         if baseline_images is None and self.base is not None:
 
             # Use internal baseline images, if available.
-            baseline_images = self.base[1:]
+            baseline_images = self._base_collection[1:]
 
         self.threshold_cleaning_filter = None
         """Cleaning filter."""
