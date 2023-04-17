@@ -303,7 +303,7 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
         """Interpret calibration result.
 
         Returns:
-            float: time at which the signal is zero (based on calibration)
+            float: time (in seconds) at which the signal is zero (based on calibration)
 
         """
 
@@ -317,7 +317,8 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
         time_zero_signal = -self._intercept / self._slope
         print(f"The time of zero signal is deducted to be {time_zero_signal} hrs.")
 
-        return time_zero_signal
+        HOURS_TO_SECONDS = 3600
+        return time_zero_signal * HOURS_TO_SECONDS
 
 
 class AbsoluteVolumeModelObjectiveMixin(AbstractModelObjective):
