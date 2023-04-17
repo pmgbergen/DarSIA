@@ -225,34 +225,51 @@ class Image:
         self,
         time: Optional[Union[float, int, list]] = None,
         reference_date: Optional[datetime] = None,
+        reference_time: Optional[float] = None,
     ) -> None:
         """Setter for time array.
 
         Args:
             time (scalar or list, optional): time to be set; if None, time is retrieved
                 from date.
+            reference_date (datetime, optional): reference date.
+            reference_time (float, optional): reference_time in seconds.
 
         """
+        # ! ---- Safety check
+
+        # Only allow to use one of the two input arguments.
+        if (reference_date is not None and reference_time is not None):
+            raise ValueError("Choose only one reference.")
+
         if time is None:
+
             # From date
             if self.series:
                 if self._is_none(self.date):
-                    self.time = self.time_num * [None]
+                    self.time = None
                 else:
                     self.time = [
                         (self.date[i] - self.date[0]).total_seconds()
                         for i in range(self.time_num)
                     ]
             else:
-                self.time = (
-                    None
-                    if reference_date is None
-                    else (self.date - reference_date).total_seconds()
-                )
+
+                if reference_date is None:
+                    self.time = None
+                else:
+                    self.time = (self.date - reference_date).total_seconds()
 
         else:
             # From argument
             self.time = time
+
+        # Correct for reference time
+        if reference_time is not None:
+            if isinstance(self.time, list):
+                self.time = [time - reference_time for time in self.time]
+            elif self.time is not None:
+                self.time -= reference_time
 
     def copy(self) -> Image:
         """Copy constructor.
