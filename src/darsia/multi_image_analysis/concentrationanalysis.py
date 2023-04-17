@@ -33,7 +33,7 @@ class ConcentrationAnalysis:
                 darsia.Image,
                 list[darsia.Image],
             ]
-        ],
+        ] = None,
         signal_reduction: darsia.SignalReduction = None,
         balancing: Optional[darsia.Model] = None,
         restoration: Optional[darsia.TVD] = None,
