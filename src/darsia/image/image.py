@@ -436,6 +436,42 @@ class Image:
         # Create image with same data type but updates image data and metadata
         return type(self)(img=img, **metadata)
 
+    def time_interval(
+        self,
+        time_indices: Optional[slice] = None,
+    ) -> Image:
+        """Extraction of temporal subregion.
+
+        Args:
+            time_indices (slice, optional): time interval; only for space-time images.
+
+        Returns:
+            Image: image with restricted temporal domain.
+
+        Raises:
+            ValueError: if image is not a time series.
+
+        """
+        # ! ---- Safety checks
+
+        if time_indices is not None and not self.series:
+            raise ValueError("Image is not a time-series.")
+
+        # ! ---- Fetch data
+        if self.scalar:
+            img = self.img[..., time_indices]
+        else:
+            img = self.img[..., time_indices, :]
+
+        # ! ---- Update metadata
+
+        # ! ---- Fetch and adapt metadata
+        metadata = self.metadata()
+        metadata["date"] = self.date[time_indices]
+        metadata["time"] = self.time[time_indices]
+
+        return type(self)(img=img, **metadata)
+
     def subregion(
         self,
         voxels: Optional[tuple[slice]] = None,
