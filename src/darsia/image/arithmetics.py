@@ -32,8 +32,7 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
         weighted_img.img *= weight
 
     elif isinstance(weight, darsia.Image):
-        assert np.allclose(img.origin, weight.origin)
-        assert np.allclose(img.dimensions, weight.dimensions)
+        assert darsia.check_equal_coordinatesystems(img, weight)
         space_dim = img.space_dim
         assert len(weight.img.shape) == space_dim
 
