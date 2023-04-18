@@ -50,6 +50,18 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
         # Rescale
         weighted_img.img = np.multiply(weighted_img.img, weight.img)
 
+    elif isinstance(weight, np.ndarray) and np.allclose(
+        weight.shape, weighted_img.shape[weighted_img.space_dim :]
+    ):
+        # Spatially constant weight, but differing for time and data inidices.
+        shape = weighted_img.img.shape
+        weighted_img.img = np.multiply(
+            weighted_img.img,
+            np.outer(
+                np.ones(weighted_img.coordinatesystem.shape, dtype=float), weight
+            ).reshape(shape),
+        )
+
     else:
         raise ValueError
 
