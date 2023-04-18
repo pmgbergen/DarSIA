@@ -134,6 +134,33 @@ class Geometry:
             weighted_sum = np.sum(weighted_sum, axis=0)
         return weighted_sum
 
+    def normalize(
+        self, img: darsia.Image, img_ref: darsia.Image, return_ratio: bool = False
+    ) -> Union[darsia.Image, tuple[darsia.Image, np.ndarray]]:
+        """Normalize image with respect to another one, such that both have the same
+        integral.
+
+        Args:
+            img (darsia.Image): image to be rescaled
+            img_ref (darsia.Image): reference image
+            return_ratio (bool): flag controlling whether the ratio between reference
+                and original integrals is returned
+
+        Returns:
+            darsia.Image: rescaled image
+            np.ndarray, optional: ratio between reference and original integrals
+
+        """
+        integral_ref = self.integrate(img_ref)
+        integral = self.integrate(img)
+        ratio = np.divide(integral_ref, integral)
+        rescaled_img = darsia.weight(img, ratio)
+
+        if return_ratio:
+            return rescaled_img, ratio
+        else:
+            return rescaled_img
+
 
 class WeightedGeometry(Geometry):
     """Geometry with weighted volume."""
