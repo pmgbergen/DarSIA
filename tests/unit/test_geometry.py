@@ -335,3 +335,107 @@ def test_variable_porous_geometry_3d():
     assert np.isclose(
         integral, 0.25**3 * (0.5 * 0.2 + 0.75 - 0.2 + 0.6 * 0.5 + 0.1 * 0.8)
     )
+
+
+def test_integration_vectorial_data():
+    """Test integration over simple two-dimensional geometry and compatible data
+    provided as Image.
+
+    """
+    space_dim = 2
+    num_voxels = (2, 4)  # rows x cols
+    dimensions = [0.5, 1.0]  # height x width
+    geometry = darsia.Geometry(
+        space_dim=space_dim, num_voxels=num_voxels, dimensions=dimensions
+    )
+
+    # Check voxel volume which should have height and width equal to 0.25
+    assert geometry.voxel_volume == 0.25**2
+
+    # Hardcoded data of compatible size
+    shape = *num_voxels, 2
+    data = np.zeros(shape, dtype=float)
+    data[0, 2, 0] = 0.5
+    data[0, 3, 0] = 0.75
+    data[1, 0, 0] = -0.2
+    data[1, 1, 0] = 0.6
+    data[1, 2, 0] = 0.1
+    data[0, 0, 1] = 0.5
+    data[0, 2, 1] = 0.75
+    data[1, 0, 1] = -0.2
+    data[1, 1, 1] = 0.6
+    data[1, 3, 1] = 0.1
+
+    # Test integration
+    integral = geometry.integrate(data)
+    assert np.allclose(
+        integral, 0.25**2 * (0.5 + 0.75 - 0.2 + 0.6 + 0.1) * np.ones(2)
+    )
+
+
+def test_integration_image_slice():
+    """Test integration over simple two-dimensional geometry and compatible data
+    provided as Image.
+
+    """
+    space_dim = 2
+    num_voxels = (2, 4)  # rows x cols
+    dimensions = [0.5, 1.0]  # height x width
+    geometry = darsia.Geometry(
+        space_dim=space_dim, num_voxels=num_voxels, dimensions=dimensions
+    )
+
+    # Check voxel volume which should have height and width equal to 0.25
+    assert geometry.voxel_volume == 0.25**2
+
+    # Hardcoded data of compatible size
+    data = np.zeros(num_voxels, dtype=float)
+    data[0, 2] = 0.5
+    data[0, 3] = 0.75
+    data[1, 0] = -0.2
+    data[1, 1] = 0.6
+    data[1, 2] = 0.1
+    image = darsia.Image(data, dimensions=dimensions, series=False, scalar=True)
+
+    # Test integration
+    integral = geometry.integrate(image)
+    assert np.isclose(integral, 0.25**2 * (0.5 + 0.75 - 0.2 + 0.6 + 0.1))
+
+
+def test_integration_image_series():
+    """Test integration over simple two-dimensional geometry and compatible data
+    provided as Image, but given as series.
+
+    """
+    space_dim = 2
+    num_voxels = (2, 4)  # rows x cols
+    dimensions = [0.5, 1.0]  # height x width
+    geometry = darsia.Geometry(
+        space_dim=space_dim, num_voxels=num_voxels, dimensions=dimensions
+    )
+
+    # Check voxel volume which should have height and width equal to 0.25
+    assert geometry.voxel_volume == 0.25**2
+
+    # Hardcoded data of compatible size
+    shape = *num_voxels, 2
+    data = np.zeros(shape, dtype=float)
+    data[0, 2, 0] = 0.5
+    data[0, 3, 0] = 0.75
+    data[1, 0, 0] = -0.2
+    data[1, 1, 0] = 0.6
+    data[1, 2, 0] = 0.1
+    data[0, 0, 1] = 0.5
+    data[0, 2, 1] = 0.75
+    data[1, 0, 1] = -0.2
+    data[1, 1, 1] = 0.6
+    data[1, 3, 1] = 0.1
+    image = darsia.Image(
+        data, dimensions=dimensions, time=[0, 1], series=True, scalar=True
+    )
+
+    # Test integration
+    integral = geometry.integrate(image)
+    assert np.allclose(
+        integral, 0.25**2 * (0.5 + 0.75 - 0.2 + 0.6 + 0.1) * np.ones(2)
+    )
