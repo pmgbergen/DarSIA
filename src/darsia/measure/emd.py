@@ -49,14 +49,13 @@ class EMD:
         preprocessed_img_1 = self._preprocess(img_1)
         preprocessed_img_2 = self._preprocess(img_2)
 
+        # Compatibilty check
+        self._compatibility_check(preprocessed_img_1, preprocessed_img_2)
+
         # Pixel dimensions
         dx_1 = tuple(preprocessed_img_1.voxel_size)
         dx_2 = tuple(preprocessed_img_2.voxel_size)
-        assert np.isclose(dx_1[0], dx_2[0])
-        assert np.isclose(dx_1[1], dx_2[1])
-
-        # Compatibilty check
-        self._compatibility_check(preprocessed_img_1, preprocessed_img_2)
+        assert np.allclose(dx_1, dx_2)
 
         # Normalization
         integral_1, normalized_img_1 = self._normalize(preprocessed_img_1)
@@ -102,12 +101,31 @@ class EMD:
             bool: flag whether images 1 and 2 can be compared.
 
         """
-        # Compatible distributions
-        assert np.isclose(np.sum(img_1.img), np.sum(img_2.img))
+        # Scalar valued
+        assert img_1.scalar and img_2.scalar
 
-        # 2D and scalar-valued
-        assert np.prod(img_1.img.shape) == np.prod(img_1.img.shape[:2])
-        assert np.prod(img_2.img.shape) == np.prod(img_2.img.shape[:2])
+        # Two-dimensional
+        assert img_1.space_dim == 2 and img_2.space_dim == 2
+
+        # Compatible distributions - comparing sums is sufficient since it is implicitly
+        # assumed that the coordinate systems are equivalent. Check each time step
+        # separately.
+        assert np.allclose(self._sum(img_1), self._sum(img_2))
+
+    def _sum(self, img: darsia.Image) -> Union[float, np.ndarray]:
+        """Sum over spatial entries.
+
+        Args:
+            img (darsia.Image): image
+
+        Returns:
+            float or array: integration over the space
+
+        """
+        sum_over_time = img.img.copy()
+        for i in range(img.space_dim):
+            sum_over_time = np.sum(sum_over_time, axis=0)
+        return sum_over_time
 
     def _normalize(self, img: darsia.Image) -> tuple[float, np.ndarray]:
         """
@@ -121,8 +139,8 @@ class EMD:
             np.ndarray: normalized image
 
         """
-        integral = np.sum(img.img)
-        normalized_img = img.img / integral
+        integral = self._sum(img)
+        normalized_img = np.divide(img.img, integral)
         return integral, normalized_img
 
     def _img_to_sig(
