@@ -55,7 +55,6 @@ class EMD:
         # Pixel dimensions
         dx_1 = tuple(preprocessed_img_1.voxel_size)
         dx_2 = tuple(preprocessed_img_2.voxel_size)
-        assert np.allclose(dx_1, dx_2)
 
         # Normalization
         integral_1, normalized_img_1 = self._normalize(preprocessed_img_1)
@@ -106,6 +105,12 @@ class EMD:
 
         # Two-dimensional
         assert img_1.space_dim == 2 and img_2.space_dim == 2
+
+        # Check whether the coordinate system is compatible
+        assert darsia.check_equal_coordinatesystems(
+            img_1.coordinatesystem, img_2.coordinatesystem
+        )
+        assert np.allclose(img_1.voxel_size, img_2.voxel_size)
 
         # Compatible distributions - comparing sums is sufficient since it is implicitly
         # assumed that the coordinate systems are equivalent. Check each time step
