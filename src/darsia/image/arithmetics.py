@@ -55,7 +55,7 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
     elif isinstance(weight, np.ndarray) and np.allclose(
         weight.shape, weighted_img.shape[weighted_img.space_dim :]
     ):
-        # Spatially constant weight, but differing for time and data inidices.
+        # Spatially constant weight, but differing for time and data indices.
         shape = weighted_img.img.shape
         weighted_img.img = np.multiply(
             weighted_img.img,
