@@ -439,3 +439,39 @@ def test_integration_image_series():
     assert np.allclose(
         integral, 0.25**2 * (0.5 + 0.75 - 0.2 + 0.6 + 0.1) * np.ones(2)
     )
+
+
+def test_geometry_normalization():
+    """Test normalization performed by geomtries."""
+
+    space_dim = 2
+    num_voxels = (2, 4)  # rows x cols
+    dimensions = [0.5, 1.0]  # height x width
+    geometry = darsia.Geometry(
+        space_dim=space_dim, num_voxels=num_voxels, dimensions=dimensions
+    )
+
+    # Check voxel volume which should have height and width equal to 0.25
+    assert geometry.voxel_volume == 0.25**2
+
+    # Hardcoded data of compatible size
+    data = np.zeros(num_voxels, dtype=float)
+    data[0, 2] = 0.5
+    data[0, 3] = 0.75
+    data[1, 0] = -0.2
+    data[1, 1] = 0.6
+    data[1, 2] = 0.1
+    image = darsia.Image(data, dimensions=dimensions, series=False, scalar=True)
+
+    # Create random image
+    random_data = np.random.rand(2, 4)
+    random_image = darsia.Image(
+        random_data, dimensions=dimensions, series=False, scalar=True
+    )
+
+    # Normalize random image
+    normalized_random_image = geometry.normalize(random_image, image)
+
+    # Test integration
+    integral = geometry.integrate(normalized_random_image)
+    assert np.isclose(integral, 0.25**2 * (0.5 + 0.75 - 0.2 + 0.6 + 0.1))

@@ -15,8 +15,8 @@ def test_emd_2d_single_pixel():
     mass2_array[6, 12] = 1
 
     # Convert the arrays to actual DarSIA Images
-    mass1 = darsia.Image(mass1_array, width=2, height=1)
-    mass2 = darsia.Image(mass2_array, width=2, height=1)
+    mass1 = darsia.Image(mass1_array, width=2, height=1, scalar=True)
+    mass2 = darsia.Image(mass2_array, width=2, height=1, scalar=True)
 
     # Setup EMD object
     emd = darsia.EMD()
@@ -30,7 +30,7 @@ def test_emd_2d_single_pixel():
 
 
 def test_emd_2d_resize():
-    """Test simple EMD for 2d distributions with physical dimenions."""
+    """Test simple EMD for 2d distributions with physical dimensions."""
 
     # Create two mass distributions with identical mass, equal to 1
     mass1_array = np.zeros((10, 20), dtype=float)
@@ -39,8 +39,8 @@ def test_emd_2d_resize():
     mass2_array[6, 12] = 1
 
     # Convert the arrays to actual DarSIA Images
-    mass1 = darsia.Image(mass1_array, width=2, height=1)
-    mass2 = darsia.Image(mass2_array, width=2, height=1)
+    mass1 = darsia.Image(mass1_array, width=2, height=1, scalar=True)
+    mass2 = darsia.Image(mass2_array, width=2, height=1, scalar=True)
 
     # Setup EMD object, including a resize routine (needed for cv2.EMD)
     resize = darsia.Resize(
