@@ -33,7 +33,7 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
 
     elif isinstance(weight, darsia.Image):
         assert darsia.check_equal_coordinatesystems(
-            img.coordinatesystem, weight.coordinatesystem, exclude_size = True
+            img.coordinatesystem, weight.coordinatesystem, exclude_size=True
         )
         space_dim = img.space_dim
         assert len(weight.img.shape) == space_dim
