@@ -102,31 +102,49 @@ class Resize:
             np.ndarray, or darsia.Image: resized image, same format as input
 
         """
-        # Extract original image
         input_is_image = isinstance(img, darsia.Image)
+        if input_is_image:
+            assert img.space_dim == 2
+
+        # Extract original image
         img_array = img.img.copy() if input_is_image else img.copy()
+        if self.dtype is not None:
+            img_array = img_array.astype(self.dtype)
 
-        # Convert data type
-        img_array = (
-            img_array.copy() if self.dtype is None else img_array.astype(self.dtype)
-        )
+        # Treat all indices > 2 as channels
+        original_shape = img_array.shape
+        multi_channel_img_array = np.reshape(img_array, (*original_shape[:2], -1))
 
-        # Apply resizing
-        if self.interpolation is None:
-            resized_img_array = cv2.resize(
-                img_array,
-                dsize=self.dsize,
-                fx=self.fx,
-                fy=self.fy,
-            )
-        else:
-            resized_img_array = cv2.resize(
-                img_array,
-                dsize=self.dsize,
-                fx=self.fx,
-                fy=self.fy,
-                interpolation=self.interpolation,
-            )
+        # Split possibly multi-channel image in single channels
+        img_channels: tuple[np.ndarray] = cv2.split(multi_channel_img_array)
+
+        # Apply resizing to each channel separately
+        resized_channels = []
+        for channel in img_channels:
+            if self.interpolation is None:
+                resized_channels.append(
+                    cv2.resize(
+                        channel,
+                        dsize=self.dsize,
+                        fx=self.fx,
+                        fy=self.fy,
+                    )
+                )
+            else:
+                resized_channels.append(
+                    cv2.resize(
+                        channel,
+                        dsize=self.dsize,
+                        fx=self.fx,
+                        fy=self.fy,
+                        interpolation=self.interpolation,
+                    )
+                )
+
+        # Merge channels again and create resized image array of original shape (data-wise)
+        resized_multi_channel_img_array = cv2.merge(resized_channels)
+        resized_shape = *resized_multi_channel_img_array.shape[:2], *original_shape[2:]
+        resized_img_array = np.reshape(resized_multi_channel_img_array, resized_shape)
 
         # Conserve the (weighted) sum
         if self.is_conservative:
@@ -136,15 +154,7 @@ class Resize:
 
         # Return resized image
         if input_is_image:
-            # Update metadata of the darsia.Image
-            resized_image = img.copy()
-            resized_image.img = resized_img_array
-            for i in range(2):
-                resized_image.voxel_size[i] *= (
-                    img_array.shape[i] / resized_img_array.shape[i]
-                )
-
-            return resized_image
-
+            meta = img.metadata()
+            return type(img)(resized_img_array, **meta)
         else:
             return resized_img_array
