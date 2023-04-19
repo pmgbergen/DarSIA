@@ -88,16 +88,3 @@ def laplace_y(im: np.ndarray) -> np.ndarray:
     return 0.5 * (
         forward_diff_y(backward_diff_y(im)) + backward_diff_y(forward_diff_y(im))
     )
-
-
-def laplace(im: np.ndarray) -> np.ndarray:
-    """
-    Laplace operator with homogeneous boundary conditions of image matrix.
-
-    Arguments:
-        im (np.ndarray): image array
-
-    Returns:
-        np.ndarray: Laplace image matrix
-    """
-    return laplace_x(im) + laplace_y(im)
