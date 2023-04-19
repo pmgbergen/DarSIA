@@ -25,8 +25,8 @@ def test_array_weight_2d():
 
 def test_incompatible_weight_2d():
 
-    image = darsia.Image(np.ones((6, 8), dtype=float), dim=2)
-    weight = darsia.Image(2 * np.ones((3, 4)), dim=2)
+    image = darsia.Image(np.ones((6, 8), dtype=float), dim=2, dimensions=[6, 8])
+    weight = darsia.Image(2 * np.ones((3, 4)), dim=2, dimensions=[6, 8])
 
     weighted_image = darsia.weight(image, weight)
     assert np.allclose(weighted_image.img, 2 * np.ones((6, 8)))
