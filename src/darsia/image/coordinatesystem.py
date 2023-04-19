@@ -220,7 +220,9 @@ class CoordinateSystem:
 
 
 def check_equal_coordinatesystems(
-    coordinatesystem1: CoordinateSystem, coordinatesystem2: CoordinateSystem
+    coordinatesystem1: CoordinateSystem,
+    coordinatesystem2: CoordinateSystem,
+    exclude_size: bool = False,
 ) -> bool:
     """Check whether two coordinate systems are equivalent, i.e., they share basic
     attributes.
@@ -228,6 +230,7 @@ def check_equal_coordinatesystems(
     Args:
         coordinatesystem1 (CoordinateSystem): first coordinate system
         coordinatesystem2 (CoordinateSystem): second coordinate system
+        exclude_size (bool): flag controlling whether the size quantities are exluded.
 
     Returns:
         bool: True iff the two coordinate systems are equivalent.
@@ -236,16 +239,21 @@ def check_equal_coordinatesystems(
     success = True
     success = success and coordinatesystem1.indexing == coordinatesystem2.indexing
     success = success and coordinatesystem1.dim == coordinatesystem2.dim
-    success = success and np.allclose(coordinatesystem1.shape, coordinatesystem2.shape)
+    if not exclude_size:
+        success = success and np.allclose(
+            coordinatesystem1.shape, coordinatesystem2.shape
+        )
     success = success and np.allclose(
         coordinatesystem1.dimensions, coordinatesystem2.dimensions
     )
     success = success and coordinatesystem1.axes == coordinatesystem2.axes
-    for axis in coordinatesystem1.axes:
-        success = (
-            success
-            and coordinatesystem1.voxel_size[axis] == coordinatesystem2.voxel_size[axis]
-        )
+    if not exclude_size:
+        for axis in coordinatesystem1.axes:
+            success = (
+                success
+                and coordinatesystem1.voxel_size[axis]
+                == coordinatesystem2.voxel_size[axis]
+            )
     success = success and np.allclose(
         coordinatesystem1._coordinate_of_origin_voxel,
         coordinatesystem2._coordinate_of_origin_voxel,
@@ -254,9 +262,10 @@ def check_equal_coordinatesystems(
         coordinatesystem1._coordinate_of_opposite_voxel,
         coordinatesystem2._coordinate_of_opposite_voxel,
     )
-    success = success and np.allclose(
-        coordinatesystem1._voxel_of_origin_coordinate,
-        coordinatesystem2._voxel_of_origin_coordinate,
-    )
+    if not exclude_size:
+        success = success and np.allclose(
+            coordinatesystem1._voxel_of_origin_coordinate,
+            coordinatesystem2._voxel_of_origin_coordinate,
+        )
 
     return success
