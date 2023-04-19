@@ -42,7 +42,7 @@ class EMD:
             img_2 (darsia.Image): image 2
 
         Returns:
-            float: distance between img_1 and img_2.
+            float or array: distance between img_1 and img_2.
 
         """
         # Preprocess images
@@ -52,22 +52,25 @@ class EMD:
         # Compatibilty check
         self._compatibility_check(preprocessed_img_1, preprocessed_img_2)
 
-        # Pixel dimensions
-        dx_1 = tuple(preprocessed_img_1.voxel_size)
-        dx_2 = tuple(preprocessed_img_2.voxel_size)
-
         # Normalization
-        integral_1, normalized_img_1 = self._normalize(preprocessed_img_1)
-        integral_2, normalized_img_2 = self._normalize(preprocessed_img_2)
+        integral = self._sum(preprocessed_img_1)
+        normalized_img_1 = self._normalize(preprocessed_img_1)
+        normalized_img_2 = self._normalize(preprocessed_img_2)
 
         # Convert format to a signature
-        sig_1 = self._img_to_sig(normalized_img_1, dx=dx_1)
-        sig_2 = self._img_to_sig(normalized_img_2, dx=dx_2)
+        dx = tuple(preprocessed_img_1.voxel_size)
+        time_num = preprocessed_img_1.time_num
+        sig_1 = self._img_to_sig(normalized_img_1, dx=dx, time_num=time_num)
+        sig_2 = self._img_to_sig(normalized_img_2, dx=dx, time_num=time_num)
 
         # Compute EMD distance
-        dist, _, flow = cv2.EMD(sig_1, sig_2, cv2.DIST_L2)
+        dist = np.zeros(time_num, dtype=float)
+        for i in range(time_num):
+            dist[i], _, flow = cv2.EMD(sig_1[i], sig_2[i], cv2.DIST_L2)
 
-        return dist * integral_1
+        rescaled_distance = np.multiply(dist, integral)
+
+        return float(rescaled_distance) if time_num == 1 else rescaled_distance
 
     def _preprocess(self, img: darsia.Image) -> darsia.Image:
         """
@@ -103,6 +106,9 @@ class EMD:
         # Scalar valued
         assert img_1.scalar and img_2.scalar
 
+        # Series
+        assert img_1.time_num == img_2.time_num
+
         # Two-dimensional
         assert img_1.space_dim == 2 and img_2.space_dim == 2
 
@@ -132,7 +138,7 @@ class EMD:
             sum_over_time = np.sum(sum_over_time, axis=0)
         return sum_over_time
 
-    def _normalize(self, img: darsia.Image) -> tuple[float, np.ndarray]:
+    def _normalize(self, img: darsia.Image) -> np.ndarray:
         """
         Normalization of images to images with sum 1.
 
@@ -146,16 +152,20 @@ class EMD:
         """
         integral = self._sum(img)
         normalized_img = np.divide(img.img, integral)
-        return integral, normalized_img
+        return normalized_img
 
     def _img_to_sig(
-        self, img: np.ndarray, dx: Union[float, tuple[float, float]] = 1
+        self,
+        img: np.ndarray,
+        dx: Union[float, tuple[float, float]] = 1.0,
+        time_num: int = 1,
     ) -> np.ndarray:
         """Convert a 2D array to a signature for cv2.EMD.
 
         Args:
             img (array): image
-            dx: (float or tuple): distance from one pixel to another
+            dx (float or tuple): distance from one pixel to another
+            time_num (int): number of time steps
 
         Returns:
             np.ndarray: signature
@@ -165,14 +175,25 @@ class EMD:
             dx = (dx, dx)
         del_y, del_x = dx
 
-        sig = np.empty((img.size, 3), dtype=np.float32)
-        count = 0
-        for row in range(img.shape[0]):
-            for col in range(img.shape[1]):
-                sig[count] = np.array([img[row, col], col * del_x, row * del_y]).astype(
-                    np.float32
-                )
-                count += 1
+        def _signature_for_slice(time_index: int = 0):
+            """Auxiliary function. Create signature for single time slice."""
+            sig = np.empty((int(img.size / time_num), 3), dtype=np.float32)
+            count = 0
+            for row in range(img.shape[0]):
+                for col in range(img.shape[1]):
+                    sig[count] = np.array(
+                        [
+                            np.atleast_3d(img)[row, col, time_index],
+                            col * del_x,
+                            row * del_y,
+                        ]
+                    ).astype(np.float32)
+                    count += 1
+            return sig
+
+        sig = np.empty((time_num, int(img.size / time_num), 3), dtype=np.float32)
+        for i in range(time_num):
+            sig[i] = _signature_for_slice(i)
 
         return sig
 
