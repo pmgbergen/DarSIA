@@ -72,7 +72,9 @@ class Geometry:
         self.cached_voxel_volume = self.voxel_volume.copy()
         """Internal copy of the voxel volume for efficient integration."""
 
-    def integrate(self, data: Union[darsia.Image, np.ndarray]) -> float:
+    def integrate(
+        self, data: Union[darsia.Image, np.ndarray]
+    ) -> Union[float, np.ndarray]:
         """
         Integrate data over the entire geometry.
 
@@ -80,9 +82,12 @@ class Geometry:
             data (np.ndarray): data attached to voxels.
 
         Returns:
-            float: integral of data over geometry.
+            float or array: integral of data over geometry, array if time series and/or
+                non-scalar data is provided.
 
         """
+        # ! ---- Make sure that the geometry is compatible with the provided data
+
         # Fetch data
         fetched_data = data if isinstance(data, np.ndarray) else data.img
         fetched_shape = list(fetched_data.shape[: self.space_dim])
@@ -118,8 +123,16 @@ class Geometry:
             if not all([i == j for i, j in zip(fetched_shape, self.num_voxels)]):
                 self.cached_voxel_volume = self.voxel_volume * scaling
 
-        # Perform spatial integration
-        return np.sum(np.multiply(self.cached_voxel_volume, data))
+        # ! ---- Perform spatial integration
+        if isinstance(data, np.ndarray):
+            weighted_sum = np.multiply(self.cached_voxel_volume, data)
+        elif isinstance(data, darsia.Image):
+            weighted_sum = np.multiply(self.cached_voxel_volume, data.img)
+        else:
+            raise ValueError("Data type not supported.")
+        for i in range(self.space_dim):
+            weighted_sum = np.sum(weighted_sum, axis=0)
+        return weighted_sum
 
 
 class WeightedGeometry(Geometry):

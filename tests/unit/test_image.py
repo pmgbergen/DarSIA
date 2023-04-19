@@ -43,7 +43,6 @@ def test_initialize_general_image():
         "dim": 2,
         "indexing": "ij",
         "dimensions": [1.5, 2.8],
-        "origin": [0.0, 1.5],
     }
 
     # ! ---- Initialize darsia image
@@ -59,8 +58,8 @@ def test_initialize_general_image():
     assert image.range_dim == 1
     assert image.range_num == 3
     assert image.indexing == "ij"
-    assert np.all(np.isclose(image.dimensions, np.array([1.5, 2.8])))
-    assert np.all(np.isclose(image.origin, np.array([0.0, 1.5])))
+    assert np.allclose(image.dimensions, np.array([1.5, 2.8]))
+    assert np.allclose(image.origin, np.array([0.0, 1.5]))
 
 
 def test_initialize_optical_image():
@@ -76,13 +75,11 @@ def test_initialize_optical_image():
         "dim": 2,
         "indexing": "ij",
         "dimensions": [1.5, 2.8],
-        "origin": [0.0, 1.5],
     }
 
     optical_info = {
         "series": False,
         "dimensions": [1.5, 2.8],
-        "origin": [0.0, 1.5],
     }
 
     # ! ---- Initialize darsia image
@@ -91,7 +88,7 @@ def test_initialize_optical_image():
     image = darsia.Image(img=array, **info)
     optical_image = darsia.OpticalImage(img=array, **optical_info)
 
-    assert np.all(np.isclose(image.img, optical_image.img))
+    assert np.allclose(image.img, optical_image.img)
     assert hasattr(image, "coordinatesystem")
     assert not image.scalar
     assert not image.series
@@ -100,8 +97,8 @@ def test_initialize_optical_image():
     assert optical_image.range_dim == 1
     assert optical_image.range_num == 3
     assert optical_image.indexing == "ij"
-    assert np.all(np.isclose(optical_image.dimensions, np.array([1.5, 2.8])))
-    assert np.all(np.isclose(optical_image.origin, np.array([0.0, 1.5])))
+    assert np.allclose(optical_image.dimensions, np.array([1.5, 2.8]))
+    assert np.allclose(optical_image.origin, np.array([0.0, 1.5]))
 
 
 def test_monochromatic_optical_images():
@@ -114,7 +111,6 @@ def test_monochromatic_optical_images():
     optical_info = {
         "series": False,
         "dimensions": [1.5, 2.8],
-        "origin": [0.0, 1.5],
     }
 
     # ! ---- Initialize darsia image
@@ -127,9 +123,9 @@ def test_monochromatic_optical_images():
     green_image = optical_image.to_monochromatic("green")
     blue_image = optical_image.to_monochromatic("blue")
 
-    assert np.all(np.isclose(red_image.img, optical_image.img[:, :, 0]))
-    assert np.all(np.isclose(green_image.img, optical_image.img[:, :, 1]))
-    assert np.all(np.isclose(blue_image.img, optical_image.img[:, :, 2]))
+    assert np.allclose(red_image.img, optical_image.img[:, :, 0])
+    assert np.allclose(green_image.img, optical_image.img[:, :, 1])
+    assert np.allclose(blue_image.img, optical_image.img[:, :, 2])
 
     assert red_image.scalar
     assert not red_image.series
@@ -138,5 +134,5 @@ def test_monochromatic_optical_images():
     assert red_image.range_dim == 0
     assert red_image.range_num == 1
     assert red_image.indexing == "ij"
-    assert np.all(np.isclose(red_image.dimensions, np.array([1.5, 2.8])))
-    assert np.all(np.isclose(red_image.origin, np.array([0.0, 1.5])))
+    assert np.allclose(red_image.dimensions, np.array([1.5, 2.8]))
+    assert np.allclose(red_image.origin, np.array([0.0, 1.5]))

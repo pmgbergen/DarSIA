@@ -1,6 +1,7 @@
 """
 Module that contains a class which provides the capabilities to
 analyze concentrations/saturation profiles based on image comparison.
+
 """
 
 import copy
@@ -27,11 +28,13 @@ class ConcentrationAnalysis:
 
     def __init__(
         self,
-        base: Union[
-            darsia.Image,
-            list[darsia.Image],
-        ],
-        signal_reduction: darsia.SignalReduction,
+        base: Optional[
+            Union[
+                darsia.Image,
+                list[darsia.Image],
+            ]
+        ] = None,
+        signal_reduction: darsia.SignalReduction = None,
         balancing: Optional[darsia.Model] = None,
         restoration: Optional[darsia.TVD] = None,
         model: darsia.Model = darsia.Identity,
@@ -44,25 +47,33 @@ class ConcentrationAnalysis:
         Args:
             base (Image or list of such): baseline image(s); if multiple provided,
                 these are used to define a cleaning filter.
-            signal_reduction (darsia.SignalReduction): reduction from multi-dimensional to
-                1-dimensional data.
+            signal_reduction (darsia.SignalReduction): reduction from multi-dimensional
+                to 1-dimensional data; default value (None) denotes an identity
+                operation.
             balancing (darsia.Model, optional): operator balancing the signal, e.g., in
-                different facies.
+                different facies; the default value (None) denotes an identity
+                operation.
             restoration (darsia.TVD): regularizer.
-            model (darsia.Model): Conversion of signals to actual physical data.
-            labels (array, optional): labeled image of domain
-            kwargs (keyword arguments): interface to all tuning parameters
+            model (darsia.Model): Conversion of signals to actual physical data; default
+                value (None) denotes an identity operation.
+            labels (array, optional): labeled image of domain; the default value (None)
+                denotes the presence of a homogeneous medium.
+            kwargs (keyword arguments): interface to all tuning parameters.
+
         """
         ########################################################################
 
-        # Fix single baseline image and reference time
-        if not isinstance(base, list):
-            base = [base]
-        self.base: darsia.Image = base[0].copy()
+        self.base: Optional[darsia.Image] = None
         """Baseline image."""
-
-        if self.base.space_dim != 2:
-            raise NotImplementedError
+        self._base_collection: list[darsia.Image] = []
+        """Collection of baseline images."""
+        if base is not None:
+            if not isinstance(base, list):
+                base = [base]
+            self.base = base[0].copy()
+            self._base_collection = base
+            if self.base.space_dim != 2:
+                raise NotImplementedError
 
         self.signal_reduction = signal_reduction
         """Reduction to scalar signal."""
@@ -86,9 +97,11 @@ class ConcentrationAnalysis:
         """Option for defining differences of images."""
 
         # Define a cleaning filter based on remaining images.
-        self.find_cleaning_filter(base[1:])
+        self.find_cleaning_filter()
 
-        self.mask: np.ndarray = np.ones(self.base.img.shape[:2], dtype=bool)
+        self.mask: Optional[np.ndarray] = (
+            None if self.base is None else np.ones(self.base.img.shape[:2], dtype=bool)
+        )
         """Mask."""
 
         self.verbosity: int = kwargs.get("verbosity", 0)
@@ -107,6 +120,7 @@ class ConcentrationAnalysis:
             base (Image, optional): image array
             mask (np.ndarray, optional): boolean mask, detecting which pixels
                 will be considered, all other will be ignored in the analysis.
+
         """
         if base is not None:
             self.base = base.copy()
@@ -117,38 +131,52 @@ class ConcentrationAnalysis:
 
     def find_cleaning_filter(
         self,
-        baseline_images: list[darsia.Image],
+        baseline_images: Optional[list[darsia.Image]] = None,
         reset: bool = False,
     ) -> None:
         """
-        Determine natural noise by studying a series of baseline images.
+        Determine structural noise by studying a series of baseline images.
         The resulting cleaning filter will be used prior to the conversion
         of signal to concentration. The cleaning filter should be understood
         as thresholding mask.
 
         Args:
-            baseline_images (list of images): series of baseline_images.
+            baseline_images (list of images): series of baseline_images; default: use
+                internally available baseline images.
             reset (bool): flag whether the cleaning filter shall be reset.
+
         """
 
-        self.threshold_cleaning_filter = np.zeros(self.base.img.shape[:2], dtype=float)
+        if baseline_images is None and self.base is not None:
+
+            # Use internal baseline images, if available.
+            baseline_images = self._base_collection[1:]
+
+        self.threshold_cleaning_filter = None
         """Cleaning filter."""
 
-        # Combine the results of a series of images
-        for img in baseline_images:
+        # Learn structural noise from collection of images
+        if baseline_images is not None:
 
-            probe_img = img.copy()
-
-            # Take (unsigned) difference
-            diff = self._subtract_background(probe_img)
-
-            # Extract scalar version
-            monochromatic_diff = self._extract_scalar_information(diff)
-
-            # Consider elementwise max
-            self.threshold_cleaning_filter = np.maximum(
-                self.threshold_cleaning_filter, monochromatic_diff
+            self.threshold_cleaning_filter = np.zeros(
+                self.base.img.shape[:2], dtype=float
             )
+
+            # Combine the results of a series of images
+            for img in baseline_images:
+
+                probe_img = img.copy()
+
+                # Take (unsigned) difference
+                diff = self._subtract_background(probe_img)
+
+                # Extract scalar version
+                monochromatic_diff = self._extract_scalar_information(diff)
+
+                # Consider elementwise max
+                self.threshold_cleaning_filter = np.maximum(
+                    self.threshold_cleaning_filter, monochromatic_diff
+                )
 
     def read_cleaning_filter_from_file(self, path: Union[str, Path]) -> None:
         """
@@ -156,16 +184,18 @@ class ConcentrationAnalysis:
 
         Args:
             path (str or Path): path to cleaning filter array.
+
         """
         # Fetch the threshold mask from file
         self.threshold_cleaning_filter = np.load(path)
 
         # Resize threshold mask if unmatching the size of the base image
-        base_shape = self.base.img.shape[:2]
-        if self.threshold_cleaning_filter.shape[:2] != base_shape:
-            self.threshold_cleaning_filter = cv2.resize(
-                self.threshold_cleaning_filter, tuple(reversed(base_shape))
-            )
+        if self.base is not None:
+            base_shape = self.base.img.shape[:2]
+            if self.threshold_cleaning_filter.shape[:2] != base_shape:
+                self.threshold_cleaning_filter = cv2.resize(
+                    self.threshold_cleaning_filter, tuple(reversed(base_shape))
+                )
 
     def write_cleaning_filter_to_file(self, path_to_filter: Union[str, Path]) -> None:
         """
@@ -173,6 +203,7 @@ class ConcentrationAnalysis:
 
         Args:
             path_to_filter (str or Path): path for storage of the cleaning filter.
+
         """
         path_to_filter = Path(path_to_filter)
         path_to_filter.parents[0].mkdir(parents=True, exist_ok=True)
@@ -188,6 +219,7 @@ class ConcentrationAnalysis:
 
         Returns:
             darsia.Image: concentration
+
         """
         probe_img = copy.deepcopy(img)
 
@@ -233,6 +265,7 @@ class ConcentrationAnalysis:
 
         Args:
             img (np.ndarray): image
+
         """
         if self.verbosity >= 2:
             plt.figure("Difference")
@@ -245,6 +278,7 @@ class ConcentrationAnalysis:
 
         Args:
             img (np.ndarray): image
+
         """
         if self.verbosity >= 2:
             plt.figure("Scalar signal")
@@ -257,6 +291,7 @@ class ConcentrationAnalysis:
 
         Args:
             img (np.ndarray): image
+
         """
         if self.verbosity >= 2:
             plt.figure("Clean signal")
@@ -273,16 +308,30 @@ class ConcentrationAnalysis:
 
         Returns:
             darsia.Image: difference with background image
+
         """
 
-        if self._diff_option == "positive":
-            diff = np.clip(img.img - self.base.img, 0, None)
-        elif self._diff_option == "negative":
-            diff = np.clip(self.base.img - img.img, 0, None)
-        elif self._diff_option == "absolute":
-            diff = skimage.util.compare_images(img.img, self.base.img, method="diff")
+        if self.base is None:
+            if self._diff_option == "positive":
+                diff = np.clip(img.img, 0, None)
+            elif self._diff_option == "negative":
+                diff = np.clip(-img.img, 0, None)
+            elif self._diff_option == "absolute":
+                diff = np.absolute(img.img)
+            else:
+                raise ValueError(f"Diff option {self._diff_option} not supported")
         else:
-            raise ValueError(f"Diff option {self._diff_option} not supported")
+
+            if self._diff_option == "positive":
+                diff = np.clip(img.img - self.base.img, 0, None)
+            elif self._diff_option == "negative":
+                diff = np.clip(self.base.img - img.img, 0, None)
+            elif self._diff_option == "absolute":
+                diff = skimage.util.compare_images(
+                    img.img, self.base.img, method="diff"
+                )
+            else:
+                raise ValueError(f"Diff option {self._diff_option} not supported")
 
         return diff
 
@@ -295,8 +344,12 @@ class ConcentrationAnalysis:
 
         Returns:
             np.ndarray: monochromatic reduction of the array
+
         """
-        return self.signal_reduction(img)
+        if self.signal_reduction is None:
+            return img
+        else:
+            return self.signal_reduction(img)
 
     def _clean_signal(self, img: np.ndarray) -> np.ndarray:
         """
@@ -307,6 +360,7 @@ class ConcentrationAnalysis:
 
         Returns:
             np.ndarray: cleaned image
+
         """
         return (
             img
@@ -326,6 +380,7 @@ class ConcentrationAnalysis:
 
         Returns:
             np.ndarray: balanced image
+
         """
         if self.balancing is not None:
             return self.balancing(img)
@@ -361,6 +416,7 @@ class ConcentrationAnalysis:
 
         Returns:
             np.ndarray: physical data
+
         """
         # Obtain data from model
         data = self.model(signal)

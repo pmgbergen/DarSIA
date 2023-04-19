@@ -158,6 +158,7 @@ def imread_from_optical(
 
         # Fix metadata
         kwargs["series"] = True
+        kwargs["color_space"] = "RGB"
 
         # Define image
         image = darsia.OpticalImage(
@@ -219,7 +220,10 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
 
 
 def imread_from_dicom(
-    path: Union[Path, list[Path]], **kwargs
+    path: Union[Path, list[Path]],
+    dim: int = 2,
+    transformations: Optional[list] = None,
+    **kwargs,
 ) -> Union[darsia.ScalarImage, list[darsia.ScalarImage]]:
     """
     Initialization of Image by reading from DICOM format.
@@ -258,7 +262,6 @@ def imread_from_dicom(
         raise ImportError("pydicom not available on this system")
 
     # ! ---- Image type
-    dim = kwargs.get("dim", 2)
 
     # PYDICOM specific tags for addressing dicom data from dicom files
     tag_position = pydicom.tag.BaseTag(0x00200032)
@@ -269,6 +272,8 @@ def imread_from_dicom(
     tag_acquisition_date = pydicom.tag.BaseTag(0x00080022)
     tag_acquisition_time = pydicom.tag.BaseTag(0x00080032)
     tag_number_slices = pydicom.tag.BaseTag(0x00540081)
+    tag_rescale_intercept = pydicom.tag.BaseTag(0x00281053)
+    tag_rescale_slope = pydicom.tag.BaseTag(0x00281053)
 
     # Good to have for future safety checks.
     # tag_number_time_slices = pydicom.tag.BaseTag(0x00540101)
@@ -295,10 +300,20 @@ def imread_from_dicom(
         # Read the dicom sample
         dataset = pydicom.dcmread(p)
 
-        # Extract the actual signal. And flip the axis to comply with
-        # the convention of the row/col/page indexing, also denoted
-        # standard matrix indexing, or ijk in DarSIA, or also matlab.
-        pixel_data.append(dataset.pixel_array)
+        # Extract the actual signal.
+        signal = dataset.pixel_array
+
+        # Rescale
+        intercept = dataset[tag_rescale_intercept].value
+        slope = dataset[tag_rescale_slope].value
+        rescaled_signal = intercept + slope * signal
+
+        # NOTE: In practice, corrections used to reconstruct the DICOM images (decay,
+        # dead time) do not need to be the same for all images. This is not taken care
+        # of in DarSIA at the moment.
+
+        # Store
+        pixel_data.append(rescaled_signal)
 
         # Extract position for each slice; corresponds to "z_dicom" direction
         # DICOM languag, but assumed to be negative x direction in
@@ -394,22 +409,28 @@ def imread_from_dicom(
 
     # ! ---- 3. Convert to Image
 
-    origin = kwargs.get("origin", dim * [0])
-
     # Collect all meta information for a space time image
+    dimensions = [voxel_size[i] * shape[i] for i in range(dim)]
     meta = {
         "dim": dim,
         "indexing": "ijk"[:dim],
-        "dimensions": [voxel_size[i] * shape[i] for i in range(dim)],
-        "origin": origin,
+        "dimensions": dimensions,
         "series": series,
+        "date": time,
     }
 
+    # Add metadata which get provided default values if not provided.
+    if "origin" in kwargs:
+        meta["origin"] = kwargs.get("origin")
+
     # Full space time image
-    return darsia.ScalarImage(img=img, date=time, **meta)
+    return darsia.ScalarImage(img=img, transformations=transformations, **meta)
 
 
 # ! ---- VTU images
+
+# NOTE: Actually since meshio is used here, any format should work, but it is only
+# tested for vtu images.
 
 
 def imread_from_vtu(
@@ -417,7 +438,7 @@ def imread_from_vtu(
     key: str,
     shape: tuple[int],
     **kwargs,
-) -> Union[darsia.Image, list[darsia.Image]]:
+) -> darsia.Image:
     """Reading routine for vtu input.
 
     NOTE: Only for 1d and 2d vtu images.
@@ -432,6 +453,52 @@ def imread_from_vtu(
                 is created.
 
     Returns:
+        darsia.Image: scalar image (space-time if list provided)
+
+    """
+    if isinstance(path, Path):
+
+        # Read from file
+        data, meta = _read_single_vtu_image(path, key, shape, **kwargs)
+
+        # Update metadata
+        meta["series"] = False
+
+    elif isinstance(path, list):
+        # Read from file
+        data_collection = [
+            _read_single_vtu_image(p, key, shape, **kwargs) for p in path
+        ]
+
+        # Create a space-time optical image through stacking along the time axis
+        meta = data_collection[0][1]  # NOTE: No safety check
+        dim = meta["dim"]
+        data = np.stack([d[0] for d in data_collection], axis=dim)
+
+        # Fix metadata
+        meta["series"] = True
+
+    meta["time"] = kwargs.get("time", None)  # TODO from pvd file
+
+    # Define image
+    return darsia.ScalarImage(data, **meta)
+
+
+def _read_single_vtu_image(
+    path: Path, key: str, shape: tuple[int], **kwargs
+) -> tuple[np.ndarray, dict]:
+    """Utility function for setting up a single vtu image.
+
+    Args:
+        path (Path): path to single vtu file.
+        key (str): key to address data.
+        shape (tuple of int): shape of target 2d pixelated array, in matrix indexing.
+            series (bool): flag controlling whether a time series of images
+                is created.
+
+    Returns:
+        np.ndarray: data array
+        dict: meta
 
     Raises:
         ImportError: if meshio is not installed
@@ -456,62 +523,51 @@ def imread_from_vtu(
     # in ambient dimensional space (of dimension dim).
     vtu_dim = kwargs.get("vtu_dim", dim)
 
-    # Fetch origin
+    # Fetch vtu data
+    vtu_data = meshio.read(path)
 
-    if isinstance(path, Path):
+    # Fetch grid information and data as array
+    points = vtu_data.points[:, :dim]
+    cells = vtu_data.cells[0].data
+    data = vtu_data.cell_data[key][0]
 
-        # Fetch vtu data
-        vtu_data = meshio.read(path)
+    # Fetch origin from points - take into account orientation of axes
+    cartesian_origin = np.array([np.min(points[:, i]) for i in range(dim)])
+    cartesian_opposite = np.array([np.max(points[:, i]) for i in range(dim)])
+    origin = []
+    for i, axis in enumerate("xyz"[:dim]):
+        _, revert = darsia.interpret_indexing(axis, indexing)
+        origin.append(cartesian_opposite[i] if revert else cartesian_origin[i])
 
-        # Fetch grid information and data as array
-        points = vtu_data.points[:, :dim]
-        cells = vtu_data.cells[0].data
-        data = vtu_data.cell_data[key][0]
+    # Fetch dimensions from points - need to reshuffle to matrix indexing
+    cartesian_dimensions = [
+        np.max(points[:, i]) - np.min(points[:, i]) for i in range(dim)
+    ]
+    dimensions = [
+        cartesian_dimensions[darsia.interpret_indexing(axis, indexing)[0]]
+        for axis in "xyz"[:dim]
+    ]
 
-        # Fetch origin from points - take into account orientation of axes
-        cartesian_origin = np.array([np.min(points[:, i]) for i in range(dim)])
-        cartesian_opposite = np.array([np.max(points[:, i]) for i in range(dim)])
-        origin = []
-        for i, axis in enumerate("xyz"[:dim]):
-            _, revert = darsia.interpret_indexing(axis, indexing)
-            origin.append(cartesian_opposite[i] if revert else cartesian_origin[i])
+    # Collect all metadata
+    meta = {
+        "dim": dim,
+        "indexing": indexing,
+        "dimensions": dimensions,
+        "origin": origin,
+    }
 
-        # Fetch dimensions from points - need to reshuffle to matrix indexing
-        cartesian_dimensions = [
-            np.max(points[:, i]) - np.min(points[:, i]) for i in range(dim)
-        ]
-        dimensions = [
-            cartesian_dimensions[darsia.interpret_indexing(axis, indexing)[0]]
-            for axis in "xyz"[:dim]
-        ]
+    # Create actual pixelated data
+    if dim == vtu_dim:
+        data = _resample_data(data, points, cells, shape, meta)
+    elif vtu_dim < dim:
+        width = kwargs.get("width")  # effective width of lower-dimension object
+        data, updated_dimensions, updated_origin = _embed_data(
+            data, points, cells, shape, meta, width
+        )
+        meta["dimensions"] = updated_dimensions
+        meta["origin"] = updated_origin
 
-        # Collect all metadata
-        meta = {
-            "dim": dim,
-            "indexing": indexing,
-            "dimensions": dimensions,
-            "origin": origin,
-            "series": False,
-        }
-
-        # Create actual pixelated data
-        if dim == vtu_dim:
-            data = _resample_data(data, points, cells, shape, meta)
-        elif vtu_dim < dim:
-            width = kwargs.get("width")  # effective width of lower-dimension object
-            data, updated_dimensions = _embed_data(
-                data, points, cells, shape, meta, width
-            )
-            meta["dimensions"] = updated_dimensions
-
-        # Read time
-        time = kwargs.get("time", None)
-        # TODO from pvd file
-
-        return darsia.ScalarImage(data, time=time, **meta)
-
-    elif isinstance(path, list):
-        raise NotImplementedError
+    return data, meta
 
 
 def _resample_data(
@@ -596,7 +652,7 @@ def _embed_data(
     tol: float = None,
     #    dimensions,
     #    roi=None,
-) -> np.ndarray:
+) -> tuple[np.ndarray, list[float], list[float]]:
     """
     Auxiliary routine to embed lower dimensional data into ambient
     dimension. Use sampling in normal direction.
@@ -615,6 +671,11 @@ def _embed_data(
         shape (tuple of int): size of the target quad mesh in matrix indexing.
         meta (dict): meta data dictionary associated to image.
         width (float): width of the lower dimensional object.
+
+    Returns:
+        np.ndarray: embedded data array complying with embedded space.
+        list of float: dimenions of embedded data (Cartesian indexing)
+        list of float: Cartesian coordinates of the voxel origin of the embedded data.
 
     Raises:
         NotImplementedError: if ambient dimension is not 2d.
@@ -646,20 +707,20 @@ def _embed_data(
     # Provide a point cloud effectively lying on the higher-dimensional
     # representation of the lower-dimensional object.
     points_lower = np.vstack(
-        (
+        tuple(
             points[cells[:, i]] - 0.5 * width * unit_normals
             for i in range(num_points_per_cell)
         )
     )
     points_upper = np.vstack(
-        (
+        tuple(
             points[cells[:, i]] + 0.5 * width * unit_normals
             for i in range(num_points_per_cell)
         )
     )
     extruded_points = np.vstack((points, points_lower, points_upper))
 
-    # Determine origin and dimensions of the point cloud.
+    # Determine origin and dimensions of the point cloud - all in Cartesian indexing.
     cartesian_origin = np.min(extruded_points, axis=0)
     cartesian_dimensions = np.array(
         [
@@ -671,6 +732,7 @@ def _embed_data(
         [darsia.interpret_indexing(axis, indexing)[0] for axis in "xyz"[:dim]]
     )
     cartesian_shape = np.array(shape)[cart_ind]
+    voxel_origin = [np.min(extruded_points[:, 0]), np.max(extruded_points[:, 1])]
 
     # Sample the centroids in normal and tangential direction,
     # according to the effective width, size and correpsonding
@@ -772,4 +834,4 @@ def _embed_data(
     ]
     dimensions = [cartesian_dimensions[i] for i in to_matrix_indexing]
 
-    return embedded_data, dimensions
+    return embedded_data, dimensions, voxel_origin

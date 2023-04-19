@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -27,15 +28,19 @@ def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
         "indexing": "ij",
     }
 
-    return array, info
+    success = array is not None
+
+    return array, info, success
 
 
-@pytest.mark.skip(reason="Requires files which are only locally available.")
 def test_color_correction():
     """Test color correction, effectively converting from BGR to RGB."""
 
     # ! ---- Fetch test image
-    array, info = read_test_image("baseline")
+    array, info, success = read_test_image("baseline")
+
+    if not success:
+        pytest.xfail("Image required for test not available.")
 
     # ! ---- Setup color correction
 
@@ -60,22 +65,25 @@ def test_color_correction():
     # ! ---- Compare corrected image with reference
 
     # Load reference image
-    reference_image = np.load(
-        "../reference/color_corrected_baseline.npy", allow_pickle=True
-    )
+    reference_path = "../reference/color_corrected_baseline.npy"
+    if not Path(reference_path).exists():
+        pytest.xfail("Image required for test not available.")
+    reference_image = np.load(reference_path, allow_pickle=True)
 
     # Make a direct comparison
-    assert np.all(np.isclose(reference_image, image.img))
+    assert np.allclose(reference_image, image.img)
 
 
-@pytest.mark.skip(reason="Requires files which are only locally available.")
 def test_curvature_correction():
     """Test of curvature correction applied to a numpy array. The correction
     routine contains all relevant operations, incl. bulging, stretching, and
     cropping."""
 
     # ! ---- Fetch test image
-    array, info = read_test_image("co2_2")
+    array, info, success = read_test_image("co2_2")
+
+    if not success:
+        pytest.xfail("Image required for test not available.")
 
     # ! ---- Setup correction
 
@@ -93,17 +101,24 @@ def test_curvature_correction():
 
     # ! ---- Compare corrected image with reference
 
-    reference_image = np.load(
-        "../reference/curvature_corrected_co2_2.npy", allow_pickle=True
-    )
-    assert np.all(np.isclose(reference_image, image.img))
+    reference_path = "../reference/curvature_corrected_co2_2.npy"
+    if not Path(reference_path).exists():
+        pytest.xfail("Image required for test not available.")
+    reference_image = np.load(reference_path, allow_pickle=True)
+
+    # Make a direct comparison
+    assert np.allclose(reference_image, image.img)
 
 
 def test_drift_correction():
     """Test the relative aligning of images via a drift."""
 
     # ! ---- Fetch test images
-    original_array, info = read_test_image("baseline")
+    original_array, info, success = read_test_image("baseline")
+
+    if not success:
+        pytest.xfail("Image required for test not available.")
+
     original_image = darsia.Image(img=original_array, **info)
 
     # ! ---- Define drift correction
@@ -120,10 +135,8 @@ def test_drift_correction():
     )
 
     # ! ---- Compare original and corrected image, but remove the boundary.
-    assert np.all(
-        np.isclose(
-            original_image.img[10:-10, 10:-10], corrected_image.img[10:-10, 10:-10]
-        )
+    assert np.allclose(
+        original_image.img[10:-10, 10:-10], corrected_image.img[10:-10, 10:-10]
     )
 
 
@@ -159,4 +172,4 @@ def test_rotation():
         ]
     )
 
-    assert np.all(np.isclose(image.img, image_ref))
+    assert np.allclose(image.img, image_ref)
