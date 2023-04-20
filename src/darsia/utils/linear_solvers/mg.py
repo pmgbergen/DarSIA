@@ -13,7 +13,9 @@ import darsia as da
 
 class MG(da.Solver):
     """
-    Muiltilvel solver for the problem: mass_coeff * x - diffusion_coeff * laplace(x) = rhs
+    Muiltilvel solver for the problem: mass_coeff * x - diffusion_coeff * laplace(x) = rhs.
+    For arrays with odd number of elements the last element is dropped in the refinement
+    stages.
     """
 
     def __init__(
@@ -81,6 +83,7 @@ class MG(da.Solver):
 
     def restriction(self, x: np.ndarray) -> np.ndarray:
         """Restrict x, i.e., coarsen it by a factor 2. Even and odd indices are averaged.
+        Last index is dropped if odd.
 
         Args:
             x [np.ndarray]: input

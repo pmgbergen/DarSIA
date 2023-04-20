@@ -116,7 +116,7 @@ def split_bregman_anisotropic_tvd(
         if verbose:
             print(f"The the energy functional iteration {i} is {_functional(im)}")
 
-    # Might need to put a clip here to avoid numerical issues
+    # Transform image back to original dtype
     if im_dtype == np.uint8:
         im = skimage.img_as_ubyte(im)
     elif im_dtype == np.uint16:
