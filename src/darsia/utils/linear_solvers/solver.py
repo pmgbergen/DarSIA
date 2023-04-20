@@ -25,6 +25,6 @@ class Solver:
         self.tol = tol
         self.verbose = verbose
 
+    @abc.abstractmethod
     def __call__(self, x0: np.ndarray, rhs: np.ndarray) -> np.ndarray:
-        print("Provide a call ,method for the solver.")
-        return x0
+        pass
