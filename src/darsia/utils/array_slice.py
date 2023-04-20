@@ -13,8 +13,8 @@ import numpy as np
 def array_slice(
     a: np.ndarray,
     axis: int,
-    start: Union[int, None],
-    end: Union[int, None],
+    start: Optional[int],
+    end: Optional[int],
     step: int = 1,
 ) -> np.ndarray:
     """
