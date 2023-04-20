@@ -21,7 +21,7 @@ def array_slice(
     Slice array along axis.
 
     Input:
-        a (np.ndarra): array to slice
+        a (np.ndarray): array to slice
         axis (int): axis to slice along
         start (int): start index
         end (int): end index
