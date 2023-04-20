@@ -5,7 +5,7 @@ Sugestion found in the thread:
 """
 from __future__ import annotations
 
-from typing import Union
+from typing import Optional
 
 import numpy as np
 
