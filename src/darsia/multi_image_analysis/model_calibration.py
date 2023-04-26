@@ -116,10 +116,11 @@ class AbstractModelObjective:
         # applying the provided model. This step will be used to tune the
         # model -> calibration.
 
-        # Fetch calibration options
-        initial_guess = options.get("initial_guess")
+        # Fetch calibration options - default option chosen if None provided.
+        initial_guess = options["initial_guess"]
         tol = options.get("tol")
         maxiter = options.get("maxiter")
+        method = options.get("method")
 
         # Define reference time (not important which image serves as basis)
         SECONDS_TO_HOURS = 1.0 / 3600
@@ -143,6 +144,7 @@ class AbstractModelObjective:
             initial_guess,
             tol=tol,
             options={"maxiter": maxiter, "disp": True},
+            method = method,
         )
         if opt_result.success:
             print(
