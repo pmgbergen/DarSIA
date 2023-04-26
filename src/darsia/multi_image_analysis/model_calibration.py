@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize as optimize
 from scipy import interpolate
-from sklearn.linear_model import RANSACRegressor
+from sklearn.linear_model import LinearRegression, RANSACRegressor
 
 import darsia
 
@@ -144,7 +144,7 @@ class AbstractModelObjective:
             initial_guess,
             tol=tol,
             options={"maxiter": maxiter, "disp": True},
-            method = method,
+            method=method,
         )
         if opt_result.success:
             print(
@@ -216,6 +216,8 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
         # Fetch the injection rate and geometry
         injection_rate = options["injection_rate"]  # in ml/hrs
         geometry = options["geometry"]
+        regression_type = options.get("regression_type", "ransac").lower()
+        assert regression_type in ["ransac", "linear"]
 
         # Define the objective function
         def objective_function(params: np.ndarray) -> float:
@@ -239,16 +241,25 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
                 for img, diff in zip(input_images, images_diff)
             ]
 
-            # Determine slope in time by linear regression
-            ransac = RANSACRegressor()
-            ransac.fit(np.array(times).reshape(-1, 1), np.array(volumes))
+            # Determine slope in time by linear regression. Allow for different
+            # regression types.
+            if regression_type == "ransac":
+
+                ransac = RANSACRegressor()
+                ransac.fit(np.array(times).reshape(-1, 1), np.array(volumes))
+                regression = ransac.estimator_
+
+            elif regression_type == "linear":
+
+                regression = LinearRegression()
+                regression.fit(np.array(times).reshape(-1, 1), np.array(volumes))
 
             # Extract the slope and convert to
-            effective_injection_rate = ransac.estimator_.coef_[0]
+            effective_injection_rate = regression.coef_[0]
 
             # Cache result for possible post-analysis
-            self._slope = ransac.estimator_.coef_[0]
-            self._intercept = ransac.estimator_.intercept_
+            self._slope = regression.coef_[0]
+            self._intercept = regression.intercept_
 
             # Measure deffect
             defect = effective_injection_rate - injection_rate
