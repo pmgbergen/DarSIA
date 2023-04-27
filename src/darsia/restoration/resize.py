@@ -32,7 +32,7 @@ class Resize:
 
     def __init__(
         self,
-        dsize: Optional[tuple[int]] = None,
+        shape: Optional[tuple[int]] = None,
         fx: Optional[float] = None,
         fy: Optional[float] = None,
         interpolation: Optional[str] = None,
@@ -42,8 +42,7 @@ class Resize:
     ) -> None:
         """
         Args:
-            dsize (tuple of int, optional): desired number of col and row
-                after transformation.
+            shape (tuple of int, optional): desired shape (in matrix indexing)
             fx (float, optional): resize factor in x-dimension.
             fy (float, optional): resize factor in y-dimension.
             interpolation (str, optional): interpolation method, default: None, invoking
@@ -53,16 +52,19 @@ class Resize:
         """
 
         # Cache parameters
-        self.dsize = kwargs.get(key + "resize dsize", None) if dsize is None else dsize
+        self.shape = kwargs.get(key + "resize shape", None) if shape is None else shape
         general_f = kwargs.get(key + "resize", None)
         self.fx = kwargs.get(key + "resize x", general_f) if fx is None else fx
         self.fy = kwargs.get(key + "resize y", general_f) if fy is None else fy
         self.dtype = kwargs.get(key + "resize dtype", None) if dtype is None else dtype
 
         # Safety checks - double check resize options
-        if self.dsize is None:
+        if self.shape is None:
             self.fx = 1 if self.fx is None else self.fx
             self.fy = 1 if self.fy is None else self.fy
+        else:
+            # cv2 expects a flipped order
+            self.dsize = tuple(reversed(self.shape))
 
         # Convert to CV2 format
         # NOTE: The default value for interpolation in cv2 is depending on whether
