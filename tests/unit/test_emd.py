@@ -45,7 +45,7 @@ def test_emd_2d_resize():
     # Setup EMD object, including a resize routine (needed for cv2.EMD)
     resize = darsia.Resize(
         **{
-            "resize dsize": (20, 40),  # rows, cols
+            "resize shape": (20, 40),  # rows, cols
             "resize interpolation": "inter_area",
             "resize conservative": True,
         }
