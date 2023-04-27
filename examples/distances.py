@@ -36,7 +36,7 @@ if False:
 # Determine distance between different masses
 resize = darsia.Resize(
     **{
-        "resize dsize": (140, 75),  # rows, cols
+        "resize shape": (75, 140),
         "resize interpolation": "inter_area",
         "resize conservative": True,
     }
