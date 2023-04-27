@@ -1,7 +1,6 @@
 """
-Module containing wrappers to resize routines
-from skimage and cv2. Access is given through
-objects.
+Module containing wrappers to resize routines from skimage and cv2. Access is given
+through objects. Also contains utility routine which equalizes voxel size lengths.
 
 """
 
@@ -160,3 +159,33 @@ class Resize:
             return type(img)(resized_img_array, **meta)
         else:
             return resized_img_array
+
+
+def equalize_voxel_size(
+    image: darsia.Image, voxel_size: Optional[float] = None, **kwargs
+) -> darsia.Image:
+    """Resize routine which keeps physical dimensions, but unifies the voxel length.
+
+    Args:
+        image (darsia.Image): image to be resized
+        voxel_size (float, optional): side length, min of the voxel side of the image
+            if None.
+        keyword arguments:
+            interpolation (str): interpolation type used for resize
+
+    Returns:
+        darsia.Image: resized image
+
+    """
+    # Fetch dimensions to be kept
+    dimensions = image.dimensions
+
+    # Determine resulting shape of the resized image
+    if voxel_size is None:
+        voxel_size = min(image.voxel_size)
+    shape = tuple(int(d / voxel_size) for d in dimensions)
+
+    # Perform resize
+    interpolation = kwargs.get("interpolation")
+    resize = Resize(shape=shape, interpolation=interpolation)
+    return resize(image)
