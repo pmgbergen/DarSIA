@@ -5,3 +5,5 @@ flake8
 mypy
 meshio
 pydicom
+sphinx
+pydata_sphinx_theme
