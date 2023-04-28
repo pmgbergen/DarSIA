@@ -5,6 +5,9 @@
 # DarSIA
 Darcy scale image analysis toolbox
 
+# Documentation
+Visit pmgbergen.github.io/DarSIA
+
 # Citing
 
 If you use DarSIA in your research, we ask you to cite the following publication:
