@@ -1,6 +1,7 @@
 """Image class.
 
 Images contain the image array, and in addition metadata about origin and dimensions.
+
 """
 
 from __future__ import annotations
@@ -12,6 +13,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, Union, cast
 from warnings import warn
+
+from matplotlib.axes import Axes
+from mpl_toolkits.mplot3d import Axes3D
 
 import cv2
 import matplotlib.pyplot as plt
@@ -633,29 +637,28 @@ class Image:
 
     def show(
         self,
-        name: Optional[str] = None,
+        name: str = "",
         duration: Optional[int] = None,
         show: bool = True,
+        **kwargs,
     ) -> None:
         """Show image using matplotlib.pyplots built-in methods.
 
         Args:
-            name (str, optional): name in the displayed window.
+            name (str): name in the displayed window.
             duration (int, optional): display duration in seconds.
-            show (bool): flag controlling whether the plot is forced to be
-                displayed.
+            show (bool): flag controlling whether the plot is forced to be displayed.
+            **kwargs: additional arguments passed to matplotlib.pyplot.
+                thresh (float): threshold for displaying the image; only for 3d images.
+                relative (bool): flag controlling whether the threshold is relative.
+                side_view (str): side view type of 3d image; only for 3d images;
+                    either "scatter" or "integrated".
 
         """
-        # Only works for optical and scalar images.
-        assert self.scalar or self.range_num in [1, 3]
-        assert self.space_dim == 2
 
-        if self.series:
-
-            if name is None:
-                name = ""
-
-            for time_index in range(self.time_num):
+        for time_index in range(self.time_num):
+            if self.series:
+                # Fetch time for series (not used otherwise)
                 abs_time = (
                     ""
                     if self.date[time_index] is None
@@ -666,30 +669,153 @@ class Image:
                     if self.time[time_index] is None
                     else " - " + str(self.time[time_index])
                 )
-                plt.figure(name + f" - {time_index} - {abs_time} -  {rel_time} sec.")
-                if self.scalar:
-                    plt.imshow(skimage.img_as_float(self.img[..., time_index]))
+
+                # Append name with time
+                _name = name
+                if not _name == "":
+                    _name += " - "
+                _name += f"{time_index} - {abs_time} -  {rel_time} sec."
+
+            # Plot the entire 2d image in plain mode
+            if self.space_dim == 2:
+                # Only works for scalar and optical images.
+                assert self.scalar or self.range_num in [1, 3]
+
+                # Fetch data array
+                if self.series:
+                    if self.scalar:
+                        c = self.img[..., time_index]
+                    else:
+                        c = self.img[..., time_index, :]
                 else:
-                    plt.imshow(skimage.img_as_float(self.img[..., time_index, :]))
-                if duration is None:
-                    duration = 3
+                    c = self.img
+
+                # Plot
+                plt.figure(name)
+                plt.imshow(skimage.img_as_float(c))
+
+            elif self.space_dim == 3:
+                # Only works for scalar images.
+                assert self.scalar
+
+                # Fetch bounding box
+                corners = np.vstack((self.origin, self.opposite_corner))
+                bbox = np.array([np.min(corners, axis=0), np.max(corners, axis=0)])
+
+                # Extract physical coordinates and flatten
+                matrix_indices = np.transpose(
+                    np.indices(self.img.shape[:3]).reshape((3, -1))
+                )
+                coordinates = self.coordinatesystem.coordinate(matrix_indices)
+
+                # Extract values
+                if self.series:
+                    c = self.img[..., time_index].reshape((1, -1))[0]
+                    time_slice = self.time_slice(time_index)
+                else:
+                    c = self.img.reshape((1, -1))[0]
+                    time_slice = self
+
+                # Restrict to active voxels
+                thresh = kwargs.get("thresh", np.min(self.img))
+                relative = kwargs.get("relative", False)
+                if relative:
+                    thresh = thresh * np.max(self.img)
+                active = c > thresh
+
+                # Signal strength
+                alpha = 0.9 * (c - np.min(c)) / (np.max(c) - np.min(c)) + 0.1
+                scaling = kwargs.get("scaling", 1)
+                s = scaling * alpha
+
+                # 3d view
+                fig_3d = plt.figure(name + " - 3d view")
+                ax_3d = Axes3D(fig_3d)
+                ax_3d.scatter(
+                    xs=coordinates[active, 0],
+                    ys=coordinates[active, 1],
+                    zs=coordinates[active, 2],
+                    s=s[active],
+                    alpha=np.power(alpha[active], 2),
+                    c=c[active],
+                    cmap="viridis",
+                )
+                ax_3d.set_xlabel("x-axis")
+                ax_3d.set_ylabel("y-axis")
+                ax_3d.set_zlabel("z-axis")
+                ax_3d.set_xlim(bbox[0, 0], bbox[1, 0])
+                ax_3d.set_ylim(bbox[0, 1], bbox[1, 1])
+                ax_3d.set_zlim(bbox[0, 2], bbox[1, 2])
+
+                # 2d side views. Offer two possibilities. Either a scatter plot or an
+                # integrated view. The latter uses integration over the axis "into" the
+                # screen.
+                side_view = kwargs.get("side_view", "scatter").lower()
+                assert side_view in ["scatter", "integrated"]
+
+                fig_2d_xy = plt.figure(name + " - 2d side view - x-y")
+                if side_view == "scatter":
+                    plt.scatter(
+                        coordinates[active, 0],
+                        coordinates[active, 1],
+                        s=s[active],
+                        alpha=alpha[active],
+                        c=c[active],
+                        cmap="viridis",
+                    )
+                    plt.xlim(bbox[0, 0], bbox[1, 0])
+                    plt.ylim(bbox[0, 1], bbox[1, 1])
+                elif side_view == "integrated":
+                    reduction = darsia.AxisAveraging(axis="z", dim=3)
+                    reduced_image = reduction(time_slice)
+                    plt.imshow(skimage.img_as_float(reduced_image.img))
+                plt.xlabel("x-axis")
+                plt.ylabel("y-axis")
+
+                fig_2d_xz = plt.figure(name + " - 2d side view - x-z")
+                if side_view == "scatter":
+                    plt.scatter(
+                        coordinates[active, 0],
+                        coordinates[active, 2],
+                        s=s[active],
+                        alpha=alpha[active],
+                        c=c[active],
+                        cmap="viridis",
+                    )
+                    plt.xlim(bbox[0, 0], bbox[1, 0])
+                    plt.ylim(bbox[0, 2], bbox[1, 2])
+                elif side_view == "integrated":
+                    reduction = darsia.AxisAveraging(axis="y", dim=3)
+                    reduced_image = reduction(time_slice)
+                    plt.imshow(skimage.img_as_float(reduced_image.img))
+                plt.xlabel("x-axis")
+                plt.ylabel("z-axis")
+
+                plt.figure(name + " - 2d side view - y-z")
+                if side_view == "scatter":
+                    plt.scatter(
+                        coordinates[active, 1],
+                        coordinates[active, 2],
+                        s=s[active],
+                        alpha=alpha[active],
+                        c=c[active],
+                        cmap="viridis",
+                    )
+                    plt.xlim(bbox[0, 1], bbox[1, 1])
+                    plt.ylim(bbox[0, 2], bbox[1, 2])
+                elif side_view == "integrated":
+                    reduction = darsia.AxisAveraging(axis="x", dim=3)
+                    reduced_image = reduction(time_slice)
+                    plt.imshow(skimage.img_as_float(reduced_image.img))
+                plt.xlabel("y-axis")
+                plt.ylabel("z-axis")
+
+            if duration is None:
+                plt.show()
+            else:
                 plt.show(block=False)
                 plt.pause(int(duration))
                 plt.close()
-
-        else:
-            if name is None:
-                name = ""
-
-            plt.figure(name)
-            plt.imshow(skimage.img_as_float(self.img))
-            if show:
-                if duration is None:
-                    plt.show()
-                else:
-                    plt.show(block=False)
-                    plt.pause(int(duration))
-                    plt.close()
 
     def write_metadata(self, path: Union[str, Path]) -> None:
         """
