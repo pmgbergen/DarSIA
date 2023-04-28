@@ -26,10 +26,7 @@ import darsia
 
 
 class Image:
-    """
-    Base image class.
-
-    """
+    """General image class."""
 
     # ! ---- Constructors
 
@@ -39,8 +36,7 @@ class Image:
         transformations: Optional[list] = None,
         **kwargs,
     ) -> None:
-        """
-        Initalization of a physical space-time image.
+        """Initalization of a physical space-time image.
 
         Allows for scalar and vector-values  2d, 3d, 4d, images, including
         time-slices as well as time-series. The boolean flag 'scalar' stores
@@ -247,7 +243,6 @@ class Image:
             raise ValueError("Choose only one reference.")
 
         if time is None:
-
             # From date
             if self.series:
                 if self._is_none(self.date):
@@ -258,7 +253,6 @@ class Image:
                         for i in range(self.time_num)
                     ]
             else:
-
                 if reference_date is None:
                     self.time = None
                 else:
@@ -295,7 +289,6 @@ class Image:
         """
 
         # ! ---- Safety checks
-
         assert self.space_dim == image.space_dim
         assert self.scalar == image.scalar
         assert np.allclose(np.array(self.num_voxels), np.array(image.num_voxels))
@@ -518,8 +511,8 @@ class Image:
             Image: image with restricted spatial domain.
 
         Raises:
-            ValueError: if both voxels and coordinates are not None, or if neither voxels
-                nor coordinates are provide
+            ValueError: if both voxels and coordinates are not None, or if neither
+                voxels nor coordinates are provide
 
         """
         # ! ---- Safety checks
@@ -530,7 +523,6 @@ class Image:
         # ! ---- Translate coordinates to voxels
 
         if coordinates is not None:
-
             # Translate coordinates to voxels
             voxels_box = self.coordinatesystem.voxel(coordinates)
 
@@ -875,7 +867,10 @@ class Image:
 
 
 class ScalarImage(Image):
-    """Special case of a space-time image, with 1d data, e.g., monochromatic photographs."""
+    """Special case of a space-time image, with 1d data, e.g., monochromatic
+    photographs.
+
+    """
 
     # ! ---- Constructors.
 
@@ -918,7 +913,8 @@ class ScalarImage(Image):
     # ! ---- Fast access.
 
     def metadata(self) -> dict:
-        """Generator of metadata; can be used to init a new optical image with same specs.
+        """Generator of metadata; can be used to init a new optical image with same
+        specs.
 
         Returns:
             dict: metadata with keys equal to all keywords agurments.
@@ -968,8 +964,8 @@ class ScalarImage(Image):
 
 
 class OpticalImage(Image):
-    """
-    Special case of 2d trichromatic optical images, typically originating from photographs.
+    """Special case of 2d trichromatic optical images, typically originating from
+    photographs.
 
     """
 
@@ -1025,7 +1021,8 @@ class OpticalImage(Image):
     # ! ---- Fast access.
 
     def metadata(self) -> dict:
-        """Generator of metadata; can be used to init a new optical image with same specs.
+        """Generator of metadata; can be used to init a new optical image with same
+        specs.
 
         Returns:
             dict: metadata with keys equal to all keywords agurments.
@@ -1062,7 +1059,6 @@ class OpticalImage(Image):
 
         # Write image, using the conventional matrix indexing
         if self.original_dtype == np.uint8:
-
             ubyte_image = skimage.img_as_ubyte(bgr_array)
             suffix = Path(path).suffix.lower()
 
@@ -1084,7 +1080,6 @@ class OpticalImage(Image):
                 cv2.imwrite(str(Path(path)), ubyte_image)
 
         elif self.original_dtype == np.uint16:
-
             ubyte_image = skimage.img_as_uint(bgr_array)
             cv2.imwrite(
                 str(Path(path)),
@@ -1160,7 +1155,6 @@ class OpticalImage(Image):
 
         # Adapt data array
         if key == "gray":
-
             option = eval("cv2.COLOR_" + self.color_space + "2GRAY")
             if self.series:
                 slices = []
@@ -1172,7 +1166,6 @@ class OpticalImage(Image):
                 img = cv2.cvtColor(self.img, option)
 
         elif key in ["red", "green", "blue"]:
-
             image.to_trichromatic("rgb")
             if key == "red":
                 img = image.img[..., 0]
@@ -1182,7 +1175,6 @@ class OpticalImage(Image):
                 img = image.img[..., 2]
 
         elif key in ["hue", "saturation", "value"]:
-
             image.to_trichromatic("hsv")
             if key == "hue":
                 img = image.img[..., 0]
@@ -1215,7 +1207,8 @@ class OpticalImage(Image):
 
         Arguments:
             origin (np.ndarray): origin of the grid, in physical units - the reference
-                coordinate system is provided by the corresponding attribute coordinatesystem
+                coordinate system is provided by the corresponding attribute
+                coordinatesystem
             dx (float): grid size in x-direction, in physical units
             dy (float): grid size in y-direction, in physical units
             color (tuple of int): BGR color of the grid
@@ -1240,7 +1233,6 @@ class OpticalImage(Image):
 
         # Add horizontal grid lines (line by line)
         for i in range(num_horizontal_lines):
-
             # Determine the outer boundaries in x directions
             xmin = self.coordinatesystem.domain["xmin"]
             xmax = self.coordinatesystem.domain["xmax"]
@@ -1248,8 +1240,8 @@ class OpticalImage(Image):
             # Determine the y coordinate of the line
             y = origin[1] + i * dy
 
-            # Determine the pixels corresponding to the end points of the horizontal line
-            # (xmin,y) - (xmax,y), in (row,col) format.
+            # Determine the pixels corresponding to the end points of the horizontal
+            # line (xmin,y) - (xmax,y), in (row,col) format.
             start = self.coordinatesystem.voxel([xmin, y])
             end = self.coordinatesystem.voxel([xmax, y])
 
@@ -1262,7 +1254,6 @@ class OpticalImage(Image):
 
         # Add vertical grid lines (line by line)
         for j in range(num_vertical_lines):
-
             # Determine the outer boundaries in x directions
             ymin = self.coordinatesystem.domain["ymin"]
             ymax = self.coordinatesystem.domain["ymax"]
