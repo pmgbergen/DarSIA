@@ -14,13 +14,11 @@ from pathlib import Path
 from typing import Any, Optional, Union, cast
 from warnings import warn
 
-from matplotlib.axes import Axes
-from mpl_toolkits.mplot3d import Axes3D
-
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
+from mpl_toolkits.mplot3d import Axes3D
 
 import darsia
 
@@ -745,7 +743,7 @@ class Image:
                 side_view = kwargs.get("side_view", "scatter").lower()
                 assert side_view in ["scatter", "integrated"]
 
-                fig_2d_xy = plt.figure(name + " - 2d side view - x-y")
+                plt.figure(name + " - 2d side view - x-y")
                 if side_view == "scatter":
                     plt.scatter(
                         coordinates[active, 0],
@@ -764,7 +762,7 @@ class Image:
                 plt.xlabel("x-axis")
                 plt.ylabel("y-axis")
 
-                fig_2d_xz = plt.figure(name + " - 2d side view - x-z")
+                plt.figure(name + " - 2d side view - x-z")
                 if side_view == "scatter":
                     plt.scatter(
                         coordinates[active, 0],
