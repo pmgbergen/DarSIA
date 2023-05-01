@@ -201,17 +201,25 @@ def _read_single_optical_image(path: Path) -> tuple[np.ndarray, Optional[datetim
     # Credit to: https://stackoverflow.com/questions/27929025/...
     # ...exif-python-pil-return-empty-dictionary
     if date is None:
-        output = check_output(f"identify -verbose {str(path)}".split())
-        meta = {}
-        for line in output.splitlines()[:-1]:
-            spl = line.decode().split(":", 1)
-            k, v = spl
-            meta[k.lstrip()] = v.strip()
+        try:
+            # The following code requires the ImageMagick package. If not installed,
+            # the following line will raise a NotFileFoundError.
+            output = check_output(f"identify -verbose {str(path)}".split())
+            meta = {}
+            for line in output.splitlines()[:-1]:
+                spl = line.decode().split(":", 1)
+                k, v = spl
+                meta[k.lstrip()] = v.strip()
 
-        date_with_info = meta["date"]
-        spl = date_with_info.split(":", 1)
-        # Hardcoded way of retrieving the datetime of "2022-10-12T11:02:40+02:00"
-        date = datetime.strptime(spl[1][1:], "%Y-%m-%dT%H:%M:%S%z")
+            date_with_info = meta["date"]
+            spl = date_with_info.split(":", 1)
+            # Hardcoded way of retrieving the datetime of "2022-10-12T11:02:40+02:00"
+            date = datetime.strptime(spl[1][1:], "%Y-%m-%dT%H:%M:%S%z")
+        except FileNotFoundError:
+            print(
+                "Warning: No exif metafile found. "
+                "Please install ImageMagick to read metadata from terminal."
+            )
 
     return array, date
 
@@ -296,7 +304,6 @@ def imread_from_dicom(
     # Consider each dicom file by itself (each file is a sample and has to
     # be sorted into the larger picture.
     for p in path:
-
         # Read the dicom sample
         dataset = pydicom.dcmread(p)
 
@@ -380,7 +387,6 @@ def imread_from_dicom(
     shape = (num_rows[0], num_cols[0], num_slices[0], len(time))
     img = np.zeros(shape, dtype=voxel_data.dtype)
     for i, date_time in enumerate(sorted_times):
-
         # Fetch corresponding datetime in original format
         index = sorted_indices[i]
         unique_date_time = unique_acq_dates[index]
@@ -457,7 +463,6 @@ def imread_from_vtu(
 
     """
     if isinstance(path, Path):
-
         # Read from file
         data, meta = _read_single_vtu_image(path, key, shape, **kwargs)
 
