@@ -1628,7 +1628,7 @@ class OpticalImage(Image):
             xmax = self.coordinatesystem.domain["xmax"]
 
             # Determine the y coordinate of the line
-            y = origin[1] + i * dy
+            y = origin[1] - i * dy
 
             # Determine the pixels corresponding to the end points of the horizontal
             # line (xmin,y) - (xmax,y), in (row,col) format.
