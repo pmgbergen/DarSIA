@@ -9,4 +9,5 @@ colour-checker-detection
 ipympl
 pillow
 scikit-learn
+pandas
 plotly
