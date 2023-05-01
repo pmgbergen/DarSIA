@@ -169,9 +169,12 @@ class Image:
 
         # ! ---- Time related safety check
 
-        # Require definition of some time.
-        if self.series:
-            assert not (self._is_none(self.date) and self._is_none(self.time))
+        # NOTE: Ideally, we would like to have a time array for each slice, but this
+        # turns out to be a bit cumbersome. Depending on the operating system,
+        # obtaining the time stamp of a file is not always possible (in particular on
+        # Windows OS). Therefore, the assert is deactivated. Errors may occur later on.
+        if self.series and (self._is_none(self.date) and self._is_none(self.time)):
+            warn("No time information provided for the image.")
 
         # ! ---- Data meta information
         self.scalar = kwargs.get("scalar", False)
@@ -677,21 +680,22 @@ class Image:
 
         for time_index in range(self.time_num):
             if self.series:
-                # Make mypy happy
-                assert isinstance(self.date, list) and all(
-                    [isinstance(d, datetime) for d in self.date]
-                )
-                assert isinstance(self.time, list)
-
                 # Fetch time for series (not used otherwise)
+
+                assert self.date is None or (
+                    isinstance(self.date, list)
+                    and all([d is None or isinstance(d, datetime) for d in self.date])
+                )  # mypy
                 abs_time = (
                     ""
-                    if self.date[time_index] is None
+                    if not isinstance(self.date, list) or self.date[time_index] is None
                     else " - " + str(self.date[time_index])
                 )
+
+                assert self.time is None or isinstance(self.time, list)
                 rel_time = (
                     ""
-                    if self.time[time_index] is None
+                    if self.time is None or self.time[time_index] is None
                     else " - " + str(self.time[time_index])
                 )
 
