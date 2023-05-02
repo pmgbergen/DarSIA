@@ -105,9 +105,7 @@ class CoordinateSystem:
         assert axis in self.axes
         return np.ceil(length / self.voxel_size[axis]).astype(int)
 
-    def coordinate(
-        self, voxel: Union[np.ndarray, list[int], tuple[int]], reverse: bool = False
-    ) -> np.ndarray:
+    def coordinate(self, voxel: Union[np.ndarray, list[int], tuple[int]]) -> np.ndarray:
         """
         Conversion from voxel to Cartesian coordinate, i.e., from (row,col) to (x,y)
         format plus scaling for a 2d image.
