@@ -672,6 +672,8 @@ class Image:
                     either "scatter" or "voxel".
                 surpress_2d (bool): flag controlling whether 2d images are displayed.
                 surpress_3d (bool): flag controlling whether 3d images are displayed.
+                delay (bool): flag controlling whether the display is delayed; can be
+                    used to display multiple images at the same time.
 
         """
 
