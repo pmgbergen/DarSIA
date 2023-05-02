@@ -60,19 +60,55 @@ options: dict = {
     # "duration": 180, # for testing purposes meaningful
 }
 
-# Example 1.
-dicom_image_3d_slice.show(
-    mode="matplotlib", view="scatter", side_view="scatter", **options
-)
+## Example 1.
+# dicom_image_3d_slice.show(
+#    mode="matplotlib", view="scatter", side_view="scatter", **options
+# )
+#
+## Example 2.
+# dicom_image_3d_slice.show(mode="matplotlib", view="voxel", side_view="voxel", **options)
 
-# Example 2.
-dicom_image_3d_slice.show(mode="matplotlib", view="voxel", side_view="voxel", **options)
-
-# Example 3.
-dicom_image_4d_interval.show(
-    mode="plotly", view="scatter", side_view="voxel", **options
-)
+## Example 3.
+# dicom_image_4d_interval.show(
+#    mode="plotly", view="scatter", side_view="voxel", **options
+# )
 
 # Example 4.
 dicom_image_3d_series.show(mode="matplotlib")
 # dicom_image_3d_series.show(mode = "plotly")
+
+# ! ---- Tailored corrections
+
+# Define tailored "correction" routine, providing a 3d space-time, flat dicom
+# image in darsia format.
+def tailored_transformation(image_4d: darsia.ScalarImage) -> darsia.Image:
+    """Correction routine tailored to block A.
+
+    Args:
+        image (darsia.Image): scalar 4d image
+
+    Returns:
+        darsia.Image: 3d flat scalar image
+
+    """
+    # 1. Rotation. Rotate normal to y-axis.
+    rotation = darsia.RotationCorrection(
+        anchor=[77, 0, 10], rotations=[(-0.03666321317606485, "y")], dim=3
+    )
+    rotated_image_4d = rotation(image_4d)
+
+    # 2. Crop. Restrict to relevant ROI in z direction.
+    roi_z = slice(90, 120)
+    roi_rotated_image_4d: darsia.ScalarImage = rotated_image_4d.subregion(
+        voxels=(roi_z, slice(0, None), slice(0, None))
+    )
+
+    # 3. Flatten image. Apply vertical averaging.
+    vertical_averaging = darsia.AxisAveraging(axis="z", dim=3)
+    flat_image_3d: darsia.ScalarImage = vertical_averaging(roi_rotated_image_4d)
+
+    return flat_image_3d
+
+
+transformed_image = tailored_transformation(dicom_image_3d_slice)
+transformed_image.show()
