@@ -630,7 +630,7 @@ class Image:
 
     def show(
         self,
-        name: str = "",
+        title: str = "",
         duration: Optional[int] = None,
         mode: str = "matplotlib",
         **kwargs,
@@ -639,7 +639,7 @@ class Image:
         often is faster.
 
         Args:
-            name (str): name in the displayed window.
+            title (str): title in the displayed window.
             duration (int, optional): display duration in seconds.
             mode (str): display mode; either "matplotlib" or "plotly".
             **kwargs: additional arguments passed to _show_matplotlib or _show_plotly.
@@ -648,20 +648,20 @@ class Image:
         assert mode in ["matplotlib", "plotly"], "Unknown mode."
 
         if mode == "matplotlib":
-            self.show_matplotlib(name, duration, **kwargs)
+            self.show_matplotlib(title, duration, **kwargs)
         elif mode == "plotly":
-            self.show_plotly(name, duration, **kwargs)
+            self.show_plotly(title, duration, **kwargs)
 
     def show_matplotlib(
         self,
-        name: str = "",
+        title: str = "",
         duration: Optional[int] = None,
         **kwargs,
     ) -> None:
         """Show routine using matplotlib.pyplot built-in methods.
 
         Args:
-            name (str): name in the displayed window.
+            title (str): title in the displayed window.
             duration (int, optional): display duration in seconds.
             **kwargs: additional arguments passed to matplotlib.pyplot.
                 threshold (float): threshold for displaying 3d images.
@@ -696,11 +696,11 @@ class Image:
                     else " - " + str(self.time[time_index])
                 )
 
-                # Append name with time
-                _name = name
-                if not _name == "":
-                    _name += " - "
-                _name += f"{time_index} - {abs_time} -  {rel_time} sec."
+                # Append title with time
+                _title = title
+                if not _title == "":
+                    _title += " - "
+                _title += f"{time_index} - {abs_time} -  {rel_time} sec."
 
             # Plot the entire 2d image in plain mode
             if self.space_dim == 2:
@@ -717,7 +717,7 @@ class Image:
                     array = self.img
 
                 # Plot
-                plt.figure(name)
+                plt.figure(_title)
                 plt.imshow(skimage.img_as_float(array))
 
             elif self.space_dim == 3:
@@ -768,7 +768,7 @@ class Image:
 
                 surpress_3d = kwargs.get("surpress_3d", False)
                 if not surpress_3d:
-                    fig_3d = plt.figure(name + " - 3d view")
+                    fig_3d = plt.figure(_title + " - 3d view")
                     ax_3d = Axes3D(fig_3d)
 
                     view = kwargs.get("view", "scatter").lower()
@@ -835,7 +835,7 @@ class Image:
                     fig_2d.suptitle("2d side views")
 
                     # xy-plane
-                    axs[0].set_title(name + " - x-y plane")
+                    axs[0].set_title(_title + " - x-y plane")
                     if side_view == "scatter":
                         axs[0].scatter(
                             coordinates[active, 0],
@@ -856,7 +856,7 @@ class Image:
                     axs[0].set_aspect("equal")
 
                     # xz-plane
-                    axs[1].set_title(name + " - x-z plane")
+                    axs[1].set_title(_title + " - x-z plane")
                     if side_view == "scatter":
                         axs[1].scatter(
                             coordinates[active, 0],
@@ -877,7 +877,7 @@ class Image:
                     axs[1].set_aspect("equal")
 
                     # yz-plane
-                    axs[2].set_title(name + " - y-z plane")
+                    axs[2].set_title(_title + " - y-z plane")
                     if side_view == "scatter":
                         axs[2].scatter(
                             coordinates[active, 1],
@@ -900,23 +900,25 @@ class Image:
                 # Make sure that any plot is shown
                 assert not (surpress_2d and surpress_3d)
 
-            if duration is None:
-                plt.show()
-            else:
-                plt.show(block=False)
-                plt.pause(int(duration))
-                plt.close()
+            delay = kwargs.get("delay", False)
+            if not delay or time_index == self.time_num - 1:
+                if duration is None:
+                    plt.show()
+                else:
+                    plt.show(block=False)
+                    plt.pause(int(duration))
+                    plt.close()
 
     def show_plotly(
         self,
-        name: str = "",
+        title: str = "",
         duration: Optional[int] = None,
         **kwargs,
     ) -> None:
         """Show routine using plotly built-in methods.
 
         Args:
-            name (str): name in the displayed window.
+            title (str): title in the displayed window.
             duration (int, optional): display duration in seconds.
             **kwargs: additional arguments passed to matplotlib.pyplot.
                 threshold (float): threshold for displaying 3d images.
@@ -949,11 +951,11 @@ class Image:
                     else " - " + str(self.time[time_index])
                 )
 
-                # Append name with time
-                _name = name
-                if not _name == "":
-                    _name += " - "
-                _name += f"{time_index} - {abs_time} -  {rel_time} sec."
+                # Append title with time
+                _title = title
+                if not _title == "":
+                    _title += " - "
+                _title += f"{time_index} - {abs_time} -  {rel_time} sec."
 
             # Plot the entire 2d image in plain mode
             if self.space_dim == 2:
@@ -983,7 +985,7 @@ class Image:
                 # Plot
                 fig_2d = px.imshow(
                     skimage.img_as_float(array),
-                    title=name,
+                    title=_title,
                     x=axes[0],
                     y=axes[1],
                     aspect="equal",
@@ -1044,7 +1046,7 @@ class Image:
                                     colorscale="Viridis",
                                     opacity=0.5,
                                 ),
-                                # title=name + " - 3d view",
+                                # title=_title + " - 3d view",
                             )
                         )
                     elif view == "voxel":
@@ -1070,7 +1072,7 @@ class Image:
                                 isomax=np.max(array),
                                 opacity=0.5,
                                 surface_count=10,
-                                # title=name + " - 3d view",
+                                # title=_title + " - 3d view",
                             )
                         )
 
