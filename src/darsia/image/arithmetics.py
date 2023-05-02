@@ -229,3 +229,20 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
                 image.img += warped_array
 
     return image
+
+
+def stack(images: list[darsia.Image]) -> darsia.Image:
+    """Append images from list and create a new image.
+
+    Args:
+        images (list of images): images
+
+    Returns:
+        darsia.Image: stackes image
+
+    """
+    image = images[0]
+    for i in range(1, len(images)):
+        image.append(images[i])
+
+    return image
