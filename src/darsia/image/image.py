@@ -346,7 +346,7 @@ class Image:
 
         # Specs
         self.time_dim = 1
-        self.time_num = len(time)
+        self.time_num += image.time_num
 
         # Update relative time
         self.set_time(time)
