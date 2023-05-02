@@ -61,6 +61,7 @@ class Resize:
         if self.shape is None:
             self.fx = 1 if self.fx is None else self.fx
             self.fy = 1 if self.fy is None else self.fy
+            self.dsize = None
         else:
             # cv2 expects a flipped order
             self.dsize = tuple(reversed(self.shape))
