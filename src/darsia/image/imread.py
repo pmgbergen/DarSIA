@@ -280,7 +280,7 @@ def imread_from_dicom(
     tag_acquisition_date = pydicom.tag.BaseTag(0x00080022)
     tag_acquisition_time = pydicom.tag.BaseTag(0x00080032)
     tag_number_slices = pydicom.tag.BaseTag(0x00540081)
-    tag_rescale_intercept = pydicom.tag.BaseTag(0x00281053)
+    tag_rescale_intercept = pydicom.tag.BaseTag(0x00281052)
     tag_rescale_slope = pydicom.tag.BaseTag(0x00281053)
 
     # Good to have for future safety checks.
