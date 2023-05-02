@@ -3,7 +3,7 @@ import numpy as np
 import darsia as da
 
 # Create a darsia Image: An image that also contains information of physical entities
-image = da.imread("../images/baseline.jpg", width=2.8, height=1.5)
+image = da.imread("images/baseline.jpg", width=2.8, height=1.5)
 
 # Use the show method to take a look at the imported image.
 image.show()
