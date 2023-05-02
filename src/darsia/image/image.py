@@ -111,7 +111,7 @@ class Image:
         if "depth" in kwargs:
             self.dimensions[2] = kwargs.get("depth")
 
-        self.num_voxels: int = self.img.shape[: self.space_dim]
+        self.num_voxels: tuple[int] = self.img.shape[: self.space_dim]
         """Number of voxels in each dimension."""
 
         self.voxel_size: list[float] = [
@@ -531,16 +531,13 @@ class Image:
             voxels_box = self.coordinatesystem.voxel(coordinates)
 
             # Extract slices
-            voxels = [
+            voxels: tuple[slice] = tuple(
                 slice(
                     max(0, np.min(voxels_box[:, d])),
                     min(np.max(voxels_box[:, d]), self.num_voxels[d]),
                 )
                 for d in range(self.space_dim)
-            ]
-
-            # Convert to tuple
-            voxels = tuple(voxels)
+            )
 
         assert len(voxels) == self.space_dim
 
