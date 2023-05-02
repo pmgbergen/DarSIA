@@ -15,9 +15,9 @@ import darsia
 class RotationCorrection(darsia.BaseCorrection):
     """Class for rotation correction of nd images, up to 4d.
 
-    Rotations are defined as combination of multiple basic rotations.
-    In 2d, a single basic rotation is sufficient. In 3d, although
-    three are available, two are sufficient.
+    Rotations are defined as combination of multiple basic rotations. In 2d, a single
+    basic rotation is sufficient. In 3d, although three are available, two are
+    sufficient.
 
     Attributes:
         dim (int): ambient dimension
@@ -30,24 +30,40 @@ class RotationCorrection(darsia.BaseCorrection):
     def __init__(
         self,
         anchor: Union[list[int], np.ndarray],
-        rotations: list[tuple[float, str]],
         dim: int,
+        **kwargs,
     ) -> None:
-
         # Cache dimension
         self.dim = dim
 
         # Cache anchor of rotation
         self.anchor = np.array(anchor)
 
+        rotation_from_isometry = kwargs.get("rotation_from_isometry", False)
+        if rotation_from_isometry:
+            pts_src = kwargs.get("pts_src")
+            pts_dst = kwargs.get("pts_dst")
+            angular_conservative_affine_map = darsia.AngularConservativeAffineMap(
+                pts_src,
+                pts_dst,
+            )
+        else:
+            rotations = kwargs.get("rotations")
+
         # Define rotation as combination of basic rotations
         if dim == 2:
-            degree = rotations[0]
-            vector = np.array([0, 0, 1])
-            rotation = Rotation.from_rotvec(degree * vector)
-            self.rotation = rotation.as_matrix()[:2, :2]
-            rotation_inv = Rotation.from_rotvec(-degree * vector)
-            self.rotation_inv = rotation_inv.as_matrix()[:2, :2]
+            if rotation_from_isometry:
+                self.rotation = angular_conservative_affine_map.rotation
+                self.rotation_inv = np.linalg.inv(
+                    angular_conservative_affine_map.rotation
+                )
+            else:
+                degree = rotations[0]
+                vector = np.array([0, 0, 1])
+                rotation = Rotation.from_rotvec(degree * vector)
+                self.rotation = rotation.as_matrix()[:2, :2]
+                rotation_inv = Rotation.from_rotvec(-degree * vector)
+                self.rotation_inv = rotation_inv.as_matrix()[:2, :2]
         elif dim == 3:
             self.rotation = np.eye(dim)
             self.rotation_inv = np.eye(dim)
