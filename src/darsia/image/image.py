@@ -703,6 +703,8 @@ class Image:
                 if not _title == "":
                     _title += " - "
                 _title += f"{time_index} - {abs_time} -  {rel_time} sec."
+            else:
+                _title = title
 
             # Plot the entire 2d image in plain mode
             if self.space_dim == 2:
