@@ -1,11 +1,10 @@
-"""
-Module containing routines to read images from file to DarSIA.
-Several file types are supported:
+"""Module containing routines to read images from file to DarSIA. Several file types
+are supported:
 
 * optical images: *jpg, *jpeg, *png, *tif, *tiff
 * DICOM images: *dcm
-* vtu images: (TODO)
-* numpy images: (TODO)
+* simulation data: anything which can be read by meshio, e.g. *vtu
+* numpy images: *npy
 
 """
 
@@ -17,6 +16,7 @@ from typing import Optional, Union
 
 import cv2
 import numpy as np
+import pydicom
 from PIL import Image as PIL_Image
 
 import darsia
@@ -233,27 +233,25 @@ def imread_from_dicom(
     transformations: Optional[list] = None,
     **kwargs,
 ) -> Union[darsia.ScalarImage, list[darsia.ScalarImage]]:
-    """
-    Initialization of Image by reading from DICOM format.
+    """Initialization of Image by reading from DICOM format.
 
-    Assumptions: Coordinate systems in DICOM format are
-    organized in an ijk format, which is different from
-    the ijk format used for general images. DICOM images
-    come in slices, and conventionally the coordinate system
-    is associated relatively to the object to be scanned,
-    which is not the coordinate system according to gravity,
-    since objects usually lie horizontally in a medical scanner.
-    In DarSIA we translate to the standard Cartesian coordinate
-    system such that the z-coordinate is aligned with the
-    gravitational force. Therefore the ijk indexing of
-    standard DICOM images is not consistent with the matrix
-    indexing of darsia.Image. The transformation of
-    coordinate axes is performed here.
+    Assumptions: Coordinate systems in DICOM format are organized in an ijk format,
+    which is different from the ijk format used for general images. DICOM images
+    come in slices, and conventionally the coordinate system is associated relatively
+    to the object to be scanned, which is not the coordinate system according to
+    gravity, since objects usually lie horizontally in a medical scanner. In DarSIA we
+    translate to the standard Cartesian coordinate system such that the z-coordinate is
+    aligned with the gravitational force. Therefore the ijk indexing of standard DICOM
+    images is not consistent with the matrix indexing of darsia.Image. The
+    transformation of coordinate axes is performed here.
 
     Args:
         path (Path, or list of such): path to dicom stacks
-        keyword arguments:
-            dim (int): spatial dimensionality of the images.
+        dim (int): spatial dimensionality of the images.
+        transformations (list of callables): transformations.
+        kwargs: keyword arguments.
+
+
 
     NOTE: Merely scalar data can be handled.
 
@@ -264,11 +262,6 @@ def imread_from_dicom(
         ImportError: if pydicom is not installed
 
     """
-    try:
-        import pydicom
-    except ImportError:
-        raise ImportError("pydicom not available on this system")
-
     # ! ---- Image type
 
     # PYDICOM specific tags for addressing dicom data from dicom files
@@ -322,11 +315,8 @@ def imread_from_dicom(
         # Store
         pixel_data.append(rescaled_signal)
 
-        # Extract position for each slice; corresponds to "z_dicom" direction
-        # DICOM languag, but assumed to be negative x direction in
-        # Cartesian coordinates. After all stored as third component
-        # as 'page' corresponds to "z_dicom".
-        slice_positions.append(np.array(dataset[tag_position].value)[2])
+        # Extract position for each slice.
+        slice_positions.append(np.array(dataset[tag_position].value))
 
         # Extract number of datapoints in each direction.
         num_rows.append(dataset[tag_rows].value)
@@ -363,11 +353,10 @@ def imread_from_dicom(
     slice_positions = np.array(slice_positions)  # only used to sort slices.
     acq_times = np.array(acq_times)  # used to distinguish between images.
 
-    # Convert date time strings to datetime format. Expect a data format
-    # for the input as ('20210222133538.000'), where the first entry
-    # represent the date Feb 22, 2021, and the second entry represents
-    # the time 13 hours, 35 minutes, and 38 seconds. Sort the list of
-    # datetimes, starting with earliest datetime.
+    # Convert date time strings to datetime format. Expect a data format for the input
+    # as ('20210222133538.000'), where the first entry represent the date Feb 22, 2021,
+    # and the second entry represents the time 13 hours, 35 minutes, and 38 seconds.
+    # Sort the list of datetimes, starting with the earliest datetime.
     def datetime_conversion(date_time: str) -> datetime:
         return datetime.strptime(date_time[:14], "%Y%m%d%H%M%S")
 
@@ -381,10 +370,14 @@ def imread_from_dicom(
     sorted_times = [t for t, _ in sorted_times_indices]
     sorted_indices = [i for _, i in sorted_times_indices]
 
+    # Determine varying axis in slice positions (assume same for all slices)
+    varying_axis = int(np.argwhere(np.diff(slice_positions, axis=0)[0] != 0))
+    num_slices = len(list(set(slice_positions[:, varying_axis])))
+
     # Group and sort data into the time frames, converting the 3d tensor
     # into a 4d img
     time = sorted_times
-    shape = (num_rows[0], num_cols[0], num_slices[0], len(time))
+    shape = (num_rows[0], num_cols[0], num_slices, len(time))
     img = np.zeros(shape, dtype=voxel_data.dtype)
     for i, date_time in enumerate(sorted_times):
         # Fetch corresponding datetime in original format
@@ -395,7 +388,7 @@ def imread_from_dicom(
         time_frame = np.argwhere(acq_date_time_tuples == unique_date_time).flatten()
 
         # For each time frame, sort data in slice-direction (stored as third component)
-        sorted_time_frame = np.argsort(slice_positions[time_frame])
+        sorted_time_frame = np.argsort(slice_positions[time_frame, varying_axis])
 
         # Apply sorting to the time frames
         sorted_time_frame = time_frame[sorted_time_frame]
@@ -415,6 +408,10 @@ def imread_from_dicom(
 
     # ! ---- 3. Convert to Image
 
+    # Pick first position simply as origin
+    # TODO need to choose max, min, etc., define functionality in coordinatesyste,
+    origin = slice_positions[0]
+
     # Collect all meta information for a space time image
     dimensions = [voxel_size[i] * shape[i] for i in range(dim)]
     meta = {
@@ -423,11 +420,8 @@ def imread_from_dicom(
         "dimensions": dimensions,
         "series": series,
         "date": time,
+        "origin": origin,
     }
-
-    # Add metadata which get provided default values if not provided.
-    if "origin" in kwargs:
-        meta["origin"] = kwargs.get("origin")
 
     # Full space time image
     return darsia.ScalarImage(img=img, transformations=transformations, **meta)
