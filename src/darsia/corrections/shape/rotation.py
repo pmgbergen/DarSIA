@@ -30,14 +30,14 @@ class RotationCorrection(darsia.BaseCorrection):
     def __init__(
         self,
         anchor: Union[list[int], np.ndarray],
-        dim: int,
         **kwargs,
     ) -> None:
-        # Cache dimension
-        self.dim = dim
-
         # Cache anchor of rotation
         self.anchor = np.array(anchor)
+
+        # Cache dimension (obtained from anchor)
+        dim = len(self.anchor)
+        self.dim = dim
 
         rotation_from_isometry = kwargs.get("rotation_from_isometry", False)
         if rotation_from_isometry:
