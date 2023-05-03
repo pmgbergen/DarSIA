@@ -128,3 +128,23 @@ class AxisAveraging:
         metadata["dimensions"] = new_dimensions
 
         return type(img)(img=img_arr, **metadata)
+
+
+def average_over_axis(
+    image: darsia.Image, index: Optional[int] = None, axis: Optional[str] = None
+) -> darsia.Image:
+    """Utility function, essentially wrapping AxisAveraging as a method.
+
+    Args:
+        img (Image): 3d image.
+        index (int): numeric index (corresponding to matrix indexing)
+        axis (str): Cartesian axis
+        dim (int): dimension of the input image
+
+    Returns:
+        Image: 2d image.
+
+    """
+    dim = image.space_dim
+    averaging = AxisAveraging(index, axis, dim)
+    return averaging(image)
