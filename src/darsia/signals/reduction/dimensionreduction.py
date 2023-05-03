@@ -22,9 +22,8 @@ class AxisAveraging:
     ) -> None:
         """
         Args:
-            index
-            axis (int or str): numeric index (corresponding to matrix indexing) or
-                Cartesian axis
+            index (int): numeric index (corresponding to matrix indexing)
+            axis (str): Cartesian axis
             dim (int): dimension of the input image
 
         Raises:
