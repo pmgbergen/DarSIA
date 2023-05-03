@@ -15,8 +15,8 @@ import darsia
 
 
 class AngularConservativeAffineMap:
-    """Affine map, restricted to translation, scaling, rotation,
-    resulting in conservation of angles.
+    """Affine map, restricted to translation, scaling, rotation, resulting in
+    conservation of angles.
 
     """
 
@@ -59,8 +59,8 @@ class AngularConservativeAffineMap:
             raise ValueError
 
         else:
-            assert "dim" in kwargs
-            dim = kwargs.get("dim")
+            assert "dim" in kwargs and isinstance(kwargs["dim"], int)
+            dim = kwargs["dim"]
 
         if dim not in [2, 3]:
             raise ValueError
@@ -71,12 +71,10 @@ class AngularConservativeAffineMap:
 
         # If data provided, fit the parameters accordingly
         if pts_src is not None and pts_dst is not None:
-
             options = kwargs.get("options", {})
             self.fit(pts_src, pts_dst, **options)
 
         else:
-
             # Define identity
             self.translation = np.zeros(self.dim, dtype=float)
             """Translation vector."""
@@ -219,6 +217,7 @@ class AngularConservativeAffineMap:
             bool: success of parameter fit
 
         """
+
         # Define least squares objective function
         def objective_function(params: np.ndarray):
             self.set_parameters_as_vector(params)
@@ -329,7 +328,7 @@ class CoordinateTransformation(darsia.BaseCorrection):
         )
         """Actual coordinate transformation operating between Cartesian spaces."""
 
-    def find_intersection(self) -> tuple[slice]:
+    def find_intersection(self) -> tuple[slice, slice]:
         """Determine the active canvas in coordinatesystem_dst, covered by
         coordinatesystem_src after transformed onto the target canvas.
 
