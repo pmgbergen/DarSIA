@@ -92,14 +92,14 @@ class AngularConservativeAffineMap:
         self,
         translation: Optional[np.ndarray] = None,
         scaling: Optional[float] = None,
-        rotations: Optional[list[Union[tuple[float, str], np.ndarray]]] = None,
+        rotation: Optional[Union[np.ndarray, list[tuple[float, str]]]] = None,
     ) -> None:
         """Set-access of parameters of map.
 
         Args:
-            translation (array, optional): translation vector
-            scaling (float, optional): scaling value
-            rotations (array or list of tuples, optional): rotation angles and axes
+            translation (array, optional): translation vector.
+            scaling (float, optional): scaling value.
+            rotation (array, float, or list of tuples, optional): rotation angles.
 
         """
         if translation is not None:
@@ -108,25 +108,24 @@ class AngularConservativeAffineMap:
         if scaling is not None:
             self.scaling = scaling
 
-        if rotations is not None:
-
+        if rotation is not None:
             if self.dim == 2:
-                degree = rotations[0]
+                degree = rotation
                 vector = np.array([0, 0, 1])
-
-                rotation = Rotation.from_rotvec(degree * vector)
-                rotation_inv = Rotation.from_rotvec(-degree * vector)
-
-                self.rotation = rotation.as_matrix()[:2, :2]
-                self.rotation_inv = rotation_inv.as_matrix()[:2, :2]
+                self.rotation = Rotation.from_rotvec(degree * vector).as_matrix()[
+                    :2, :2
+                ]
+                self.rotation_inv = Rotation.from_rotvec(-degree * vector).as_matrix()[
+                    :2, :2
+                ]
 
             elif self.dim == 3:
 
-                # TODO why initialization needed?
+                assert isinstance(rotation, list)
                 self.rotation = np.eye(self.dim)
                 self.rotation_inv = np.eye(self.dim)
 
-                for degree, cartesian_axis in rotations:
+                for degree, cartesian_axis in rotation:
                     matrix_axis, reverted = darsia.interpret_indexing(
                         cartesian_axis, "xyz"[: self.dim]
                     )
@@ -155,9 +154,15 @@ class AngularConservativeAffineMap:
             assert len(parameters) == self.dim + 1 + rotations_dofs
         translation = parameters[0 : self.dim]
         scaling = 1.0 if self.isometry else parameters[self.dim]
-        rotations = parameters[-rotations_dofs:]
+        if self.dim == 2:
+            rotation = parameters[-rotations_dofs:]
+        elif self.dim == 3:
+            rotation = [
+                (degree, axis)
+                for degree, axis in zip(parameters[-rotations_dofs:], "xyz")
+            ]
 
-        self.set_parameters(translation, scaling, rotations)
+        self.set_parameters(translation, scaling, rotation)
 
     def __call__(self, array: np.ndarray) -> np.ndarray:
         """Application of map.
