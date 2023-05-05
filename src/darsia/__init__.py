@@ -24,6 +24,7 @@ from darsia.utils.coloranalysis import *
 from darsia.utils.identity import *
 from darsia.corrections.basecorrection import *
 from darsia.corrections.shape.curvature import *
+from darsia.corrections.shape.affine import *
 from darsia.corrections.shape.translation import *
 from darsia.corrections.shape.piecewiseperspective import *
 from darsia.corrections.shape.rotation import *
@@ -31,7 +32,7 @@ from darsia.corrections.shape.drift import *
 from darsia.corrections.shape.deformation import *
 from darsia.corrections.color.colorcorrection import *
 from darsia.corrections.color.experimentalcolorcorrection import *
-from darsia.image.coordinatetransformation import *  # requires basecorrection
+from darsia.image.coordinatetransformation import * # Requires affine correction
 from darsia.signals.models.basemodel import *
 from darsia.signals.models.combinedmodel import *
 from darsia.signals.models.linearmodel import *
