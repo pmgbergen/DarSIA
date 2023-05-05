@@ -7,6 +7,7 @@ import copy
 import itertools
 from typing import Optional, Union
 
+import largestinteriorrectangle as lir
 import numpy as np
 import scipy.optimize as optimize
 from scipy.spatial.transform import Rotation
@@ -351,11 +352,6 @@ class CoordinateTransformation(darsia.BaseCorrection):
 
         if not self.dim == 2:
             raise NotImplementedError("Intersection option only supported in 2d.")
-
-        try:
-            import largestinteriorrectangle as lir
-        except ImportError:
-            raise ImportError("largestinteriorrectangle not available")
 
         # Find the voxel locations of the corners in the source array - need them sorted.
         shape_src = self.coordinatesystem_src.shape
