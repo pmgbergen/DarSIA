@@ -101,7 +101,8 @@ def test_coordinate_transformation_change_meta_2d():
     assert np.allclose(meta_tra["dimensions"], meta_dst["dimensions"])
 
 
-def test_coordinate_transformation_translation():
+@pytest.mark.parametrize("isometry", [False, True])
+def test_coordinate_transformation_translation(isometry):
     """Test coordinate transformation corresponding to embedding with change in
     metadata.
 
@@ -137,8 +138,11 @@ def test_coordinate_transformation_translation():
         image_dst.coordinatesystem,
         voxels_src,
         voxels_dst,
-        fit_options={"tol": 1e-6, "maxiter": 10000},
-        isometry=True,
+        fit_options={
+            "tol": 1e-6,
+            "maxiter": 10000,
+        },
+        isometry=isometry,
     )
 
     # Check whether coordinate transform generates the same image
@@ -151,7 +155,6 @@ def test_coordinate_transformation_translation():
             [0, 1, 0, 1],
         ]
     )
-    print(transformed_image.img)
     assert np.allclose(transformed_image.img, reference_arr)
 
     meta_tra = transformed_image.metadata()
