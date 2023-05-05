@@ -379,6 +379,11 @@ class AffineCorrection(darsia.BaseCorrection):
         self.coordinatesystem_dst = coordinatesystem_dst
         """Coordinate system corresponding to the output/target."""
 
+        # For increased robustness, work with centers of voxels
+        dim = self.coordinatesystem_src.dim
+        shifted_voxels_src = np.array(voxels_src) + 0.5 * np.ones(dim)
+        shifted_voxels_dst = np.array(voxels_dst) + 0.5 * np.ones(dim)
+
         # Construct optimal coordinate transform in the Cartesian coordinate space.
         # Thus, need to base the construction on the actual relative coordinates.
         self.use_cartesian = use_cartesian or isometry
@@ -386,14 +391,14 @@ class AffineCorrection(darsia.BaseCorrection):
         voxel coordinates for the actual map. Overwritten if isometry is activated."""
         if self.use_cartesian:
             pts_src: np.ndarray[float] = self.coordinatesystem_src.coordinate(
-                np.array(voxels_src)
+                shifted_voxels_src
             )
             pts_dst: np.ndarray[float] = self.coordinatesystem_dst.coordinate(
-                np.array(voxels_dst)
+                shifted_voxels_dst
             )
         else:
-            pts_src = np.array(voxels_src)
-            pts_dst = np.array(voxels_dst)
+            pts_src = shifted_voxels_src
+            pts_dst = shifted_voxels_dst
 
         # Fetch additional properties
         assert self.coordinatesystem_src.dim == self.coordinatesystem_dst.dim
@@ -430,14 +435,18 @@ class AffineCorrection(darsia.BaseCorrection):
             list(itertools.product(*[range(shape_dst[i]) for i in range(self.dim)]))
         )
 
+        # As in the setup, shift voxels
+        dim = self.coordinatesystem_src.dim
+        shifted_voxels_dst = voxels_dst + 0.5 * np.ones(dim)
+
         # Find corresponding voxels in the original image by applying the inverse map
         if self.use_cartesian:
-            coordinates_dst = self.coordinatesystem_dst.coordinate(voxels_dst)
-            coordinates_src = self.angular_conservative_map.inverse(coordinates_dst)
+            coordinates_dst = self.coordinatesystem_dst.coordinate(shifted_voxels_dst)
+            coordinates_src = self.affine_transformation.inverse(coordinates_dst)
             voxels_src = self.coordinatesystem_src.voxel(coordinates_src)
         else:
-            voxels_src = np.round(
-                self.angular_conservative_map.inverse(voxels_dst)
+            voxels_src = np.floor(
+                self.affine_transformation.inverse(shifted_voxels_dst)
             ).astype(int)
         num_voxels = len(voxels_src)
 
