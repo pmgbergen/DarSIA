@@ -198,7 +198,7 @@ class Image:
         if transformations is not None:
             for transformation in transformations:
                 if transformation is not None and hasattr(transformation, "__call__"):
-                    transformation(self)
+                    transformation(self, overwrite=True)
 
         # ! ---- Update spatial metadata, after shape-altering transformations
         self.space_num: int = np.prod(self.shape[: self.space_dim])
