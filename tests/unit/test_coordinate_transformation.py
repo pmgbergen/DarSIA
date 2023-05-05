@@ -4,6 +4,7 @@ images with incompatible coordinate systems.
 """
 
 import numpy as np
+import pytest
 
 import darsia
 
@@ -159,7 +160,8 @@ def test_coordinate_transformation_translation():
     assert np.allclose(meta_tra["dimensions"], meta_dst["dimensions"])
 
 
-def test_coordinate_transformation_rotation():
+@pytest.mark.parametrize("preconditioning", [False, True])
+def test_coordinate_transformation_rotation(preconditioning):
     """Test coordinate transformation corresponding to embedding with change in
     metadata.
 
@@ -195,7 +197,7 @@ def test_coordinate_transformation_rotation():
         image_dst.coordinatesystem,
         voxels_src,
         voxels_dst,
-        fit_options={"tol": 1e-4, "maxiter": 1000},
+        fit_options={"tol": 1e-4, "maxiter": 1000, "preconditioning": preconditioning},
         isometry=False,
     )
 
