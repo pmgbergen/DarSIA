@@ -272,9 +272,13 @@ def imread_from_dicom(
     tag_slice_thickness = pydicom.tag.BaseTag(0x00180050)
     tag_acquisition_date = pydicom.tag.BaseTag(0x00080022)
     tag_acquisition_time = pydicom.tag.BaseTag(0x00080032)
-    tag_number_slices = pydicom.tag.BaseTag(0x00540081)
+    # TODO
+    # tag_number_slices = pydicom.tag.BaseTag(0x00540081)
     tag_rescale_intercept = pydicom.tag.BaseTag(0x00281052)
     tag_rescale_slope = pydicom.tag.BaseTag(0x00281053)
+    # tag_series_description = pydicom.tag.BaseTag(
+    #     0x0008103E
+    # )  # TODO include as name for image
 
     # Good to have for future safety checks.
     # tag_number_time_slices = pydicom.tag.BaseTag(0x00540101)
@@ -290,7 +294,7 @@ def imread_from_dicom(
     slice_positions = []  # the position in page direction, i.e., of each slice.
     num_rows = []  # image size in row/z direction.
     num_cols = []  # image size in col/y direction.
-    num_slices = []  # image size in page/x direction
+    # num_slices = []  # image size in page/x direction # TODO rm
     acq_times = []  # acquisition time of samples
     acq_date_time_tuples = []  # acquision (date, time) of samples
 
@@ -321,10 +325,11 @@ def imread_from_dicom(
         # Extract number of datapoints in each direction.
         num_rows.append(dataset[tag_rows].value)
         num_cols.append(dataset[tag_cols].value)
-        if tag_number_slices in dataset:  # may only extist for 2d images
-            num_slices.append(dataset[tag_number_slices].value)
-        else:
-            num_slices.append(1)
+        # TODO rm
+        # if tag_number_slices in dataset:  # may only exist for 2d images
+        #    num_slices.append(dataset[tag_number_slices].value)
+        # else:
+        #    num_slices.append(1)
 
         # Extract acquisition time for each slice
         acq_date_time_tuples.append(
@@ -344,7 +349,8 @@ def imread_from_dicom(
     # Assume constant image size.
     assert all([num_rows[i] == num_rows[0] for i in range(len(num_rows))])
     assert all([num_cols[i] == num_cols[0] for i in range(len(num_cols))])
-    assert all([num_slices[i] == num_slices[0] for i in range(len(num_slices))])
+    # TODO rm
+    # assert all([num_slices[i] == num_slices[0] for i in range(len(num_slices))])
 
     # ! ---- 2. Step: Sort input wrt datetime
 
