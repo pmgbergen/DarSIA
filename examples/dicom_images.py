@@ -79,6 +79,7 @@ dicom_image_3d_series.show(mode="matplotlib")
 
 # ! ---- Tailored corrections
 
+
 # Define tailored "correction" routine, providing a 3d space-time, flat dicom
 # image in darsia format.
 def tailored_transformation(image_4d: darsia.ScalarImage) -> darsia.Image:
