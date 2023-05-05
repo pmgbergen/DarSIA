@@ -3,13 +3,8 @@ Example script for simple image analysis. By comparison of images
 of the same well test, a tracer concentration can be determined.
 """
 
-import json
 import os
 from pathlib import Path
-
-import cv2
-import matplotlib.pyplot as plt
-import numpy as np
 
 import darsia
 

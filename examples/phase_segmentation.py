@@ -10,11 +10,9 @@ are not shared - they can be obtained from 10.5281/zenodo.7510589
 
 """
 
-import shutil
 from pathlib import Path
 from typing import Union
 
-import cv2
 import numpy as np
 import pytest
 
