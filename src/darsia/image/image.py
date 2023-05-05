@@ -642,7 +642,7 @@ class Image:
             title (str): title in the displayed window.
             duration (int, optional): display duration in seconds.
             mode (str): display mode; either "matplotlib" or "plotly".
-            **kwargs: additional arguments passed to _show_matplotlib or _show_plotly.
+            **kwargs: additional arguments passed to show_matplotlib or show_plotly.
 
         """
         assert mode in ["matplotlib", "plotly"], "Unknown mode."
@@ -960,6 +960,8 @@ class Image:
                 if not _title == "":
                     _title += " - "
                 _title += f"{time_index} - {abs_time} -  {rel_time} sec."
+            else:
+                _title = title
 
             # Plot the entire 2d image in plain mode
             if self.space_dim == 2:
@@ -1026,8 +1028,15 @@ class Image:
                 threshold = kwargs.get("threshold", np.min(self.img))
                 relative = kwargs.get("relative", False)
                 if relative:
-                    threshold = threshold * np.max(self.img)
+                    threshold = np.min(self.img) + threshold * (
+                        np.max(self.img) - np.min(self.img)
+                    )
                 active = array > threshold
+                if np.count_nonzero(active) > 1e5:
+                    warn(
+                        """Too many active voxels. Plotting may take a while """
+                        """or even fail."""
+                    )
 
                 # ! ---- 3d view
 
