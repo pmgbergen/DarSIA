@@ -14,6 +14,9 @@ from scipy.spatial.transform import Rotation
 
 import darsia
 
+# Shortcut for coordinate type (voxel and Cartesian)
+CoordinateType = list[Union[float, int]]
+
 
 class AngularConservativeAffineMap:
     """Affine map, restricted to translation, scaling, rotation, resulting in
@@ -25,8 +28,8 @@ class AngularConservativeAffineMap:
 
     def __init__(
         self,
-        pts_src: Optional[Union[list[list[Union[int, float]]], np.ndarray]] = None,
-        pts_dst: Optional[Union[list[list[Union[int, float]]], np.ndarray]] = None,
+        pts_src: Optional[Union[list[CoordinateType], np.ndarray]] = None,
+        pts_dst: Optional[Union[list[CoordinateType], np.ndarray]] = None,
         isometry: bool = True,
         **kwargs,
     ) -> None:
@@ -63,14 +66,17 @@ class AngularConservativeAffineMap:
             dim = len(pts_src[0])
 
         elif pts_src is not None or pts_dst is not None:
-            raise ValueError
+            raise ValueError("Both pts_src and pts_dst need to be provided.")
 
         else:
-            assert "dim" in kwargs and isinstance(kwargs["dim"], int)
+            if "dim" not in kwargs:
+                raise ValueError("Dimension needs to be provided.")
             dim = kwargs["dim"]
 
+            assert isinstance(dim, int), "Dimension needs to be an integer."
+
         if dim not in [2, 3]:
-            raise ValueError
+            raise ValueError("Dimension needs to be 2 or 3.")
         self.dim = dim
         """Dimension of the Euclidean space."""
 
@@ -99,14 +105,16 @@ class AngularConservativeAffineMap:
         self,
         translation: Optional[np.ndarray] = None,
         scaling: Optional[float] = None,
-        rotation: Optional[Union[np.ndarray, list[tuple[float, str]]]] = None,
+        rotation: Optional[np.ndarray] = None,
     ) -> None:
         """Set-access of parameters of map.
 
         Args:
             translation (array, optional): translation vector.
             scaling (float, optional): scaling value.
-            rotation (array, float, or list of tuples, optional): rotation angles.
+            rotation (array, optional): rotation angles in radians for the rotation
+                around the x, y, and z axis, respectively. In 2d, the length is 1. In
+                3d, the length is 3.
 
         """
         if translation is not None:
@@ -117,9 +125,8 @@ class AngularConservativeAffineMap:
 
         if rotation is not None:
             if self.dim == 2:
-                assert isinstance(rotation, np.ndarray)  # mypy
-
-                degree = rotation
+                assert len(rotation) == 1
+                degree = rotation[0]
                 vector = np.array([0, 0, 1])
                 self.rotation = Rotation.from_rotvec(degree * vector).as_matrix()[
                     :2, :2
@@ -129,14 +136,15 @@ class AngularConservativeAffineMap:
                 ]
 
             elif self.dim == 3:
-                assert isinstance(rotation, list) and all(
-                    isinstance(r, tuple) for r in rotation
-                )  # mypy
+                assert len(rotation) == 3
 
+                # Initialize rotation matrices
                 self.rotation = np.eye(self.dim)
                 self.rotation_inv = np.eye(self.dim)
 
-                for degree, cartesian_axis in rotation:
+                for axis_index in range(3):
+                    degree = rotation[axis_index]
+                    cartesian_axis = "xyz"[axis_index]
                     matrix_axis, reverted = darsia.interpret_indexing(
                         cartesian_axis, "xyz"[: self.dim]
                     )
@@ -159,7 +167,10 @@ class AngularConservativeAffineMap:
         """Wrapper for set_parameters.
 
         Args:
-            parameters (array): all parameters concatenated as array.
+            parameters (array): all parameters concatenated as array. In 2d, the length
+                is either 3 (translation, rotation) or 4 (translation, scaling,
+                rotation). In 3d, the length is either 6 (translation, rotation) or 7
+                (translation, scaling, rotation).
 
         """
         rotations_dofs: int = 1 if self.dim == 2 else self.dim
@@ -169,23 +180,25 @@ class AngularConservativeAffineMap:
             assert len(parameters) == self.dim + 1 + rotations_dofs
         translation = parameters[0 : self.dim]
         scaling = 1.0 if self.isometry else parameters[self.dim]
-        if self.dim == 2:
-            rotation: Union[np.ndarray, list[tuple]] = parameters[-rotations_dofs:]
-        elif self.dim == 3:
-            rotation = [
-                (degree, axis)
-                for degree, axis in zip(parameters[-rotations_dofs:], "xyz")
-            ]
+        rotation = parameters[-rotations_dofs:]
 
         self.set_parameters(translation, scaling, rotation)
 
-    def fit(self, pts_src: list, pts_dst: list, **kwargs) -> bool:
+    def fit(
+        self,
+        pts_src: Union[list[CoordinateType], np.ndarray],
+        pts_dst: Union[list[CoordinateType], np.ndarray],
+        preconditioning: bool = True,
+        **kwargs,
+    ) -> bool:
         """Least-squares parameter fit based on source and target coordinates.
 
         Args:
-            pts_src (list): coordinates corresponding to source data
-            pts_dst (list): coordinates corresponding to destination data
-            kwargs: optimization parameters
+            pts_src (list or array): coordinates corresponding to source data
+            pts_dst (list or array): coordinates corresponding to destination data
+            preconditioning (bool): Flag controlling whether the optimization problem
+                is preconditioned by estimating a better initial guess for the
+                translation.
 
         Returns:
             bool: success of parameter fit
@@ -194,6 +207,7 @@ class AngularConservativeAffineMap:
         # Fetch calibration options
         tol = kwargs.get("tol", 1e-2)
         maxiter = kwargs.get("maxiter", 100)
+
         # For the initial guess, start with the identity
         if self.isometry:
             # Initial guess:
@@ -210,7 +224,6 @@ class AngularConservativeAffineMap:
 
         # Allow for preconditioning of the problem, i.e., controlled modification of
         # the src points.
-        preconditioning = kwargs.get("preconditioning", True)
         if preconditioning:
             # Estimate better initial guess for the translation and correct the src
             # points. This will help the optimization to converge faster. Estimate the
