@@ -1,5 +1,5 @@
-"""
-Module containing estimator for translation required to match two images.
+"""Module defining estimator for translation between ROIs and corresponding correction.
+
 """
 
 from pathlib import Path
@@ -14,21 +14,20 @@ from darsia.utils.features import FeatureDetection
 
 
 class TranslationEstimator:
-    """
-    Class for computing translations to align images based on feature detection.
+    """Estimator of translation to align images based on feature detection.
 
-    Operates mainly on numpy arrays, but also provides some functionalities for darsia
-    Images.
+    Estimation is performed by restriction to ROIs.
+
     """
 
     def __init__(self, max_features: int = 200, tol: float = 0.05, keep_percent=0.1):
-        """
-        Setup of user-defined tuning parameters.
+        """Setup of user-defined tuning parameters.
 
         Args:
             max_features (int): feature detection parameter
             tol (float): tolerance used to detect whether matching transformation is a
                 translation
+
         """
         self._max_features = max_features
         self._keep_percent = keep_percent
@@ -44,9 +43,7 @@ class TranslationEstimator:
         mask_dst: Optional[np.ndarray] = None,
         plot_matches: bool = False,
     ) -> tuple:
-        """
-        Find effective translation to align to images, such that when restricted to an ROI,
-        both images have matching features.
+        """Find translation to align two images through feature matching.
 
         All lengths are measured in number of pixels.
 
@@ -66,6 +63,7 @@ class TranslationEstimator:
             np.ndarray: transformation matrix operating on pixel coordinates using reverse
                 matrix indexing
             bool: flag indicating whether the procedure was successful
+
         """
         # Make several attempts to find a matching transformation.
         # First attempt to match both images, using a homography.
@@ -116,9 +114,7 @@ class TranslationEstimator:
         roi_dst: Optional[tuple] = None,
         plot_matches: bool = False,
     ) -> np.ndarray:
-        """
-        Align two images, such that when restricted to an ROI, both images have matching
-        features.
+        """Align two images through feature matching in provided ROIs.
 
         Args:
             img_src (np.ndarray or darsia.Image): source image
@@ -131,6 +127,7 @@ class TranslationEstimator:
 
         Returns:
             np.ndarray, optional: aligned source image, if input of type array
+
         """
         # Determine effective translation
         if isinstance(img_src, np.ndarray) and isinstance(img_dst, np.ndarray):
@@ -152,9 +149,7 @@ class TranslationEstimator:
         roi_dst: Optional[tuple],
         plot_matches: bool = False,
     ) -> np.ndarray:
-        """
-        Align two images, such that when restricted to an ROI, both images have matching
-        features.
+        """Align two images through feature matching in provided ROIs.
 
         Args:
             img_src (np.ndarray): source image
@@ -167,6 +162,7 @@ class TranslationEstimator:
 
         Returns:
             np.ndarray: aligned source image
+
         """
         # Determine effective translation
         translation, intact_translation = self.find_effective_translation(
@@ -189,9 +185,7 @@ class TranslationEstimator:
         roi_dst: Optional[tuple],
         plot_matches: bool = False,
     ) -> np.ndarray:
-        """
-        Align two images, such that when restricted to an ROI, both images have matching
-        features.
+        """Align two images through feature matching in provided ROIs.
 
         Args:
             img_src (image): source image, which will be modified and aligned
@@ -201,6 +195,7 @@ class TranslationEstimator:
                 translation
             plot_matches (bool): flag controlling whether the matching features are plotted;
                 useful for debugging; default value is False
+
         """
         # Determine effective translation
         translation, intact_translation = self.find_effective_translation(
@@ -228,9 +223,7 @@ class TranslationEstimator:
         return_matches: bool = False,
         plot_matches: bool = False,
     ) -> tuple:
-        """
-        Determine matching transformation (homography or partial affine transformation),
-        matching two given, possibly ROI-restricted, images.
+        """Determine matching map (homography or partial affine transformation).
 
         Args:
             img_src (np.ndarray): source image
@@ -253,6 +246,7 @@ class TranslationEstimator:
             np.ndarray: transformation matrix operating on pixel coordinates using reverse
                 matrix indexing
             bool: flag indicating whether the procedure was successful
+
         """
         if transformation_type not in ["homography", "partial_affine"]:
             raise ValueError(
@@ -336,8 +330,7 @@ class TranslationEstimator:
             return transformation, intact_transformation
 
     def _isclose_translation(self, transformation: np.ndarray) -> bool:
-        """
-        Checking whether a transformation is close to a translation.
+        """Checking whether a transformation is close to a translation.
 
         Args:
             transformation (np.ndarray): transformation matrix, e.g., homography,
@@ -345,14 +338,14 @@ class TranslationEstimator:
 
         Returns:
             bool: flag whether transformation is close to a translation
+
         """
         return transformation is not None and np.allclose(
             transformation[:2, :2], np.eye(2), atol=self._tol
         )
 
     def _find_translation(self, matches: tuple) -> tuple:
-        """
-        Determine a translation as average translation between two sets of points.
+        """Determine a translation as average translation between two sets of points.
 
         NOTE: The average translation is identical to the least squares minimizer
         among all translations. Including RANSAC would be optimal. However, in
@@ -365,6 +358,7 @@ class TranslationEstimator:
         Returns:
             np.ndarray: translation matrix
             bool: flag indicating whether the procedure was successful
+
         """
         # Extract the translation directly as average displacement from all
         # provided matches - have to assume that the matches are well chosen.
@@ -379,26 +373,40 @@ class TranslationEstimator:
 
 
 class TranslationCorrection(darsia.BaseCorrection):
-    """Correction object performing a user-prescribed translation to provided image."""
+    """Translation correction based on user-input global translation.
+
+    Translation is provided as array or path to numpy array.
+
+    """
 
     def __init__(self, translation: Optional[Union[str, Path]] = None):
+        """Contructor.
+
+        Args:
+            translation (str or Path): path to predefined translation.
+
+        """
 
         # Read translation from file
         if translation is not None:
             self.translation = np.load(Path(translation))
+            """Translation map/array."""
+
             self.active = True
+            """Flag controlling whether the correction is active."""
+
         else:
             self.active = False
 
     def correct_array(self, img: np.ndarray) -> np.ndarray:
-        """
-        Perform translation.
+        """Main routine. Perform translation.
 
         Args:
             img (np.ndarray): image to be corrected.
 
         Returns:
-            array: Corrected image.
+            array: Corrected image
+
         """
         (h, w) = img.shape[:2]
         translated_img = cv2.warpAffine(img, self.translation, (w, h))

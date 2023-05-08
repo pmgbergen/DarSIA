@@ -1,7 +1,6 @@
-"""
-Module containing objects to align images with a baseline image,
-when restricted to a significant ROI. By this correction for drift
-is taking care of.
+"""Module defining alignmen of images through global translation.
+
+The corresponding translation is determined through alignment of user-defined ROIs.
 
 """
 
@@ -13,18 +12,14 @@ import darsia
 
 
 class DriftCorrection(darsia.BaseCorrection):
-    """
-    Class for drift correction of images wrt. a baseline image.
-
-    """
+    """Drift correction through global translation to align ROIs wrt. baseline image."""
 
     def __init__(
         self,
         base: Union[np.ndarray, darsia.Image],
         config: Optional[dict] = None,
     ) -> None:
-        """
-        Constructor for DriftCorrection.
+        """Constructor.
 
         Args:
             base (array or Image): baseline.
@@ -87,8 +82,7 @@ class DriftCorrection(darsia.BaseCorrection):
     # ! ---- Main correction routines
 
     def correct_array(self, img: np.ndarray, roi: Optional[tuple] = None) -> np.ndarray:
-        """
-        Main routine for aligning image with baseline image.
+        """Main routine for aligning image with baseline image.
 
         Args:
             img (np.ndarray): input image, to be aligned.
@@ -97,6 +91,7 @@ class DriftCorrection(darsia.BaseCorrection):
 
         Returns:
             np.ndarray: aligned image array.
+
         """
         if self.active:
             # Define roi for source image. Let input argument be dominating over self.roi.
