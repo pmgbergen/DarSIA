@@ -8,13 +8,32 @@ Physical Images and I/O (:mod:`darsia.image`)
    :undoc-members:
    :show-inheritance:
 
+Submodules
+----------
+Central submodules in the ``darsia.image`` subpackage are:
+
 .. autosummary::
    :toctree: generated/
-
+  
    image
+   imread
+   coordinatesystem
+
+Utility submodules contained in ``darsia.image`` are:
+
+.. autosummary::
+   :toctree: generated/
+  
+   arithmetics
+   coordinatetransformation
+   indexing
+   patches
+   subregions
+
 
 Submodules
 ----------
+TODO: MOVE THESE IN SEPARATE FILES!
 
 darsia.image.arithmetics module
 -------------------------------
