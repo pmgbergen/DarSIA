@@ -1,8 +1,13 @@
-"""Root directory for DarSIA.
+"""
+==========================================================
+DarSIA: Darcy Scale Image Analysis toolbox (:mod:`darsia`)
+==========================================================
 
-isort:skip_file
+DarSIA provides tools for quantitative image processing with support for various and
+common data types in computational and laboratory porous media research.
 
 """
+
 from darsia.image.coordinatesystem import *
 from darsia.image.image import *
 from darsia.image.indexing import *
