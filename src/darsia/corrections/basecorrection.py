@@ -9,10 +9,7 @@ import darsia
 
 
 class BaseCorrection(ABC):
-    """Abstract base correction, providing workflow and template for tailored
-    corrections.
-
-    """
+    """Abstract base correction, providing template for tailored corrections."""
 
     def __call__(
         self,
@@ -83,7 +80,7 @@ class BaseCorrection(ABC):
         self,
         image: np.ndarray,
     ) -> np.ndarray:
-        """Correction routine on array level.
+        """Correction routine on array level, to be specified for tailored correction.
 
         Args:
             image (array): image array.
