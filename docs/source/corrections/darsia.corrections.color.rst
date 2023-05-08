@@ -1,13 +1,22 @@
 Color corrections (:mod:`darsia.corrections.color`)
 ===================================================
 
+.. currentmodule:: darsia.corrections.color
+
 .. automodule:: darsia.corrections.color
    :members:
    :undoc-members:
    :show-inheritance:
 
-Submodules
-----------
+Color correction implementations
+--------------------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   colorcorrection
+   experimentalcolorcorrection
+   
 
 darsia.corrections.color.colorcorrection module
 -----------------------------------------------

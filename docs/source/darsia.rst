@@ -14,14 +14,18 @@ For convenience, all subpackages are imported implicitly when importing DarSIA v
 .. toctree::
    :maxdepth: 1
 
-   darsia.corrections
-   darsia.image
-   darsia.manager
-   darsia.mathematics
-   darsia.measure
-   darsia.multi_image_analysis
-   darsia.presets
-   darsia.restoration
-   darsia.signals
-   darsia.single_image_analysis
-   darsia.utils
+   corrections/darsia.corrections
+   image/darsia.image
+   manager/darsia.manager
+   mathematics/darsia.mathematics
+   measure/darsia.measure
+   multi_image_analysis/darsia.multi_image_analysis
+   presets/darsia.presets
+   restoration/darsia.restoration
+   signals/darsia.signals
+   single_image_analysis/darsia.single_image_analysis
+   utils/darsia.utils
+
+Getting started
+---------------
+TODO: Examples and a recommended reading list will follow.
