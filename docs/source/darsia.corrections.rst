@@ -1,14 +1,10 @@
 darsia.corrections package
 ==========================
 
-Subpackages
------------
-
-.. toctree::
-   :maxdepth: 4
-
-   darsia.corrections.color
-   darsia.corrections.shape
+.. automodule:: darsia.corrections
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Submodules
 ----------
@@ -21,10 +17,11 @@ darsia.corrections.basecorrection module
    :undoc-members:
    :show-inheritance:
 
-Module contents
----------------
+Subpackages
+-----------
 
-.. automodule:: darsia.corrections
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. toctree::
+   :maxdepth: 1
+
+   darsia.corrections.color
+   darsia.corrections.shape

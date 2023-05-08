@@ -1,11 +1,18 @@
 darsia package
 ==============
 
+.. automodule:: darsia
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Subpackages
 -----------
+For convenience, all subpackages are imported implicitly when importin DarSIA via
+``import darsia``. The following subpackages are finally imported:
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 1
 
    darsia.corrections
    darsia.image
@@ -18,11 +25,3 @@ Subpackages
    darsia.signals
    darsia.single_image_analysis
    darsia.utils
-
-Module contents
----------------
-
-.. automodule:: darsia
-   :members:
-   :undoc-members:
-   :show-inheritance:

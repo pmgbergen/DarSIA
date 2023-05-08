@@ -1,5 +1,17 @@
-darsia.image package
-====================
+Physical Images and I/O (:mod:`darsia.image`)
+=============================================
+
+.. currentmodule:: darsia.image
+
+.. automodule:: darsia.image
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autosummary::
+   :toctree: generated/
+
+   image
 
 Submodules
 ----------
@@ -64,14 +76,6 @@ darsia.image.subregions module
 ------------------------------
 
 .. automodule:: darsia.image.subregions
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: darsia.image
    :members:
    :undoc-members:
    :show-inheritance:

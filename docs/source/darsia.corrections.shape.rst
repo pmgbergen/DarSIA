@@ -1,6 +1,11 @@
 darsia.corrections.shape package
 ================================
 
+.. automodule:: darsia.corrections.shape
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Submodules
 ----------
 
@@ -48,14 +53,6 @@ darsia.corrections.shape.translation module
 -------------------------------------------
 
 .. automodule:: darsia.corrections.shape.translation
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: darsia.corrections.shape
    :members:
    :undoc-members:
    :show-inheritance:

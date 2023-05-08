@@ -1,6 +1,11 @@
 darsia.corrections.color package
 ================================
 
+.. automodule:: darsia.corrections.color
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Submodules
 ----------
 
@@ -16,14 +21,6 @@ darsia.corrections.color.experimentalcolorcorrection module
 -----------------------------------------------------------
 
 .. automodule:: darsia.corrections.color.experimentalcolorcorrection
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: darsia.corrections.color
    :members:
    :undoc-members:
    :show-inheritance:
