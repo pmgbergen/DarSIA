@@ -1,5 +1,10 @@
-darsia.signals.reduction package
-================================
+Dimensional reduction (:mod:`darsia.signals.reduction`)
+=======================================================
+
+.. automodule:: darsia.signals.reduction
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Submodules
 ----------
@@ -24,14 +29,6 @@ darsia.signals.reduction.signalreduction module
 -----------------------------------------------
 
 .. automodule:: darsia.signals.reduction.signalreduction
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: darsia.signals.reduction
    :members:
    :undoc-members:
    :show-inheritance:

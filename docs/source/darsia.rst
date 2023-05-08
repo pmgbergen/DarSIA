@@ -1,5 +1,5 @@
-darsia package
-==============
+DarSIA - Darcy Scale Image Analysis toolbox (:mod:`darsia`)
+===========================================================
 
 .. automodule:: darsia
    :members:
@@ -8,7 +8,7 @@ darsia package
 
 Subpackages
 -----------
-For convenience, all subpackages are imported implicitly when importin DarSIA via
+For convenience, all subpackages are imported implicitly when importing DarSIA via
 ``import darsia``. The following subpackages are finally imported:
 
 .. toctree::

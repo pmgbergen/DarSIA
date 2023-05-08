@@ -1,5 +1,5 @@
-darsia.corrections.shape package
-================================
+Shape corrections (:mod:`darsia.corrections.shape`)
+===================================================
 
 .. automodule:: darsia.corrections.shape
    :members:

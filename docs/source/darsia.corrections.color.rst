@@ -1,5 +1,5 @@
-darsia.corrections.color package
-================================
+Color corrections (:mod:`darsia.corrections.color`)
+===================================================
 
 .. automodule:: darsia.corrections.color
    :members:

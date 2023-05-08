@@ -1,5 +1,10 @@
-darsia.measure package
-======================
+Measure tools (:mod:`darsia.measure`)
+=====================================
+
+.. automodule:: darsia.measure
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Submodules
 ----------
@@ -24,14 +29,6 @@ darsia.measure.norms module
 ---------------------------
 
 .. automodule:: darsia.measure.norms
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: darsia.measure
    :members:
    :undoc-members:
    :show-inheritance:

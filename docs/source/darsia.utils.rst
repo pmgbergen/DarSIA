@@ -1,5 +1,10 @@
-darsia.utils package
-====================
+Utilities (:mod:`darsia.utils`)
+===============================
+
+.. automodule:: darsia.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Submodules
 ----------
@@ -48,14 +53,6 @@ darsia.utils.segmentation module
 --------------------------------
 
 .. automodule:: darsia.utils.segmentation
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: darsia.utils
    :members:
    :undoc-members:
    :show-inheritance:

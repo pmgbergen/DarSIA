@@ -1,5 +1,10 @@
-darsia.signals package
-======================
+Signals transformation (:mod:`darsia.signals`)
+==============================================
+
+.. automodule:: darsia.signals
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Subpackages
 -----------
@@ -9,11 +14,3 @@ Subpackages
 
    darsia.signals.models
    darsia.signals.reduction
-
-Module contents
----------------
-
-.. automodule:: darsia.signals
-   :members:
-   :undoc-members:
-   :show-inheritance:

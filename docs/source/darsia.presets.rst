@@ -1,5 +1,10 @@
-darsia.presets package
-======================
+Presets (:mod:`darsia.presets`)
+===============================
+
+.. automodule:: darsia.presets
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Subpackages
 -----------
@@ -8,11 +13,3 @@ Subpackages
    :maxdepth: 4
 
    darsia.presets.fluidflower
-
-Module contents
----------------
-
-.. automodule:: darsia.presets
-   :members:
-   :undoc-members:
-   :show-inheritance:

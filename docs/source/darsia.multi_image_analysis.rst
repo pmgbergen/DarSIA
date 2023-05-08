@@ -1,5 +1,10 @@
-darsia.multi\_image\_analysis package
-=====================================
+Multi-image comparisons (:mod:`darsia.multi_image_analysis`)
+============================================================
+
+.. automodule:: darsia.multi_image_analysis
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Submodules
 ----------
@@ -48,14 +53,6 @@ darsia.multi\_image\_analysis.translationanalysis module
 --------------------------------------------------------
 
 .. automodule:: darsia.multi_image_analysis.translationanalysis
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: darsia.multi_image_analysis
    :members:
    :undoc-members:
    :show-inheritance:
