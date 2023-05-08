@@ -6,10 +6,13 @@ DarSIA - Darcy Scale Image Analysis toolbox (:mod:`darsia`)
    :undoc-members:
    :show-inheritance:
 
+Getting started
+---------------
+TODO: Examples and a recommended reading list will follow.
+
 Subpackages
 -----------
-For convenience, all subpackages are imported implicitly when importing DarSIA via
-``import darsia``. The following subpackages are finally imported:
+For convenience, all subpackages are imported implicitly when importing DarSIA via ``import darsia``. The following subpackages are finally imported:
 
 .. toctree::
    :maxdepth: 1
@@ -25,7 +28,3 @@ For convenience, all subpackages are imported implicitly when importing DarSIA v
    signals/darsia.signals
    single_image_analysis/darsia.single_image_analysis
    utils/darsia.utils
-
-Getting started
----------------
-TODO: Examples and a recommended reading list will follow.
