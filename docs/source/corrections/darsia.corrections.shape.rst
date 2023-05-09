@@ -6,51 +6,48 @@ Shape corrections (:mod:`darsia.corrections.shape`)
    :undoc-members:
    :show-inheritance:
 
-Submodules
-----------
-
-darsia.corrections.shape.curvature module
------------------------------------------
+Curvature correction (:mod:`darsia.corrections.shape.curvature`)
+----------------------------------------------------------------
 
 .. automodule:: darsia.corrections.shape.curvature
    :members:
    :undoc-members:
    :show-inheritance:
 
-darsia.corrections.shape.deformation module
--------------------------------------------
+Local deformation correction (:mod:`darsia.corrections.shape.deformation`)
+--------------------------------------------------------------------------
 
 .. automodule:: darsia.corrections.shape.deformation
    :members:
    :undoc-members:
    :show-inheritance:
 
-darsia.corrections.shape.drift module
--------------------------------------
+Drift correction (:mod:`darsia.corrections.shape.drift`)
+--------------------------------------------------------
 
 .. automodule:: darsia.corrections.shape.drift
    :members:
    :undoc-members:
    :show-inheritance:
 
-darsia.corrections.shape.piecewiseperspective module
-----------------------------------------------------
+Piecewise perspective transformation (:mod:`darsia.corrections.shape.piecewiseperspective`)
+-------------------------------------------------------------------------------------------
 
 .. automodule:: darsia.corrections.shape.piecewiseperspective
    :members:
    :undoc-members:
    :show-inheritance:
 
-darsia.corrections.shape.rotation module
-----------------------------------------
+Rotation correction (:mod:`darsia.corrections.shape.rotation`)
+--------------------------------------------------------------
 
 .. automodule:: darsia.corrections.shape.rotation
    :members:
    :undoc-members:
    :show-inheritance:
 
-darsia.corrections.shape.translation module
--------------------------------------------
+Translation correction (:mod:`darsia.corrections.shape.translation`)
+--------------------------------------------------------------------
 
 .. automodule:: darsia.corrections.shape.translation
    :members:
