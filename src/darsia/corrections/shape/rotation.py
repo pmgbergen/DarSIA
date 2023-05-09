@@ -43,7 +43,7 @@ class RotationCorrection(darsia.BaseCorrection):
         if rotation_from_isometry:
             pts_src = kwargs.get("pts_src")
             pts_dst = kwargs.get("pts_dst")
-            angular_conservative_affine_map = darsia.AngularConservativeAffineMap(
+            affine_map = darsia.AffineTransformation(
                 pts_src,
                 pts_dst,
             )
@@ -55,10 +55,8 @@ class RotationCorrection(darsia.BaseCorrection):
         # Define rotation as combination of basic rotations
         if dim == 2:
             if rotation_from_isometry:
-                self.rotation = angular_conservative_affine_map.rotation
-                self.rotation_inv = np.linalg.inv(
-                    angular_conservative_affine_map.rotation
-                )
+                self.rotation = affine_map.rotation
+                self.rotation_inv = np.linalg.inv(affine_map.rotation)
             else:
                 degree = rotations[0]
                 vector = np.array([0, 0, 1])
@@ -68,10 +66,8 @@ class RotationCorrection(darsia.BaseCorrection):
                 self.rotation_inv = rotation_inv.as_matrix()[:2, :2]
         elif dim == 3:
             if rotation_from_isometry:
-                self.rotation = angular_conservative_affine_map.rotation
-                self.rotation_inv = np.linalg.inv(
-                    angular_conservative_affine_map.rotation
-                )
+                self.rotation = affine_map.rotation
+                self.rotation_inv = np.linalg.inv(affine_map.rotation)
             else:
                 self.rotation = np.eye(dim)
                 self.rotation_inv = np.eye(dim)
