@@ -1,6 +1,4 @@
-"""
-Module containing class which manages performing a translation based on
-a provided pointwise translation map.
+"""Module defining how to determine and apply patch-wise defined perspective transform.
 
 """
 
@@ -16,11 +14,7 @@ import darsia
 
 
 class PiecewisePerspectiveTransform:
-    """
-    Class performing a piecewise perspective transform, applied to a structured grid.
-    The final transformation is continuous.
-
-    """
+    """Globally constant, patch-wise defined perspective transform."""
 
     def __init__(self, **kwargs) -> None:
         """
@@ -44,8 +38,7 @@ class PiecewisePerspectiveTransform:
         displacement: Callable,
         reverse: bool = False,
     ) -> darsia.Image:
-        """
-        Continuously transform entire image via patchwise perspective transform.
+        """Continuously transform entire image via patchwise perspective transform.
 
         Perspective transforms determined by the function evaluation in all
         corners of each patch results in continuous transformations.

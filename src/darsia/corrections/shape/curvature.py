@@ -1,7 +1,5 @@
-"""
-Curvature correction class.
+"""Module containing polynomical Curvature correction.
 
-A class for setup and application of curvature correction.
 """
 
 from __future__ import annotations
@@ -23,7 +21,7 @@ import darsia
 
 
 class CurvatureCorrection(darsia.BaseCorrection):
-    """Class for curvature correction of curved images.
+    """Polynomial curvature correction.
 
     Contains routines for setting up the curvature correction, as well as applying
     it to images.

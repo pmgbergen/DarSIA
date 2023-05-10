@@ -1,7 +1,7 @@
-"""
-Module containing a deformation correction. This
-is essentially a correction object through wrappping
-darsia.DiffeomorphicImageRegistration.
+"""Module containing a local deformation correction.
+
+This is essentially a correction object through wrappping
+:mod:`darsia.DiffeomorphicImageRegistration`.
 
 """
 from typing import Optional
@@ -12,7 +12,7 @@ import darsia
 
 
 class DeformationCorrection(darsia.BaseCorrection):
-    """Class for deformation correction by comparison to a reference image.
+    """Patch-wise defined deformation correction defined through image registration.
 
     Attributes:
         base (darsia.Image): reference (baseline) image.
@@ -42,8 +42,7 @@ class DeformationCorrection(darsia.BaseCorrection):
             self.image_registration = darsia.ImageRegistration(self.base, **config)
 
     def correct_array(self, img: np.ndarray) -> np.ndarray:
-        """
-        Main routine for aligning image with baseline image.
+        """Main routine for aligning image with baseline image.
 
         Args:
             img (np.ndarray): input image, to be aligned.

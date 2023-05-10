@@ -1,8 +1,11 @@
-"""Module encoding standard transformations used in computer graphics, combining
-translation, rotation, and scaling. A class encodes the map itself, including
-automatic determining. In addition, the actual correction object is contained.
+"""Module encoding standard transformations used in computer graphics.
+
+Such transformation combine translation, rotation, and scaling. A class encodes the map
+itself, including automatic determining. In addition, the actual correction object is
+contained.
 
 """
+
 import itertools
 from typing import Optional, Union
 
@@ -17,8 +20,9 @@ CoordinateType = list[Union[float, int]]
 
 
 class AffineTransformation:
-    """Affine map, restricted to translation, scaling, rotation, resulting in
-    conservation of angles.
+    """Transformation restricted to translation, scaling, rotation.
+
+    Such a map conserves angles. There exists the possibility to only allow usietries.
 
     """
 
@@ -339,10 +343,7 @@ class AffineTransformation:
 
 
 class AffineCorrection(darsia.BaseCorrection):
-    """Affine correction based on affine transformation (translation, scaling,
-    rotation).
-
-    """
+    """Affine correction combining translation, scaling, rotation."""
 
     def __init__(
         self,

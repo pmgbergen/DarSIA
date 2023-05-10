@@ -1,4 +1,6 @@
-"""Module containing the color correction based on the Classic
+"""Color corrections using ML-located color checker.
+
+Module containing the color correction based on the Classic
 Color Checker from calibrite / x-rite. The algorithms here
 heavily use code from colour-science (see their github).
 This includes some ML-based algorithms. Sometimes, the algorithms
@@ -8,6 +10,7 @@ are not extracted correcty. In such cases, darsia.ColorCorrection
 should be used which should always work. It is therefore recommended
 to double-check the results of the any of the color correction
 routines by setting verbosity to True once.
+
 """
 
 import copy
@@ -27,6 +30,7 @@ import darsia
 class ClassicColorChecker:
     """Definition of the classic color checker under default
     illumination conditions.
+
     """
 
     def __init__(self):
@@ -51,9 +55,9 @@ class ClassicColorChecker:
 
 
 class EOTF:
-    """
-    Electro-optical transfer function (EOTF),the standard transfer
+    """Electro-optical transfer function (EOTF),the standard transfer
     function for sRGB, cf. https://en.wikipedia.org/wiki/SRGB
+
     """
 
     def __init__(self):
@@ -92,6 +96,7 @@ class EOTF:
 
         Returns:
             np.ndarray: image in linear RGB (uint8) format.
+
         """
 
         # Need to transform values to uint8 first before applying the LUT.
@@ -106,8 +111,7 @@ class ExperimentalColorCorrection(darsia.BaseCorrection):
         verbosity: bool = False,
         whitebalancing: bool = True,
     ):
-        """
-        Constructor of converter, setting up a priori all data needed for fast conversion.
+        """Constructor of converter, setting up a priori all data needed for fast conversion.
 
         Attributes:
             config (dict, str, Path): config file for initialization of images. Can be

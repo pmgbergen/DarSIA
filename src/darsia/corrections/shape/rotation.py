@@ -1,5 +1,4 @@
-"""Module containing objects useful for correcting
-images wrt rotations
+"""Module defining a rotation correction.
 
 """
 
@@ -13,7 +12,7 @@ import darsia
 
 
 class RotationCorrection(darsia.BaseCorrection):
-    """Class for rotation correction of nd images, up to 4d.
+    """Rotation correction.
 
     Rotations are defined as combination of multiple basic rotations. In 2d, a single
     basic rotation is sufficient. In 3d, although three are available, two are
@@ -86,7 +85,7 @@ class RotationCorrection(darsia.BaseCorrection):
                     )
 
     def correct_array(self, img: np.ndarray) -> np.ndarray:
-        """Application of inherent rotation to provided image.
+        """Main routine: Application of inherent rotation to provided image.
 
         Args:
             img (array): image

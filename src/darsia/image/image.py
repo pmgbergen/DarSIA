@@ -1,9 +1,10 @@
-"""Image class.
+"""Image module defining various image types.
 
-Images contain the image array, and in addition metadata about origin and dimensions.
+A central concept in DarSIA is that images (``Image`` objects) have a physical
+interpretation. These are enhanced by physical scales in space and time. Thus
+they contain a coordinatesystem.
 
 """
-
 from __future__ import annotations
 
 import copy
@@ -661,19 +662,21 @@ class Image:
         """Show routine using matplotlib.pyplot built-in methods.
 
         Args:
-            title (str): title in the displayed window.
-            duration (int, optional): display duration in seconds.
+            title: title in the displayed window.
+            duration: display duration in seconds.
             **kwargs: additional arguments passed to matplotlib.pyplot.
-                threshold (float): threshold for displaying 3d images.
-                relative (bool): flag controlling whether the threshold is relative.
-                view (str): view type; either "scatter" or "voxel"; only for 3d images.
-                    NOTE: "voxel" plots are more time consuming.
-                side_view (str): side view type of 3d image; only for 3d images;
-                    either "scatter" or "voxel".
-                surpress_2d (bool): flag controlling whether 2d images are displayed.
-                surpress_3d (bool): flag controlling whether 3d images are displayed.
-                delay (bool): flag controlling whether the display is delayed; can be
-                    used to display multiple images at the same time.
+                - threshold (float): threshold for displaying 3d images.
+                - relative (bool): flag controlling whether the threshold is relative.
+                - view (str): view type; either "scatter" or "voxel"; only for 3d
+                images.
+                - side_view (str): side view type of 3d image; only for 3d images;
+                either "scatter" or "voxel".
+                - surpress_2d (bool): flag controlling whether 2d images are displayed.
+                - surpress_3d (bool): flag controlling whether 3d images are displayed.
+                - delay (bool): flag controlling whether the display is delayed; can be
+                used to display multiple images at the same time.
+
+        Note: Using mode = "voxel" is often more time-consuming.
 
         """
 
