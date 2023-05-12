@@ -75,7 +75,7 @@ def split_bregman_anisotropic_tvd(
 
     # Define energy functional for verbose
     def _functional(x: np.ndarray) -> float:
-        return 0.5 * omega * np.linalg.norm(x - im0) ** 2 + sum(
+        return 0.5 * np.linalg.norm(omega * (x - im0)) ** 2 + sum(
             [
                 np.sum(np.abs(mu * da.backward_diff(im=x, axis=j, dim=dim)))
                 for j in range(dim)
