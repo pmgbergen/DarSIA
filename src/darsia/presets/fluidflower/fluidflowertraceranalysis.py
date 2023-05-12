@@ -73,12 +73,12 @@ class FluidFlowerTracerAnalysis(darsia.TracerAnalysis):
 
         ########################################################################
         # Define restoration object - coarsen, tvd, resize
-        original_size = self.base.img.shape[:2]
+        original_shape = self.base.img.shape[:2]
         restoration = darsia.CombinedModel(
             [
                 darsia.Resize(key="restoration ", **self.config["tracer"]),
                 darsia.TVD(key="restoration ", **self.config["tracer"]),
-                darsia.Resize(dsize=tuple(reversed(original_size))),
+                darsia.Resize(shape=original_shape),
             ]
         )
 

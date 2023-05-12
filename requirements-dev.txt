@@ -4,4 +4,3 @@ isort
 flake8
 mypy
 meshio
-pydicom

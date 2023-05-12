@@ -1,7 +1,6 @@
 """
-Module containing wrappers to resize routines
-from skimage and cv2. Access is given through
-objects.
+Module containing wrappers to resize routines from skimage and cv2. Access is given
+through objects. Also contains utility routine which equalizes voxel size lengths.
 
 """
 
@@ -14,8 +13,7 @@ import darsia
 
 
 class Resize:
-    """
-    Object for resizing 2d arrays.
+    """Object for resizing 2d arrays.
 
     Example:
 
@@ -32,7 +30,7 @@ class Resize:
 
     def __init__(
         self,
-        dsize: Optional[tuple[int]] = None,
+        shape: Optional[tuple[int]] = None,
         fx: Optional[float] = None,
         fy: Optional[float] = None,
         interpolation: Optional[str] = None,
@@ -42,8 +40,7 @@ class Resize:
     ) -> None:
         """
         Args:
-            dsize (tuple of int, optional): desired number of col and row
-                after transformation.
+            shape (tuple of int, optional): desired shape (in matrix indexing)
             fx (float, optional): resize factor in x-dimension.
             fy (float, optional): resize factor in y-dimension.
             interpolation (str, optional): interpolation method, default: None, invoking
@@ -53,16 +50,20 @@ class Resize:
         """
 
         # Cache parameters
-        self.dsize = kwargs.get(key + "resize dsize", None) if dsize is None else dsize
+        self.shape = kwargs.get(key + "resize shape", None) if shape is None else shape
         general_f = kwargs.get(key + "resize", None)
         self.fx = kwargs.get(key + "resize x", general_f) if fx is None else fx
         self.fy = kwargs.get(key + "resize y", general_f) if fy is None else fy
         self.dtype = kwargs.get(key + "resize dtype", None) if dtype is None else dtype
 
         # Safety checks - double check resize options
-        if self.dsize is None:
+        if self.shape is None:
             self.fx = 1 if self.fx is None else self.fx
             self.fy = 1 if self.fy is None else self.fy
+            self.dsize = None
+        else:
+            # cv2 expects a flipped order
+            self.dsize = tuple(reversed(self.shape))
 
         # Convert to CV2 format
         # NOTE: The default value for interpolation in cv2 is depending on whether
@@ -158,3 +159,91 @@ class Resize:
             return type(img)(resized_img_array, **meta)
         else:
             return resized_img_array
+
+
+def equalize_voxel_size(
+    image: darsia.Image, voxel_size: Optional[float] = None, **kwargs
+) -> darsia.Image:
+    """Resize routine which keeps physical dimensions, but unifies the voxel length.
+
+    Args:
+        image (darsia.Image): image to be resized
+        voxel_size (float, optional): side length, min of the voxel side of the image
+            if None.
+        keyword arguments:
+            interpolation (str): interpolation type used for resize
+
+    Returns:
+        darsia.Image: resized image
+
+    """
+    # Fetch dimensions to be kept
+    dimensions = image.dimensions
+
+    # Determine resulting shape of the resized image
+    if voxel_size is None:
+        voxel_size = min(image.voxel_size)
+    shape = tuple(int(d / voxel_size) for d in dimensions)
+
+    # Perform resize
+    interpolation = kwargs.get("interpolation")
+    resize = Resize(shape=shape, interpolation=interpolation)
+    return resize(image)
+
+
+def uniform_refinement(image: darsia.Image, levels: int) -> darsia.Image:
+    """Uniform refinement.
+
+    Args:
+        image (darsia.Image): image
+        levels (int): refinement levels, if positive, coarsing levels, if negative.
+
+    Returns:
+        darsia.Image: resized image
+
+    """
+    # Fetch original data array
+    array = image.img.copy()
+
+    for level in range(abs(levels)):
+
+        if levels > 0:
+            # Refinement
+            for i in range(image.space_dim):
+                array = np.repeat(array, 2, axis=i)
+
+        elif levels < 0:
+            # Coarsening
+            for i in range(image.space_dim):
+                # Slices to address each second element along axis i
+                def i_slice(i_slice_item):
+                    return tuple(
+                        i_slice_item if i == j else slice(0, None)
+                        for j in range(image.space_dim)
+                    )
+
+                slice_0 = i_slice(slice(0, None, 2))
+                slice_1 = i_slice(slice(1, None, 2))
+
+                # Determine weight for slice_0 elements
+                axis_length = image.img.shape[i]
+                weight_0 = 0.5 * np.ones(array[slice_0].shape)
+                half_axis_length = int(np.floor(axis_length) / 2)
+                double_axis_length = 2 * half_axis_length
+                if axis_length % 2 == 1:
+                    weight_0[i_slice(slice(double_axis_length, None))] = 1
+
+                # The weight for slice_1 is constant
+                weight_1 = 0.5
+
+                # Weighted sum for coarsening
+                sub_array_0 = array[slice_0]
+                sub_array_1 = array[slice_1]
+                array = np.multiply(weight_1, sub_array_0)
+                array[i_slice(slice(0, half_axis_length))] += np.multiply(
+                    weight_1, sub_array_1
+                )
+
+    # Return resized image
+    meta = image.metadata()
+    return type(image)(array, **meta)
