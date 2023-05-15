@@ -58,3 +58,4 @@ from darsia.manager.analysisbase import *
 from darsia.manager.concentrationanalysisbase import *
 from darsia.manager.traceranalysis import *
 from darsia.manager.co2analysis import *
+from darsia.assistants.rotation_correction_assistant import *
