@@ -21,7 +21,6 @@ from darsia.utils.box import *
 from darsia.utils.interpolation import *
 from darsia.utils.segmentation import *
 from darsia.utils.coloranalysis import *
-from darsia.utils.identity import *
 from darsia.corrections.basecorrection import *
 from darsia.corrections.shape.curvature import *
 from darsia.corrections.shape.affine import *
