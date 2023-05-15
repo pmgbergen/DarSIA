@@ -52,11 +52,10 @@ co2_image = darsia.Image(
 
 # Construct concentration analysis for detecting the co2 concentration
 co2_analysis = darsia.ConcentrationAnalysis(
-    baseline_co2,  # baseline image
-    darsia.MonochromaticReduction(color="red"),  # signal reduction
-    None,  # signal balancing
-    darsia.TVD(),  # restoration
-    darsia.CombinedModel(  # signal to data conversion
+    base=baseline_co2,  # baseline image
+    signal_reduction=darsia.MonochromaticReduction(color="red"),  # signal reduction
+    restoration=darsia.TVD(),  # restoration
+    model=darsia.CombinedModel(  # signal to data conversion
         [
             darsia.LinearModel(scaling=4.0),
             darsia.ClipModel(**{"min value": 0.0, "max value": 1.0}),
@@ -117,11 +116,10 @@ tracer_image = darsia.Image(
 
 # Construct concentration analysis for detecting the tracer concentration
 tracer_analysis = darsia.ConcentrationAnalysis(
-    baseline_tracer,
-    darsia.MonochromaticReduction(color="gray"),
-    None,
-    darsia.TVD(),
-    darsia.CombinedModel(
+    base=baseline_tracer,
+    signal_reduction=darsia.MonochromaticReduction(color="gray"),
+    restoration=darsia.TVD(),
+    model=darsia.CombinedModel(
         [darsia.LinearModel(), darsia.ClipModel(**{"min value": 0.0, "max value": 1.0})]
     ),
 )
