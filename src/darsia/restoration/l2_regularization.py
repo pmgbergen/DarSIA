@@ -46,7 +46,7 @@ def L2_regularization(
         mg_depth (int): depth of the multigrid solver. Default is 3.
         verbose (bool): print convergence information
 
-    output:
+    Returns:
         np.ndarray: regularized image
     """
 
