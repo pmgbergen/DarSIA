@@ -19,7 +19,7 @@ def test_axis_averaging_x():
     )
 
     averaging_axis = darsia.AxisAveraging(axis="x", dim=3)
-    averaging_index = darsia.AxisAveraging(index=2, dim=3)
+    averaging_index = darsia.AxisAveraging(axis=2, dim=3)
 
     image_2d_via_axis = averaging_axis(image_3d)
     image_2d_via_index = averaging_index(image_3d)
@@ -46,7 +46,7 @@ def test_axis_averaging_y():
     )
 
     averaging_axis = darsia.AxisAveraging(axis="y", dim=3)
-    averaging_index = darsia.AxisAveraging(index=1, dim=3)
+    averaging_index = darsia.AxisAveraging(axis=1, dim=3)
 
     image_2d_via_axis = averaging_axis(image_3d)
     image_2d_via_index = averaging_index(image_3d)
@@ -73,7 +73,7 @@ def test_axis_averaging_z():
     )
 
     averaging_axis = darsia.AxisAveraging(axis="z", dim=3)
-    averaging_index = darsia.AxisAveraging(index=0, dim=3)
+    averaging_index = darsia.AxisAveraging(axis=0, dim=3)
 
     image_2d_via_axis = averaging_axis(image_3d)
     image_2d_via_index = averaging_index(image_3d)
@@ -104,7 +104,7 @@ def test_axis_averaging_series_x():
     )
 
     averaging_axis = darsia.AxisAveraging(axis="x", dim=3)
-    averaging_index = darsia.AxisAveraging(index=2, dim=3)
+    averaging_index = darsia.AxisAveraging(axis=2, dim=3)
 
     image_2d_via_axis = averaging_axis(image_3d)
     image_2d_via_index = averaging_index(image_3d)
