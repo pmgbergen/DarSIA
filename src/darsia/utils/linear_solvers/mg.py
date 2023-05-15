@@ -122,6 +122,8 @@ class MG(da.Solver):
 
     def prolongation(self, x: np.ndarray) -> np.ndarray:
         """Prolongate x, i.e., refine it by a factor 2. All values are repeated twice.
+        NOTE: if odd number of indices are restricted then prolongated, the boundary
+        information is lost. Should probably be imporved upon in the future.
 
 
         Args:

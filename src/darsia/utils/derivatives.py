@@ -16,10 +16,11 @@ def backward_diff(
 ) -> np.ndarray:
     """
     Backward difference of image matrix in direction of axis.
-    Arguments:
+    Args:
         im (np.ndarray): image array in single-color space
         axis (int): axis along which the difference is taken
         dim (int): dimension of image array
+        h (Optional[float]): grid spacing
     Returns:
         np.ndarray: backward difference image matrix
     """
@@ -35,10 +36,11 @@ def forward_diff(
 ) -> np.ndarray:
     """
     Forward difference of image matrix in direction of axis.
-    Arguments:
+    Args:
         im (np.ndarray): image array
         axis (int): axis along which the difference is taken
         dim (int): dimension of image array
+        h (Optional[float]): grid spacing
     Returns:
         np.ndarray: forward difference image matrix
     """
@@ -55,10 +57,11 @@ def laplace(
     """
     Laplace operator with homogeneous boundary conditions of image matrix
     in direction of axis.
-    Arguments:
+    Args:
         im (np.ndarray): image array
         axis (int): axis along which the difference is taken
         dim (int): dimension of image array
+        h (Optional[float]): grid spacing
     Returns:
         np.ndarray: horizontal Laplace image matrix
     """
