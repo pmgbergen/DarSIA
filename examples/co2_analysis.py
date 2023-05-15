@@ -18,11 +18,12 @@ class TailoredTracerAnalysis(darsia.TracerAnalysis):
         """Definition of signal to data conversion."""
 
         return darsia.ConcentrationAnalysis(
-            self.base,  # baseline image
-            darsia.MonochromaticReduction(color="red"),  # signal reduction
-            None,  # signal balancing
-            darsia.TVD(),  # restoration
-            darsia.CombinedModel(  # signal to data conversion
+            base=self.base,  # baseline image
+            signal_reduction=darsia.MonochromaticReduction(
+                color="red"
+            ),  # signal reduction
+            restoration=darsia.TVD(),  # restoration
+            model=darsia.CombinedModel(  # signal to data conversion
                 [
                     darsia.LinearModel(scaling=4.0),
                     darsia.ClipModel(**{"min value": 0.0, "max value": 1.0}),
