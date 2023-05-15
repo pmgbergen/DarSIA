@@ -30,7 +30,7 @@ def L2_regularization(
 
     min_u 1/2 ||omega(u - im)||_2^2 + mu/2 ||nabla u||_2^2
 
-    input:
+    Args:
         im (np.ndarray): image to regularize
         mu (float): regularization parameter
         omega (Optional[float]): weighting of the image
