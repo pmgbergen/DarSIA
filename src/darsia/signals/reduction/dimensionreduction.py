@@ -2,7 +2,7 @@
 in the sense of vertical averaging, but extended to any
 axis in space and time."""
 
-from typing import Optional
+from typing import Union
 
 import numpy as np
 
@@ -17,17 +17,13 @@ class AxisAveraging:
 
     """
 
-    def __init__(
-        self, index: Optional[int] = None, axis: Optional[str] = None, dim: int = 3
-    ) -> None:
+    def __init__(self, axis: Union[str, int], dim: int = 3) -> None:
         """
         Args:
-            index (int): numeric index (corresponding to matrix indexing)
-            axis (str): Cartesian axis
+            axis (int or str): numeric axis index (matrix indexing) or Cartesian axis
             dim (int): dimension of the input image
 
         Raises:
-            ValueError: if neither index nor axis are provided or both.
             NotImplementedError: if dim not 3.
 
         """
@@ -35,15 +31,14 @@ class AxisAveraging:
         if dim != 3:
             raise NotImplementedError
 
-        if (index is None and axis is None) or (index is not None and axis is not None):
-            raise ValueError("Non-unique addressing of averaging axis.")
-
         # Convert axis to numeric index
-        if axis is not None:
+        if isinstance(axis, str):
+            assert axis in "xyz"
             index, _ = darsia.interpret_indexing(axis, "ijk"[:dim])
 
-        elif index is not None:
-
+        elif isinstance(axis, int):
+            assert axis in range(dim)
+            index = axis
             index_alpha = "ijk"[index]
             cartesian_index, _ = darsia.interpret_indexing(index_alpha, "xyz"[:dim])
             axis = "xyz"[cartesian_index]
@@ -130,15 +125,13 @@ class AxisAveraging:
         return type(img)(img=img_arr, **metadata)
 
 
-def average_over_axis(
-    image: darsia.Image, index: Optional[int] = None, axis: Optional[str] = None
-) -> darsia.Image:
+def average_over_axis(image: darsia.Image, axis: Union[str, int]) -> darsia.Image:
     """Utility function, essentially wrapping AxisAveraging as a method.
 
     Args:
         img (Image): 3d image.
-        index (int): numeric index (corresponding to matrix indexing)
-        axis (str): Cartesian axis
+        axis (int or str): numeric index (corresponding to matrix indexing) or
+            Cartesian axis
         dim (int): dimension of the input image
 
     Returns:
@@ -146,5 +139,5 @@ def average_over_axis(
 
     """
     dim = image.space_dim
-    averaging = AxisAveraging(index, axis, dim)
+    averaging = AxisAveraging(axis, dim)
     return averaging(image)
