@@ -1,10 +1,9 @@
 """Module for defining subregions interactively."""
 
-from typing import Any
+from typing import Any, Optional
 from warnings import warn
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 import darsia
 
@@ -16,16 +15,14 @@ class SubregionAssistant(darsia.BaseAssistant):
         # Initialize containers
         self._reset()
 
-    def __call__(self):
+        # Set name for titles in plots
+        self.name = "Subregion assistant"
+
+    def __call__(self) -> Optional[np.ndarray]:
         """Call the assistant."""
 
-        # Plot 3d image and setup event handler
-        if self.img.space_dim == 3:
-            self._plot_3d()
-        else:
-            raise NotImplementedError(
-                "Subregion assistant only implemented for 3d images."
-            )
+        self._reset()
+        super().__call__()
 
         return self.coordinates
 
@@ -33,6 +30,8 @@ class SubregionAssistant(darsia.BaseAssistant):
         """Reset subregion."""
         self.pts = [[] for _ in range(self.img.space_dim)]
         """Selected points distributed in separate lists for each dimension."""
+        self.coordinates = None
+        """Coordinates uniquely defining a box."""
         self.finalized = False
         """Flag controlling whether the selection has been finalized."""
         if self.verbosity:
@@ -40,10 +39,22 @@ class SubregionAssistant(darsia.BaseAssistant):
 
     def _print_instructions(self) -> None:
         """Print instructions - always print those."""
-        print("\nWelcome to the subregion assistant.")
-        print("Please select a subregion by clicking on the image.")
-        print("Press 'r' to reset the selection.")
-        print("Press 'q' to quit the assistant.\n")
+        print(
+            """\n----------------------------------------------------------------"""
+            """-----------"""
+        )
+        print("Welcome to the subregion assistant.")
+        print(
+            "Select points with 'left mouse click' to define coordinates spanning a box."
+        )
+        print("Press 'escape' to reset the selection.")
+        print("Press 'enter' to finalize the selection.")
+        print("Press 'q' to quit the assistant (possibly before finalizing).")
+        print("NOTE: Do not close the figure yourself.")
+        print(
+            """------------------------------------------------------------------"""
+            """---------\n"""
+        )
 
     def _print_current_selection(self) -> None:
         """Print current selection."""
@@ -53,10 +64,10 @@ class SubregionAssistant(darsia.BaseAssistant):
 
     def _setup_event_handler(self) -> None:
         """Setup event handler."""
-        self.fig.canvas.mpl_connect("button_press_event", self._on_click)
+        self.fig.canvas.mpl_connect("button_press_event", self._on_mouse_click)
         self.fig.canvas.mpl_connect("key_press_event", self._on_key_press)
 
-    def _on_click(self, event: Any) -> None:
+    def _on_mouse_click(self, event: Any) -> None:
         """Event handler for mouse clicks."""
 
         # Print event
@@ -92,22 +103,6 @@ class SubregionAssistant(darsia.BaseAssistant):
                 self.fig.canvas.draw()
                 self._print_current_selection()
 
-    def _on_key_press(self, event) -> None:
-        """Event handler for key presses."""
-
-        # Print event
-        self._print_event(event)
-
-        if event.key == "r":
-            # Reset selection
-            self._reset()
-            self.__call__()
-
-        elif event.key == "q":
-            # Quit assistant
-            self._finalize()
-            plt.close(self.fig)
-
     def _finalize(self) -> None:
         """Finalize selection."""
 
@@ -119,15 +114,12 @@ class SubregionAssistant(darsia.BaseAssistant):
         for dim in range(self.img.space_dim):
             if self.pts[dim] is None:
                 warn("Selection in dimension {} is empty.".format(dim))
-                # self.pts[dim] = [np.min(self.img.origin[dim], self.img.opposite_corner[dim]), np.max(self.img.origin[dim], self.img.opposite_corner[dim])]
+                raise NotImplementedError
             else:
                 intervals[dim] = [
                     min(self.pts[dim]),
                     max(self.pts[dim]),
                 ]
-
-        # FIXME
-        assert not any([interval is None for interval in intervals])
 
         # Create by defining two most extreme coordinates in full space
         self.coordinates = np.array(
@@ -136,10 +128,8 @@ class SubregionAssistant(darsia.BaseAssistant):
                 [intervals[0][1], intervals[1][1], intervals[2][1]],
             ]
         )
-        print(self.coordinates)
-        self.finalized = True
         self.img = self.img.subregion(coordinates=self.coordinates)
+        self.finalized = True
 
-        # Allow to continue
-        print("Press 'space' to continue.")
-        # TODO continue
+        # Next round.
+        self.__call__()
