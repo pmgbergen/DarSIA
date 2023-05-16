@@ -722,7 +722,7 @@ class Image:
                     array = self.img
 
                 # Plot
-                fig = plt.figure(_title)
+                plt.figure(_title)
                 plt.imshow(skimage.img_as_float(array))
 
             elif self.space_dim == 3:
