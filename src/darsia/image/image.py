@@ -522,7 +522,8 @@ class Image:
         # ! ---- Safety checks
 
         if (voxels is not None) == (coordinates is not None):
-            raise ValueError("Use (only) one way of specifying the subregion.")
+            # Do nothing
+            return self
 
         # ! ---- Translate coordinates to voxels
 
@@ -721,7 +722,7 @@ class Image:
                     array = self.img
 
                 # Plot
-                plt.figure(_title)
+                fig = plt.figure(_title)
                 plt.imshow(skimage.img_as_float(array))
 
             elif self.space_dim == 3:
