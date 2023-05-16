@@ -2,7 +2,6 @@
 
 from warnings import warn
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 import darsia
@@ -33,17 +32,14 @@ class RotationCorrectionAssistant(darsia.BaseAssistant):
         # Determine the center of the image
         self.center = 0.5 * (self.img.origin + self.img.opposite_corner)
 
-    def __call__(self) -> None:
+        # Set name for titles in plots
+        self.name = "Rotation correction assistant"
+
+    def __call__(self) -> list[darsia.RotationCorrection]:
         """Call the assistant."""
 
-        # Plot 3d image and setup event handler
-        if self.img.space_dim == 3:
-            self._plot_3d()
-        else:
-            raise NotImplementedError(
-                "Rotation correction assistant only implemented for 3d images."
-            )
-
+        self._reset()
+        super().__call__()
         return self.rotation_corrections
 
     def _reset(self) -> None:
@@ -57,7 +53,7 @@ class RotationCorrectionAssistant(darsia.BaseAssistant):
 
     def _print_current_selection(self) -> None:
         """Print current selection."""
-        if self.kwargs.get("verbosity", False):
+        if self.verbosity:
             print(f"Current selection for subplot {self.ax_id}:")
             print("anchor: {}".format(self.anchor))
             print("src: {}".format(self.src))
@@ -66,53 +62,34 @@ class RotationCorrectionAssistant(darsia.BaseAssistant):
     def _print_instructions(self) -> None:
         """Print instructions."""
 
-        print("\nWelcome to the rotation correction assistant.")
-        print("Instructions for determining rotation correction:")
-        print("1. Consider merely one of the three subplots at a time.")
-        print("2. Right click to add anchor point.")
-        print("3. Left click to add src points. Repeat left click to add dst points.")
         print(
-            """4. Make sure to choose one anchor point, and at least two src and dst """
-            """points. Press 'enter' to finalize the subselection. The corresponding """
-            """rotation correction will be computed and stored."""
+            """\n------------------------------------------------------------------"""
+            """---"""
         )
-        print("5. Do not close the figure yourself.\n")
+        print("Welcome to the rotation correction assistant.")
+        print("Consider merely one of the three subplots at a time.")
+        print("'Right mouse click' to add anchor point.")
+        print(
+            "'Left mouse click' to add src points. Repeat left click to add dst points."
+        )
+        print(
+            """TIP: Make sure to choose one anchor point, and at least two src and """
+            """dst points."""
+        )
+        print("Press 'enter' to finalize the selection.")
+        print("Press 'q' to quit the assistant (possibly before finalizing).")
+        print("NOTE: Do not close the figure yourself.")
+        print(
+            """--------------------------------------------------------------------"""
+            """--\n"""
+        )
 
     def _setup_event_handler(self) -> None:
         """Define events."""
-        self.fig.canvas.mpl_connect("button_press_event", self.on_mouse_click_3d)
-        self.fig.canvas.mpl_connect("key_press_event", self.on_key_press)
+        self.fig.canvas.mpl_connect("button_press_event", self._on_mouse_click)
+        self.fig.canvas.mpl_connect("key_press_event", self._on_key_press)
 
-    def on_key_press(self, event) -> None:
-        """Finalize selection if 'enter' is pressed, and reset containers if 'escape'
-        is pressed.
-
-        Args:
-            event: key press event
-
-        """
-        if event.key == "escape":
-            self._reset()
-            plt.close(self.fig)
-            self.__call__()
-
-        elif event.key == " ":
-            # Continue
-            if self.finalized:
-                self._reset()
-                plt.close(self.fig)
-                self.__call__()
-            else:
-                warn("Cannot continue - selection not finalized.")
-
-        elif event.key == "enter":
-            # Finish
-            if self.finalized:
-                plt.close(self.fig)
-            else:
-                self._finalize_selection
-
-    def on_mouse_click_3d(self, event):
+    def _on_mouse_click(self, event):
         """Add points to anchor and src/dst points."""
 
         # Only continue if no mode is active
@@ -175,7 +152,7 @@ class RotationCorrectionAssistant(darsia.BaseAssistant):
                             ],
                             "r-",
                         )
-                        plt.draw()
+                        self.fig.canvas.draw()
                     else:
                         warn("Cannot add more src points than dst points.")
                 elif event.button == 3:
@@ -193,7 +170,7 @@ class RotationCorrectionAssistant(darsia.BaseAssistant):
                         "go",
                         markersize=10,
                     )
-                    plt.draw()
+                    self.fig.canvas.draw()
 
             # Print current selection
             self._print_current_selection()
@@ -203,7 +180,7 @@ class RotationCorrectionAssistant(darsia.BaseAssistant):
                 "Cannot add points while in {} mode. Deactivate it first.".format(state)
             )
 
-    def _finalize_selection(self) -> None:
+    def _finalize(self) -> None:
         """Finalize selection and setup rotation correction."""
         if (
             self.ax_id is None
@@ -227,30 +204,12 @@ class RotationCorrectionAssistant(darsia.BaseAssistant):
                 pts_src=pts_src,
                 pts_dst=pts_dst,
             )
-            print("Finalized rotation correction set up.")
-
-            # Rotate image and plot for testing
-            rotated_image = rotation_correction(self.img)
-            rotated_image.show(
-                mode="matplotlib", surpress_3d=True, threshold=0.05, relative=True
-            )
 
             # Store rotation correction and update image for potential further
             # corrections
             self.rotation_corrections.append(rotation_correction)
+            self.img = rotation_correction(self.img)
             self.finalized = True
-            self.img = rotated_image
-            print(
-                """Press 'space' to continue with another subplot, or press """
-                """'enter' to finish."""
-            )
 
-    def return_result(self) -> list[darsia.RotationCorrection]:
-        """Return rotation correction.
-
-        Returns:
-            list of RotationCorrection: rotation corrections.
-        """
-        if not self.finalized:
-            warn("Selection not finalized.")
-        return self.rotation_corrections
+            # Next round.
+            self.__call__()
