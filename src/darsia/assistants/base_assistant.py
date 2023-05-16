@@ -20,6 +20,10 @@ class BaseAssistant(ABC):
         """Keyword arguments."""
         self.verbosity = kwargs.get("verbosity", False)
         """Flag controlling verbosity."""
+        self.fig = None
+        """Figure for analysis."""
+        self.ax = None
+        """Axes for analysis."""
 
     @abstractmethod
     def _print_instructions() -> None:
@@ -35,24 +39,47 @@ class BaseAssistant(ABC):
         """Setup event handler."""
         pass
 
+    def _on_key_press(self, event) -> None:
+        """Finalize selection if 'enter' is pressed, and reset containers if 'escape'
+        is pressed.
+
+        Args:
+            event: key press event
+
+        """
+        if self.verbosity:
+            print(f"Current key: {event.key}")
+
+        if event.key == "escape":
+            # Reset and restart
+            self.__call__()
+
+        elif event.key == "enter":
+            # Process selection
+            self._finalize()
+
+        elif event.key == "q":
+            # Quit
+            plt.close(self.fig)
+
     @abstractmethod
     def __call__(self) -> Any:
         """Call the assistant."""
-        pass
+        if self.fig is not None:
+            plt.close(self.fig)
+        if self.img.space_dim == 3:
+            self._plot_3d()
+        else:
+            raise NotImplementedError
 
     def _plot_3d(self) -> None:
         """Side view with interactive event handler."""
 
         # Setup figure
-        fig_2d, axs = plt.subplots(1, 3)
-        fig_2d.suptitle("2d side views")
-        _title = "rotation assistant"
+        self.fig, self.ax = plt.subplots(1, 3)
+        self.fig.suptitle("2d side views")
 
         # Setup event handler
-        self.fig = fig_2d
-        """Figure for analysis."""
-        self.ax = axs
-        """Axes for analysis."""
         self._setup_event_handler()
 
         # Print instructions
@@ -88,8 +115,8 @@ class BaseAssistant(ABC):
         s = scaling * alpha
 
         # xy-plane
-        axs[0].set_title(_title + " - x-y plane")
-        axs[0].scatter(
+        self.ax[0].set_title(self.name + " - x-y plane")
+        self.ax[0].scatter(
             coordinates[active, 0],
             coordinates[active, 1],
             s=s[active],
@@ -97,15 +124,15 @@ class BaseAssistant(ABC):
             c=flat_array[active],
             cmap="viridis",
         )
-        axs[0].set_xlim(bbox[0, 0], bbox[1, 0])
-        axs[0].set_ylim(bbox[0, 1], bbox[1, 1])
-        axs[0].set_xlabel("x-axis")
-        axs[0].set_ylabel("y-axis")
-        axs[0].set_aspect("equal")
+        self.ax[0].set_xlim(bbox[0, 0], bbox[1, 0])
+        self.ax[0].set_ylim(bbox[0, 1], bbox[1, 1])
+        self.ax[0].set_xlabel("x-axis")
+        self.ax[0].set_ylabel("y-axis")
+        self.ax[0].set_aspect("equal")
 
         # xz-plane
-        axs[1].set_title(_title + " - x-z plane")
-        axs[1].scatter(
+        self.ax[1].set_title(self.name + " - x-z plane")
+        self.ax[1].scatter(
             coordinates[active, 0],
             coordinates[active, 2],
             s=s[active],
@@ -113,15 +140,15 @@ class BaseAssistant(ABC):
             c=flat_array[active],
             cmap="viridis",
         )
-        axs[1].set_xlim(bbox[0, 0], bbox[1, 0])
-        axs[1].set_ylim(bbox[0, 2], bbox[1, 2])
-        axs[1].set_xlabel("x-axis")
-        axs[1].set_ylabel("z-axis")
-        axs[1].set_aspect("equal")
+        self.ax[1].set_xlim(bbox[0, 0], bbox[1, 0])
+        self.ax[1].set_ylim(bbox[0, 2], bbox[1, 2])
+        self.ax[1].set_xlabel("x-axis")
+        self.ax[1].set_ylabel("z-axis")
+        self.ax[1].set_aspect("equal")
 
         # yz-plane
-        axs[2].set_title(_title + " - y-z plane")
-        axs[2].scatter(
+        self.ax[2].set_title(self.name + " - y-z plane")
+        self.ax[2].scatter(
             coordinates[active, 1],
             coordinates[active, 2],
             s=s[active],
@@ -129,10 +156,10 @@ class BaseAssistant(ABC):
             c=flat_array[active],
             cmap="viridis",
         )
-        axs[2].set_xlim(bbox[0, 1], bbox[1, 1])
-        axs[2].set_ylim(bbox[0, 2], bbox[1, 2])
-        axs[2].set_xlabel("y-axis")
-        axs[2].set_ylabel("z-axis")
-        axs[2].set_aspect("equal")
+        self.ax[2].set_xlim(bbox[0, 1], bbox[1, 1])
+        self.ax[2].set_ylim(bbox[0, 2], bbox[1, 2])
+        self.ax[2].set_xlabel("y-axis")
+        self.ax[2].set_ylabel("z-axis")
+        self.ax[2].set_aspect("equal")
 
         plt.show()
