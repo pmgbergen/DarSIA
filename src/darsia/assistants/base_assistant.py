@@ -1,6 +1,7 @@
 """Module containing the base assistant class."""
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,25 +14,35 @@ class BaseAssistant(ABC):
 
     def __init__(self, img: darsia.Image, **kwargs) -> None:
         self.img = img
+        """Image to be analyzed."""
+        assert not self.img.series, "Image series not supported."
         self.kwargs = kwargs
+        """Keyword arguments."""
+        self.verbosity = kwargs.get("verbosity", False)
+        """Flag controlling verbosity."""
 
     @abstractmethod
     def _print_instructions() -> None:
+        """Print instructions."""
         pass
+
+    def _print_event(self, event) -> None:
+        if self.verbosity:
+            print(event)
 
     @abstractmethod
     def _setup_event_handler() -> None:
+        """Setup event handler."""
         pass
 
     @abstractmethod
-    def __call__(self) -> None:
-        pass
-
-    @abstractmethod
-    def return_result(self) -> None:
+    def __call__(self) -> Any:
+        """Call the assistant."""
         pass
 
     def _plot_3d(self) -> None:
+        """Side view with interactive event handler."""
+
         # Setup figure
         fig_2d, axs = plt.subplots(1, 3)
         fig_2d.suptitle("2d side views")
@@ -39,7 +50,9 @@ class BaseAssistant(ABC):
 
         # Setup event handler
         self.fig = fig_2d
+        """Figure for analysis."""
         self.ax = axs
+        """Axes for analysis."""
         self._setup_event_handler()
 
         # Print instructions
@@ -54,7 +67,6 @@ class BaseAssistant(ABC):
         coordinates = self.img.coordinatesystem.coordinate(matrix_indices)
 
         # Extract values
-        assert not self.img.series
         array = self.img.img
         flat_array = array.reshape((1, -1))[0]
 
