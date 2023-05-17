@@ -28,7 +28,7 @@ class CoordinateSystem:
 
         """
 
-        assert img.indexing in ["ij", "ijk"]
+        assert img.indexing in ["i", "ij", "ijk"], f"Indexing not supported."
         self.indexing = img.indexing
         """Indexing of the underlying image."""
 

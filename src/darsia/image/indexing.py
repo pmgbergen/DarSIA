@@ -103,18 +103,36 @@ def interpret_indexing(axis: str, indexing: str) -> tuple[int, bool]:
         indexing (str): indexing of an image, e.g., "ijk"
 
     Returns:
-        int: component corresponding to the axis. Covered: "x", "y", "z",
-            "i", "j", "k".
-        bool: flag controlling whether the axis has to be reverted
-            when converting. Covered: "xyz", "ijk".
+        int: component corresponding to the axis. Covered: "x", "y", "z", "i", "j", "k".
+        bool: flag controlling whether the axis has to be reverted when converting.
+            Covered: "xyz", "ijk", and reduced cases in 1d and 2d.
+
+    Raises:
+        ValueError: if not supported combination used as input.
 
     """
 
     # Consider all possible combinations.
 
+    # ! ---- 1D Cartesian indexing
+
+    if indexing == "x":
+        if axis == "x":
+            return 0, False
+        elif axis == "i":
+            return 0, False
+
+    # ! ---- 1D matrix indexing
+
+    elif indexing == "i":
+        if axis == "x":
+            return 0, False
+        elif axis == "i":
+            return 0, False
+
     # ! ---- 2D Cartesian indexing
 
-    if indexing == "xy":
+    elif indexing == "xy":
         if axis == "x":
             return 0, False
         elif axis == "y":
