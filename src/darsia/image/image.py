@@ -281,7 +281,15 @@ class Image:
     def reset_reference_time(self) -> None:
         """Pick date of first image in a series as reference date."""
 
-        self.reference_date = self.date[0] if isinstance(self.date, list) else self.date
+        if self._is_none(self.date):
+            # Manually reset time
+            base_time = self.time[0]
+            self.time = [time - base_time for time in self.time]
+        else:
+            self.reference_date = (
+                self.date[0] if isinstance(self.date, list) else self.date
+            )
+            self.set_time()
 
     def copy(self) -> Image:
         """Copy constructor.
