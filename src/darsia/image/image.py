@@ -468,45 +468,37 @@ class Image:
         # Create image with same data type but updates image data and metadata
         return type(self)(img=img, **metadata)
 
-    def time_interval(
-        self,
-        time_indices: Optional[slice] = None,
-        reset_time: bool = False,
-    ) -> Image:
-        """Extraction of temporal subregion.
+    def time_interval(self, indices: slice) -> Image:
+        """Extraction of temporal subregion, only for space-time images.
 
         Args:
-            time_indices (slice, optional): time interval; only for space-time images.
-            reset_time (bool): flag controlling whether relative time is reset.
+            indices (slice): time interval in terms of indices.
 
         Returns:
             Image: image with restricted temporal domain.
 
         Raises:
             ValueError: if image is not a time series.
+            ValueError: if indices is not a slice
 
         """
         # ! ---- Safety checks
 
-        if time_indices is not None and not self.series:
+        if not self.series:
             raise ValueError("Image is not a time-series.")
+        if not isinstance(indices, slice):
+            raise ValueError("indices needs to be a slice")
 
-        # ! ---- Fetch data
+        # ! ---- Adapt data
         if self.scalar:
-            img = self.img[..., time_indices]
+            img = self.img[..., indices]
         else:
-            img = self.img[..., time_indices, :]
+            img = self.img[..., indices, :]
 
-        # ! ---- Update metadata
-
-        # ! ---- Fetch and adapt metadata
+        # ! ---- Adapt metadata
         metadata = self.metadata()
-        metadata["date"] = self.date[time_indices]
-        times = self.time[time_indices]
-        if reset_time:
-            metadata["time"] = [time - times[0] for time in times]
-        else:
-            metadata["time"] = times
+        metadata["date"] = self.date[indices]
+        metadata["time"] = self.time[indices]
 
         return type(self)(img=img, **metadata)
 
