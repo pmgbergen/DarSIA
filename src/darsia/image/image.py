@@ -9,7 +9,7 @@ from __future__ import annotations
 import copy
 import json
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional, Union, cast
 from warnings import warn
@@ -157,15 +157,19 @@ class Image:
         )
         self.date = date
         """Time in datetime format."""
+        default_reference_date = date[0] if isinstance(date, list) else date
+        reference_date: Optional[datetime] = kwargs.pop(
+            "reference_date", default_reference_date
+        )
+        self.reference_date = reference_date
+        """Reference date (for defining relative time)."""
 
         # ! ---- Retrieve relative time from absolute date
 
         self.time = None
         """Relative time in scalar format (in seconds)."""
-
         time: Optional[Union[float, int, list]] = kwargs.pop("time", None)
-        reference_date: Optional[datetime] = kwargs.pop("reference_date", None)
-        self.set_time(time, reference_date)
+        self.set_time(time)
 
         # ! ---- Time related safety check
 
@@ -228,50 +232,56 @@ class Image:
     def set_time(
         self,
         time: Optional[Union[float, int, list]] = None,
-        reference_date: Optional[datetime] = None,
-        reference_time: Optional[float] = None,
     ) -> None:
         """Setter for time array.
 
         Args:
             time (scalar or list, optional): time to be set; if None, time is retrieved
                 from date.
-            reference_date (datetime, optional): reference date.
-            reference_time (float, optional): reference_time in seconds.
 
         """
         # ! ---- Safety check
-
-        # Only allow to use one of the two input arguments.
-        if reference_date is not None and reference_time is not None:
-            raise ValueError("Choose only one reference.")
 
         if time is None:
             # From date
             if self.series:
                 if self._is_none(self.date):
-                    self.time = None
+                    self.time = self.time_num * [None]
                 else:
                     self.time = [
-                        (self.date[i] - self.date[0]).total_seconds()
+                        (self.date[i] - self.reference_date).total_seconds()
                         for i in range(self.time_num)
                     ]
             else:
-                if reference_date is None:
+                if self._is_none(self.date):
                     self.time = None
                 else:
-                    self.time = (self.date - reference_date).total_seconds()
+                    self.time = (self.date - self.reference_date).total_seconds()
 
         else:
             # From argument
             self.time = time
 
-        # Correct for reference time
-        if reference_time is not None:
-            if isinstance(self.time, list):
-                self.time = [time - reference_time for time in self.time]
-            elif self.time is not None:
-                self.time -= reference_time
+    def update_reference_time(self, reference: Union[datetime, float]) -> None:
+        """Update reference time. Modifies the relative time.
+
+        reference (datetime or float): reference date or relative reference time (in seconds)
+
+        """
+        if isinstance(reference, datetime):
+            self.reference_date = reference
+        elif isinstance(reference, float):
+            self.reference_date = self.reference_date + timedelta(seconds=reference)
+        else:
+            raise ValueError
+
+        # Update relative time
+        self.set_time()
+
+    def reset_reference_time(self) -> None:
+        """Pick date of first image in a series as reference date."""
+
+        self.reference_date = self.date[0] if isinstance(self.date, list) else self.date
 
     def copy(self) -> Image:
         """Copy constructor.
@@ -404,6 +414,7 @@ class Image:
             "series": self.series,
             "scalar": self.scalar,
             "date": self.date,
+            "reference_date": self.reference_date,
             "time": self.time,
         }
         return copy.copy(metadata)
