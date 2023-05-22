@@ -28,18 +28,15 @@ class AxisAveraging:
 
         """
 
-        if dim != 3:
-            raise NotImplementedError
-
         # Convert axis to numeric index
         if isinstance(axis, str):
-            assert axis in "xyz"
+            assert axis in "xyz"[:dim]
             index, _ = darsia.interpret_indexing(axis, "ijk"[:dim])
 
         elif isinstance(axis, int):
             assert axis in range(dim)
             index = axis
-            index_alpha = "ijk"[index]
+            index_alpha = "ijk"[:dim][index]
             cartesian_index, _ = darsia.interpret_indexing(index_alpha, "xyz"[:dim])
             axis = "xyz"[cartesian_index]
 
@@ -53,10 +50,10 @@ class AxisAveraging:
         """Averaging routine.
 
         Args:
-            img (Image): 3d image.
+            img (Image): nd image.
 
         Returns:
-            Image: 2d image.
+            Image: (n-1)d image.
 
         """
         # Manage update of indexing
@@ -64,17 +61,17 @@ class AxisAveraging:
         original_axes = "xyz"[:original_dim]
         original_indexing = img.indexing
 
+        # Safety checks
+        if not original_indexing == "ijk"[:original_dim]:
+            raise NotImplementedError(
+                "Only 3d case with standard matrix indexing supported."
+            )
+
         new_dim = original_dim - 1
         new_axes = "xyz"[:new_dim]
         new_indexing = "ijk"[:new_dim]
 
         interim_indexing = original_indexing.replace(original_indexing[self.index], "")
-
-        # Safety checks
-        if not original_indexing == "ijk":
-            raise NotImplementedError(
-                "Only 3d case with standard matrix indexing supported."
-            )
 
         # Reduce the data
         img_arr = np.sum(img.img, axis=self.index)
@@ -102,7 +99,6 @@ class AxisAveraging:
         # default_origin in Image.
         new_origin = np.array(new_min_corner)
         for new_index, interim_matrix_index in enumerate(interim_indexing):
-
             # Fetch corresponding character index
             new_matrix_index = new_indexing[new_index]
 
@@ -129,13 +125,13 @@ def average_over_axis(image: darsia.Image, axis: Union[str, int]) -> darsia.Imag
     """Utility function, essentially wrapping AxisAveraging as a method.
 
     Args:
-        img (Image): 3d image.
+        img (Image): nd image.
         axis (int or str): numeric index (corresponding to matrix indexing) or
             Cartesian axis
         dim (int): dimension of the input image
 
     Returns:
-        Image: 2d image.
+        Image: (n-1)d image.
 
     """
     dim = image.space_dim

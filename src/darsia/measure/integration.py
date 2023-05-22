@@ -85,6 +85,10 @@ class Geometry:
             float or array: integral of data over geometry, array if time series and/or
                 non-scalar data is provided.
 
+        Raises:
+            ValueError: In dimensions other than 2, if data and geometry incompatible
+                and reshape is needed.
+
         """
         # ! ---- Make sure that the geometry is compatible with the provided data
 
@@ -202,14 +206,11 @@ class WeightedGeometry(Geometry):
 
 
 class ExtrudedGeometry(WeightedGeometry):
-    """Two-dimensional geometry extruded in third dimension with
-    possibly variable depth.
-
-    """
+    """One or two-dimensional geometry extruded to three dimensions."""
 
     def __init__(
         self,
-        depth: Union[float, np.ndarray],
+        expansion: Union[float, np.ndarray],
         space_dim: int,
         num_voxels: Union[tuple[int], list[int]],
         dimensions: Optional[list] = None,
@@ -220,7 +221,7 @@ class ExtrudedGeometry(WeightedGeometry):
         Constructor for extruded two-dimensional geometry.
 
         Args:
-            depth (float or array): effective depth of geometry.
+            expansion (float or array): effective depth/area of 1d/2d geometry.
             space_dim (int): see Geometry.
             num_voxels (tuple): see Geometry.
             dimensions (list): see Geometry.
@@ -230,11 +231,7 @@ class ExtrudedGeometry(WeightedGeometry):
             ValueError: if spatial dimension not 2.
 
         """
-        # Sanity check
-        if space_dim != 2:
-            raise ValueError("Extruded geometries only defined for 2d domains.")
-
-        super().__init__(depth, space_dim, num_voxels, dimensions, voxel_size)
+        super().__init__(expansion, space_dim, num_voxels, dimensions, voxel_size)
 
 
 class PorousGeometry(WeightedGeometry):

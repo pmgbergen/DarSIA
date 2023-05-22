@@ -678,241 +678,291 @@ class Image:
 
         """
 
-        for time_index in range(self.time_num):
-            if self.series:
-                # Fetch time for series (not used otherwise)
+        # Use different plotting styles for different spatial dimensions. In 1d, time
+        # series can be visualized in a single plot, and thus receive special treatment.
+        if self.space_dim == 1:
 
-                assert self.date is None or (
-                    isinstance(self.date, list)
-                    and all([d is None or isinstance(d, datetime) for d in self.date])
-                )  # mypy
-                abs_time = (
-                    ""
-                    if not isinstance(self.date, list) or self.date[time_index] is None
-                    else " - " + str(self.date[time_index])
-                )
+            # Extract physical coordinates and flatten
+            matrix_indices = np.transpose(
+                np.indices(self.img.shape[:1]).reshape((1, -1))
+            )
+            coordinates = self.coordinatesystem.coordinate(matrix_indices)
 
-                assert self.time is None or isinstance(self.time, list)
-                rel_time = (
-                    ""
-                    if self.time is None or self.time[time_index] is None
-                    else " - " + str(self.time[time_index])
-                )
-
-                # Append title with time
-                _title = title
-                if not _title == "":
-                    _title += " - "
-                _title += f"{time_index} - {abs_time} -  {rel_time} sec."
+            # Fetch data and make sure to expand dimensions to have explicit access to
+            # the range components - simplifies code generalization.
+            if self.scalar:
+                array = self.img[..., np.newaxis]
             else:
-                _title = title
+                array = self.img
 
-            # Plot the entire 2d image in plain mode
-            if self.space_dim == 2:
-                # Only works for scalar and optical images.
-                assert self.scalar or self.range_num in [1, 3]
+            # Generate the plot(s)
+            if self.series:
+                # Plot evolution of each component in separate plot.
+                for comp in range(self.range_num):
+                    fig, ax = plt.subplots(1)
+                    fig.suptitle(title + f" component {comp}")
+                    # Put time on y axis and start time 0 on the bottom.
+                    plt.imshow(np.flip(np.transpose(array[..., comp]), 0))
+                    # TODO replace indices in ticks with actual coordinates and time.
+                    ax.set_xlabel("x-axis")
+                    ax.set_ylabel("time-axis")
+            else:
+                # Plot each component in same plot
+                fig = plt.figure(title)
+                for comp in range(self.range_num):
+                    plt.plot(coordinates, array[..., comp])
+                plt.legend([f"Comp. {i}" for i in range(self.range_num)])
 
-                # Fetch data array
-                if self.series:
-                    if self.scalar:
-                        array = self.img[..., time_index]
-                    else:
-                        array = self.img[..., time_index, :]
-                else:
-                    array = self.img
-
-                # Plot
-                plt.figure(_title)
-                plt.imshow(skimage.img_as_float(array))
-
-            elif self.space_dim == 3:
-                # ! --- Preliminaries
-
-                # Only works for scalar images.
-                assert self.scalar
-
-                # Fetch bounding box
-                corners = np.vstack((self.origin, self.opposite_corner))
-                bbox = np.array([np.min(corners, axis=0), np.max(corners, axis=0)])
-
-                # Extract physical coordinates and flatten
-                matrix_indices = np.transpose(
-                    np.indices(self.img.shape[:3]).reshape((3, -1))
-                )
-                coordinates = self.coordinatesystem.coordinate(matrix_indices)
-
-                # Extract values
-                if self.series:
-                    array = self.img[..., time_index]
-                    time_slice = self.time_slice(time_index)
-                else:
-                    array = self.img
-                    time_slice = self
-                flat_array = array.reshape((1, -1))[0]
-
-                # Restrict to active voxels
-                threshold = kwargs.get("threshold", np.min(self.img))
-                relative = kwargs.get("relative", False)
-                if relative:
-                    threshold = threshold * np.max(self.img)
-                active = flat_array > threshold
-
-                # Signal strength
-                alpha_min = 0.1
-                alpha = alpha_min + (
-                    (1.0 - alpha_min)
-                    * (flat_array - np.min(array))
-                    / (np.max(array) - np.min(array))
-                )
-                scaling = kwargs.get("scaling", 1)
-                s = scaling * alpha
-
-                # ! ---- 3d view
-
-                # Offer two possibilities. Either a scatter plot or a voxel plot.
-
-                surpress_3d = kwargs.get("surpress_3d", False)
-                if not surpress_3d:
-                    fig_3d = plt.figure(_title + " - 3d view")
-                    ax_3d = Axes3D(fig_3d)
-
-                    view = kwargs.get("view", "scatter").lower()
-                    assert view in ["scatter", "voxel"]
-                    if view == "scatter":
-                        ax_3d.scatter(
-                            xs=coordinates[active, 0],
-                            ys=coordinates[active, 1],
-                            zs=coordinates[active, 2],
-                            s=s[active],
-                            alpha=np.power(alpha[active], 2),
-                            c=flat_array[active],
-                            cmap="viridis",
-                        )
-
-                    elif view == "voxel":
-                        # Convert coordinates into np.indices format, listing all voxel
-                        # corners.
-                        voxel_corners = np.indices(np.array(self.img[:3].shape) + 1)
-                        reshaped_voxel_corners = np.transpose(
-                            voxel_corners.reshape((3, -1))
-                        )
-                        reshaped_voxel_coordinates = self.coordinatesystem.coordinate(
-                            reshaped_voxel_corners
-                        )
-                        voxel_coordinates = np.transpose(
-                            reshaped_voxel_coordinates
-                        ).reshape(voxel_corners.shape)
-
-                        # Convert array values to colors and transfer signal strength
-                        facecolors = plt.cm.viridis(array)
-                        alpha_voxels = alpha_min + (1.0 - alpha_min) * (
-                            array - np.min(array)
-                        ) / (np.max(array) - np.min(array))
-                        facecolors[..., -1] = alpha_voxels
-                        active_voxels = array > threshold
-
-                        ax_3d.voxels(
-                            voxel_coordinates[0],
-                            voxel_coordinates[1],
-                            voxel_coordinates[2],
-                            active_voxels,
-                            facecolors=facecolors,
-                        )
-
-                    ax_3d.set_xlabel("x-axis")
-                    ax_3d.set_ylabel("y-axis")
-                    ax_3d.set_zlabel("z-axis")
-                    ax_3d.set_xlim(bbox[0, 0], bbox[1, 0])
-                    ax_3d.set_ylim(bbox[0, 1], bbox[1, 1])
-                    ax_3d.set_zlim(bbox[0, 2], bbox[1, 2])
-
-                # ! ---- 2d side views
-
-                # Offer two possibilities. Either a scatter plot or an
-                # integrated view. The latter uses integration over the axis "into" the
-                # screen.
-
-                surpress_2d = kwargs.get("surpress_2d", False)
-                if not surpress_2d:
-                    side_view = kwargs.get("side_view", "scatter").lower()
-                    assert side_view in ["scatter", "voxel"]
-                    fig_2d, axs = plt.subplots(1, 3)
-                    fig_2d.suptitle("2d side views")
-
-                    # xy-plane
-                    axs[0].set_title(_title + " - x-y plane")
-                    if side_view == "scatter":
-                        axs[0].scatter(
-                            coordinates[active, 0],
-                            coordinates[active, 1],
-                            s=s[active],
-                            alpha=alpha[active],
-                            c=flat_array[active],
-                            cmap="viridis",
-                        )
-                        axs[0].set_xlim(bbox[0, 0], bbox[1, 0])
-                        axs[0].set_ylim(bbox[0, 1], bbox[1, 1])
-                    elif side_view == "voxel":
-                        reduction = darsia.AxisAveraging(axis="z", dim=3)
-                        reduced_image = reduction(time_slice)
-                        axs[0].imshow(skimage.img_as_float(reduced_image.img))
-                    axs[0].set_xlabel("x-axis")
-                    axs[0].set_ylabel("y-axis")
-                    axs[0].set_aspect("equal")
-
-                    # xz-plane
-                    axs[1].set_title(_title + " - x-z plane")
-                    if side_view == "scatter":
-                        axs[1].scatter(
-                            coordinates[active, 0],
-                            coordinates[active, 2],
-                            s=s[active],
-                            alpha=alpha[active],
-                            c=flat_array[active],
-                            cmap="viridis",
-                        )
-                        axs[1].set_xlim(bbox[0, 0], bbox[1, 0])
-                        axs[1].set_ylim(bbox[0, 2], bbox[1, 2])
-                    elif side_view == "voxel":
-                        reduction = darsia.AxisAveraging(axis="y", dim=3)
-                        reduced_image = reduction(time_slice)
-                        axs[1].imshow(skimage.img_as_float(reduced_image.img))
-                    axs[1].set_xlabel("x-axis")
-                    axs[1].set_ylabel("z-axis")
-                    axs[1].set_aspect("equal")
-
-                    # yz-plane
-                    axs[2].set_title(_title + " - y-z plane")
-                    if side_view == "scatter":
-                        axs[2].scatter(
-                            coordinates[active, 1],
-                            coordinates[active, 2],
-                            s=s[active],
-                            alpha=alpha[active],
-                            c=flat_array[active],
-                            cmap="viridis",
-                        )
-                        axs[2].set_xlim(bbox[0, 1], bbox[1, 1])
-                        axs[2].set_ylim(bbox[0, 2], bbox[1, 2])
-                    elif side_view == "voxel":
-                        reduction = darsia.AxisAveraging(axis="x", dim=3)
-                        reduced_image = reduction(time_slice)
-                        axs[2].imshow(skimage.img_as_float(reduced_image.img))
-                    axs[2].set_xlabel("y-axis")
-                    axs[2].set_ylabel("z-axis")
-                    axs[2].set_aspect("equal")
-
-                # Make sure that any plot is shown
-                assert not (surpress_2d and surpress_3d)
-
+            # Show the plot(s)
             delay = kwargs.get("delay", False)
-            if not delay or time_index == self.time_num - 1:
+            if not delay:
                 if duration is None:
                     plt.show()
                 else:
                     plt.show(block=False)
                     plt.pause(int(duration))
                     plt.close()
+
+        else:
+            # In 2d and 3d, plot each time slice separately.
+            for time_index in range(self.time_num):
+                if self.series:
+                    # Fetch time for series (not used otherwise)
+
+                    assert self.date is None or (
+                        isinstance(self.date, list)
+                        and all(
+                            [d is None or isinstance(d, datetime) for d in self.date]
+                        )
+                    )  # mypy
+                    abs_time = (
+                        ""
+                        if not isinstance(self.date, list)
+                        or self.date[time_index] is None
+                        else " - " + str(self.date[time_index])
+                    )
+
+                    assert self.time is None or isinstance(self.time, list)
+                    rel_time = (
+                        ""
+                        if self.time is None or self.time[time_index] is None
+                        else " - " + str(self.time[time_index])
+                    )
+
+                    # Append title with time
+                    _title = title
+                    if not _title == "":
+                        _title += " - "
+                    _title += f"{time_index} - {abs_time} -  {rel_time} sec."
+                else:
+                    _title = title
+
+                if self.space_dim == 2:
+                    # Plot the entire 2d image in plain mode
+                    # Only works for scalar and optical images.
+                    assert self.scalar or self.range_num in [1, 3]
+
+                    # Fetch data array
+                    if self.series:
+                        if self.scalar:
+                            array = self.img[..., time_index]
+                        else:
+                            array = self.img[..., time_index, :]
+                    else:
+                        array = self.img
+
+                    # Plot
+                    fig = plt.figure(_title)
+                    plt.imshow(skimage.img_as_float(array))
+
+                elif self.space_dim == 3:
+                    # ! --- Preliminaries
+
+                    # Only works for scalar images.
+                    assert self.scalar
+
+                    # Fetch bounding box
+                    corners = np.vstack((self.origin, self.opposite_corner))
+                    bbox = np.array([np.min(corners, axis=0), np.max(corners, axis=0)])
+
+                    # Extract physical coordinates and flatten
+                    matrix_indices = np.transpose(
+                        np.indices(self.img.shape[:3]).reshape((3, -1))
+                    )
+                    coordinates = self.coordinatesystem.coordinate(matrix_indices)
+
+                    # Extract values
+                    if self.series:
+                        array = self.img[..., time_index]
+                        time_slice = self.time_slice(time_index)
+                    else:
+                        array = self.img
+                        time_slice = self
+                    flat_array = array.reshape((1, -1))[0]
+
+                    # Restrict to active voxels
+                    threshold = kwargs.get("threshold", np.min(self.img))
+                    relative = kwargs.get("relative", False)
+                    if relative:
+                        threshold = threshold * np.max(self.img)
+                    active = flat_array > threshold
+
+                    # Signal strength
+                    alpha_min = 0.1
+                    alpha = alpha_min + (
+                        (1.0 - alpha_min)
+                        * (flat_array - np.min(array))
+                        / (np.max(array) - np.min(array))
+                    )
+                    scaling = kwargs.get("scaling", 1)
+                    s = scaling * alpha
+
+                    # ! ---- 3d view
+
+                    # Offer two possibilities. Either a scatter plot or a voxel plot.
+
+                    surpress_3d = kwargs.get("surpress_3d", False)
+                    if not surpress_3d:
+                        fig_3d = plt.figure(_title + " - 3d view")
+                        ax_3d = Axes3D(fig_3d)
+
+                        view = kwargs.get("view", "scatter").lower()
+                        assert view in ["scatter", "voxel"]
+                        if view == "scatter":
+                            ax_3d.scatter(
+                                xs=coordinates[active, 0],
+                                ys=coordinates[active, 1],
+                                zs=coordinates[active, 2],
+                                s=s[active],
+                                alpha=np.power(alpha[active], 2),
+                                c=flat_array[active],
+                                cmap="viridis",
+                            )
+
+                        elif view == "voxel":
+                            # Convert coordinates into np.indices format, listing all voxel
+                            # corners.
+                            voxel_corners = np.indices(np.array(self.img[:3].shape) + 1)
+                            reshaped_voxel_corners = np.transpose(
+                                voxel_corners.reshape((3, -1))
+                            )
+                            reshaped_voxel_coordinates = (
+                                self.coordinatesystem.coordinate(reshaped_voxel_corners)
+                            )
+                            voxel_coordinates = np.transpose(
+                                reshaped_voxel_coordinates
+                            ).reshape(voxel_corners.shape)
+
+                            # Convert array values to colors and transfer signal strength
+                            facecolors = plt.cm.viridis(array)
+                            alpha_voxels = alpha_min + (1.0 - alpha_min) * (
+                                array - np.min(array)
+                            ) / (np.max(array) - np.min(array))
+                            facecolors[..., -1] = alpha_voxels
+                            active_voxels = array > threshold
+
+                            ax_3d.voxels(
+                                voxel_coordinates[0],
+                                voxel_coordinates[1],
+                                voxel_coordinates[2],
+                                active_voxels,
+                                facecolors=facecolors,
+                            )
+
+                        ax_3d.set_xlabel("x-axis")
+                        ax_3d.set_ylabel("y-axis")
+                        ax_3d.set_zlabel("z-axis")
+                        ax_3d.set_xlim(bbox[0, 0], bbox[1, 0])
+                        ax_3d.set_ylim(bbox[0, 1], bbox[1, 1])
+                        ax_3d.set_zlim(bbox[0, 2], bbox[1, 2])
+
+                    # ! ---- 2d side views
+
+                    # Offer two possibilities. Either a scatter plot or an
+                    # integrated view. The latter uses integration over the axis "into" the
+                    # screen.
+
+                    surpress_2d = kwargs.get("surpress_2d", False)
+                    if not surpress_2d:
+                        side_view = kwargs.get("side_view", "scatter").lower()
+                        assert side_view in ["scatter", "voxel"]
+                        fig_2d, axs = plt.subplots(1, 3)
+                        fig_2d.suptitle("2d side views")
+
+                        # xy-plane
+                        axs[0].set_title(_title + " - x-y plane")
+                        if side_view == "scatter":
+                            axs[0].scatter(
+                                coordinates[active, 0],
+                                coordinates[active, 1],
+                                s=s[active],
+                                alpha=alpha[active],
+                                c=flat_array[active],
+                                cmap="viridis",
+                            )
+                            axs[0].set_xlim(bbox[0, 0], bbox[1, 0])
+                            axs[0].set_ylim(bbox[0, 1], bbox[1, 1])
+                        elif side_view == "voxel":
+                            reduction = darsia.AxisAveraging(axis="z", dim=3)
+                            reduced_image = reduction(time_slice)
+                            axs[0].imshow(skimage.img_as_float(reduced_image.img))
+                        axs[0].set_xlabel("x-axis")
+                        axs[0].set_ylabel("y-axis")
+                        axs[0].set_aspect("equal")
+
+                        # xz-plane
+                        axs[1].set_title(_title + " - x-z plane")
+                        if side_view == "scatter":
+                            axs[1].scatter(
+                                coordinates[active, 0],
+                                coordinates[active, 2],
+                                s=s[active],
+                                alpha=alpha[active],
+                                c=flat_array[active],
+                                cmap="viridis",
+                            )
+                            axs[1].set_xlim(bbox[0, 0], bbox[1, 0])
+                            axs[1].set_ylim(bbox[0, 2], bbox[1, 2])
+                        elif side_view == "voxel":
+                            reduction = darsia.AxisAveraging(axis="y", dim=3)
+                            reduced_image = reduction(time_slice)
+                            axs[1].imshow(skimage.img_as_float(reduced_image.img))
+                        axs[1].set_xlabel("x-axis")
+                        axs[1].set_ylabel("z-axis")
+                        axs[1].set_aspect("equal")
+
+                        # yz-plane
+                        axs[2].set_title(_title + " - y-z plane")
+                        if side_view == "scatter":
+                            axs[2].scatter(
+                                coordinates[active, 1],
+                                coordinates[active, 2],
+                                s=s[active],
+                                alpha=alpha[active],
+                                c=flat_array[active],
+                                cmap="viridis",
+                            )
+                            axs[2].set_xlim(bbox[0, 1], bbox[1, 1])
+                            axs[2].set_ylim(bbox[0, 2], bbox[1, 2])
+                        elif side_view == "voxel":
+                            reduction = darsia.AxisAveraging(axis="x", dim=3)
+                            reduced_image = reduction(time_slice)
+                            axs[2].imshow(skimage.img_as_float(reduced_image.img))
+                        axs[2].set_xlabel("y-axis")
+                        axs[2].set_ylabel("z-axis")
+                        axs[2].set_aspect("equal")
+
+                    # Make sure that any plot is shown
+                    assert not (surpress_2d and surpress_3d)
+
+                delay = kwargs.get("delay", False)
+                if not delay or time_index == self.time_num - 1:
+                    if duration is None:
+                        plt.show()
+                    else:
+                        plt.show(block=False)
+                        plt.pause(int(duration))
+                        plt.close()
 
     def show_plotly(
         self,
