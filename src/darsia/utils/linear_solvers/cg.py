@@ -68,7 +68,7 @@ class CG(da.Solver):
             x = np.reshape(x, x0.shape)
             return (
                 self.mass_coeff * x
-                - self.diffusion_coeff * da.laplace(x, dim=self.dim, h=h)
+                - da.laplace(x, dim=self.dim, h=h, diffusion_coeff=self.diffusion_coeff)
             ).flatten()
 
         lhsoperator = LinearOperator((_dof, _dof), matvec=_mv)

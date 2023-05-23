@@ -4,7 +4,7 @@ space. All functions are based on numpy.diff().
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 
@@ -52,7 +52,11 @@ def forward_diff(
 
 
 def laplace(
-    im: np.ndarray, axis: Optional[int] = None, dim: int = 2, h: Optional[float] = None
+    im: np.ndarray,
+    axis: Optional[int] = None,
+    dim: int = 2,
+    h: Optional[float] = None,
+    diffusion_coeff: Union[np.ndarray, float] = 1,
 ) -> np.ndarray:
     """
     Laplace operator with homogeneous boundary conditions of image matrix
@@ -62,18 +66,26 @@ def laplace(
         axis (int): axis along which the difference is taken
         dim (int): dimension of image array
         h (Optional[float]): grid spacing
+        diffision_coeff (Optional[np.ndarray]): diffusion coefficient
     Returns:
         np.ndarray: horizontal Laplace image matrix
     """
+
+    if isinstance(diffusion_coeff, np.ndarray):
+        assert diffusion_coeff.shape == im.shape
+
     if axis is None:
         laplace: np.ndarray = np.zeros_like(im)
         for ax in range(dim):
             laplace += 0.5 * (
                 backward_diff(
-                    im=forward_diff(im=im, axis=ax, dim=dim, h=h), axis=ax, dim=dim, h=h
+                    im=diffusion_coeff * forward_diff(im=im, axis=ax, dim=dim, h=h),
+                    axis=ax,
+                    dim=dim,
+                    h=h,
                 )
                 + forward_diff(
-                    im=backward_diff(im=im, axis=ax, dim=dim, h=h),
+                    im=diffusion_coeff * backward_diff(im=im, axis=ax, dim=dim, h=h),
                     axis=ax,
                     dim=dim,
                     h=h,
@@ -83,10 +95,13 @@ def laplace(
         assert axis < dim, "axis must be smaller than dimension"
         laplace = 0.5 * (
             backward_diff(
-                im=forward_diff(im=im, axis=axis, dim=dim, h=h), axis=axis, dim=dim, h=h
+                im=diffusion_coeff * forward_diff(im=im, axis=axis, dim=dim, h=h),
+                axis=axis,
+                dim=dim,
+                h=h,
             )
             + forward_diff(
-                im=backward_diff(im=im, axis=axis, dim=dim, h=h),
+                im=diffusion_coeff * backward_diff(im=im, axis=axis, dim=dim, h=h),
                 axis=axis,
                 dim=dim,
                 h=h,

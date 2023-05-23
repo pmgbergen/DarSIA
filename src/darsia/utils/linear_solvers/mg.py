@@ -16,6 +16,9 @@ class MG(da.Solver):
     Muiltilvel solver for the problem: mass_coeff * x - diffusion_coeff * laplace(x) = rhs.
     For arrays with odd number of elements the last element is dropped in the refinement
     stages.
+
+    NOTE: Add possibility to actually have a heterogeneous diffusion coefficient. As of now it
+    is assumed to be constant, or multiplied after Laplacian.
     """
 
     def __init__(
