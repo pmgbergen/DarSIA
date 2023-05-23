@@ -21,7 +21,6 @@ from darsia.utils.box import *
 from darsia.utils.interpolation import *
 from darsia.utils.segmentation import *
 from darsia.utils.coloranalysis import *
-from darsia.utils.identity import *
 from darsia.utils.array_slice import *
 from darsia.utils.derivatives import *
 from darsia.utils.linear_solvers.solver import *
@@ -67,3 +66,6 @@ from darsia.manager.analysisbase import *
 from darsia.manager.concentrationanalysisbase import *
 from darsia.manager.traceranalysis import *
 from darsia.manager.co2analysis import *
+from darsia.assistants.base_assistant import *
+from darsia.assistants.rotation_correction_assistant import *
+from darsia.assistants.subregion_assistant import *
