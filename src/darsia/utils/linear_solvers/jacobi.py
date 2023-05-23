@@ -13,6 +13,9 @@ import darsia as da
 class Jacobi(da.Solver):
     """
     Jacobi solver for the problem: mass_coeff * x - diffusion_coeff * laplace(x) = rhs
+
+    NOTE: Add possibility to actually have a heterogeneous diffusion coefficient. As of now it
+    is assumed to be constant, or multiplied after Laplacian.
     """
 
     def __init__(
