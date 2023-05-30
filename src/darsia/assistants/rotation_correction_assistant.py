@@ -198,12 +198,19 @@ class RotationCorrectionAssistant(darsia.BaseAssistant):
             pts_dst = self.img.coordinatesystem.voxel(self.dst)
 
             # Setup rotation correction
-            rotation_correction = darsia.RotationCorrection(
-                anchor=anchor,
-                rotation_from_isometry=True,
-                pts_src=pts_src,
-                pts_dst=pts_dst,
-            )
+            setup_arguments = {
+                "anchor": anchor,
+                "rotation_from_isometry": True,
+                "pts_src": pts_src,
+                "pts_dst": pts_dst,
+            }
+            rotation_correction = darsia.RotationCorrection(**setup_arguments)
+
+            # Print setup arguments to screen, so that one can also hardcode the
+            # definition.
+            if self.verbosity:
+                print("The determined rotation correction can be setup with the input:")
+                print(setup_arguments)
 
             # Store rotation correction and update image for potential further
             # corrections
