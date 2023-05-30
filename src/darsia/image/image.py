@@ -1522,7 +1522,7 @@ class OpticalImage(Image):
         Path(path).parents[0].mkdir(parents=True, exist_ok=True)
 
         # To prepare for the use of cv2.imwrite, convert to BGR color space.
-        bgr_image = self.to_bgr(return_image=True)
+        bgr_image = self.to_trichromatic("BGR", return_image=True)
         bgr_array = bgr_image.img
 
         # Write image, using the conventional matrix indexing

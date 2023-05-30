@@ -21,6 +21,12 @@ from darsia.utils.box import *
 from darsia.utils.interpolation import *
 from darsia.utils.segmentation import *
 from darsia.utils.coloranalysis import *
+from darsia.utils.array_slice import *
+from darsia.utils.derivatives import *
+from darsia.utils.linear_solvers.solver import *
+from darsia.utils.linear_solvers.jacobi import *
+from darsia.utils.linear_solvers.cg import *
+from darsia.utils.linear_solvers.mg import *
 from darsia.corrections.basecorrection import *
 from darsia.corrections.shape.curvature import *
 from darsia.corrections.shape.affine import *
@@ -47,6 +53,8 @@ from darsia.restoration.tvd import *
 from darsia.restoration.median import *
 from darsia.restoration.resize import *
 from darsia.restoration.binaryinpaint import *
+from darsia.restoration.l2_regularization import *
+from darsia.restoration.split_bregman_tvd import *
 from darsia.multi_image_analysis.translationanalysis import *
 from darsia.multi_image_analysis.concentrationanalysis import *
 from darsia.multi_image_analysis.model_calibration import *
