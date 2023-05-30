@@ -17,6 +17,9 @@ class SubregionAssistant(darsia.BaseAssistant):
 
         # Set name for titles in plots
         self.name = "Subregion assistant"
+        # Prepare output
+        self.coordinates = None
+        """Coordinates uniquely defining a box."""
 
     def __call__(self) -> Optional[np.ndarray]:
         """Call the assistant."""
@@ -24,14 +27,18 @@ class SubregionAssistant(darsia.BaseAssistant):
         self._reset()
         super().__call__()
 
+        # Print the determined coordinates to screen so one can hardcode the definition
+        # of the subregion if required.
+        if self.verbosity:
+            print("The determined subregion is defined by the coordinates:")
+            print(self.coordinates)
+
         return self.coordinates
 
     def _reset(self) -> None:
         """Reset subregion."""
         self.pts = [[] for _ in range(self.img.space_dim)]
         """Selected points distributed in separate lists for each dimension."""
-        self.coordinates = None
-        """Coordinates uniquely defining a box."""
         self.finalized = False
         """Flag controlling whether the selection has been finalized."""
         if self.verbosity:
