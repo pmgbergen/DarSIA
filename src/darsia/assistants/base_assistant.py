@@ -5,6 +5,7 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+import skimage
 
 import darsia
 
@@ -114,50 +115,65 @@ class BaseAssistant(ABC):
         scaling = self.kwargs.get("scaling", 1)
         s = scaling * alpha
 
+        # Plotting style
+        scatter = self.kwargs.get("scatter", True)
+
         # xy-plane
         self.ax[0].set_title(self.name + " - x-y plane")
-        self.ax[0].scatter(
-            coordinates[active, 0],
-            coordinates[active, 1],
-            s=s[active],
-            alpha=alpha[active],
-            c=flat_array[active],
-            cmap="viridis",
-        )
-        self.ax[0].set_xlim(bbox[0, 0], bbox[1, 0])
-        self.ax[0].set_ylim(bbox[0, 1], bbox[1, 1])
+        if scatter:
+            self.ax[0].scatter(
+                coordinates[active, 0],
+                coordinates[active, 1],
+                s=s[active],
+                alpha=alpha[active],
+                c=flat_array[active],
+                cmap="viridis",
+            )
+            self.ax[0].set_xlim(bbox[0, 0], bbox[1, 0])
+            self.ax[0].set_ylim(bbox[0, 1], bbox[1, 1])
+        else:
+            reduced_image = darsia.average_over_axis(self.img, axis="z")
+            self.ax[0].imshow(skimage.img_as_float(reduced_image.img))
         self.ax[0].set_xlabel("x-axis")
         self.ax[0].set_ylabel("y-axis")
         self.ax[0].set_aspect("equal")
 
         # xz-plane
         self.ax[1].set_title(self.name + " - x-z plane")
-        self.ax[1].scatter(
-            coordinates[active, 0],
-            coordinates[active, 2],
-            s=s[active],
-            alpha=alpha[active],
-            c=flat_array[active],
-            cmap="viridis",
-        )
-        self.ax[1].set_xlim(bbox[0, 0], bbox[1, 0])
-        self.ax[1].set_ylim(bbox[0, 2], bbox[1, 2])
+        if scatter:
+            self.ax[1].scatter(
+                coordinates[active, 0],
+                coordinates[active, 2],
+                s=s[active],
+                alpha=alpha[active],
+                c=flat_array[active],
+                cmap="viridis",
+            )
+            self.ax[1].set_xlim(bbox[0, 0], bbox[1, 0])
+            self.ax[1].set_ylim(bbox[0, 2], bbox[1, 2])
+        else:
+            reduced_image = darsia.average_over_axis(self.img, axis="y")
+            self.ax[1].imshow(skimage.img_as_float(reduced_image.img))
         self.ax[1].set_xlabel("x-axis")
         self.ax[1].set_ylabel("z-axis")
         self.ax[1].set_aspect("equal")
 
         # yz-plane
         self.ax[2].set_title(self.name + " - y-z plane")
-        self.ax[2].scatter(
-            coordinates[active, 1],
-            coordinates[active, 2],
-            s=s[active],
-            alpha=alpha[active],
-            c=flat_array[active],
-            cmap="viridis",
-        )
-        self.ax[2].set_xlim(bbox[0, 1], bbox[1, 1])
-        self.ax[2].set_ylim(bbox[0, 2], bbox[1, 2])
+        if scatter:
+            self.ax[2].scatter(
+                coordinates[active, 1],
+                coordinates[active, 2],
+                s=s[active],
+                alpha=alpha[active],
+                c=flat_array[active],
+                cmap="viridis",
+            )
+            self.ax[2].set_xlim(bbox[0, 1], bbox[1, 1])
+            self.ax[2].set_ylim(bbox[0, 2], bbox[1, 2])
+        else:
+            reduced_image = darsia.average_over_axis(self.img, axis="x")
+            self.ax[2].imshow(skimage.img_as_float(reduced_image.img))
         self.ax[2].set_xlabel("y-axis")
         self.ax[2].set_ylabel("z-axis")
         self.ax[2].set_aspect("equal")
