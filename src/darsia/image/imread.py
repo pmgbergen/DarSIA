@@ -436,9 +436,6 @@ def imread_from_dicom(
 
 # ! ---- VTU images
 
-# NOTE: Actually since meshio is used here, any format should work, but it is only
-# tested for vtu images.
-
 
 def imread_from_vtu(
     path: Union[Path, list[Path]],
@@ -446,9 +443,10 @@ def imread_from_vtu(
     shape: tuple[int],
     **kwargs,
 ) -> darsia.Image:
-    """Reading routine for vtu input.
+    """Reading routine for data readible with meshio.
 
-    NOTE: Only for 1d and 2d vtu images.
+    NOTE: Only for 1d and 2d vtu images. Actually since meshio is used here, any format
+    should work, but it is only tested for vtu images.
 
     Includes mapping onto a pixelated grid.
 
