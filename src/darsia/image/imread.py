@@ -18,6 +18,7 @@ import cv2
 import numpy as np
 import pydicom
 from PIL import Image as PIL_Image
+from scipy.interpolate import NearestNDInterpolator
 
 import darsia
 
@@ -483,7 +484,7 @@ def imread_from_vtu(
         # Fix metadata
         meta["series"] = True
 
-    meta["time"] = kwargs.get("time", None)  # TODO from pvd file
+    meta["time"] = kwargs.get("time", None)
 
     # Define image
     return darsia.ScalarImage(data, **meta)
@@ -582,8 +583,7 @@ def _resample_data(
     shape: tuple[int],
     meta: dict,
 ) -> np.ndarray:
-    """
-    Projection of data on arbitrary mesh to regular voxel grids (in 2d and 3d).
+    """Sampling of data on arbitrary mesh to regular voxel grids (in 2d and 3d).
 
     Args:
         data (array): data array.
@@ -641,6 +641,34 @@ def _resample_data(
     pixelated_data = np.zeros(shape, dtype=data.dtype)
     voxels_indexing = tuple(voxels[:, j] for j in range(dim))
     pixelated_data[voxels_indexing] += data
+
+    # Fill-in values if required.
+    fill_in = np.ones(shape, dtype=bool)
+    fill_in[voxels_indexing] = False
+    have_value = np.logical_not(fill_in)
+    if np.any(fill_in):
+        # Interpolate for all pixels
+        pixels = np.nonzero(have_value)
+        pixel_data = pixelated_data[pixels]
+        interpolator = NearestNDInterpolator(
+            np.transpose(np.vstack(pixels)), pixel_data
+        )
+
+        # Define mesh as input for interpolation
+        Ny, Nx = shape
+        x = np.arange(Nx)
+        y = np.arange(Ny)
+        X_pixel, Y_pixel = np.meshgrid(x, y)
+        full_pixel_vector = np.transpose(
+            np.vstack((np.ravel(Y_pixel), np.ravel(X_pixel)))
+        )
+
+        # Evaluate interpolation
+        full_data_vector = interpolator(full_pixel_vector)
+        full_data = full_data_vector.reshape(shape)
+
+        # Assign to pixelated data
+        pixelated_data = full_data
 
     return pixelated_data
 
