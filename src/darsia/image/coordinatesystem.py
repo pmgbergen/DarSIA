@@ -130,6 +130,8 @@ class CoordinateSystem:
         # multiple voxels stored in a 2d array. Convert to the more general
         # case. Cache the original size for the later output.
         voxel_array = np.atleast_2d(voxel)
+        if self.dim == 1:
+            voxel_array = np.swapaxes(voxel_array, 0, 1)
 
         # Determine coordinates with the help of the origin
         coordinate = np.empty_like(voxel_array, dtype=float)
