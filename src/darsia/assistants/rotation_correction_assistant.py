@@ -23,7 +23,9 @@ class RotationCorrectionAssistant(darsia.BaseAssistant):
                 verbosity (bool): flag controlling verbosity, default is False
 
         """
-        super().__init__(img, **kwargs)
+        # Make sure to use pixel (currently the assistant is constructed to work
+        # merely with pixel coordinates) FIXME.
+        super().__init__(img, use_coordinates=False, **kwargs)
 
         # Initialize containers
         self.rotation_corrections = []
