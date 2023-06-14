@@ -25,6 +25,8 @@ class BaseAssistant(ABC):
         """Figure for analysis."""
         self.ax = None
         """Axes for analysis."""
+        self.use_coordinates = kwargs.get("use_coordinates", False)
+        """Flag controlling whether plots use physical coordinates."""
 
     @abstractmethod
     def _print_instructions() -> None:
@@ -92,14 +94,17 @@ class BaseAssistant(ABC):
         assert not self.img.series
 
         # Extract physical coordinates of corners
-        origin = self.img.origin
-        opposite_corner = self.img.opposite_corner
+        if self.use_coordinates:
+            origin = self.img.origin
+            opposite_corner = self.img.opposite_corner
 
-        # Plot
-        self.ax.imshow(
-            skimage.img_as_float(self.img.img),
-            extent=(origin[0], opposite_corner[0], opposite_corner[1], origin[1]),
-        )
+            # Plot
+            self.ax.imshow(
+                skimage.img_as_float(self.img.img),
+                extent=(origin[0], opposite_corner[0], opposite_corner[1], origin[1]),
+            )
+        else:
+            self.ax.imshow(skimage.img_as_float(self.img.img))
         self.ax.grid()
         self.ax.set_xlabel("x-axis")
         self.ax.set_ylabel("y-axis")
@@ -172,16 +177,23 @@ class BaseAssistant(ABC):
             self.ax[0].set_ylim(bbox[0, 1], bbox[1, 1])
         else:
             reduced_image = darsia.average_over_axis(self.img, axis="z")
-            self.ax[0].imshow(
-                skimage.img_as_float(reduced_image.img),
-                cmap="viridis",
-                extent=(
-                    reduced_image.origin[0],
-                    reduced_image.opposite_corner[0],
-                    reduced_image.opposite_corner[1],
-                    reduced_image.origin[1],
-                ),
-            )
+            if self.use_coordinates:
+                self.ax[0].imshow(
+                    skimage.img_as_float(reduced_image.img),
+                    cmap="viridis",
+                    extent=(
+                        reduced_image.origin[0],
+                        reduced_image.opposite_corner[0],
+                        reduced_image.opposite_corner[1],
+                        reduced_image.origin[1],
+                    ),
+                )
+            else:
+                self.ax[0].imshow(
+                    skimage.img_as_float(reduced_image.img),
+                    cmap="viridis",
+                )
+
         self.ax[0].grid()
         self.ax[0].set_xlabel("x-axis")
         self.ax[0].set_ylabel("y-axis")
@@ -202,16 +214,22 @@ class BaseAssistant(ABC):
             self.ax[1].set_ylim(bbox[0, 2], bbox[1, 2])
         else:
             reduced_image = darsia.average_over_axis(self.img, axis="y")
-            self.ax[1].imshow(
-                skimage.img_as_float(reduced_image.img),
-                cmap="viridis",
-                extent=(
-                    reduced_image.origin[0],
-                    reduced_image.opposite_corner[0],
-                    reduced_image.opposite_corner[1],
-                    reduced_image.origin[1],
-                ),
-            )
+            if self.use_coordinates:
+                self.ax[1].imshow(
+                    skimage.img_as_float(reduced_image.img),
+                    cmap="viridis",
+                    extent=(
+                        reduced_image.origin[0],
+                        reduced_image.opposite_corner[0],
+                        reduced_image.opposite_corner[1],
+                        reduced_image.origin[1],
+                    ),
+                )
+            else:
+                self.ax[1].imshow(
+                    skimage.img_as_float(reduced_image.img),
+                    cmap="viridis",
+                )
         self.ax[1].grid()
         self.ax[1].set_xlabel("x-axis")
         self.ax[1].set_ylabel("z-axis")
@@ -232,16 +250,22 @@ class BaseAssistant(ABC):
             self.ax[2].set_ylim(bbox[0, 2], bbox[1, 2])
         else:
             reduced_image = darsia.average_over_axis(self.img, axis="x")
-            self.ax[2].imshow(
-                skimage.img_as_float(reduced_image.img),
-                cmap="viridis",
-                extent=(
-                    reduced_image.origin[0],
-                    reduced_image.opposite_corner[0],
-                    reduced_image.opposite_corner[1],
-                    reduced_image.origin[1],
-                ),
-            )
+            if self.use_coordinates:
+                self.ax[2].imshow(
+                    skimage.img_as_float(reduced_image.img),
+                    cmap="viridis",
+                    extent=(
+                        reduced_image.origin[0],
+                        reduced_image.opposite_corner[0],
+                        reduced_image.opposite_corner[1],
+                        reduced_image.origin[1],
+                    ),
+                )
+            else:
+                self.ax[2].imshow(
+                    skimage.img_as_float(reduced_image.img),
+                    cmap="viridis",
+                )
         self.ax[2].grid()
         self.ax[2].set_xlabel("y-axis")
         self.ax[2].set_ylabel("z-axis")
