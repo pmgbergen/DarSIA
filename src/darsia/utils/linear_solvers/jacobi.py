@@ -1,9 +1,9 @@
-"""
-Jacobi solver for linear systems. To be used either as a solver or as a smoother.
+"""Jacobi solver for linear systems. To be used either as a solver or as a smoother.
+
 """
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 
@@ -11,54 +11,30 @@ import darsia as da
 
 
 class Jacobi(da.Solver):
-    """
-    Jacobi solver for the problem: mass_coeff * x - diffusion_coeff * laplace(x) = rhs
+    """Jacobi solver for the problem:
+    mass_coeff * x - diffusion_coeff * laplace(x) = rhs
 
-    NOTE: Add possibility to actually have a heterogeneous diffusion coefficient. As of now it
-    is assumed to be constant, or multiplied after Laplacian.
+    Can be used either as a solver or as a smoother.
+
+    TODO: Add possibility to actually have a heterogeneous diffusion coefficient.
+    As of now it is assumed to be constant, or multiplied after Laplacian.
+
     """
 
-    def __init__(
-        self,
-        mass_coeff: Union[float, np.ndarray],
-        diffusion_coeff: Union[float, np.ndarray],
-        dim: int = 2,
-        maxiter: int = 100,
-        tol: Optional[float] = None,
-        verbose=False,
-    ) -> None:
-        """
-        Initialize the solver.
+    def _neighbor_accumulation(self, im: np.ndarray) -> np.ndarray:
+        """Accumulation of neighbor pixels.
+
+        Accumulates for each entry, the entries of neighbors, regardless of dimension.
+        This is a helper function for the Jacobi solver, that returns an array with the
+        same shape as the input array, but where each input has the value of the
+        accumulation of its neighbors.
 
         Args:
-            mass_coeff [np.ndarray,float]: mass coefficient
-            diffusion_coeff [np.ndarray,float]: diffusion coefficient
-            dim [int]: dimension of the problem
-            maxiter [int]: maximum number of iterations
-            tol [Optional[float]]: tolerance
-            verbose [bool]: print information
-        """
-        super().__init__(
-            mass_coeff=mass_coeff,
-            diffusion_coeff=diffusion_coeff,
-            dim=dim,
-            maxiter=maxiter,
-            tol=tol,
-            verbose=verbose,
-        )
+            im (np.ndarray): image to accumulate
 
-    def _average(self, im: np.ndarray) -> np.ndarray:
-        """
-        Averaging operator for the jacobi solver. Averages along all axes regardless of
-        dimension. This is a helper function for the jacobi solver, that returns an
-        array with the same shape as the input array, but where each input has the
-        value of the average of its neighbors.
-
-        input:
-            im (np.ndarray): image to average
-
-        output:
+        Returns:
             np.ndarray: averaged image
+
         """
         im_av: np.ndarray = np.zeros_like(im)
         for ax in range(im.ndim):
@@ -70,15 +46,20 @@ class Jacobi(da.Solver):
             )
         return im_av
 
-    def diag(self, h: float = 1) -> Union[float, np.ndarray]:
+    def _diag(self, h: float = 1) -> Union[float, np.ndarray]:
         """
-        Compute diagonal of the Jacobi matrix with a given mesh diameter h
+        Compute diagonal of the stiffness matrix.
 
-        args:
+        The stiffness matrix is understood in finite difference sense, with the
+        possibility to identify pixel sizes with phyiscal mesh sizes. This is a helper
+        function for the main Jacobi solver.
+
+        Args:
             h (float): mesh diameter
 
         Returns:
-            Union[float, np.ndarray]: diagonal of the Jacobi matrix
+            Union[float, np.ndarray]: diagonal of the stiffness matrix
+
         """
         return self.mass_coeff + self.diffusion_coeff * 2 * self.dim / h**2
 
@@ -88,51 +69,42 @@ class Jacobi(da.Solver):
         rhs: np.ndarray,
         h: float = 1.0,
     ) -> np.ndarray:
-        """
-        Jacobi solver for linear systems. To be used either as a solver or as a smoother.
+        """One iteration of a Jacobi solver for linear systems.
 
-        input:
+        Args:
             x0 (np.ndarray): initial guess
             rhs (np.ndarray): right hand side of the linear system
             h (float): mesh diameter
 
-        output:
+        Returns:
             np.ndarray: solution to the linear system
+
         """
         x: np.ndarray = x0
 
-        diag = self.diag(h=h)
+        diag = self._diag(h)
 
-        if self.verbose:
-            # Split the tolerance based part to avoid unnecessary boolean evaluation
-            if self.tol is None:
-                for _ in range(self.maxiter):
-                    x = (rhs + self.diffusion_coeff * self._average(x) / h**2) / diag
+        # Split the tolerance based part to avoid unnecessary boolean evaluation
+        if self.tol is None:
+            for _ in range(self.maxiter):
+                x = (
+                    rhs + self.diffusion_coeff * self._neighbor_accumulation(x) / h**2
+                ) / diag
+                if self.verbose:
                     print(f"Jacobi iteration {_} of {self.maxiter} completed.")
-            else:
-                for _ in range(self.maxiter):
-                    x_new = (
-                        rhs + self.diffusion_coeff * self._average(x) / h**2
-                    ) / diag
-                    err = np.linalg.norm(x_new - x) / np.linalg.norm(x0)
-                    if err < self.tol:
-                        break
-                    x = x_new
+        else:
+            for _ in range(self.maxiter):
+                x_new = (
+                    rhs + self.diffusion_coeff * self._neighbor_accumulation(x) / h**2
+                ) / diag
+                err = np.linalg.norm(x_new - x) / np.linalg.norm(x0)
+                if err < self.tol:
+                    break
+                x = x_new
+                if self.verbose:
                     print(
                         f"Jacobi iteration {_} of {self.maxiter} completed with an "
                         f"increment of norm {err}."
                     )
-        else:
-            # Split the tolerance based part to avoid unnecessary boolean evaluation
-            if self.tol is None:
-                for _ in range(self.maxiter):
-                    x = (rhs + self.diffusion_coeff * self._average(x) / h**2) / diag
-            else:
-                for _ in range(self.maxiter):
-                    x_new = (
-                        rhs + self.diffusion_coeff * self._average(x) / h**2
-                    ) / diag
-                    if np.linalg.norm(x_new - x) < self.tol:
-                        break
-                    x = x_new
+
         return x
