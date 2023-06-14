@@ -10,7 +10,9 @@ import darsia
 
 class SubregionAssistant(darsia.BaseAssistant):
     def __init__(self, img: darsia.Image, **kwargs) -> None:
-        super().__init__(img, **kwargs)
+        # Make sure to use pixel coordinates - currently not possible to use physical
+        # coordinates - FIXME.
+        super().__init__(img, use_coordinates=False, **kwargs)
 
         # Initialize containers
         self._reset()
