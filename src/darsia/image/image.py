@@ -713,8 +713,15 @@ class Image:
                     fig, ax = plt.subplots(1)
                     fig.suptitle(title + f" component {comp}")
                     # Put time on y axis and start time 0 on the bottom.
-                    plt.imshow(np.flip(np.transpose(array[..., comp]), 0))
-                    # TODO replace indices in ticks with actual coordinates and time.
+                    plt.imshow(
+                        np.flip(np.transpose(array[..., comp]), 0),
+                        extent=(
+                            self.origin[0],
+                            self.opposite_corner[0],
+                            self.time[0],
+                            self.time[-1],
+                        ),
+                    )
                     ax.set_xlabel("x-axis")
                     ax.set_ylabel("time-axis")
             else:
@@ -784,7 +791,17 @@ class Image:
 
                     # Plot
                     fig = plt.figure(_title)
-                    plt.imshow(skimage.img_as_float(array))
+                    cmap = kwargs.get("cmap", "viridis")
+                    plt.imshow(
+                        skimage.img_as_float(array),
+                        cmap=cmap,
+                        extent=(
+                            self.origin[0],
+                            self.opposite_corner[0],
+                            self.opposite_corner[1],
+                            self.origin[1],
+                        ),
+                    )
 
                 elif self.space_dim == 3:
                     # ! --- Preliminaries
@@ -820,13 +837,21 @@ class Image:
 
                     # Signal strength
                     alpha_min = 0.1
-                    alpha = alpha_min + (
-                        (1.0 - alpha_min)
-                        * (flat_array - np.min(array))
-                        / (np.max(array) - np.min(array))
+                    alpha = np.clip(
+                        alpha_min
+                        + (
+                            (1.0 - alpha_min)
+                            * (flat_array - np.min(array))
+                            / (np.max(array) - np.min(array))
+                        ),
+                        0,
+                        1,
                     )
                     scaling = kwargs.get("scaling", 1)
                     s = scaling * alpha
+
+                    # Set color map
+                    cmap = kwargs.get("cmap", "viridis")
 
                     # ! ---- 3d view
 
@@ -847,7 +872,7 @@ class Image:
                                 s=s[active],
                                 alpha=np.power(alpha[active], 2),
                                 c=flat_array[active],
-                                cmap="viridis",
+                                cmap=cmap,
                             )
 
                         elif view == "voxel":
@@ -909,14 +934,23 @@ class Image:
                                 s=s[active],
                                 alpha=alpha[active],
                                 c=flat_array[active],
-                                cmap="viridis",
+                                cmap=cmap,
                             )
                             axs[0].set_xlim(bbox[0, 0], bbox[1, 0])
                             axs[0].set_ylim(bbox[0, 1], bbox[1, 1])
                         elif side_view == "voxel":
                             reduction = darsia.AxisAveraging(axis="z", dim=3)
                             reduced_image = reduction(time_slice)
-                            axs[0].imshow(skimage.img_as_float(reduced_image.img))
+                            axs[0].imshow(
+                                skimage.img_as_float(reduced_image.img),
+                                cmap=cmap,
+                                extent=(
+                                    reduced_image.origin[0],
+                                    reduced_image.opposite_corner[0],
+                                    reduced_image.opposite_corner[1],
+                                    reduced_image.origin[1],
+                                ),
+                            )
                         axs[0].set_xlabel("x-axis")
                         axs[0].set_ylabel("y-axis")
                         axs[0].set_aspect("equal")
@@ -930,14 +964,23 @@ class Image:
                                 s=s[active],
                                 alpha=alpha[active],
                                 c=flat_array[active],
-                                cmap="viridis",
+                                cmap=cmap,
                             )
                             axs[1].set_xlim(bbox[0, 0], bbox[1, 0])
                             axs[1].set_ylim(bbox[0, 2], bbox[1, 2])
                         elif side_view == "voxel":
                             reduction = darsia.AxisAveraging(axis="y", dim=3)
                             reduced_image = reduction(time_slice)
-                            axs[1].imshow(skimage.img_as_float(reduced_image.img))
+                            axs[1].imshow(
+                                skimage.img_as_float(reduced_image.img),
+                                cmap=cmap,
+                                extent=(
+                                    reduced_image.origin[0],
+                                    reduced_image.opposite_corner[0],
+                                    reduced_image.opposite_corner[1],
+                                    reduced_image.origin[1],
+                                ),
+                            )
                         axs[1].set_xlabel("x-axis")
                         axs[1].set_ylabel("z-axis")
                         axs[1].set_aspect("equal")
@@ -951,14 +994,23 @@ class Image:
                                 s=s[active],
                                 alpha=alpha[active],
                                 c=flat_array[active],
-                                cmap="viridis",
+                                cmap=cmap,
                             )
                             axs[2].set_xlim(bbox[0, 1], bbox[1, 1])
                             axs[2].set_ylim(bbox[0, 2], bbox[1, 2])
                         elif side_view == "voxel":
                             reduction = darsia.AxisAveraging(axis="x", dim=3)
                             reduced_image = reduction(time_slice)
-                            axs[2].imshow(skimage.img_as_float(reduced_image.img))
+                            axs[2].imshow(
+                                skimage.img_as_float(reduced_image.img),
+                                cmap=cmap,
+                                extent=(
+                                    reduced_image.origin[0],
+                                    reduced_image.opposite_corner[0],
+                                    reduced_image.opposite_corner[1],
+                                    reduced_image.origin[1],
+                                ),
+                            )
                         axs[2].set_xlabel("y-axis")
                         axs[2].set_ylabel("z-axis")
                         axs[2].set_aspect("equal")
