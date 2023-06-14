@@ -25,8 +25,8 @@ def split_bregman_anisotropic_tvd(
     """
 
     # Define penalization parameter ell
-    if ell == -100:
-        ell = 2 * omega
+    if ell is None:
+        ell = 2 * mu
 
     # Define solver
     if solver_type == "jacobi":
