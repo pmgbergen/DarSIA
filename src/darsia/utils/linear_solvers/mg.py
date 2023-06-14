@@ -17,6 +17,8 @@ class MG(da.Solver):
     For arrays with odd number of elements the last element is dropped in the refinement
     stages.
 
+    V-cycle.
+
     NOTE: Add possibility to actually have a heterogeneous diffusion coefficient. As of now it
     is assumed to be constant, or multiplied after Laplacian.
     """
@@ -25,12 +27,12 @@ class MG(da.Solver):
         self,
         mass_coeff: Union[float, np.ndarray],
         diffusion_coeff: Union[float, np.ndarray],
-        depth: int = 2,
-        smoother_iterations: int = 5,
         dim: int = 2,
         maxiter: int = 100,
         tol: Optional[float] = None,
         verbose=False,
+        depth: int = 2,
+        smoother_iterations: int = 5,
     ) -> None:
         """
         Initialize the solver.
@@ -38,14 +40,15 @@ class MG(da.Solver):
         Args:
             mass_coeff [np.ndarray,float]: mass coefficient
             diffusion_coeff [np.ndarray,float]: diffusion coefficient
-            depth [int]: depth of the multigrid hierarchy
-            smoother_iterations [int]: number of iterations for the smoother
             dim [int]: dimension of the problem
             maxiter [int]: maximum number of iterations
             tol [Optional[float]]: tolerance
             verbose [bool]: print information
+            depth [int]: depth of the multigrid hierarchy
+            smoother_iterations [int]: number of iterations for the smoother
 
         """
+        # Standard properties
         super().__init__(
             mass_coeff=mass_coeff,
             diffusion_coeff=diffusion_coeff,
@@ -54,19 +57,23 @@ class MG(da.Solver):
             tol=tol,
             verbose=verbose,
         )
+
+        # Smoother related properties
         self.smoother = da.Jacobi(
             mass_coeff=mass_coeff,
             diffusion_coeff=diffusion_coeff,
             dim=dim,
             maxiter=smoother_iterations,
         )
+        """Smoother used in the MG cycle."""
         self.smoother_iterations = smoother_iterations
+        """Number of smoother iterations per step."""
         self.depth = depth
-        self.heterogeneous = False
-        if isinstance(mass_coeff, np.ndarray) or isinstance(
+        """Depth of V-cycle."""
+        self.heterogeneous = isinstance(mass_coeff, np.ndarray) or isinstance(
             diffusion_coeff, np.ndarray
-        ):
-            self.heterogeneous = True
+        )
+        """Flag controlling whether the material paremeters are heterogeneous."""
 
     def operator(self, x: np.ndarray, h: float) -> np.ndarray:
         """The solution operator for the problem
