@@ -35,10 +35,9 @@ class BaseAssistant(ABC):
         if self.verbosity:
             print(event)
 
-    @abstractmethod
-    def _setup_event_handler() -> None:
+    def _setup_event_handler(self) -> None:
         """Setup event handler."""
-        pass
+        self.fig.canvas.mpl_connect("key_press_event", self._on_key_press)
 
     def _on_key_press(self, event) -> None:
         """Finalize selection if 'enter' is pressed, and reset containers if 'escape'
@@ -68,10 +67,45 @@ class BaseAssistant(ABC):
         """Call the assistant."""
         if self.fig is not None:
             plt.close(self.fig)
-        if self.img.space_dim == 3:
+        if self.img.space_dim == 2:
+            self._plot_2d()
+        elif self.img.space_dim == 3:
             self._plot_3d()
         else:
             raise NotImplementedError
+
+    def _plot_2d(self) -> None:
+        """Plot in 2d with interactive event handler."""
+
+        # Setup figure
+        self.fig, self.ax = plt.subplots(1, 1)
+
+        # Setup event handler
+        self._setup_event_handler()
+
+        # Print instructions
+        self._print_instructions()
+
+        # Plot the entire 2d image in plain mode. Only works for scalar and optical
+        # images.
+        assert self.img.scalar or self.img.range_num in [1, 3]
+        assert not self.img.series
+
+        # Extract physical coordinates of corners
+        origin = self.img.origin
+        opposite_corner = self.img.opposite_corner
+
+        # Plot
+        self.ax.imshow(
+            skimage.img_as_float(self.img.img),
+            extent=(origin[0], opposite_corner[0], opposite_corner[1], origin[1]),
+        )
+        self.ax.grid()
+        self.ax.set_xlabel("x-axis")
+        self.ax.set_ylabel("y-axis")
+        self.ax.set_aspect("equal")
+
+        plt.show()
 
     def _plot_3d(self) -> None:
         """Side view with interactive event handler."""
@@ -107,10 +141,15 @@ class BaseAssistant(ABC):
 
         # Signal strength
         alpha_min = 0.1
-        alpha = alpha_min + (
-            (1.0 - alpha_min)
-            * (flat_array - np.min(array))
-            / (np.max(array) - np.min(array))
+        alpha = np.clip(
+            alpha_min
+            + (
+                (1.0 - alpha_min)
+                * (flat_array - np.min(array))
+                / (np.max(array) - np.min(array))
+            ),
+            0,
+            1,
         )
         scaling = self.kwargs.get("scaling", 1)
         s = scaling * alpha
@@ -133,7 +172,17 @@ class BaseAssistant(ABC):
             self.ax[0].set_ylim(bbox[0, 1], bbox[1, 1])
         else:
             reduced_image = darsia.average_over_axis(self.img, axis="z")
-            self.ax[0].imshow(skimage.img_as_float(reduced_image.img))
+            self.ax[0].imshow(
+                skimage.img_as_float(reduced_image.img),
+                cmap="viridis",
+                extent=(
+                    reduced_image.origin[0],
+                    reduced_image.opposite_corner[0],
+                    reduced_image.opposite_corner[1],
+                    reduced_image.origin[1],
+                ),
+            )
+        self.ax[0].grid()
         self.ax[0].set_xlabel("x-axis")
         self.ax[0].set_ylabel("y-axis")
         self.ax[0].set_aspect("equal")
@@ -153,7 +202,17 @@ class BaseAssistant(ABC):
             self.ax[1].set_ylim(bbox[0, 2], bbox[1, 2])
         else:
             reduced_image = darsia.average_over_axis(self.img, axis="y")
-            self.ax[1].imshow(skimage.img_as_float(reduced_image.img))
+            self.ax[1].imshow(
+                skimage.img_as_float(reduced_image.img),
+                cmap="viridis",
+                extent=(
+                    reduced_image.origin[0],
+                    reduced_image.opposite_corner[0],
+                    reduced_image.opposite_corner[1],
+                    reduced_image.origin[1],
+                ),
+            )
+        self.ax[1].grid()
         self.ax[1].set_xlabel("x-axis")
         self.ax[1].set_ylabel("z-axis")
         self.ax[1].set_aspect("equal")
@@ -173,7 +232,17 @@ class BaseAssistant(ABC):
             self.ax[2].set_ylim(bbox[0, 2], bbox[1, 2])
         else:
             reduced_image = darsia.average_over_axis(self.img, axis="x")
-            self.ax[2].imshow(skimage.img_as_float(reduced_image.img))
+            self.ax[2].imshow(
+                skimage.img_as_float(reduced_image.img),
+                cmap="viridis",
+                extent=(
+                    reduced_image.origin[0],
+                    reduced_image.opposite_corner[0],
+                    reduced_image.opposite_corner[1],
+                    reduced_image.origin[1],
+                ),
+            )
+        self.ax[2].grid()
         self.ax[2].set_xlabel("y-axis")
         self.ax[2].set_ylabel("z-axis")
         self.ax[2].set_aspect("equal")

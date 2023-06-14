@@ -86,8 +86,8 @@ class RotationCorrectionAssistant(darsia.BaseAssistant):
 
     def _setup_event_handler(self) -> None:
         """Define events."""
+        super()._setup_event_handler()
         self.fig.canvas.mpl_connect("button_press_event", self._on_mouse_click)
-        self.fig.canvas.mpl_connect("key_press_event", self._on_key_press)
 
     def _on_mouse_click(self, event):
         """Add points to anchor and src/dst points."""

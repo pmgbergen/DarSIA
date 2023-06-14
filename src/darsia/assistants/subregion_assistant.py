@@ -31,7 +31,7 @@ class SubregionAssistant(darsia.BaseAssistant):
         # of the subregion if required.
         if self.verbosity:
             print("The determined subregion is defined by the coordinates:")
-            print(self.coordinates)
+            print(self.coordinates.tolist())
 
         return self.coordinates
 
@@ -71,8 +71,8 @@ class SubregionAssistant(darsia.BaseAssistant):
 
     def _setup_event_handler(self) -> None:
         """Setup event handler."""
+        super()._setup_event_handler()
         self.fig.canvas.mpl_connect("button_press_event", self._on_mouse_click)
-        self.fig.canvas.mpl_connect("key_press_event", self._on_key_press)
 
     def _on_mouse_click(self, event: Any) -> None:
         """Event handler for mouse clicks."""
