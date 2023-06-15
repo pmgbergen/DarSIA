@@ -57,7 +57,7 @@ class FluidFlowerRig(darsia.AnalysisBase):
                 self.base.img,
                 markers_method="supervised",
                 edges_method="scharr",
-                **self.config["segmentation"]
+                **self.config["segmentation"],
             )
             labels_path = Path(self.config["segmentation"]["labels_path"])
             labels_path.parents[0].mkdir(parents=True, exist_ok=True)
