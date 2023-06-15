@@ -1,8 +1,10 @@
-"""
-Module containing wrappers to resize routines from skimage and cv2. Access is given
-through objects. Also contains utility routine which equalizes voxel size lengths.
+"""Module containing wrappers to resize routines from skimage and cv2.
+
+Access is given through objects. Also contains utility routine which equalizes voxel
+size lengths.
 
 """
+from __future__ import annotations
 
 from typing import Optional, Union
 

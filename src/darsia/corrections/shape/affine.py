@@ -1,8 +1,12 @@
-"""Module encoding standard transformations used in computer graphics, combining
-translation, rotation, and scaling. A class encodes the map itself, including
-automatic determining. In addition, the actual correction object is contained.
+"""Module encoding standard transformations used in computer graphics.
+
+These combine translation, rotation, and scaling. A class encodes the map itself,
+including automatic determining. In addition, the actual correction object is
+contained.
 
 """
+from __future__ import annotations
+
 import itertools
 from typing import Optional, Union
 

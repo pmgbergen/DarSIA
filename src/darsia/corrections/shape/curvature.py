@@ -1,5 +1,4 @@
-"""
-Curvature correction class.
+"""Curvature correction class.
 
 A class for setup and application of curvature correction.
 """

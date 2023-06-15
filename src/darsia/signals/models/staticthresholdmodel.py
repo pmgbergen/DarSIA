@@ -1,9 +1,9 @@
-"""
-Module converting signals to binary data by applying thresholding.
+"""Module converting signals to binary data by applying thresholding.
 
 A distinction between heterogeneous and homogeneous thresholding
 is performed automatically.
 """
+from __future__ import annotations
 
 from typing import Optional, Union
 

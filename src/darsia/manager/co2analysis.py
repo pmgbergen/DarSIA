@@ -1,11 +1,13 @@
+"""Structure for analyzing images of multi-component multi-phase experiments.
+
+The goal of such analysis is to identify distinct components/phases. In practice, it may
+have to be tailored to the specific scenario by inheritance. For more general use, a
+generalized multicomponent analysis manager should be used. This module is tailored to
+CO2 experiments in water, strongly motivated by the International FluidFlower Benchmark
+study.
+
 """
-Module providing structure for analyzing images of multi-component multi-phase
-experiments, with the goal to identify distinct components/phases. In practice,
-it may have to be tailored to the specific scenario by inheritance. For more
-general use, a generalized multicomponent analysis manager should be used.
-This module is tailored to CO2 experiments in water, strongly motivated by the
-International FluidFlower Benchmark study.
-"""
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path

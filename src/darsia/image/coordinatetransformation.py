@@ -1,8 +1,11 @@
-"""Module containing coordinate transformation, restricted to affine transformations
-(translation, rotation, scaling). A coordinate transformation alters the voxel data and
-the metadata.
+"""Module containing coordinate transformation.
+
+The transformatiosn are restricted to affine transformations (translation, rotation,
+scaling). A coordinate transformation alters the voxel data and the metadata.
 
 """
+from __future__ import annotations
+
 import copy
 from typing import Union
 

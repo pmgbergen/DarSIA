@@ -1,10 +1,10 @@
-"""
-Module containing combination of models.
+"""Combination of models.
 
 NOTE: Combining models is experimental and the responsibility
 lies with the user.
 
 """
+from __future__ import annotations
 
 import numpy as np
 

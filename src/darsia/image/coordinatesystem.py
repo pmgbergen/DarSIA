@@ -1,3 +1,5 @@
+"""Physical coordinate systems for Image objects."""
+
 from __future__ import annotations
 
 from typing import Union

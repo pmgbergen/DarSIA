@@ -1,5 +1,7 @@
 """TV denoising for numpy arrays."""
 
+from __future__ import annotations
+
 from typing import Optional, Union
 from warnings import warn
 

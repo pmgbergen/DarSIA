@@ -1,7 +1,7 @@
-"""Module containing objects useful for correcting
-images wrt rotations
+"""Module containing objects useful for correcting images wrt rotations
 
 """
+from __future__ import annotations
 
 import itertools
 from typing import Union

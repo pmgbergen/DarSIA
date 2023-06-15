@@ -1,8 +1,7 @@
-"""
-Module that contains a class which provides the capabilities to
-analyze concentrations/saturation profiles based on image comparison.
+"""Capabilities to analyze concentrations/saturation profiles based on image comparison.
 
 """
+from __future__ import annotations
 
 import copy
 from pathlib import Path

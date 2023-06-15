@@ -1,8 +1,10 @@
-"""
-Module collecting tools for geometric integration,
-taking into account width, height and depth of pixels.
+"""Module collecting tools for geometric integration.
+
+Various versions of the general algorithm are provided, taking into account width,
+height and depth of pixels.
 
 """
+from __future__ import annotations
 
 from typing import Optional, Union
 
