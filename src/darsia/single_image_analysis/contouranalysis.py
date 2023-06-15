@@ -1,6 +1,7 @@
-"""
-Module containing analysis tools for segmented images. This includes
-measuring lengths of contours, weighted sums (generalized mass analysis).
+"""Module containing analysis tools for segmented images.
+
+This includes measuring lengths of contours, weighted sums (generalized mass analysis).
+
 """
 from __future__ import annotations
 

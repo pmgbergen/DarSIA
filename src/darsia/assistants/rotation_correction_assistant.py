@@ -1,4 +1,5 @@
 """Module containing an interactive tool to tune rotation corrections."""
+from __future__ import annotations
 
 from warnings import warn
 

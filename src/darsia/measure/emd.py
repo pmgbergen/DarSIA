@@ -1,8 +1,7 @@
-"""
-Module containing functionality to determine the
-Earth Mover's distance between images.
+"""Functionality to determine the Earth Mover's distance between images.
 
 """
+from __future__ import annotations
 
 from typing import Optional, Union
 

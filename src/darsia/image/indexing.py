@@ -1,6 +1,4 @@
-"""
-Module containing auxiliary interpreters
-for indexing of axes used for images.
+"""Auxiliary interpreters for indexing of axes used for images.
 
 Conventions. For unified use in the code base,
 we introduce conventions of coordinate systems.
@@ -21,6 +19,7 @@ to the y-axis, and the third component corresponds to
 the x-axis.
 
 """
+from __future__ import annotations
 
 from typing import Union
 
