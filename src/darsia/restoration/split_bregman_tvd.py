@@ -24,7 +24,7 @@ def split_bregman_anisotropic_tvd(
     solver_iter: int = 1,
     solver_tol: Optional[float] = None,
     mg_depth: int = 3,
-    verbose: Union[bool, int] =False,
+    verbose: Union[bool, int] = False,
 ) -> np.ndarray:
     """Split Bregman algorithm for anisotropic TV denoising.
 

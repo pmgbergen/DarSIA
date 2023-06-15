@@ -34,7 +34,7 @@ class Geometry:
         num_voxels: Union[tuple[int], list[int]],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Constructor.
@@ -178,7 +178,7 @@ class WeightedGeometry(Geometry):
         num_voxels: Union[tuple[int], list[int]],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Constructor for extruded two-dimensional geometry.
@@ -217,7 +217,7 @@ class ExtrudedGeometry(WeightedGeometry):
         num_voxels: Union[tuple[int], list[int]],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Constructor for extruded two-dimensional geometry.
@@ -246,7 +246,7 @@ class PorousGeometry(WeightedGeometry):
         num_voxels: Union[tuple[int], list[int]],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Constructor for extruded two-dimensional geometry.
@@ -273,7 +273,7 @@ class ExtrudedPorousGeometry(ExtrudedGeometry):
         num_voxels: Union[tuple[int], list[int]],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Constructor for extruded, porous, two-dimensional geometry.
