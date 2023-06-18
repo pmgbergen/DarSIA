@@ -101,6 +101,9 @@ class Image:
         self.dimensions: list[float] = kwargs.get("dimensions", self.space_dim * [1])
         """Dimension in the directions corresponding to the indexings."""
 
+        self.name = kwargs.get("name", None)
+        """Name of image, e.g., used to describe the origin."""
+
         # Accept keywords 'dimensions' and 'height', 'width', 'depth', with the latter
         # over-writing the former. In both 2d and 3d, the three keywords address the
         # first, seconds, and third (if applicable) dimension.
@@ -424,6 +427,7 @@ class Image:
             "date": self.date,
             "reference_date": self.reference_date,
             "time": self.time,
+            "name": self.name,
         }
         return copy.copy(metadata)
 
@@ -722,6 +726,7 @@ class Image:
                             self.time[-1],
                         ),
                     )
+                    plt.colorbar(label=self.name, orientation="vertical")
                     ax.set_xlabel("x-axis")
                     ax.set_ylabel("time-axis")
             else:
@@ -802,6 +807,9 @@ class Image:
                             self.origin[1],
                         ),
                     )
+                    plt.colorbar(label=self.name, orientation="vertical")
+                    plt.xlabel("x")
+                    plt.ylabel("y")
 
                 elif self.space_dim == 3:
                     # ! --- Preliminaries
@@ -1413,9 +1421,6 @@ class ScalarImage(Image):
         }
         kwargs.pop("scalar", None)
 
-        self.name = kwargs.get("name", None)
-        """Name of image, e.g., used to describe the origin."""
-
         # Construct a general image with the specs of an optical image
         super().__init__(img, transformations, **scalar_metadata, **kwargs)
 
@@ -1429,24 +1434,6 @@ class ScalarImage(Image):
 
         """
         return copy.deepcopy(self)
-
-    # ! ---- Fast access.
-
-    def metadata(self) -> dict:
-        """Generator of metadata; can be used to init a new optical image with same
-        specs.
-
-        Returns:
-            dict: metadata with keys equal to all keywords agurments.
-
-        """
-        # Start with generic metadata.
-        metadata = super().metadata()
-
-        # Add specs specific to optical images.
-        metadata["name"] = self.name
-
-        return copy.copy(metadata)
 
     # ! ---- I/O
 
