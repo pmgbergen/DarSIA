@@ -514,6 +514,40 @@ class Image:
 
         return type(self)(img=img, **metadata)
 
+    def slice(
+        self,
+        cut: Union[float, int],
+        axis: Union[str, int],
+    ) -> Image:
+        """Extract of spatial slice.
+
+        Args:
+            cut (float or int): coordinate or voxel at which the slice is extracted.
+            axis (str or int): axis, normal to the slice, addressing matrix indexing or
+                Cartesian indexing if int or str, respectively.
+        """
+
+        # Translate Cartesian setting to matrix setting
+        if isinstance(axis, str):
+            full_coordinate = np.zeros(self.space_dim, dtype=float)
+            full_coordinate["xyz"[: self.space_dim].find(axis)] = cut
+            cut_voxel = self.coordinatesystem.voxel(full_coordinate)
+            axis = darsia.to_matrix_indexing(axis, "xyz"[: self.space_dim])
+            cut = cut_voxel[axis]
+
+        # Make auxiliary use of axis averaging for formatting
+        reduced_image = darsia.average_over_axis(self, axis)
+
+        # Replace array by slice
+        if axis == 0:
+            reduced_image.img = self.img[cut]
+        elif axis == 1:
+            reduced_image.img = self.img[:, cut]
+        elif axis == 2:
+            reduced_image.img = self.img[:, :, cut]
+
+        return reduced_image
+
     def subregion(
         self,
         voxels: Optional[tuple[slice]] = None,
