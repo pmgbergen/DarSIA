@@ -31,7 +31,7 @@ class SubregionAssistant(darsia.BaseAssistant):
 
         # Print the determined coordinates to screen so one can hardcode the definition
         # of the subregion if required.
-        if self.verbosity:
+        if self.verbosity and self.coordinates is not None:
             print("The determined subregion is defined by the coordinates:")
             print(self.coordinates.tolist())
 
