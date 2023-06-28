@@ -7,7 +7,6 @@ Images contain the image array, and in addition metadata about origin and dimens
 from __future__ import annotations
 
 import copy
-import json
 import math
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -730,7 +729,6 @@ class Image:
         # Use different plotting styles for different spatial dimensions. In 1d, time
         # series can be visualized in a single plot, and thus receive special treatment.
         if self.space_dim == 1:
-
             # Extract physical coordinates and flatten
             matrix_indices = np.transpose(
                 np.indices(self.img.shape[:1]).reshape((1, -1))
@@ -1371,46 +1369,20 @@ class Image:
 
                     fig_2d.show()
 
-    def write_metadata(self, path: Union[str, Path]) -> None:
-        """
-        Writes the metadata dictionary to a json-file.
+    # ! ---- I/O
 
-        Arguments:
-            path (str): path to the json file
+    def save(self, path: Union[str, Path]) -> None:
+        """Save image to file.
 
-        """
-        metadata = self.extract_metadata()
-        with open(Path(path), "w") as outfile:
-            json.dump(metadata, outfile, indent=4)
+        Store array and metadata in single file.
 
-    def write_array(
-        self,
-        path: Union[str, Path],
-        indexing: str = "matrix",
-        allow_pickle: bool = True,
-    ) -> None:
-        """Auxiliary routine for storing the current image array as npy array.
+        NOTE: Keywords are compatible with imread_from_npz.
 
         Args:
-            path (Path): path to file.
-            indexing (str): If "matrix", the array is stored using matrix indexing,
-                if "Cartesian", the array is stored using Cartesian indexing.
-            allow_pickle (bool): Flag controlling whether pickle is allowed.
+            path (Path): full path to image. Use ending "npz".
 
         """
-        assert indexing.lower() in ["matrix", "cartesian"]
-
-        Path(path).parents[0].mkdir(parents=True, exist_ok=True)
-
-        plain_path = Path(path).with_suffix("")
-
-        np.save(
-            str(plain_path) + ".npy",
-            darsia.matrixToCartesianIndexing(self.img)
-            if indexing.lower() == "cartesian"
-            else self.img,
-            allow_pickle=allow_pickle,
-        )
+        np.savez(str(Path(path)), array=self.img, metadata=self.metadata())
 
     # ! ---- Auxiliary routines
 
