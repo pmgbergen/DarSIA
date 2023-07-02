@@ -39,7 +39,7 @@ elif False:
     mass2_array[40:80, 50:60] = 1
 
 elif True:
-    print("Case 3")
+    print("Case 3 - Newton")
     shape = (50, 40)
     voxel_size = [1, 1]  # 0.5, 3]
     # TODO test whether this is working: varying voxel size in x and y directions as well.
@@ -51,13 +51,31 @@ elif True:
     mass1_array[10:30, 10:15] = 1
     mass2_array[10:30, 25:30] = 1
 
-    L = 1e0
-    L_mass = 1e-4
+    L = 1e-2
     increasing_L = False
     newton_like = True
     scaling = 3e1
-    regularization = 1e-24
+    regularization = 1e-8
     num_iter = int(1e3)
+    tol = 1e-6
+
+elif True:
+    print("Case 3 - Bregman")
+    shape = (50, 40)
+    voxel_size = [1, 1]  # 0.5, 3]
+    # TODO test whether this is working: varying voxel size in x and y directions as well.
+
+    # Create two mass distributions with identical mass, equal to 1
+    mass1_array = np.zeros(shape, dtype=float)
+    mass2_array = np.zeros(shape, dtype=float)
+
+    mass1_array[10:30, 10:15] = 1
+    mass2_array[10:30, 25:30] = 1
+
+    L = 1e4
+    scaling = 3e1
+    num_iter = int(1e5)
+    tol = 1e-8
 
 elif False:
     print("Case 4")
@@ -321,7 +339,7 @@ def darcy_residual(rhs, solution):
 
 def normed_flat_fluxes(flat_flux):
     cell_flux = cell_reconstruction(flat_flux)
-    cell_flux_norm = np.linalg.norm(cell_flux, axis=-1) + regularization
+    cell_flux_norm = np.maximum(np.linalg.norm(cell_flux, axis=-1), regularization)
     cell_flux_normed = cell_flux / cell_flux_norm[..., None]
     flat_flux_normed = face_restriction(cell_flux_normed)
 
@@ -372,18 +390,18 @@ def jacobian_splu(solution, i):
         # TODO update only every Xth iteration
         flat_flux, _, _ = split_solution(solution)
         cell_flux = cell_reconstruction(flat_flux)
-        cell_flux_norm = np.linalg.norm(cell_flux, axis=-1) + regularization
+        cell_flux_norm = np.maximum(np.linalg.norm(cell_flux, axis=-1), regularization)
         flat_flux_norm = face_restriction_scalar(cell_flux_norm)
         print(np.min(flat_flux_norm))
         approx_jacobian = sps.bmat(
             [
                 [
-                    sps.diags(L + 1.0 / flat_flux_norm, dtype=float)
+                    sps.diags(np.maximum(L, 1.0 / flat_flux_norm), dtype=float)
                     * lumped_mass_matrix_edges,
                     -div.T,
                     None,
                 ],
-                [div, L_mass * mass_matrix_cells, -integral_cells.T],
+                [div, None, -integral_cells.T],
                 [None, integral_cells, None],
             ]
         )
@@ -450,11 +468,14 @@ def lumped_l2_dissipation(solution):
     return 0.5 * flat_flux.dot(lumped_mass_matrix_edges.dot(flat_flux))
 
 
-# TODO add anderson acceleration
 # TODO use multigrid approximation for ramping up.
 
 
 def newton_solve(num_iter, tol, distance):
+    # anderson = darsia.AndersonAcceleration(dimension=num_edges + num_cells + 1, depth=0)
+    anderson = darsia.AndersonAcceleration(dimension=num_edges, depth=20)
+    # Observation: AA can lead to less stagnation, more accurate results, and therefore
+    # better solutions to mu and u. Higher depth is better, but more expensive.
     solution_i = np.zeros_like(rhs)
     for i in range(num_iter):
         if i == 0:
@@ -467,12 +488,17 @@ def newton_solve(num_iter, tol, distance):
 
         old_distance = distance(solution_i)
         solution_i += update_i
+        # solution_i = anderson(solution_i, update_i, i)
+        solution_i[:num_edges] = anderson(
+            solution_i[:num_edges], update_i[:num_edges], i
+        )
         new_distance = distance(solution_i)
         error = [np.linalg.norm(residual_i), np.linalg.norm(update_i)]
 
         # TODO include criterion build on staganation of the solution
+        # TODO include criterion on distance.
 
-        if min(error) < tol:
+        if i > 1 and min(error) < tol:
             break
         else:
             print(
@@ -495,15 +521,61 @@ def newton_solve(num_iter, tol, distance):
     return flat_flux, flat_pressure, flat_lagrange_multiplier, status
 
 
+def shrink(x, l):
+    return np.sign(x) * np.maximum(np.abs(x) - l, 0)
+
+
+def determine_mu(flat_flux):
+    cell_flux = cell_reconstruction(flat_flux)
+    return np.linalg.norm(cell_flux, axis=-1)
+
+
+def bregman_solve(num_iter, tol, distance):
+    anderson = darsia.AndersonAcceleration(dimension=num_edges, depth=1)
+    solution_i = np.zeros_like(rhs)
+    for i in range(num_iter):
+        old_distance = distance(solution_i)
+        flat_flux_i, _, _ = split_solution(solution_i)
+        rhs_i = rhs.copy()
+        rhs_i[:num_edges] = L * lumped_mass_matrix_edges.dot(flat_flux_i)
+        intermediate_solution_i = l_scheme_mixed_darcy_lu.solve(rhs_i)
+        intermediate_flat_flux_i, _, _ = split_solution(intermediate_solution_i)
+        new_flat_flux_i = shrink(intermediate_flat_flux_i, 1 / L)
+        flux_inc = new_flat_flux_i - flat_flux_i
+        aa_flat_flux_i = anderson(new_flat_flux_i, flux_inc, i)
+        solution_i = intermediate_solution_i.copy()
+        if False:
+            solution_i[:num_edges] = new_flat_flux_i
+        else:
+            solution_i[:num_edges] = aa_flat_flux_i
+        new_distance = distance(solution_i)
+        flux_diff = np.linalg.norm(new_flat_flux_i - flat_flux_i)
+        print(
+            "Bregman iteration", i, new_distance, old_distance - new_distance, flux_diff
+        )
+        if i > 1 and flux_diff < tol:
+            break
+
+    flat_flux, flat_pressure, flat_lagrange_multiplier = split_solution(solution_i)
+    status = [i < num_iter, i, flux_diff, new_distance - old_distance, new_distance]
+    return flat_flux, flat_pressure, flat_lagrange_multiplier, status
+
+
 if False:
     # Linear Darcy for debugging
     mixed_darcy_lu = sps.linalg.splu(mixed_darcy)
     solution = mixed_darcy_lu.solve(rhs)
     flat_flux, flat_pressure, flat_lagrange_multiplier = split_solution(solution)
-else:
-    # Solve the problem
+elif True:
+    # Solve the problem using Newton
     flat_flux, flat_pressure, flat_lagrange_multiplier, status = newton_solve(
-        num_iter, 1e-6, l1_dissipation
+        num_iter, tol, l1_dissipation
+    )
+    print(status)
+elif True:
+    # Solve the problem using Bregman
+    flat_flux, flat_pressure, flat_lagrange_multiplier, status = bregman_solve(
+        num_iter, tol, l1_dissipation
     )
     print(status)
 
@@ -580,4 +652,8 @@ plt.quiver(
     scale=1,
     alpha=0.5,
 )
+
+plt.figure("Beckman solution mobility")
+plt.pcolormesh(X, Y, determine_mu(flat_flux), cmap="turbo")
+plt.colorbar()
 plt.show()
