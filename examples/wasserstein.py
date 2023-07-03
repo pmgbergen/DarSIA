@@ -26,9 +26,9 @@ if False:
     regularization = 1e-16
 
 elif False:
-    print("Case 2")
+    print("Case 2- Newton")
     shape = (100, 80)
-    voxel_size = [0.1, 0.1]  # 0.5, 3]
+    voxel_size = [1, 1]  # 0.5, 3]
     # TODO test whether this is working: varying voxel size in x and y directions as well.
 
     # Create two mass distributions with identical mass, equal to 1
@@ -38,7 +38,36 @@ elif False:
     mass1_array[20:60, 20:30] = 1
     mass2_array[40:80, 50:60] = 1
 
+    L = 1e2
+    increasing_L = False
+    newton_like = True
+    scaling = 3e1
+    regularization = 1e-8
+    num_iter = int(1e3)
+    tol = 1e-6
+
 elif True:
+    print("Case 2- bregman")
+    factor = 1
+    shape = (factor * 50, factor * 40)
+    voxel_size = [1, 1]  # 0.5, 3]
+    # TODO test whether this is working: varying voxel size in x and y directions as well.
+
+    # Create two mass distributions with identical mass, equal to 1
+    mass1_array = np.zeros(shape, dtype=float)
+    mass2_array = np.zeros(shape, dtype=float)
+
+    mass1_array[factor * 10 : factor * 30, factor * 10 : factor * 15] = 1
+    mass2_array[factor * 20 : factor * 40, factor * 25 : factor * 30] = 1
+
+    L = 1e2
+    # L = 1e-2 # Newton
+    scaling = 3e1
+    regularization = 1e-16
+    num_iter = int(1e4)
+    tol = 1e-16
+
+elif False:
     print("Case 3 - Newton")
     shape = (50, 40)
     voxel_size = [1, 1]  # 0.5, 3]
@@ -48,8 +77,10 @@ elif True:
     mass1_array = np.zeros(shape, dtype=float)
     mass2_array = np.zeros(shape, dtype=float)
 
-    mass1_array[10:30, 10:15] = 1
-    mass2_array[10:30, 25:30] = 1
+    # mass1_array[1:3, 1:1] = 1
+    # mass2_array[2:4, 2:3] = 1
+    mass1_array[1:3, 1:3] = 1
+    mass2_array[2:4, 2:4] = 1
 
     L = 1e-2
     increasing_L = False
@@ -70,12 +101,13 @@ elif True:
     mass2_array = np.zeros(shape, dtype=float)
 
     mass1_array[10:30, 10:15] = 1
-    mass2_array[10:30, 25:30] = 1
+    mass2_array[20:40, 25:30] = 1
 
-    L = 1e4
+    L = 1e4  ##4
     scaling = 3e1
     num_iter = int(1e5)
-    tol = 1e-8
+    tol = 1e-16
+    regularization = 1e-18
 
 elif False:
     print("Case 4")
@@ -148,12 +180,28 @@ num_edges_axis = [
 ]
 num_edges = np.sum(num_edges_axis)
 
-# Define connectivity
+# Define connectivity: face to cell
 connectivity = np.zeros((num_edges, 2), dtype=int)
 connectivity[: num_edges_axis[0], 0] = np.ravel(numbering_cells[:, :-1])  # left cells
 connectivity[: num_edges_axis[0], 1] = np.ravel(numbering_cells[:, 1:])  # right cells
 connectivity[num_edges_axis[0] :, 0] = np.ravel(numbering_cells[:-1, :])  # top cells
 connectivity[num_edges_axis[0] :, 1] = np.ravel(numbering_cells[1:, :])  # bottom cells
+
+# Define connectivity: cell to face (only for inner cells)
+connectivity_cell_to_vertical_face = np.zeros((num_cells, 2), dtype=int)
+connectivity_cell_to_vertical_face[np.ravel(numbering_cells[:, :-1]), 0] = np.arange(
+    num_edges_axis[0]
+)  # left face
+connectivity_cell_to_vertical_face[np.ravel(numbering_cells[:, 1:]), 1] = np.arange(
+    num_edges_axis[0]
+)  # right face
+connectivity_cell_to_horizontal_face = np.zeros((num_cells, 2), dtype=int)
+connectivity_cell_to_horizontal_face[np.ravel(numbering_cells[:-1, :]), 0] = np.arange(
+    num_edges_axis[0], num_edges_axis[0] + num_edges_axis[1]
+)  # top face
+connectivity_cell_to_horizontal_face[np.ravel(numbering_cells[1:, :]), 1] = np.arange(
+    num_edges_axis[0], num_edges_axis[0] + num_edges_axis[1]
+)  # bottom face
 
 # Define sparse divergence operator, integrated over elements: flat_fluxes -> flat_mass
 # div_data = np.concatenate(
@@ -187,11 +235,57 @@ lumped_mass_matrix_edges = sps.diags(
     np.prod(voxel_size) * np.ones(num_edges, dtype=float)
 )
 
+# Info about inner cells
+inner_cells_with_vertical_faces = np.ravel(numbering_cells[:, 1:-1])
+inner_cells_with_horizontal_faces = np.ravel(numbering_cells[1:-1, :])
+num_inner_cells_with_vertical_faces = len(inner_cells_with_vertical_faces)
+num_inner_cells_with_horizontal_faces = len(inner_cells_with_horizontal_faces)
+
+# Define true RT0 mass matrix on edges: flat_fluxes -> flat_fluxes
+mass_matrix_edges_data = np.prod(voxel_size) * np.concatenate(
+    (
+        2 / 3 * np.ones(num_edges, dtype=float),  # all faces
+        1 / 6 * np.ones(num_inner_cells_with_vertical_faces, dtype=float),  # left faces
+        1
+        / 6
+        * np.ones(num_inner_cells_with_vertical_faces, dtype=float),  # right faces
+        1
+        / 6
+        * np.ones(num_inner_cells_with_horizontal_faces, dtype=float),  # top faces
+        1
+        / 6
+        * np.ones(num_inner_cells_with_horizontal_faces, dtype=float),  # bottom faces
+    )
+)
+mass_matrix_edges_row = np.concatenate(
+    (
+        np.arange(num_edges, dtype=int),
+        connectivity_cell_to_vertical_face[inner_cells_with_vertical_faces, 0],
+        connectivity_cell_to_vertical_face[inner_cells_with_vertical_faces, 1],
+        connectivity_cell_to_horizontal_face[inner_cells_with_horizontal_faces, 0],
+        connectivity_cell_to_horizontal_face[inner_cells_with_horizontal_faces, 1],
+    )
+)
+mass_matrix_edges_col = np.concatenate(
+    (
+        np.arange(num_edges, dtype=int),
+        connectivity_cell_to_vertical_face[inner_cells_with_vertical_faces, 1],
+        connectivity_cell_to_vertical_face[inner_cells_with_vertical_faces, 0],
+        connectivity_cell_to_horizontal_face[inner_cells_with_horizontal_faces, 1],
+        connectivity_cell_to_horizontal_face[inner_cells_with_horizontal_faces, 0],
+    )
+)
+mass_matrix_edges = sps.csr_matrix(
+    (mass_matrix_edges_data, (mass_matrix_edges_row, mass_matrix_edges_col)),
+    shape=(num_edges, num_edges),
+)
+
 # Fix mean of the pressure to be zero
 integral_cells = np.prod(voxel_size) * np.ones((1, num_cells), dtype=float)
 
 # Replace mean constraint with pressure constraint for single cell
-constrained_cell = numbering_cells[20, 12]
+constrained_cell = numbering_cells[10, 12]
+# constrained_cell = numbering_cells[1, 1]
 integral_cells = sps.csr_matrix(
     (np.ones(1, dtype=float), (np.zeros(1, dtype=int), np.array([constrained_cell]))),
     shape=(1, num_cells),
@@ -209,7 +303,7 @@ mixed_darcy = sps.bmat(
 
 l_scheme_mixed_darcy = sps.bmat(
     [
-        [L * lumped_mass_matrix_edges, -div.T, None],
+        [L * mass_matrix_edges, -div.T, None],
         [div, None, -integral_cells.T],
         [None, integral_cells, None],
     ]
@@ -263,7 +357,7 @@ def cell_reconstruction(flat_flux):
     horizontal_fluxes = flat_flux[: num_edges_axis[0]].reshape(vertical_edges_shape)
     vertical_fluxes = flat_flux[num_edges_axis[0] :].reshape(horizontal_edges_shape)
 
-    # Determine a cell-based Raviart-Thomas reconstruction of the fluxes
+    # Determine a cell-centered Raviart-Thomas-type reconstruction of the fluxes
     cell_flux = np.zeros((*dim_cells, dim), dtype=float)
     # Horizontal fluxes
     cell_flux[:, :-1, 0] += 0.5 * horizontal_fluxes
@@ -339,7 +433,7 @@ def darcy_residual(rhs, solution):
 
 def normed_flat_fluxes(flat_flux):
     cell_flux = cell_reconstruction(flat_flux)
-    cell_flux_norm = np.maximum(np.linalg.norm(cell_flux, axis=-1), regularization)
+    cell_flux_norm = np.maximum(np.linalg.norm(cell_flux, 2, axis=-1), regularization)
     cell_flux_normed = cell_flux / cell_flux_norm[..., None]
     flat_flux_normed = face_restriction(cell_flux_normed)
 
@@ -362,35 +456,21 @@ def residual(rhs, solution):
     return (
         rhs
         - broken_darcy.dot(solution)
-        - flux_embedding.dot(lumped_mass_matrix_edges.dot(flat_flux_normed))
+        # - flux_embedding.dot(lumped_mass_matrix_edges.dot(flat_flux_normed))
+        - flux_embedding.dot(mass_matrix_edges.dot(flat_flux_normed))
     )
 
 
 def jacobian_splu(solution, i):
     if False:
         return mixed_darcy_lu
-    elif increasing_L:
-        if i % 100 == 0 or i < 5 or True:
-            L_local = (1 + 1e-2) ** i * L
-            approx_jacobian = sps.bmat(
-                [
-                    [L_local * lumped_mass_matrix_edges, -div.T, None],
-                    [div, None, -integral_cells.T],
-                    [None, integral_cells, None],
-                ]
-            )
-            # + flux_embedding.multiply(
-            #    lumped_mass_matrix_edges.multiply(sps.diags(1 / flat_flux_normed))
-            # )
-            approx_jacobian_lu = sps.linalg.splu(approx_jacobian)
-            return approx_jacobian_lu
-        else:
-            return approx_jacobian_lu
-    elif newton_like:
+    else:
         # TODO update only every Xth iteration
         flat_flux, _, _ = split_solution(solution)
         cell_flux = cell_reconstruction(flat_flux)
-        cell_flux_norm = np.maximum(np.linalg.norm(cell_flux, axis=-1), regularization)
+        cell_flux_norm = np.maximum(
+            np.linalg.norm(cell_flux, 2, axis=-1), regularization
+        )
         flat_flux_norm = face_restriction_scalar(cell_flux_norm)
         print(np.min(flat_flux_norm))
         approx_jacobian = sps.bmat(
@@ -407,8 +487,6 @@ def jacobian_splu(solution, i):
         )
         approx_jacobian_lu = sps.linalg.splu(approx_jacobian)
         return approx_jacobian_lu
-    else:
-        return l_scheme_mixed_darcy_lu
 
 
 def split_solution(solution):
@@ -434,7 +512,7 @@ def l1_dissipation(solution):
     """
     flat_flux, _, _ = split_solution(solution)
     cell_flux = cell_reconstruction(flat_flux)
-    return np.sum(np.prod(voxel_size) * np.linalg.norm(cell_flux, 1, axis=-1))
+    return np.sum(np.prod(voxel_size) * np.linalg.norm(cell_flux, 2, axis=-1))
 
 
 def l2_dissipation(solution):
@@ -473,7 +551,7 @@ def lumped_l2_dissipation(solution):
 
 def newton_solve(num_iter, tol, distance):
     # anderson = darsia.AndersonAcceleration(dimension=num_edges + num_cells + 1, depth=0)
-    anderson = darsia.AndersonAcceleration(dimension=num_edges, depth=20)
+    anderson = darsia.AndersonAcceleration(dimension=num_edges, depth=10)
     # Observation: AA can lead to less stagnation, more accurate results, and therefore
     # better solutions to mu and u. Higher depth is better, but more expensive.
     solution_i = np.zeros_like(rhs)
@@ -493,7 +571,7 @@ def newton_solve(num_iter, tol, distance):
             solution_i[:num_edges], update_i[:num_edges], i
         )
         new_distance = distance(solution_i)
-        error = [np.linalg.norm(residual_i), np.linalg.norm(update_i)]
+        error = [np.linalg.norm(residual_i, 2), np.linalg.norm(update_i, 2)]
 
         # TODO include criterion build on staganation of the solution
         # TODO include criterion on distance.
@@ -525,35 +603,87 @@ def shrink(x, l):
     return np.sign(x) * np.maximum(np.abs(x) - l, 0)
 
 
+def shrink_vector(x, l):
+    norm = np.linalg.norm(x, 2, axis=-1)
+    scaling = np.maximum(norm - l, 0) / (norm + 1e-24)
+    return x * scaling[..., None]
+
+
 def determine_mu(flat_flux):
     cell_flux = cell_reconstruction(flat_flux)
-    return np.linalg.norm(cell_flux, axis=-1)
+    return np.linalg.norm(cell_flux, 2, axis=-1)
 
 
-def bregman_solve(num_iter, tol, distance):
-    anderson = darsia.AndersonAcceleration(dimension=num_edges, depth=1)
+def bregman_solve(num_iter, tol, distance, l_scheme_mixed_darcy_lu, L):
+    # First indication, solving the standard Darcy problem
+    # mixed_darcy_lu = sps.linalg.splu(mixed_darcy)
+    # solution = mixed_darcy_lu.solve(rhs)
+    # flat_flux, _, _ = split_solution(solution)
+    # cell_flux = cell_reconstruction(flat_flux)
+    # cell_flux_norm = np.maximum(np.linalg.norm(cell_flux, 2, axis=-1), regularization)
+    # flat_flux_norm = face_restriction_scalar(cell_flux_norm)
+
+    anderson = darsia.AndersonAcceleration(dimension=num_edges, depth=10)
     solution_i = np.zeros_like(rhs)
+    num_neg_diff = 0
     for i in range(num_iter):
         old_distance = distance(solution_i)
         flat_flux_i, _, _ = split_solution(solution_i)
         rhs_i = rhs.copy()
-        rhs_i[:num_edges] = L * lumped_mass_matrix_edges.dot(flat_flux_i)
+        # Solve regularized, linear problem with small diffusion parameter
+        rhs_i[:num_edges] = L * mass_matrix_edges.dot(flat_flux_i)
         intermediate_solution_i = l_scheme_mixed_darcy_lu.solve(rhs_i)
         intermediate_flat_flux_i, _, _ = split_solution(intermediate_solution_i)
-        new_flat_flux_i = shrink(intermediate_flat_flux_i, 1 / L)
+
+        # Shrink (only for finding the scaling parameter)
+        cell_intermediate_flux_i = cell_reconstruction(intermediate_flat_flux_i)
+        norm = np.linalg.norm(cell_intermediate_flux_i, 2, axis=-1)
+        cell_scaling = np.maximum(norm - 1 / L, 0) / (norm + 1e-24)
+        flat_scaling = face_restriction_scalar(cell_scaling)
+        new_flat_flux_i = flat_scaling * intermediate_flat_flux_i
+
         flux_inc = new_flat_flux_i - flat_flux_i
-        aa_flat_flux_i = anderson(new_flat_flux_i, flux_inc, i)
         solution_i = intermediate_solution_i.copy()
         if False:
             solution_i[:num_edges] = new_flat_flux_i
         else:
+            aa_flat_flux_i = anderson(new_flat_flux_i, flux_inc, i)
             solution_i[:num_edges] = aa_flat_flux_i
         new_distance = distance(solution_i)
         flux_diff = np.linalg.norm(new_flat_flux_i - flat_flux_i)
+        mass_conservation_residual = np.linalg.norm(
+            (rhs_i - broken_darcy.dot(solution_i))[num_edges:-1], 2
+        )
         print(
-            "Bregman iteration", i, new_distance, old_distance - new_distance, flux_diff
+            "Bregman iteration",
+            i,
+            new_distance,
+            old_distance - new_distance,
+            L,
+            flux_diff,
+            mass_conservation_residual,
         )
         if i > 1 and flux_diff < tol:
+            break
+
+        # Increase L if stagnating.
+        if new_distance > old_distance:
+            num_neg_diff += 1
+        if abs(new_distance - old_distance) < 1e-12 or num_neg_diff > 20:
+            L = L * 2
+            print(f"New L: {L}")
+            l_scheme_mixed_darcy = sps.bmat(
+                [
+                    [L * mass_matrix_edges, -div.T, None],
+                    [div, None, -integral_cells.T],
+                    [None, integral_cells, None],
+                ]
+            )
+            l_scheme_mixed_darcy_lu = sps.linalg.splu(l_scheme_mixed_darcy)
+            num_neg_diff = 0
+
+        L_max = 1e8
+        if L > L_max:
             break
 
     flat_flux, flat_pressure, flat_lagrange_multiplier = split_solution(solution_i)
@@ -566,7 +696,7 @@ if False:
     mixed_darcy_lu = sps.linalg.splu(mixed_darcy)
     solution = mixed_darcy_lu.solve(rhs)
     flat_flux, flat_pressure, flat_lagrange_multiplier = split_solution(solution)
-elif True:
+elif False:
     # Solve the problem using Newton
     flat_flux, flat_pressure, flat_lagrange_multiplier, status = newton_solve(
         num_iter, tol, l1_dissipation
@@ -575,7 +705,7 @@ elif True:
 elif True:
     # Solve the problem using Bregman
     flat_flux, flat_pressure, flat_lagrange_multiplier, status = bregman_solve(
-        num_iter, tol, l1_dissipation
+        num_iter, tol, l1_dissipation, l_scheme_mixed_darcy_lu, L
     )
     print(status)
 
@@ -583,7 +713,9 @@ elif True:
 cell_flux = cell_reconstruction(flat_flux)
 
 # Cell-based l1 dissipation
-l1_dissipation_potential = np.sum(np.prod(voxel_size) * np.abs(cell_flux))
+l1_dissipation_potential = np.sum(
+    np.prod(voxel_size) * np.linalg.norm(cell_flux, 2, axis=-1)
+)
 print(f"L1 dissipation potential: {l1_dissipation_potential}")
 
 # Cell-based l2 dissipation
@@ -619,11 +751,6 @@ mass2 = darsia.Image(
     mass2_array, width=width, height=height, scalar=True, dim=2, series=False
 )
 
-# Determine the EMD
-emd = darsia.EMD()
-distance = emd(mass1, mass2)
-print(f"The cv2 EMD distance between the two mass distributions is: {distance} meters.")
-
 # Plot the fluxes and pressure
 plt.figure("Beckman solution")
 plt.pcolormesh(X, Y, pressure, cmap="turbo")
@@ -657,3 +784,8 @@ plt.figure("Beckman solution mobility")
 plt.pcolormesh(X, Y, determine_mu(flat_flux), cmap="turbo")
 plt.colorbar()
 plt.show()
+
+# Determine the EMD
+emd = darsia.EMD()
+distance = emd(mass1, mass2)
+print(f"The cv2 EMD distance between the two mass distributions is: {distance} meters.")
