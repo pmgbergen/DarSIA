@@ -24,6 +24,11 @@ assert np.sum(mass1_array) == np.sum(mass2_array)
 mass1 = darsia.Image(mass1_array, width=20, height=10, scalar=True, dim=2, series=False)
 mass2 = darsia.Image(mass2_array, width=20, height=10, scalar=True, dim=2, series=False)
 
+# Integrate the mass1 (not the same as the sum)
+shape_meta = mass1.shape_metadata()
+geometry = darsia.Geometry(**shape_meta)
+mass_integral = geometry.integrate(mass1)
+
 # Plot if requested
 if False:
     plt.figure("Mass 1")
@@ -50,6 +55,7 @@ emd = darsia.EMD(resize)
 # Determine the EMD
 distance = emd(mass1, mass2)
 print(f"The cv2.emd distance between the two mass distributions is: {distance} meters.")
+print(f"Weighted by the mass (which is correct), it is: {mass_integral * distance}.")
 print()
 
 
@@ -63,6 +69,7 @@ options = {
     "regularization": 1e-12,
     "scaling": 30,
     "depth": 10,
+    "lumping": True,
     "verbose": False,
 }
 
@@ -89,13 +96,14 @@ options = {
     "tol": 1e-8,
     "regularization": 1e-12,
     "scaling": 30,
-    "depth": 1,  # TODO increase depth.
+    "depth": 1,
     "verbose": False,
     "update_l": True,
     "tol_distance": 1e-6,
     "max_iter_increase_diff": 20,
     "l_factor": 2,
-    "L_max": 1e6,
+    "L_max": 1e8,
+    "lumping": True,
 }
 distance_bregman, _, _, _, status_bregman = darsia.wasserstein_distance(
     mass1,
@@ -108,6 +116,6 @@ distance_bregman, _, _, _, status_bregman = darsia.wasserstein_distance(
 
 print(
     f"""The Wasserstein distance (computed using Bregman split) between the two """
-    f"""mass distributions is: {distance} meters."""
+    f"""mass distributions is: {distance_bregman} meters."""
 )
 print("Bregman status:", status_bregman)
