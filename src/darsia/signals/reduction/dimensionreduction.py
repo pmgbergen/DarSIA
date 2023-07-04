@@ -129,7 +129,9 @@ class AxisAveraging:
         return type(img)(img=img_arr, **metadata)
 
 
-def average_over_axis(image: darsia.Image, axis: Union[str, int], mode: str = "sum") -> darsia.Image:
+def average_over_axis(
+    image: darsia.Image, axis: Union[str, int], mode: str = "sum"
+) -> darsia.Image:
     """Utility function, essentially wrapping AxisAveraging as a method.
 
     Args:
