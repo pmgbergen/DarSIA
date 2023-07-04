@@ -117,7 +117,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             )
         )
         div_col = np.tile(np.arange(num_edges, dtype=int), 2)
-        self.div = sps.csr_matrix(
+        self.div = sps.csc_matrix(
             (div_data, (div_row, div_col)), shape=(num_cells, num_edges)
         )
 
@@ -225,7 +225,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                     ],
                 )
             )
-            self.mass_matrix_edges = sps.csr_matrix(
+            self.mass_matrix_edges = sps.csc_matrix(
                 (
                     mass_matrix_edges_data,
                     (mass_matrix_edges_row, mass_matrix_edges_col),
@@ -244,7 +244,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         # TODO needs to be defined for each problem separately
 
         # Define sparse embedding operator for fluxes into full discrete DOF space
-        self.flux_embedding = sps.csr_matrix(
+        self.flux_embedding = sps.csc_matrix(
             (
                 np.ones(num_edges, dtype=float),
                 (np.arange(num_edges), np.arange(num_edges)),
@@ -268,7 +268,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Fix index of dominating contribution in image differece
         self.constrained_cell_flat_index = np.argmax(np.abs(mass_diff))
-        self.pressure_constraint = sps.csr_matrix(
+        self.pressure_constraint = sps.csc_matrix(
             (
                 np.ones(1, dtype=float),
                 (np.zeros(1, dtype=int), np.array([self.constrained_cell_flat_index])),
@@ -283,7 +283,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                 [None, -self.div.T, None],
                 [self.div, None, -self.pressure_constraint.T],
                 [None, self.pressure_constraint, None],
-            ]
+            ],
+            format="csc",
         )
 
     def split_solution(
@@ -581,7 +582,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 ],
                 [self.div, None, -self.pressure_constraint.T],
                 [None, self.pressure_constraint, None],
-            ]
+            ],
+            format="csc",
         )
         approx_jacobian_lu = sps.linalg.splu(approx_jacobian)
         return approx_jacobian_lu
@@ -693,7 +695,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 [self.L * self.mass_matrix_edges, -self.div.T, None],
                 [self.div, None, -self.pressure_constraint.T],
                 [None, self.pressure_constraint, None],
-            ]
+            ],
+            format="csc",
         )
         self.l_scheme_mixed_darcy_lu = sps.linalg.splu(l_scheme_mixed_darcy)
 
@@ -807,7 +810,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                             [self.L * self.mass_matrix_edges, -self.div.T, None],
                             [self.div, None, -self.pressure_constraint.T],
                             [None, self.pressure_constraint, None],
-                        ]
+                        ],
+                        format="csc",
                     )
                     self.l_scheme_mixed_darcy_lu = sps.linalg.splu(l_scheme_mixed_darcy)
 
