@@ -10,7 +10,7 @@ import skimage
 import darsia as da
 
 
-def L2_regularization(
+def _L2_regularization_array(
     img: np.ndarray,
     mu: float,
     omega: float = 1.0,
@@ -18,7 +18,7 @@ def L2_regularization(
     solver: da.Solver = da.Jacobi(),
 ) -> np.ndarray:
     """
-    L2 regularization of images.
+    L2 regularization of numpy arrays.
 
     min_u 1/2 ||u - img||_{2,omega}^2 + 1/2 ||nabla u||_{2,mu}^2
 
@@ -27,8 +27,8 @@ def L2_regularization(
     Args:
         img (np.ndarray): image to regularize
         mu (float): regularization parameter
-        omega (Optional[float]): weighting of the image term (Should account for
-            denoising effects).
+        omega (float): weighting of the image term (Should account for denoising
+            effects).
         dim (int): dimension of the image. Default is 2.
         solver (da.Solver): solver to use. Default is da.Jacobi().
 
@@ -69,3 +69,76 @@ def L2_regularization(
 
     # Convert output image to the same type as the input image
     return da.convert_dtype(out_img, img_dtype)
+
+
+def _L2_regularization_image(
+    img: da.Image,
+    mu: float,
+    omega: float = 1.0,
+    dim: int = 2,
+    solver: da.Solver = da.Jacobi(),
+) -> da.Image:
+    """L2 regularization of darsia.Image.
+
+    Args:
+        img (darsia.Image): image
+        mu (float): regularization parameter
+        omega (float): weighting of the image term (Should account for denoising
+            effects).
+        dim (int): dimension of the image. Default is 2.
+        solver (da.Solver): solver to use. Default is da.Jacobi().
+
+    Returns:
+        darsia.Image: regularized image
+
+    """
+    regularized_img = img.copy()
+    regularized_img.img = _L2_regularization_array(
+        img=img.img,
+        mu=mu,
+        omega=omega,
+        dim=dim,
+        solver=solver,
+    )
+    return regularized_img
+
+
+def L2_regularization(
+    img: Union[np.ndarray, da.Image],
+    mu: float,
+    omega: float = 1.0,
+    dim: int = 2,
+    solver: da.Solver = da.Jacobi(),
+) -> Union[np.ndarray, da.Image]:
+    """Inline application of L2 regularization.
+
+    Args:
+        img (np.ndarray or Image): image
+        mu (float): regularization parameter
+        omega (float): weighting of the image term (Should account for denoising
+            effects).
+        dim (int): dimension of the image. Default is 2.
+        solver (da.Solver): solver to use. Default is da.Jacobi().
+
+    Returns:
+        np.ndarray or Image: regularized image (same type as input)
+
+    """
+    if isinstance(img, np.ndarray):
+        return _L2_regularization_array(
+            img=img,
+            mu=mu,
+            omega=omega,
+            dim=dim,
+            solver=solver,
+        )
+    elif isinstance(img, da.Image):
+        return _L2_regularization_image(
+            img=img,
+            mu=mu,
+            omega=omega,
+            dim=dim,
+            solver=solver,
+        )
+    else:
+        raise TypeError(f"Type {type(img)} not supported.")
