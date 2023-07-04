@@ -835,34 +835,45 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         return new_distance, solution_i, status
 
 
-# Quick access
+# Unified access
 def wasserstein_distance(
-    mass_1: darsia.Image, mass_2: darsia.Image, method: str, options: dict, **kwargs
+    mass_1: darsia.Image,
+    mass_2: darsia.Image,
+    method: str,
+    **kwargs,
 ):
-    """Quick access to Wasserstein distance computation between images with same mass.
+    """Unified access to Wasserstein distance computation between images with same mass.
 
     Args:
         mass_1 (darsia.Image): image 1
         mass_2 (darsia.Image): image 2
-        method (str): method to use ("newton" or "bregman")
-        options (dict): options for the method
-        **kwargs: additional arguments
+        method (str): method to use ("newton", "bregman", or "cv2.emd")
+        **kwargs: additional arguments (only for "newton" and "bregman")
+            - options (dict): options for the method.
             - plot_solution (bool): plot the solution. Defaults to False.
             - return_solution (bool): return the solution. Defaults to False.
-    """
-    shape = mass_1.img.shape
-    voxel_size = mass_1.voxel_size
-    dim = mass_1.space_dim
-    plot_solution = kwargs.get("plot_solution", False)
-    return_solution = kwargs.get("return_solution", False)
 
-    if method.lower() == "newton":
-        w1 = WassersteinDistanceNewton(shape, voxel_size, dim, options)
-    elif method.lower() == "bregman":
-        w1 = WassersteinDistanceBregman(shape, voxel_size, dim, options)
+    """
+    if method.lower() in ["newton", "bregman"]:
+        shape = mass_1.img.shape
+        voxel_size = mass_1.voxel_size
+        dim = mass_1.space_dim
+        plot_solution = kwargs.get("plot_solution", False)
+        return_solution = kwargs.get("return_solution", False)
+        options = kwargs.get("options", {})
+
+        if method.lower() == "newton":
+            w1 = WassersteinDistanceNewton(shape, voxel_size, dim, options)
+        elif method.lower() == "bregman":
+            w1 = WassersteinDistanceBregman(shape, voxel_size, dim, options)
+        return w1(
+            mass_1, mass_2, plot_solution=plot_solution, return_solution=return_solution
+        )
+
+    elif method.lower() == "cv2.emd":
+        preprocess = kwargs.get("preprocess")
+        w1 = darsia.EMD(preprocess)
+        return w1(mass_1, mass_2)
+
     else:
         raise NotImplementedError(f"Method {method} not implemented.")
-
-    return w1(
-        mass_1, mass_2, plot_solution=plot_solution, return_solution=return_solution
-    )
