@@ -17,7 +17,7 @@ class AxisAveraging:
 
     """
 
-    def __init__(self, axis: Union[str, int], dim: int = 3) -> None:
+    def __init__(self, axis: Union[str, int], dim: int = 3, mode: str = "sum") -> None:
         """
         Args:
             axis (int or str): numeric axis index (matrix indexing) or Cartesian axis
@@ -45,6 +45,9 @@ class AxisAveraging:
 
         self.axis: int = "xyz".find(axis)
         """Cartesian axis along which averaging is performed."""
+
+        self.mode: str = mode
+        """Mode."""
 
     def __call__(self, img: darsia.Image) -> darsia.Image:
         """Averaging routine.
@@ -75,6 +78,11 @@ class AxisAveraging:
 
         # Reduce the data
         img_arr = np.sum(img.img, axis=self.index)
+
+        if self.mode == "sum":
+            pass
+        elif self.mode == "scaled":
+            img_arr /= img.img.shape[self.index]
 
         # Reduce dimensions
         new_dimensions = img.dimensions.copy()
@@ -121,7 +129,7 @@ class AxisAveraging:
         return type(img)(img=img_arr, **metadata)
 
 
-def average_over_axis(image: darsia.Image, axis: Union[str, int]) -> darsia.Image:
+def average_over_axis(image: darsia.Image, axis: Union[str, int], mode: str = "sum") -> darsia.Image:
     """Utility function, essentially wrapping AxisAveraging as a method.
 
     Args:
@@ -129,11 +137,12 @@ def average_over_axis(image: darsia.Image, axis: Union[str, int]) -> darsia.Imag
         axis (int or str): numeric index (corresponding to matrix indexing) or
             Cartesian axis
         dim (int): dimension of the input image
+        mode (str): mode used in the averaging
 
     Returns:
         Image: (n-1)d image.
 
     """
     dim = image.space_dim
-    averaging = AxisAveraging(axis, dim)
+    averaging = AxisAveraging(axis, dim, mode)
     return averaging(image)
