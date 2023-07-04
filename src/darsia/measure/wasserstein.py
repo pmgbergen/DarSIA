@@ -58,6 +58,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.voxel_size = voxel_size
         self.dim = dim
 
+        assert dim == 2, "Currently only 2D images are supported."
+
         self.options = options
         self.regularization = self.options.get("regularization", 0.0)
         self.verbose = self.options.get("verbose", False)
