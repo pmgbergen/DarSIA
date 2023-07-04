@@ -30,8 +30,8 @@ class MG(da.Solver):
         maxiter: int = 100,
         tol: Optional[float] = None,
         dim: int = 2,
-        mass_coeff: Union[float, np.ndarray],
-        diffusion_coeff: Union[float, np.ndarray],
+        mass_coeff: Optional[Union[float, np.ndarray]] = None,
+        diffusion_coeff: Optional[Union[float, np.ndarray]] = None,
         verbose=False,
     ) -> None:
         """
@@ -74,6 +74,23 @@ class MG(da.Solver):
             diffusion_coeff, np.ndarray
         )
         """Flag controlling whether the material paremeters are heterogeneous."""
+
+    def update_params(
+        self,
+        dim: Optional[int] = None,
+        mass_coeff: Optional[Union[float, np.ndarray]] = None,
+        diffusion_coeff: Optional[Union[float, np.ndarray]] = None,
+    ) -> None:
+        """Update parameters of the solver.
+
+        Args:
+            dim (int, optional): spatial dimension of the problem
+            mass_coeff (float or array, optional): mass coefficient
+            diffusion_coeff (float or array, optional): diffusion coefficient
+
+        """
+        super().update_params(dim, mass_coeff, diffusion_coeff)
+        self.smoother.update_params(dim, mass_coeff, diffusion_coeff)
 
     def operator(self, x: np.ndarray, h: float) -> np.ndarray:
         """The solution operator for the problem
