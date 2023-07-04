@@ -17,13 +17,12 @@ class Solver:
 
     def __init__(
         self,
-        dim: int = 2,
         maxiter: int = 1,
         tol: Optional[float] = None,
+        dim: int = 2,
         mass_coeff: Optional[Union[float, np.ndarray]] = None,
         diffusion_coeff: Optional[Union[float, np.ndarray]] = None,
         verbose=False,
-        **kwargs,
     ) -> None:
         self.dim = dim
         """Spatial dimension of the problem."""
