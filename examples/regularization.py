@@ -1,44 +1,51 @@
-import darsia as da
-import numpy as np
+import os
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+import darsia
 
 # Load 3D image
-im = np.load("C:/Users/erst/src/image_analysis/images/dicom_3d_test.npy")
+image_folder = f"{os.path.dirname(__file__)}/images/"
+img_path = image_folder + "dicom_3d.npy"
+img = darsia.imread(img_path, dimensions=[0.1, 0.1, 0.1])
 
-# Make regularization parameter heterogenous (for testing purposes)
-mu = np.ones_like(im)
+# Normalize image
+img.img /= np.max(img.img)
+
+# Make regularization parameter heterogenous (for illustration purposes)
+mu = np.ones_like(img.img)
 mu[:, 0:100, :] = 0.5
 
-
 # Regularize image using anisotropic tvd
-im_regularized_tvd = da.split_bregman_anisotropic_tvd(
-    im=im,
-    mu=mu,
+img_regularized_tvd = darsia.tvd(
+    img=img,
+    method="heterogeneous bregman",
+    isotropic=False,
+    weight=mu,
     omega=0.1,
-    maxiter=30,
-    tol=1e-6,
-    verbose=True,
+    max_num_iter=10,
+    eps=1e-6,
     dim=3,
-    solver_type="cg",  # "mg", "jacobi" also possible
-    solver_iter=20,
+    verbose=True,
+    # solver = darsia.CG(maxiter = 20, tol = 1e-3)
+    solver=darsia.Jacobi(maxiter=10),
 )
 
 # Regularize image using l2 regularization
-im_regularized_l2 = da.L2_regularization(
-    im=im,
+img_regularized_l2 = darsia.L2_regularization(
+    img=img,
     mu=1,
-    maxiter=30,
-    tol=1e-6,
-    verbose=True,
+    omega=1,
     dim=3,
-    solver_type="jacobi",  # "mg", "cg" also possible
-    mg_depth=3,
+    solver=darsia.Jacobi(maxiter=30, tol=1e-6, verbose=True),
+    # solver = darsia.MG(3)
 )
 
-plt.figure("im 100")
-plt.imshow(im[100, :, :])
-plt.figure("regularized tvd  100")
-plt.imshow(im_regularized_tvd[100, :, :])
-plt.figure("regularized l2 100")
-plt.imshow(im_regularized_l2[100, :, :])
+plt.figure("img slice")
+plt.imshow(img.img[100, :, :])
+plt.figure("regularized tvd slice")
+plt.imshow(img_regularized_tvd.img[100, :, :])
+plt.figure("regularized l2 slice")
+plt.imshow(img_regularized_l2.img[100, :, :])
 plt.show()
