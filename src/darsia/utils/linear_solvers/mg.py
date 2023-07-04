@@ -25,45 +25,45 @@ class MG(da.Solver):
 
     def __init__(
         self,
-        mass_coeff: Union[float, np.ndarray],
-        diffusion_coeff: Union[float, np.ndarray],
-        dim: int = 2,
-        maxiter: int = 100,
-        tol: Optional[float] = None,
-        verbose=False,
         depth: int = 2,
         smoother_iterations: int = 5,
+        maxiter: int = 100,
+        tol: Optional[float] = None,
+        dim: int = 2,
+        mass_coeff: Union[float, np.ndarray],
+        diffusion_coeff: Union[float, np.ndarray],
+        verbose=False,
     ) -> None:
         """
         Initialize the solver.
 
         Args:
-            mass_coeff [np.ndarray,float]: mass coefficient
-            diffusion_coeff [np.ndarray,float]: diffusion coefficient
-            dim [int]: dimension of the problem
-            maxiter [int]: maximum number of iterations
-            tol [Optional[float]]: tolerance
-            verbose [bool]: print information
-            depth [int]: depth of the multigrid hierarchy
-            smoother_iterations [int]: number of iterations for the smoother
+            depth (int): depth of the multigrid hierarchy
+            smoother_iterations (int): number of iterations for the smoother
+            maxiter (int): maximum number of iterations
+            tol (Optional[float]): tolerance
+            dim (int): dimension of the problem
+            mass_coeff (np.ndarray or float): mass coefficient
+            diffusion_coeff (np.ndarray or float): diffusion coefficient
+            verbose (bool): print information
 
         """
         # Standard properties
         super().__init__(
+            maxiter=maxiter,
+            tol=tol,
             mass_coeff=mass_coeff,
             diffusion_coeff=diffusion_coeff,
             dim=dim,
-            maxiter=maxiter,
-            tol=tol,
             verbose=verbose,
         )
 
         # Smoother related properties
         self.smoother = da.Jacobi(
+            maxiter=smoother_iterations,
             mass_coeff=mass_coeff,
             diffusion_coeff=diffusion_coeff,
             dim=dim,
-            maxiter=smoother_iterations,
         )
         """Smoother used in the MG cycle."""
         self.smoother_iterations = smoother_iterations
@@ -79,11 +79,11 @@ class MG(da.Solver):
         """The solution operator for the problem
 
         Args:
-            x [np.ndarray]: input
-            h [float]: grid spacing
+            x (np.ndarray): input
+            h (float): grid spacing
 
         Returns:
-            output [np.ndarray]
+            output (np.ndarray)
 
         """
 
@@ -96,10 +96,11 @@ class MG(da.Solver):
         Last index is dropped if odd.
 
         Args:
-            x [np.ndarray]: input
+            x (np.ndarray): input
 
         Returns:
-            output [np.ndarray]
+            output (np.ndarray)
+
         """
 
         for ax in range(self.dim):
@@ -137,10 +138,11 @@ class MG(da.Solver):
 
 
         Args:
-            x [np.ndarray]: input
+            x (np.ndarray): input
 
         Returns:
-            output [np.ndarray]
+            output (np.ndarray)
+
         """
 
         for ax in range(self.dim):
@@ -154,7 +156,7 @@ class MG(da.Solver):
         by averaging.
 
         Args:
-            pad_tuple [tuple]: tuple of tuples, each tuple contains the number of
+            pad_tuple (tuple): tuple of tuples, each tuple contains the number of
                 elements to be padded before and after the corresponding axis.
 
         """
@@ -177,13 +179,14 @@ class MG(da.Solver):
         """Base V-Cycle (recursive function)
 
         Args:
-            x0 [np.ndarray]: initial guess
-            rhs [np.ndarray]: right hand side
-            depth [int]: depth of the V-Cycle
-            h [float]: grid spacing
+            x0 (np.ndarray): initial guess
+            rhs (np.ndarray): right hand side
+            depth (int): depth of the V-Cycle
+            h (float): grid spacing
 
         Returns:
-            x [np.ndarray]: solution
+            x (np.ndarray): solution
+
         """
         # Presmooth
         x = self.smoother(x0, rhs, h=h)
@@ -228,11 +231,12 @@ class MG(da.Solver):
         of the minimization problem. Could be used as a preconditioner or a solver in itself.
 
         Args:
-            x0 [np.ndarray]: initial guess
-            rhs [np.ndarray]: right hand side
+            x0 (np.ndarray): initial guess
+            rhs (np.ndarray): right hand side
 
         Returns:
-            x [np.ndarray]: solution
+            x (np.ndarray): solution
+
         """
         x = x0
         if self.tol is None:
