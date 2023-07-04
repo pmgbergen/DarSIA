@@ -17,6 +17,7 @@ from darsia.mathematics.regularization import *
 from darsia.measure.norms import *
 from darsia.measure.integration import *
 from darsia.measure.emd import *
+from darsia.measure.wasserstein import *
 from darsia.utils.box import *
 from darsia.utils.interpolation import *
 from darsia.utils.segmentation import *
@@ -27,6 +28,7 @@ from darsia.utils.linear_solvers.solver import *
 from darsia.utils.linear_solvers.jacobi import *
 from darsia.utils.linear_solvers.cg import *
 from darsia.utils.linear_solvers.mg import *
+from darsia.utils.andersonacceleration import *
 from darsia.corrections.basecorrection import *
 from darsia.corrections.shape.curvature import *
 from darsia.corrections.shape.affine import *
