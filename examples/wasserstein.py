@@ -6,6 +6,8 @@ import darsia
 
 # Main script
 
+# TODO does not yet work for non-constant voxel size.
+
 # Define problem parameters
 dim = 2
 
@@ -50,7 +52,7 @@ elif True:
     print("Case 2- bregman")
     factor = 1
     shape = (factor * 50, factor * 40)
-    voxel_size = [1, 1]  # 0.5, 3]
+    voxel_size = [0.5, 0.5]
     # TODO test whether this is working: varying voxel size in x and y directions as well.
 
     # Create two mass distributions with identical mass, equal to 1
@@ -61,7 +63,8 @@ elif True:
     mass2_array[factor * 20 : factor * 40, factor * 25 : factor * 30] = 1
 
     L = 1e2
-    # L = 1e-2 # Newton
+    L_Bregman = 1e2
+    L_Newton = 1e-2
     scaling = 3e1
     regularization = 1e-16
     num_iter = int(1e4)
@@ -682,7 +685,7 @@ def bregman_solve(num_iter, tol, distance, l_scheme_mixed_darcy_lu, L):
             l_scheme_mixed_darcy_lu = sps.linalg.splu(l_scheme_mixed_darcy)
             num_neg_diff = 0
 
-        L_max = 1e8
+        L_max = 1e6
         if L > L_max:
             break
 
@@ -702,88 +705,180 @@ elif False:
         num_iter, tol, l1_dissipation
     )
     print(status)
-elif True:
+elif False:
     # Solve the problem using Bregman
     flat_flux, flat_pressure, flat_lagrange_multiplier, status = bregman_solve(
         num_iter, tol, l1_dissipation, l_scheme_mixed_darcy_lu, L
     )
     print(status)
 
-# Cell-based fluxes
-cell_flux = cell_reconstruction(flat_flux)
+if False:
+    # Plotting and output works for any method
 
-# Cell-based l1 dissipation
-l1_dissipation_potential = np.sum(
-    np.prod(voxel_size) * np.linalg.norm(cell_flux, 2, axis=-1)
-)
-print(f"L1 dissipation potential: {l1_dissipation_potential}")
+    # Cell-based fluxes
+    cell_flux = cell_reconstruction(flat_flux)
 
-# Cell-based l2 dissipation
-l2_dissipation_potential = 0.5 * np.sum(np.prod(voxel_size) * cell_flux**2)
-print(f"L2 dissipation potential: {l2_dissipation_potential}")
+    # Cell-based l1 dissipation
+    l1_dissipation_potential = np.sum(
+        np.prod(voxel_size) * np.linalg.norm(cell_flux, 2, axis=-1)
+    )
+    print(f"L1 dissipation potential: {l1_dissipation_potential}")
 
-# Edge-based l2 dissipation
-lumped_l2_dissipation_potential = 0.5 * flat_flux.dot(
-    lumped_mass_matrix_edges.dot(flat_flux)
-)
-print(f"Lumped L2 dissipation potential: {lumped_l2_dissipation_potential}")
+    # Plot solution
 
-# Plot solution
+    # Reshape the pressure solution, and reconstruct cell fluxes
+    pressure = flat_pressure.reshape(dim_cells)
 
-# Reshape the pressure solution, and reconstruct cell fluxes
-pressure = flat_pressure.reshape(dim_cells)
+    Y, X = np.meshgrid(
+        voxel_size[0] * (0.5 + np.arange(shape[0] - 1, -1, -1)),
+        voxel_size[1] * (0.5 + np.arange(shape[1])),
+        indexing="ij",
+    )
 
-Y, X = np.meshgrid(
-    voxel_size[0] * (0.5 + np.arange(shape[0] - 1, -1, -1)),
-    voxel_size[1] * (0.5 + np.arange(shape[1])),
-    indexing="ij",
-)
+    # Plot the fluxes and pressure
+    plt.figure("Beckman solution")
+    plt.pcolormesh(X, Y, pressure, cmap="turbo")
+    plt.colorbar()
+    plt.quiver(
+        X,
+        Y,
+        scaling * cell_flux[:, :, 0],
+        -scaling * cell_flux[:, :, 1],
+        angles="xy",
+        scale_units="xy",
+        scale=1,
+        alpha=0.5,
+    )
 
-# CV2 analogon.
+    plt.figure("Beckman solution fluxes")
+    plt.pcolormesh(X, Y, mass_diff, cmap="turbo")
+    plt.colorbar()
+    plt.quiver(
+        X,
+        Y,
+        scaling * cell_flux[:, :, 0],
+        -scaling * cell_flux[:, :, 1],
+        angles="xy",
+        scale_units="xy",
+        scale=1,
+        alpha=0.5,
+    )
+
+    plt.figure("Beckman solution mobility")
+    plt.pcolormesh(X, Y, determine_mu(flat_flux), cmap="turbo")
+    plt.colorbar()
+    plt.show()
+
 
 # Convert the arrays to actual DarSIA Images
 width = shape[1] * voxel_size[1]
 height = shape[0] * voxel_size[0]
 mass1 = darsia.Image(
-    mass1_array, width=width, height=height, scalar=True, dim=2, series=False
+    mass1_array,
+    width=width,
+    height=height,
+    scalar=True,
+    dim=dim,
+    series=False,
 )
+
 mass2 = darsia.Image(
-    mass2_array, width=width, height=height, scalar=True, dim=2, series=False
+    mass2_array,
+    width=width,
+    height=height,
+    scalar=True,
+    dim=dim,
+    series=False,
 )
 
-# Plot the fluxes and pressure
-plt.figure("Beckman solution")
-plt.pcolormesh(X, Y, pressure, cmap="turbo")
-plt.colorbar()
-plt.quiver(
-    X,
-    Y,
-    scaling * cell_flux[:, :, 0],
-    -scaling * cell_flux[:, :, 1],
-    angles="xy",
-    scale_units="xy",
-    scale=1,
-    alpha=0.5,
-)
+# Newton
+# shape = shape
+# voxel_size = voxel_size
+# dim = 2
+options = {
+    "L": L_Newton,
+    "num_iter": num_iter,
+    "tol": tol,
+    "tol_distance": 1e-5,
+    "regularization": regularization,
+    "scaling": scaling,
+    "depth": 0,
+    "verbose": False,
+}
 
-plt.figure("Beckman solution fluxes")
-plt.pcolormesh(X, Y, mass_diff, cmap="turbo")
-plt.colorbar()
-plt.quiver(
-    X,
-    Y,
-    scaling * cell_flux[:, :, 0],
-    -scaling * cell_flux[:, :, 1],
-    angles="xy",
-    scale_units="xy",
-    scale=1,
-    alpha=0.5,
-)
+# w1_newton = darsia.WassersteinDistanceNewton(
+#    shape=shape,
+#    voxel_size=voxel_size,
+#    dim=dim,
+#    options=options,
+# )
 
-plt.figure("Beckman solution mobility")
-plt.pcolormesh(X, Y, determine_mu(flat_flux), cmap="turbo")
-plt.colorbar()
-plt.show()
+newton_distance, _, _, _, newton_status = darsia.wasserstein_distance(
+    mass1,
+    mass2,
+    method="newton",
+    options=options,
+    plot_solution=True,
+    return_solution=True,
+)
+print(
+    "The DarSIA EMD distance (Newton) between the two mass distributions is: ",
+    newton_distance,
+)
+print("Status (Newton): ", newton_status)
+
+print()
+
+
+# Bregman
+options = {
+    "L": L_Bregman,
+    "num_iter": num_iter,
+    "tol": tol,
+    "regularization": regularization,
+    "scaling": scaling,
+    "depth": 0,  # TODO increase depth.
+    "verbose": False,
+    "update_l": True,
+    "tol_distance": 1e-6,
+    "max_iter_increase_diff": 20,
+    "l_factor": 2,
+    "L_max": 1e6,
+}
+
+# shape = shape
+# voxel_size = voxel_size
+# dim = 2
+# w1_bregman = darsia.WassersteinDistanceBregman(
+#    shape=shape,
+#    voxel_size=voxel_size,
+#    dim=dim,
+#    options=options,
+# )
+## Solve the problem using Bregman
+# bregman_distance, _, _, _, bregman_status = w1_bregman(
+#    mass1, mass2, plot_solution=True, return_solution=True
+# )
+
+# Solve the problem using Bregman
+bregman_distance, _, _, _, bregman_status = darsia.wasserstein_distance(
+    mass1,
+    mass2,
+    method="bregman",
+    options=options,
+    plot_solution=True,
+    return_solution=True,
+)
+print(
+    "The DarSIA EMD distance (Bregman) between the two mass distributions is: ",
+    bregman_distance,
+)
+print("Status (Bregman):", bregman_status)
+
+print()
+
+
+# ! ---- CV2 analogon ----
 
 # Determine the EMD
 emd = darsia.EMD()
