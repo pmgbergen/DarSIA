@@ -1,4 +1,4 @@
-"""Functionality to determine the Earth Mover's distance between images.
+"""Functionality to determine the Earth Mover's distance between images via cv2.
 
 """
 from __future__ import annotations
@@ -14,8 +14,10 @@ import darsia
 
 
 class EMD:
-    """
-    Class to determine the EMD through cv2.
+    """Class to determine the EMD through cv2.
+
+    NOTE: EMD from cv2 suffers from strict memory limitations. Alternative algorithms
+    are provided in the module :mod:wasserstein.
 
     """
 
@@ -44,6 +46,7 @@ class EMD:
             float or array: distance between img_1 and img_2.
 
         """
+        # FIXME investigation required regarding resize preprocessing...
         # Preprocess images
         preprocessed_img_1 = self._preprocess(img_1)
         preprocessed_img_2 = self._preprocess(img_2)
@@ -51,7 +54,11 @@ class EMD:
         # Compatibilty check
         self._compatibility_check(preprocessed_img_1, preprocessed_img_2)
 
-        # Normalization
+        # Normalization I - required to put the final EMD in physical units. Scale all
+        # cell values with the respective cell volume.
+        cell_volume = np.prod(preprocessed_img_1.voxel_size)
+
+        # Normalization II - required to run cv2.EMD
         integral = self._sum(preprocessed_img_1)
         normalized_img_1 = self._normalize(preprocessed_img_1)
         normalized_img_2 = self._normalize(preprocessed_img_2)
@@ -67,7 +74,8 @@ class EMD:
         for i in range(time_num):
             dist[i], _, flow = cv2.EMD(sig_1[i], sig_2[i], cv2.DIST_L2)
 
-        rescaled_distance = np.multiply(dist, integral)
+        # Put the EMD in physical units, and rescale to the original sum.
+        rescaled_distance = np.multiply(dist, integral * cell_volume)
 
         return float(rescaled_distance) if time_num == 1 else rescaled_distance
 
