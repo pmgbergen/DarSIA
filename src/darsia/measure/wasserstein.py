@@ -52,6 +52,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 - lumping (bool): lump the mass matrix. Defaults to True.
 
         """
+        # TODO improve documentation for options - method dependent
         # Cache geometrical infos
         self.shape = shape
         self.voxel_size = voxel_size
@@ -697,7 +698,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
     def _solve(self, flat_mass_diff):
         # Solver parameters
         num_iter = self.options.get("num_iter", 100)
-        tol = self.options.get("tol", 1e-6)
+        # tol = self.options.get("tol", 1e-6) # TODO make use of tol, or remove
         self.L = self.options.get("L", 1.0)
 
         rhs = np.concatenate(
@@ -826,3 +827,36 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         }
 
         return new_distance, solution_i, status
+
+
+# Quick access
+def wasserstein_distance(
+    mass_1: darsia.Image, mass_2: darsia.Image, method: str, options: dict, **kwargs
+):
+    """Quick access to Wasserstein distance computation between images with same mass.
+
+    Args:
+        mass_1 (darsia.Image): image 1
+        mass_2 (darsia.Image): image 2
+        method (str): method to use ("newton" or "bregman")
+        options (dict): options for the method
+        **kwargs: additional arguments
+            - plot_solution (bool): plot the solution. Defaults to False.
+            - return_solution (bool): return the solution. Defaults to False.
+    """
+    shape = mass_1.img.shape
+    voxel_size = mass_1.voxel_size
+    dim = mass_1.space_dim
+    plot_solution = kwargs.get("plot_solution", False)
+    return_solution = kwargs.get("return_solution", False)
+
+    if method.lower() == "newton":
+        w1 = WassersteinDistanceNewton(shape, voxel_size, dim, options)
+    elif method.lower() == "bregman":
+        w1 = WassersteinDistanceBregman(shape, voxel_size, dim, options)
+    else:
+        raise NotImplementedError(f"Method {method} not implemented.")
+
+    return w1(
+        mass_1, mass_2, plot_solution=plot_solution, return_solution=return_solution
+    )
