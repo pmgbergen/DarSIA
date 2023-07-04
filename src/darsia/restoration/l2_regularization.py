@@ -1,11 +1,8 @@
-"""
-L2 regularization of images.
+"""L2 regularization of images.
+
 """
 
 from __future__ import annotations
-
-from typing import Optional
-from warnings import warn
 
 import numpy as np
 import skimage
@@ -14,101 +11,61 @@ import darsia as da
 
 
 def L2_regularization(
-    im: np.ndarray,
+    img: np.ndarray,
     mu: float,
     omega: float = 1.0,
-    color: bool = False,
     dim: int = 2,
-    maxiter: int = 100,
-    tol: Optional[float] = None,
-    solver_type: str = "jacobi",
-    mg_depth: int = 3,
-    verbose=False,
+    solver: da.Solver = da.Jacobi(),
 ) -> np.ndarray:
     """
     L2 regularization of images.
 
-    min_u 1/2 ||omega(u - im)||_2^2 + mu/2 ||nabla u||_2^2
+    min_u 1/2 ||u - img||_{2,omega}^2 + 1/2 ||nabla u||_{2,mu}^2
+
+    with ||u||_{2,omega}^2 = \int omega |u|^2 dx, and similary for the second term.
 
     Args:
-        im (np.ndarray): image to regularize
+        img (np.ndarray): image to regularize
         mu (float): regularization parameter
-        omega (Optional[float]): weighting of the image
-            term (Should account for denoising effects).
-        color (bool): if True, the image is assumed to
-            be in some trichromatic color space. Default
-            is False.
+        omega (Optional[float]): weighting of the image term (Should account for
+            denoising effects).
         dim (int): dimension of the image. Default is 2.
-        maxiter (int): number of iterations. Default is 100.
-        tol (Optional[float]): tolerance for convergence
-        solver_type (str): solver to use. Default is "jacobi".
-            Options are "jacobi", "cg", and "mg".
-        mg_depth (int): depth of the multigrid solver. Default is 3.
-        verbose (bool): print convergence information
+        solver (da.Solver): solver to use. Default is da.Jacobi().
 
     Returns:
         np.ndarray: regularized image
+
     """
 
-    im_dtype = im.dtype
+    # Keep track of input type and convert input image to float for further calculations
+    img_dtype = img.dtype
+    img_float = skimage.img_as_float(img)
 
-    # convert input image to float
-    im = skimage.img_as_float(im)
+    # Setup the solver (L2-diffusion equation)
+    solver.update_params(
+        mass_coeff=omega,
+        diffusion_coeff=mu,
+        dim=dim,
+    )
 
-    # Setup the solver
-    if solver_type == "jacobi":
-        solver: da.Solver = da.Jacobi(
-            mass_coeff=omega,
-            diffusion_coeff=mu,
-            dim=dim,
-            maxiter=maxiter,
-            tol=tol,
-            verbose=verbose,
+    # Solve the minimization problem for each channel separately
+    if len(img.shape) != dim:
+        # Iterate over all components of the image and apply the regularization
+        # separately.
+        img_reordered = np.moveaxis(
+            img_float, np.arange(dim).tolist(), np.arange(-dim, 0).tolist()
         )
-    elif solver_type == "cg":
-        solver = da.CG(
-            mass_coeff=omega,
-            diffusion_coeff=mu,
-            dim=dim,
-            maxiter=maxiter,
-            tol=tol,
-            verbose=verbose,
-        )
-
-    elif solver_type == "mg":
-        solver = da.MG(
-            mass_coeff=omega,
-            diffusion_coeff=mu,
-            depth=mg_depth,
-            dim=dim,
-            maxiter=maxiter,
-            tol=tol,
-            verbose=verbose,
+        out_img_reordered = np.zeros_like(img_reordered)
+        for idx in np.ndindex(img_reordered.shape[:-dim]):
+            out_img_reordered[idx] = solver(
+                x0=img_reordered[idx], rhs=omega * img_reordered[idx]
+            )
+        out_img = np.moveaxis(
+            out_img_reordered, np.arange(-dim, 0).tolist(), np.arange(dim).tolist()
         )
 
-    # Solve the minimization problem for each color channel
-    # (or just once in case of monochromatic image)
-    if color:
-        out_im = np.zeros_like(im)
-        for i in range(3):
-            out_im[:, :, i] = solver(x0=im[:, :, i], rhs=omega * im[:, :, i])
     else:
-        out_im = solver(x0=im, rhs=omega * im)
+        out_img = solver(x0=img, rhs=omega * img)
 
-    if im_dtype == np.uint8:
-        print(np.max(out_im), np.min(out_im))
-        np.clip(out_im, 0, 1, out=out_im)
-        out_im = skimage.img_as_ubyte(out_im)
-        im = skimage.img_as_ubyte(im)
-    elif im_dtype == np.uint16:
-        out_im = skimage.img_as_uint(out_im)
-        im = skimage.img_as_uint(im)
-    elif im_dtype == np.float32:
-        out_im = skimage.img_as_float32(out_im)
-        im = skimage.img_as_float32(im)
-    elif im_dtype == np.float64:
-        out_im = skimage.img_as_float64(out_im)
-        im = skimage.img_as_float64(im)
-    else:
-        warn("{im_dtype} is not a supported dtype. Returning {out_im.dtype} image.")
-    return out_im
+    # Convert output image to the same type as the input image
+    return da.convert_dtype(out_img, img_dtype)
