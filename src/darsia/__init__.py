@@ -13,7 +13,6 @@ from darsia.image.arithmetics import *
 from darsia.mathematics.derivatives import *
 from darsia.mathematics.stoppingcriterion import *
 from darsia.mathematics.solvers import *
-from darsia.mathematics.regularization import *
 from darsia.measure.norms import *
 from darsia.measure.integration import *
 from darsia.measure.emd import *
