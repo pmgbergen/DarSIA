@@ -29,6 +29,7 @@ from darsia.utils.linear_solvers.jacobi import *
 from darsia.utils.linear_solvers.cg import *
 from darsia.utils.linear_solvers.mg import *
 from darsia.utils.andersonacceleration import *
+from darsia.utils.dtype import *
 from darsia.corrections.basecorrection import *
 from darsia.corrections.shape.curvature import *
 from darsia.corrections.shape.affine import *
