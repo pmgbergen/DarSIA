@@ -12,14 +12,14 @@ import darsia as da
 
 def split_bregman_tvd(
     img: np.ndarray,
-    mu: Union[float, np.ndarray],
+    mu: Union[float, np.ndarray] = 1.0,
     omega: Union[float, np.ndarray] = 1.0,
     ell: Optional[Union[float, np.ndarray]] = None,
     dim: int = 2,
-    maxiter: int = 100,
-    tol: Optional[float] = None,
+    max_num_iter: int = 100,
+    eps: Optional[float] = None,
     x0: Optional[tuple[np.ndarray, np.ndarray, np.ndarray]] = None,
-    mode: str = "anisotropic",
+    isotropic: bool = False,
     verbose: Union[bool, int] = False,
     solver: da.Solver = da.Jacobi(),
 ) -> np.ndarray:
@@ -36,11 +36,11 @@ def split_bregman_tvd(
         omega (float or array): mass penalization parameter
         ell (float or array): regularization parameter
         dim (int): spatial dimension of the image
-        maxiter (int): maximum number of iterations
-        tol (float): tolerance for relative increment of the energy functional
+        max_num_iter (int): maximum number of iterations
+        eps (float): tolerance for relative increment of the energy functional
         x0 (tuple of arrays, optional): initial guess for image and split Bregman
             variables
-        mode (str): type of TV denoising to use (anisotropic or isotropic)
+        isotropic (bool): whether to use isotropic TV denoising
         verbose (bool, int): verbosity (frequency if int)
         solver (da.Solver): solver to use for the inner linear system
 
@@ -48,10 +48,6 @@ def split_bregman_tvd(
         array: denoised image
 
     """
-    assert mode in ["anisotropic", "isotropic"], f"Mode {mode} not supported."
-    if mode == "isotropic":
-        raise NotImplementedError("Isotropic TV denoising not implemented yet.")
-
     # Keep track of input type and convert input image to float for further calculations
     img_dtype = img.dtype
 
@@ -103,15 +99,18 @@ def split_bregman_tvd(
         print(f"The energy functional starts at {_functional(img)}")
 
     # Bregman iterations
-    for iter in range(maxiter):
+    for iter in range(max_num_iter):
         # First step - solve the stabilized diffusion system.
         img_new = solver(x0=img_iter, rhs=_rhs_function(d, b))
 
         # Second step - shrinkage.
-        for j in range(dim):
-            dub = da.backward_diff(img=img_new, axis=j, dim=dim) + b[j]
-            d[j] = _shrink(dub, mu / ell)
-            b[j] = dub - d[j]
+        if isotropic:
+            raise NotImplementedError("Isotropic TV denoising not implemented yet.")
+        else:
+            for j in range(dim):
+                dub = da.backward_diff(img=img_new, axis=j, dim=dim) + b[j]
+                d[j] = _shrink(dub, mu / ell)
+                b[j] = dub - d[j]
 
         # Monitor performance
         relative_increment = np.linalg.norm(img_new - img_iter) / img_nrm
@@ -126,8 +125,8 @@ def split_bregman_tvd(
         img_iter = img_new.copy()
 
         # Convergence check
-        if tol is not None:
-            if relative_increment < tol:
+        if eps is not None:
+            if relative_increment < eps:
                 break
 
     return da.convert_dtype(img_iter, img_dtype)
