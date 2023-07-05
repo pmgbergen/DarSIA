@@ -95,7 +95,7 @@ class CoordinateTransformation:
 
         """
 
-        if not self.dim in [2, 3]:
+        if self.dim not in [2, 3]:
             raise NotImplementedError(
                 "Intersection option only supported in 2d and 3d."
             )
