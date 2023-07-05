@@ -95,27 +95,50 @@ class CoordinateTransformation:
 
         """
 
-        if not self.dim == 2:
-            raise NotImplementedError("Intersection option only supported in 2d.")
+        if not self.dim in [2, 3]:
+            raise NotImplementedError(
+                "Intersection option only supported in 2d and 3d."
+            )
 
         # Find the voxel locations of the corners in the source array - need them
         # sorted.
         shape_src = self.coordinatesystem_src.shape
-        corner_voxels_src = np.array(
-            [
-                [0, 0],
-                [shape_src[0], 0],
-                [shape_src[0], shape_src[1]],
-                [0, shape_src[1]],
-            ]
-        )
+        if self.dim == 2:
+            corner_voxels_src = np.array(
+                [
+                    [0, 0],
+                    [shape_src[0], 0],
+                    [shape_src[0], shape_src[1]],
+                    [0, shape_src[1]],
+                ]
+            )
+        elif self.dim == 3:
+            corner_voxels_src = np.array(
+                [
+                    [0, 0, 0],
+                    [shape_src[0], 0, 0],
+                    [shape_src[0], shape_src[1], 0],
+                    [0, shape_src[1], 0],
+                    [0, 0, shape_src[2]],
+                    [shape_src[0], 0, shape_src[2]],
+                    [shape_src[0], shape_src[1], shape_src[2]],
+                    [0, shape_src[1], shape_src[2]],
+                ]
+            )
 
         # Map these to the target canvas
-        corner_coordinates_src = self.coordinatesystem_src.coordinate(corner_voxels_src)
-        corner_coordinates_dst = self.affine_correction.affine_transformation(
-            corner_coordinates_src
-        )
-        corner_voxels_dst = self.coordinatesystem_dst.voxel(corner_coordinates_dst)
+        if self.affine_correction.use_cartesian:
+            corner_coordinates_src = self.coordinatesystem_src.coordinate(
+                corner_voxels_src
+            )
+            corner_coordinates_dst = self.affine_correction.affine_transformation(
+                corner_coordinates_src
+            )
+            corner_voxels_dst = self.coordinatesystem_dst.voxel(corner_coordinates_dst)
+        else:
+            corner_voxels_dst = self.affine_correction.affine_transformation(
+                corner_voxels_src
+            )
 
         # Clip to active canvas
         num_corners = len(corner_voxels_src)
@@ -128,13 +151,34 @@ class CoordinateTransformation:
 
         # Determine the largest interior rectangle - require to transform to format
         # expected by lir
-        lir_dst = lir.lir(np.array([active_corner_voxels_dst]).astype(np.int32))
-        rectangle_mask_corners = [lir.pt1(lir_dst), lir.pt2(lir_dst)]
+        if self.dim == 2:
+            lir_dst = lir.lir(np.array([active_corner_voxels_dst]).astype(np.int32))
+            rectangle_mask_corners = [lir.pt1(lir_dst), lir.pt2(lir_dst)]
+            return (
+                slice(rectangle_mask_corners[0][0], rectangle_mask_corners[1][0]),
+                slice(rectangle_mask_corners[0][1], rectangle_mask_corners[1][1]),
+            )
+        elif self.dim == 3:
+            # NOTE: In 3d, not the largest interior but smallest exterior rectangle is
+            # returned, which is not ideal, but is easier to access. The application of
+            # lir requires the input to be ordered and oriented in a specific way. In
+            # addition, it only works for 2d arrays. Therefore, we need to apply lir
+            # for each plane separately. After all, it is not straightforward: FIXME.
 
-        return (
-            slice(rectangle_mask_corners[0][0], rectangle_mask_corners[1][0]),
-            slice(rectangle_mask_corners[0][1], rectangle_mask_corners[1][1]),
-        )
+            return (
+                slice(
+                    int(np.min(active_corner_voxels_dst[:, 0])),
+                    int(np.max(active_corner_voxels_dst[:, 0])),
+                ),
+                slice(
+                    int(np.min(active_corner_voxels_dst[:, 1])),
+                    int(np.max(active_corner_voxels_dst[:, 1])),
+                ),
+                slice(
+                    int(np.min(active_corner_voxels_dst[:, 2])),
+                    int(np.max(active_corner_voxels_dst[:, 2])),
+                ),
+            )
 
     def correct_metadata(self, image: darsia.Image) -> dict:
         """Correction routine of metadata.
