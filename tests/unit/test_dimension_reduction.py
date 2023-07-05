@@ -18,8 +18,8 @@ def test_axis_averaging_x():
         scalar=True,
     )
 
-    averaging_axis = darsia.AxisAveraging(axis="x", dim=3)
-    averaging_index = darsia.AxisAveraging(axis=2, dim=3)
+    averaging_axis = darsia.AxisReduction(axis="x", dim=3, mode = "sum")
+    averaging_index = darsia.AxisReduction(axis=2, dim=3, mode = "sum")
 
     image_2d_via_axis = averaging_axis(image_3d)
     image_2d_via_index = averaging_index(image_3d)
@@ -45,8 +45,8 @@ def test_axis_averaging_y():
         scalar=True,
     )
 
-    averaging_axis = darsia.AxisAveraging(axis="y", dim=3)
-    averaging_index = darsia.AxisAveraging(axis=1, dim=3)
+    averaging_axis = darsia.AxisReduction(axis="y", dim=3, mode = "sum")
+    averaging_index = darsia.AxisReduction(axis=1, dim=3, mode = "sum")
 
     image_2d_via_axis = averaging_axis(image_3d)
     image_2d_via_index = averaging_index(image_3d)
@@ -72,8 +72,8 @@ def test_axis_averaging_z():
         scalar=True,
     )
 
-    averaging_axis = darsia.AxisAveraging(axis="z", dim=3)
-    averaging_index = darsia.AxisAveraging(axis=0, dim=3)
+    averaging_axis = darsia.AxisReduction(axis="z", dim=3, mode = "sum")
+    averaging_index = darsia.AxisReduction(axis=0, dim=3, mode = "sum")
 
     image_2d_via_axis = averaging_axis(image_3d)
     image_2d_via_index = averaging_index(image_3d)
@@ -103,8 +103,8 @@ def test_axis_averaging_series_x():
         time=[0, 1, 2, 3, 4, 5],
     )
 
-    averaging_axis = darsia.AxisAveraging(axis="x", dim=3)
-    averaging_index = darsia.AxisAveraging(axis=2, dim=3)
+    averaging_axis = darsia.AxisReduction(axis="x", dim=3, mode = "sum")
+    averaging_index = darsia.AxisReduction(axis=2, dim=3, mode = "sum")
 
     image_2d_via_axis = averaging_axis(image_3d)
     image_2d_via_index = averaging_index(image_3d)

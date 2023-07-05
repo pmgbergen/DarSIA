@@ -535,7 +535,7 @@ class Image:
             cut = cut_voxel[axis]
 
         # Make auxiliary use of axis averaging for formatting
-        reduced_image = darsia.average_over_axis(self, axis)
+        reduced_image = darsia.reduce_axis(self, axis)
 
         # Replace array by slice
         if axis == 0:
@@ -979,7 +979,7 @@ class Image:
                             axs[0].set_xlim(bbox[0, 0], bbox[1, 0])
                             axs[0].set_ylim(bbox[0, 1], bbox[1, 1])
                         elif side_view == "voxel":
-                            reduction = darsia.AxisAveraging(axis="z", dim=3)
+                            reduction = darsia.AxisReduction(axis="z", dim=3)
                             reduced_image = reduction(time_slice)
                             axs[0].imshow(
                                 skimage.img_as_float(reduced_image.img),
@@ -1009,7 +1009,7 @@ class Image:
                             axs[1].set_xlim(bbox[0, 0], bbox[1, 0])
                             axs[1].set_ylim(bbox[0, 2], bbox[1, 2])
                         elif side_view == "voxel":
-                            reduction = darsia.AxisAveraging(axis="y", dim=3)
+                            reduction = darsia.AxisReduction(axis="y", dim=3)
                             reduced_image = reduction(time_slice)
                             axs[1].imshow(
                                 skimage.img_as_float(reduced_image.img),
@@ -1039,7 +1039,7 @@ class Image:
                             axs[2].set_xlim(bbox[0, 1], bbox[1, 1])
                             axs[2].set_ylim(bbox[0, 2], bbox[1, 2])
                         elif side_view == "voxel":
-                            reduction = darsia.AxisAveraging(axis="x", dim=3)
+                            reduction = darsia.AxisReduction(axis="x", dim=3)
                             reduced_image = reduction(time_slice)
                             axs[2].imshow(
                                 skimage.img_as_float(reduced_image.img),
@@ -1329,7 +1329,7 @@ class Image:
                             )
 
                         # xy-plane
-                        reduction = darsia.AxisAveraging(axis="z", dim=3)
+                        reduction = darsia.AxisReduction(axis="z", dim=3)
                         reduced_image = reduction(time_slice)
                         fig_2d.add_trace(
                             go.Heatmap(
@@ -1342,7 +1342,7 @@ class Image:
                         )
 
                         # xz-plane
-                        reduction = darsia.AxisAveraging(axis="y", dim=3)
+                        reduction = darsia.AxisReduction(axis="y", dim=3)
                         reduced_image = reduction(time_slice)
                         fig_2d.add_trace(
                             go.Heatmap(
@@ -1355,7 +1355,7 @@ class Image:
                         )
 
                         # yz-plane
-                        reduction = darsia.AxisAveraging(axis="x", dim=3)
+                        reduction = darsia.AxisReduction(axis="x", dim=3)
                         reduced_image = reduction(time_slice)
                         fig_2d.add_trace(
                             go.Heatmap(

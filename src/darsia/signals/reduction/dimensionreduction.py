@@ -1,4 +1,4 @@
-"""Dimension modification (reduction via axis averaging and extrusion).
+"""Dimension modification (reduction along axis and extrusion).
 
 """
 
@@ -9,19 +9,19 @@ import numpy as np
 import darsia
 
 
-class AxisAveraging:
-    """Object for averaging along a provided axis.
+class AxisReduction:
+    """Object for reduction along a provided axis."""
 
-    Attributes:
-        axis (int): axis in matrix indexing along which averaging is performed.
-
-    """
-
-    def __init__(self, axis: Union[str, int], dim: int = 3, mode: str = "sum") -> None:
+    def __init__(
+        self, axis: Union[str, int], dim: int = 3, mode: str = "average", **kwargs
+    ) -> None:
         """
         Args:
             axis (int or str): numeric axis index (matrix indexing) or Cartesian axis
             dim (int): dimension of the input image
+            mode (str): mode used in the reduction ("average", "sum", "slice")
+            kwargs: additional arguments:
+                - "depth" (int): depth of the slice (only for mode "slice")
 
         Raises:
             NotImplementedError: if dim not 3.
@@ -41,16 +41,19 @@ class AxisAveraging:
             axis = "xyz"[cartesian_index]
 
         self.index: int = index
-        """Matrix index along which averaging is performed."""
+        """Matrix index along which reduction is performed."""
 
         self.axis: int = "xyz".find(axis)
-        """Cartesian axis along which averaging is performed."""
+        """Cartesian axis along which reduction is performed."""
 
         self.mode: str = mode
         """Mode."""
 
+        self.kwargs: dict = kwargs
+        """Additional arguments."""
+
     def __call__(self, img: darsia.Image) -> darsia.Image:
-        """Averaging routine.
+        """Reduction routine.
 
         Args:
             img (Image): nd image.
@@ -77,19 +80,24 @@ class AxisAveraging:
         interim_indexing = original_indexing.replace(original_indexing[self.index], "")
 
         # Reduce the data
-        img_arr = np.sum(img.img, axis=self.index)
+        if self.mode in ["average", "sum"]:
+            img_arr = np.sum(img.img, axis=self.index)
 
-        if self.mode == "sum":
-            pass
-        elif self.mode == "scaled":
-            img_arr /= img.img.shape[self.index]
+            if self.mode == "average":
+                img_arr /= img.img.shape[self.index]
+            elif self.mode == "sum":
+                pass
+        elif self.mode == "slice":
+            full_arr = img.img.copy()
+            full_arr = np.moveaxis(full_arr, self.index, 0)
+            for i in range(self.index - 1, 0, -1):
+                full_arr = np.moveaxis(full_arr, i - 1, i)
+            depth = self.kwargs["depth"]
+            img_arr = full_arr[depth, ...]
 
         # Reduce dimensions
         new_dimensions = img.dimensions.copy()
         new_dimensions.pop(self.index)
-
-        # Fetch effective depth
-        # depth = img.dimensions[self.index] # TODO attach geometry and change?
 
         # Find coordinate of Cartesian 'origin', i.e., [xmin, ymin, zmin]
         min_corner = img.origin.copy()
@@ -129,25 +137,26 @@ class AxisAveraging:
         return type(img)(img=img_arr, **metadata)
 
 
-def average_over_axis(
-    image: darsia.Image, axis: Union[str, int], mode: str = "sum"
+def reduce_axis(
+    image: darsia.Image, axis: Union[str, int], mode: str = "average", **kwargs
 ) -> darsia.Image:
-    """Utility function, essentially wrapping AxisAveraging as a method.
+    """Utility function, essentially wrapping AxisReduction as a method.
 
     Args:
         img (Image): nd image.
         axis (int or str): numeric index (corresponding to matrix indexing) or
             Cartesian axis
-        dim (int): dimension of the input image
-        mode (str): mode used in the averaging
+        mode (str): mode used in the reduction ("sum", "scaled", "slice")
+        kwargs: additional arguments:
+            - "depth" (int): depth of the slice (only for mode "slice")
 
     Returns:
         Image: (n-1)d image.
 
     """
     dim = image.space_dim
-    averaging = AxisAveraging(axis, dim, mode)
-    return averaging(image)
+    reduction = AxisReduction(axis, dim, mode, **kwargs)
+    return reduction(image)
 
 
 def extrude_along_axis(img: darsia.Image, height: float, num: int) -> darsia.Image:
