@@ -2,9 +2,9 @@
 
 """
 
-import time
 from pathlib import Path
 
+import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -456,8 +456,6 @@ def qualitative_comparison(
 ):
     ##############################################################################
     # Plot the reconstructed vtu data, vtu plus Gaussian noise, and the dicom data.
-    import matplotlib
-    import matplotlib.cm as cm
 
     if mode == "sum":
         dicom_image = darsia.reduce_axis(full_dicom_image, axis="z", mode="average")
@@ -621,8 +619,33 @@ if heterogeneous_omega:
     mask_zero = dicom_rescaled.img < 1e-4
     omega[mask_zero] = 1
     plot_slice(omega)
+
+    # Save plot
+    reduced_dicom_concentration_2d = darsia.reduce_axis(
+        dicom_concentration_3d, axis="z", mode="slice", depth=20
+    )
+    shape = reduced_dicom_concentration_2d.num_voxels
+    dimensions = reduced_dicom_concentration_2d.dimensions
+
+    x_pixel, y_pixel = np.meshgrid(
+        np.linspace(dimensions[0], 0, shape[0]),
+        np.linspace(0, dimensions[1], shape[1]),
+        indexing="ij",
+    )
+    fig_mask, axs_mask = plt.subplots(nrows=1, ncols=1)
+    axs_mask.pcolormesh(y_pixel, x_pixel, omega[20], cmap="turbo")
+    axs_mask.set_ylim(top=0.08)
+    axs_mask.set_aspect("equal")
+    axs_mask.set_xlabel("x [cm]")  # , fontsize=14)
+    axs_mask.set_ylabel("y [cm]")  # , fontsize=14)
+    fig_mask.colorbar(cm.ScalarMappable(cmap="turbo"), ax=axs_mask)
+    fig_mask.savefig("omega.png", dpi=500, transparent=True)
+    plt.close()
 else:
     omega = 0.015
+
+# Choose file suffix depeneding on omega
+suffix = "heter" if heterogeneous_omega else "hom"
 
 # DICOM concentration with H1 regularization
 if True:
@@ -633,19 +656,23 @@ if True:
         dim=3,
         solver=darsia.CG(maxiter=10000, tol=1e-5),
     )
-    h1_reg_dicom_concentration_3d.save("h1_reg_dicom_concentration.npz")
+    h1_reg_dicom_concentration_3d.save(f"h1_reg_dicom_concentration_{suffix}.npz")
 else:
-    h1_reg_dicom_concentration = darsia.imread("h1_reg_dicom_concentration.npz")
+    h1_reg_dicom_concentration = darsia.imread(
+        f"h1_reg_dicom_concentration_{suffix}.npz"
+    )
 h1_reg_dicom_concentration_3d = rescale_data(
     h1_reg_dicom_concentration_3d, vtu_3d_integral
 )
 
 # DICOM concentration with TVD regularization
+isotropic = True
+isotropic_suffix = "iso" if isotropic else "aniso"
 if True:
     tvd_reg_dicom_concentration_3d = darsia.tvd(
         dicom_concentration_3d,
         method="heterogeneous bregman",
-        isotropic=True,
+        isotropic=isotropic,
         weight=0.005,
         omega=omega,
         dim=3,
@@ -654,9 +681,13 @@ if True:
         verbose=True,
         solver=darsia.Jacobi(maxiter=20),
     )
-    tvd_reg_dicom_concentration_3d.save("tvd_reg_dicom_concentration.npz")
+    tvd_reg_dicom_concentration_3d.save(
+        f"tvd_{isotropic_suffix}_reg_dicom_concentration_{suffix}.npz"
+    )
 else:
-    tvd_reg_dicom_concentration = darsia.imread("tvd_reg_dicom_concentration.npz")
+    tvd_reg_dicom_concentration = darsia.imread(
+        f"tvd_{isotropic_suffix}_reg_dicom_concentration_{suffix}.npz"
+    )
 tvd_reg_dicom_concentration_3d = rescale_data(
     tvd_reg_dicom_concentration_3d, vtu_3d_integral
 )
@@ -688,29 +719,23 @@ qualitative_comparison(
     "sum",
     h1_reg_dicom_concentration_3d,
     vtu_concentration_3d,
-    "h1_reg_dicom_avg_heter.png" if heterogeneous_omega else "h1_reg_dicom_avg_hom.png",
+    f"h1_reg_dicom_avg_{suffix}.png",
 )
 qualitative_comparison(
     "slice",
     h1_reg_dicom_concentration_3d,
     vtu_concentration_3d,
-    "h1_reg_dicom_slice_heter.png"
-    if heterogeneous_omega
-    else "h1_reg_dicom_slice_hom.png",
+    f"h1_reg_dicom_slice_{suffix}.png",
 )
 qualitative_comparison(
     "sum",
     tvd_reg_dicom_concentration_3d,
     vtu_concentration_3d,
-    "tvd_reg_dicom_avg_heter.png"
-    if heterogeneous_omega
-    else "tvd_reg_dicom_avg_hom.png",
+    f"tvd_{isotropic_suffix}_reg_dicom_avg_{suffix}.png",
 )
 qualitative_comparison(
     "slice",
     tvd_reg_dicom_concentration_3d,
     vtu_concentration_3d,
-    "tvd_reg_dicom_slice_heter.png"
-    if heterogeneous_omega
-    else "tvd_reg_dicom_slice_hom.png",
+    f"tvd_{isotropic_suffix}_reg_dicom_slice_{suffix}.png",
 )
