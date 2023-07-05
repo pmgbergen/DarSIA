@@ -21,7 +21,7 @@ CoordinateType = list[Union[float, int]]
 class CoordinateTransformation:
     """
     General affine transformation (translation, scaling, rotation),
-    applicable for general (up to 4d) images. # TODO is it? check comments below!
+    applicable for general (up to 4d) images.
 
     NOTE: Inherit from base correction to make use of the plain array correction
     routines but complement with meta corrections.
