@@ -176,7 +176,7 @@ class BaseAssistant(ABC):
             self.ax[0].set_xlim(bbox[0, 0], bbox[1, 0])
             self.ax[0].set_ylim(bbox[0, 1], bbox[1, 1])
         else:
-            reduced_image = darsia.average_over_axis(self.img, axis="z")
+            reduced_image = darsia.reduce_axis(self.img, axis="z")
             if self.use_coordinates:
                 self.ax[0].imshow(
                     skimage.img_as_float(reduced_image.img),
@@ -213,7 +213,7 @@ class BaseAssistant(ABC):
             self.ax[1].set_xlim(bbox[0, 0], bbox[1, 0])
             self.ax[1].set_ylim(bbox[0, 2], bbox[1, 2])
         else:
-            reduced_image = darsia.average_over_axis(self.img, axis="y")
+            reduced_image = darsia.reduce_axis(self.img, axis="y")
             if self.use_coordinates:
                 self.ax[1].imshow(
                     skimage.img_as_float(reduced_image.img),
@@ -249,7 +249,7 @@ class BaseAssistant(ABC):
             self.ax[2].set_xlim(bbox[0, 1], bbox[1, 1])
             self.ax[2].set_ylim(bbox[0, 2], bbox[1, 2])
         else:
-            reduced_image = darsia.average_over_axis(self.img, axis="x")
+            reduced_image = darsia.reduce_axis(self.img, axis="x")
             if self.use_coordinates:
                 self.ax[2].imshow(
                     skimage.img_as_float(reduced_image.img),
