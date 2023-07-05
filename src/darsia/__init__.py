@@ -10,7 +10,6 @@ from darsia.image.patches import *
 from darsia.image.subregions import *
 from darsia.image.imread import *
 from darsia.image.arithmetics import *
-from darsia.measure.norms import *
 from darsia.measure.integration import *
 from darsia.measure.emd import *
 from darsia.measure.wasserstein import *
