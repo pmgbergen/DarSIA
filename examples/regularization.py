@@ -29,8 +29,8 @@ img_regularized_tvd = darsia.tvd(
     # solver = darsia.CG(maxiter = 20, tol = 1e-3)
 )
 
-# Regularize image using l2 regularization
-img_regularized_l2 = darsia.L2_regularization(
+# Regularize image using H1 regularization
+img_regularized_h1 = darsia.H1_regularization(
     img=img,
     mu=1,
     omega=1,
@@ -43,6 +43,6 @@ plt.figure("img slice")
 plt.imshow(img.img[100, :, :])
 plt.figure("regularized tvd slice")
 plt.imshow(img_regularized_tvd.img[100, :, :])
-plt.figure("regularized l2 slice")
-plt.imshow(img_regularized_l2.img[100, :, :])
+plt.figure("regularized H1 slice")
+plt.imshow(img_regularized_H1.img[100, :, :])
 plt.show()
