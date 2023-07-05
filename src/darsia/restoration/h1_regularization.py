@@ -1,4 +1,4 @@
-"""L2 regularization of images.
+"""H1 regularization of images.
 
 """
 
@@ -12,7 +12,7 @@ import skimage
 import darsia as da
 
 
-def _L2_regularization_array(
+def _H1_regularization_array(
     img: np.ndarray,
     mu: float,
     omega: float = 1.0,
@@ -20,7 +20,7 @@ def _L2_regularization_array(
     solver: da.Solver = da.Jacobi(),
 ) -> np.ndarray:
     """
-    L2 regularization of numpy arrays.
+    H1 regularization of numpy arrays.
 
     min_u 1/2 ||u - img||_{2,omega}^2 + 1/2 ||nabla u||_{2,mu}^2
 
@@ -73,14 +73,14 @@ def _L2_regularization_array(
     return da.convert_dtype(out_img, img_dtype)
 
 
-def _L2_regularization_image(
+def _H1_regularization_image(
     img: da.Image,
     mu: float,
     omega: float = 1.0,
     dim: int = 2,
     solver: da.Solver = da.Jacobi(),
 ) -> da.Image:
-    """L2 regularization of darsia.Image.
+    """H1 regularization of darsia.Image.
 
     Args:
         img (darsia.Image): image
@@ -95,7 +95,7 @@ def _L2_regularization_image(
 
     """
     regularized_img = img.copy()
-    regularized_img.img = _L2_regularization_array(
+    regularized_img.img = _H1_regularization_array(
         img=img.img,
         mu=mu,
         omega=omega,
@@ -105,14 +105,14 @@ def _L2_regularization_image(
     return regularized_img
 
 
-def L2_regularization(
+def H1_regularization(
     img: Union[np.ndarray, da.Image],
     mu: float,
     omega: float = 1.0,
     dim: int = 2,
     solver: da.Solver = da.Jacobi(),
 ) -> Union[np.ndarray, da.Image]:
-    """Inline application of L2 regularization.
+    """Inline application of H1 regularization.
 
     Args:
         img (np.ndarray or Image): image
@@ -127,7 +127,7 @@ def L2_regularization(
 
     """
     if isinstance(img, np.ndarray):
-        return _L2_regularization_array(
+        return _H1_regularization_array(
             img=img,
             mu=mu,
             omega=omega,
@@ -135,7 +135,7 @@ def L2_regularization(
             solver=solver,
         )
     elif isinstance(img, da.Image):
-        return _L2_regularization_image(
+        return _H1_regularization_image(
             img=img,
             mu=mu,
             omega=omega,
