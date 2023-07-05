@@ -108,7 +108,13 @@ def split_bregman_tvd(
 
         # Second step - shrinkage.
         if isotropic:
-            raise NotImplementedError("Isotropic TV denoising not implemented yet.")
+            dub = b.copy()
+            for j in range(dim):
+                dub[..., j] += da.backward_diff(img=img_new, axis=j, dim=dim)
+            s = np.linalg.norm(dub, 2, axis=-1)
+            shrinkage_factor = np.maximum(s - mu / ell, 0) / (s + 1e-18)
+            d = dub * shrinkage_factor[..., None]
+            b = dub - d
         else:
             for j in range(dim):
                 dub = da.backward_diff(img=img_new, axis=j, dim=dim) + b[..., j]
