@@ -148,3 +148,35 @@ def average_over_axis(
     dim = image.space_dim
     averaging = AxisAveraging(axis, dim, mode)
     return averaging(image)
+
+
+def extrude_along_axis(img: darsia.Image, height: float, num: int) -> darsia.Image:
+    """Extrude 2d image to a 3d image.
+
+    NOTE: For now the extrusion is performed along the z axis.
+
+    Args:
+        img (darsia.Image): 2d image
+        height (float): height of the extrusion
+        num (int): number of pixels per extruded axis
+
+    Returns:
+        darsia.Image: 3d image
+
+    """
+    # Fetch data and extrude along 0-axis (z-axis)
+    arr = img.img
+    shape = arr.shape
+    arr_3d = np.zeros((num, *shape), dtype=arr.dtype)
+    for i in range(num):
+        arr_3d[i, ...] = arr
+
+    # Update metadata
+    meta = img.metadata()
+    assert meta["dim"] == 2
+    meta["dim"] = 3
+    meta["dimensions"] = [height, *meta["dimensions"]]
+    meta["indexing"] = "ijk"
+    meta["origin"] = [height, *meta["origin"]]
+
+    return type(img)(img=arr_3d, **meta)
