@@ -23,7 +23,7 @@ def split_bregman_tvd(
     verbose: Union[bool, int] = False,
     solver: da.Solver = da.Jacobi(),
 ) -> np.ndarray:
-    """Split Bregman algorithm for anisotropic TV denoising.
+    """Split Bregman algorithm for TV denoising.
 
     The Bregman iteration introduces a regularization term to the TV denoising allowing
     for a split of the problem into two subproblems. The first subproblem is a
@@ -78,9 +78,12 @@ def split_bregman_tvd(
         return np.maximum(np.abs(x) - k, 0) * np.sign(x)
 
     # Define right hand side function
-    def _rhs_function(dt: list[np.ndarray], bt: list[np.ndarray]) -> np.ndarray:
+    def _rhs_function(dt: np.ndarray, bt: np.ndarray) -> np.ndarray:
         return omega * img + ell * sum(
-            [da.forward_diff(img=bt[i] - dt[i], axis=i, dim=dim) for i in range(dim)]
+            [
+                da.forward_diff(img=bt[..., i] - dt[..., i], axis=i, dim=dim)
+                for i in range(dim)
+            ]
         )
 
     # Define initial guess if provided, otherwise start with input image and allovate
@@ -92,8 +95,8 @@ def split_bregman_tvd(
         b = b0
     else:
         img_iter = skimage.img_as_float(img.copy())
-        d = [np.zeros(img.shape) for _ in range(dim)]
-        b = [np.zeros(img.shape) for _ in range(dim)]
+        d = np.zeros((*img.shape, dim), dtype=img.dtype)
+        b = np.zeros((*img.shape, dim), dtype=img.dtype)
 
     if verbose if isinstance(verbose, bool) else verbose > 0:
         print(f"The energy functional starts at {_functional(img)}")
@@ -105,12 +108,18 @@ def split_bregman_tvd(
 
         # Second step - shrinkage.
         if isotropic:
-            raise NotImplementedError("Isotropic TV denoising not implemented yet.")
+            dub = b.copy()
+            for j in range(dim):
+                dub[..., j] += da.backward_diff(img=img_new, axis=j, dim=dim)
+            s = np.linalg.norm(dub, 2, axis=-1)
+            shrinkage_factor = np.maximum(s - mu / ell, 0) / (s + 1e-18)
+            d = dub * shrinkage_factor[..., None]
+            b = dub - d
         else:
             for j in range(dim):
-                dub = da.backward_diff(img=img_new, axis=j, dim=dim) + b[j]
-                d[j] = _shrink(dub, mu / ell)
-                b[j] = dub - d[j]
+                dub = da.backward_diff(img=img_new, axis=j, dim=dim) + b[..., j]
+                d[..., j] = _shrink(dub, mu / ell)
+                b[..., j] = dub - d[..., j]
 
         # Monitor performance
         relative_increment = np.linalg.norm(img_new - img_iter) / img_nrm
