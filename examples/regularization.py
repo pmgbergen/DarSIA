@@ -10,9 +10,6 @@ image_folder = f"{os.path.dirname(__file__)}/images/"
 img_path = image_folder + "dicom_3d.npy"
 img = darsia.imread(img_path, dimensions=[0.1, 0.1, 0.1])
 
-# Normalize image
-img.img /= np.max(img.img)
-
 # Make regularization parameter heterogenous (for illustration purposes)
 mu = np.ones_like(img.img)
 mu[:, 0:100, :] = 0.5
@@ -24,12 +21,12 @@ img_regularized_tvd = darsia.tvd(
     isotropic=False,
     weight=mu,
     omega=0.1,
-    max_num_iter=10,
+    max_num_iter=30,
     eps=1e-6,
     dim=3,
     verbose=True,
     # solver = darsia.CG(maxiter = 20, tol = 1e-3)
-    solver=darsia.Jacobi(maxiter=10),
+    solver=darsia.Jacobi(maxiter=20),
 )
 
 # Regularize image using l2 regularization
