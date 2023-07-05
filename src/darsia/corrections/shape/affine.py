@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import itertools
 from typing import Optional, Union
+from warnings import warn
 
 import numpy as np
 import scipy.optimize as optimize
@@ -288,8 +289,7 @@ class AffineTransformation:
                 f"Calibration successful with obtained model parameters {opt_result.x}."
             )
         else:
-            print(opt_result.x)
-            raise ValueError("Calibration not successful.")
+            warn(f"Calibration not successful. Obtained results: {opt_result.x}")
 
         return opt_result.success
 
