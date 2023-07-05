@@ -1,6 +1,6 @@
-"""Module containinig objects for dimension reduction,
-in the sense of vertical averaging, but extended to any
-axis in space and time."""
+"""Dimension modification (reduction via axis averaging and extrusion).
+
+"""
 
 from typing import Union
 
