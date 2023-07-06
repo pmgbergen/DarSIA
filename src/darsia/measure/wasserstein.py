@@ -490,40 +490,71 @@ class VariationalWassersteinDistance(darsia.EMD):
             indexing="ij",
         )
 
+        # Control of flux arrows
         scaling = self.options.get("scaling", 1.0)
+        frequency = self.options.get("plot_frequency", 1)
 
         # Plot the fluxes and pressure
-        plt.figure("Beckman solution")
+        plt.figure("Beckman pressure solution")
         plt.pcolormesh(X, Y, pressure, cmap="turbo")
-        plt.colorbar()
+        plt.colorbar(label="pressure")
         plt.quiver(
-            X,
-            Y,
-            scaling * flux[:, :, 0],
-            -scaling * flux[:, :, 1],
+            X[::frequency, ::frequency],
+            Y[::frequency, ::frequency],
+            scaling * flux[::frequency, ::frequency, 0],
+            -scaling * flux[::frequency, ::frequency, 1],
             angles="xy",
             scale_units="xy",
             scale=1,
-            alpha=0.5,
+            alpha=0.25,
+            width=0.005,
         )
+        plt.xlabel("x [m]")
+        plt.ylabel("y [m]")
+        plt.ylim(top=0.08)
+        if self.options["name"] is not None:
+            plt.savefig(
+                self.options["name"] + "_beckman_pressure_solution.png",
+                dpi=500,
+                transparent=True,
+            )
 
         plt.figure("Beckman solution fluxes")
         plt.pcolormesh(X, Y, mass_diff, cmap="turbo")
-        plt.colorbar()
+        plt.colorbar(label="mass difference")
         plt.quiver(
-            X,
-            Y,
-            scaling * flux[:, :, 0],
-            -scaling * flux[:, :, 1],
+            X[::frequency, ::frequency],
+            Y[::frequency, ::frequency],
+            scaling * flux[::frequency, ::frequency, 0],
+            -scaling * flux[::frequency, ::frequency, 1],
             angles="xy",
             scale_units="xy",
             scale=1,
-            alpha=0.5,
+            alpha=0.25,
+            width=0.005,
         )
+        plt.xlabel("x [m]")
+        plt.ylabel("y [m]")
+        plt.ylim(top=0.08)
+        if self.options["name"] is not None:
+            plt.savefig(
+                self.options["name"] + "_beckman_solution_fluxes.png",
+                dpi=500,
+                transparent=True,
+            )
 
         plt.figure("Beckman solution mobility")
         plt.pcolormesh(X, Y, mobility, cmap="turbo")
-        plt.colorbar()
+        plt.colorbar(label="flux modulus")
+        plt.xlabel("x [m]")
+        plt.ylabel("y [m]")
+        plt.ylim(top=0.08)
+        if self.options["name"] is not None:
+            plt.savefig(
+                self.options["name"] + "_beckman_solution_mobility.png",
+                dpi=500,
+                transparent=True,
+            )
 
         plt.show()
 
@@ -861,6 +892,7 @@ def wasserstein_distance(
         plot_solution = kwargs.get("plot_solution", False)
         return_solution = kwargs.get("return_solution", False)
         options = kwargs.get("options", {})
+        options["name"] = kwargs.get("name")
 
         if method.lower() == "newton":
             w1 = WassersteinDistanceNewton(shape, voxel_size, dim, options)
