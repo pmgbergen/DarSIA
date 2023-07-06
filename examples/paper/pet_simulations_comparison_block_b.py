@@ -37,7 +37,6 @@ def read_dicom_images() -> darsia.Image:
         root / Path(p) / Path("DICOM/PA1/ST1/SE1")
         for p in [
             "fractip b closed 1 min rekon start 0 15 frames",
-            # "fractip b closed 1 min frames start 3780",
         ]
     ]
 
@@ -337,15 +336,11 @@ def read_vtu_images(vtu_ind: int) -> darsia.Image:
     """Read-in all available VTU data."""
 
     # This corresponds approx. to (only temporary - not used further):
-    vtu_time = [420 + 240 * i for i in range(8, 9)]
-
-    # The corresponding indices used for storing the simulation data:
-    # vtu_indices = [str(i).zfill(6) for i in [84 + 48 * j for j in range(8, 9)]]
-    # vtu_ind = 416
+    vtu_time = 0 # not relevant here.
 
     # Find the corresponding files
-    vtu_images_2d = Path(f"data_2_{str(vtu_ind).zfill(6)}.vtu")
-    vtu_images_1d = Path(f"data_1_{str(vtu_ind).zfill(6)}.vtu")
+    vtu_images_2d = Path(f"data/vtu/block-b/data_2_{str(vtu_ind).zfill(6)}.vtu")
+    vtu_images_1d = Path(f"data/vtu/block-b/data_1_{str(vtu_ind).zfill(6)}.vtu")
 
     # Define vtu images as DarSIA images
     vtu_image_2d = darsia.imread(
@@ -439,12 +434,69 @@ def align_images(dicom_concentration, vtu_concentration):
     return aligned_dicom_concentration, aligned_vtu_concentration
 
 
+def single_plot(
+    mode: str,
+    full_image: darsia.Image,
+    add_on: str,
+    image_path: Path,
+):
+    ##############################################################################
+    # Plot the reconstructed vtu data, vtu plus Gaussian noise, and the dicom data.
+
+    if mode == "sum":
+        image = darsia.reduce_axis(full_image, axis="z", mode="average")
+    else:
+        image = darsia.reduce_axis(
+            full_image, axis="z", mode="slice", slice_idx=20
+        )
+
+    # Define some plotting options (font, x and ylabels)
+    # matplotlib.rcParams.update({"font.size": 14})
+    # Define x and y labels in cm (have to convert from m to cm)
+    shape = image.num_voxels
+    dimensions = image.dimensions
+
+    x_pixel, y_pixel = np.meshgrid(
+        np.linspace(dimensions[0], 0, shape[0]),
+        np.linspace(0, dimensions[1], shape[1]),
+        indexing="ij",
+    )
+    vmax = 1.25
+    vmin = 0
+    contourlevels = [0.045 * vmax, 0.055 * vmax]
+    cmap = "turbo"
+
+    # Plot the data with contour line.
+    fig_combination, axs_combination = plt.subplots(nrows=1, ncols=1)
+    axs_combination.pcolormesh(
+        y_pixel, x_pixel, image.img, cmap=cmap, vmin=vmin, vmax=vmax
+    )
+    axs_combination.text(
+        0.005, 0.075, "experiment", color="white", alpha=0.5, rotation=0, fontsize=14
+    )
+    axs_combination.text(
+        0.005, 0.070, add_on, color="white", alpha=0.5, rotation=0, fontsize=14
+    )
+    axs_combination.set_ylim(top=0.08)
+    axs_combination.set_aspect("equal")
+    axs_combination.set_xlabel("x [m]", fontsize=14)
+    axs_combination.set_ylabel("y [m]", fontsize=14)
+    fig_combination.colorbar(
+        cm.ScalarMappable(cmap=cmap),
+        ax=axs_combination,
+        label="volumetric concentration",
+    )
+    fig_combination.savefig(image_path, dpi=500, transparent=True)
+
+    plt.show()
+
 def qualitative_comparison(
     mode: str,
     full_dicom_image: darsia.Image,
     full_vtu_image: darsia.Image,
     add_on: str,
     image_path: Path,
+    colorbar: bool= False
 ):
     ##############################################################################
     # Plot the reconstructed vtu data, vtu plus Gaussian noise, and the dicom data.
@@ -498,20 +550,21 @@ def qualitative_comparison(
         0.005, 0.075, "experiment", color="white", alpha=0.5, rotation=0, fontsize=14
     )
     axs_combination.text(
-        0.005, 0.072, add_on, color="white", alpha=0.5, rotation=0, fontsize=14
+        0.005, 0.070, add_on, color="white", alpha=0.5, rotation=0, fontsize=14
     )
     axs_combination.text(
         0.04, 0.075, "simulation", color="white", alpha=0.5, rotation=0, fontsize=14
     )
     axs_combination.set_ylim(top=0.08)
     axs_combination.set_aspect("equal")
-    axs_combination.set_xlabel("x [cm]", fontsize=14)
-    axs_combination.set_ylabel("y [cm]", fontsize=14)
-    fig_combination.colorbar(
-        cm.ScalarMappable(cmap=cmap),
-        ax=axs_combination,
-        label="volumetric concentration",
-    )
+    axs_combination.set_xlabel("x [m]", fontsize=14)
+    axs_combination.set_ylabel("y [m]", fontsize=14)
+    if colorbar:
+        fig_combination.colorbar(
+            cm.ScalarMappable(cmap=cmap),
+            ax=axs_combination,
+            label="volumetric concentration",
+        )
     fig_combination.savefig(image_path, dpi=500, transparent=True)
 
     plt.show()
@@ -521,14 +574,14 @@ def qualitative_comparison(
 # Main analysis
 
 # Original PET images
-if False:
+if True:
     dicom_image_3d = read_dicom_images()
-    dicom_image_3d.save("dicom_raw_3d.npz")
+    dicom_image_3d.save("data/npz/block-b/dicom_raw_3d.npz")
 else:
-    dicom_image_3d = darsia.imread("dicom_raw_3d.npz")
+    dicom_image_3d = darsia.imread("data/npz/block-b/dicom_raw_3d.npz")
 
 # Pick corresponding vtu images.
-vtu_ind = 416
+vtu_ind = 439
 vtu_2d_concentration = read_vtu_images(vtu_ind)
 
 # Resize to similar shape as dicom image
@@ -536,7 +589,6 @@ dicom_voxel_size = dicom_image_3d.voxel_size
 vtu_2d_concentration = darsia.equalize_voxel_size(
     vtu_2d_concentration, min(dicom_voxel_size)
 )
-# vtu_2d_concentration.show()
 
 # Expand vtu image to 3d
 dicom_height = dicom_image_3d.dimensions[0]
@@ -546,17 +598,17 @@ vtu_concentration_3d = darsia.extrude_along_axis(
 )
 
 # Align dicom and vtu
-if False:
+if True:
     dicom_concentration = dicom_image_3d.copy()
     aligned_dicom_concentration, aligned_vtu_concentration = align_images(
         dicom_concentration, vtu_concentration_3d
     )
-    aligned_dicom_concentration.save("aligned_dicom_concentration.npz")
-    aligned_vtu_concentration.save(f"aligned_vtu_{vtu_ind}_concentration.npz")
+    aligned_dicom_concentration.save("data/npz/block-b/aligned_dicom_concentration.npz")
+    aligned_vtu_concentration.save(f"data/npz/block-b/aligned_vtu_{vtu_ind}_concentration.npz")
 else:
-    aligned_dicom_concentration = darsia.imread("aligned_dicom_concentration.npz")
+    aligned_dicom_concentration = darsia.imread("data/npz/block-b/aligned_dicom_concentration.npz")
     aligned_vtu_concentration = darsia.imread(
-        f"aligned_vtu_{vtu_ind}_concentration.npz"
+        f"data/npz/block-b/aligned_vtu_{vtu_ind}_concentration.npz"
     )
 
 # Define final vtu concentration, and compute its mass (reference)
@@ -578,6 +630,8 @@ def rescale_data(image, ref_integral):
 # Define dicom concentration with same mass
 dicom_concentration_3d = aligned_dicom_concentration.copy()
 dicom_concentration_3d = rescale_data(dicom_concentration_3d, vtu_3d_integral)
+#single_plot("slice", dicom_concentration_3d, "noisy", "plots/block-b/lab_data_slice.png")
+#single_plot("sum", dicom_concentration_3d, "noisy", "plots/block-b/lab_data_avg.png")
 
 # Define mask (omega) for trust for regularization
 heterogeneous_omega = True
@@ -587,8 +641,8 @@ if heterogeneous_omega:
     omega_bound = 0.15
     omega = np.minimum(dicom_rescaled.img, omega_bound)
     mask_zero = dicom_rescaled.img < 1e-4
-    omega[mask_zero] = 1
-    plot_slice(omega)
+    omega[mask_zero] = 10
+    #plot_slice(omega)
 
     # Save plot
     reduced_dicom_concentration_2d = darsia.reduce_axis(
@@ -603,13 +657,13 @@ if heterogeneous_omega:
         indexing="ij",
     )
     fig_mask, axs_mask = plt.subplots(nrows=1, ncols=1)
-    axs_mask.pcolormesh(y_pixel, x_pixel, omega[20], cmap="turbo")
+    axs_mask.pcolormesh(y_pixel, x_pixel, np.log(omega[20]), cmap="turbo")
     axs_mask.set_ylim(top=0.08)
     axs_mask.set_aspect("equal")
-    axs_mask.set_xlabel("x [cm]")  # , fontsize=14)
-    axs_mask.set_ylabel("y [cm]")  # , fontsize=14)
-    fig_mask.colorbar(cm.ScalarMappable(cmap="turbo"), ax=axs_mask)
-    fig_mask.savefig("omega.png", dpi=500, transparent=True)
+    axs_mask.set_xlabel("x [m]")  # , fontsize=14)
+    axs_mask.set_ylabel("y [m]")  # , fontsize=14)
+    fig_mask.colorbar(cm.ScalarMappable(cmap="turbo"), ax=axs_mask, label="log($\omega_f$)")
+    fig_mask.savefig("plots/block-b/omega.png", dpi=500, transparent=True)
     plt.close()
 else:
     omega = 0.015
@@ -618,7 +672,7 @@ else:
 suffix = "heter" if heterogeneous_omega else "hom"
 
 # DICOM concentration with H1 regularization
-if False:
+if True:
     h1_reg_dicom_concentration_3d = darsia.H1_regularization(
         dicom_concentration_3d,
         mu=0.1,
@@ -626,10 +680,10 @@ if False:
         dim=3,
         solver=darsia.CG(maxiter=10000, tol=1e-5),
     )
-    h1_reg_dicom_concentration_3d.save(f"h1_reg_dicom_concentration_{suffix}.npz")
+    h1_reg_dicom_concentration_3d.save(f"data/npz/block-b/h1_reg_dicom_concentration_{suffix}.npz")
 else:
     h1_reg_dicom_concentration_3d = darsia.imread(
-        f"h1_reg_dicom_concentration_{suffix}.npz"
+        f"data/npz/block-b/h1_reg_dicom_concentration_{suffix}.npz"
     )
 h1_reg_dicom_concentration_3d = rescale_data(
     h1_reg_dicom_concentration_3d, vtu_3d_integral
@@ -638,12 +692,12 @@ h1_reg_dicom_concentration_3d = rescale_data(
 # DICOM concentration with TVD regularization
 isotropic = True
 isotropic_suffix = "iso" if isotropic else "aniso"
-if False:
+if True:
     tvd_reg_dicom_concentration_3d = darsia.tvd(
         dicom_concentration_3d,
         method="heterogeneous bregman",
         isotropic=isotropic,
-        weight=0.005,
+        weight=0.02,
         omega=omega,
         dim=3,
         max_num_iter=100,
@@ -652,75 +706,76 @@ if False:
         solver=darsia.Jacobi(maxiter=20),
     )
     tvd_reg_dicom_concentration_3d.save(
-        f"tvd_{isotropic_suffix}_reg_dicom_concentration_{suffix}.npz"
+        f"data/npz/block-b/tvd_{isotropic_suffix}_reg_dicom_concentration_{suffix}.npz"
     )
 else:
     tvd_reg_dicom_concentration_3d = darsia.imread(
-        f"tvd_{isotropic_suffix}_reg_dicom_concentration_{suffix}.npz"
+        f"data/npz/block-b/tvd_{isotropic_suffix}_reg_dicom_concentration_{suffix}.npz"
     )
 tvd_reg_dicom_concentration_3d = rescale_data(
     tvd_reg_dicom_concentration_3d, vtu_3d_integral
 )
 
 # Make qualitative comparisons
-if False:
-    plot_sum(
-        [
-            vtu_concentration_3d,
-            dicom_concentration_3d,
-            h1_reg_dicom_concentration_3d,
-            tvd_reg_dicom_concentration_3d,
-        ]
-    )
-    plot_slice(
-        [
-            vtu_concentration_3d,
-            dicom_concentration_3d,
-            h1_reg_dicom_concentration_3d,
-            tvd_reg_dicom_concentration_3d,
-        ]
-    )
+if True:
+    #plot_sum(
+    #    [
+    #        vtu_concentration_3d,
+    #        dicom_concentration_3d,
+    #        h1_reg_dicom_concentration_3d,
+    #        tvd_reg_dicom_concentration_3d,
+    #    ]
+    #)
+    #plot_slice(
+    #    [
+    #        vtu_concentration_3d,
+    #        dicom_concentration_3d,
+    #        h1_reg_dicom_concentration_3d,
+    #        tvd_reg_dicom_concentration_3d,
+    #    ]
+    #)
+    #qualitative_comparison(
+    #    "sum",
+    #    dicom_concentration_3d,
+    #    vtu_concentration_3d,
+    #    "noisy",
+    #    "plots/block-b/pure_dicom_avg.png",
+    #)
     qualitative_comparison(
-        "sum",
+        "slice",
         dicom_concentration_3d,
         vtu_concentration_3d,
         "noisy",
-        "pure_dicom_avg.png",
+        "plots/block-b/pure_dicom_slice.png",
     )
-    qualitative_comparison(
-        "slice",
-        dicom_concentration_3d,
-        vtu_concentration_3d,
-        "noisy",
-        "pure_dicom_slice.png",
-    )
-    qualitative_comparison(
-        "sum",
-        h1_reg_dicom_concentration_3d,
-        vtu_concentration_3d,
-        "H1",
-        f"h1_reg_dicom_avg_{suffix}.png",
-    )
+    #qualitative_comparison(
+    #    "sum",
+    #    h1_reg_dicom_concentration_3d,
+    #    vtu_concentration_3d,
+    #    "H1",
+    #    f"plots/block-b/h1_reg_dicom_avg_{suffix}.png",
+    #)
     qualitative_comparison(
         "slice",
         h1_reg_dicom_concentration_3d,
         vtu_concentration_3d,
         "H1",
-        f"h1_reg_dicom_slice_{suffix}.png",
+        f"plots/block-b/h1_reg_dicom_slice_{suffix}.png",
     )
     qualitative_comparison(
         "sum",
         tvd_reg_dicom_concentration_3d,
         vtu_concentration_3d,
         "TVD",
-        f"tvd_{isotropic_suffix}_reg_dicom_avg_{suffix}.png",
+        f"plots/block-b/tvd_{isotropic_suffix}_reg_dicom_avg_{suffix}.png",
+        colorbar= True
     )
     qualitative_comparison(
         "slice",
         tvd_reg_dicom_concentration_3d,
         vtu_concentration_3d,
         "TVD",
-        f"tvd_{isotropic_suffix}_reg_dicom_slice_{suffix}.png",
+        f"plots/block-b/tvd_{isotropic_suffix}_reg_dicom_slice_{suffix}.png",
     )
 
 # Quantitative comparison - Wasserstein distance in 2d (only for illustration purposes)
@@ -762,9 +817,9 @@ tvd_reg_dicom_slice = rescale_slice(tvd_reg_dicom_slice, ref_integral)
 options = {
     "method": "newton",
     "L": 1e-2,
-    "num_iter": 100,
-    "tol": 1e-10,
-    "tol_distance": 1e-11,
+    "num_iter": 500,
+    "tol": 1e-11,
+    "tol_distance": 1e-12,
     "regularization": 1e-16,
     "depth": 10,
     "lumping": True,
@@ -778,13 +833,13 @@ kwargs = {
     "plot_solution": True,
 }
 distance_dicom_vtu = darsia.wasserstein_distance(
-    dicom_slice, vtu_slice, name="pure dicom vs. vtu", **kwargs
+    dicom_slice, vtu_slice, name="plots/block-b/pure dicom vs. vtu", **kwargs
 )
 distance_h1_dicom_vtu = darsia.wasserstein_distance(
-    h1_reg_dicom_slice, vtu_slice, name="h1 reg dicom vs. vtu", **kwargs
+    h1_reg_dicom_slice, vtu_slice, name="plots/block-b/h1 reg dicom vs. vtu", **kwargs
 )
 distance_tvd_dicom_vtu = darsia.wasserstein_distance(
-    tvd_reg_dicom_slice, vtu_slice, name="tvd reg dicom vs. vtu", **kwargs
+    tvd_reg_dicom_slice, vtu_slice, name="plots/block-b/tvd reg dicom vs. vtu", **kwargs
 )
 
 print("The distances:")
@@ -812,18 +867,18 @@ kwargs = {
     "plot_solution": False,
 }
 distance_dicom_vtu_3d = darsia.wasserstein_distance_3d(
-    dicom_concentration_3d, vtu_concentration_3d, name="pure dicom vs. vtu 3d", **kwargs
+    dicom_concentration_3d, vtu_concentration_3d, name="", **kwargs
 )
 distance_h1_dicom_vtu_3d = darsia.wasserstein_distance_3d(
     h1_reg_dicom_concentration_3d,
     vtu_concentration_3d,
-    name="h1 reg dicom vs. vtu 3d",
+    name="",
     **kwargs,
 )
 distance_tvd_dicom_vtu_3d = darsia.wasserstein_distance_3d(
     tvd_reg_dicom_concentration_3d,
     vtu_concentration_3d,
-    name="tvd reg dicom vs. vtu 3d",
+    name="",
     **kwargs,
 )
 
