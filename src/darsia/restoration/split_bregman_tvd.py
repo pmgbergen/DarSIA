@@ -12,7 +12,7 @@ import darsia as da
 
 def split_bregman_tvd(
     img: Union[np.ndarray, da.Image],
-    mu: Union[float, np.ndarray] = 1.0,
+    mu: Union[float, np.ndarray, list] = 1.0,
     omega: Union[float, np.ndarray] = 1.0,
     ell: Optional[Union[float, np.ndarray]] = None,
     dim: int = 2,
@@ -32,7 +32,9 @@ def split_bregman_tvd(
 
     Args:
         img (array, da.Image): image
-        mu (float or array): TV penalization parameter
+        mu (float or array or list): inverse TV penalization parameter, if list
+            it must have the lenght of the dimension and each entry corresponds
+            to the penalization in the respective direction.
         omega (float or array): mass penalization parameter
         ell (float or array): regularization parameter
         dim (int): spatial dimension of the image
@@ -49,22 +51,15 @@ def split_bregman_tvd(
 
     """
 
-    # Check input image and extract voxel size (h)
-    if isinstance(img, da.Image):
-        if img.series:
-            voxel_size = [img.dimensions[i] / img.img.shape[i] for i in range(dim)]
-        else:
-            voxel_size = img.voxel_size
-        img = img.img
-    else:
-        voxel_size = np.ones(dim).tolist()
-
     # Keep track of input type and convert input image to float for further calculations
-
     img_dtype = img.dtype
 
     # Store input image and its norm for convergence check
     img_nrm = np.linalg.norm(img)
+
+    # Controll that mu has correct length if its a list
+    if isinstance(mu, list):
+        assert len(mu) == dim, "mu must be a list of length dim"
 
     # Feed the solver with parameters, follow the suggestion to use double the weight
     # for the mass coefficient if no value is provided.
@@ -83,16 +78,20 @@ def split_bregman_tvd(
 
     # Define energy functional for verbose
     def _functional(x: np.ndarray) -> float:
-        return 0.5 * np.linalg.norm(omega * (x - img)) ** 2 + sum(
-            [
-                np.sum(
-                    np.abs(
-                        mu * da.backward_diff(img=x, axis=j, dim=dim, h=voxel_size[j])
-                    )
-                )
-                for j in range(dim)
-            ]
-        )
+        if isinstance(mu, list):
+            return 0.5 * np.linalg.norm(omega * (x - img)) ** 2 + sum(
+                [
+                    np.sum(np.abs(mu[j] * da.backward_diff(img=x, axis=j, dim=dim)))
+                    for j in range(dim)
+                ]
+            )
+        else:
+            return 0.5 * np.linalg.norm(omega * (x - img)) ** 2 + sum(
+                [
+                    np.sum(np.abs(mu * da.backward_diff(img=x, axis=j, dim=dim)))
+                    for j in range(dim)
+                ]
+            )
 
     # Define shrinkage operator (shrinks element-wise by k)
     def _shrink(x: np.ndarray, k: Union[float, np.ndarray]) -> np.ndarray:
@@ -102,9 +101,7 @@ def split_bregman_tvd(
     def _rhs_function(dt: np.ndarray, bt: np.ndarray) -> np.ndarray:
         return omega * img + ell * sum(
             [
-                da.forward_diff(
-                    img=bt[..., i] - dt[..., i], axis=i, dim=dim, h=voxel_size[i]
-                )
+                da.forward_diff(img=bt[..., i] - dt[..., i], axis=i, dim=dim)
                 for i in range(dim)
             ]
         )
@@ -127,33 +124,25 @@ def split_bregman_tvd(
     # Bregman iterations
     for iter in range(max_num_iter):
         # First step - solve the stabilized diffusion system.
-        img_new = solver(x0=img_iter, rhs=_rhs_function(d, b), h=voxel_size)
+        img_new = solver(x0=img_iter, rhs=_rhs_function(d, b))
 
         # Second step - shrinkage.
         if isotropic:
             dub = b.copy()
             for j in range(dim):
-                dub[..., j] += da.backward_diff(
-                    img=img_new, axis=j, dim=dim, voxel_size=voxel_size[j]
-                )
+                dub[..., j] += da.backward_diff(img=img_new, axis=j, dim=dim)
             s = np.linalg.norm(dub, 2, axis=-1)
             shrinkage_factor = np.maximum(s - mu / ell, 0) / (s + 1e-18)
             d = dub * shrinkage_factor[..., None]
             b = dub - d
-        elif isinstance(mu, np.ndarray) and (mu.shape != img_new.shape):
+        elif isinstance(mu, list):
             for j in range(dim):
-                dub = (
-                    da.backward_diff(img=img_new, axis=j, dim=dim, h=voxel_size[j])
-                    + b[..., j]
-                )
-                d[..., j] = _shrink(dub, mu[j, ...] / ell[j, ...])
+                dub = da.backward_diff(img=img_new, axis=j, dim=dim) + b[..., j]
+                d[..., j] = _shrink(dub, mu[j] / ell)
                 b[..., j] = dub - d[..., j]
         else:
             for j in range(dim):
-                dub = (
-                    da.backward_diff(img=img_new, axis=j, dim=dim, h=voxel_size[j])
-                    + b[..., j]
-                )
+                dub = da.backward_diff(img=img_new, axis=j, dim=dim) + b[..., j]
                 d[..., j] = _shrink(dub, mu / ell)
                 b[..., j] = dub - d[..., j]
 
