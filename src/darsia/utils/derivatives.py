@@ -13,7 +13,7 @@ import darsia as da
 
 
 def backward_diff(
-    img: np.ndarray, axis: int, dim: int = 2, h: Optional[float] = None
+    img: np.ndarray, axis: int, dim: int = 2, h: Optional[Union[float, list]] = None
 ) -> np.ndarray:
     """Backward difference of image matrix in direction of axis.
 
@@ -31,13 +31,16 @@ def backward_diff(
     if h is None:
         return np.diff(img, axis=axis, append=da.array_slice(img, axis, -1, None, 1))
     else:
+        if isinstance(h, list):
+            assert len(h) == dim, "h must be a list of length dim"
+            h = h[axis]
         return (
             np.diff(img, axis=axis, append=da.array_slice(img, axis, -1, None, 1)) / h
         )
 
 
 def forward_diff(
-    img: np.ndarray, axis: int, dim: int = 2, h: Optional[float] = None
+    img: np.ndarray, axis: int, dim: int = 2, h: Optional[Union[float, list]] = None
 ) -> np.ndarray:
     """Forward difference of image matrix in direction of axis.
 
@@ -45,7 +48,7 @@ def forward_diff(
         img (np.ndarray): image array
         axis (int): axis along which the difference is taken
         dim (int): dimension of image array
-        h (Optional[float]): grid spacing
+        h (Optional[float, list]): grid spacing
 
     Returns:
         np.ndarray: forward difference image matrix
@@ -55,6 +58,9 @@ def forward_diff(
     if h is None:
         return np.diff(img, axis=axis, prepend=da.array_slice(img, axis, 0, 1, 1))
     else:
+        if isinstance(h, list):
+            assert len(h) == dim, "h must be a list of length dim"
+            h = h[axis]
         return np.diff(img, axis=axis, prepend=da.array_slice(img, axis, 0, 1, 1)) / h
 
 
@@ -62,7 +68,7 @@ def laplace(
     img: np.ndarray,
     axis: Optional[int] = None,
     dim: int = 2,
-    h: Optional[float] = None,
+    h: Optional[Union[float, list]] = None,
     diffusion_coeff: Union[np.ndarray, float] = 1,
 ) -> np.ndarray:
     """Laplace operator with homogeneous boundary conditions.
@@ -73,7 +79,7 @@ def laplace(
         img (np.ndarray): image array
         axis (int): axis along which the difference is taken
         dim (int): dimension of image array
-        h (Optional[float]): grid spacing
+        h (Optional[float, list]): grid spacing
         diffision_coeff (Optional[np.ndarray]): diffusion coefficient
 
     Returns:

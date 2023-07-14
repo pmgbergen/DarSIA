@@ -11,7 +11,7 @@ import darsia as da
 
 
 def split_bregman_tvd(
-    img: np.ndarray,
+    img: Union[np.ndarray, da.Image],
     mu: Union[float, np.ndarray] = 1.0,
     omega: Union[float, np.ndarray] = 1.0,
     ell: Optional[Union[float, np.ndarray]] = None,
@@ -31,7 +31,7 @@ def split_bregman_tvd(
     shrinkage step. The regularization term is weighted by the parameter ell.
 
     Args:
-        img (array): image array
+        img (array, da.Image): image
         mu (float or array): TV penalization parameter
         omega (float or array): mass penalization parameter
         ell (float or array): regularization parameter
@@ -48,16 +48,33 @@ def split_bregman_tvd(
         array: denoised image
 
     """
+
+    # Check input image and extract voxel size (h)
+    if isinstance(img, da.Image):
+        if img.series:
+            voxel_size = [img.dimensions[i] / img.img.shape[i] for i in range(dim)]
+        else:
+            voxel_size = img.voxel_size
+        img = img.img
+    else:
+        voxel_size = np.ones(dim).tolist()
+
     # Keep track of input type and convert input image to float for further calculations
+
     img_dtype = img.dtype
 
     # Store input image and its norm for convergence check
     img_nrm = np.linalg.norm(img)
 
     # Feed the solver with parameters, follow the suggestion to use double the weight
-    # for the diffusion coefficient if no value is provided.
+    # for the mass coefficient if no value is provided.
     if ell is None:
-        ell = 2 * mu
+        if isinstance(omega, float):
+            ell = 2 * omega
+        elif isinstance(omega, np.ndarray):
+            ell = 2 * omega.copy()
+            ell[ell == 0] = 1
+
     solver.update_params(
         mass_coeff=omega,
         diffusion_coeff=ell,
@@ -68,7 +85,11 @@ def split_bregman_tvd(
     def _functional(x: np.ndarray) -> float:
         return 0.5 * np.linalg.norm(omega * (x - img)) ** 2 + sum(
             [
-                np.sum(np.abs(mu * da.backward_diff(img=x, axis=j, dim=dim)))
+                np.sum(
+                    np.abs(
+                        mu * da.backward_diff(img=x, axis=j, dim=dim, h=voxel_size[j])
+                    )
+                )
                 for j in range(dim)
             ]
         )
@@ -81,12 +102,14 @@ def split_bregman_tvd(
     def _rhs_function(dt: np.ndarray, bt: np.ndarray) -> np.ndarray:
         return omega * img + ell * sum(
             [
-                da.forward_diff(img=bt[..., i] - dt[..., i], axis=i, dim=dim)
+                da.forward_diff(
+                    img=bt[..., i] - dt[..., i], axis=i, dim=dim, h=voxel_size[i]
+                )
                 for i in range(dim)
             ]
         )
 
-    # Define initial guess if provided, otherwise start with input image and allovate
+    # Define initial guess if provided, otherwise start with input image and allocate
     # zero arrays for the split Bregman variables.
     if x0 is not None:
         img0, d0, b0 = x0
@@ -104,34 +127,48 @@ def split_bregman_tvd(
     # Bregman iterations
     for iter in range(max_num_iter):
         # First step - solve the stabilized diffusion system.
-        img_new = solver(x0=img_iter, rhs=_rhs_function(d, b))
+        img_new = solver(x0=img_iter, rhs=_rhs_function(d, b), h=voxel_size)
 
         # Second step - shrinkage.
         if isotropic:
             dub = b.copy()
             for j in range(dim):
-                dub[..., j] += da.backward_diff(img=img_new, axis=j, dim=dim)
+                dub[..., j] += da.backward_diff(
+                    img=img_new, axis=j, dim=dim, voxel_size=voxel_size[j]
+                )
             s = np.linalg.norm(dub, 2, axis=-1)
             shrinkage_factor = np.maximum(s - mu / ell, 0) / (s + 1e-18)
             d = dub * shrinkage_factor[..., None]
             b = dub - d
+        elif isinstance(mu, np.ndarray) and (mu.shape != img_new.shape):
+            for j in range(dim):
+                dub = (
+                    da.backward_diff(img=img_new, axis=j, dim=dim, h=voxel_size[j])
+                    + b[..., j]
+                )
+                d[..., j] = _shrink(dub, mu[j, ...] / ell[j, ...])
+                b[..., j] = dub - d[..., j]
         else:
             for j in range(dim):
-                dub = da.backward_diff(img=img_new, axis=j, dim=dim) + b[..., j]
+                dub = (
+                    da.backward_diff(img=img_new, axis=j, dim=dim, h=voxel_size[j])
+                    + b[..., j]
+                )
                 d[..., j] = _shrink(dub, mu / ell)
                 b[..., j] = dub - d[..., j]
 
         # Monitor performance
         relative_increment = np.linalg.norm(img_new - img_iter) / img_nrm
-        if verbose if isinstance(verbose, bool) else iter % verbose == 0:
-            print(
-                f"""Split Bregman iteration {iter} - """
-                f"""relative increment: {relative_increment}, """
-                f"""energy functional: {_functional(img_iter)}"""
-            )
 
         # Update of result
         img_iter = img_new.copy()
+
+        if verbose if isinstance(verbose, bool) else iter % verbose == 0:
+            print(
+                f"""Split Bregman iteration {iter} - """
+                f"""relative increment: {round(relative_increment,5)}, """
+                f"""energy functional: {_functional(img_iter)}"""
+            )
 
         # Convergence check
         if eps is not None:

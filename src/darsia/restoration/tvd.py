@@ -125,7 +125,18 @@ class TVD:
 
         """
         img_copy = img.copy()
-        img_copy.img = self._tvd_array(img.img)
+        if self.method == "heterogeneous bregman":
+            img_copy.img = darsia.split_bregman_tvd(
+                img,
+                mu=self.weight,
+                omega=self.omega,
+                ell=self.regularization,
+                max_num_iter=self.max_num_iter,
+                eps=self.eps,
+                **self.kwargs,
+            )
+        else:
+            img_copy.img = self._tvd_array(img.img)
         return img_copy
 
 
