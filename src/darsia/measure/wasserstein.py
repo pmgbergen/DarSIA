@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -485,6 +486,30 @@ class VariationalWassersteinDistance(darsia.EMD):
         potential: np.ndarray,
         transport_density: np.ndarray,
     ) -> None:
+        """Plot the solution.
+
+        Args:
+            mass_diff (np.ndarray): difference of mass distributions
+            flux (np.ndarray): fluxes
+            potential (np.ndarray): potential
+            transport_density (np.ndarray): transport density
+
+        """
+        # Fetch options
+        plot_options = self.options.get("plot_options", {})
+
+        # Store plot
+        save_plot = plot_options.get("save", False)
+        if save_plot:
+            name = plot_options.get("name", None)
+            folder = plot_options.get("folder", ".")
+            Path(folder).mkdir(parents=True, exist_ok=True)
+        show_plot = plot_options.get("show", True)
+
+        # Control of flux arrows
+        scaling = plot_options.get("scaling", 1.0)
+        resolution = plot_options.get("resolution", 1)
+
         # Meshgrid
         Y, X = np.meshgrid(
             self.voxel_size[0] * (0.5 + np.arange(self.shape[0] - 1, -1, -1)),
@@ -623,22 +648,34 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                     -self.div.T,
                     None,
                 ],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
+                [self.div, None, -self.potential_constraint.T],
+                [None, self.potential_constraint, None],
             ],
             format="csc",
         )
         approx_jacobian_lu = sps.linalg.splu(approx_jacobian)
         return approx_jacobian_lu
 
-    def _solve(self, flat_mass_diff):
-        # Observation: AA can lead to less stagnation, more accurate results, and therefore
+    def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
+        """Solve the Beckman problem using Newton's method.
+
+        Args:
+            flat_mass_diff (np.ndarray): difference of mass distributions
+
+        Returns:
+            tuple: distance, solution, status
+
+        """
+        # TODO rm: Observation: AA can lead to less stagnation, more accurate results, and therefore
         # better solutions to mu and u. Higher depth is better, but more expensive.
 
         # Solver parameters
         num_iter = self.options.get("num_iter", 100)
-        tol = self.options.get("tol", 1e-6)
+        tol_residual = self.options.get("tol_residual", 1e-6)
+        tol_increment = self.options.get("tol_increment", 1e-6)
         tol_distance = self.options.get("tol_distance", 1e-6)
+
+        # Relaxation parameter
         self.L = self.options.get("L", 1.0)
 
         # Define right hand side
@@ -652,6 +689,29 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         # Initialize solution
         solution_i = np.zeros_like(rhs)
+
+        # Initialize container for storing the convergence history
+        convergence_history = {
+            "distance": [],
+            "residual": [],
+            "mass conservation residual": [],
+            "increment": [],
+            "flux increment": [],
+            "distance increment": [],
+        }
+
+        # Print header
+        if self.verbose:
+            print(
+                "--- ; ",
+                "Newton iteration",
+                "distance",
+                "residual",
+                "mass conservation residual",
+                "increment",
+                "flux increment",
+                "distance increment",
+            )
 
         # Newton iteration
         for iter in range(num_iter):
@@ -671,11 +731,12 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             solution_i += update_i
 
             # Apply Anderson acceleration to flux contribution (the only nonlinear part).
+            # Application to full solution, or just the potential, lead to divergence,
+            # while application to the flux, results in improved performance.
             if self.anderson is not None:
                 solution_i[: self.num_edges] = self.anderson(
                     solution_i[: self.num_edges], update_i[: self.num_edges], iter
                 )
-                # TODO try for full solution
 
             # Update distance
             new_distance = self.l1_dissipation(solution_i)
@@ -685,32 +746,40 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             # - residual of mass conservation equation
             # - increment
             # - flux increment
+            # - distance increment
             error = [
                 np.linalg.norm(residual_i, 2),
                 np.linalg.norm(residual_i[self.num_edges : -1], 2),
                 np.linalg.norm(solution_i - old_solution_i, 2),
                 np.linalg.norm((solution_i - old_solution_i)[: self.num_edges], 2),
+                abs(new_distance - old_distance),
             ]
+
+            # Update convergence history
+            convergence_history["distance"].append(new_distance)
+            convergence_history["residual"].append(error[0])
+            convergence_history["mass conservation residual"].append(error[1])
+            convergence_history["increment"].append(error[2])
+            convergence_history["flux increment"].append(error[3])
+            convergence_history["distance increment"].append(error[4])
 
             if self.verbose:
                 print(
                     "Newton iteration",
                     iter,
                     new_distance,
-                    old_distance - new_distance,
                     error[0],  # residual
                     error[1],  # mass conservation residual
                     error[2],  # full increment
                     error[3],  # flux increment
+                    error[4],  # distance increment
                 )
 
             # Stopping criterion
             # TODO include criterion build on staganation of the solution
-            # TODO include criterion on distance.
-            if (
-                iter > 1
-                and min([error[0], error[2]]) < tol
-                or abs(new_distance - old_distance) < tol_distance
+            if iter > 1 and (
+                (error[0] < tol_residual and error[2] < tol_increment)
+                or error[4] < tol_distance
             ):
                 break
 
@@ -724,6 +793,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             "increment": error[2],
             "flux increment": error[3],
             "distance increment": abs(new_distance - old_distance),
+            "convergence history": convergence_history,
         }
 
         return new_distance, solution_i, status
