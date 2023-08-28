@@ -77,50 +77,50 @@ class VariationalWassersteinDistance(darsia.EMD):
         num_cells = np.prod(dim_cells)
         numbering_cells = np.arange(num_cells, dtype=int).reshape(dim_cells)
 
-        # Consider only inner edges
-        vertical_edges_shape = (self.shape[0], self.shape[1] - 1)
-        horizontal_edges_shape = (self.shape[0] - 1, self.shape[1])
-        num_edges_axis = [
-            np.prod(vertical_edges_shape),
-            np.prod(horizontal_edges_shape),
+        # Consider only inner faces
+        vertical_faces_shape = (self.shape[0], self.shape[1] - 1)
+        horizontal_faces_shape = (self.shape[0] - 1, self.shape[1])
+        num_faces_axis = [
+            np.prod(vertical_faces_shape),
+            np.prod(horizontal_faces_shape),
         ]
-        num_edges = np.sum(num_edges_axis)
+        num_faces = np.sum(num_faces_axis)
 
-        # Define connectivity
-        connectivity = np.zeros((num_edges, 2), dtype=int)
-        connectivity[: num_edges_axis[0], 0] = np.ravel(
+        # Define connectivity and direction of the normal on faces
+        connectivity = np.zeros((num_faces, 2), dtype=int)
+        connectivity[: num_faces_axis[0], 0] = np.ravel(
             numbering_cells[:, :-1]
         )  # left cells
-        connectivity[: num_edges_axis[0], 1] = np.ravel(
+        connectivity[: num_faces_axis[0], 1] = np.ravel(
             numbering_cells[:, 1:]
         )  # right cells
-        connectivity[num_edges_axis[0] :, 0] = np.ravel(
+        connectivity[num_faces_axis[0] :, 0] = np.ravel(
             numbering_cells[:-1, :]
         )  # top cells
-        connectivity[num_edges_axis[0] :, 1] = np.ravel(
+        connectivity[num_faces_axis[0] :, 1] = np.ravel(
             numbering_cells[1:, :]
         )  # bottom cells
 
         # Define sparse divergence operator, integrated over elements: flat_fluxes -> flat_mass
         div_data = np.concatenate(
             (
-                self.voxel_size[0] * np.ones(num_edges_axis[0], dtype=float),
-                self.voxel_size[1] * np.ones(num_edges_axis[1], dtype=float),
-                -self.voxel_size[0] * np.ones(num_edges_axis[0], dtype=float),
-                -self.voxel_size[1] * np.ones(num_edges_axis[1], dtype=float),
+                self.voxel_size[0] * np.ones(num_faces_axis[0], dtype=float),
+                self.voxel_size[1] * np.ones(num_faces_axis[1], dtype=float),
+                -self.voxel_size[0] * np.ones(num_faces_axis[0], dtype=float),
+                -self.voxel_size[1] * np.ones(num_faces_axis[1], dtype=float),
             )
         )
         div_row = np.concatenate(
             (
-                connectivity[: num_edges_axis[0], 0],
-                connectivity[num_edges_axis[0] :, 0],
-                connectivity[: num_edges_axis[0], 1],
-                connectivity[num_edges_axis[0] :, 1],
+                connectivity[: num_faces_axis[0], 0],
+                connectivity[num_faces_axis[0] :, 0],
+                connectivity[: num_faces_axis[0], 1],
+                connectivity[num_faces_axis[0] :, 1],
             )
         )
-        div_col = np.tile(np.arange(num_edges, dtype=int), 2)
+        div_col = np.tile(np.arange(num_faces, dtype=int), 2)
         self.div = sps.csc_matrix(
-            (div_data, (div_row, div_col)), shape=(num_cells, num_edges)
+            (div_data, (div_row, div_col)), shape=(num_cells, num_faces)
         )
 
         # Define sparse mass matrix on cells: flat_mass -> flat_mass
@@ -128,11 +128,11 @@ class VariationalWassersteinDistance(darsia.EMD):
             np.prod(self.voxel_size) * np.ones(num_cells, dtype=float)
         )
 
-        # Define sparse mass matrix on edges: flat_fluxes -> flat_fluxes
+        # Define sparse mass matrix on faces: flat_fluxes -> flat_fluxes
         lumping = self.options.get("lumping", True)
         if lumping:
-            self.mass_matrix_edges = sps.diags(
-                np.prod(self.voxel_size) * np.ones(num_edges, dtype=float)
+            self.mass_matrix_faces = sps.diags(
+                np.prod(self.voxel_size) * np.ones(num_faces, dtype=float)
             )
         else:
             # Define connectivity: cell to face (only for inner cells)
@@ -140,23 +140,23 @@ class VariationalWassersteinDistance(darsia.EMD):
             connectivity_cell_to_vertical_face[
                 np.ravel(numbering_cells[:, :-1]), 0
             ] = np.arange(
-                num_edges_axis[0]
+                num_faces_axis[0]
             )  # left face
             connectivity_cell_to_vertical_face[
                 np.ravel(numbering_cells[:, 1:]), 1
             ] = np.arange(
-                num_edges_axis[0]
+                num_faces_axis[0]
             )  # right face
             connectivity_cell_to_horizontal_face = np.zeros((num_cells, 2), dtype=int)
             connectivity_cell_to_horizontal_face[
                 np.ravel(numbering_cells[:-1, :]), 0
             ] = np.arange(
-                num_edges_axis[0], num_edges_axis[0] + num_edges_axis[1]
+                num_faces_axis[0], num_faces_axis[0] + num_faces_axis[1]
             )  # top face
             connectivity_cell_to_horizontal_face[
                 np.ravel(numbering_cells[1:, :]), 1
             ] = np.arange(
-                num_edges_axis[0], num_edges_axis[0] + num_edges_axis[1]
+                num_faces_axis[0], num_faces_axis[0] + num_faces_axis[1]
             )  # bottom face
 
             # Info about inner cells
@@ -167,10 +167,10 @@ class VariationalWassersteinDistance(darsia.EMD):
                 inner_cells_with_horizontal_faces
             )
 
-            # Define true RT0 mass matrix on edges: flat_fluxes -> flat_fluxes
-            mass_matrix_edges_data = np.prod(self.voxel_size) * np.concatenate(
+            # Define true RT0 mass matrix on faces: flat_fluxes -> flat_fluxes
+            mass_matrix_faces_data = np.prod(self.voxel_size) * np.concatenate(
                 (
-                    2 / 3 * np.ones(num_edges, dtype=float),  # all faces
+                    2 / 3 * np.ones(num_faces, dtype=float),  # all faces
                     1
                     / 6
                     * np.ones(
@@ -193,9 +193,9 @@ class VariationalWassersteinDistance(darsia.EMD):
                     ),  # bottom faces
                 )
             )
-            mass_matrix_edges_row = np.concatenate(
+            mass_matrix_faces_row = np.concatenate(
                 (
-                    np.arange(num_edges, dtype=int),
+                    np.arange(num_faces, dtype=int),
                     connectivity_cell_to_vertical_face[
                         inner_cells_with_vertical_faces, 0
                     ],
@@ -210,9 +210,9 @@ class VariationalWassersteinDistance(darsia.EMD):
                     ],
                 )
             )
-            mass_matrix_edges_col = np.concatenate(
+            mass_matrix_faces_col = np.concatenate(
                 (
-                    np.arange(num_edges, dtype=int),
+                    np.arange(num_faces, dtype=int),
                     connectivity_cell_to_vertical_face[
                         inner_cells_with_vertical_faces, 1
                     ],
@@ -227,12 +227,12 @@ class VariationalWassersteinDistance(darsia.EMD):
                     ],
                 )
             )
-            self.mass_matrix_edges = sps.csc_matrix(
+            self.mass_matrix_faces = sps.csc_matrix(
                 (
-                    mass_matrix_edges_data,
-                    (mass_matrix_edges_row, mass_matrix_edges_col),
+                    mass_matrix_faces_data,
+                    (mass_matrix_faces_row, mass_matrix_faces_col),
                 ),
-                shape=(num_edges, num_edges),
+                shape=(num_faces, num_faces),
             )
 
         # Utilities
@@ -251,20 +251,20 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Define sparse embedding operator for fluxes into full discrete DOF space
         self.flux_embedding = sps.csc_matrix(
             (
-                np.ones(num_edges, dtype=float),
-                (np.arange(num_edges), np.arange(num_edges)),
+                np.ones(num_faces, dtype=float),
+                (np.arange(num_faces), np.arange(num_faces)),
             ),
-            shape=(num_edges + num_cells + 1, num_edges),
+            shape=(num_faces + num_cells + 1, num_faces),
         )
 
         # Cache
-        self.num_edges = num_edges
+        self.num_faces = num_faces
         self.num_cells = num_cells
         self.dim_cells = dim_cells
         self.numbering_cells = numbering_cells
-        self.num_edges_axis = num_edges_axis
-        self.vertical_edges_shape = vertical_edges_shape
-        self.horizontal_edges_shape = horizontal_edges_shape
+        self.num_faces_axis = num_faces_axis
+        self.vertical_faces_shape = vertical_faces_shape
+        self.horizontal_faces_shape = horizontal_faces_shape
 
     def _problem_specific_setup(self, mass_diff: np.ndarray) -> None:
         """Resetup of fixed discretization"""
@@ -305,8 +305,8 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         """
         # Split the solution
-        flat_flux = solution[: self.num_edges]
-        flat_potential = solution[self.num_edges : self.num_edges + self.num_cells]
+        flat_flux = solution[: self.num_faces]
+        flat_potential = solution[self.num_faces : self.num_faces + self.num_cells]
         flat_lagrange_multiplier = solution[-1]
 
         return flat_flux, flat_potential, flat_lagrange_multiplier
@@ -326,11 +326,11 @@ class VariationalWassersteinDistance(darsia.EMD):
         # TODO replace by sparse matrix multiplication
 
         # Reshape fluxes - use duality of faces and normals
-        horizontal_fluxes = flat_flux[: self.num_edges_axis[0]].reshape(
-            self.vertical_edges_shape
+        horizontal_fluxes = flat_flux[: self.num_faces_axis[0]].reshape(
+            self.vertical_faces_shape
         )
-        vertical_fluxes = flat_flux[self.num_edges_axis[0] :].reshape(
-            self.horizontal_edges_shape
+        vertical_fluxes = flat_flux[self.num_faces_axis[0] :].reshape(
+            self.horizontal_faces_shape
         )
 
         # Determine a cell-based Raviart-Thomas reconstruction of the fluxes
@@ -620,7 +620,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         return (
             rhs
             - self.broken_darcy.dot(solution)
-            - self.flux_embedding.dot(self.mass_matrix_edges.dot(flat_flux_normed))
+            - self.flux_embedding.dot(self.mass_matrix_faces.dot(flat_flux_normed))
         )
 
     def jacobian_lu(self, solution: np.ndarray) -> sps.linalg.splu:
@@ -644,7 +644,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             [
                 [
                     sps.diags(np.maximum(self.L, 1.0 / flat_flux_norm), dtype=float)
-                    * self.mass_matrix_edges,
+                    * self.mass_matrix_faces,
                     -self.div.T,
                     None,
                 ],
@@ -681,7 +681,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # Define right hand side
         rhs = np.concatenate(
             [
-                np.zeros(self.num_edges, dtype=float),
+                np.zeros(self.num_faces, dtype=float),
                 self.mass_matrix_cells.dot(flat_mass_diff),
                 np.zeros(1, dtype=float),
             ]
@@ -734,8 +734,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             # Application to full solution, or just the potential, lead to divergence,
             # while application to the flux, results in improved performance.
             if self.anderson is not None:
-                solution_i[: self.num_edges] = self.anderson(
-                    solution_i[: self.num_edges], update_i[: self.num_edges], iter
+                solution_i[: self.num_faces] = self.anderson(
+                    solution_i[: self.num_faces], update_i[: self.num_faces], iter
                 )
 
             # Update distance
@@ -749,9 +749,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             # - distance increment
             error = [
                 np.linalg.norm(residual_i, 2),
-                np.linalg.norm(residual_i[self.num_edges : -1], 2),
+                np.linalg.norm(residual_i[self.num_faces : -1], 2),
                 np.linalg.norm(solution_i - old_solution_i, 2),
-                np.linalg.norm((solution_i - old_solution_i)[: self.num_edges], 2),
+                np.linalg.norm((solution_i - old_solution_i)[: self.num_faces], 2),
                 abs(new_distance - old_distance),
             ]
 
@@ -805,7 +805,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         self.L = self.options.get("L", 1.0)
         l_scheme_mixed_darcy = sps.bmat(
             [
-                [self.L * self.mass_matrix_edges, -self.div.T, None],
+                [self.L * self.mass_matrix_faces, -self.div.T, None],
                 [self.div, None, -self.potential_constraint.T],
                 [None, self.potential_constraint, None],
             ],
@@ -821,7 +821,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         rhs = np.concatenate(
             [
-                np.zeros(self.num_edges, dtype=float),
+                np.zeros(self.num_faces, dtype=float),
                 self.mass_matrix_cells.dot(flat_mass_diff),
                 np.zeros(1, dtype=float),
             ]
@@ -838,7 +838,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             # 1. Solve linear system with trust in current flux.
             flat_flux_i, _, _ = self.split_solution(solution_i)
             rhs_i = rhs.copy()
-            rhs_i[: self.num_edges] = self.L * self.mass_matrix_edges.dot(flat_flux_i)
+            rhs_i[: self.num_faces] = self.L * self.mass_matrix_faces.dot(flat_flux_i)
             intermediate_solution_i = self.l_scheme_mixed_darcy_lu.solve(rhs_i)
 
             # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
@@ -857,7 +857,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             cell_scaling = np.maximum(norm - 1 / self.L, 0) / (
                 norm + self.regularization
             )
-            flat_scaling = self.face_restriction_scalar(cell_scaling)
+            flat_scaling = self.face_restriction_scalar(cell_scaling, mode="arithmetic")
             new_flat_flux_i = flat_scaling * intermediate_flat_flux_i
 
             # Apply Anderson acceleration to flux contribution (the only nonlinear part).
@@ -870,14 +870,14 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
             # Update flux solution
             solution_i = intermediate_solution_i.copy()
-            solution_i[: self.num_edges] = new_flat_flux_i
+            solution_i[: self.num_faces] = new_flat_flux_i
 
             # Update distance
             new_distance = self.l1_dissipation(solution_i)
 
             # Determine the error in the mass conservation equation
             mass_conservation_residual = np.linalg.norm(
-                (rhs_i - self.broken_darcy.dot(solution_i))[self.num_edges : -1], 2
+                (rhs_i - self.broken_darcy.dot(solution_i))[self.num_faces : -1], 2
             )
 
             # TODO include criterion build on staganation of the solution
@@ -920,7 +920,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     # Update linear system
                     l_scheme_mixed_darcy = sps.bmat(
                         [
-                            [self.L * self.mass_matrix_edges, -self.div.T, None],
+                            [self.L * self.mass_matrix_faces, -self.div.T, None],
                             [self.div, None, -self.potential_constraint.T],
                             [None, self.potential_constraint, None],
                         ],
