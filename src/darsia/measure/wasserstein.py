@@ -47,7 +47,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                 - L (float): parameter for the Bregman iteration. Defaults to 1.0.
                 - regularization (float): regularization parameter for the Bregman
                     iteration. Defaults to 0.0.
-                - depth (int): depth of the Anderson acceleration. Defaults to 0.
+                - aa_depth (int): depth of the Anderson acceleration. Defaults to 0.
+                - aa_restart (int): restart of the Anderson acceleration. Defaults to None.
                 - scaling (float): scaling of the fluxes in the plot. Defaults to 1.0.
                 - lumping (bool): lump the mass matrix. Defaults to True.
 
@@ -234,10 +235,13 @@ class VariationalWassersteinDistance(darsia.EMD):
             )
 
         # Utilities
-        depth = self.options.get("depth", 0)
+        aa_depth = self.options.get("aa_depth", 0)
+        aa_restart = self.options.get("aa_restart", None)
         self.anderson = (
-            darsia.AndersonAcceleration(dimension=num_edges, depth=depth)
-            if depth > 0
+            darsia.AndersonAcceleration(
+                dimension=None, depth=aa_depth, restart=aa_restart
+            )
+            if aa_depth > 0
             else None
         )
 
