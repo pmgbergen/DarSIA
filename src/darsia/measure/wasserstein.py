@@ -66,18 +66,19 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.regularization = self.options.get("regularization", 0.0)
         self.verbose = self.options.get("verbose", False)
 
-        # Setup
+        # Setup of finite volume discretization
         self._setup()
 
     def _setup(self) -> None:
         """Setup of fixed discretization"""
 
-        # Define dimensions of the problem
+        # Define dimensions of the problem and indexing of cells
         dim_cells = self.shape
         num_cells = np.prod(dim_cells)
         numbering_cells = np.arange(num_cells, dtype=int).reshape(dim_cells)
 
-        # Consider only inner faces
+        # Consider only inner faces; implicitly define indexing of faces (first
+        # vertical, then horizontal)
         vertical_faces_shape = (self.shape[0], self.shape[1] - 1)
         horizontal_faces_shape = (self.shape[0] - 1, self.shape[1])
         num_faces_axis = [
@@ -90,18 +91,24 @@ class VariationalWassersteinDistance(darsia.EMD):
         connectivity = np.zeros((num_faces, 2), dtype=int)
         connectivity[: num_faces_axis[0], 0] = np.ravel(
             numbering_cells[:, :-1]
-        )  # left cells
+        )  # vertical faces, cells to the left
         connectivity[: num_faces_axis[0], 1] = np.ravel(
             numbering_cells[:, 1:]
-        )  # right cells
+        )  # vertical faces, cells to the right
         connectivity[num_faces_axis[0] :, 0] = np.ravel(
             numbering_cells[:-1, :]
-        )  # top cells
+        )  # horizontal faces, cells to the top
         connectivity[num_faces_axis[0] :, 1] = np.ravel(
             numbering_cells[1:, :]
-        )  # bottom cells
+        )  # horizontal faces, cells to the bottom
 
-        # Define sparse divergence operator, integrated over elements: flat_fluxes -> flat_mass
+        # Define sparse divergence operator, integrated over elements.
+        # Note: The global direction of the degrees of freedom is hereby fixed for all
+        # faces. Fluxes across vertical faces go from left to right, fluxes across
+        # horizontal faces go from bottom to top. To oppose the direction of the outer
+        # normal, the sign of the divergence is flipped for one side of cells for all
+        # faces.
+        div_shape = (num_cells, num_faces)
         div_data = np.concatenate(
             (
                 self.voxel_size[0] * np.ones(num_faces_axis[0], dtype=float),
@@ -112,15 +119,24 @@ class VariationalWassersteinDistance(darsia.EMD):
         )
         div_row = np.concatenate(
             (
-                connectivity[: num_faces_axis[0], 0],
-                connectivity[num_faces_axis[0] :, 0],
-                connectivity[: num_faces_axis[0], 1],
-                connectivity[num_faces_axis[0] :, 1],
+                connectivity[
+                    : num_faces_axis[0], 0
+                ],  # vertical faces, cells to the left
+                connectivity[
+                    num_faces_axis[0] :, 0
+                ],  # horizontal faces, cells to the top
+                connectivity[
+                    : num_faces_axis[0], 1
+                ],  # vertical faces, cells to the right (opposite normal)
+                connectivity[
+                    num_faces_axis[0] :, 1
+                ],  # horizontal faces, cells to the bottom (opposite normal)
             )
         )
         div_col = np.tile(np.arange(num_faces, dtype=int), 2)
         self.div = sps.csc_matrix(
-            (div_data, (div_row, div_col)), shape=(num_cells, num_faces)
+            (div_data, (div_row, div_col)),
+            shape=div_shape,
         )
 
         # Define sparse mass matrix on cells: flat_mass -> flat_mass
