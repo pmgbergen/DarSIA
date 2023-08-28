@@ -272,7 +272,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Fix index of dominating contribution in image differece
         self.constrained_cell_flat_index = np.argmax(np.abs(mass_diff))
-        self.pressure_constraint = sps.csc_matrix(
+        self.potential_constraint = sps.csc_matrix(
             (
                 np.ones(1, dtype=float),
                 (np.zeros(1, dtype=int), np.array([self.constrained_cell_flat_index])),
@@ -285,8 +285,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.broken_darcy = sps.bmat(
             [
                 [None, -self.div.T, None],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
+                [self.div, None, -self.potential_constraint.T],
+                [None, self.potential_constraint, None],
             ],
             format="csc",
         )
@@ -294,21 +294,21 @@ class VariationalWassersteinDistance(darsia.EMD):
     def split_solution(
         self, solution: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray, float]:
-        """Split the solution into fluxes, pressure and lagrange multiplier.
+        """Split the solution into fluxes, potential and lagrange multiplier.
 
         Args:
             solution (np.ndarray): solution
 
         Returns:
-            tuple: fluxes, pressure, lagrange multiplier
+            tuple: fluxes, potential, lagrange multiplier
 
         """
         # Split the solution
         flat_flux = solution[: self.num_edges]
-        flat_pressure = solution[self.num_edges : self.num_edges + self.num_cells]
+        flat_potential = solution[self.num_edges : self.num_edges + self.num_cells]
         flat_lagrange_multiplier = solution[-1]
 
-        return flat_flux, flat_pressure, flat_lagrange_multiplier
+        return flat_flux, flat_potential, flat_lagrange_multiplier
 
     # ! ---- Projections inbetween faces and cells ----
 
@@ -390,17 +390,15 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     # ! ---- Effective quantities ----
 
-    def effective_mobility(self, flat_flux: np.ndarray) -> np.ndarray:
-        """Compute the effective mobility of the solution.
+    def transport_density(self, cell_flux: np.ndarray) -> np.ndarray:
+        """Compute the transport density of the solution.
 
         Args:
             flat_flux (np.ndarray): flat fluxes
 
         Returns:
-            np.ndarray: effective mobility
+            np.ndarray: transport density
         """
-        # TODO Use improved quadrature?
-        cell_flux = self.cell_reconstruction(flat_flux)
         return np.linalg.norm(cell_flux, 2, axis=-1)
 
     def l1_dissipation(self, solution: np.ndarray) -> float:
@@ -458,14 +456,14 @@ class VariationalWassersteinDistance(darsia.EMD):
         distance, solution, status = self._solve(flat_mass_diff)
 
         # Split the solution
-        flat_flux, flat_pressure, _ = self.split_solution(solution)
+        flat_flux, flat_potential, _ = self.split_solution(solution)
 
-        # Reshape the fluxes and pressure
+        # Reshape the fluxes and potential to grid format
         flux = self.cell_reconstruction(flat_flux)
-        pressure = flat_pressure.reshape(self.dim_cells)
+        potential = flat_potential.reshape(self.dim_cells)
 
-        # Determine effective mobility
-        mobility = self.effective_mobility(flat_flux)
+        # Determine transport density
+        transport_density = self.transport_density(flux)
 
         # Stop taking time
         toc = time.time()
@@ -473,10 +471,10 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Plot the solution
         if plot_solution:
-            self._plot_solution(mass_diff, flux, pressure, mobility)
+            self._plot_solution(mass_diff, flux, potential, transport_density)
 
         if return_solution:
-            return distance, flux, pressure, mobility, status
+            return distance, flux, potential, transport_density, status
         else:
             return distance
 
@@ -484,8 +482,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         self,
         mass_diff: np.ndarray,
         flux: np.ndarray,
-        pressure: np.ndarray,
-        mobility: np.ndarray,
+        potential: np.ndarray,
+        transport_density: np.ndarray,
     ) -> None:
         # Meshgrid
         Y, X = np.meshgrid(
@@ -494,19 +492,15 @@ class VariationalWassersteinDistance(darsia.EMD):
             indexing="ij",
         )
 
-        # Control of flux arrows
-        scaling = self.options.get("scaling", 1.0)
-        frequency = self.options.get("plot_frequency", 1)
-
-        # Plot the fluxes and pressure
-        plt.figure("Beckman pressure solution")
-        plt.pcolormesh(X, Y, pressure, cmap="turbo")
-        plt.colorbar(label="pressure")
+        # Plot the potential
+        plt.figure("Beckman solution potential")
+        plt.pcolormesh(X, Y, potential, cmap="turbo")
+        plt.colorbar(label="potential")
         plt.quiver(
-            X[::frequency, ::frequency],
-            Y[::frequency, ::frequency],
-            scaling * flux[::frequency, ::frequency, 0],
-            -scaling * flux[::frequency, ::frequency, 1],
+            X[::resolution, ::resolution],
+            Y[::resolution, ::resolution],
+            scaling * flux[::resolution, ::resolution, 0],
+            -scaling * flux[::resolution, ::resolution, 1],
             angles="xy",
             scale_units="xy",
             scale=1,
@@ -515,22 +509,23 @@ class VariationalWassersteinDistance(darsia.EMD):
         )
         plt.xlabel("x [m]")
         plt.ylabel("y [m]")
-        plt.ylim(top=0.08)
-        if self.options["name"] is not None:
+        plt.ylim(top=0.08)  # TODO rm?
+        if save_plot:
             plt.savefig(
-                self.options["name"] + "_beckman_pressure_solution.png",
+                folder + "/" + name + "_beckman_solution_potential.png",
                 dpi=500,
                 transparent=True,
             )
 
+        # Plot the fluxes
         plt.figure("Beckman solution fluxes")
-        plt.pcolormesh(X, Y, mass_diff, cmap="turbo")
+        plt.pcolormesh(X, Y, mass_diff, cmap="turbo", vmin=-1, vmax=3.5)
         plt.colorbar(label="mass difference")
         plt.quiver(
-            X[::frequency, ::frequency],
-            Y[::frequency, ::frequency],
-            scaling * flux[::frequency, ::frequency, 0],
-            -scaling * flux[::frequency, ::frequency, 1],
+            X[::resolution, ::resolution],
+            Y[::resolution, ::resolution],
+            scaling * flux[::resolution, ::resolution, 0],
+            -scaling * flux[::resolution, ::resolution, 1],
             angles="xy",
             scale_units="xy",
             scale=1,
@@ -540,27 +535,40 @@ class VariationalWassersteinDistance(darsia.EMD):
         plt.xlabel("x [m]")
         plt.ylabel("y [m]")
         plt.ylim(top=0.08)
-        if self.options["name"] is not None:
+        plt.text(
+            0.0025,
+            0.075,
+            name,
+            color="white",
+            alpha=0.9,
+            rotation=0,
+            fontsize=14,
+        )  # TODO rm?
+        if save_plot:
             plt.savefig(
-                self.options["name"] + "_beckman_solution_fluxes.png",
+                folder + "/" + name + "_beckman_solution_fluxes.png",
                 dpi=500,
                 transparent=True,
             )
 
-        plt.figure("Beckman solution mobility")
-        plt.pcolormesh(X, Y, mobility, cmap="turbo")
+        # Plot the transport density
+        plt.figure("L1 optimal transport density")
+        plt.pcolormesh(X, Y, transport_density, cmap="turbo")
         plt.colorbar(label="flux modulus")
         plt.xlabel("x [m]")
         plt.ylabel("y [m]")
-        plt.ylim(top=0.08)
-        if self.options["name"] is not None:
+        plt.ylim(top=0.08)  # TODO rm?
+        if save_plot:
             plt.savefig(
-                self.options["name"] + "_beckman_solution_mobility.png",
+                folder + "/" + name + "_beckman_solution_transport_density.png",
                 dpi=500,
                 transparent=True,
             )
 
-        plt.show()
+        if show_plot:
+            plt.show()
+        else:
+            plt.close("all")
 
 
 class WassersteinDistanceNewton(VariationalWassersteinDistance):
@@ -728,8 +736,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         l_scheme_mixed_darcy = sps.bmat(
             [
                 [self.L * self.mass_matrix_edges, -self.div.T, None],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
+                [self.div, None, -self.potential_constraint.T],
+                [None, self.potential_constraint, None],
             ],
             format="csc",
         )
@@ -843,8 +851,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     l_scheme_mixed_darcy = sps.bmat(
                         [
                             [self.L * self.mass_matrix_edges, -self.div.T, None],
-                            [self.div, None, -self.pressure_constraint.T],
-                            [None, self.pressure_constraint, None],
+                            [self.div, None, -self.potential_constraint.T],
+                            [None, self.potential_constraint, None],
                         ],
                         format="csc",
                     )
@@ -893,10 +901,11 @@ def wasserstein_distance(
         shape = mass_1.img.shape
         voxel_size = mass_1.voxel_size
         dim = mass_1.space_dim
+
+        # Fetch options
+        options = kwargs.get("options", {})
         plot_solution = kwargs.get("plot_solution", False)
         return_solution = kwargs.get("return_solution", False)
-        options = kwargs.get("options", {})
-        options["name"] = kwargs.get("name")
 
         if method.lower() == "newton":
             w1 = WassersteinDistanceNewton(shape, voxel_size, dim, options)
