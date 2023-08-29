@@ -72,35 +72,88 @@ class VariationalWassersteinDistance(darsia.EMD):
     def _setup(self) -> None:
         """Setup of fixed discretization"""
 
-        # Define dimensions of the problem and indexing of cells
+        # ! ---- Grid management ----
+
+        # Define dimensions of the problem and indexing of cells, from here one start
+        # counting rows from left to right, from top to bottom.
         dim_cells = self.shape
         num_cells = np.prod(dim_cells)
-        numbering_cells = np.arange(num_cells, dtype=int).reshape(dim_cells)
+        flat_numbering_cells = np.arange(num_cells, dtype=int)
+        numbering_cells = flat_numbering_cells.reshape(dim_cells)
 
         # Consider only inner faces; implicitly define indexing of faces (first
-        # vertical, then horizontal)
+        # vertical, then horizontal). The counting of vertical faces starts from top to
+        # bottom and left to right. The counting of horizontal faces starts from left to
+        # right and top to bottom.
         vertical_faces_shape = (self.shape[0], self.shape[1] - 1)
         horizontal_faces_shape = (self.shape[0] - 1, self.shape[1])
+        num_vertical_faces = np.prod(vertical_faces_shape)
+        num_horizontal_faces = np.prod(horizontal_faces_shape)
         num_faces_axis = [
-            np.prod(vertical_faces_shape),
-            np.prod(horizontal_faces_shape),
+            num_vertical_faces,
+            num_horizontal_faces,
         ]
         num_faces = np.sum(num_faces_axis)
 
+        # Define flat indexing of faces: vertical faces first, then horizontal faces
+        flat_vertical_faces = np.arange(num_vertical_faces, dtype=int)
+        flat_horizontal_faces = num_vertical_faces + np.arange(
+            num_horizontal_faces, dtype=int
+        )
+        vertical_faces = flat_vertical_faces.reshape(vertical_faces_shape)
+        horizontal_faces = flat_horizontal_faces.reshape(horizontal_faces_shape)
+
+        # Identify vertical faces on top, inner and bottom
+        top_row_vertical_faces = np.ravel(vertical_faces[0, :])
+        inner_vertical_faces = np.ravel(vertical_faces[1:-1, :])
+        bottom_row_vertical_faces = np.ravel(vertical_faces[-1, :])
+        # Identify horizontal faces on left, inner and right
+        left_col_horizontal_faces = np.ravel(horizontal_faces[:, 0])
+        inner_horizontal_faces = np.ravel(horizontal_faces[:, 1:-1])
+        right_col_horizontal_faces = np.ravel(horizontal_faces[:, -1])
+
+        # ! ---- Connectivity ----
+
         # Define connectivity and direction of the normal on faces
         connectivity = np.zeros((num_faces, 2), dtype=int)
-        connectivity[: num_faces_axis[0], 0] = np.ravel(
-            numbering_cells[:, :-1]
-        )  # vertical faces, cells to the left
-        connectivity[: num_faces_axis[0], 1] = np.ravel(
-            numbering_cells[:, 1:]
-        )  # vertical faces, cells to the right
-        connectivity[num_faces_axis[0] :, 0] = np.ravel(
-            numbering_cells[:-1, :]
-        )  # horizontal faces, cells to the top
-        connectivity[num_faces_axis[0] :, 1] = np.ravel(
-            numbering_cells[1:, :]
-        )  # horizontal faces, cells to the bottom
+        # Vertical faces to left cells
+        connectivity[: num_faces_axis[0], 0] = np.ravel(numbering_cells[:, :-1])
+        # Vertical faces to right cells
+        connectivity[: num_faces_axis[0], 1] = np.ravel(numbering_cells[:, 1:])
+        # Horizontal faces to top cells
+        connectivity[num_faces_axis[0] :, 0] = np.ravel(numbering_cells[:-1, :])
+        # Horizontal faces to bottom cells
+        connectivity[num_faces_axis[0] :, 1] = np.ravel(numbering_cells[1:, :])
+
+        # Define reverse connectivity. Cell to vertical faces
+        connectivity_cell_to_vertical_face = -np.ones((num_cells, 2), dtype=int)
+        # Left vertical face of cell
+        connectivity_cell_to_vertical_face[
+            np.ravel(numbering_cells[:, 1:]), 0
+        ] = flat_vertical_faces
+        # Right vertical face of cell
+        connectivity_cell_to_vertical_face[
+            np.ravel(numbering_cells[:, :-1]), 1
+        ] = flat_vertical_faces
+        # Define reverse connectivity. Cell to horizontal faces
+        connectivity_cell_to_horizontal_face = np.zeros((num_cells, 2), dtype=int)
+        # Top horizontal face of cell
+        connectivity_cell_to_horizontal_face[
+            np.ravel(numbering_cells[1:, :]), 0
+        ] = flat_horizontal_faces
+        # Bottom horizontal face of cell
+        connectivity_cell_to_horizontal_face[
+            np.ravel(numbering_cells[:-1, :]), 1
+        ] = flat_horizontal_faces
+
+        # Info about inner cells
+        # TODO rm?
+        inner_cells_with_vertical_faces = np.ravel(numbering_cells[:, 1:-1])
+        inner_cells_with_horizontal_faces = np.ravel(numbering_cells[1:-1, :])
+        num_inner_cells_with_vertical_faces = len(inner_cells_with_vertical_faces)
+        num_inner_cells_with_horizontal_faces = len(inner_cells_with_horizontal_faces)
+
+        # ! ---- Operators ----
 
         # Define sparse divergence operator, integrated over elements.
         # Note: The global direction of the degrees of freedom is hereby fixed for all
@@ -111,25 +164,25 @@ class VariationalWassersteinDistance(darsia.EMD):
         div_shape = (num_cells, num_faces)
         div_data = np.concatenate(
             (
-                self.voxel_size[0] * np.ones(num_faces_axis[0], dtype=float),
-                self.voxel_size[1] * np.ones(num_faces_axis[1], dtype=float),
-                -self.voxel_size[0] * np.ones(num_faces_axis[0], dtype=float),
-                -self.voxel_size[1] * np.ones(num_faces_axis[1], dtype=float),
+                self.voxel_size[0] * np.ones(num_vertical_faces, dtype=float),
+                self.voxel_size[1] * np.ones(num_horizontal_faces, dtype=float),
+                -self.voxel_size[0] * np.ones(num_vertical_faces, dtype=float),
+                -self.voxel_size[1] * np.ones(num_horizontal_faces, dtype=float),
             )
         )
         div_row = np.concatenate(
             (
                 connectivity[
-                    : num_faces_axis[0], 0
+                    flat_vertical_faces, 0
                 ],  # vertical faces, cells to the left
                 connectivity[
-                    num_faces_axis[0] :, 0
+                    flat_horizontal_faces, 0
                 ],  # horizontal faces, cells to the top
                 connectivity[
-                    : num_faces_axis[0], 1
+                    flat_vertical_faces, 1
                 ],  # vertical faces, cells to the right (opposite normal)
                 connectivity[
-                    num_faces_axis[0] :, 1
+                    flat_horizontal_faces, 1
                 ],  # horizontal faces, cells to the bottom (opposite normal)
             )
         )
@@ -151,39 +204,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                 np.prod(self.voxel_size) * np.ones(num_faces, dtype=float)
             )
         else:
-            # Define connectivity: cell to face (only for inner cells)
-            connectivity_cell_to_vertical_face = np.zeros((num_cells, 2), dtype=int)
-            connectivity_cell_to_vertical_face[
-                np.ravel(numbering_cells[:, :-1]), 0
-            ] = np.arange(
-                num_faces_axis[0]
-            )  # left face
-            connectivity_cell_to_vertical_face[
-                np.ravel(numbering_cells[:, 1:]), 1
-            ] = np.arange(
-                num_faces_axis[0]
-            )  # right face
-            connectivity_cell_to_horizontal_face = np.zeros((num_cells, 2), dtype=int)
-            connectivity_cell_to_horizontal_face[
-                np.ravel(numbering_cells[:-1, :]), 0
-            ] = np.arange(
-                num_faces_axis[0], num_faces_axis[0] + num_faces_axis[1]
-            )  # top face
-            connectivity_cell_to_horizontal_face[
-                np.ravel(numbering_cells[1:, :]), 1
-            ] = np.arange(
-                num_faces_axis[0], num_faces_axis[0] + num_faces_axis[1]
-            )  # bottom face
-
-            # Info about inner cells
-            inner_cells_with_vertical_faces = np.ravel(numbering_cells[:, 1:-1])
-            inner_cells_with_horizontal_faces = np.ravel(numbering_cells[1:-1, :])
-            num_inner_cells_with_vertical_faces = len(inner_cells_with_vertical_faces)
-            num_inner_cells_with_horizontal_faces = len(
-                inner_cells_with_horizontal_faces
-            )
-
             # Define true RT0 mass matrix on faces: flat_fluxes -> flat_fluxes
+            mass_matrix_faces_shape = (num_faces, num_faces)
             mass_matrix_faces_data = np.prod(self.voxel_size) * np.concatenate(
                 (
                     2 / 3 * np.ones(num_faces, dtype=float),  # all faces
@@ -248,21 +270,109 @@ class VariationalWassersteinDistance(darsia.EMD):
                     mass_matrix_faces_data,
                     (mass_matrix_faces_row, mass_matrix_faces_col),
                 ),
-                shape=(num_faces, num_faces),
+                shape=mass_matrix_faces_shape,
             )
 
-        # Utilities
-        aa_depth = self.options.get("aa_depth", 0)
-        aa_restart = self.options.get("aa_restart", None)
-        self.anderson = (
-            darsia.AndersonAcceleration(
-                dimension=None, depth=aa_depth, restart=aa_restart
+        # Operator for averaging fluxes on orthogonal, neighboring faces
+        orthogonal_face_average_shape = (num_faces, num_faces)
+        orthogonal_face_average_data = 0.25 * np.concatenate(
+            (
+                np.ones(
+                    2 * len(top_row_vertical_faces)
+                    + 4 * len(inner_vertical_faces)
+                    + 2 * len(bottom_row_vertical_faces)
+                    + 2 * len(left_col_horizontal_faces)
+                    + 4 * len(inner_horizontal_faces)
+                    + 2 * len(right_col_horizontal_faces),
+                    dtype=float,
+                ),
             )
-            if aa_depth > 0
-            else None
         )
-
-        # TODO needs to be defined for each problem separately
+        orthogonal_face_average_rows = np.concatenate(
+            (
+                np.tile(top_row_vertical_faces, 2),
+                np.tile(inner_vertical_faces, 4),
+                np.tile(bottom_row_vertical_faces, 2),
+                np.tile(left_col_horizontal_faces, 2),
+                np.tile(inner_horizontal_faces, 4),
+                np.tile(right_col_horizontal_faces, 2),
+            )
+        )
+        orthogonal_face_average_cols = np.concatenate(
+            (
+                # top row: left cell -> bottom face
+                connectivity_cell_to_horizontal_face[
+                    connectivity[top_row_vertical_faces, 0], 1
+                ],
+                # top row: vertical face -> right cell -> bottom face
+                connectivity_cell_to_horizontal_face[
+                    connectivity[top_row_vertical_faces, 1], 1
+                ],
+                # inner rows: vertical face -> left cell -> top face
+                connectivity_cell_to_horizontal_face[
+                    connectivity[inner_vertical_faces, 0], 0
+                ],
+                # inner rows: vertical face -> left cell -> bottom face
+                connectivity_cell_to_horizontal_face[
+                    connectivity[inner_vertical_faces, 0], 1
+                ],
+                # inner rows: vertical face -> right cell -> top face
+                connectivity_cell_to_horizontal_face[
+                    connectivity[inner_vertical_faces, 1], 0
+                ],
+                # inner rows: vertical face -> right cell -> bottom face
+                connectivity_cell_to_horizontal_face[
+                    connectivity[inner_vertical_faces, 1], 1
+                ],
+                # bottom row: vertical face -> left cell -> top face
+                connectivity_cell_to_horizontal_face[
+                    connectivity[bottom_row_vertical_faces, 0], 0
+                ],
+                # bottom row: vertical face -> right cell -> top face
+                connectivity_cell_to_horizontal_face[
+                    connectivity[bottom_row_vertical_faces, 1], 0
+                ],
+                # left column: horizontal face -> top cell -> right face
+                connectivity_cell_to_vertical_face[
+                    connectivity[left_col_horizontal_faces, 0], 1
+                ],
+                # left column: horizontal face -> bottom cell -> right face
+                connectivity_cell_to_vertical_face[
+                    connectivity[left_col_horizontal_faces, 1], 1
+                ],
+                # inner columns: horizontal face -> top cell -> left face
+                connectivity_cell_to_vertical_face[
+                    connectivity[inner_horizontal_faces, 0], 0
+                ],
+                # inner columns: horizontal face -> top cell -> right face
+                connectivity_cell_to_vertical_face[
+                    connectivity[inner_horizontal_faces, 0], 1
+                ],
+                # inner columns: horizontal face -> bottom cell -> left face
+                connectivity_cell_to_vertical_face[
+                    connectivity[inner_horizontal_faces, 1], 0
+                ],
+                # inner columns: horizontal face -> bottom cell -> right face
+                connectivity_cell_to_vertical_face[
+                    connectivity[inner_horizontal_faces, 1], 1
+                ],
+                # right column: horizontal face -> top cell -> left face
+                connectivity_cell_to_vertical_face[
+                    connectivity[right_col_horizontal_faces, 0], 0
+                ],
+                # right column: horizontal face -> bottom cell -> left face
+                connectivity_cell_to_vertical_face[
+                    connectivity[right_col_horizontal_faces, 1], 0
+                ],
+            )
+        )
+        self.orthogonal_face_average = sps.csc_matrix(
+            (
+                orthogonal_face_average_data,
+                (orthogonal_face_average_rows, orthogonal_face_average_cols),
+            ),
+            shape=orthogonal_face_average_shape,
+        )
 
         # Define sparse embedding operator for fluxes into full discrete DOF space
         self.flux_embedding = sps.csc_matrix(
@@ -273,7 +383,18 @@ class VariationalWassersteinDistance(darsia.EMD):
             shape=(num_faces + num_cells + 1, num_faces),
         )
 
-        # Cache
+        # ! ---- Utilities ----
+        aa_depth = self.options.get("aa_depth", 0)
+        aa_restart = self.options.get("aa_restart", None)
+        self.anderson = (
+            darsia.AndersonAcceleration(
+                dimension=None, depth=aa_depth, restart=aa_restart
+            )
+            if aa_depth > 0
+            else None
+        )
+
+        # ! ---- Cache ----
         self.num_faces = num_faces
         self.num_cells = num_cells
         self.dim_cells = dim_cells
