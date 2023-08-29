@@ -554,6 +554,50 @@ class VariationalWassersteinDistance(darsia.EMD):
         cell_flux = self.cell_reconstruction(flat_flux)
         return np.sum(np.prod(self.voxel_size) * np.linalg.norm(cell_flux, 2, axis=-1))
 
+    # ! ---- Lumping of effective mobility
+
+    def face_flux_norm(self, solution: np.ndarray, mode: str) -> np.ndarray:
+        """Compute the norm of the fluxes on the faces.
+
+        Args:
+            solution (np.ndarray): solution
+            mode (str): mode of the norm
+
+        Returns:
+            np.ndarray: norm of the fluxes on the faces
+
+        """
+
+        # Extract the fluxes
+        flat_flux, _, _ = self.split_solution(solution)
+
+        # Determine the norm of the fluxes on the faces
+        if mode in ["cell_arithmetic", "cell_harmonic"]:
+            # Consider the piecewise constant projection of vector valued fluxes
+            cell_flux = self.cell_reconstruction(flat_flux)
+            # Determine the norm of the fluxes on the cells
+            cell_flux_norm = np.maximum(
+                np.linalg.norm(cell_flux, 2, axis=-1), self.regularization
+            )
+            # Take the average over faces
+            if mode == "cell_arithmetic":
+                flat_flux_norm = self.face_restriction_scalar(
+                    cell_flux_norm, mode="arithmetic"
+                )
+            elif mode == "cell_harmonic":
+                flat_flux_norm = self.face_restriction_scalar(
+                    cell_flux_norm, mode="harmonic"
+                )
+        elif mode == "face_arithmetic":
+            # Define natural vector valued flux on faces (taking averages over cells)
+            tangential_flux = self.orthogonal_face_average.dot(flat_flux)
+            # Determine the l2 norm of the fluxes on the faces, add some regularization
+            flat_flux_norm = np.sqrt(flat_flux**2 + tangential_flux**2)
+        else:
+            raise ValueError(f"Mode {mode} not supported.")
+
+        return flat_flux_norm
+
     # ! ---- Main methods ----
 
     def __call__(
@@ -748,12 +792,20 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         """
         flat_flux, _, _ = self.split_solution(solution)
-        cell_flux = self.cell_reconstruction(flat_flux)
-        cell_flux_norm = np.maximum(
-            np.linalg.norm(cell_flux, 2, axis=-1), self.regularization
+        # TODO cell-based version meaningful?
+        # cell_flux = self.cell_reconstruction(flat_flux)
+        # cell_flux_norm = np.maximum(
+        #    np.linalg.norm(cell_flux, 2, axis=-1), self.regularization
+        # )
+        # cell_flux_normed = cell_flux / cell_flux_norm[..., None]
+        # flat_flux_normed = self.face_restriction(cell_flux_normed)
+        mode = "face_arithmetic"
+        #mode = "cell_arithmetic"
+        flat_flux_norm = np.maximum(
+            self.face_flux_norm(solution, mode=mode), self.regularization
         )
-        cell_flux_normed = cell_flux / cell_flux_norm[..., None]
-        flat_flux_normed = self.face_restriction(cell_flux_normed)
+        flat_flux_normed = flat_flux / flat_flux_norm
+
         return (
             rhs
             - self.broken_darcy.dot(solution)
@@ -770,13 +822,11 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             sps.linalg.splu: LU factorization of the jacobian
 
         """
-        flat_flux, _, _ = self.split_solution(solution)
-        cell_flux = self.cell_reconstruction(flat_flux)
-        self.regularization = self.options.get("regularization", 0.0)
-        cell_flux_norm = np.maximum(
-            np.linalg.norm(cell_flux, 2, axis=-1), self.regularization
+        mode = "face_arithmetic"
+        #mode = "cell_arithmetic"
+        flat_flux_norm = np.maximum(
+            self.face_flux_norm(solution, mode=mode), self.regularization
         )
-        flat_flux_norm = self.face_restriction_scalar(cell_flux_norm)
         approx_jacobian = sps.bmat(
             [
                 [
