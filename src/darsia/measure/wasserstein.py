@@ -82,6 +82,10 @@ class VariationalWassersteinDistance(darsia.EMD):
         flat_numbering_cells = np.arange(num_cells, dtype=int)
         numbering_cells = flat_numbering_cells.reshape(dim_cells)
 
+        # Define center cell
+        center_cell = np.array([self.shape[0] // 2, self.shape[1] // 2]).astype(int)
+        self.flat_center_cell = np.ravel_multi_index(center_cell, dim_cells)
+
         # Consider only inner faces; implicitly define indexing of faces (first
         # vertical, then horizontal). The counting of vertical faces starts from top to
         # bottom and left to right. The counting of horizontal faces starts from left to
@@ -407,10 +411,8 @@ class VariationalWassersteinDistance(darsia.EMD):
     def _problem_specific_setup(self, mass_diff: np.ndarray) -> None:
         """Resetup of fixed discretization"""
 
-        # TODO can't we just fix some  cell, e.g., [0,0]. Move then this to the above.
-
-        # Fix index of dominating contribution in image differece
-        self.constrained_cell_flat_index = np.argmax(np.abs(mass_diff))
+        # Fix index of center cell
+        self.constrained_cell_flat_index = self.flat_center_cell
         self.potential_constraint = sps.csc_matrix(
             (
                 np.ones(1, dtype=float),
