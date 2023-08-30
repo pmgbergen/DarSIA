@@ -8,6 +8,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pyamg
 import scipy.sparse as sps
 
 import darsia
@@ -812,7 +813,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             - self.flux_embedding.dot(self.mass_matrix_faces.dot(flat_flux_normed))
         )
 
-    def jacobian_lu(self, solution: np.ndarray) -> sps.linalg.splu:
+    def jacobian(self, solution: np.ndarray) -> sps.linalg.LinearOperator:
         """Compute the LU factorization of the jacobian of the solution.
 
         Args:
@@ -823,7 +824,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         """
         mode = "face_arithmetic"
-        #mode = "cell_arithmetic"
+        # mode = "cell_arithmetic"
         flat_flux_norm = np.maximum(
             self.face_flux_norm(solution, mode=mode), self.regularization
         )
@@ -840,8 +841,158 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             ],
             format="csc",
         )
-        approx_jacobian_lu = sps.linalg.splu(approx_jacobian)
-        return approx_jacobian_lu
+        return approx_jacobian
+
+    def darcy_jacobian(self) -> sps.linalg.LinearOperator:
+        """Compute the LU factorization of the jacobian of the solution."""
+        L_init = self.options.get("L_init", 1.0)
+        jacobian = sps.bmat(
+            [
+                [L_init * self.mass_matrix_faces, -self.div.T, None],
+                [self.div, None, -self.potential_constraint.T],
+                [None, self.potential_constraint, None],
+            ],
+            format="csc",
+        )
+        return jacobian
+
+    def setup_infrastructure(self) -> None:
+        """Setup the infrastructure for reduced systems through Gauss elimination.
+
+        Provide internal data structures for the reduced system.
+
+        """
+
+        # TODO build the sparsity pattern explicitly
+
+        # The Darcy problem is sufficient
+        jacobian = self.darcy_jacobian()
+
+        # Build Schur complement wrt. flux-flux block
+        J = jacobian[: self.num_faces, : self.num_faces]
+        J_inv = sps.diags(1.0 / J.diagonal())
+        D = jacobian[self.num_faces :, : self.num_faces]
+        schur_complement = D.dot(J_inv.dot(D.T))
+
+        # Add Schur complement - use this to identify sparsity structure
+        # Cache the reduced jacobian
+        self.reduced_jacobian = (
+            jacobian[self.num_faces :, self.num_faces :] + schur_complement
+        )
+
+    def linearization_step(
+        self, solution: np.ndarray, rhs: np.ndarray, iter: int
+    ) -> tuple[np.ndarray, np.ndarray, list[float]]:
+        """Newton step for the linearization of the problem.
+
+        In the first iteration, the linearization is the linearization of the Darcy
+        problem.
+
+        Args:
+            solution (np.ndarray): solution
+            rhs (np.ndarray): right hand side
+            iter (int): iteration number
+
+        Returns:
+            tuple: update, residual, stats (timinings)
+
+        """
+        tic = time.time()
+        # Determine residual
+        if iter == 0:
+            residual = rhs.copy()
+        else:
+            residual = self.residual(rhs, solution)
+
+        # Setup linear solver
+        linear_solver = self.options.get("linear_solver", "lu")
+        if iter == 0:
+            approx_jacobian = self.darcy_jacobian()
+        else:
+            approx_jacobian = self.jacobian(solution)
+
+        toc = time.time()
+        time_setup = toc - tic
+        tic = time.time()
+
+        # Solve linear system for the update
+        if linear_solver == "lu":
+            jacobian_lu = sps.linalg.splu(approx_jacobian)
+            update = jacobian_lu.solve(residual)
+        elif linear_solver == "amg":
+            # Build Schur complement wrt flux-block
+            J = approx_jacobian[: self.num_faces, : self.num_faces]
+            J_inv = sps.diags(1.0 / J.diagonal())
+            D = approx_jacobian[self.num_faces :, : self.num_faces]
+            schur_complement = D.dot(J_inv.dot(D.T))
+
+            # Gauss eliminiation on matrices
+            self.reduced_jacobian.data[:] = 0.0
+            self.reduced_jacobian += approx_jacobian[self.num_faces :, self.num_faces :]
+            self.reduced_jacobian += schur_complement
+
+            # Gauss elimination on vectors
+            reduced_residual = residual[self.num_faces :]
+            reduced_residual -= D.dot(J_inv.dot(residual[: self.num_faces]))
+
+            # TODO reduce to pure pressure system!
+
+            # ML architecture
+            ml = pyamg.smoothed_aggregation_solver(
+                self.reduced_jacobian,
+                # B=X.reshape(
+                #    n * n, 1
+                # ),  # the representation of the near null space (this is a poor choice)
+                # BH=None,  # the representation of the left near null space
+                symmetry="hermitian",  # indicate that the matrix is Hermitian
+                # strength="evolution",  # change the strength of connection
+                aggregate="standard",  # use a standard aggregation method
+                smooth=(
+                    "jacobi",
+                    {"omega": 4.0 / 3.0, "degree": 2},
+                ),  # prolongation smoothing
+                presmoother=("block_gauss_seidel", {"sweep": "symmetric"}),
+                postsmoother=("block_gauss_seidel", {"sweep": "symmetric"}),
+                # improve_candidates=[
+                #    ("block_gauss_seidel", {"sweep": "symmetric", "iterations": 4}),
+                #    None,
+                # ],
+                max_levels=4,  # maximum number of levels
+                max_coarse=1000,  # maximum number on a coarse level
+                # keep=False,  # keep extra operators around in the hierarchy (memory)
+            )
+            if False:
+                print(ml)
+
+            tol_linear_solver = self.options.get("tol_linear_solver", 1e-6)
+            res_history = []
+            update = np.zeros_like(solution, dtype=float)
+            update[self.num_faces :] = ml.solve(
+                reduced_residual, tol=tol_linear_solver, residuals=res_history
+            )
+            # TODO rm only for debugging
+            # lu = sps.linalg.splu(self.reduced_jacobian)
+            # update[self.num_faces :] = lu.solve(reduced_residual)
+            if False:
+                print(
+                    "res: ",
+                    len(res_history),
+                    np.linalg.norm(
+                        reduced_residual
+                        - self.reduced_jacobian.dot(update[self.num_faces :])
+                    ),
+                )
+                print("update", np.linalg.norm(update))
+
+            # Compute flux update
+            update[: self.num_faces] = J_inv.dot(
+                residual[: self.num_faces] + D.T.dot(update[self.num_faces :])
+            )
+        toc = time.time()
+        time_solve = toc - tic
+        stats = [time_setup, time_solve]
+
+        return update, residual, stats
 
     def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
         """Solve the Beckman problem using Newton's method.
@@ -853,8 +1004,15 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             tuple: distance, solution, status
 
         """
-        # TODO rm: Observation: AA can lead to less stagnation, more accurate results, and therefore
-        # better solutions to mu and u. Higher depth is better, but more expensive.
+        # TODO rm: Observation: AA can lead to less stagnation, more accurate results,
+        # and therefore better solutions to mu and u. Higher depth is better, but more
+        # expensive.
+
+        # Setup
+        tic = time.time()
+        self.setup_infrastructure()
+        time_infrastructure = time.time() - tic
+        print("timing infra structure", time_infrastructure)
 
         # Solver parameters
         num_iter = self.options.get("num_iter", 100)
@@ -881,10 +1039,11 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         convergence_history = {
             "distance": [],
             "residual": [],
-            "mass conservation residual": [],
+            "decomposed residual": [],
             "increment": [],
-            "flux increment": [],
+            "decomposed increment": [],
             "distance increment": [],
+            "timing": [],
         }
 
         # Print header
@@ -907,48 +1066,61 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             old_distance = self.l1_dissipation(solution_i)
 
             # Newton step
-            if iter == 0:
-                residual_i = (
-                    rhs.copy()
-                )  # Aim at Darcy-like initial guess after first iteration.
-            else:
-                residual_i = self.residual(rhs, solution_i)
-            jacobian_lu = self.jacobian_lu(solution_i)
-            update_i = jacobian_lu.solve(residual_i)
+            update_i, residual_i, stats_i = self.linearization_step(
+                solution_i, rhs, iter
+            )
             solution_i += update_i
 
             # Apply Anderson acceleration to flux contribution (the only nonlinear part).
             # Application to full solution, or just the potential, lead to divergence,
             # while application to the flux, results in improved performance.
+            tic = time.time()
             if self.anderson is not None:
                 solution_i[: self.num_faces] = self.anderson(
                     solution_i[: self.num_faces], update_i[: self.num_faces], iter
                 )
+            toc = time.time()
+            time_anderson = toc - tic
+            stats_i.append(time_anderson)
 
             # Update distance
             new_distance = self.l1_dissipation(solution_i)
 
             # Compute the error:
-            # - residual
+            # - full residual
+            # - residual of the flux equation
             # - residual of mass conservation equation
-            # - increment
+            # - residual of the constraint equation
+            # - full increment
             # - flux increment
+            # - pressure increment
+            # - lagrange multiplier increment
             # - distance increment
+            increment = solution_i - old_solution_i
             error = [
                 np.linalg.norm(residual_i, 2),
-                np.linalg.norm(residual_i[self.num_faces : -1], 2),
-                np.linalg.norm(solution_i - old_solution_i, 2),
-                np.linalg.norm((solution_i - old_solution_i)[: self.num_faces], 2),
+                [
+                    np.linalg.norm(residual_i[: self.num_faces], 2),
+                    np.linalg.norm(residual_i[self.num_faces : -1], 2),
+                    np.linalg.norm(residual_i[-1:], 2),
+                ],
+                np.linalg.norm(increment, 2),
+                [
+                    np.linalg.norm(increment[: self.num_faces], 2),
+                    np.linalg.norm(increment[self.num_faces : -1], 2),
+                    np.linalg.norm(increment[-1:], 2),
+                ],
                 abs(new_distance - old_distance),
             ]
 
             # Update convergence history
             convergence_history["distance"].append(new_distance)
             convergence_history["residual"].append(error[0])
-            convergence_history["mass conservation residual"].append(error[1])
+            convergence_history["decomposed residual"].append(error[1])
             convergence_history["increment"].append(error[2])
-            convergence_history["flux increment"].append(error[3])
+            convergence_history["decomposed increment"].append(error[3])
             convergence_history["distance increment"].append(error[4])
+            convergence_history["timing"].append(stats_i)
 
             if self.verbose:
                 print(
@@ -960,6 +1132,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                     error[2],  # full increment
                     error[3],  # flux increment
                     error[4],  # distance increment
+                    stats_i,  # timing
                 )
 
             # Stopping criterion
