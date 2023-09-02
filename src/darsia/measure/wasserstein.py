@@ -485,7 +485,11 @@ class VariationalWassersteinDistance(darsia.EMD):
         return cell_flux
 
     def face_restriction(self, cell_flux: np.ndarray) -> np.ndarray:
-        """Restrict the fluxes on the cells to the faces.
+        """Restrict vector-valued fluxes on cells to normal components on faces.
+
+        Matrix-free implementation. The fluxes on the faces are determined by
+        arithmetic averaging of the fluxes on the cells in the direction of the normal
+        of the face.
 
         Args:
             cell_flux (np.ndarray): cell-based fluxes
@@ -494,9 +498,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             np.ndarray: face-based fluxes
 
         """
-        # TODO replace by sparse matrix multiplication
-
-        # Determine the fluxes on the faces
+        # Determine the fluxes on the faces through arithmetic averaging
         horizontal_fluxes = 0.5 * (cell_flux[:, :-1, 0] + cell_flux[:, 1:, 0])
         vertical_fluxes = 0.5 * (cell_flux[:-1, :, 1] + cell_flux[1:, :, 1])
 
