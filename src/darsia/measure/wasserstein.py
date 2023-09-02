@@ -456,6 +456,13 @@ class VariationalWassersteinDistance(darsia.EMD):
     def cell_reconstruction(self, flat_flux: np.ndarray) -> np.ndarray:
         """Reconstruct the fluxes on the cells from the fluxes on the faces.
 
+        Use the Raviart-Thomas reconstruction of the fluxes on the cells from the fluxes
+        on the faces, and use arithmetic averaging of the fluxes on the faces,
+        equivalent with the L2 projection of the fluxes on the faces to the fluxes on
+        the cells.
+
+        Matrix-free implementation.
+
         Args:
             flat_flux (np.ndarray): flat fluxes (normal fluxes on the faces)
 
@@ -463,8 +470,6 @@ class VariationalWassersteinDistance(darsia.EMD):
             np.ndarray: cell-based vectorial fluxes
 
         """
-        # TODO replace by sparse matrix multiplication
-
         # Reshape fluxes - use duality of faces and normals
         horizontal_fluxes = flat_flux[: self.num_faces_axis[0]].reshape(
             self.vertical_faces_shape
@@ -473,7 +478,8 @@ class VariationalWassersteinDistance(darsia.EMD):
             self.horizontal_faces_shape
         )
 
-        # Determine a cell-based Raviart-Thomas reconstruction of the fluxes
+        # Determine a cell-based Raviart-Thomas reconstruction of the fluxes, projected
+        # onto piecewise constant functions.
         cell_flux = np.zeros((*self.dim_cells, self.dim), dtype=float)
         # Horizontal fluxes
         cell_flux[:, :-1, 0] += 0.5 * horizontal_fluxes
