@@ -515,20 +515,49 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         return flat_flux
 
-    def face_restriction_scalar(self, cell_qty: np.ndarray) -> np.ndarray:
-        """Restrict the fluxes on the cells to the faces.
+    def cell_to_face(self, cell_qty: np.ndarray, mode: str) -> np.ndarray:
+        """Project scalar cell quantity to scalr face quantity.
+
+        Allow for arithmetic or harmonic averaging of the cell quantity to the faces. In
+        the harmonic case, the averaging is regularized to avoid division by zero.
+        Matrix-free implementation.
 
         Args:
-            cell_qty (np.ndarray): cell-based quantity
+            cell_qty (np.ndarray): scalar-valued cell-based quantity
+            mode (str): mode of projection, either "arithmetic" or "harmonic"
+                (averaging)
 
         Returns:
             np.ndarray: face-based quantity
 
         """
         # Determine the fluxes on the faces
+        if mode == "arithmetic":
+            # Employ arithmetic averaging
+            horizontal_face_qty = 0.5 * (cell_qty[:, :-1] + cell_qty[:, 1:])
+            vertical_face_qty = 0.5 * (cell_qty[:-1, :] + cell_qty[1:, :])
+        elif mode == "harmonic":
+            # Employ harmonic averaging
+            arithmetic_avg_horizontal = 0.5 * (cell_qty[:, :-1] + cell_qty[:, 1:])
+            arithmetic_avg_vertical = 0.5 * (cell_qty[:-1, :] + cell_qty[1:, :])
+            # Regularize to avoid division by zero
+            regularization = 1e-10
+            arithmetic_avg_horizontal = (
+                arithmetic_avg_horizontal
+                + (2 * np.sign(arithmetic_avg_horizontal) + 1) * regularization
+            )
+            arithmetic_avg_vertical = (
+                0.5 * arithmetic_avg_vertical
+                + (2 * np.sign(arithmetic_avg_vertical) + 1) * regularization
+            )
+            product_horizontal = np.multiply(cell_qty[:, :-1], cell_qty[:, 1:])
+            product_vertical = np.multiply(cell_qty[:-1, :], cell_qty[1:, :])
 
-        horizontal_face_qty = 0.5 * (cell_qty[:, :-1] + cell_qty[:, 1:])
-        vertical_face_qty = 0.5 * (cell_qty[:-1, :] + cell_qty[1:, :])
+            # Determine the harmonic average
+            horizontal_face_qty = product_horizontal / arithmetic_avg_horizontal
+            vertical_face_qty = product_vertical / arithmetic_avg_vertical
+        else:
+            raise ValueError("Mode not supported.")
 
         # Reshape the fluxes - hardcoding the connectivity here
         face_qty = np.concatenate(
@@ -1454,7 +1483,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             cell_scaling = np.maximum(norm - 1 / self.L, 0) / (
                 norm + self.regularization
             )
-            flat_scaling = self.face_restriction_scalar(cell_scaling, mode="arithmetic")
+            flat_scaling = self.cell_to_face(cell_scaling, mode="arithmetic")
             new_flat_flux_i = flat_scaling * intermediate_flat_flux_i
 
             # Apply Anderson acceleration to flux contribution (the only nonlinear part).
