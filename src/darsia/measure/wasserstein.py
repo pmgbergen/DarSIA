@@ -453,7 +453,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     # ! ---- Projections inbetween faces and cells ----
 
-    def cell_reconstruction(self, flat_flux: np.ndarray) -> np.ndarray:
+    def face_to_cell(self, flat_flux: np.ndarray) -> np.ndarray:
         """Reconstruct the fluxes on the cells from the fluxes on the faces.
 
         Use the Raviart-Thomas reconstruction of the fluxes on the cells from the fluxes
@@ -591,7 +591,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
         # TODO use improved quadrature?
         flat_flux, _, _ = self.split_solution(solution)
-        cell_flux = self.cell_reconstruction(flat_flux)
+        cell_flux = self.face_to_cell(flat_flux)
         return np.sum(np.prod(self.voxel_size) * np.linalg.norm(cell_flux, 2, axis=-1))
 
     # ! ---- Lumping of effective mobility
@@ -614,20 +614,16 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Determine the norm of the fluxes on the faces
         if mode in ["cell_arithmetic", "cell_harmonic"]:
             # Consider the piecewise constant projection of vector valued fluxes
-            cell_flux = self.cell_reconstruction(flat_flux)
+            cell_flux = self.face_to_cell(flat_flux)
             # Determine the norm of the fluxes on the cells
             cell_flux_norm = np.maximum(
                 np.linalg.norm(cell_flux, 2, axis=-1), self.regularization
             )
             # Take the average over faces
             if mode == "cell_arithmetic":
-                flat_flux_norm = self.face_restriction_scalar(
-                    cell_flux_norm, mode="arithmetic"
-                )
+                flat_flux_norm = self.cell_to_face(cell_flux_norm, mode="arithmetic")
             elif mode == "cell_harmonic":
-                flat_flux_norm = self.face_restriction_scalar(
-                    cell_flux_norm, mode="harmonic"
-                )
+                flat_flux_norm = self.cell_to_face(cell_flux_norm, mode="harmonic")
         elif mode == "face_arithmetic":
             # Define natural vector valued flux on faces (taking averages over cells)
             tangential_flux = self.orthogonal_face_average.dot(flat_flux)
@@ -681,7 +677,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         flat_flux, flat_potential, _ = self.split_solution(solution)
 
         # Reshape the fluxes and potential to grid format
-        flux = self.cell_reconstruction(flat_flux)
+        flux = self.face_to_cell(flat_flux)
         potential = flat_potential.reshape(self.dim_cells)
 
         # Determine transport density
@@ -832,8 +828,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         """
         flat_flux, _, _ = self.split_solution(solution)
-        # TODO cell-based version meaningful?
-        # cell_flux = self.cell_reconstruction(flat_flux)
+        # TODO cell-based version meaningful? rm
+        # cell_flux = self.face_to_cell(flat_flux)
         # cell_flux_norm = np.maximum(
         #    np.linalg.norm(cell_flux, 2, axis=-1), self.regularization
         # )
@@ -1476,9 +1472,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             # new_flat_flux_i = np.sign(intermediate_flat_flux_i) * (
             #    np.maximum(np.abs(intermediate_flat_flux_i) - 1.0 / self.L, 0.0)
             # )
-            cell_intermediate_flux_i = self.cell_reconstruction(
-                intermediate_flat_flux_i
-            )
+            cell_intermediate_flux_i = self.face_to_cell(intermediate_flat_flux_i)
             norm = np.linalg.norm(cell_intermediate_flux_i, 2, axis=-1)
             cell_scaling = np.maximum(norm - 1 / self.L, 0) / (
                 norm + self.regularization
