@@ -698,6 +698,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Stop taking time
         toc = time.time()
         status["elapsed_time"] = toc - tic
+        print("Elapsed time: ", toc - tic)
 
         # Plot the solution
         if plot_solution:
@@ -1093,31 +1094,108 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             tuple: update, residual, stats (timinings)
 
         """
+        # Determine residual and (full) Jacobian
         tic = time.time()
-        # Determine residual
         if iter == 0:
             residual = rhs.copy()
-        else:
-            residual = self.residual(rhs, solution)
-
-        # Setup linear solver
-        linear_solver = self.options.get("linear_solver", "lu")
-        if iter == 0:
             approx_jacobian = self.darcy_jacobian()
         else:
+            residual = self.residual(rhs, solution)
             approx_jacobian = self.jacobian(solution)
-
         toc = time.time()
         time_setup = toc - tic
+
+        # Allocate update
+        update = np.zeros_like(solution, dtype=float)
+
+        # Setup linear solver
         tic = time.time()
+        linear_solver = self.options.get("linear_solver", "lu")
+        assert linear_solver in [
+            "lu",
+            "lu-flux-reduced",
+            "amg-flux-reduced",
+            "lu-potential",
+            "amg-potential",
+        ], f"Linear solver {linear_solver} not supported."
+
+        if linear_solver in ["amg-flux-reduced", "amg-potential"]:
+            # TODO add possibility for user control
+            ml_options = {
+                # B=X.reshape(
+                #    n * n, 1
+                # ),  # the representation of the near null space (this is a poor choice)
+                # BH=None,  # the representation of the left near null space
+                "symmetry": "hermitian",  # indicate that the matrix is Hermitian
+                # strength="evolution",  # change the strength of connection
+                "aggregate": "standard",  # use a standard aggregation method
+                "smooth": (
+                    "jacobi",
+                    {"omega": 4.0 / 3.0, "degree": 2},
+                ),  # prolongation smoothing
+                "presmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
+                "postsmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
+                # improve_candidates=[
+                #    ("block_gauss_seidel", {"sweep": "symmetric", "iterations": 4}),
+                #    None,
+                # ],
+                "max_levels": 4,  # maximum number of levels
+                "max_coarse": 1000,  # maximum number on a coarse level
+                # keep=False,  # keep extra operators around in the hierarchy (memory)
+            }
+            tol_amg = self.options.get("linear_solver_tol", 1e-6)
+            res_history_amg = []
 
         # Solve linear system for the update
         if linear_solver == "lu":
-            # LU for full system
+            # Solve full system
+            tic = time.time()
             jacobian_lu = sps.linalg.splu(approx_jacobian)
+            time_setup = time.time() - tic
+            tic = time.time()
             update = jacobian_lu.solve(residual)
-        elif linear_solver == "amg":
+            time_solve = time.time() - tic
+        elif linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
+            # Solve potential-multiplier problem
+
             # Reduce flux block
+            tic = time.time()
+            (
+                self.reduced_jacobian,
+                self.reduced_residual,
+                jacobian_flux_inv,
+            ) = self.remove_flux(approx_jacobian, residual)
+
+            if linear_solver == "lu-flux-reduced":
+                lu = sps.linalg.splu(self.reduced_jacobian)
+                time_setup = time.time() - tic
+                tic = time.time()
+                update[self.reduced_system_indices] = lu.solve(self.reduced_residual)
+
+            elif linear_solver == "amg-flux-reduced":
+                ml = pyamg.smoothed_aggregation_solver(
+                    self.reduced_jacobian, **ml_options
+                )
+                time_setup = time.time() - tic
+                tic = time.time()
+                update[self.reduced_system_indices] = ml.solve(
+                    self.reduced_residual,
+                    tol=tol_amg,
+                    residuals=res_history_amg,
+                )
+
+            # Compute flux update
+            update[self.flux_indices] = jacobian_flux_inv.dot(
+                residual[self.flux_indices]
+                + self.DT.dot(update[self.reduced_system_indices])
+            )
+            time_solve = time.time() - tic
+
+        elif linear_solver in ["lu-potential", "amg-potential"]:
+            # Solve pure potential problem
+
+            # Reduce flux block
+            tic = time.time()
             (
                 self.reduced_jacobian,
                 self.reduced_residual,
@@ -1132,117 +1210,24 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 self.reduced_jacobian, self.reduced_residual, solution
             )
 
-            # Allocate update
-            update = np.zeros_like(solution, dtype=float)
-
-            # ML architecture
-            if False:
-                ml = pyamg.smoothed_aggregation_solver(
-                    self.reduced_jacobian,
-                    # B=X.reshape(
-                    #    n * n, 1
-                    # ),  # the representation of the near null space (this is a poor choice)
-                    # BH=None,  # the representation of the left near null space
-                    symmetry="hermitian",  # indicate that the matrix is Hermitian
-                    # strength="evolution",  # change the strength of connection
-                    aggregate="standard",  # use a standard aggregation method
-                    smooth=(
-                        "jacobi",
-                        {"omega": 4.0 / 3.0, "degree": 2},
-                    ),  # prolongation smoothing
-                    presmoother=("block_gauss_seidel", {"sweep": "symmetric"}),
-                    postsmoother=("block_gauss_seidel", {"sweep": "symmetric"}),
-                    # improve_candidates=[
-                    #    ("block_gauss_seidel", {"sweep": "symmetric", "iterations": 4}),
-                    #    None,
-                    # ],
-                    max_levels=4,  # maximum number of levels
-                    max_coarse=1000,  # maximum number on a coarse level
-                    # keep=False,  # keep extra operators around in the hierarchy (memory)
-                )
-
-                if self.options.get("linear_solver_verbosity_ml", False):
-                    print(ml)
-
-                tol_linear_solver = self.options.get("tol_linear_solver", 1e-6)
-                res_history = []
-                update[self.reduced_system_indices] = ml.solve(
-                    self.reduced_residual, tol=tol_linear_solver, residuals=res_history
-                )
-                if self.options.get("linear_solver_verbosity", False):
-                    print(
-                        "Residual after ML step: ",
-                        len(res_history),
-                        np.linalg.norm(
-                            reduced_residual
-                            - self.reduced_jacobian.dot(update[self.num_faces :])
-                        ),
-                    )
-                    print("update", np.linalg.norm(update))
-
-            elif False:
-                # LU for simply reduced system
-
-                # For debugging only - TODO rm
-                lu = sps.linalg.splu(self.reduced_jacobian)
-                update[self.reduced_system_indices] = lu.solve(self.reduced_residual)
-            elif False:
-                # AMG for fully reduced system
+            if linear_solver == "lu-potential":
+                lu = sps.linalg.splu(self.fully_reduced_jacobian)
+                time_setup = time.time() - tic
                 tic = time.time()
-                ml = pyamg.smoothed_aggregation_solver(
-                    self.fully_reduced_jacobian,
-                    # B=X.reshape(
-                    #    n * n, 1
-                    # ),  # the representation of the near null space (this is a poor choice)
-                    # BH=None,  # the representation of the left near null space
-                    symmetry="hermitian",  # indicate that the matrix is Hermitian
-                    # strength="evolution",  # change the strength of connection
-                    aggregate="standard",  # use a standard aggregation method
-                    smooth=(
-                        "jacobi",
-                        {"omega": 4.0 / 3.0, "degree": 2},
-                    ),  # prolongation smoothing
-                    presmoother=("block_gauss_seidel", {"sweep": "symmetric"}),
-                    postsmoother=("block_gauss_seidel", {"sweep": "symmetric"}),
-                    # improve_candidates=[
-                    #    ("block_gauss_seidel", {"sweep": "symmetric", "iterations": 4}),
-                    #    None,
-                    # ],
-                    max_levels=4,  # maximum number of levels
-                    max_coarse=1000,  # maximum number on a coarse level
-                    # keep=False,  # keep extra operators around in the hierarchy (memory)
+                update[self.fully_reduced_system_indices_full] = lu.solve(
+                    self.fully_reduced_residual
                 )
-                print("setup ml", time.time() - tic)
-                if False:
-                    print(ml)
 
-                tol_linear_solver = self.options.get("tol_linear_solver", 1e-6)
-                res_history = []
+            elif linear_solver == "amg-potential":
+                ml = pyamg.smoothed_aggregation_solver(
+                    self.fully_reduced_jacobian, **ml_options
+                )
+                time_setup = time.time() - tic
                 tic = time.time()
                 update[self.fully_reduced_system_indices_full] = ml.solve(
                     self.fully_reduced_residual,
-                    tol=tol_linear_solver,
-                    residuals=res_history,
-                )
-                print("ml solve", time.time() - tic)
-                if False:
-                    print(
-                        "res: ",
-                        len(res_history),
-                        np.linalg.norm(
-                            reduced_residual
-                            - self.reduced_jacobian.dot(
-                                update[self.reduced_system_indices]
-                            )
-                        ),
-                    )
-                    print("update", np.linalg.norm(update))
-
-            else:
-                # LU for fully reduced system
-                lu = sps.linalg.splu(self.fully_reduced_jacobian)
-                update[self.fully_reduced_system_indices_full] = lu.solve(
-                    self.fully_reduced_residual
+                    tol=tol_amg,
+                    residuals=res_history_amg,
                 )
 
             # Compute flux update
@@ -1250,9 +1235,19 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 residual[self.flux_indices]
                 + self.DT.dot(update[self.reduced_system_indices])
             )
+            time_solve = time.time() - tic
 
-        toc = time.time()
-        time_solve = toc - tic
+        # Diagnostics
+        if linear_solver in ["amg-flux-reduced", "amg-potential"]:
+            if self.options.get("linear_solver_verbosity", False):
+                num_amg_iter = len(res_history_amg)
+                res_amg = res_history_amg[-1]
+                print(ml)
+                print(
+                    f"#AMG iterations: {num_amg_iter}; Residual after AMG step: {res_amg}"
+                )
+
+        # Collect stats
         stats = [time_setup, time_solve]
 
         return update, residual, stats
