@@ -202,14 +202,14 @@ class VariationalWassersteinDistance(darsia.EMD):
             np.prod(self.voxel_size) * np.ones(num_cells, dtype=float)
         )
 
-        # Define sparse mass matrix on faces: flat_fluxes -> flat_fluxes
+        # Define sparse mass matrix on faces: flat fluxes -> flat fluxes
         lumping = self.options.get("lumping", True)
         if lumping:
             self.mass_matrix_faces = sps.diags(
                 np.prod(self.voxel_size) * np.ones(num_faces, dtype=float)
             )
         else:
-            # Define true RT0 mass matrix on faces: flat_fluxes -> flat_fluxes
+            # Define true RT0 mass matrix on faces: flat fluxes -> flat fluxes
             mass_matrix_faces_shape = (num_faces, num_faces)
             mass_matrix_faces_data = np.prod(self.voxel_size) * np.concatenate(
                 (
@@ -435,7 +435,7 @@ class VariationalWassersteinDistance(darsia.EMD):
     def split_solution(
         self, solution: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray, float]:
-        """Split the solution into fluxes, potential and lagrange multiplier.
+        """Split the solution into (flat) fluxes, potential and lagrange multiplier.
 
         Args:
             solution (np.ndarray): solution
@@ -596,15 +596,18 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     # ! ---- Lumping of effective mobility
 
-    def face_flux_norm(self, flat_flux: np.ndarray, mode: str) -> np.ndarray:
+    def vector_face_flux_norm(self, flat_flux: np.ndarray, mode: str) -> np.ndarray:
         """Compute the norm of the vector-valued fluxes on the faces.
 
         Args:
             flat_flux (np.ndarray): flat fluxes (normal fluxes on the faces)
-            mode (str): mode of the norm
+            mode (str): mode of the norm, either "cell_arithmetic", "cell_harmonic" or
+                "face_arithmetic". In the cell-based modes, the fluxes are projected to
+                the cells and the norm is computed there. In the face-based mode, the
+                norm is computed directly on the faces.
 
         Returns:
-            np.ndarray: norm of the fluxes on the faces
+            np.ndarray: norm of the vector-valued fluxes on the faces
 
         """
 
@@ -616,16 +619,16 @@ class VariationalWassersteinDistance(darsia.EMD):
             cell_flux_norm = np.maximum(
                 np.linalg.norm(cell_flux, 2, axis=-1), self.regularization
             )
-            # Take the average over faces
-            if mode == "cell_arithmetic":
-                flat_flux_norm = self.cell_to_face(cell_flux_norm, mode="arithmetic")
-            elif mode == "cell_harmonic":
-                flat_flux_norm = self.cell_to_face(cell_flux_norm, mode="harmonic")
+            # Determine averaging mode from mode - either arithmetic or harmonic
+            average_mode = mode.split("_")[1]
+            flat_flux_norm = self.cell_to_face(cell_flux_norm, mode=average_mode)
+
         elif mode == "face_arithmetic":
             # Define natural vector valued flux on faces (taking averages over cells)
             tangential_flux = self.orthogonal_face_average.dot(flat_flux)
             # Determine the l2 norm of the fluxes on the faces, add some regularization
             flat_flux_norm = np.sqrt(flat_flux**2 + tangential_flux**2)
+
         else:
             raise ValueError(f"Mode {mode} not supported.")
 
@@ -835,7 +838,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         mode = "face_arithmetic"
         # mode = "cell_arithmetic"
         flat_flux_norm = np.maximum(
-            self.face_flux_norm(flat_flux, mode=mode), self.regularization
+            self.vector_face_flux_norm(flat_flux, mode=mode), self.regularization
         )
         flat_flux_normed = flat_flux / flat_flux_norm
 
@@ -859,7 +862,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # mode = "cell_arithmetic"
         flat_flux, _, _ = self.split_solution(solution)
         flat_flux_norm = np.maximum(
-            self.face_flux_norm(flat_flux, mode=mode), self.regularization
+            self.vector_face_flux_norm(flat_flux, mode=mode), self.regularization
         )
         approx_jacobian = sps.bmat(
             [
@@ -1112,6 +1115,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         # Solve linear system for the update
         if linear_solver == "lu":
+            # LU for full system
             jacobian_lu = sps.linalg.splu(approx_jacobian)
             update = jacobian_lu.solve(residual)
         elif linear_solver == "amg":
@@ -1158,7 +1162,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                     max_coarse=1000,  # maximum number on a coarse level
                     # keep=False,  # keep extra operators around in the hierarchy (memory)
                 )
-                if False:
+
+                if self.options.get("linear_solver_verbosity_ml", False):
                     print(ml)
 
                 tol_linear_solver = self.options.get("tol_linear_solver", 1e-6)
@@ -1166,9 +1171,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 update[self.reduced_system_indices] = ml.solve(
                     self.reduced_residual, tol=tol_linear_solver, residuals=res_history
                 )
-                if False:
+                if self.options.get("linear_solver_verbosity", False):
                     print(
-                        "res: ",
+                        "Residual after ML step: ",
                         len(res_history),
                         np.linalg.norm(
                             reduced_residual
@@ -1183,7 +1188,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 # For debugging only - TODO rm
                 lu = sps.linalg.splu(self.reduced_jacobian)
                 update[self.reduced_system_indices] = lu.solve(self.reduced_residual)
-            elif True:
+            elif False:
                 # AMG for fully reduced system
                 tic = time.time()
                 ml = pyamg.smoothed_aggregation_solver(
