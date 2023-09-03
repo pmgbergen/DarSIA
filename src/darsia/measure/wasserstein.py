@@ -13,6 +13,11 @@ import scipy.sparse as sps
 
 import darsia
 
+# General TODO list
+# - improve documentation, in particular with focus on keywords
+# - remove plotting
+# - improve assembling of operators through partial assembling
+
 
 class VariationalWassersteinDistance(darsia.EMD):
     """Base class for setting up the variational Wasserstein distance.
@@ -55,7 +60,6 @@ class VariationalWassersteinDistance(darsia.EMD):
                 - lumping (bool): lump the mass matrix. Defaults to True.
 
         """
-        # TODO improve documentation for options - method dependent
         # Cache geometrical infos
         self.shape = shape
         self.voxel_size = voxel_size
@@ -379,7 +383,10 @@ class VariationalWassersteinDistance(darsia.EMD):
             shape=orthogonal_face_average_shape,
         )
 
-        # Define sparse embedding operator for fluxes into full discrete DOF space
+        # Define sparse embedding operators, and quick access through indices.
+        # Assume the ordering of the faces is vertical faces first, then horizontal
+        # faces. After that, cell variabes are provided for the potential, finally a
+        # scalar variable for the lagrange multiplier.
         self.flux_embedding = sps.csc_matrix(
             (
                 np.ones(num_faces, dtype=float),
@@ -387,6 +394,10 @@ class VariationalWassersteinDistance(darsia.EMD):
             ),
             shape=(num_faces + num_cells + 1, num_faces),
         )
+
+        self.flux_indices = np.arange(num_faces)
+        self.potential_indices = np.arange(num_faces, num_faces + num_cells)
+        self.lagrange_multiplier_indices = np.array([num_faces + num_cells], dtype=int)
 
         # ! ---- Utilities ----
         aa_depth = self.options.get("aa_depth", 0)
@@ -830,15 +841,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         """
         flat_flux, _, _ = self.split_solution(solution)
-        # TODO cell-based version meaningful? rm
-        # cell_flux = self.face_to_cell(flat_flux)
-        # cell_flux_norm = np.maximum(
-        #    np.linalg.norm(cell_flux, 2, axis=-1), self.regularization
-        # )
-        # cell_flux_normed = cell_flux / cell_flux_norm[..., None]
-        # flat_flux_normed = self.face_restriction(cell_flux_normed)
-        mode = "face_arithmetic"
-        # mode = "cell_arithmetic"
+        mode = self.options.get("mode", "face_arithmetic")
         flat_flux_norm = np.maximum(
             self.vector_face_flux_norm(flat_flux, mode=mode), self.regularization
         )
@@ -860,13 +863,11 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             sps.linalg.splu: LU factorization of the jacobian
 
         """
-        mode = "face_arithmetic"
-        # mode = "cell_arithmetic"
         flat_flux, _, _ = self.split_solution(solution)
+        mode = self.options.get("mode", "face_arithmetic")
         flat_flux_norm = np.maximum(
             self.vector_face_flux_norm(flat_flux, mode=mode), self.regularization
         )
-        # TODO more efficient assemble
         approx_jacobian = sps.bmat(
             [
                 [
@@ -883,7 +884,12 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         return approx_jacobian
 
     def darcy_jacobian(self) -> sps.linalg.LinearOperator:
-        """Compute the LU factorization of the jacobian of the solution."""
+        """Compute the Jacobian of a standard homogeneous Darcy problem.
+
+        The mobility is defined by the used via options["L_init"]. The jacobian is
+        cached for later use.
+
+        """
         L_init = self.options.get("L_init", 1.0)
         jacobian = sps.bmat(
             [
@@ -909,8 +915,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # Step 2: Remove flux blocks through Schur complement approach
 
         # Build Schur complement wrt. flux-flux block
-        J = jacobian[: self.num_faces, : self.num_faces].copy()
-        J_inv = sps.diags(1.0 / J.diagonal())
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_indices])
         D = jacobian[self.num_faces :, : self.num_faces].copy()
         schur_complement = D.dot(J_inv.dot(D.T))
 
@@ -995,13 +1000,6 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         self.fully_reduced_jacobian_shape = fully_reduced_jacobian_shape
 
         # Step 4: Identify inclusions (index arrays)
-        self.flux_indices = np.arange(self.num_faces)
-        self.potential_indices = np.arange(
-            self.num_faces, self.num_faces + self.num_cells
-        )
-        self.lagrange_multiplier_indices = np.array(
-            [self.num_faces + self.num_cells], dtype=int
-        )
 
         # Define reduced system indices wrt full system
         self.reduced_system_indices = np.concatenate(
@@ -1031,10 +1029,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         """
         # Build Schur complement wrt flux-block
-        # TODO Speed up extraction of J, use infrastructure setup.
-        # TODO Just extract diaginal directly!
-        J = jacobian[: self.num_faces, : self.num_faces].copy()
-        J_inv = sps.diags(1.0 / J.diagonal())
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_indices])
         schur_complement = self.D.dot(J_inv.dot(self.DT))
 
         # Gauss eliminiation on matrices
