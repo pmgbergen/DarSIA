@@ -532,7 +532,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             horizontal_face_qty = product_horizontal / arithmetic_avg_horizontal
             vertical_face_qty = product_vertical / arithmetic_avg_vertical
         else:
-            raise ValueError("Mode not supported.")
+            raise ValueError(f"Mode {mode} not supported.")
 
         # Reshape the fluxes - hardcoding the connectivity here
         face_qty = np.concatenate(
