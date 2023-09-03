@@ -541,30 +541,31 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         return face_qty
 
-    def face_restriction(self, cell_flux: np.ndarray) -> np.ndarray:
-        """Restrict vector-valued fluxes on cells to normal components on faces.
-
-        Matrix-free implementation. The fluxes on the faces are determined by
-        arithmetic averaging of the fluxes on the cells in the direction of the normal
-        of the face.
-
-        Args:
-            cell_flux (np.ndarray): cell-based fluxes
-
-        Returns:
-            np.ndarray: face-based fluxes
-
-        """
-        # Determine the fluxes on the faces through arithmetic averaging
-        horizontal_fluxes = 0.5 * (cell_flux[:, :-1, 0] + cell_flux[:, 1:, 0])
-        vertical_fluxes = 0.5 * (cell_flux[:-1, :, 1] + cell_flux[1:, :, 1])
-
-        # Reshape the fluxes
-        flat_flux = np.concatenate(
-            [horizontal_fluxes.ravel(), vertical_fluxes.ravel()], axis=0
-        )
-
-        return flat_flux
+    # NOTE: Currently not in use. TODO rm?
+    #    def face_restriction(self, cell_flux: np.ndarray) -> np.ndarray:
+    #        """Restrict vector-valued fluxes on cells to normal components on faces.
+    #
+    #        Matrix-free implementation. The fluxes on the faces are determined by
+    #        arithmetic averaging of the fluxes on the cells in the direction of the normal
+    #        of the face.
+    #
+    #        Args:
+    #            cell_flux (np.ndarray): cell-based fluxes
+    #
+    #        Returns:
+    #            np.ndarray: face-based fluxes
+    #
+    #        """
+    #        # Determine the fluxes on the faces through arithmetic averaging
+    #        horizontal_fluxes = 0.5 * (cell_flux[:, :-1, 0] + cell_flux[:, 1:, 0])
+    #        vertical_fluxes = 0.5 * (cell_flux[:-1, :, 1] + cell_flux[1:, :, 1])
+    #
+    #        # Reshape the fluxes
+    #        flat_flux = np.concatenate(
+    #            [horizontal_fluxes.ravel(), vertical_fluxes.ravel()], axis=0
+    #        )
+    #
+    #        return flat_flux
 
     # ! ---- Effective quantities ----
 
@@ -696,6 +697,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         else:
             return distance
 
+    # TODO rm.
     def _plot_solution(
         self,
         mass_diff: np.ndarray,
@@ -864,6 +866,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         flat_flux_norm = np.maximum(
             self.vector_face_flux_norm(flat_flux, mode=mode), self.regularization
         )
+        # TODO more efficient assemble
         approx_jacobian = sps.bmat(
             [
                 [
