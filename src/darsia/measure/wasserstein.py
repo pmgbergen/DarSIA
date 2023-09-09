@@ -17,6 +17,8 @@ import darsia
 # - improve documentation, in particular with focus on keywords
 # - remove plotting
 # - improve assembling of operators through partial assembling
+# - improve stopping criteria
+# - use better quadrature for l1_dissipation?
 
 
 class VariationalWassersteinDistance(darsia.EMD):
@@ -601,7 +603,6 @@ class VariationalWassersteinDistance(darsia.EMD):
             float: l1 dissipation potential
 
         """
-        # TODO use improved quadrature?
         flat_flux, _, _ = self.split_solution(solution)
         cell_flux = self.face_to_cell(flat_flux)
         return np.sum(np.prod(self.voxel_size) * np.linalg.norm(cell_flux, 2, axis=-1))
@@ -636,7 +637,8 @@ class VariationalWassersteinDistance(darsia.EMD):
             flat_flux_norm = self.cell_to_face(cell_flux_norm, mode=average_mode)
 
         elif mode == "face_arithmetic":
-            # Define natural vector valued flux on faces (taking averages over cells)
+            # Define natural vector valued flux on faces (taking arithmetic averages
+            # of continuous fluxes over cells evaluated at faces)
             tangential_flux = self.orthogonal_face_average.dot(flat_flux)
             # Determine the l2 norm of the fluxes on the faces, add some regularization
             flat_flux_norm = np.sqrt(flat_flux**2 + tangential_flux**2)
@@ -1448,23 +1450,59 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         # Keep track of how often the distance increases.
         num_neg_diff = 0
 
+        # Initialize container for storing the convergence history
+        convergence_history = {
+            "distance": [],
+            "mass residual": [],
+            "force": [],
+            "flux increment": [],
+            "aux increment": [],
+            "force increment": [],
+            "distance increment": [],
+            "timing": [],
+        }
+
+        # Print header
+        if self.verbose:
+            print(
+                "--- ; ",
+                "Bregman iteration",
+                "L",
+                "distance",
+                "mass conservation residual",
+                "increment",
+                "flux increment",
+                "distance increment",
+            )
+
+        # Initialize Bregman variables - two auxiliary variables
+        old_aux_variable = np.zeros(self.num_faces, dtype=float)
+        new_aux_variable = np.zeros(self.num_faces, dtype=float)
+        old_force = np.zeros(self.num_faces, dtype=float)
+        new_force = np.zeros(self.num_faces, dtype=float)
+
         # Bregman iterations
         solution_i = np.zeros_like(rhs)
+        old_flat_flux_i = solution_i[:self.num_faces]
         for iter in range(num_iter):
             old_distance = self.l1_dissipation(solution_i)
 
             # 1. Solve linear system with trust in current flux.
+            tic = time.time()
             flat_flux_i, _, _ = self.split_solution(solution_i)
             rhs_i = rhs.copy()
             rhs_i[: self.num_faces] = self.L * self.mass_matrix_faces.dot(flat_flux_i)
             intermediate_solution_i = self.l_scheme_mixed_darcy_lu.solve(rhs_i)
+            time_linearization = time.time() - tic
 
             # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
             # shrinkage operation merely determines the scalar. We still aim at
             # following along the direction provided by the vectorial fluxes.
+            tic = time.time()
             intermediate_flat_flux_i, _, _ = self.split_solution(
                 intermediate_solution_i
             )
+            # Only consider normal direction (does not take into account the full flux)
             # new_flat_flux_i = np.sign(intermediate_flat_flux_i) * (
             #    np.maximum(np.abs(intermediate_flat_flux_i) - 1.0 / self.L, 0.0)
             # )
@@ -1475,14 +1513,18 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             )
             flat_scaling = self.cell_to_face(cell_scaling, mode="arithmetic")
             new_flat_flux_i = flat_scaling * intermediate_flat_flux_i
+            time_shrink = time.time() - tic
 
             # Apply Anderson acceleration to flux contribution (the only nonlinear part).
+            tic = time.time()
             if self.anderson is not None:
                 flux_inc = new_flat_flux_i - flat_flux_i
                 new_flat_flux_i = self.anderson(new_flat_flux_i, flux_inc, iter)
+            toc = time.time()
+            time_anderson = toc - tic
 
-            # Measure error in terms of the increment of the flux
-            flux_diff = np.linalg.norm(new_flat_flux_i - flat_flux_i, 2)
+            # Collect stats
+            stats_i = [time_linearization, time_shrink, time_anderson]
 
             # Update flux solution
             solution_i = intermediate_solution_i.copy()
@@ -1496,8 +1538,39 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 (rhs_i - self.broken_darcy.dot(solution_i))[self.num_faces : -1], 2
             )
 
-            # TODO include criterion build on staganation of the solution
-            # TODO include criterion on distance.
+            # Determine increments
+            flux_increment = new_flat_flux_i - old_flat_flux_i
+            aux_increment = new_aux_variable - old_aux_variable
+            force_increment = new_force - old_force
+
+            # Determine force
+            force = np.linalg.norm(new_force, 2)
+
+            # Compute the error:
+            # - residual of mass conservation equation - should be always zero if exact solver used
+            # - force
+            # - flux increment
+            # - aux increment
+            # - force increment
+            # - distance increment
+            error = [
+                mass_conservation_residual,
+                force,
+                np.linalg.norm(flux_increment),
+                np.linalg.norm(aux_increment),
+                np.linalg.norm(force_increment),
+                abs(new_distance - old_distance),
+            ]
+
+            # Update convergence history
+            convergence_history["distance"].append(new_distance)
+            convergence_history["mass residual"].append(error[0])
+            convergence_history["force"].append(error[1])
+            convergence_history["flux increment"].append(error[2])
+            convergence_history["aux increment"].append(error[3])
+            convergence_history["force increment"].append(error[4])
+            convergence_history["distance increment"].append(error[5])
+            convergence_history["timing"].append(stats_i)
 
             # Print status
             if self.verbose:
@@ -1505,12 +1578,18 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     "Bregman iteration",
                     iter,
                     new_distance,
-                    old_distance - new_distance,
                     self.L,
-                    flux_diff,
-                    mass_conservation_residual,
+                    error[0], # mass conservation residual
+                    error[1], # force
+                    error[2], # flux increment
+                    error[3], # aux increment
+                    error[4], # force increment
+                    error[5], # distance increment
+                    stats_i,  # timing
                 )
 
+            # TODO include criterion build on staganation of the solution
+            # TODO include criterion on distance.
             ## Check stopping criterion # TODO. What is a good stopping criterion?
             # if iter > 1 and (flux_diff < tol or mass_conservation_residual < tol:
             #    break
@@ -1520,7 +1599,6 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 num_neg_diff += 1
 
             # Increase L if stagnating of the distance increases too often.
-            # TODO restart anderson acceleration
             update_l = self.options.get("update_l", True)
             if update_l:
                 tol_distance = self.options.get("tol_distance", 1e-12)
@@ -1556,9 +1634,10 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             "converged": iter < num_iter,
             "number iterations": iter,
             "distance": new_distance,
-            "residual mass conservation": mass_conservation_residual,
-            "flux increment": flux_diff,
+            "mass conservation residual": error[0],
+            "flux increment": error[2],
             "distance increment": abs(new_distance - old_distance),
+            "convergence history": convergence_history,
         }
 
         return new_distance, solution_i, status
