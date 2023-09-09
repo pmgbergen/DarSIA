@@ -1434,11 +1434,15 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         self.l_scheme_mixed_darcy_lu = sps.linalg.splu(l_scheme_mixed_darcy)
 
     def _solve(self, flat_mass_diff):
+
         # Solver parameters
         num_iter = self.options.get("num_iter", 100)
-        # tol = self.options.get("tol", 1e-6) # TODO make use of tol, or remove
-        self.L = self.options.get("L", 1.0)
+        tol_residual = self.options.get("tol_residual", 1e-6)
+        tol_increment = self.options.get("tol_increment", 1e-6)
+        tol_distance = self.options.get("tol_distance", 1e-6)
 
+        # Relaxation parameter
+        self.L = self.options.get("L", 1.0)
         rhs = np.concatenate(
             [
                 np.zeros(self.num_faces, dtype=float),
@@ -1483,7 +1487,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         # Bregman iterations
         solution_i = np.zeros_like(rhs)
-        old_flat_flux_i = solution_i[:self.num_faces]
+        old_flat_flux_i = solution_i[: self.num_faces]
         for iter in range(num_iter):
             old_distance = self.l1_dissipation(solution_i)
 
@@ -1579,20 +1583,14 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     iter,
                     new_distance,
                     self.L,
-                    error[0], # mass conservation residual
-                    error[1], # force
-                    error[2], # flux increment
-                    error[3], # aux increment
-                    error[4], # force increment
-                    error[5], # distance increment
+                    error[0],  # mass conservation residual
+                    error[1],  # force
+                    error[2],  # flux increment
+                    error[3],  # aux increment
+                    error[4],  # force increment
+                    error[5],  # distance increment
                     stats_i,  # timing
                 )
-
-            # TODO include criterion build on staganation of the solution
-            # TODO include criterion on distance.
-            ## Check stopping criterion # TODO. What is a good stopping criterion?
-            # if iter > 1 and (flux_diff < tol or mass_conservation_residual < tol:
-            #    break
 
             # Keep track if the distance increases.
             if new_distance > old_distance:
@@ -1628,6 +1626,13 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 L_max = self.options.get("L_max", 1e8)
                 if self.L > L_max:
                     break
+
+            # TODO include criterion build on staganation of the solution
+            if iter > 1 and (
+                (error[0] < tol_residual and error[2] < tol_increment)
+                or error[5] < tol_distance
+            ):
+                break
 
         # Define performance metric
         status = {
