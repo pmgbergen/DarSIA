@@ -1433,27 +1433,46 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         )
         self.l_scheme_mixed_darcy_lu = sps.linalg.splu(l_scheme_mixed_darcy)
 
-    def _shrink(self, solution):
+    def _shrink(
+        self, flat_flux: np.ndarray, mode: str = "cell_arithmetic"
+    ) -> np.ndarray:
+        """Shrink operation in the split Bregman method.
 
-        flat_flux, _, _ = self.split_solution(
-            solution
-        )
-        # Only consider normal direction (does not take into account the full flux)
-        # new_flat_flux_i = np.sign(intermediate_flat_flux_i) * (
-        #    np.maximum(np.abs(intermediate_flat_flux_i) - 1.0 / self.L, 0.0)
-        # )
+        Operation on fluxes.
 
-        # TODO use difference versions to construct the flux and the norm
-        cell_flux = self.face_to_cell(flat_flux)
-        norm = np.linalg.norm(cell_flux, 2, axis=-1)
-        cell_scaling = np.maximum(norm - 1 / self.L, 0) / (
-            norm + self.regularization
-        )
-        flat_scaling = self.cell_to_face(cell_scaling, mode="arithmetic")
+        Args:
+            flat_flux (np.ndarray): flux
+            mode (str, optional): mode of the shrink operation. Defaults to "cell_arithmetic".
+
+        Returns:
+            np.ndarray: shrunk fluxes
+
+        """
+        if mode == "cell_arithmetic":
+            # Idea: Determine the shrink factor based on the cell reconstructions of the
+            # fluxes. Convert cell-based shrink factors to face-based shrink factors
+            # through arithmetic averaging.
+            cell_flux = self.face_to_cell(flat_flux)
+            norm = np.linalg.norm(cell_flux, 2, axis=-1)
+            cell_scaling = np.maximum(norm - 1 / self.L, 0) / (
+                norm + self.regularization
+            )
+            flat_scaling = self.cell_to_face(cell_scaling, mode="arithmetic")
+
+        elif mode == "face_normal":
+            # Only consider normal direction (does not take into account the full flux)
+            # TODO rm.
+            norm = np.linalg.norm(flat_flux, 2, axis=-1)
+            flat_scaling = np.maximum(norm - 1 / self.L, 0) / (
+                norm + self.regularization
+            )
+
+        else:
+            raise NotImplementedError(f"Mode {mode} not supported.")
+
         return flat_scaling * flat_flux
 
     def _solve(self, flat_mass_diff):
-
         # Solver parameters
         num_iter = self.options.get("num_iter", 100)
         tol_residual = self.options.get("tol_residual", 1e-6)
@@ -1522,7 +1541,10 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             # shrinkage operation merely determines the scalar. We still aim at
             # following along the direction provided by the vectorial fluxes.
             tic = time.time()
-            new_flat_flux_i = self._shrink(intermediate_solution_i)
+            intermediate_flat_flux_i, _, _ = self.split_solution(
+                intermediate_solution_i
+            )
+            new_flat_flux_i = self._shrink(intermediate_flat_flux_i)
             time_shrink = time.time() - tic
 
             # Apply Anderson acceleration to flux contribution (the only nonlinear part).
