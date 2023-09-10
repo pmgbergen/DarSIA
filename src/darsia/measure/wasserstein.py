@@ -1433,6 +1433,25 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         )
         self.l_scheme_mixed_darcy_lu = sps.linalg.splu(l_scheme_mixed_darcy)
 
+    def _shrink(self, solution):
+
+        flat_flux, _, _ = self.split_solution(
+            solution
+        )
+        # Only consider normal direction (does not take into account the full flux)
+        # new_flat_flux_i = np.sign(intermediate_flat_flux_i) * (
+        #    np.maximum(np.abs(intermediate_flat_flux_i) - 1.0 / self.L, 0.0)
+        # )
+
+        # TODO use difference versions to construct the flux and the norm
+        cell_flux = self.face_to_cell(flat_flux)
+        norm = np.linalg.norm(cell_flux, 2, axis=-1)
+        cell_scaling = np.maximum(norm - 1 / self.L, 0) / (
+            norm + self.regularization
+        )
+        flat_scaling = self.cell_to_face(cell_scaling, mode="arithmetic")
+        return flat_scaling * flat_flux
+
     def _solve(self, flat_mass_diff):
 
         # Solver parameters
@@ -1503,20 +1522,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             # shrinkage operation merely determines the scalar. We still aim at
             # following along the direction provided by the vectorial fluxes.
             tic = time.time()
-            intermediate_flat_flux_i, _, _ = self.split_solution(
-                intermediate_solution_i
-            )
-            # Only consider normal direction (does not take into account the full flux)
-            # new_flat_flux_i = np.sign(intermediate_flat_flux_i) * (
-            #    np.maximum(np.abs(intermediate_flat_flux_i) - 1.0 / self.L, 0.0)
-            # )
-            cell_intermediate_flux_i = self.face_to_cell(intermediate_flat_flux_i)
-            norm = np.linalg.norm(cell_intermediate_flux_i, 2, axis=-1)
-            cell_scaling = np.maximum(norm - 1 / self.L, 0) / (
-                norm + self.regularization
-            )
-            flat_scaling = self.cell_to_face(cell_scaling, mode="arithmetic")
-            new_flat_flux_i = flat_scaling * intermediate_flat_flux_i
+            new_flat_flux_i = self._shrink(intermediate_solution_i)
             time_shrink = time.time() - tic
 
             # Apply Anderson acceleration to flux contribution (the only nonlinear part).
