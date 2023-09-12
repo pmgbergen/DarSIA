@@ -211,7 +211,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Define sparse mass matrix on faces: flat fluxes -> flat fluxes
         lumping = self.options.get("lumping", True)
         if lumping:
-            self.mass_matrix_faces = sps.diags(
+            self.mass_matrix_faces = 0.5 * sps.diags(
                 np.prod(self.voxel_size) * np.ones(num_faces, dtype=float)
             )
         else:
