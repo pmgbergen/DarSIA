@@ -752,11 +752,11 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
         # Fetch options
         plot_options = self.options.get("plot_options", {})
+        name = plot_options.get("name", None)
 
         # Store plot
         save_plot = plot_options.get("save", False)
         if save_plot:
-            name = plot_options.get("name", None)
             folder = plot_options.get("folder", ".")
             Path(folder).mkdir(parents=True, exist_ok=True)
         show_plot = plot_options.get("show", True)
