@@ -593,19 +593,41 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
         return np.linalg.norm(cell_flux, 2, axis=-1)
 
-    def l1_dissipation(self, solution: np.ndarray) -> float:
+    # TODO consider to replace transport_density with this function:
+
+    # def compute_transport_density(self, solution: np.ndarray) -> np.ndarray:
+    #     """Compute the transport density from the solution.
+
+    #     Args:
+    #         solution (np.ndarray): solution
+
+    #     Returns:
+    #         np.ndarray: transport density
+
+    #     """
+    #     # Compute transport density
+    #     flat_flux, _, _ = self.split_solution(solution)
+    #     cell_flux = self.face_to_cell(flat_flux)
+    #     norm = np.linalg.norm(cell_flux, 2, axis=-1)
+    #     return norm
+
+    def l1_dissipation(self, flat_flux: np.ndarray, mode: str) -> float:
         """Compute the l1 dissipation potential of the solution.
 
         Args:
-            solution (np.ndarray): solution
+            flat_flux (np.ndarray): flat fluxes
 
         Returns:
             float: l1 dissipation potential
 
         """
-        flat_flux, _, _ = self.split_solution(solution)
-        cell_flux = self.face_to_cell(flat_flux)
-        return np.sum(np.prod(self.voxel_size) * np.linalg.norm(cell_flux, 2, axis=-1))
+        if mode == "cell_arithmetic":
+            cell_flux = self.face_to_cell(flat_flux)
+            cell_flux_norm = np.ravel(np.linalg.norm(cell_flux, 2, axis=-1))
+            return self.mass_matrix_cells.dot(cell_flux_norm).sum()
+        elif mode == "face_arithmetic":
+            face_flux_norm = self.vector_face_flux_norm(flat_flux, "face_arithmetic")
+            return self.mass_matrix_faces.dot(face_flux_norm).sum()
 
     # ! ---- Lumping of effective mobility
 
