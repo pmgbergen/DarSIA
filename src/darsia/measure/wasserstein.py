@@ -1447,7 +1447,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
     def _problem_specific_setup(self, mass_diff: np.ndarray) -> None:
         super()._problem_specific_setup(mass_diff)
         self.L = self.options.get("L", 1.0)
-        if False:
+        self.explicit = False
+        if self.explicit:
             # Use for explicit Bregman
             l_scheme_mixed_darcy = sps.bmat(
                 [
@@ -1457,7 +1458,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 ],
                 format="csc",
             )
-        elif True:
+        elif not(self.explicit):
             # Only use for implicit Bregman
             l_scheme_mixed_darcy = sps.bmat(
                 [
@@ -1566,7 +1567,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         # Initialize Bregman variables and flux with Darcy flow
         shrink_mode = "face_arithmetic"
         dissipation_mode = "cell_arithmetic"
-        if False:
+        if self.explicit:
             shrink_factor = 1.0 / self.L
         else:
             shrink_factor = 2.0 / (3.0 * self.L)
@@ -1596,7 +1597,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             # new_flat_flux_i = self._shrink(intermediate_flat_flux_i, shrink_mode)
             # time_shrink = time.time() - tic
 
-            if False:
+            if True and self.explicit:
                 # (Explicit) Bregman method
 
                 # 1. Make relaxation step (solve quadratic optimization problem)
@@ -1636,7 +1637,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 toc = time.time()
                 time_anderson = toc - tic
 
-            elif True:
+            elif True and not (self.explicit):
                 # Implicit Bregman method
 
                 # 1. Make relaxation step (solve quadratic optimization problem)
