@@ -1458,7 +1458,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 ],
                 format="csc",
             )
-        elif not(self.explicit):
+        elif not (self.explicit):
             # Only use for implicit Bregman
             l_scheme_mixed_darcy = sps.bmat(
                 [
@@ -1637,48 +1637,142 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 toc = time.time()
                 time_anderson = toc - tic
 
-            elif True and not (self.explicit):
-                # Implicit Bregman method
-
-                # 1. Make relaxation step (solve quadratic optimization problem)
-                tic = time.time()
-                rhs_i = rhs.copy()
-                rhs_i[: self.num_faces] = (
-                    1.5
-                    * self.L
-                    * self.mass_matrix_faces.dot(old_aux_flux - very_old_force)
-                )
-                new_flux, _, _ = self.split_solution(
-                    self.l_scheme_mixed_darcy_lu.solve(rhs_i)
-                )
-                time_linearization = time.time() - tic
-
-                # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
-                # shrinkage operation merely determines the scalar. We still aim at
-                # following along the direction provided by the vectorial fluxes.
-                tic = time.time()
-                new_aux_flux = self._shrink(
-                    new_flux + very_old_force, shrink_factor, shrink_mode
-                )
-                time_shrink = time.time() - tic
-
-                # 3. Update force
-                new_force = old_force + 1.0 / 3.0 * (new_flux - new_aux_flux)
-
-                # Apply Anderson acceleration to flux contribution (the only nonlinear part).
-                tic = time.time()
-                if self.anderson is not None:
-                    aux_inc = new_aux_flux - old_aux_flux
-                    force_inc = new_force - old_force
-                    inc = np.concatenate([aux_inc, force_inc])
-                    iteration = np.concatenate([new_aux_flux, new_force])
-                    new_iteration = self.anderson(iteration, inc, iter)
-                    new_aux_flux = new_iteration[: self.num_faces]
-                    new_force = new_iteration[self.num_faces :]
-
-                toc = time.time()
-                time_anderson = toc - tic
+            #            elif False and self.explicit:
+            #                # Enhanced Bregman method
+            #
+            #                # old_flux_norm = np.maximum(
+            #                #    self.vector_face_flux_norm(old_flux, mode="face_arithmetic"),
+            #                #    self.regularization,
+            #                # )
+            #                # enhancement = shrink_factor * old_flux / old_flux_norm
+            #                # old_pressure_gradient = -self.div.T.dot(old_pressure)
+            #                # old_aux_flux_norm = np.maximum(
+            #                #    self.vector_face_flux_norm(old_aux_flux, mode="face_arithmetic"),
+            #                #    self.regularization,
+            #                # )
+            #                # enhancement += shrink_factor * (
+            #                #    old_aux_flux / old_aux_flux_norm + old_pressure_gradient
+            #                # )
+            #
+            #                # 1. Make relaxation step (solve quadratic optimization problem)
+            #                tic = time.time()
+            #                rhs_i = rhs.copy()
+            #                rhs_i[: self.num_faces] = self.L * self.mass_matrix_faces.dot(
+            #                    old_aux_flux - old_force
+            #                )
+            #                new_flux, _, _ = self.split_solution(
+            #                    self.l_scheme_mixed_darcy_lu.solve(rhs_i)
+            #                )
+            #                time_linearization = time.time() - tic
+            #
+            #                ## Solve Newton with trust in new flux to determine the corresponindg
+            #                ## pressure
+            #                # new_flux_norm = np.maximum(
+            #                #    self.vector_face_flux_norm(new_flux, mode="face_arithmetic"),
+            #                #    self.regularization,
+            #                # )
+            #                # regularized_scaling = sps.diags(
+            #                #    np.maximum(0.01, 1.0 / new_flux_norm), dtype=float
+            #                # )
+            #                # aux_rhs = rhs.copy()
+            #                # aux_jacobian = sps.bmat(
+            #                #    [
+            #                #        [
+            #                #            regularized_scaling * self.mass_matrix_faces,
+            #                #            -self.div.T,
+            #                #            None,
+            #                #        ],
+            #                #        [self.div, None, -self.potential_constraint.T],
+            #                #        [None, self.potential_constraint, None],
+            #                #    ],
+            #                #    format="csc",
+            #                # )
+            #                # aux_jacobian_lu = sps.linalg.splu(aux_jacobian)
+            #                # aux_update = aux_jacobian_lu.solve(aux_rhs)
+            #                # aux_flux, aux_pressure, _ = self.split_solution(aux_update)
+            #                # print(np.linalg.norm(aux_flux - new_flux))
+            #                # print(np.linalg.norm(aux_flux))
+            #                # assert False
+            #
+            #                # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
+            #                # shrinkage operation merely determines the scalar. We still aim at
+            #                # following along the direction provided by the vectorial fluxes.
+            #                tic = time.time()
+            #                new_aux_flux = self._shrink(
+            #                    new_flux + old_force - enhancement, shrink_factor, shrink_mode
+            #                )
+            #                time_shrink = time.time() - tic
+            #
+            #                # 3. Update force
+            #                new_force = old_force + new_flux - new_aux_flux
+            #                old_pressure_gradient = -self.div.T.dot(old_pressure)
+            #                old_aux_flux_norm = np.maximum(
+            #                    self.vector_face_flux_norm(old_aux_flux, mode="face_arithmetic"),
+            #                    self.regularization,
+            #                )
+            #                enhancement += shrink_factor * (
+            #                    old_aux_flux / old_aux_flux_norm + old_pressure_gradient
+            #                )
+            #
+            #                # Apply Anderson acceleration to flux contribution (the only nonlinear part).
+            #                tic = time.time()
+            #                if self.anderson is not None:
+            #                    aux_inc = new_aux_flux - old_aux_flux
+            #                    force_inc = new_force - old_force
+            #                    inc = np.concatenate([aux_inc, force_inc])
+            #                    iteration = np.concatenate([new_aux_flux, new_force])
+            #                    new_iteration = self.anderson(iteration, inc, iter)
+            #                    new_aux_flux = new_iteration[: self.num_faces]
+            #                    new_force = new_iteration[self.num_faces :]
+            #
+            #                toc = time.time()
+            #                time_anderson = toc - tic
+            #
+            #            elif False and not (self.explicit):
+            #                # Implicit Bregman method
+            #
+            #                # 1. Make relaxation step (solve quadratic optimization problem)
+            #                tic = time.time()
+            #                rhs_i = rhs.copy()
+            #                rhs_i[: self.num_faces] = (
+            #                    1.5
+            #                    * self.L
+            #                    * self.mass_matrix_faces.dot(old_aux_flux - very_old_force)
+            #                )
+            #                new_flux, _, _ = self.split_solution(
+            #                    self.l_scheme_mixed_darcy_lu.solve(rhs_i)
+            #                )
+            #                time_linearization = time.time() - tic
+            #
+            #                # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
+            #                # shrinkage operation merely determines the scalar. We still aim at
+            #                # following along the direction provided by the vectorial fluxes.
+            #                tic = time.time()
+            #                new_aux_flux = self._shrink(
+            #                    new_flux + very_old_force, shrink_factor, shrink_mode
+            #                )
+            #                time_shrink = time.time() - tic
+            #
+            #                # 3. Update force
+            #                new_force = old_force + 1.0 / 3.0 * (new_flux - new_aux_flux)
+            #
+            #                # Apply Anderson acceleration to flux contribution (the only nonlinear part).
+            #                tic = time.time()
+            #                if self.anderson is not None:
+            #                    aux_inc = new_aux_flux - old_aux_flux
+            #                    # force_inc = new_force - old_force
+            #                    force_inc = old_force - very_old_force
+            #                    inc = np.concatenate([aux_inc, force_inc])
+            #                    iteration = np.concatenate([new_aux_flux, old_force])
+            #                    new_iteration = self.anderson(iteration, inc, iter)
+            #                    new_aux_flux = new_iteration[: self.num_faces]
+            #                    # old_force = new_iteration[self.num_faces :]
+            #
+            #                toc = time.time()
+            #                time_anderson = toc - tic
             elif False:
+                # Reordered split Bregman method
+
                 # 1. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
                 # shrinkage operation merely determines the scalar. We still aim at
                 # following along the direction provided by the vectorial fluxes.
