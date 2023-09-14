@@ -1448,15 +1448,203 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
     def _problem_specific_setup(self, mass_diff: np.ndarray) -> None:
         super()._problem_specific_setup(mass_diff)
         self.L = self.options.get("L", 1.0)
-        l_scheme_mixed_darcy = sps.bmat(
+
+    # TODO almost as for Newton. Unify!
+
+    def darcy_jacobian(self) -> sps.linalg.LinearOperator:
+        """Compute the Jacobian of a standard homogeneous Darcy problem.
+
+        The mobility is defined by the used via options["L_init"]. The jacobian is
+        cached for later use.
+
+        """
+        L_init = self.options.get("L", 1.0)  # NOTE changed!
+        jacobian = sps.bmat(
             [
-                [self.L * self.mass_matrix_faces, -self.div.T, None],
+                [L_init * self.mass_matrix_faces, -self.div.T, None],
                 [self.div, None, -self.potential_constraint.T],
                 [None, self.potential_constraint, None],
             ],
             format="csc",
         )
-        self.l_scheme_mixed_darcy_lu = sps.linalg.splu(l_scheme_mixed_darcy)
+        return jacobian
+
+    # TODO same as for Newton. Unify!
+
+    def setup_infrastructure(self) -> None:
+        """Setup the infrastructure for reduced systems through Gauss elimination.
+
+        Provide internal data structures for the reduced system.
+
+        """
+        # Step 1: Compute the jacobian of the Darcy problem
+
+        # The Darcy problem is sufficient
+        jacobian = self.darcy_jacobian()
+
+        # Step 2: Remove flux blocks through Schur complement approach
+
+        # Build Schur complement wrt. flux-flux block
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_indices])
+        D = jacobian[self.num_faces :, : self.num_faces].copy()
+        schur_complement = D.dot(J_inv.dot(D.T))
+
+        # Cache divergence matrix
+        self.D = D.copy()
+        self.DT = self.D.T.copy()
+
+        # Cache (constant) jacobian subblock
+        self.jacobian_subblock = jacobian[self.num_faces :, self.num_faces :].copy()
+
+        # Add Schur complement - use this to identify sparsity structure
+        # Cache the reduced jacobian
+        self.reduced_jacobian = self.jacobian_subblock + schur_complement
+
+        # Step 3: Remove potential block through Gauss elimination
+
+        # Find row entries to be removed
+        rm_row_entries = np.arange(
+            self.reduced_jacobian.indptr[self.constrained_cell_flat_index],
+            self.reduced_jacobian.indptr[self.constrained_cell_flat_index + 1],
+        )
+
+        # Find column entries to be removed
+        rm_col_entries = np.where(
+            self.reduced_jacobian.indices == self.constrained_cell_flat_index
+        )[0]
+
+        # Collect all entries to be removes
+        rm_indices = np.unique(
+            np.concatenate((rm_row_entries, rm_col_entries)).astype(int)
+        )
+        # Cache for later use in remove_lagrange_multiplier
+        self.rm_indices = rm_indices
+
+        # Identify rows to be reduced
+        rm_rows = [
+            np.max(np.where(self.reduced_jacobian.indptr <= index)[0])
+            for index in rm_indices
+        ]
+
+        # Reduce data - simply remove
+        fully_reduced_jacobian_data = np.delete(self.reduced_jacobian.data, rm_indices)
+
+        # Reduce indices - remove and shift
+        fully_reduced_jacobian_indices = np.delete(
+            self.reduced_jacobian.indices, rm_indices
+        )
+        fully_reduced_jacobian_indices[
+            fully_reduced_jacobian_indices > self.constrained_cell_flat_index
+        ] -= 1
+
+        # Reduce indptr - shift and remove
+        # NOTE: As only a few entries should be removed, this is not too expensive
+        # and a for loop is used
+        fully_reduced_jacobian_indptr = self.reduced_jacobian.indptr.copy()
+        for row in rm_rows:
+            fully_reduced_jacobian_indptr[row + 1 :] -= 1
+        fully_reduced_jacobian_indptr = np.unique(fully_reduced_jacobian_indptr)
+
+        # Make sure two rows are removed and deduce shape of reduced jacobian
+        assert (
+            len(fully_reduced_jacobian_indptr) == len(self.reduced_jacobian.indptr) - 2
+        ), "Two rows should be removed."
+        fully_reduced_jacobian_shape = (
+            len(fully_reduced_jacobian_indptr) - 1,
+            len(fully_reduced_jacobian_indptr) - 1,
+        )
+
+        # Cache the fully reduced jacobian
+        self.fully_reduced_jacobian = sps.csc_matrix(
+            (
+                fully_reduced_jacobian_data,
+                fully_reduced_jacobian_indices,
+                fully_reduced_jacobian_indptr,
+            ),
+            shape=fully_reduced_jacobian_shape,
+        )
+
+        # Cache the indices and indptr
+        self.fully_reduced_jacobian_indices = fully_reduced_jacobian_indices.copy()
+        self.fully_reduced_jacobian_indptr = fully_reduced_jacobian_indptr.copy()
+        self.fully_reduced_jacobian_shape = fully_reduced_jacobian_shape
+
+        # Step 4: Identify inclusions (index arrays)
+
+        # Define reduced system indices wrt full system
+        self.reduced_system_indices = np.concatenate(
+            [self.potential_indices, self.lagrange_multiplier_indices]
+        )
+
+        # Define fully reduced system indices wrt reduced system - need to remove cell
+        # (and implicitly lagrange multiplier)
+        self.fully_reduced_system_indices = np.delete(
+            np.arange(self.num_cells), self.constrained_cell_flat_index
+        )
+
+        # Define fully reduced system indices wrt full system
+        self.fully_reduced_system_indices_full = self.reduced_system_indices[
+            self.fully_reduced_system_indices
+        ]
+
+    def remove_flux(self, jacobian: sps.csc_matrix, residual: np.ndarray) -> tuple:
+        """Remove the flux block from the jacobian and residual.
+
+        Args:
+            jacobian (sps.csc_matrix): jacobian
+            residual (np.ndarray): residual
+
+        Returns:
+            tuple: reduced jacobian, reduced residual, inverse of flux block
+
+        """
+        # Build Schur complement wrt flux-block
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_indices])
+        schur_complement = self.D.dot(J_inv.dot(self.DT))
+
+        # Gauss eliminiation on matrices
+        reduced_jacobian = self.jacobian_subblock + schur_complement
+
+        # Gauss elimination on vectors
+        reduced_residual = residual[self.reduced_system_indices].copy()
+        reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_indices]))
+
+        return reduced_jacobian, reduced_residual, J_inv
+
+    def remove_lagrange_multiplier(self, jacobian, residual, solution) -> tuple:
+        """Shortcut for removing the lagrange multiplier from the reduced jacobian.
+
+        Args:
+
+            solution (np.ndarray): solution, TODO make function independent of solution
+
+        Returns:
+            tuple: fully reduced jacobian, fully reduced residual
+
+        """
+        # Make sure the jacobian is a CSC matrix
+        assert isinstance(jacobian, sps.csc_matrix), "Jacobian should be a CSC matrix."
+
+        # Effective Gauss-elimination for the particular case of the lagrange multiplier
+        self.fully_reduced_jacobian.data[:] = np.delete(
+            self.reduced_jacobian.data.copy(), self.rm_indices
+        )
+        # NOTE: The indices have to be restored if the LU factorization is to be used
+        # FIXME omit if not required
+        self.fully_reduced_jacobian.indices = self.fully_reduced_jacobian_indices.copy()
+
+        # Rhs is not affected by Gauss elimination as it is assumed that the residual
+        # is zero in the constrained cell, and the pressure is zero there as well.
+        # If not, we need to do a proper Gauss elimination on the right hand side!
+        if abs(residual[-1]) > 1e-6:
+            raise NotImplementedError("Implementation requires residual to be zero.")
+        if abs(solution[self.num_faces + self.constrained_cell_flat_index]) > 1e-6:
+            raise NotImplementedError("Implementation requires solution to be zero.")
+        fully_reduced_residual = self.reduced_residual[
+            self.fully_reduced_system_indices
+        ].copy()
+
+        return self.fully_reduced_jacobian, fully_reduced_residual
 
     def _shrink(
         self,
@@ -1518,6 +1706,44 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         tol_increment = self.options.get("tol_increment", 1e-6)
         # tol_distance = self.options.get("tol_distance", 1e-6)
 
+        # Define linear solver to be used to invert the Darcy systems
+        self.setup_infrastructure()
+        linear_solver = self.options.get("linear_solver", "lu")
+        assert linear_solver in [
+            "lu",
+            "lu-flux-reduced",
+            "amg-flux-reduced",
+            "lu-potential",
+            "amg-potential",
+        ], f"Linear solver {linear_solver} not supported."
+
+        if linear_solver in ["amg-flux-reduced", "amg-potential"]:
+            # TODO add possibility for user control
+            ml_options = {
+                # B=X.reshape(
+                #    n * n, 1
+                # ),  # the representation of the near null space (this is a poor choice)
+                # BH=None,  # the representation of the left near null space
+                "symmetry": "hermitian",  # indicate that the matrix is Hermitian
+                # strength="evolution",  # change the strength of connection
+                "aggregate": "standard",  # use a standard aggregation method
+                "smooth": (
+                    "jacobi",
+                    {"omega": 4.0 / 3.0, "degree": 2},
+                ),  # prolongation smoothing
+                "presmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
+                "postsmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
+                # improve_candidates=[
+                #    ("block_gauss_seidel", {"sweep": "symmetric", "iterations": 4}),
+                #    None,
+                # ],
+                "max_levels": 4,  # maximum number of levels
+                "max_coarse": 1000,  # maximum number on a coarse level
+                # keep=False,  # keep extra operators around in the hierarchy (memory)
+            }
+            tol_amg = self.options.get("linear_solver_tol", 1e-6)
+            res_history_amg = []
+
         # Relaxation parameter
         self.L = self.options.get("L", 1.0)
         rhs = np.concatenate(
@@ -1560,14 +1786,109 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         dissipation_mode = "cell_arithmetic"
         weight = self.L
         shrink_factor = 1.0 / self.L
-        solution_i = self.l_scheme_mixed_darcy_lu.solve(rhs)
+        solution_i = np.zeros_like(rhs, dtype=float)
+
+        # Solve linear Darcy problem as initial guess
+        l_scheme_mixed_darcy = sps.bmat(
+            [
+                [self.L * self.mass_matrix_faces, -self.div.T, None],
+                [self.div, None, -self.potential_constraint.T],
+                [None, self.potential_constraint, None],
+            ],
+            format="csc",
+        )
+        if linear_solver == "lu":
+            self.l_scheme_mixed_darcy_solver = sps.linalg.splu(l_scheme_mixed_darcy)
+            solution_i = self.l_scheme_mixed_darcy_solver.solve(rhs)
+
+        elif linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
+            # Solve potential-multiplier problem
+
+            # Reduce flux block
+            (
+                self.reduced_jacobian,
+                self.reduced_residual,
+                jacobian_flux_inv,
+            ) = self.remove_flux(l_scheme_mixed_darcy, rhs)
+
+            if linear_solver == "lu-flux-reduced":
+                self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
+                    self.reduced_jacobian
+                )
+
+            elif linear_solver == "amg-flux-reduced":
+                self.l_scheme_mixed_darcy_solver = pyamg.smoothed_aggregation_solver(
+                    self.reduced_jacobian, **ml_options
+                )
+                solution_i[
+                    self.reduced_system_indices
+                ] = self.l_scheme_mixed_darcy_solver.solve(
+                    self.reduced_residual,
+                    tol=tol_amg,
+                    residuals=res_history_amg,
+                )
+
+            # Compute flux update
+            solution_i[self.flux_indices] = jacobian_flux_inv.dot(
+                rhs[self.flux_indices]
+                + self.DT.dot(solution_i[self.reduced_system_indices])
+            )
+
+        elif linear_solver in ["lu-potential", "amg-potential"]:
+            # Solve pure potential problem
+
+            # Reduce flux block
+            (
+                self.reduced_jacobian,
+                self.reduced_residual,
+                jacobian_flux_inv,
+            ) = self.remove_flux(l_scheme_mixed_darcy, rhs)
+
+            # Reduce to pure pressure system
+            (
+                self.fully_reduced_jacobian,
+                self.fully_reduced_residual,
+            ) = self.remove_lagrange_multiplier(
+                self.reduced_jacobian, self.reduced_residual, solution_i
+            )
+
+            if linear_solver == "lu-potential":
+                self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
+                    self.fully_reduced_jacobian
+                )
+                solution_i[
+                    self.fully_reduced_system_indices_full
+                ] = self.l_scheme_mixed_darcy_solver.solve(self.fully_reduced_residual)
+
+            elif linear_solver == "amg-potential":
+                self.l_scheme_mixed_darcy_solver = pyamg.smoothed_aggregation_solver(
+                    self.fully_reduced_jacobian, **ml_options
+                )
+                solution_i[
+                    self.fully_reduced_system_indices_full
+                ] = self.l_scheme_mixed_darcy_solver.solve(
+                    self.fully_reduced_residual,
+                    tol=tol_amg,
+                    residuals=res_history_amg,
+                )
+
+            # Compute flux update
+            solution_i[self.flux_indices] = jacobian_flux_inv.dot(
+                rhs[self.flux_indices]
+                + self.DT.dot(solution_i[self.reduced_system_indices])
+            )
+
+        else:
+            raise NotImplementedError(f"Linear solver {linear_solver} not supported")
+
+        # Extract intial values
         old_flux, _, _ = self.split_solution(solution_i)
         old_aux_flux = self._shrink(old_flux, shrink_factor, shrink_mode)
         old_force = old_flux - old_aux_flux
         old_distance = self.l1_dissipation(old_flux, dissipation_mode)
 
         for iter in range(num_iter):
-            if True:
+            if False:
                 # std split Bregman method
 
                 # 1. Make relaxation step (solve quadratic optimization problem)
@@ -1650,7 +1971,10 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             elif True:
                 # Bregman split with updated weight
                 update_cond = self.options.get("bregman_update_cond", lambda iter: True)
-                if update_cond(iter):
+                update_solver = update_cond(iter)
+                if update_solver:
+                    # TODO: self._update_weight(old_flux)
+
                     # Update weight as the inverse of the norm of the flux
                     old_flux_norm = np.maximum(
                         self.vector_face_flux_norm(old_flux, "face_arithmetic"),
@@ -1669,7 +1993,10 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         ],
                         format="csc",
                     )
-                    self.l_scheme_mixed_darcy_lu = sps.linalg.splu(l_scheme_mixed_darcy)
+
+                    tic = time.time()
+
+                    time_setup = time.time() - tic
 
                 # 1. Make relaxation step (solve quadratic optimization problem)
                 tic = time.time()
@@ -1677,9 +2004,124 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 rhs_i[: self.num_faces] = weight * self.mass_matrix_faces.dot(
                     old_aux_flux - old_force
                 )
-                new_flux, _, _ = self.split_solution(
-                    self.l_scheme_mixed_darcy_lu.solve(rhs_i)
-                )
+                solution_i = np.zeros_like(rhs_i, dtype=float)
+
+                if linear_solver == "lu":
+                    if update_solver:
+                        self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
+                            l_scheme_mixed_darcy
+                        )
+                    solution_i = self.l_scheme_mixed_darcy_solver.solve(rhs_i)
+
+                elif linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
+                    # Solve potential-multiplier problem
+
+                    # Reduce flux block
+                    (
+                        self.reduced_jacobian,
+                        self.reduced_residual,
+                        jacobian_flux_inv,
+                    ) = self.remove_flux(l_scheme_mixed_darcy, rhs_i)
+
+                    if linear_solver == "lu-flux-reduced":
+                        if update_solver:
+                            self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
+                                self.reduced_jacobian
+                            )
+                        solution_i[
+                            self.reduced_system_indices
+                        ] = self.l_scheme_mixed_darcy_solver.solve(
+                            self.reduced_residual
+                        )
+
+                    elif linear_solver == "amg-flux-reduced":
+                        if update_solver:
+                            self.l_scheme_mixed_darcy_solver = (
+                                pyamg.smoothed_aggregation_solver(
+                                    self.reduced_jacobian, **ml_options
+                                )
+                            )
+                        solution_i[
+                            self.reduced_system_indices
+                        ] = self.l_scheme_mixed_darcy_solver.solve(
+                            self.reduced_residual,
+                            tol=tol_amg,
+                            residuals=res_history_amg,
+                        )
+
+                    # Compute flux update
+                    solution_i[self.flux_indices] = jacobian_flux_inv.dot(
+                        rhs_i[self.flux_indices]
+                        + self.DT.dot(solution_i[self.reduced_system_indices])
+                    )
+
+                elif linear_solver in ["lu-potential", "amg-potential"]:
+                    # Solve pure potential problem
+
+                    # Reduce flux block
+                    (
+                        self.reduced_jacobian,
+                        self.reduced_residual,
+                        jacobian_flux_inv,
+                    ) = self.remove_flux(l_scheme_mixed_darcy, rhs_i)
+
+                    # Reduce to pure pressure system
+                    (
+                        self.fully_reduced_jacobian,
+                        self.fully_reduced_residual,
+                    ) = self.remove_lagrange_multiplier(
+                        self.reduced_jacobian, self.reduced_residual, solution_i
+                    )
+
+                    if linear_solver == "lu-potential":
+                        if update_solver:
+                            self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
+                                self.fully_reduced_jacobian
+                            )
+                        solution_i[
+                            self.fully_reduced_system_indices_full
+                        ] = self.l_scheme_mixed_darcy_solver.solve(
+                            self.fully_reduced_residual
+                        )
+
+                    elif linear_solver == "amg-potential":
+                        if update_solver:
+                            self.l_scheme_mixed_darcy_solver = (
+                                pyamg.smoothed_aggregation_solver(
+                                    self.fully_reduced_jacobian, **ml_options
+                                )
+                            )
+                        time_setup = time.time() - tic
+                        tic = time.time()
+                        solution_i[
+                            self.fully_reduced_system_indices_full
+                        ] = self.l_scheme_mixed_darcy_solver.solve(
+                            self.fully_reduced_residual,
+                            tol=tol_amg,
+                            residuals=res_history_amg,
+                        )
+
+                    # Compute flux update
+                    solution_i[self.flux_indices] = jacobian_flux_inv.dot(
+                        rhs_i[self.flux_indices]
+                        + self.DT.dot(solution_i[self.reduced_system_indices])
+                    )
+                else:
+                    raise NotImplementedError(
+                        f"Linear solver {linear_solver} not supported"
+                    )
+
+                # Diagnostics
+                if linear_solver in ["amg-flux-reduced", "amg-potential"]:
+                    if self.options.get("linear_solver_verbosity", False):
+                        num_amg_iter = len(res_history_amg)
+                        res_amg = res_history_amg[-1]
+                        print(ml)
+                        print(
+                            f"#AMG iterations: {num_amg_iter}; Residual after AMG step: {res_amg}"
+                        )
+
+                new_flux, _, _ = self.split_solution(solution_i)
                 time_linearization = time.time() - tic
 
                 # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
