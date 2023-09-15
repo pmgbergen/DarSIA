@@ -790,7 +790,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         )
         plt.xlabel("x [m]")
         plt.ylabel("y [m]")
-        plt.ylim(top=0.08)  # TODO rm?
+        # plt.ylim(top=0.08)  # TODO rm?
         if save_plot:
             plt.savefig(
                 folder + "/" + name + "_beckman_solution_potential.png",
@@ -800,7 +800,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Plot the fluxes
         plt.figure("Beckman solution fluxes")
-        plt.pcolormesh(X, Y, mass_diff, cmap="turbo", vmin=-1, vmax=3.5)
+        plt.pcolormesh(X, Y, mass_diff, cmap="turbo")  # , vmin=-1, vmax=3.5)
         plt.colorbar(label="mass difference")
         plt.quiver(
             X[::resolution, ::resolution],
@@ -815,7 +815,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         )
         plt.xlabel("x [m]")
         plt.ylabel("y [m]")
-        plt.ylim(top=0.08)
+        # plt.ylim(top=0.08)
         plt.text(
             0.0025,
             0.075,
@@ -838,7 +838,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         plt.colorbar(label="flux modulus")
         plt.xlabel("x [m]")
         plt.ylabel("y [m]")
-        plt.ylim(top=0.08)  # TODO rm?
+        # plt.ylim(top=0.08)  # TODO rm?
         if save_plot:
             plt.savefig(
                 folder + "/" + name + "_beckman_solution_transport_density.png",
