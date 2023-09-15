@@ -1704,7 +1704,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         num_iter = self.options.get("num_iter", 100)
         tol_residual = self.options.get("tol_residual", 1e-6)
         tol_increment = self.options.get("tol_increment", 1e-6)
-        # tol_distance = self.options.get("tol_distance", 1e-6)
+        tol_distance = self.options.get("tol_distance", 1e-6)
 
         # Define linear solver to be used to invert the Darcy systems
         self.setup_infrastructure()
@@ -2216,7 +2216,13 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             if new_distance > old_distance:
                 num_neg_diff += 1
 
-            # Increase L if stagnating of the distance increases too often.
+            # TODO include criterion build on staganation of the solution
+            if iter > 1 and (
+                (error[0] < tol_residual and error[4] < tol_increment)
+                or error[5] < tol_distance
+            ):
+                break
+
             update_l = self.options.get("update_l", False)
             #            if update_l:
             #                tol_distance = self.options.get("tol_distance", 1e-12)
@@ -2246,10 +2252,6 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             #                L_max = self.options.get("L_max", 1e8)
             #                if self.L > L_max:
             #                    break
-
-            # TODO include criterion build on staganation of the solution
-            if iter > 1 and ((error[0] < tol_residual and error[4] < tol_increment)):
-                break
 
             # Update Bregman variables
             old_flux = new_flux.copy()
