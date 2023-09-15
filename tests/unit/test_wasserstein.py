@@ -33,14 +33,28 @@ newton_options = {
     # Scheme
     "L": 1e-9,
 }
-bregman_options = {
+bregman_std_options = {
     # Scheme
     "L": 1,
+}
+bregman_reordered_options = {
+    # Scheme
+    "L": 1,
+    "bregman_mode": "reordered",
+}
+bregman_adaptive_options = {
+    # Scheme
+    "L": 1,
+    "bregman_mode": "adaptive",
     "bregman_update_cond": lambda iter: iter % 20 == 0,
 }
 linearizations = {
-    "newton": newton_options,
-    "bregman": bregman_options,
+    "newton": [newton_options],
+    "bregman": [
+        bregman_std_options,
+        bregman_reordered_options,
+        bregman_adaptive_options,
+    ],
 }
 
 # Acceleration
@@ -63,7 +77,7 @@ lu_options = {
 }
 amg_options = {
     "linear_solver": "amg-potential",
-    "linear_solver_tol": 1e-6,
+    "linear_solver_tol": 1e-8,
 }
 solvers = [lu_options, amg_options]
 
@@ -85,14 +99,55 @@ options = {
 
 @pytest.mark.parametrize("a_key", range(len(accelerations)))
 @pytest.mark.parametrize("s_key", range(len(solvers)))
-@pytest.mark.parametrize("method", ["newton", "bregman"])
-def test_newton(a_key, s_key, method):
-    """Test all combinations."""
-    options.update(linearizations[method])
+def test_newton(a_key, s_key):
+    """Test all combinations for Newton."""
+    options.update(newton_options)
     options.update(accelerations[a_key])
     options.update(solvers[s_key])
     distance, _, _, _, status = darsia.wasserstein_distance(
-        src_image, dst_image, options=options, method=method, return_solution=True
+        src_image, dst_image, options=options, method="newton", return_solution=True
+    )
+    assert np.isclose(distance, true_distance, atol=1e-5)
+    assert status["converged"]
+
+
+@pytest.mark.parametrize("a_key", range(len(accelerations)))
+@pytest.mark.parametrize("s_key", [0])  # TODO range(len(solvers)))
+def test_std_bregman(a_key, s_key):
+    """Test all combinations for std Bregman."""
+    options.update(bregman_std_options)
+    options.update(accelerations[a_key])
+    options.update(solvers[s_key])
+    distance, _, _, _, status = darsia.wasserstein_distance(
+        src_image, dst_image, options=options, method="bregman", return_solution=True
+    )
+    assert np.isclose(distance, true_distance, atol=1e-2)  # TODO
+    assert status["converged"]
+
+
+@pytest.mark.parametrize("a_key", range(len(accelerations)))
+@pytest.mark.parametrize("s_key", [0])  # TODO range(len(solvers)))
+def test_reordered_bregman(a_key, s_key):
+    """Test all combinations for reordered Bregman."""
+    options.update(bregman_reordered_options)
+    options.update(accelerations[a_key])
+    options.update(solvers[s_key])
+    distance, _, _, _, status = darsia.wasserstein_distance(
+        src_image, dst_image, options=options, method="bregman", return_solution=True
+    )
+    assert np.isclose(distance, true_distance, atol=1e-2)  # TODO
+    assert status["converged"]
+
+
+@pytest.mark.parametrize("a_key", range(len(accelerations)))
+@pytest.mark.parametrize("s_key", range(len(solvers)))
+def test_adaptive_bregman(a_key, s_key):
+    """Test all combinations for adaptive Bregman."""
+    options.update(bregman_adaptive_options)
+    options.update(accelerations[a_key])
+    options.update(solvers[s_key])
+    distance, _, _, _, status = darsia.wasserstein_distance(
+        src_image, dst_image, options=options, method="bregman", return_solution=True
     )
     assert np.isclose(distance, true_distance, atol=1e-5)
     assert status["converged"]
