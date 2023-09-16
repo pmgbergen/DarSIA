@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy.sparse as sps
 
@@ -543,9 +542,9 @@ class VariationalWassersteinDistance3d(darsia.EMD):
         status["elapsed_time"] = toc - tic
 
         # TODO consider suitable visualization?
-#        # Plot the solution
-#        if plot_solution:
-#            self._plot_solution(mass_diff, flux, pressure, mobility)
+        #        # Plot the solution
+        #        if plot_solution:
+        #            self._plot_solution(mass_diff, flux, pressure, mobility)
 
         if return_solution:
             return distance, flux, pressure, mobility, status
