@@ -13,6 +13,7 @@ from darsia.image.arithmetics import *
 from darsia.measure.integration import *
 from darsia.measure.emd import *
 from darsia.measure.wasserstein import *
+# from darsia.measure.wasserstein3d import *
 from darsia.utils.box import *
 from darsia.utils.interpolation import *
 from darsia.utils.segmentation import *
@@ -67,3 +68,4 @@ from darsia.manager.co2analysis import *
 from darsia.assistants.base_assistant import *
 from darsia.assistants.rotation_correction_assistant import *
 from darsia.assistants.subregion_assistant import *
+#from darsia.assistants.curvature_correction_assistant import *
