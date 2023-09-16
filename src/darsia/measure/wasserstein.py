@@ -1888,7 +1888,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         old_distance = self.l1_dissipation(old_flux, dissipation_mode)
 
         for iter in range(num_iter):
-            if False:
+            bregman_mode = self.options.get("bregman_mode", "standard")
+            if bregman_mode == "standard":
                 # std split Bregman method
 
                 # 1. Make relaxation step (solve quadratic optimization problem)
@@ -1898,7 +1899,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     old_aux_flux - old_force
                 )
                 new_flux, _, _ = self.split_solution(
-                    self.l_scheme_mixed_darcy_lu.solve(rhs_i)
+                    self.l_scheme_mixed_darcy_solver.solve(rhs_i)
                 )
                 time_linearization = time.time() - tic
 
@@ -1928,7 +1929,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 toc = time.time()
                 time_anderson = toc - tic
 
-            elif False:
+            elif bregman_mode == "reordered":
                 # Reordered split Bregman method
 
                 # 1. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
@@ -1950,7 +1951,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     new_aux_flux - new_force
                 )
                 new_flux, _, _ = self.split_solution(
-                    self.l_scheme_mixed_darcy_lu.solve(rhs_i)
+                    self.l_scheme_mixed_darcy_solver.solve(rhs_i)
                 )
                 time_linearization = time.time() - tic
 
@@ -1968,9 +1969,11 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 toc = time.time()
                 time_anderson = toc - tic
 
-            elif True:
+            elif bregman_mode == "adaptive":
                 # Bregman split with updated weight
-                update_cond = self.options.get("bregman_update_cond", lambda iter: True)
+                update_cond = self.options.get(
+                    "bregman_update_cond", lambda iter: False
+                )
                 update_solver = update_cond(iter)
                 if update_solver:
                     # TODO: self._update_weight(old_flux)
@@ -1993,10 +1996,6 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         ],
                         format="csc",
                     )
-
-                    tic = time.time()
-
-                    time_setup = time.time() - tic
 
                 # 1. Make relaxation step (solve quadratic optimization problem)
                 tic = time.time()
@@ -2091,7 +2090,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                                     self.fully_reduced_jacobian, **ml_options
                                 )
                             )
-                        time_setup = time.time() - tic
+                        # time_setup = time.time() - tic
                         tic = time.time()
                         solution_i[
                             self.fully_reduced_system_indices_full
@@ -2116,9 +2115,10 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     if self.options.get("linear_solver_verbosity", False):
                         num_amg_iter = len(res_history_amg)
                         res_amg = res_history_amg[-1]
-                        print(ml)
+                        print(self.l_scheme_mixed_darcy_solver)
                         print(
-                            f"#AMG iterations: {num_amg_iter}; Residual after AMG step: {res_amg}"
+                            f"""#AMG iterations: {num_amg_iter}; Residual after """
+                            f"""AMG step: {res_amg}"""
                         )
 
                 new_flux, _, _ = self.split_solution(solution_i)
@@ -2150,6 +2150,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 toc = time.time()
                 time_anderson = toc - tic
 
+            else:
+                raise NotImplementedError(f"Bregman mode {bregman_mode} not supported.")
+
             # Collect stats
             stats_i = [time_linearization, time_shrink, time_anderson]
 
@@ -2170,7 +2173,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             force = np.linalg.norm(new_force, 2)
 
             # Compute the error:
-            # - residual of mass conservation equation - should be always zero if exact solver used
+            # - residual of mass conservation equation - zero only if exact solver used
             # - force
             # - flux increment
             # - aux increment
@@ -2223,35 +2226,45 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             ):
                 break
 
-            update_l = self.options.get("update_l", False)
-            #            if update_l:
-            #                tol_distance = self.options.get("tol_distance", 1e-12)
-            #                max_iter_increase_diff = self.options.get("max_iter_increase_diff", 20)
-            #                l_factor = self.options.get("l_factor", 2)
-            #                if (
-            #                    abs(new_distance - old_distance) < tol_distance
-            #                    or num_neg_diff > max_iter_increase_diff
-            #                ):
-            #                    # Update L
-            #                    self.L = self.L * l_factor
+            # TODO rm?
+            # update_l = self.options.get("update_l", False)
+            # if update_l:
+            #     tol_distance = self.options.get("tol_distance", 1e-12)
+            #     max_iter_increase_diff = self.options.get(
+            #        "max_iter_increase_diff",
+            #        20
+            #     )
+            #     l_factor = self.options.get("l_factor", 2)
+            #     if (
+            #         abs(new_distance - old_distance) < tol_distance
+            #         or num_neg_diff > max_iter_increase_diff
+            #     ):
+            #         # Update L
+            #         self.L = self.L * l_factor
             #
-            #                    # Update linear system
-            #                    l_scheme_mixed_darcy = sps.bmat(
-            #                        [
-            #                            [self.L * self.mass_matrix_faces, -self.div.T, None],
-            #                            [self.div, None, -self.potential_constraint.T],
-            #                            [None, self.potential_constraint, None],
-            #                        ],
-            #                        format="csc",
-            #                    )
-            #                    self.l_scheme_mixed_darcy_lu = sps.linalg.splu(l_scheme_mixed_darcy)
+            #         # Update linear system
+            #         l_scheme_mixed_darcy = sps.bmat(
+            #             [
+            #                 [
+            #                    self.L * self.mass_matrix_faces,
+            #                    -self.div.T,
+            #                    None
+            #                 ],
+            #                 [self.div, None, -self.potential_constraint.T],
+            #                 [None, self.potential_constraint, None],
+            #             ],
+            #             format="csc",
+            #         )
+            #         self.l_scheme_mixed_darcy_lu = (
+            #            sps.linalg.splu(l_scheme_mixed_darcy)
+            #         )
             #
-            #                    # Reset stagnation counter
-            #                    num_neg_diff = 0
+            #         # Reset stagnation counter
+            #         num_neg_diff = 0
             #
-            #                L_max = self.options.get("L_max", 1e8)
-            #                if self.L > L_max:
-            #                    break
+            #     L_max = self.options.get("L_max", 1e8)
+            #     if self.L > L_max:
+            #         break
 
             # Update Bregman variables
             old_flux = new_flux.copy()
