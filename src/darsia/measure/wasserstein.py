@@ -20,6 +20,7 @@ import darsia
 # - improve assembling of operators through partial assembling
 # - improve stopping criteria
 # - use better quadrature for l1_dissipation?
+# - allow to reuse setup.
 
 
 class VariationalWassersteinDistance(darsia.EMD):
@@ -40,9 +41,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     def __init__(
         self,
-        shape: tuple,
-        voxel_size: list,
-        dim: int,
+        grid: darsia.Grid,
         options: dict = {},
     ) -> None:
         """
@@ -64,11 +63,11 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         """
         # Cache geometrical infos
-        self.shape = shape
-        self.voxel_size = voxel_size
-        self.dim = dim
+        self.shape = grid.shape
+        self.voxel_size = grid.voxel_size
+        self.dim = grid.dim
 
-        assert dim == 2, "Currently only 2D images are supported."
+        assert self.dim == 2, "Currently only 2D images are supported."
 
         self.options = options
         self.regularization = self.options.get("regularization", 0.0)
@@ -1407,11 +1406,13 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             convergence_history["distance increment"].append(error[4])
             convergence_history["timing"].append(stats_i)
 
+            new_distance_faces = self.l1_dissipation(new_flux, "face_arithmetic")
             if self.verbose:
                 print(
                     "Newton iteration",
                     iter,
                     new_distance,
+                    new_distance_faces,
                     error[0],  # residual
                     error[1],  # mass conservation residual
                     error[2],  # full increment
@@ -1424,7 +1425,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             # TODO include criterion build on staganation of the solution
             if iter > 1 and (
                 (error[0] < tol_residual and error[2] < tol_increment)
-                or error[4] < tol_distance
+                or error[4] < tol_distance  # TODO rm the latter
             ):
                 break
 
@@ -2311,9 +2312,8 @@ def wasserstein_distance(
 
     """
     if method.lower() in ["newton", "bregman"]:
-        shape = mass_1.img.shape
-        voxel_size = mass_1.voxel_size
-        dim = mass_1.space_dim
+        # Extract grid - implicitly assume mass_2 to generate same grid
+        grid: darsia.Grid = darsia.generate_grid(mass_1)
 
         # Fetch options
         options = kwargs.get("options", {})
@@ -2321,9 +2321,9 @@ def wasserstein_distance(
         return_solution = kwargs.get("return_solution", False)
 
         if method.lower() == "newton":
-            w1 = WassersteinDistanceNewton(shape, voxel_size, dim, options)
+            w1 = WassersteinDistanceNewton(grid, options)
         elif method.lower() == "bregman":
-            w1 = WassersteinDistanceBregman(shape, voxel_size, dim, options)
+            w1 = WassersteinDistanceBregman(grid, options)
         return w1(
             mass_1, mass_2, plot_solution=plot_solution, return_solution=return_solution
         )
