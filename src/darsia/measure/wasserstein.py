@@ -63,7 +63,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         """
         # Cache geometrical infos
-        self.shape = grid.shape
+        self.grid = grid
         self.voxel_size = grid.voxel_size
         self.dim = grid.dim
 
@@ -79,311 +79,20 @@ class VariationalWassersteinDistance(darsia.EMD):
     def _setup(self) -> None:
         """Setup of fixed discretization"""
 
-        # ! ---- Grid management ----
-
-        # Define dimensions of the problem and indexing of cells, from here one start
-        # counting rows from left to right, from top to bottom.
-        dim_cells = self.shape
-        num_cells = np.prod(dim_cells)
-        flat_numbering_cells = np.arange(num_cells, dtype=int)
-        numbering_cells = flat_numbering_cells.reshape(dim_cells)
-
-        # Define center cell
-        center_cell = np.array([self.shape[0] // 2, self.shape[1] // 2]).astype(int)
-        self.flat_center_cell = np.ravel_multi_index(center_cell, dim_cells)
-
-        # Consider only inner faces; implicitly define indexing of faces (first
-        # vertical, then horizontal). The counting of vertical faces starts from top to
-        # bottom and left to right. The counting of horizontal faces starts from left to
-        # right and top to bottom.
-        vertical_faces_shape = (self.shape[0], self.shape[1] - 1)
-        horizontal_faces_shape = (self.shape[0] - 1, self.shape[1])
-        num_vertical_faces = np.prod(vertical_faces_shape)
-        num_horizontal_faces = np.prod(horizontal_faces_shape)
-        num_faces_axis = [
-            num_vertical_faces,
-            num_horizontal_faces,
-        ]
-        num_faces = np.sum(num_faces_axis)
-
-        # Define flat indexing of faces: vertical faces first, then horizontal faces
-        flat_vertical_faces = np.arange(num_vertical_faces, dtype=int)
-        flat_horizontal_faces = num_vertical_faces + np.arange(
-            num_horizontal_faces, dtype=int
-        )
-        vertical_faces = flat_vertical_faces.reshape(vertical_faces_shape)
-        horizontal_faces = flat_horizontal_faces.reshape(horizontal_faces_shape)
-
-        # Identify vertical faces on top, inner and bottom
-        top_row_vertical_faces = np.ravel(vertical_faces[0, :])
-        inner_vertical_faces = np.ravel(vertical_faces[1:-1, :])
-        bottom_row_vertical_faces = np.ravel(vertical_faces[-1, :])
-        # Identify horizontal faces on left, inner and right
-        left_col_horizontal_faces = np.ravel(horizontal_faces[:, 0])
-        inner_horizontal_faces = np.ravel(horizontal_faces[:, 1:-1])
-        right_col_horizontal_faces = np.ravel(horizontal_faces[:, -1])
-
-        # ! ---- Connectivity ----
-
-        # Define connectivity and direction of the normal on faces
-        connectivity = np.zeros((num_faces, 2), dtype=int)
-        # Vertical faces to left cells
-        connectivity[: num_faces_axis[0], 0] = np.ravel(numbering_cells[:, :-1])
-        # Vertical faces to right cells
-        connectivity[: num_faces_axis[0], 1] = np.ravel(numbering_cells[:, 1:])
-        # Horizontal faces to top cells
-        connectivity[num_faces_axis[0] :, 0] = np.ravel(numbering_cells[:-1, :])
-        # Horizontal faces to bottom cells
-        connectivity[num_faces_axis[0] :, 1] = np.ravel(numbering_cells[1:, :])
-
-        # Define reverse connectivity. Cell to vertical faces
-        connectivity_cell_to_vertical_face = -np.ones((num_cells, 2), dtype=int)
-        # Left vertical face of cell
-        connectivity_cell_to_vertical_face[
-            np.ravel(numbering_cells[:, 1:]), 0
-        ] = flat_vertical_faces
-        # Right vertical face of cell
-        connectivity_cell_to_vertical_face[
-            np.ravel(numbering_cells[:, :-1]), 1
-        ] = flat_vertical_faces
-        # Define reverse connectivity. Cell to horizontal faces
-        connectivity_cell_to_horizontal_face = np.zeros((num_cells, 2), dtype=int)
-        # Top horizontal face of cell
-        connectivity_cell_to_horizontal_face[
-            np.ravel(numbering_cells[1:, :]), 0
-        ] = flat_horizontal_faces
-        # Bottom horizontal face of cell
-        connectivity_cell_to_horizontal_face[
-            np.ravel(numbering_cells[:-1, :]), 1
-        ] = flat_horizontal_faces
-
-        # Info about inner cells
-        # TODO rm?
-        inner_cells_with_vertical_faces = np.ravel(numbering_cells[:, 1:-1])
-        inner_cells_with_horizontal_faces = np.ravel(numbering_cells[1:-1, :])
-        num_inner_cells_with_vertical_faces = len(inner_cells_with_vertical_faces)
-        num_inner_cells_with_horizontal_faces = len(inner_cells_with_horizontal_faces)
-
         # ! ---- Operators ----
 
-        # Define sparse divergence operator, integrated over elements.
-        # Note: The global direction of the degrees of freedom is hereby fixed for all
-        # faces. Fluxes across vertical faces go from left to right, fluxes across
-        # horizontal faces go from bottom to top. To oppose the direction of the outer
-        # normal, the sign of the divergence is flipped for one side of cells for all
-        # faces.
-        div_shape = (num_cells, num_faces)
-        div_data = np.concatenate(
-            (
-                self.voxel_size[0] * np.ones(num_vertical_faces, dtype=float),
-                self.voxel_size[1] * np.ones(num_horizontal_faces, dtype=float),
-                -self.voxel_size[0] * np.ones(num_vertical_faces, dtype=float),
-                -self.voxel_size[1] * np.ones(num_horizontal_faces, dtype=float),
-            )
-        )
-        div_row = np.concatenate(
-            (
-                connectivity[
-                    flat_vertical_faces, 0
-                ],  # vertical faces, cells to the left
-                connectivity[
-                    flat_horizontal_faces, 0
-                ],  # horizontal faces, cells to the top
-                connectivity[
-                    flat_vertical_faces, 1
-                ],  # vertical faces, cells to the right (opposite normal)
-                connectivity[
-                    flat_horizontal_faces, 1
-                ],  # horizontal faces, cells to the bottom (opposite normal)
-            )
-        )
-        div_col = np.tile(np.arange(num_faces, dtype=int), 2)
-        self.div = sps.csc_matrix(
-            (div_data, (div_row, div_col)),
-            shape=div_shape,
-        )
+        self.div = darsia.FVDivergence(self.grid).mat
+        """sps.csc_matrix: divergence operator: flat fluxes -> flat potentials"""
 
-        # Define sparse mass matrix on cells: flat_mass -> flat_mass
-        self.mass_matrix_cells = sps.diags(
-            np.prod(self.voxel_size) * np.ones(num_cells, dtype=float)
-        )
+        self.mass_matrix_cells = darsia.FVMass(self.grid).mat
+        """sps.csc_matrix: mass matrix on cells: flat potentials -> flat potentials"""
 
-        # Define sparse mass matrix on faces: flat fluxes -> flat fluxes
         lumping = self.options.get("lumping", True)
-        if lumping:
-            self.mass_matrix_faces = 0.5 * sps.diags(
-                np.prod(self.voxel_size) * np.ones(num_faces, dtype=float)
-            )
-        else:
-            # Define true RT0 mass matrix on faces: flat fluxes -> flat fluxes
-            mass_matrix_faces_shape = (num_faces, num_faces)
-            mass_matrix_faces_data = np.prod(self.voxel_size) * np.concatenate(
-                (
-                    2 / 3 * np.ones(num_faces, dtype=float),  # all faces
-                    1
-                    / 6
-                    * np.ones(
-                        num_inner_cells_with_vertical_faces, dtype=float
-                    ),  # left faces
-                    1
-                    / 6
-                    * np.ones(
-                        num_inner_cells_with_vertical_faces, dtype=float
-                    ),  # right faces
-                    1
-                    / 6
-                    * np.ones(
-                        num_inner_cells_with_horizontal_faces, dtype=float
-                    ),  # top faces
-                    1
-                    / 6
-                    * np.ones(
-                        num_inner_cells_with_horizontal_faces, dtype=float
-                    ),  # bottom faces
-                )
-            )
-            mass_matrix_faces_row = np.concatenate(
-                (
-                    np.arange(num_faces, dtype=int),
-                    connectivity_cell_to_vertical_face[
-                        inner_cells_with_vertical_faces, 0
-                    ],
-                    connectivity_cell_to_vertical_face[
-                        inner_cells_with_vertical_faces, 1
-                    ],
-                    connectivity_cell_to_horizontal_face[
-                        inner_cells_with_horizontal_faces, 0
-                    ],
-                    connectivity_cell_to_horizontal_face[
-                        inner_cells_with_horizontal_faces, 1
-                    ],
-                )
-            )
-            mass_matrix_faces_col = np.concatenate(
-                (
-                    np.arange(num_faces, dtype=int),
-                    connectivity_cell_to_vertical_face[
-                        inner_cells_with_vertical_faces, 1
-                    ],
-                    connectivity_cell_to_vertical_face[
-                        inner_cells_with_vertical_faces, 0
-                    ],
-                    connectivity_cell_to_horizontal_face[
-                        inner_cells_with_horizontal_faces, 1
-                    ],
-                    connectivity_cell_to_horizontal_face[
-                        inner_cells_with_horizontal_faces, 0
-                    ],
-                )
-            )
-            self.mass_matrix_faces = sps.csc_matrix(
-                (
-                    mass_matrix_faces_data,
-                    (mass_matrix_faces_row, mass_matrix_faces_col),
-                ),
-                shape=mass_matrix_faces_shape,
-            )
+        self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
+        """sps.csc_matrix: mass matrix on faces: flat fluxes -> flat fluxes"""
 
-        # Operator for averaging fluxes on orthogonal, neighboring faces
-        orthogonal_face_average_shape = (num_faces, num_faces)
-        orthogonal_face_average_data = 0.25 * np.concatenate(
-            (
-                np.ones(
-                    2 * len(top_row_vertical_faces)
-                    + 4 * len(inner_vertical_faces)
-                    + 2 * len(bottom_row_vertical_faces)
-                    + 2 * len(left_col_horizontal_faces)
-                    + 4 * len(inner_horizontal_faces)
-                    + 2 * len(right_col_horizontal_faces),
-                    dtype=float,
-                ),
-            )
-        )
-        orthogonal_face_average_rows = np.concatenate(
-            (
-                np.tile(top_row_vertical_faces, 2),
-                np.tile(inner_vertical_faces, 4),
-                np.tile(bottom_row_vertical_faces, 2),
-                np.tile(left_col_horizontal_faces, 2),
-                np.tile(inner_horizontal_faces, 4),
-                np.tile(right_col_horizontal_faces, 2),
-            )
-        )
-        orthogonal_face_average_cols = np.concatenate(
-            (
-                # top row: left cell -> bottom face
-                connectivity_cell_to_horizontal_face[
-                    connectivity[top_row_vertical_faces, 0], 1
-                ],
-                # top row: vertical face -> right cell -> bottom face
-                connectivity_cell_to_horizontal_face[
-                    connectivity[top_row_vertical_faces, 1], 1
-                ],
-                # inner rows: vertical face -> left cell -> top face
-                connectivity_cell_to_horizontal_face[
-                    connectivity[inner_vertical_faces, 0], 0
-                ],
-                # inner rows: vertical face -> left cell -> bottom face
-                connectivity_cell_to_horizontal_face[
-                    connectivity[inner_vertical_faces, 0], 1
-                ],
-                # inner rows: vertical face -> right cell -> top face
-                connectivity_cell_to_horizontal_face[
-                    connectivity[inner_vertical_faces, 1], 0
-                ],
-                # inner rows: vertical face -> right cell -> bottom face
-                connectivity_cell_to_horizontal_face[
-                    connectivity[inner_vertical_faces, 1], 1
-                ],
-                # bottom row: vertical face -> left cell -> top face
-                connectivity_cell_to_horizontal_face[
-                    connectivity[bottom_row_vertical_faces, 0], 0
-                ],
-                # bottom row: vertical face -> right cell -> top face
-                connectivity_cell_to_horizontal_face[
-                    connectivity[bottom_row_vertical_faces, 1], 0
-                ],
-                # left column: horizontal face -> top cell -> right face
-                connectivity_cell_to_vertical_face[
-                    connectivity[left_col_horizontal_faces, 0], 1
-                ],
-                # left column: horizontal face -> bottom cell -> right face
-                connectivity_cell_to_vertical_face[
-                    connectivity[left_col_horizontal_faces, 1], 1
-                ],
-                # inner columns: horizontal face -> top cell -> left face
-                connectivity_cell_to_vertical_face[
-                    connectivity[inner_horizontal_faces, 0], 0
-                ],
-                # inner columns: horizontal face -> top cell -> right face
-                connectivity_cell_to_vertical_face[
-                    connectivity[inner_horizontal_faces, 0], 1
-                ],
-                # inner columns: horizontal face -> bottom cell -> left face
-                connectivity_cell_to_vertical_face[
-                    connectivity[inner_horizontal_faces, 1], 0
-                ],
-                # inner columns: horizontal face -> bottom cell -> right face
-                connectivity_cell_to_vertical_face[
-                    connectivity[inner_horizontal_faces, 1], 1
-                ],
-                # right column: horizontal face -> top cell -> left face
-                connectivity_cell_to_vertical_face[
-                    connectivity[right_col_horizontal_faces, 0], 0
-                ],
-                # right column: horizontal face -> bottom cell -> left face
-                connectivity_cell_to_vertical_face[
-                    connectivity[right_col_horizontal_faces, 1], 0
-                ],
-            )
-        )
-        self.orthogonal_face_average = sps.csc_matrix(
-            (
-                orthogonal_face_average_data,
-                (orthogonal_face_average_rows, orthogonal_face_average_cols),
-            ),
-            shape=orthogonal_face_average_shape,
-        )
+        self.orthogonal_face_average = darsia.FVFaceAverage(self.grid).mat
+        """sps.csc_matrix: averaging operator for fluxes on orthogonal faces"""
 
         # Define sparse embedding operators, and quick access through indices.
         # Assume the ordering of the faces is vertical faces first, then horizontal
@@ -391,15 +100,19 @@ class VariationalWassersteinDistance(darsia.EMD):
         # scalar variable for the lagrange multiplier.
         self.flux_embedding = sps.csc_matrix(
             (
-                np.ones(num_faces, dtype=float),
-                (np.arange(num_faces), np.arange(num_faces)),
+                np.ones(self.grid.num_faces, dtype=float),
+                (np.arange(self.grid.num_faces), np.arange(self.grid.num_faces)),
             ),
-            shape=(num_faces + num_cells + 1, num_faces),
+            shape=(self.grid.num_faces + self.grid.num_cells + 1, self.grid.num_faces),
         )
 
-        self.flux_indices = np.arange(num_faces)
-        self.potential_indices = np.arange(num_faces, num_faces + num_cells)
-        self.lagrange_multiplier_indices = np.array([num_faces + num_cells], dtype=int)
+        self.flux_indices = np.arange(self.grid.num_faces)
+        self.potential_indices = np.arange(
+            self.grid.num_faces, self.grid.num_faces + self.grid.num_cells
+        )
+        self.lagrange_multiplier_indices = np.array(
+            [self.grid.num_faces + self.grid.num_cells], dtype=int
+        )
 
         # ! ---- Utilities ----
         aa_depth = self.options.get("aa_depth", 0)
@@ -412,26 +125,21 @@ class VariationalWassersteinDistance(darsia.EMD):
             else None
         )
 
-        # ! ---- Cache ----
-        self.num_faces = num_faces
-        self.num_cells = num_cells
-        self.dim_cells = dim_cells
-        self.numbering_cells = numbering_cells
-        self.num_faces_axis = num_faces_axis
-        self.vertical_faces_shape = vertical_faces_shape
-        self.horizontal_faces_shape = horizontal_faces_shape
-
     def _problem_specific_setup(self, mass_diff: np.ndarray) -> None:
         """Resetup of fixed discretization"""
 
         # Fix index of center cell
-        self.constrained_cell_flat_index = self.flat_center_cell
+        center = 0.5 * np.array(self.grid.shape)
+        center_cell = center.astype(int)
+        self.constrained_cell_flat_index = np.ravel_multi_index(
+            center_cell, self.grid.shape
+        )
         self.potential_constraint = sps.csc_matrix(
             (
                 np.ones(1, dtype=float),
                 (np.zeros(1, dtype=int), np.array([self.constrained_cell_flat_index])),
             ),
-            shape=(1, self.num_cells),
+            shape=(1, self.grid.num_cells),
             dtype=float,
         )
 
@@ -458,8 +166,10 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         """
         # Split the solution
-        flat_flux = solution[: self.num_faces]
-        flat_potential = solution[self.num_faces : self.num_faces + self.num_cells]
+        flat_flux = solution[: self.grid.num_faces]
+        flat_potential = solution[
+            self.grid.num_faces : self.grid.num_faces + self.grid.num_cells
+        ]
         flat_lagrange_multiplier = solution[-1]
 
         return flat_flux, flat_potential, flat_lagrange_multiplier
@@ -484,16 +194,16 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         """
         # Reshape fluxes - use duality of faces and normals
-        horizontal_fluxes = flat_flux[: self.num_faces_axis[0]].reshape(
-            self.vertical_faces_shape
+        horizontal_fluxes = flat_flux[: self.grid.num_faces_axis[0]].reshape(
+            self.grid.vertical_faces_shape
         )
-        vertical_fluxes = flat_flux[self.num_faces_axis[0] :].reshape(
-            self.horizontal_faces_shape
+        vertical_fluxes = flat_flux[self.grid.num_faces_axis[0] :].reshape(
+            self.grid.horizontal_faces_shape
         )
 
         # Determine a cell-based Raviart-Thomas reconstruction of the fluxes, projected
         # onto piecewise constant functions.
-        cell_flux = np.zeros((*self.dim_cells, self.dim), dtype=float)
+        cell_flux = np.zeros((*self.grid.shape, self.dim), dtype=float)
         # Horizontal fluxes
         cell_flux[:, :-1, 0] += 0.5 * horizontal_fluxes
         cell_flux[:, 1:, 0] += 0.5 * horizontal_fluxes
@@ -714,7 +424,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Reshape the fluxes and potential to grid format
         flux = self.face_to_cell(flat_flux)
-        potential = flat_potential.reshape(self.dim_cells)
+        potential = flat_potential.reshape(self.grid.shape)
 
         # Determine transport density
         transport_density = self.transport_density(flux)
@@ -767,8 +477,8 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Meshgrid
         Y, X = np.meshgrid(
-            self.voxel_size[0] * (0.5 + np.arange(self.shape[0] - 1, -1, -1)),
-            self.voxel_size[1] * (0.5 + np.arange(self.shape[1])),
+            self.voxel_size[0] * (0.5 + np.arange(self.grid.shape[0] - 1, -1, -1)),
+            self.voxel_size[1] * (0.5 + np.arange(self.grid.shape[1])),
             indexing="ij",
         )
 
@@ -941,7 +651,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         # Build Schur complement wrt. flux-flux block
         J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_indices])
-        D = jacobian[self.num_faces :, : self.num_faces].copy()
+        D = jacobian[self.grid.num_faces :, : self.grid.num_faces].copy()
         schur_complement = D.dot(J_inv.dot(D.T))
 
         # Cache divergence matrix
@@ -949,7 +659,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         self.DT = self.D.T.copy()
 
         # Cache (constant) jacobian subblock
-        self.jacobian_subblock = jacobian[self.num_faces :, self.num_faces :].copy()
+        self.jacobian_subblock = jacobian[
+            self.grid.num_faces :, self.grid.num_faces :
+        ].copy()
 
         # Add Schur complement - use this to identify sparsity structure
         # Cache the reduced jacobian
@@ -1034,7 +746,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # Define fully reduced system indices wrt reduced system - need to remove cell
         # (and implicitly lagrange multiplier)
         self.fully_reduced_system_indices = np.delete(
-            np.arange(self.num_cells), self.constrained_cell_flat_index
+            np.arange(self.grid.num_cells), self.constrained_cell_flat_index
         )
 
         # Define fully reduced system indices wrt full system
@@ -1093,7 +805,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # If not, we need to do a proper Gauss elimination on the right hand side!
         if abs(residual[-1]) > 1e-6:
             raise NotImplementedError("Implementation requires residual to be zero.")
-        if abs(solution[self.num_faces + self.constrained_cell_flat_index]) > 1e-6:
+        if abs(solution[self.grid.num_faces + self.constrained_cell_flat_index]) > 1e-6:
             raise NotImplementedError("Implementation requires solution to be zero.")
         fully_reduced_residual = self.reduced_residual[
             self.fully_reduced_system_indices
@@ -1308,7 +1020,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # Define right hand side
         rhs = np.concatenate(
             [
-                np.zeros(self.num_faces, dtype=float),
+                np.zeros(self.grid.num_faces, dtype=float),
                 self.mass_matrix_cells.dot(flat_mass_diff),
                 np.zeros(1, dtype=float),
             ]
@@ -1359,8 +1071,10 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             # while application to the flux, results in improved performance.
             tic = time.time()
             if self.anderson is not None:
-                solution_i[: self.num_faces] = self.anderson(
-                    solution_i[: self.num_faces], update_i[: self.num_faces], iter
+                solution_i[: self.grid.num_faces] = self.anderson(
+                    solution_i[: self.grid.num_faces],
+                    update_i[: self.grid.num_faces],
+                    iter,
                 )
             toc = time.time()
             time_anderson = toc - tic
@@ -1384,14 +1098,14 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             error = [
                 np.linalg.norm(residual_i, 2),
                 [
-                    np.linalg.norm(residual_i[: self.num_faces], 2),
-                    np.linalg.norm(residual_i[self.num_faces : -1], 2),
+                    np.linalg.norm(residual_i[: self.grid.num_faces], 2),
+                    np.linalg.norm(residual_i[self.grid.num_faces : -1], 2),
                     np.linalg.norm(residual_i[-1:], 2),
                 ],
                 np.linalg.norm(increment, 2),
                 [
-                    np.linalg.norm(increment[: self.num_faces], 2),
-                    np.linalg.norm(increment[self.num_faces : -1], 2),
+                    np.linalg.norm(increment[: self.grid.num_faces], 2),
+                    np.linalg.norm(increment[self.grid.num_faces : -1], 2),
                     np.linalg.norm(increment[-1:], 2),
                 ],
                 abs(new_distance - old_distance),
@@ -1487,7 +1201,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         # Build Schur complement wrt. flux-flux block
         J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_indices])
-        D = jacobian[self.num_faces :, : self.num_faces].copy()
+        D = jacobian[self.grid.num_faces :, : self.grid.num_faces].copy()
         schur_complement = D.dot(J_inv.dot(D.T))
 
         # Cache divergence matrix
@@ -1495,7 +1209,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         self.DT = self.D.T.copy()
 
         # Cache (constant) jacobian subblock
-        self.jacobian_subblock = jacobian[self.num_faces :, self.num_faces :].copy()
+        self.jacobian_subblock = jacobian[
+            self.grid.num_faces :, self.grid.num_faces :
+        ].copy()
 
         # Add Schur complement - use this to identify sparsity structure
         # Cache the reduced jacobian
@@ -1580,7 +1296,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         # Define fully reduced system indices wrt reduced system - need to remove cell
         # (and implicitly lagrange multiplier)
         self.fully_reduced_system_indices = np.delete(
-            np.arange(self.num_cells), self.constrained_cell_flat_index
+            np.arange(self.grid.num_cells), self.constrained_cell_flat_index
         )
 
         # Define fully reduced system indices wrt full system
@@ -1639,7 +1355,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         # If not, we need to do a proper Gauss elimination on the right hand side!
         if abs(residual[-1]) > 1e-6:
             raise NotImplementedError("Implementation requires residual to be zero.")
-        if abs(solution[self.num_faces + self.constrained_cell_flat_index]) > 1e-6:
+        if abs(solution[self.grid.num_faces + self.constrained_cell_flat_index]) > 1e-6:
             raise NotImplementedError("Implementation requires solution to be zero.")
         fully_reduced_residual = self.reduced_residual[
             self.fully_reduced_system_indices
@@ -1749,7 +1465,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         self.L = self.options.get("L", 1.0)
         rhs = np.concatenate(
             [
-                np.zeros(self.num_faces, dtype=float),
+                np.zeros(self.grid.num_faces, dtype=float),
                 self.mass_matrix_cells.dot(flat_mass_diff),
                 np.zeros(1, dtype=float),
             ]
@@ -1896,7 +1612,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 # 1. Make relaxation step (solve quadratic optimization problem)
                 tic = time.time()
                 rhs_i = rhs.copy()
-                rhs_i[: self.num_faces] = self.L * self.mass_matrix_faces.dot(
+                rhs_i[: self.grid.num_faces] = self.L * self.mass_matrix_faces.dot(
                     old_aux_flux - old_force
                 )
                 new_flux, _, _ = self.split_solution(
@@ -1924,8 +1640,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     inc = np.concatenate([aux_inc, force_inc])
                     iteration = np.concatenate([new_aux_flux, new_force])
                     new_iteration = self.anderson(iteration, inc, iter)
-                    new_aux_flux = new_iteration[: self.num_faces]
-                    new_force = new_iteration[self.num_faces :]
+                    new_aux_flux = new_iteration[: self.grid.num_faces]
+                    new_force = new_iteration[self.grid.num_faces :]
 
                 toc = time.time()
                 time_anderson = toc - tic
@@ -1948,7 +1664,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 # 3. Solve linear system with trust in current flux.
                 tic = time.time()
                 rhs_i = rhs.copy()
-                rhs_i[: self.num_faces] = self.L * self.mass_matrix_faces.dot(
+                rhs_i[: self.grid.num_faces] = self.L * self.mass_matrix_faces.dot(
                     new_aux_flux - new_force
                 )
                 new_flux, _, _ = self.split_solution(
@@ -1965,8 +1681,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     iteration = np.concatenate([new_flux, new_force])
                     # new_flux = self.anderson(new_flux, flux_inc, iter)
                     new_iteration = self.anderson(iteration, inc, iter)
-                    new_flux = new_iteration[: self.num_faces]
-                    new_force = new_iteration[self.num_faces :]
+                    new_flux = new_iteration[: self.grid.num_faces]
+                    new_force = new_iteration[self.grid.num_faces :]
                 toc = time.time()
                 time_anderson = toc - tic
 
@@ -2001,7 +1717,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 # 1. Make relaxation step (solve quadratic optimization problem)
                 tic = time.time()
                 rhs_i = rhs.copy()
-                rhs_i[: self.num_faces] = weight * self.mass_matrix_faces.dot(
+                rhs_i[: self.grid.num_faces] = weight * self.mass_matrix_faces.dot(
                     old_aux_flux - old_force
                 )
                 solution_i = np.zeros_like(rhs_i, dtype=float)
@@ -2145,8 +1861,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     inc = np.concatenate([aux_inc, force_inc])
                     iteration = np.concatenate([new_aux_flux, new_force])
                     new_iteration = self.anderson(iteration, inc, iter)
-                    new_aux_flux = new_iteration[: self.num_faces]
-                    new_force = new_iteration[self.num_faces :]
+                    new_aux_flux = new_iteration[: self.grid.num_faces]
+                    new_force = new_iteration[self.grid.num_faces :]
 
                 toc = time.time()
                 time_anderson = toc - tic
@@ -2162,7 +1878,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
             # Determine the error in the mass conservation equation
             mass_conservation_residual = np.linalg.norm(
-                self.div.dot(new_flux) - rhs[self.num_faces : -1], 2
+                self.div.dot(new_flux) - rhs[self.grid.num_faces : -1], 2
             )
 
             # Determine increments
@@ -2275,7 +1991,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         # TODO solve for potential and multiplier
         solution_i = np.zeros_like(rhs)
-        solution_i[: self.num_faces] = new_flux.copy()
+        solution_i[: self.grid.num_faces] = new_flux.copy()
         # TODO continue
 
         # Define performance metric
