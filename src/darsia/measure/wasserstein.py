@@ -83,6 +83,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         # - flat fluxes (normal fluxes on the faces)
         # - flat potentials (potentials on the cells)
         # - lagrange multiplier (scalar variable)
+
         # Idea: Fix the potential in the center of the domain to zero. This is done by
         # adding a constraint to the potential via a Lagrange multiplier.
 
@@ -162,6 +163,17 @@ class VariationalWassersteinDistance(darsia.EMD):
         )
         """sps.csc_matrix: linear part of the Darcy operator"""
 
+        L_init = self.options.get("L_init", 1.0)
+        self.darcy_init = sps.bmat(
+            [
+                [L_init * self.mass_matrix_faces, -self.div.T, None],
+                [self.div, None, -self.potential_constraint.T],
+                [None, self.potential_constraint, None],
+            ],
+            format="csc",
+        )
+        """sps.csc_matrix: initial Darcy operator"""
+
         # ! ---- Acceleration ----
         aa_depth = self.options.get("aa_depth", 0)
         aa_restart = self.options.get("aa_restart", None)
@@ -187,11 +199,9 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         """
         # Split the solution
-        flat_flux = solution[: self.grid.num_faces]
-        flat_potential = solution[
-            self.grid.num_faces : self.grid.num_faces + self.grid.num_cells
-        ]
-        flat_lagrange_multiplier = solution[-1]
+        flat_flux = solution[self.flux_slice]
+        flat_potential = solution[self.potential_slice]
+        flat_lagrange_multiplier = solution[self.lagrange_multiplier_slice]
 
         return flat_flux, flat_potential, flat_lagrange_multiplier
 
@@ -400,6 +410,185 @@ class VariationalWassersteinDistance(darsia.EMD):
             raise ValueError(f"Mode {mode} not supported.")
 
         return flat_flux_norm
+
+    # ! ---- Solver methods ----
+
+    def setup_infrastructure(self) -> None:
+        """Setup the infrastructure for reduced systems through Gauss elimination.
+
+        Provide internal data structures for the reduced system.
+
+        """
+        # Step 1: Compute the jacobian of the Darcy problem
+
+        # The Darcy problem is sufficient
+        jacobian = self.darcy_init.copy()
+
+        # Step 2: Remove flux blocks through Schur complement approach
+
+        # Build Schur complement wrt. flux-flux block
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
+        D = jacobian[self.reduced_system_slice, self.flux_slice].copy()
+        schur_complement = D.dot(J_inv.dot(D.T))
+
+        # Cache divergence matrix
+        self.D = D.copy()
+        self.DT = self.D.T.copy()
+
+        # Cache (constant) jacobian subblock
+        self.jacobian_subblock = jacobian[
+            self.reduced_system_slice, self.reduced_system_slice
+        ].copy()
+
+        # Add Schur complement - use this to identify sparsity structure
+        # Cache the reduced jacobian
+        self.reduced_jacobian = self.jacobian_subblock + schur_complement
+
+        # Step 3: Remove potential block through Gauss elimination
+
+        # Find row entries to be removed
+        rm_row_entries = np.arange(
+            self.reduced_jacobian.indptr[self.constrained_cell_flat_index],
+            self.reduced_jacobian.indptr[self.constrained_cell_flat_index + 1],
+        )
+
+        # Find column entries to be removed
+        rm_col_entries = np.where(
+            self.reduced_jacobian.indices == self.constrained_cell_flat_index
+        )[0]
+
+        # Collect all entries to be removes
+        rm_indices = np.unique(
+            np.concatenate((rm_row_entries, rm_col_entries)).astype(int)
+        )
+        # Cache for later use in remove_lagrange_multiplier
+        self.rm_indices = rm_indices
+
+        # Identify rows to be reduced
+        rm_rows = [
+            np.max(np.where(self.reduced_jacobian.indptr <= index)[0])
+            for index in rm_indices
+        ]
+
+        # Reduce data - simply remove
+        fully_reduced_jacobian_data = np.delete(self.reduced_jacobian.data, rm_indices)
+
+        # Reduce indices - remove and shift
+        fully_reduced_jacobian_indices = np.delete(
+            self.reduced_jacobian.indices, rm_indices
+        )
+        fully_reduced_jacobian_indices[
+            fully_reduced_jacobian_indices > self.constrained_cell_flat_index
+        ] -= 1
+
+        # Reduce indptr - shift and remove
+        # NOTE: As only a few entries should be removed, this is not too expensive
+        # and a for loop is used
+        fully_reduced_jacobian_indptr = self.reduced_jacobian.indptr.copy()
+        for row in rm_rows:
+            fully_reduced_jacobian_indptr[row + 1 :] -= 1
+        fully_reduced_jacobian_indptr = np.unique(fully_reduced_jacobian_indptr)
+
+        # Make sure two rows are removed and deduce shape of reduced jacobian
+        assert (
+            len(fully_reduced_jacobian_indptr) == len(self.reduced_jacobian.indptr) - 2
+        ), "Two rows should be removed."
+        fully_reduced_jacobian_shape = (
+            len(fully_reduced_jacobian_indptr) - 1,
+            len(fully_reduced_jacobian_indptr) - 1,
+        )
+
+        # Cache the fully reduced jacobian
+        self.fully_reduced_jacobian = sps.csc_matrix(
+            (
+                fully_reduced_jacobian_data,
+                fully_reduced_jacobian_indices,
+                fully_reduced_jacobian_indptr,
+            ),
+            shape=fully_reduced_jacobian_shape,
+        )
+
+        # Cache the indices and indptr
+        self.fully_reduced_jacobian_indices = fully_reduced_jacobian_indices.copy()
+        self.fully_reduced_jacobian_indptr = fully_reduced_jacobian_indptr.copy()
+        self.fully_reduced_jacobian_shape = fully_reduced_jacobian_shape
+
+        # Step 4: Identify inclusions (index arrays)
+
+        # Define reduced system indices wrt full system
+        reduced_system_indices = np.concatenate(
+            [self.potential_indices, self.lagrange_multiplier_indices]
+        )
+
+        # Define fully reduced system indices wrt reduced system - need to remove cell
+        # (and implicitly lagrange multiplier)
+        self.fully_reduced_system_indices = np.delete(
+            np.arange(self.grid.num_cells), self.constrained_cell_flat_index
+        )
+
+        # Define fully reduced system indices wrt full system
+        self.fully_reduced_system_indices_full = reduced_system_indices[
+            self.fully_reduced_system_indices
+        ]
+
+    def remove_flux(self, jacobian: sps.csc_matrix, residual: np.ndarray) -> tuple:
+        """Remove the flux block from the jacobian and residual.
+
+        Args:
+            jacobian (sps.csc_matrix): jacobian
+            residual (np.ndarray): residual
+
+        Returns:
+            tuple: reduced jacobian, reduced residual, inverse of flux block
+
+        """
+        # Build Schur complement wrt flux-block
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
+        schur_complement = self.D.dot(J_inv.dot(self.DT))
+
+        # Gauss eliminiation on matrices
+        reduced_jacobian = self.jacobian_subblock + schur_complement
+
+        # Gauss elimination on vectors
+        reduced_residual = residual[self.reduced_system_slice].copy()
+        reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
+
+        return reduced_jacobian, reduced_residual, J_inv
+
+    def remove_lagrange_multiplier(self, jacobian, residual, solution) -> tuple:
+        """Shortcut for removing the lagrange multiplier from the reduced jacobian.
+
+        Args:
+
+            solution (np.ndarray): solution, TODO make function independent of solution
+
+        Returns:
+            tuple: fully reduced jacobian, fully reduced residual
+
+        """
+        # Make sure the jacobian is a CSC matrix
+        assert isinstance(jacobian, sps.csc_matrix), "Jacobian should be a CSC matrix."
+
+        # Effective Gauss-elimination for the particular case of the lagrange multiplier
+        self.fully_reduced_jacobian.data[:] = np.delete(
+            self.reduced_jacobian.data.copy(), self.rm_indices
+        )
+        # NOTE: The indices have to be restored if the LU factorization is to be used
+        # FIXME omit if not required
+        self.fully_reduced_jacobian.indices = self.fully_reduced_jacobian_indices.copy()
+
+        # Rhs is not affected by Gauss elimination as it is assumed that the residual
+        # is zero in the constrained cell, and the pressure is zero there as well.
+        # If not, we need to do a proper Gauss elimination on the right hand side!
+        if abs(residual[-1]) > 1e-6:
+            raise NotImplementedError("Implementation requires residual to be zero.")
+        if abs(solution[self.grid.num_faces + self.constrained_cell_flat_index]) > 1e-6:
+            raise NotImplementedError("Implementation requires solution to be zero.")
+        fully_reduced_residual = self.reduced_residual[
+            self.fully_reduced_system_indices
+        ].copy()
+
+        return self.fully_reduced_jacobian, fully_reduced_residual
 
     # ! ---- Main methods ----
 
@@ -638,201 +827,6 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         )
         return approx_jacobian
 
-    def darcy_jacobian(self) -> sps.linalg.LinearOperator:
-        """Compute the Jacobian of a standard homogeneous Darcy problem.
-
-        The mobility is defined by the used via options["L_init"]. The jacobian is
-        cached for later use.
-
-        """
-        L_init = self.options.get("L_init", 1.0)
-        jacobian = sps.bmat(
-            [
-                [L_init * self.mass_matrix_faces, -self.div.T, None],
-                [self.div, None, -self.potential_constraint.T],
-                [None, self.potential_constraint, None],
-            ],
-            format="csc",
-        )
-        return jacobian
-
-    def setup_infrastructure(self) -> None:
-        """Setup the infrastructure for reduced systems through Gauss elimination.
-
-        Provide internal data structures for the reduced system.
-
-        """
-        # Step 1: Compute the jacobian of the Darcy problem
-
-        # The Darcy problem is sufficient
-        jacobian = self.darcy_jacobian()
-
-        # Step 2: Remove flux blocks through Schur complement approach
-
-        # Build Schur complement wrt. flux-flux block
-        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
-        D = jacobian[self.reduced_system_slice, self.flux_slice].copy()
-        schur_complement = D.dot(J_inv.dot(D.T))
-
-        # Cache divergence matrix
-        self.D = D.copy()
-        self.DT = self.D.T.copy()
-
-        # Cache (constant) jacobian subblock
-        self.jacobian_subblock = jacobian[
-            self.reduced_system_slice, self.reduced_system_slice
-        ].copy()
-
-        # Add Schur complement - use this to identify sparsity structure
-        # Cache the reduced jacobian
-        self.reduced_jacobian = self.jacobian_subblock + schur_complement
-
-        # Step 3: Remove potential block through Gauss elimination
-
-        # Find row entries to be removed
-        rm_row_entries = np.arange(
-            self.reduced_jacobian.indptr[self.constrained_cell_flat_index],
-            self.reduced_jacobian.indptr[self.constrained_cell_flat_index + 1],
-        )
-
-        # Find column entries to be removed
-        rm_col_entries = np.where(
-            self.reduced_jacobian.indices == self.constrained_cell_flat_index
-        )[0]
-
-        # Collect all entries to be removes
-        rm_indices = np.unique(
-            np.concatenate((rm_row_entries, rm_col_entries)).astype(int)
-        )
-        # Cache for later use in remove_lagrange_multiplier
-        self.rm_indices = rm_indices
-
-        # Identify rows to be reduced
-        rm_rows = [
-            np.max(np.where(self.reduced_jacobian.indptr <= index)[0])
-            for index in rm_indices
-        ]
-
-        # Reduce data - simply remove
-        fully_reduced_jacobian_data = np.delete(self.reduced_jacobian.data, rm_indices)
-
-        # Reduce indices - remove and shift
-        fully_reduced_jacobian_indices = np.delete(
-            self.reduced_jacobian.indices, rm_indices
-        )
-        fully_reduced_jacobian_indices[
-            fully_reduced_jacobian_indices > self.constrained_cell_flat_index
-        ] -= 1
-
-        # Reduce indptr - shift and remove
-        # NOTE: As only a few entries should be removed, this is not too expensive
-        # and a for loop is used
-        fully_reduced_jacobian_indptr = self.reduced_jacobian.indptr.copy()
-        for row in rm_rows:
-            fully_reduced_jacobian_indptr[row + 1 :] -= 1
-        fully_reduced_jacobian_indptr = np.unique(fully_reduced_jacobian_indptr)
-
-        # Make sure two rows are removed and deduce shape of reduced jacobian
-        assert (
-            len(fully_reduced_jacobian_indptr) == len(self.reduced_jacobian.indptr) - 2
-        ), "Two rows should be removed."
-        fully_reduced_jacobian_shape = (
-            len(fully_reduced_jacobian_indptr) - 1,
-            len(fully_reduced_jacobian_indptr) - 1,
-        )
-
-        # Cache the fully reduced jacobian
-        self.fully_reduced_jacobian = sps.csc_matrix(
-            (
-                fully_reduced_jacobian_data,
-                fully_reduced_jacobian_indices,
-                fully_reduced_jacobian_indptr,
-            ),
-            shape=fully_reduced_jacobian_shape,
-        )
-
-        # Cache the indices and indptr
-        self.fully_reduced_jacobian_indices = fully_reduced_jacobian_indices.copy()
-        self.fully_reduced_jacobian_indptr = fully_reduced_jacobian_indptr.copy()
-        self.fully_reduced_jacobian_shape = fully_reduced_jacobian_shape
-
-        # Step 4: Identify inclusions (index arrays)
-
-        # Define reduced system indices wrt full system
-        self.reduced_system_indices = np.concatenate(
-            [self.potential_indices, self.lagrange_multiplier_indices]
-        )
-
-        # Define fully reduced system indices wrt reduced system - need to remove cell
-        # (and implicitly lagrange multiplier)
-        self.fully_reduced_system_indices = np.delete(
-            np.arange(self.grid.num_cells), self.constrained_cell_flat_index
-        )
-
-        # Define fully reduced system indices wrt full system
-        self.fully_reduced_system_indices_full = self.reduced_system_indices[
-            self.fully_reduced_system_indices
-        ]
-
-    def remove_flux(self, jacobian: sps.csc_matrix, residual: np.ndarray) -> tuple:
-        """Remove the flux block from the jacobian and residual.
-
-        Args:
-            jacobian (sps.csc_matrix): jacobian
-            residual (np.ndarray): residual
-
-        Returns:
-            tuple: reduced jacobian, reduced residual, inverse of flux block
-
-        """
-        # Build Schur complement wrt flux-block
-        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
-        schur_complement = self.D.dot(J_inv.dot(self.DT))
-
-        # Gauss eliminiation on matrices
-        reduced_jacobian = self.jacobian_subblock + schur_complement
-
-        # Gauss elimination on vectors
-        reduced_residual = residual[self.reduced_system_slice].copy()
-        reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
-
-        return reduced_jacobian, reduced_residual, J_inv
-
-    def remove_lagrange_multiplier(self, jacobian, residual, solution) -> tuple:
-        """Shortcut for removing the lagrange multiplier from the reduced jacobian.
-
-        Args:
-
-            solution (np.ndarray): solution, TODO make function independent of solution
-
-        Returns:
-            tuple: fully reduced jacobian, fully reduced residual
-
-        """
-        # Make sure the jacobian is a CSC matrix
-        assert isinstance(jacobian, sps.csc_matrix), "Jacobian should be a CSC matrix."
-
-        # Effective Gauss-elimination for the particular case of the lagrange multiplier
-        self.fully_reduced_jacobian.data[:] = np.delete(
-            self.reduced_jacobian.data.copy(), self.rm_indices
-        )
-        # NOTE: The indices have to be restored if the LU factorization is to be used
-        # FIXME omit if not required
-        self.fully_reduced_jacobian.indices = self.fully_reduced_jacobian_indices.copy()
-
-        # Rhs is not affected by Gauss elimination as it is assumed that the residual
-        # is zero in the constrained cell, and the pressure is zero there as well.
-        # If not, we need to do a proper Gauss elimination on the right hand side!
-        if abs(residual[-1]) > 1e-6:
-            raise NotImplementedError("Implementation requires residual to be zero.")
-        if abs(solution[self.grid.num_faces + self.constrained_cell_flat_index]) > 1e-6:
-            raise NotImplementedError("Implementation requires solution to be zero.")
-        fully_reduced_residual = self.reduced_residual[
-            self.fully_reduced_system_indices
-        ].copy()
-
-        return self.fully_reduced_jacobian, fully_reduced_residual
-
     def linearization_step(
         self, solution: np.ndarray, rhs: np.ndarray, iter: int
     ) -> tuple[np.ndarray, np.ndarray, list[float]]:
@@ -854,7 +848,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         tic = time.time()
         if iter == 0:
             residual = rhs.copy()
-            approx_jacobian = self.darcy_jacobian()
+            approx_jacobian = self.darcy_init.copy()
         else:
             residual = self.residual(rhs, solution)
             approx_jacobian = self.jacobian(solution)
@@ -1028,7 +1022,6 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # Setup
         tic = time.time()
         self.setup_infrastructure()
-        time_infrastructure = time.time() - tic
 
         # Solver parameters
         num_iter = self.options.get("num_iter", 100)
@@ -1090,9 +1083,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             # while application to the flux, results in improved performance.
             tic = time.time()
             if self.anderson is not None:
-                solution_i[: self.grid.num_faces] = self.anderson(
-                    solution_i[: self.grid.num_faces],
-                    update_i[: self.grid.num_faces],
+                solution_i[self.flux_slice] = self.anderson(
+                    solution_i[self.flux_slice],
+                    update_i[self.flux_slice],
                     iter,
                 )
             toc = time.time()
@@ -1187,205 +1180,6 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         self.force_slice = slice(self.grid.num_faces, None)
         """slice: slice for the force."""
-
-    # TODO almost as for Newton. Unify!
-
-    def darcy_jacobian(self) -> sps.linalg.LinearOperator:
-        """Compute the Jacobian of a standard homogeneous Darcy problem.
-
-        The mobility is defined by the used via options["L_init"]. The jacobian is
-        cached for later use.
-
-        """
-        L_init = self.options.get("L", 1.0)  # NOTE changed!
-        jacobian = sps.bmat(
-            [
-                [L_init * self.mass_matrix_faces, -self.div.T, None],
-                [self.div, None, -self.potential_constraint.T],
-                [None, self.potential_constraint, None],
-            ],
-            format="csc",
-        )
-        return jacobian
-
-    # TODO same as for Newton. Unify!
-
-    def setup_infrastructure(self) -> None:
-        """Setup the infrastructure for reduced systems through Gauss elimination.
-
-        Provide internal data structures for the reduced system.
-
-        """
-        # Step 1: Compute the jacobian of the Darcy problem
-
-        # The Darcy problem is sufficient
-        jacobian = self.darcy_jacobian()
-
-        # Step 2: Remove flux blocks through Schur complement approach
-
-        # Build Schur complement wrt. flux-flux block
-        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
-        D = jacobian[self.reduced_system_slice, self.flux_slice].copy()
-        schur_complement = D.dot(J_inv.dot(D.T))
-
-        # Cache divergence matrix
-        self.D = D.copy()
-        self.DT = self.D.T.copy()
-
-        # Cache (constant) jacobian subblock
-        self.jacobian_subblock = jacobian[
-            self.grid.num_faces :, self.grid.num_faces :
-        ].copy()
-
-        # Add Schur complement - use this to identify sparsity structure
-        # Cache the reduced jacobian
-        self.reduced_jacobian = self.jacobian_subblock + schur_complement
-
-        # Step 3: Remove potential block through Gauss elimination
-
-        # Find row entries to be removed
-        rm_row_entries = np.arange(
-            self.reduced_jacobian.indptr[self.constrained_cell_flat_index],
-            self.reduced_jacobian.indptr[self.constrained_cell_flat_index + 1],
-        )
-
-        # Find column entries to be removed
-        rm_col_entries = np.where(
-            self.reduced_jacobian.indices == self.constrained_cell_flat_index
-        )[0]
-
-        # Collect all entries to be removes
-        rm_indices = np.unique(
-            np.concatenate((rm_row_entries, rm_col_entries)).astype(int)
-        )
-        # Cache for later use in remove_lagrange_multiplier
-        self.rm_indices = rm_indices
-
-        # Identify rows to be reduced
-        rm_rows = [
-            np.max(np.where(self.reduced_jacobian.indptr <= index)[0])
-            for index in rm_indices
-        ]
-
-        # Reduce data - simply remove
-        fully_reduced_jacobian_data = np.delete(self.reduced_jacobian.data, rm_indices)
-
-        # Reduce indices - remove and shift
-        fully_reduced_jacobian_indices = np.delete(
-            self.reduced_jacobian.indices, rm_indices
-        )
-        fully_reduced_jacobian_indices[
-            fully_reduced_jacobian_indices > self.constrained_cell_flat_index
-        ] -= 1
-
-        # Reduce indptr - shift and remove
-        # NOTE: As only a few entries should be removed, this is not too expensive
-        # and a for loop is used
-        fully_reduced_jacobian_indptr = self.reduced_jacobian.indptr.copy()
-        for row in rm_rows:
-            fully_reduced_jacobian_indptr[row + 1 :] -= 1
-        fully_reduced_jacobian_indptr = np.unique(fully_reduced_jacobian_indptr)
-
-        # Make sure two rows are removed and deduce shape of reduced jacobian
-        assert (
-            len(fully_reduced_jacobian_indptr) == len(self.reduced_jacobian.indptr) - 2
-        ), "Two rows should be removed."
-        fully_reduced_jacobian_shape = (
-            len(fully_reduced_jacobian_indptr) - 1,
-            len(fully_reduced_jacobian_indptr) - 1,
-        )
-
-        # Cache the fully reduced jacobian
-        self.fully_reduced_jacobian = sps.csc_matrix(
-            (
-                fully_reduced_jacobian_data,
-                fully_reduced_jacobian_indices,
-                fully_reduced_jacobian_indptr,
-            ),
-            shape=fully_reduced_jacobian_shape,
-        )
-
-        # Cache the indices and indptr
-        self.fully_reduced_jacobian_indices = fully_reduced_jacobian_indices.copy()
-        self.fully_reduced_jacobian_indptr = fully_reduced_jacobian_indptr.copy()
-        self.fully_reduced_jacobian_shape = fully_reduced_jacobian_shape
-
-        # Step 4: Identify inclusions (index arrays)
-
-        # Define reduced system indices wrt full system
-        self.reduced_system_indices = np.concatenate(
-            [self.potential_indices, self.lagrange_multiplier_indices]
-        )
-
-        # Define fully reduced system indices wrt reduced system - need to remove cell
-        # (and implicitly lagrange multiplier)
-        self.fully_reduced_system_indices = np.delete(
-            np.arange(self.grid.num_cells), self.constrained_cell_flat_index
-        )
-
-        # Define fully reduced system indices wrt full system
-        self.fully_reduced_system_indices_full = self.reduced_system_indices[
-            self.fully_reduced_system_indices
-        ]
-
-    def remove_flux(self, jacobian: sps.csc_matrix, residual: np.ndarray) -> tuple:
-        """Remove the flux block from the jacobian and residual.
-
-        Args:
-            jacobian (sps.csc_matrix): jacobian
-            residual (np.ndarray): residual
-
-        Returns:
-            tuple: reduced jacobian, reduced residual, inverse of flux block
-
-        """
-        # Build Schur complement wrt flux-block
-        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
-        schur_complement = self.D.dot(J_inv.dot(self.DT))
-
-        # Gauss eliminiation on matrices
-        reduced_jacobian = self.jacobian_subblock + schur_complement
-
-        # Gauss elimination on vectors
-        reduced_residual = residual[self.reduced_system_slice].copy()
-        reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
-
-        return reduced_jacobian, reduced_residual, J_inv
-
-    def remove_lagrange_multiplier(self, jacobian, residual, solution) -> tuple:
-        """Shortcut for removing the lagrange multiplier from the reduced jacobian.
-
-        Args:
-
-            solution (np.ndarray): solution, TODO make function independent of solution
-
-        Returns:
-            tuple: fully reduced jacobian, fully reduced residual
-
-        """
-        # Make sure the jacobian is a CSC matrix
-        assert isinstance(jacobian, sps.csc_matrix), "Jacobian should be a CSC matrix."
-
-        # Effective Gauss-elimination for the particular case of the lagrange multiplier
-        self.fully_reduced_jacobian.data[:] = np.delete(
-            self.reduced_jacobian.data.copy(), self.rm_indices
-        )
-        # NOTE: The indices have to be restored if the LU factorization is to be used
-        # FIXME omit if not required
-        self.fully_reduced_jacobian.indices = self.fully_reduced_jacobian_indices.copy()
-
-        # Rhs is not affected by Gauss elimination as it is assumed that the residual
-        # is zero in the constrained cell, and the pressure is zero there as well.
-        # If not, we need to do a proper Gauss elimination on the right hand side!
-        if abs(residual[-1]) > 1e-6:
-            raise NotImplementedError("Implementation requires residual to be zero.")
-        if abs(solution[self.grid.num_faces + self.constrained_cell_flat_index]) > 1e-6:
-            raise NotImplementedError("Implementation requires solution to be zero.")
-        fully_reduced_residual = self.reduced_residual[
-            self.fully_reduced_system_indices
-        ].copy()
-
-        return self.fully_reduced_jacobian, fully_reduced_residual
 
     def _shrink(
         self,
@@ -1688,7 +1482,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 # 3. Solve linear system with trust in current flux.
                 tic = time.time()
                 rhs_i = rhs.copy()
-                rhs_i[: self.grid.num_faces] = self.L * self.mass_matrix_faces.dot(
+                rhs_i[self.flux_slice] = self.L * self.mass_matrix_faces.dot(
                     new_aux_flux - new_force
                 )
                 new_flux, _, _ = self.split_solution(
@@ -1741,7 +1535,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 # 1. Make relaxation step (solve quadratic optimization problem)
                 tic = time.time()
                 rhs_i = rhs.copy()
-                rhs_i[: self.grid.num_faces] = weight * self.mass_matrix_faces.dot(
+                rhs_i[self.flux_slice] = weight * self.mass_matrix_faces.dot(
                     old_aux_flux - old_force
                 )
                 solution_i = np.zeros_like(rhs_i, dtype=float)
@@ -2015,7 +1809,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         # TODO solve for potential and multiplier
         solution_i = np.zeros_like(rhs)
-        solution_i[: self.grid.num_faces] = new_flux.copy()
+        solution_i[self.flux_slice] = new_flux.copy()
         # TODO continue
 
         # Define performance metric
