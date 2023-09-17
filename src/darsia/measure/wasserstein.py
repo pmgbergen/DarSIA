@@ -47,9 +47,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
         Args:
 
-            shape (tuple): shape of the image
-            voxel_size (list): voxel size of the image
-            dim (int): dimension of the problem
+            grid (darsia.Grid): tensor grid associated with the images
             options (dict): options for the solver
                 - num_iter (int): maximum number of iterations. Defaults to 100.
                 - tol (float): tolerance for the stopping criterion. Defaults to 1e-6.
@@ -79,7 +77,59 @@ class VariationalWassersteinDistance(darsia.EMD):
     def _setup(self) -> None:
         """Setup of fixed discretization"""
 
-        # ! ---- Operators ----
+        # ! --- DOF management ---
+
+        # The following degrees of freedom are considered (also in this order):
+        # - flat fluxes (normal fluxes on the faces)
+        # - flat potentials (potentials on the cells)
+        # - lagrange multiplier (scalar variable)
+        # Idea: Fix the potential in the center of the domain to zero. This is done by
+        # adding a constraint to the potential via a Lagrange multiplier.
+
+        num_flux_dofs = self.grid.num_faces
+        num_potential_dofs = self.grid.num_cells
+        num_lagrange_multiplier_dofs = 1
+        num_dofs = (
+            num_flux_dofs + num_potential_dofs + num_lagrange_multiplier_dofs
+        )  # total number of dofs
+
+        self.flux_indices = np.arange(num_flux_dofs)
+        self.potential_indices = np.arange(
+            num_flux_dofs, num_flux_dofs + num_potential_dofs
+        )
+        self.lagrange_multiplier_indices = np.array(
+            [num_flux_dofs + num_potential_dofs], dtype=int
+        )
+
+        # ! --- Embedding operators ---
+
+        self.flux_embedding = sps.csc_matrix(
+            (
+                np.ones(num_flux_dofs, dtype=float),
+                (self.flux_indices, self.flux_indices),
+            ),
+            shape=(num_dofs, num_flux_dofs),
+        )
+        """sps.csc_matrix: embedding operator for fluxes"""
+
+        # ! ---- Constraint for the potential correpsonding to Lagrange multiplier ----
+
+        center = 0.5 * np.array(self.grid.shape)
+        center_cell = center.astype(int)
+        self.constrained_cell_flat_index = np.ravel_multi_index(
+            center_cell, self.grid.shape
+        )
+        self.potential_constraint = sps.csc_matrix(
+            (
+                np.ones(1, dtype=float),
+                (np.zeros(1, dtype=int), np.array([self.constrained_cell_flat_index])),
+            ),
+            shape=(1, num_potential_dofs),
+            dtype=float,
+        )
+        """sps.csc_matrix: effective constraint for the potential"""
+
+        # ! ---- Discretization operators ----
 
         self.div = darsia.FVDivergence(self.grid).mat
         """sps.csc_matrix: divergence operator: flat fluxes -> flat potentials"""
@@ -94,27 +144,18 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.orthogonal_face_average = darsia.FVFaceAverage(self.grid).mat
         """sps.csc_matrix: averaging operator for fluxes on orthogonal faces"""
 
-        # Define sparse embedding operators, and quick access through indices.
-        # Assume the ordering of the faces is vertical faces first, then horizontal
-        # faces. After that, cell variabes are provided for the potential, finally a
-        # scalar variable for the lagrange multiplier.
-        self.flux_embedding = sps.csc_matrix(
-            (
-                np.ones(self.grid.num_faces, dtype=float),
-                (np.arange(self.grid.num_faces), np.arange(self.grid.num_faces)),
-            ),
-            shape=(self.grid.num_faces + self.grid.num_cells + 1, self.grid.num_faces),
+        # Linear part of the Darcy operator with potential constraint.
+        self.broken_darcy = sps.bmat(
+            [
+                [None, -self.div.T, None],
+                [self.div, None, -self.potential_constraint.T],
+                [None, self.potential_constraint, None],
+            ],
+            format="csc",
         )
+        """sps.csc_matrix: linear part of the Darcy operator"""
 
-        self.flux_indices = np.arange(self.grid.num_faces)
-        self.potential_indices = np.arange(
-            self.grid.num_faces, self.grid.num_faces + self.grid.num_cells
-        )
-        self.lagrange_multiplier_indices = np.array(
-            [self.grid.num_faces + self.grid.num_cells], dtype=int
-        )
-
-        # ! ---- Utilities ----
+        # ! ---- Acceleration ----
         aa_depth = self.options.get("aa_depth", 0)
         aa_restart = self.options.get("aa_restart", None)
         self.anderson = (
@@ -124,34 +165,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             if aa_depth > 0
             else None
         )
-
-    def _problem_specific_setup(self, mass_diff: np.ndarray) -> None:
-        """Resetup of fixed discretization"""
-
-        # Fix index of center cell
-        center = 0.5 * np.array(self.grid.shape)
-        center_cell = center.astype(int)
-        self.constrained_cell_flat_index = np.ravel_multi_index(
-            center_cell, self.grid.shape
-        )
-        self.potential_constraint = sps.csc_matrix(
-            (
-                np.ones(1, dtype=float),
-                (np.zeros(1, dtype=int), np.array([self.constrained_cell_flat_index])),
-            ),
-            shape=(1, self.grid.num_cells),
-            dtype=float,
-        )
-
-        # Linear part of the operator.
-        self.broken_darcy = sps.bmat(
-            [
-                [None, -self.div.T, None],
-                [self.div, None, -self.potential_constraint.T],
-                [None, self.potential_constraint, None],
-            ],
-            format="csc",
-        )
+        """darsia.AndersonAcceleration: Anderson acceleration"""
 
     def split_solution(
         self, solution: np.ndarray
@@ -414,7 +428,6 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Determine difference of distriutions and define corresponding rhs
         mass_diff = img_1.img - img_2.img
         flat_mass_diff = np.ravel(mass_diff)
-        self._problem_specific_setup(mass_diff)
 
         # Main method
         distance, solution, status = self._solve(flat_mass_diff)
@@ -1160,9 +1173,11 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
 
 class WassersteinDistanceBregman(VariationalWassersteinDistance):
-    def _problem_specific_setup(self, mass_diff: np.ndarray) -> None:
-        super()._problem_specific_setup(mass_diff)
+    def _setup(self) -> None:
+        """Setup the problem."""
+        super()._setup()
         self.L = self.options.get("L", 1.0)
+        """Penality parameter for the Bregman iteration."""
 
     # TODO almost as for Newton. Unify!
 
