@@ -77,7 +77,7 @@ class VariationalWassersteinDistance(darsia.EMD):
     def _setup(self) -> None:
         """Setup of fixed discretization"""
 
-        # ! --- DOF management ---
+        # ! ---- DOF management ----
 
         # The following degrees of freedom are considered (also in this order):
         # - flat fluxes (normal fluxes on the faces)
@@ -100,6 +100,14 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.lagrange_multiplier_indices = np.array(
             [num_flux_dofs + num_potential_dofs], dtype=int
         )
+
+        self.flux_slice = slice(0, num_flux_dofs)
+        self.potential_slice = slice(num_flux_dofs, num_flux_dofs + num_potential_dofs)
+        self.lagrange_multiplier_slice = slice(
+            num_flux_dofs + num_potential_dofs,
+            num_flux_dofs + num_potential_dofs + num_lagrange_multiplier_dofs,
+        )
+        self.reduced_system_slice = slice(num_flux_dofs, None)
 
         # ! --- Embedding operators ---
 
@@ -662,8 +670,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # Step 2: Remove flux blocks through Schur complement approach
 
         # Build Schur complement wrt. flux-flux block
-        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_indices])
-        D = jacobian[self.grid.num_faces :, : self.grid.num_faces].copy()
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
+        D = jacobian[self.reduced_system_slice, self.flux_slice].copy()
         schur_complement = D.dot(J_inv.dot(D.T))
 
         # Cache divergence matrix
@@ -672,7 +680,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         # Cache (constant) jacobian subblock
         self.jacobian_subblock = jacobian[
-            self.grid.num_faces :, self.grid.num_faces :
+            self.reduced_system_slice, self.reduced_system_slice
         ].copy()
 
         # Add Schur complement - use this to identify sparsity structure
@@ -778,15 +786,15 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         """
         # Build Schur complement wrt flux-block
-        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_indices])
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
         schur_complement = self.D.dot(J_inv.dot(self.DT))
 
         # Gauss eliminiation on matrices
         reduced_jacobian = self.jacobian_subblock + schur_complement
 
         # Gauss elimination on vectors
-        reduced_residual = residual[self.reduced_system_indices].copy()
-        reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_indices]))
+        reduced_residual = residual[self.reduced_system_slice].copy()
+        reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
 
         return reduced_jacobian, reduced_residual, J_inv
 
@@ -918,7 +926,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 lu = sps.linalg.splu(self.reduced_jacobian)
                 time_setup = time.time() - tic
                 tic = time.time()
-                update[self.reduced_system_indices] = lu.solve(self.reduced_residual)
+                update[self.reduced_system_slice] = lu.solve(self.reduced_residual)
 
             elif linear_solver == "amg-flux-reduced":
                 ml = pyamg.smoothed_aggregation_solver(
@@ -926,16 +934,16 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 )
                 time_setup = time.time() - tic
                 tic = time.time()
-                update[self.reduced_system_indices] = ml.solve(
+                update[self.reduced_system_slice] = ml.solve(
                     self.reduced_residual,
                     tol=tol_amg,
                     residuals=res_history_amg,
                 )
 
             # Compute flux update
-            update[self.flux_indices] = jacobian_flux_inv.dot(
-                residual[self.flux_indices]
-                + self.DT.dot(update[self.reduced_system_indices])
+            update[self.flux_slice] = jacobian_flux_inv.dot(
+                residual[self.flux_slice]
+                + self.DT.dot(update[self.reduced_system_slice])
             )
             time_solve = time.time() - tic
 
@@ -979,9 +987,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 )
 
             # Compute flux update
-            update[self.flux_indices] = jacobian_flux_inv.dot(
-                residual[self.flux_indices]
-                + self.DT.dot(update[self.reduced_system_indices])
+            update[self.flux_slice] = jacobian_flux_inv.dot(
+                residual[self.flux_slice]
+                + self.DT.dot(update[self.reduced_system_slice])
             )
             time_solve = time.time() - tic
 
@@ -1109,15 +1117,15 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             error = [
                 np.linalg.norm(residual_i, 2),
                 [
-                    np.linalg.norm(residual_i[: self.grid.num_faces], 2),
-                    np.linalg.norm(residual_i[self.grid.num_faces : -1], 2),
-                    np.linalg.norm(residual_i[-1:], 2),
+                    np.linalg.norm(residual_i[self.flux_slice], 2),
+                    np.linalg.norm(residual_i[self.potential_slice], 2),
+                    np.linalg.norm(residual_i[self.lagrange_multiplier_slice], 2),
                 ],
                 np.linalg.norm(increment, 2),
                 [
-                    np.linalg.norm(increment[: self.grid.num_faces], 2),
-                    np.linalg.norm(increment[self.grid.num_faces : -1], 2),
-                    np.linalg.norm(increment[-1:], 2),
+                    np.linalg.norm(increment[self.flux_slice], 2),
+                    np.linalg.norm(increment[self.potential_slice], 2),
+                    np.linalg.norm(increment[self.lagrange_multiplier_slice], 2),
                 ],
                 abs(new_distance - old_distance),
             ]
@@ -1177,6 +1185,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         self.L = self.options.get("L", 1.0)
         """Penality parameter for the Bregman iteration."""
 
+        self.force_slice = slice(self.grid.num_faces, None)
+        """slice: slice for the force."""
+
     # TODO almost as for Newton. Unify!
 
     def darcy_jacobian(self) -> sps.linalg.LinearOperator:
@@ -1213,8 +1224,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         # Step 2: Remove flux blocks through Schur complement approach
 
         # Build Schur complement wrt. flux-flux block
-        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_indices])
-        D = jacobian[self.grid.num_faces :, : self.grid.num_faces].copy()
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
+        D = jacobian[self.reduced_system_slice, self.flux_slice].copy()
         schur_complement = D.dot(J_inv.dot(D.T))
 
         # Cache divergence matrix
@@ -1329,15 +1340,15 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         """
         # Build Schur complement wrt flux-block
-        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_indices])
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
         schur_complement = self.D.dot(J_inv.dot(self.DT))
 
         # Gauss eliminiation on matrices
         reduced_jacobian = self.jacobian_subblock + schur_complement
 
         # Gauss elimination on vectors
-        reduced_residual = residual[self.reduced_system_indices].copy()
-        reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_indices]))
+        reduced_residual = residual[self.reduced_system_slice].copy()
+        reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
 
         return reduced_jacobian, reduced_residual, J_inv
 
@@ -1551,7 +1562,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     self.reduced_jacobian, **ml_options
                 )
                 solution_i[
-                    self.reduced_system_indices
+                    self.reduced_system_slice
                 ] = self.l_scheme_mixed_darcy_solver.solve(
                     self.reduced_residual,
                     tol=tol_amg,
@@ -1559,9 +1570,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 )
 
             # Compute flux update
-            solution_i[self.flux_indices] = jacobian_flux_inv.dot(
-                rhs[self.flux_indices]
-                + self.DT.dot(solution_i[self.reduced_system_indices])
+            solution_i[self.flux_slice] = jacobian_flux_inv.dot(
+                rhs[self.flux_slice]
+                + self.DT.dot(solution_i[self.reduced_system_slice])
             )
 
         elif linear_solver in ["lu-potential", "amg-potential"]:
@@ -1603,9 +1614,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 )
 
             # Compute flux update
-            solution_i[self.flux_indices] = jacobian_flux_inv.dot(
-                rhs[self.flux_indices]
-                + self.DT.dot(solution_i[self.reduced_system_indices])
+            solution_i[self.flux_slice] = jacobian_flux_inv.dot(
+                rhs[self.flux_slice]
+                + self.DT.dot(solution_i[self.reduced_system_slice])
             )
 
         else:
@@ -1625,7 +1636,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 # 1. Make relaxation step (solve quadratic optimization problem)
                 tic = time.time()
                 rhs_i = rhs.copy()
-                rhs_i[: self.grid.num_faces] = self.L * self.mass_matrix_faces.dot(
+                rhs_i[self.flux_slice] = self.L * self.mass_matrix_faces.dot(
                     old_aux_flux - old_force
                 )
                 new_flux, _, _ = self.split_solution(
@@ -1653,8 +1664,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     inc = np.concatenate([aux_inc, force_inc])
                     iteration = np.concatenate([new_aux_flux, new_force])
                     new_iteration = self.anderson(iteration, inc, iter)
-                    new_aux_flux = new_iteration[: self.grid.num_faces]
-                    new_force = new_iteration[self.grid.num_faces :]
+                    new_aux_flux = new_iteration[self.flux_slice]
+                    new_force = new_iteration[self.force_slice]
 
                 toc = time.time()
                 time_anderson = toc - tic
@@ -1694,8 +1705,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     iteration = np.concatenate([new_flux, new_force])
                     # new_flux = self.anderson(new_flux, flux_inc, iter)
                     new_iteration = self.anderson(iteration, inc, iter)
-                    new_flux = new_iteration[: self.grid.num_faces]
-                    new_force = new_iteration[self.grid.num_faces :]
+                    new_flux = new_iteration[self.flux_slice]
+                    new_force = new_iteration[self.force_slice]
                 toc = time.time()
                 time_anderson = toc - tic
 
@@ -1758,7 +1769,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                                 self.reduced_jacobian
                             )
                         solution_i[
-                            self.reduced_system_indices
+                            self.reduced_system_slice
                         ] = self.l_scheme_mixed_darcy_solver.solve(
                             self.reduced_residual
                         )
@@ -1771,7 +1782,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                                 )
                             )
                         solution_i[
-                            self.reduced_system_indices
+                            self.reduced_system_slice
                         ] = self.l_scheme_mixed_darcy_solver.solve(
                             self.reduced_residual,
                             tol=tol_amg,
@@ -1779,9 +1790,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         )
 
                     # Compute flux update
-                    solution_i[self.flux_indices] = jacobian_flux_inv.dot(
-                        rhs_i[self.flux_indices]
-                        + self.DT.dot(solution_i[self.reduced_system_indices])
+                    solution_i[self.flux_slice] = jacobian_flux_inv.dot(
+                        rhs_i[self.flux_slice]
+                        + self.DT.dot(solution_i[self.reduced_system_slice])
                     )
 
                 elif linear_solver in ["lu-potential", "amg-potential"]:
@@ -1831,9 +1842,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         )
 
                     # Compute flux update
-                    solution_i[self.flux_indices] = jacobian_flux_inv.dot(
-                        rhs_i[self.flux_indices]
-                        + self.DT.dot(solution_i[self.reduced_system_indices])
+                    solution_i[self.flux_slice] = jacobian_flux_inv.dot(
+                        rhs_i[self.flux_slice]
+                        + self.DT.dot(solution_i[self.reduced_system_slice])
                     )
                 else:
                     raise NotImplementedError(
@@ -1874,8 +1885,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     inc = np.concatenate([aux_inc, force_inc])
                     iteration = np.concatenate([new_aux_flux, new_force])
                     new_iteration = self.anderson(iteration, inc, iter)
-                    new_aux_flux = new_iteration[: self.grid.num_faces]
-                    new_force = new_iteration[self.grid.num_faces :]
+                    new_aux_flux = new_iteration[self.flux_slice]
+                    new_force = new_iteration[self.force_slice]
 
                 toc = time.time()
                 time_anderson = toc - tic
@@ -1891,7 +1902,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
             # Determine the error in the mass conservation equation
             mass_conservation_residual = np.linalg.norm(
-                self.div.dot(new_flux) - rhs[self.grid.num_faces : -1], 2
+                self.div.dot(new_flux) - rhs[self.potential_slice], 2
             )
 
             # Determine increments
