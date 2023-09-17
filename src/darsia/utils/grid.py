@@ -3,7 +3,6 @@
 from typing import Union
 
 import numpy as np
-import scipy.sparse as sps
 
 import darsia
 
@@ -112,10 +111,8 @@ class Grid:
 
         # Info about inner cells
         # TODO rm?
-        inner_cells_with_vertical_faces = np.ravel(numbering_cells[:, 1:-1])
-        inner_cells_with_horizontal_faces = np.ravel(numbering_cells[1:-1, :])
-        num_inner_cells_with_vertical_faces = len(inner_cells_with_vertical_faces)
-        num_inner_cells_with_horizontal_faces = len(inner_cells_with_horizontal_faces)
+        self.inner_cells_with_vertical_faces = np.ravel(numbering_cells[:, 1:-1])
+        self.inner_cells_with_horizontal_faces = np.ravel(numbering_cells[1:-1, :])
 
         # ! ---- Cache ----
         # TODO reduce
