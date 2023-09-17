@@ -114,8 +114,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # ! ---- Constraint for the potential correpsonding to Lagrange multiplier ----
 
-        center = 0.5 * np.array(self.grid.shape)
-        center_cell = center.astype(int)
+        center_cell = np.array(self.grid.shape) // 2
         self.constrained_cell_flat_index = np.ravel_multi_index(
             center_cell, self.grid.shape
         )
@@ -1015,20 +1014,19 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # and therefore better solutions to mu and u. Higher depth is better, but more
         # expensive.
 
+        self.L = self.options.get("L", 1.0)
+        """float: relaxation parameter, lower cut-off for the mobility"""
+
         # Setup
         tic = time.time()
         self.setup_infrastructure()
         time_infrastructure = time.time() - tic
-        print("timing infra structure", time_infrastructure)
 
         # Solver parameters
         num_iter = self.options.get("num_iter", 100)
         tol_residual = self.options.get("tol_residual", 1e-6)
         tol_increment = self.options.get("tol_increment", 1e-6)
         tol_distance = self.options.get("tol_distance", 1e-6)
-
-        # Relaxation parameter
-        self.L = self.options.get("L", 1.0)
 
         # Define right hand side
         rhs = np.concatenate(
