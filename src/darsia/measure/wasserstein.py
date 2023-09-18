@@ -70,46 +70,59 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.regularization = self.options.get("regularization", 0.0)
         self.verbose = self.options.get("verbose", False)
 
-        # Setup of finite volume discretization
-        self._setup()
+        # Setup of finite volume discretization and acceleration
+        self._setup_dof_management()
+        self._setup_discretization()
+        self._setup_acceleration()
 
-    def _setup(self) -> None:
-        """Setup of fixed discretization"""
+    def _setup_dof_management(self) -> None:
+        """Setup of DOF management.
 
-        # ! ---- DOF management ----
+        The following degrees of freedom are considered (also in this order):
+        - flat fluxes (normal fluxes on the faces)
+        - flat potentials (potentials on the cells)
+        - lagrange multiplier (scalar variable) - Idea: Fix the potential in the
+        center of the domain to zero. This is done by adding a constraint to the
+        potential via a Lagrange multiplier.
 
-        # The following degrees of freedom are considered (also in this order):
-        # - flat fluxes (normal fluxes on the faces)
-        # - flat potentials (potentials on the cells)
-        # - lagrange multiplier (scalar variable) - Idea: Fix the potential in the
-        # center of the domain to zero. This is done by adding a constraint to the
-        # potential via a Lagrange multiplier.
-
+        """
+        # ! ---- Number of dofs ----
         num_flux_dofs = self.grid.num_faces
         num_potential_dofs = self.grid.num_cells
         num_lagrange_multiplier_dofs = 1
-        num_dofs = (
-            num_flux_dofs + num_potential_dofs + num_lagrange_multiplier_dofs
-        )  # total number of dofs
+        num_dofs = num_flux_dofs + num_potential_dofs + num_lagrange_multiplier_dofs
 
+        # ! ---- Indices in global system ----
         self.flux_indices = np.arange(num_flux_dofs)
+        """np.ndarray: indices of the fluxes"""
+
         self.potential_indices = np.arange(
             num_flux_dofs, num_flux_dofs + num_potential_dofs
         )
+        """np.ndarray: indices of the potentials"""
+
         self.lagrange_multiplier_indices = np.array(
             [num_flux_dofs + num_potential_dofs], dtype=int
         )
+        """np.ndarray: indices of the lagrange multiplier"""
 
+        # ! ---- Fast access to components through slices ----
         self.flux_slice = slice(0, num_flux_dofs)
+        """slice: slice for the fluxes"""
+
         self.potential_slice = slice(num_flux_dofs, num_flux_dofs + num_potential_dofs)
+        """slice: slice for the potentials"""
+
         self.lagrange_multiplier_slice = slice(
             num_flux_dofs + num_potential_dofs,
             num_flux_dofs + num_potential_dofs + num_lagrange_multiplier_dofs,
         )
+        """slice: slice for the lagrange multiplier"""
+
         self.reduced_system_slice = slice(num_flux_dofs, None)
+        """slice: slice for the reduced system (potentials and lagrange multiplier)"""
 
-        # ! --- Embedding operators ---
-
+        # Embedding operators
         self.flux_embedding = sps.csc_matrix(
             (
                 np.ones(num_flux_dofs, dtype=float),
@@ -119,12 +132,16 @@ class VariationalWassersteinDistance(darsia.EMD):
         )
         """sps.csc_matrix: embedding operator for fluxes"""
 
+    def _setup_discretization(self) -> None:
+        """Setup of fixed discretization operators."""
+
         # ! ---- Constraint for the potential correpsonding to Lagrange multiplier ----
 
         center_cell = np.array(self.grid.shape) // 2
         self.constrained_cell_flat_index = np.ravel_multi_index(
             center_cell, self.grid.shape
         )
+        num_potential_dofs = self.grid.num_cells
         self.potential_constraint = sps.csc_matrix(
             (
                 np.ones(1, dtype=float),
@@ -171,6 +188,9 @@ class VariationalWassersteinDistance(darsia.EMD):
             format="csc",
         )
         """sps.csc_matrix: initial Darcy operator"""
+
+    def _setup_acceleration(self) -> None:
+        """Setup of acceleration methods."""
 
         # ! ---- Acceleration ----
         aa_depth = self.options.get("aa_depth", 0)
@@ -1152,9 +1172,13 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
 
 class WassersteinDistanceBregman(VariationalWassersteinDistance):
-    def _setup(self) -> None:
-        """Setup the problem."""
-        super()._setup()
+    # TODO __init__ correct method?
+    def __init__(
+        self,
+        grid: darsia.Grid,
+        options: dict = {},
+    ) -> None:
+        super().__init__(grid, options)
         self.L = self.options.get("L", 1.0)
         """Penality parameter for the Bregman iteration."""
 
