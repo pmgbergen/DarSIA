@@ -204,152 +204,24 @@ class VariationalWassersteinDistance(darsia.EMD):
         )
         """darsia.AndersonAcceleration: Anderson acceleration"""
 
-    # ! ---- Projections inbetween faces and cells ----
-
-    def face_to_cell(self, flat_flux: np.ndarray) -> np.ndarray:
-        """Reconstruct the fluxes on the cells from the fluxes on the faces.
-
-        Use the Raviart-Thomas reconstruction of the fluxes on the cells from the fluxes
-        on the faces, and use arithmetic averaging of the fluxes on the faces,
-        equivalent with the L2 projection of the fluxes on the faces to the fluxes on
-        the cells.
-
-        Matrix-free implementation.
-
-        Args:
-            flat_flux (np.ndarray): flat fluxes (normal fluxes on the faces)
-
-        Returns:
-            np.ndarray: cell-based vectorial fluxes
-
-        """
-        # Reshape fluxes - use duality of faces and normals
-        horizontal_fluxes = flat_flux[: self.grid.num_faces_axis[0]].reshape(
-            self.grid.vertical_faces_shape
-        )
-        vertical_fluxes = flat_flux[self.grid.num_faces_axis[0] :].reshape(
-            self.grid.horizontal_faces_shape
-        )
-
-        # Determine a cell-based Raviart-Thomas reconstruction of the fluxes, projected
-        # onto piecewise constant functions.
-        cell_flux = np.zeros((*self.grid.shape, self.grid.dim), dtype=float)
-        # Horizontal fluxes
-        cell_flux[:, :-1, 0] += 0.5 * horizontal_fluxes
-        cell_flux[:, 1:, 0] += 0.5 * horizontal_fluxes
-        # Vertical fluxes
-        cell_flux[:-1, :, 1] += 0.5 * vertical_fluxes
-        cell_flux[1:, :, 1] += 0.5 * vertical_fluxes
-
-        return cell_flux
-
-    def cell_to_face(self, cell_qty: np.ndarray, mode: str) -> np.ndarray:
-        """Project scalar cell quantity to scalr face quantity.
-
-        Allow for arithmetic or harmonic averaging of the cell quantity to the faces. In
-        the harmonic case, the averaging is regularized to avoid division by zero.
-        Matrix-free implementation.
-
-        Args:
-            cell_qty (np.ndarray): scalar-valued cell-based quantity
-            mode (str): mode of projection, either "arithmetic" or "harmonic"
-                (averaging)
-
-        Returns:
-            np.ndarray: face-based quantity
-
-        """
-        # Determine the fluxes on the faces
-        if mode == "arithmetic":
-            # Employ arithmetic averaging
-            horizontal_face_qty = 0.5 * (cell_qty[:, :-1] + cell_qty[:, 1:])
-            vertical_face_qty = 0.5 * (cell_qty[:-1, :] + cell_qty[1:, :])
-        elif mode == "harmonic":
-            # Employ harmonic averaging
-            arithmetic_avg_horizontal = 0.5 * (cell_qty[:, :-1] + cell_qty[:, 1:])
-            arithmetic_avg_vertical = 0.5 * (cell_qty[:-1, :] + cell_qty[1:, :])
-            # Regularize to avoid division by zero
-            regularization = 1e-10
-            arithmetic_avg_horizontal = (
-                arithmetic_avg_horizontal
-                + (2 * np.sign(arithmetic_avg_horizontal) + 1) * regularization
-            )
-            arithmetic_avg_vertical = (
-                0.5 * arithmetic_avg_vertical
-                + (2 * np.sign(arithmetic_avg_vertical) + 1) * regularization
-            )
-            product_horizontal = np.multiply(cell_qty[:, :-1], cell_qty[:, 1:])
-            product_vertical = np.multiply(cell_qty[:-1, :], cell_qty[1:, :])
-
-            # Determine the harmonic average
-            horizontal_face_qty = product_horizontal / arithmetic_avg_horizontal
-            vertical_face_qty = product_vertical / arithmetic_avg_vertical
-        else:
-            raise ValueError(f"Mode {mode} not supported.")
-
-        # Reshape the fluxes - hardcoding the connectivity here
-        face_qty = np.concatenate(
-            [horizontal_face_qty.ravel(), vertical_face_qty.ravel()]
-        )
-
-        return face_qty
-
-    # NOTE: Currently not in use. TODO rm?
-    #    def face_restriction(self, cell_flux: np.ndarray) -> np.ndarray:
-    #        """Restrict vector-valued fluxes on cells to normal components on faces.
-    #
-    #        Matrix-free implementation. The fluxes on the faces are determined by
-    #        arithmetic averaging of the fluxes on the cells in the direction of the normal
-    #        of the face.
-    #
-    #        Args:
-    #            cell_flux (np.ndarray): cell-based fluxes
-    #
-    #        Returns:
-    #            np.ndarray: face-based fluxes
-    #
-    #        """
-    #        # Determine the fluxes on the faces through arithmetic averaging
-    #        horizontal_fluxes = 0.5 * (cell_flux[:, :-1, 0] + cell_flux[:, 1:, 0])
-    #        vertical_fluxes = 0.5 * (cell_flux[:-1, :, 1] + cell_flux[1:, :, 1])
-    #
-    #        # Reshape the fluxes
-    #        flat_flux = np.concatenate(
-    #            [horizontal_fluxes.ravel(), vertical_fluxes.ravel()], axis=0
-    #        )
-    #
-    #        return flat_flux
-
     # ! ---- Effective quantities ----
 
-    def transport_density(self, cell_flux: np.ndarray) -> np.ndarray:
-        """Compute the transport density of the solution.
+    def compute_transport_density(self, solution: np.ndarray) -> np.ndarray:
+        """Compute the transport density from the solution.
 
         Args:
-            flat_flux (np.ndarray): flat fluxes
+            solution (np.ndarray): solution
 
         Returns:
             np.ndarray: transport density
+
         """
-        return np.linalg.norm(cell_flux, 2, axis=-1)
-
-    # TODO consider to replace transport_density with this function:
-
-    # def compute_transport_density(self, solution: np.ndarray) -> np.ndarray:
-    #     """Compute the transport density from the solution.
-
-    #     Args:
-    #         solution (np.ndarray): solution
-
-    #     Returns:
-    #         np.ndarray: transport density
-
-    #     """
-    #     # Compute transport density
-    #     flat_flux = solution[self.flux_slice]
-    #     cell_flux = self.face_to_cell(flat_flux)
-    #     norm = np.linalg.norm(cell_flux, 2, axis=-1)
-    #     return norm
+        # Convert (scalar) normal fluxes to vector-valued fluxes on cells
+        flat_flux = solution[self.flux_slice]
+        cell_flux = darsia.face_to_cell(self.grid, flat_flux)
+        # Simply take the norm without any other integration
+        norm = np.linalg.norm(cell_flux, 2, axis=-1)
+        return norm
 
     def l1_dissipation(self, flat_flux: np.ndarray, mode: str) -> float:
         """Compute the l1 dissipation potential of the solution.
@@ -362,7 +234,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         """
         if mode == "cell_arithmetic":
-            cell_flux = self.face_to_cell(flat_flux)
+            cell_flux = darsia.face_to_cell(self.grid, flat_flux)
             cell_flux_norm = np.ravel(np.linalg.norm(cell_flux, 2, axis=-1))
             return self.mass_matrix_cells.dot(cell_flux_norm).sum()
         elif mode == "face_arithmetic":
@@ -389,14 +261,16 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Determine the norm of the fluxes on the faces
         if mode in ["cell_arithmetic", "cell_harmonic"]:
             # Consider the piecewise constant projection of vector valued fluxes
-            cell_flux = self.face_to_cell(flat_flux)
+            cell_flux = darsia.face_to_cell(self.grid, flat_flux)
             # Determine the norm of the fluxes on the cells
             cell_flux_norm = np.maximum(
                 np.linalg.norm(cell_flux, 2, axis=-1), self.regularization
             )
             # Determine averaging mode from mode - either arithmetic or harmonic
             average_mode = mode.split("_")[1]
-            flat_flux_norm = self.cell_to_face(cell_flux_norm, mode=average_mode)
+            flat_flux_norm = darsia.cell_to_face(
+                self.grid, cell_flux_norm, mode=average_mode
+            )
 
         elif mode == "face_arithmetic":
             # Define natural vector valued flux on faces (taking arithmetic averages
@@ -632,11 +506,11 @@ class VariationalWassersteinDistance(darsia.EMD):
         flat_potential = solution[self.potential_slice]
 
         # Reshape the fluxes and potential to grid format
-        flux = self.face_to_cell(flat_flux)
+        flux = darsia.face_to_cell(self.grid, flat_flux)
         potential = flat_potential.reshape(self.grid.shape)
 
         # Determine transport density
-        transport_density = self.transport_density(flux)
+        transport_density = self.compute_transport_density(solution)
 
         # Stop taking time
         toc = time.time()
@@ -1208,12 +1082,14 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             # Idea: Determine the shrink factor based on the cell reconstructions of the
             # fluxes. Convert cell-based shrink factors to face-based shrink factors
             # through arithmetic averaging.
-            cell_flux = self.face_to_cell(flat_flux)
+            cell_flux = darsia.face_to_cell(self.grid, flat_flux)
             norm = np.linalg.norm(cell_flux, 2, axis=-1)
             cell_scaling = np.maximum(norm - shrink_factor, 0) / (
                 norm + self.regularization
             )
-            flat_scaling = self.cell_to_face(cell_scaling, mode="arithmetic")
+            flat_scaling = darsia.cell_to_face(
+                self.grid, cell_scaling, mode="arithmetic"
+            )
 
         elif mode == "face_arithmetic":
             # Define natural vector valued flux on faces (taking arithmetic averages
