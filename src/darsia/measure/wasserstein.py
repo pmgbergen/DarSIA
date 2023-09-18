@@ -458,16 +458,34 @@ class VariationalWassersteinDistance(darsia.EMD):
         matrix: sps.csc_matrix,
         rhs: np.ndarray,
         previous_solution: Optional[np.ndarray] = None,
-    ):
+        reuse_solver: bool = False,
+    ) -> tuple:
+        """Solve the linear system.
+
+        For reusing the setup, the resulting solver is cached as self.linear_solver.
+
+        Args:
+            matrix (sps.csc_matrix): matrix
+            rhs (np.ndarray): right hand side
+            previous_solution (np.ndarray): previous solution. Defaults to None.
+
+        Returns:
+            tuple: solution, stats
+
+        """
+
+        setup_linear_solver = not (reuse_solver) or not (hasattr(self, "linear_solver"))
+
         if self.linear_solver_type == "lu":
             # Setup LU factorization for the full system
             tic = time.time()
-            lu = sps.linalg.splu(matrix)
+            if setup_linear_solver:
+                self.linear_solver = sps.linalg.splu(matrix)
             time_setup = time.time() - tic
 
             # Solve the full system
             tic = time.time()
-            solution = lu.solve(rhs)
+            solution = self.linear_solver.solve(rhs)
             time_solve = time.time() - tic
 
         elif self.linear_solver_type in [
@@ -491,23 +509,27 @@ class VariationalWassersteinDistance(darsia.EMD):
 
             if self.linear_solver_type == "lu-flux-reduced":
                 # LU factorization for reduced system
-                lu = sps.linalg.splu(self.reduced_matrix)
+                if setup_linear_solver:
+                    self.linear_solver = sps.linalg.splu(self.reduced_matrix)
                 time_setup = time.time() - tic
 
                 # Solve for the potential and lagrange multiplier
                 tic = time.time()
-                solution[self.reduced_system_slice] = lu.solve(self.reduced_rhs)
+                solution[self.reduced_system_slice] = self.linear_solver.solve(
+                    self.reduced_rhs
+                )
 
             elif self.linear_solver_type == "amg-flux-reduced":
                 # AMG solver for reduced system
-                ml = pyamg.smoothed_aggregation_solver(
-                    self.reduced_matrix, **self.ml_options
-                )
+                if setup_linear_solver:
+                    self.linear_solver = pyamg.smoothed_aggregation_solver(
+                        self.reduced_matrix, **self.ml_options
+                    )
                 time_setup = time.time() - tic
 
                 # Solve for the potential and lagrange multiplier
                 tic = time.time()
-                solution[self.reduced_system_slice] = ml.solve(
+                solution[self.reduced_system_slice] = self.linear_solver.solve(
                     self.reduced_rhs,
                     tol=self.tol_amg,
                     residuals=self.res_history_amg,
@@ -518,7 +540,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 # NOTE: It is implicitly assumed that the lagrange multiplier is zero
                 # in the constrained cell. This is not checked here. And no update is
                 # performed.
-                if (
+                if previous_solution is not None and (
                     abs(
                         previous_solution[
                             self.grid.num_faces + self.constrained_cell_flat_index
@@ -541,25 +563,29 @@ class VariationalWassersteinDistance(darsia.EMD):
 
                 if self.linear_solver_type == "lu-potential":
                     # Finish LU factorization of the pure potential system
-                    lu = sps.linalg.splu(self.fully_reduced_matrix)
+                    if setup_linear_solver:
+                        self.linear_solver = sps.linalg.splu(self.fully_reduced_matrix)
                     time_setup = time.time() - tic
 
                     # Solve the pure potential system
                     tic = time.time()
-                    solution[self.fully_reduced_system_indices_full] = lu.solve(
-                        self.fully_reduced_rhs
-                    )
+                    solution[
+                        self.fully_reduced_system_indices_full
+                    ] = self.linear_solver.solve(self.fully_reduced_rhs)
 
                 elif self.linear_solver_type == "amg-potential":
                     # Finish AMG setup of th pure potential system
-                    ml = pyamg.smoothed_aggregation_solver(
-                        self.fully_reduced_jacobian, **self.ml_options
-                    )
+                    if setup_linear_solver:
+                        self.linear_solver = pyamg.smoothed_aggregation_solver(
+                            self.fully_reduced_jacobian, **self.ml_options
+                        )
                     time_setup = time.time() - tic
 
                     # Solve the pure potential system
                     tic = time.time()
-                    solution[self.fully_reduced_system_indices_full] = ml.solve(
+                    solution[
+                        self.fully_reduced_system_indices_full
+                    ] = self.linear_solver.solve(
                         self.fully_reduced_rhs,
                         tol=self.tol_amg,
                         residuals=self.res_history_amg,
@@ -1202,7 +1228,6 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         dissipation_mode = "cell_arithmetic"
         weight = self.L
         shrink_factor = 1.0 / self.L
-        solution_i = np.zeros_like(rhs, dtype=float)
 
         # Solve linear Darcy problem as initial guess
         l_scheme_mixed_darcy = sps.bmat(
@@ -1213,91 +1238,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             ],
             format="csc",
         )
-        if self.linear_solver_type == "lu":
-            self.l_scheme_mixed_darcy_solver = sps.linalg.splu(l_scheme_mixed_darcy)
-            solution_i = self.l_scheme_mixed_darcy_solver.solve(rhs)
-
-        elif self.linear_solver_type in ["lu-flux-reduced", "amg-flux-reduced"]:
-            # Solve potential-multiplier problem
-
-            # Reduce flux block
-            (
-                self.reduced_jacobian,
-                self.reduced_residual,
-                jacobian_flux_inv,
-            ) = self.remove_flux(l_scheme_mixed_darcy, rhs)
-
-            if self.linear_solver_type == "lu-flux-reduced":
-                self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
-                    self.reduced_jacobian
-                )
-
-            elif self.linear_solver_type == "amg-flux-reduced":
-                self.l_scheme_mixed_darcy_solver = pyamg.smoothed_aggregation_solver(
-                    self.reduced_jacobian, **self.ml_options
-                )
-                solution_i[
-                    self.reduced_system_slice
-                ] = self.l_scheme_mixed_darcy_solver.solve(
-                    self.reduced_residual,
-                    tol=self.tol_amg,
-                    residuals=self.res_history_amg,
-                )
-
-            # Compute flux update
-            solution_i[self.flux_slice] = jacobian_flux_inv.dot(
-                rhs[self.flux_slice]
-                + self.DT.dot(solution_i[self.reduced_system_slice])
-            )
-
-        elif self.linear_solver_type in ["lu-potential", "amg-potential"]:
-            # Solve pure potential problem
-
-            # Reduce flux block
-            (
-                self.reduced_jacobian,
-                self.reduced_residual,
-                jacobian_flux_inv,
-            ) = self.remove_flux(l_scheme_mixed_darcy, rhs)
-
-            # Reduce to pure pressure system
-            (
-                self.fully_reduced_jacobian,
-                self.fully_reduced_residual,
-            ) = self.remove_lagrange_multiplier(
-                self.reduced_jacobian, self.reduced_residual
-            )
-
-            if self.linear_solver_type == "lu-potential":
-                self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
-                    self.fully_reduced_jacobian
-                )
-                solution_i[
-                    self.fully_reduced_system_indices_full
-                ] = self.l_scheme_mixed_darcy_solver.solve(self.fully_reduced_residual)
-
-            elif self.linear_solver_type == "amg-potential":
-                self.l_scheme_mixed_darcy_solver = pyamg.smoothed_aggregation_solver(
-                    self.fully_reduced_jacobian, **self.ml_options
-                )
-                solution_i[
-                    self.fully_reduced_system_indices_full
-                ] = self.l_scheme_mixed_darcy_solver.solve(
-                    self.fully_reduced_residual,
-                    tol=self.tol_amg,
-                    residuals=self.res_history_amg,
-                )
-
-            # Compute flux update
-            solution_i[self.flux_slice] = jacobian_flux_inv.dot(
-                rhs[self.flux_slice]
-                + self.DT.dot(solution_i[self.reduced_system_slice])
-            )
-
-        else:
-            raise NotImplementedError(
-                f"Linear solver {self.linear_solver_type} not supported"
-            )
+        solution_i = np.zeros_like(rhs, dtype=float)
+        solution_i, _ = self.linear_solve(l_scheme_mixed_darcy, rhs, solution_i)
 
         # Extract intial values
         old_flux = solution_i[self.flux_slice]
@@ -1316,9 +1258,10 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 rhs_i[self.flux_slice] = self.L * self.mass_matrix_faces.dot(
                     old_aux_flux - old_force
                 )
-                new_flux = self.l_scheme_mixed_darcy_solver.solve(rhs_i)[
-                    self.flux_slice
-                ]
+                solution_i, _ = self.linear_solve(
+                    l_scheme_mixed_darcy, rhs_i, reuse_solver=True
+                )
+                new_flux = solution_i[self.flux_slice]
                 time_linearization = time.time() - tic
 
                 # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
@@ -1368,9 +1311,10 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 rhs_i[self.flux_slice] = self.L * self.mass_matrix_faces.dot(
                     new_aux_flux - new_force
                 )
-                new_flux = self.l_scheme_mixed_darcy_solver.solve(rhs_i)[
-                    self.flux_slice
-                ]
+                solution_i, _ = self.linear_solve(
+                    l_scheme_mixed_darcy, rhs_i, reuse_solver=True
+                )
+                new_flux = solution_i[self.flux_slice]
                 time_linearization = time.time() - tic
 
                 # Apply Anderson acceleration to flux contribution (the only nonlinear part).
@@ -1421,112 +1365,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 rhs_i[self.flux_slice] = weight * self.mass_matrix_faces.dot(
                     old_aux_flux - old_force
                 )
-                solution_i = np.zeros_like(rhs_i, dtype=float)
-
-                if self.linear_solver_type == "lu":
-                    if update_solver:
-                        self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
-                            l_scheme_mixed_darcy
-                        )
-                    solution_i = self.l_scheme_mixed_darcy_solver.solve(rhs_i)
-
-                elif self.linear_solver_type in ["lu-flux-reduced", "amg-flux-reduced"]:
-                    # Solve potential-multiplier problem
-
-                    # Reduce flux block
-                    (
-                        self.reduced_jacobian,
-                        self.reduced_residual,
-                        jacobian_flux_inv,
-                    ) = self.remove_flux(l_scheme_mixed_darcy, rhs_i)
-
-                    if self.linear_solver_type == "lu-flux-reduced":
-                        if update_solver:
-                            self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
-                                self.reduced_jacobian
-                            )
-                        solution_i[
-                            self.reduced_system_slice
-                        ] = self.l_scheme_mixed_darcy_solver.solve(
-                            self.reduced_residual
-                        )
-
-                    elif self.linear_solver_type == "amg-flux-reduced":
-                        if update_solver:
-                            self.l_scheme_mixed_darcy_solver = (
-                                pyamg.smoothed_aggregation_solver(
-                                    self.reduced_jacobian, **self.ml_options
-                                )
-                            )
-                        solution_i[
-                            self.reduced_system_slice
-                        ] = self.l_scheme_mixed_darcy_solver.solve(
-                            self.reduced_residual,
-                            tol=self.tol_amg,
-                            residuals=self.res_history_amg,
-                        )
-
-                    # Compute flux update
-                    solution_i[self.flux_slice] = jacobian_flux_inv.dot(
-                        rhs_i[self.flux_slice]
-                        + self.DT.dot(solution_i[self.reduced_system_slice])
-                    )
-
-                elif self.linear_solver_type in ["lu-potential", "amg-potential"]:
-                    # Solve pure potential problem
-
-                    # Reduce flux block
-                    (
-                        self.reduced_jacobian,
-                        self.reduced_residual,
-                        jacobian_flux_inv,
-                    ) = self.remove_flux(l_scheme_mixed_darcy, rhs_i)
-
-                    # Reduce to pure pressure system
-                    (
-                        self.fully_reduced_jacobian,
-                        self.fully_reduced_residual,
-                    ) = self.remove_lagrange_multiplier(
-                        self.reduced_jacobian, self.reduced_residual
-                    )
-
-                    if self.linear_solver_type == "lu-potential":
-                        if update_solver:
-                            self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
-                                self.fully_reduced_jacobian
-                            )
-                        solution_i[
-                            self.fully_reduced_system_indices_full
-                        ] = self.l_scheme_mixed_darcy_solver.solve(
-                            self.fully_reduced_residual
-                        )
-
-                    elif self.linear_solver_type == "amg-potential":
-                        if update_solver:
-                            self.l_scheme_mixed_darcy_solver = (
-                                pyamg.smoothed_aggregation_solver(
-                                    self.fully_reduced_jacobian, **self.ml_options
-                                )
-                            )
-                        # time_setup = time.time() - tic
-                        tic = time.time()
-                        solution_i[
-                            self.fully_reduced_system_indices_full
-                        ] = self.l_scheme_mixed_darcy_solver.solve(
-                            self.fully_reduced_residual,
-                            tol=self.tol_amg,
-                            residuals=self.res_history_amg,
-                        )
-
-                    # Compute flux update
-                    solution_i[self.flux_slice] = jacobian_flux_inv.dot(
-                        rhs_i[self.flux_slice]
-                        + self.DT.dot(solution_i[self.reduced_system_slice])
-                    )
-                else:
-                    raise NotImplementedError(
-                        f"""Linear solver {self.linear_solver_type} not supported."""
-                    )
+                solution_i, _ = self.linear_solve(
+                    l_scheme_mixed_darcy, rhs_i, reuse_solver=not (update_solver)
+                )
 
                 # Diagnostics
                 if self.linear_solver_type in ["amg-flux-reduced", "amg-potential"]:
