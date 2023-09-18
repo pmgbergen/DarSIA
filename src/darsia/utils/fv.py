@@ -5,6 +5,8 @@ import scipy.sparse as sps
 
 import darsia
 
+# ! ---- Finite volume operators ----
+
 
 class FVDivergence:
     """Finite volume divergence operator."""
@@ -252,3 +254,127 @@ class FVFaceAverage:
 
         # Cache
         self.mat = orthogonal_face_average
+
+
+# ! ---- Finite volume projection operators ----
+
+
+def face_to_cell(grid: darsia.Grid, flat_flux: np.ndarray) -> np.ndarray:
+    """Reconstruct the vector fluxes on the cells from normal fluxes on the faces.
+
+    Use the Raviart-Thomas reconstruction of the fluxes on the cells from the fluxes
+    on the faces, and use arithmetic averaging of the fluxes on the faces,
+    equivalent with the L2 projection of the fluxes on the faces to the fluxes on
+    the cells.
+
+    Matrix-free implementation.
+
+    Args:
+        grid (darsia.Grid): grid
+        flat_flux (np.ndarray): flat fluxes (normal fluxes on the faces)
+
+    Returns:
+        np.ndarray: cell-based vectorial fluxes
+
+    """
+    # Reshape fluxes - use duality of faces and normals
+    horizontal_fluxes = flat_flux[: grid.num_faces_axis[0]].reshape(
+        grid.vertical_faces_shape
+    )
+    vertical_fluxes = flat_flux[grid.num_faces_axis[0] :].reshape(
+        grid.horizontal_faces_shape
+    )
+
+    # Determine a cell-based Raviart-Thomas reconstruction of the fluxes, projected
+    # onto piecewise constant functions.
+    cell_flux = np.zeros((*grid.shape, grid.dim), dtype=float)
+    # Horizontal fluxes
+    cell_flux[:, :-1, 0] += 0.5 * horizontal_fluxes
+    cell_flux[:, 1:, 0] += 0.5 * horizontal_fluxes
+    # Vertical fluxes
+    cell_flux[:-1, :, 1] += 0.5 * vertical_fluxes
+    cell_flux[1:, :, 1] += 0.5 * vertical_fluxes
+
+    return cell_flux
+
+
+def cell_to_face(grid: darsia.Grid, cell_qty: np.ndarray, mode: str) -> np.ndarray:
+    """Project scalar cell quantity to scalar face quantity.
+
+    Allow for arithmetic or harmonic averaging of the cell quantity to the faces. In
+    the harmonic case, the averaging is regularized to avoid division by zero.
+    Matrix-free implementation.
+
+    Args:
+        grid (darsia.Grid): grid
+        cell_qty (np.ndarray): scalar-valued cell-based quantity
+        mode (str): mode of projection, either "arithmetic" or "harmonic"
+            (averaging)
+
+    Returns:
+        np.ndarray: face-based quantity
+
+    """
+
+    # NOTE: No impact of Grid here, so far! Everything is implicit. This should/could
+    # change. In particular when switching to 3d!
+
+    # Determine the fluxes on the faces
+    if mode == "arithmetic":
+        # Employ arithmetic averaging
+        horizontal_face_qty = 0.5 * (cell_qty[:, :-1] + cell_qty[:, 1:])
+        vertical_face_qty = 0.5 * (cell_qty[:-1, :] + cell_qty[1:, :])
+    elif mode == "harmonic":
+        # Employ harmonic averaging
+        arithmetic_avg_horizontal = 0.5 * (cell_qty[:, :-1] + cell_qty[:, 1:])
+        arithmetic_avg_vertical = 0.5 * (cell_qty[:-1, :] + cell_qty[1:, :])
+        # Regularize to avoid division by zero
+        regularization = 1e-10
+        arithmetic_avg_horizontal = (
+            arithmetic_avg_horizontal
+            + (2 * np.sign(arithmetic_avg_horizontal) + 1) * regularization
+        )
+        arithmetic_avg_vertical = (
+            0.5 * arithmetic_avg_vertical
+            + (2 * np.sign(arithmetic_avg_vertical) + 1) * regularization
+        )
+        product_horizontal = np.multiply(cell_qty[:, :-1], cell_qty[:, 1:])
+        product_vertical = np.multiply(cell_qty[:-1, :], cell_qty[1:, :])
+
+        # Determine the harmonic average
+        horizontal_face_qty = product_horizontal / arithmetic_avg_horizontal
+        vertical_face_qty = product_vertical / arithmetic_avg_vertical
+    else:
+        raise ValueError(f"Mode {mode} not supported.")
+
+    # Reshape the fluxes - hardcoding the connectivity here
+    face_qty = np.concatenate([horizontal_face_qty.ravel(), vertical_face_qty.ravel()])
+
+    return face_qty
+
+
+# NOTE: Currently not in use. TODO rm?
+#    def face_restriction(self, cell_flux: np.ndarray) -> np.ndarray:
+#        """Restrict vector-valued fluxes on cells to normal components on faces.
+#
+#        Matrix-free implementation. The fluxes on the faces are determined by
+#        arithmetic averaging of the fluxes on the cells in the direction of the normal
+#        of the face.
+#
+#        Args:
+#            cell_flux (np.ndarray): cell-based fluxes
+#
+#        Returns:
+#            np.ndarray: face-based fluxes
+#
+#        """
+#        # Determine the fluxes on the faces through arithmetic averaging
+#        horizontal_fluxes = 0.5 * (cell_flux[:, :-1, 0] + cell_flux[:, 1:, 0])
+#        vertical_fluxes = 0.5 * (cell_flux[:-1, :, 1] + cell_flux[1:, :, 1])
+#
+#        # Reshape the fluxes
+#        flat_flux = np.concatenate(
+#            [horizontal_fluxes.ravel(), vertical_fluxes.ravel()], axis=0
+#        )
+#
+#        return flat_flux
