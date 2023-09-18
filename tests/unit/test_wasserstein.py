@@ -5,28 +5,71 @@ import pytest
 
 import darsia
 
+# ! ---- 2d version ----
+
 # Coarse src image
 rows = 10
 cols = rows
-src_square = np.zeros((rows, cols), dtype=float)
-src_square[2:5, 2:5] = 1
-meta = {"width": 1, "height": 1, "space_dim": 2, "scalar": True}
-src_image = darsia.Image(src_square, **meta)
+src_square_2d = np.zeros((rows, cols), dtype=float)
+src_square_2d[2:5, 2:5] = 1
+meta_2d = {"width": 1, "height": 1, "dim": 2, "scalar": True}
+src_image_2d = darsia.Image(src_square_2d, **meta_2d)
 
 # Coarse dst image
-dst_squares = np.zeros((rows, cols), dtype=float)
-dst_squares[1:3, 1:2] = 1
-dst_squares[4:7, 7:9] = 1
-dst_image = darsia.Image(dst_squares, **meta)
+dst_squares_2d = np.zeros((rows, cols), dtype=float)
+dst_squares_2d[1:3, 1:2] = 1
+dst_squares_2d[4:7, 7:9] = 1
+dst_image_2d = darsia.Image(dst_squares_2d, **meta_2d)
 
 # Rescale
-shape_meta = src_image.shape_metadata()
-geometry = darsia.Geometry(**shape_meta)
-src_image.img /= geometry.integrate(src_image)
-dst_image.img /= geometry.integrate(dst_image)
+shape_meta_2d = src_image_2d.shape_metadata()
+geometry_2d = darsia.Geometry(**shape_meta_2d)
+src_image_2d.img /= geometry_2d.integrate(src_image_2d)
+dst_image_2d.img /= geometry_2d.integrate(dst_image_2d)
 
 # Reference value for comparison
-true_distance = 0.379543951823
+true_distance_2d = 0.379543951823
+
+# ! ---- 3d version ----
+
+# Coarse src image
+src_square_3d = np.zeros((rows, cols, 1), dtype=float)
+src_square_3d[2:5, 2:5, 0] = 1
+meta_3d = {"dimensions": [1, 1, 1], "dim": 3, "series": False, "scalar": True}
+src_image_3d = darsia.Image(src_square_3d, **meta_3d)
+
+# Coarse dst image
+dst_squares_3d = np.zeros((rows, cols, 1), dtype=float)
+dst_squares_3d[1:3, 1:2, 0] = 1
+dst_squares_3d[4:7, 7:9, 0] = 1
+dst_image_3d = darsia.Image(dst_squares_3d, **meta_3d)
+
+# Rescale
+shape_meta_3d = src_image_3d.shape_metadata()
+geometry_3d = darsia.Geometry(**shape_meta_3d)
+src_image_3d.img /= geometry_3d.integrate(src_image_3d)
+dst_image_3d.img /= geometry_3d.integrate(dst_image_3d)
+
+# Reference value for comparison
+true_distance_3d = 0.379543951823
+
+# ! ---- Data set ----
+src_image = {
+    2: src_image_2d,
+    3: src_image_3d,
+}
+
+dst_image = {
+    2: dst_image_2d,
+    3: dst_image_3d,
+}
+
+true_distance = {
+    2: true_distance_2d,
+    3: true_distance_3d,
+}
+
+# ! ---- Solver options ----
 
 # Linearization
 newton_options = {
@@ -96,58 +139,80 @@ options = {
     "verbose": False,
 }
 
+# ! ---- Tests ----
+
 
 @pytest.mark.parametrize("a_key", range(len(accelerations)))
 @pytest.mark.parametrize("s_key", range(len(solvers)))
-def test_newton(a_key, s_key):
+@pytest.mark.parametrize("dim", [2])
+def test_newton(a_key, s_key, dim):
     """Test all combinations for Newton."""
     options.update(newton_options)
     options.update(accelerations[a_key])
     options.update(solvers[s_key])
     distance, _, _, _, status = darsia.wasserstein_distance(
-        src_image, dst_image, options=options, method="newton", return_solution=True
+        src_image[dim],
+        dst_image[dim],
+        options=options,
+        method="newton",
+        return_solution=True,
     )
-    assert np.isclose(distance, true_distance, atol=1e-5)
-    assert status["converged"]
-
-
-@pytest.mark.parametrize("a_key", range(len(accelerations)))
-@pytest.mark.parametrize("s_key", [0])  # TODO range(len(solvers)))
-def test_std_bregman(a_key, s_key):
-    """Test all combinations for std Bregman."""
-    options.update(bregman_std_options)
-    options.update(accelerations[a_key])
-    options.update(solvers[s_key])
-    distance, _, _, _, status = darsia.wasserstein_distance(
-        src_image, dst_image, options=options, method="bregman", return_solution=True
-    )
-    assert np.isclose(distance, true_distance, atol=1e-2)  # TODO
-    assert status["converged"]
-
-
-@pytest.mark.parametrize("a_key", range(len(accelerations)))
-@pytest.mark.parametrize("s_key", [0])  # TODO range(len(solvers)))
-def test_reordered_bregman(a_key, s_key):
-    """Test all combinations for reordered Bregman."""
-    options.update(bregman_reordered_options)
-    options.update(accelerations[a_key])
-    options.update(solvers[s_key])
-    distance, _, _, _, status = darsia.wasserstein_distance(
-        src_image, dst_image, options=options, method="bregman", return_solution=True
-    )
-    assert np.isclose(distance, true_distance, atol=1e-2)  # TODO
+    assert np.isclose(distance, true_distance[dim], atol=1e-5)
     assert status["converged"]
 
 
 @pytest.mark.parametrize("a_key", range(len(accelerations)))
 @pytest.mark.parametrize("s_key", range(len(solvers)))
-def test_adaptive_bregman(a_key, s_key):
+@pytest.mark.parametrize("dim", [2])
+def test_std_bregman(a_key, s_key, dim):
+    """Test all combinations for std Bregman."""
+    options.update(bregman_std_options)
+    options.update(accelerations[a_key])
+    options.update(solvers[s_key])
+    distance, _, _, _, status = darsia.wasserstein_distance(
+        src_image[dim],
+        dst_image[dim],
+        options=options,
+        method="bregman",
+        return_solution=True,
+    )
+    assert np.isclose(distance, true_distance[dim], atol=1e-2)  # TODO
+    assert status["converged"]
+
+
+@pytest.mark.parametrize("a_key", range(len(accelerations)))
+@pytest.mark.parametrize("s_key", range(len(solvers)))
+@pytest.mark.parametrize("dim", [2])
+def test_reordered_bregman(a_key, s_key, dim):
+    """Test all combinations for reordered Bregman."""
+    options.update(bregman_reordered_options)
+    options.update(accelerations[a_key])
+    options.update(solvers[s_key])
+    distance, _, _, _, status = darsia.wasserstein_distance(
+        src_image[dim],
+        dst_image[dim],
+        options=options,
+        method="bregman",
+        return_solution=True,
+    )
+    assert np.isclose(distance, true_distance[dim], atol=1e-2)  # TODO
+    assert status["converged"]
+
+
+@pytest.mark.parametrize("a_key", range(len(accelerations)))
+@pytest.mark.parametrize("s_key", range(len(solvers)))
+@pytest.mark.parametrize("dim", [2])
+def test_adaptive_bregman(a_key, s_key, dim):
     """Test all combinations for adaptive Bregman."""
     options.update(bregman_adaptive_options)
     options.update(accelerations[a_key])
     options.update(solvers[s_key])
     distance, _, _, _, status = darsia.wasserstein_distance(
-        src_image, dst_image, options=options, method="bregman", return_solution=True
+        src_image[dim],
+        dst_image[dim],
+        options=options,
+        method="bregman",
+        return_solution=True,
     )
-    assert np.isclose(distance, true_distance, atol=1e-5)
+    assert np.isclose(distance, true_distance[dim], atol=1e-5)
     assert status["converged"]
