@@ -63,9 +63,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Cache geometrical infos
         self.grid = grid
         self.voxel_size = grid.voxel_size
-        self.dim = grid.dim
 
-        assert self.dim == 2, "Currently only 2D images are supported."
+        assert self.grid.dim == 2, "Currently only 2D images are supported."
 
         self.options = options
         self.regularization = self.options.get("regularization", 0.0)
@@ -82,10 +81,9 @@ class VariationalWassersteinDistance(darsia.EMD):
         # The following degrees of freedom are considered (also in this order):
         # - flat fluxes (normal fluxes on the faces)
         # - flat potentials (potentials on the cells)
-        # - lagrange multiplier (scalar variable)
-
-        # Idea: Fix the potential in the center of the domain to zero. This is done by
-        # adding a constraint to the potential via a Lagrange multiplier.
+        # - lagrange multiplier (scalar variable) - Idea: Fix the potential in the
+        # center of the domain to zero. This is done by adding a constraint to the
+        # potential via a Lagrange multiplier.
 
         num_flux_dofs = self.grid.num_faces
         num_potential_dofs = self.grid.num_cells
@@ -186,25 +184,6 @@ class VariationalWassersteinDistance(darsia.EMD):
         )
         """darsia.AndersonAcceleration: Anderson acceleration"""
 
-    def split_solution(
-        self, solution: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray, float]:
-        """Split the solution into (flat) fluxes, potential and lagrange multiplier.
-
-        Args:
-            solution (np.ndarray): solution
-
-        Returns:
-            tuple: fluxes, potential, lagrange multiplier
-
-        """
-        # Split the solution
-        flat_flux = solution[self.flux_slice]
-        flat_potential = solution[self.potential_slice]
-        flat_lagrange_multiplier = solution[self.lagrange_multiplier_slice]
-
-        return flat_flux, flat_potential, flat_lagrange_multiplier
-
     # ! ---- Projections inbetween faces and cells ----
 
     def face_to_cell(self, flat_flux: np.ndarray) -> np.ndarray:
@@ -234,7 +213,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Determine a cell-based Raviart-Thomas reconstruction of the fluxes, projected
         # onto piecewise constant functions.
-        cell_flux = np.zeros((*self.grid.shape, self.dim), dtype=float)
+        cell_flux = np.zeros((*self.grid.shape, self.grid.dim), dtype=float)
         # Horizontal fluxes
         cell_flux[:, :-1, 0] += 0.5 * horizontal_fluxes
         cell_flux[:, 1:, 0] += 0.5 * horizontal_fluxes
@@ -347,7 +326,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     #     """
     #     # Compute transport density
-    #     flat_flux, _, _ = self.split_solution(solution)
+    #     flat_flux = solution[self.flux_slice]
     #     cell_flux = self.face_to_cell(flat_flux)
     #     norm = np.linalg.norm(cell_flux, 2, axis=-1)
     #     return norm
@@ -629,7 +608,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         distance, solution, status = self._solve(flat_mass_diff)
 
         # Split the solution
-        flat_flux, flat_potential, _ = self.split_solution(solution)
+        flat_flux = solution[self.flux_slice]
+        flat_potential = solution[self.potential_slice]
 
         # Reshape the fluxes and potential to grid format
         flux = self.face_to_cell(flat_flux)
@@ -784,7 +764,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             np.ndarray: residual
 
         """
-        flat_flux, _, _ = self.split_solution(solution)
+        flat_flux = solution[self.flux_slice]
         mode = self.options.get("mode", "face_arithmetic")
         flat_flux_norm = np.maximum(
             self.vector_face_flux_norm(flat_flux, mode=mode), self.regularization
@@ -807,7 +787,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             sps.linalg.splu: LU factorization of the jacobian
 
         """
-        flat_flux, _, _ = self.split_solution(solution)
+        flat_flux = solution[self.flux_slice]
         mode = self.options.get("mode", "face_arithmetic")
         flat_flux_norm = np.maximum(
             self.vector_face_flux_norm(flat_flux, mode=mode), self.regularization
@@ -1069,7 +1049,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         for iter in range(num_iter):
             # Keep track of old flux, and old distance
             old_solution_i = solution_i.copy()
-            old_flux, _, _ = self.split_solution(solution_i)
+            old_flux = solution_i[self.flux_slice]
             old_distance = self.l1_dissipation(old_flux, "cell_arithmetic")
 
             # Newton step
@@ -1093,7 +1073,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             stats_i.append(time_anderson)
 
             # Update distance
-            new_flux, _, _ = self.split_solution(solution_i)
+            new_flux = solution_i[self.flux_slice]
             new_distance = self.l1_dissipation(new_flux, "cell_arithmetic")
 
             # Compute the error:
@@ -1417,7 +1397,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             raise NotImplementedError(f"Linear solver {linear_solver} not supported")
 
         # Extract intial values
-        old_flux, _, _ = self.split_solution(solution_i)
+        old_flux = solution_i[self.flux_slice]
         old_aux_flux = self._shrink(old_flux, shrink_factor, shrink_mode)
         old_force = old_flux - old_aux_flux
         old_distance = self.l1_dissipation(old_flux, dissipation_mode)
@@ -1433,9 +1413,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 rhs_i[self.flux_slice] = self.L * self.mass_matrix_faces.dot(
                     old_aux_flux - old_force
                 )
-                new_flux, _, _ = self.split_solution(
-                    self.l_scheme_mixed_darcy_solver.solve(rhs_i)
-                )
+                new_flux = self.l_scheme_mixed_darcy_solver.solve(rhs_i)[
+                    self.flux_slice
+                ]
                 time_linearization = time.time() - tic
 
                 # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
@@ -1485,9 +1465,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 rhs_i[self.flux_slice] = self.L * self.mass_matrix_faces.dot(
                     new_aux_flux - new_force
                 )
-                new_flux, _, _ = self.split_solution(
-                    self.l_scheme_mixed_darcy_solver.solve(rhs_i)
-                )
+                new_flux = self.l_scheme_mixed_darcy_solver.solve(rhs_i)[
+                    self.flux_slice
+                ]
                 time_linearization = time.time() - tic
 
                 # Apply Anderson acceleration to flux contribution (the only nonlinear part).
@@ -1656,7 +1636,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                             f"""AMG step: {res_amg}"""
                         )
 
-                new_flux, _, _ = self.split_solution(solution_i)
+                new_flux = solution_i[self.flux_slice]
                 time_linearization = time.time() - tic
 
                 # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
