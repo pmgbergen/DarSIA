@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -227,6 +227,135 @@ class VariationalWassersteinDistance(darsia.EMD):
             self.tol_amg = self.options.get("linear_solver_tol", 1e-6)
             self.res_history_amg = []
 
+        # Setup inrastructure for Schur complement reduction
+        if self.linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
+            self.setup_one_level_schur_reduction()
+        elif self.linear_solver in ["lu-potential", "amg-potential"]:
+            self.setup_two_level_schur_reduction()
+
+    def setup_one_level_schur_reduction(self) -> None:
+        """Setup the infrastructure for reduced systems through Gauss elimination.
+
+        Provide internal data structures for the reduced system.
+
+        """
+        # Step 1: Compute the jacobian of the Darcy problem
+
+        # The Darcy problem is sufficient
+        jacobian = self.darcy_init.copy()
+
+        # Step 2: Remove flux blocks through Schur complement approach
+
+        # Build Schur complement wrt. flux-flux block
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
+        D = jacobian[self.reduced_system_slice, self.flux_slice].copy()
+        schur_complement = D.dot(J_inv.dot(D.T))
+
+        # Cache divergence matrix
+        self.D = D.copy()
+        self.DT = self.D.T.copy()
+
+        # Cache (constant) jacobian subblock
+        self.jacobian_subblock = jacobian[
+            self.reduced_system_slice, self.reduced_system_slice
+        ].copy()
+
+        # Add Schur complement - use this to identify sparsity structure
+        # Cache the reduced jacobian
+        self.reduced_jacobian = self.jacobian_subblock + schur_complement
+
+    def setup_two_level_schur_reduction(self) -> None:
+        """Additional setup of infrastructure for fully reduced systems."""
+        # Step 1 and 2:
+        self.setup_one_level_schur_reduction()
+
+        # Step 3: Remove Lagrange multiplier block through Gauss elimination
+
+        # Find row entries to be removed
+        rm_row_entries = np.arange(
+            self.reduced_jacobian.indptr[self.constrained_cell_flat_index],
+            self.reduced_jacobian.indptr[self.constrained_cell_flat_index + 1],
+        )
+
+        # Find column entries to be removed
+        rm_col_entries = np.where(
+            self.reduced_jacobian.indices == self.constrained_cell_flat_index
+        )[0]
+
+        # Collect all entries to be removes
+        rm_indices = np.unique(
+            np.concatenate((rm_row_entries, rm_col_entries)).astype(int)
+        )
+        # Cache for later use in remove_lagrange_multiplier
+        self.rm_indices = rm_indices
+
+        # Identify rows to be reduced
+        rm_rows = [
+            np.max(np.where(self.reduced_jacobian.indptr <= index)[0])
+            for index in rm_indices
+        ]
+
+        # Reduce data - simply remove
+        fully_reduced_jacobian_data = np.delete(self.reduced_jacobian.data, rm_indices)
+
+        # Reduce indices - remove and shift
+        fully_reduced_jacobian_indices = np.delete(
+            self.reduced_jacobian.indices, rm_indices
+        )
+        fully_reduced_jacobian_indices[
+            fully_reduced_jacobian_indices > self.constrained_cell_flat_index
+        ] -= 1
+
+        # Reduce indptr - shift and remove
+        # NOTE: As only a few entries should be removed, this is not too expensive
+        # and a for loop is used
+        fully_reduced_jacobian_indptr = self.reduced_jacobian.indptr.copy()
+        for row in rm_rows:
+            fully_reduced_jacobian_indptr[row + 1 :] -= 1
+        fully_reduced_jacobian_indptr = np.unique(fully_reduced_jacobian_indptr)
+
+        # Make sure two rows are removed and deduce shape of reduced jacobian
+        assert (
+            len(fully_reduced_jacobian_indptr) == len(self.reduced_jacobian.indptr) - 2
+        ), "Two rows should be removed."
+        fully_reduced_jacobian_shape = (
+            len(fully_reduced_jacobian_indptr) - 1,
+            len(fully_reduced_jacobian_indptr) - 1,
+        )
+
+        # Cache the fully reduced jacobian
+        self.fully_reduced_jacobian = sps.csc_matrix(
+            (
+                fully_reduced_jacobian_data,
+                fully_reduced_jacobian_indices,
+                fully_reduced_jacobian_indptr,
+            ),
+            shape=fully_reduced_jacobian_shape,
+        )
+
+        # Cache the indices and indptr
+        self.fully_reduced_jacobian_indices = fully_reduced_jacobian_indices.copy()
+        self.fully_reduced_jacobian_indptr = fully_reduced_jacobian_indptr.copy()
+        self.fully_reduced_jacobian_shape = fully_reduced_jacobian_shape
+
+        # Step 4: Identify inclusions (index arrays)
+
+        # Define reduced system indices wrt full system
+        reduced_system_indices = np.concatenate(
+            [self.potential_indices, self.lagrange_multiplier_indices]
+        )
+
+        # Define fully reduced system indices wrt reduced system - need to remove cell
+        # (and implicitly lagrange multiplier)
+        self.fully_reduced_system_indices = np.delete(
+            np.arange(self.grid.num_cells), self.constrained_cell_flat_index
+        )
+
+        # Define fully reduced system indices wrt full system
+        self.fully_reduced_system_indices_full = reduced_system_indices[
+            self.fully_reduced_system_indices
+        ]
+
     def _setup_acceleration(self) -> None:
         """Setup of acceleration methods."""
 
@@ -324,123 +453,134 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     # ! ---- Solver methods ----
 
-    def setup_infrastructure(self) -> None:
-        """Setup the infrastructure for reduced systems through Gauss elimination.
+    def linear_solve(
+        self,
+        matrix: sps.csc_matrix,
+        rhs: np.ndarray,
+        previous_solution: Optional[np.ndarray] = None,
+    ):
+        if self.linear_solver == "lu":
+            # Setup LU factorization for the full system
+            tic = time.time()
+            lu = sps.linalg.splu(matrix)
+            time_setup = time.time() - tic
 
-        Provide internal data structures for the reduced system.
+            # Solve the full system
+            tic = time.time()
+            solution = lu.solve(rhs)
+            time_solve = time.time() - tic
 
-        """
-        # Step 1: Compute the jacobian of the Darcy problem
+        elif self.linear_solver in [
+            "lu-flux-reduced",
+            "amg-flux-reduced",
+            "lu-potential",
+            "amg-potential",
+        ]:
+            # Solve potential-multiplier problem
 
-        # The Darcy problem is sufficient
-        jacobian = self.darcy_init.copy()
+            # Allocate memory for solution
+            solution = np.zeros_like(rhs)
 
-        # Step 2: Remove flux blocks through Schur complement approach
-
-        # Build Schur complement wrt. flux-flux block
-        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
-        D = jacobian[self.reduced_system_slice, self.flux_slice].copy()
-        schur_complement = D.dot(J_inv.dot(D.T))
-
-        # Cache divergence matrix
-        self.D = D.copy()
-        self.DT = self.D.T.copy()
-
-        # Cache (constant) jacobian subblock
-        self.jacobian_subblock = jacobian[
-            self.reduced_system_slice, self.reduced_system_slice
-        ].copy()
-
-        # Add Schur complement - use this to identify sparsity structure
-        # Cache the reduced jacobian
-        self.reduced_jacobian = self.jacobian_subblock + schur_complement
-
-        # Step 3: Remove potential block through Gauss elimination
-
-        # Find row entries to be removed
-        rm_row_entries = np.arange(
-            self.reduced_jacobian.indptr[self.constrained_cell_flat_index],
-            self.reduced_jacobian.indptr[self.constrained_cell_flat_index + 1],
-        )
-
-        # Find column entries to be removed
-        rm_col_entries = np.where(
-            self.reduced_jacobian.indices == self.constrained_cell_flat_index
-        )[0]
-
-        # Collect all entries to be removes
-        rm_indices = np.unique(
-            np.concatenate((rm_row_entries, rm_col_entries)).astype(int)
-        )
-        # Cache for later use in remove_lagrange_multiplier
-        self.rm_indices = rm_indices
-
-        # Identify rows to be reduced
-        rm_rows = [
-            np.max(np.where(self.reduced_jacobian.indptr <= index)[0])
-            for index in rm_indices
-        ]
-
-        # Reduce data - simply remove
-        fully_reduced_jacobian_data = np.delete(self.reduced_jacobian.data, rm_indices)
-
-        # Reduce indices - remove and shift
-        fully_reduced_jacobian_indices = np.delete(
-            self.reduced_jacobian.indices, rm_indices
-        )
-        fully_reduced_jacobian_indices[
-            fully_reduced_jacobian_indices > self.constrained_cell_flat_index
-        ] -= 1
-
-        # Reduce indptr - shift and remove
-        # NOTE: As only a few entries should be removed, this is not too expensive
-        # and a for loop is used
-        fully_reduced_jacobian_indptr = self.reduced_jacobian.indptr.copy()
-        for row in rm_rows:
-            fully_reduced_jacobian_indptr[row + 1 :] -= 1
-        fully_reduced_jacobian_indptr = np.unique(fully_reduced_jacobian_indptr)
-
-        # Make sure two rows are removed and deduce shape of reduced jacobian
-        assert (
-            len(fully_reduced_jacobian_indptr) == len(self.reduced_jacobian.indptr) - 2
-        ), "Two rows should be removed."
-        fully_reduced_jacobian_shape = (
-            len(fully_reduced_jacobian_indptr) - 1,
-            len(fully_reduced_jacobian_indptr) - 1,
-        )
-
-        # Cache the fully reduced jacobian
-        self.fully_reduced_jacobian = sps.csc_matrix(
+            # Reduce flux block
+            tic = time.time()
             (
-                fully_reduced_jacobian_data,
-                fully_reduced_jacobian_indices,
-                fully_reduced_jacobian_indptr,
-            ),
-            shape=fully_reduced_jacobian_shape,
-        )
+                self.reduced_matrix,
+                self.reduced_rhs,
+                matrix_flux_inv,
+            ) = self.remove_flux(matrix, rhs)
 
-        # Cache the indices and indptr
-        self.fully_reduced_jacobian_indices = fully_reduced_jacobian_indices.copy()
-        self.fully_reduced_jacobian_indptr = fully_reduced_jacobian_indptr.copy()
-        self.fully_reduced_jacobian_shape = fully_reduced_jacobian_shape
+            if self.linear_solver == "lu-flux-reduced":
+                # LU factorization for reduced system
+                lu = sps.linalg.splu(self.reduced_matrix)
+                time_setup = time.time() - tic
 
-        # Step 4: Identify inclusions (index arrays)
+                # Solve for the potential and lagrange multiplier
+                tic = time.time()
+                solution[self.reduced_system_slice] = lu.solve(self.reduced_rhs)
 
-        # Define reduced system indices wrt full system
-        reduced_system_indices = np.concatenate(
-            [self.potential_indices, self.lagrange_multiplier_indices]
-        )
+            elif self.linear_solver == "amg-flux-reduced":
+                # AMG solver for reduced system
+                ml = pyamg.smoothed_aggregation_solver(
+                    self.reduced_matrix, **self.ml_options
+                )
+                time_setup = time.time() - tic
 
-        # Define fully reduced system indices wrt reduced system - need to remove cell
-        # (and implicitly lagrange multiplier)
-        self.fully_reduced_system_indices = np.delete(
-            np.arange(self.grid.num_cells), self.constrained_cell_flat_index
-        )
+                # Solve for the potential and lagrange multiplier
+                tic = time.time()
+                solution[self.reduced_system_slice] = ml.solve(
+                    self.reduced_rhs,
+                    tol=self.tol_amg,
+                    residuals=self.res_history_amg,
+                )
+            else:
+                # Solve pure potential problem
 
-        # Define fully reduced system indices wrt full system
-        self.fully_reduced_system_indices_full = reduced_system_indices[
-            self.fully_reduced_system_indices
-        ]
+                # NOTE: It is implicitly assumed that the lagrange multiplier is zero
+                # in the constrained cell. This is not checked here. And no update is
+                # performed.
+                if (
+                    abs(
+                        previous_solution[
+                            self.grid.num_faces + self.constrained_cell_flat_index
+                        ]
+                    )
+                    > 1e-6
+                ):
+                    raise NotImplementedError(
+                        "Implementation requires solution satisfy the constraint."
+                    )
+
+                # Reduce to pure potential system
+                (
+                    self.fully_reduced_matix,
+                    self.fully_reduced_rhs,
+                ) = self.remove_lagrange_multiplier(
+                    self.reduced_matrix,
+                    self.reduced_rhs,
+                )
+
+                if self.linear_solver == "lu-potential":
+                    # Finish LU factorization of the pure potential system
+                    lu = sps.linalg.splu(self.fully_reduced_matrix)
+                    time_setup = time.time() - tic
+
+                    # Solve the pure potential system
+                    tic = time.time()
+                    solution[self.fully_reduced_system_indices_full] = lu.solve(
+                        self.fully_reduced_rhs
+                    )
+
+                elif self.linear_solver == "amg-potential":
+                    # Finish AMG setup of th pure potential system
+                    ml = pyamg.smoothed_aggregation_solver(
+                        self.fully_reduced_jacobian, **self.ml_options
+                    )
+                    time_setup = time.time() - tic
+
+                    # Solve the pure potential system
+                    tic = time.time()
+                    solution[self.fully_reduced_system_indices_full] = ml.solve(
+                        self.fully_reduced_rhs,
+                        tol=self.tol_amg,
+                        residuals=self.res_history_amg,
+                    )
+
+            # Compute flux update
+            solution[self.flux_slice] = matrix_flux_inv.dot(
+                rhs[self.flux_slice] + self.DT.dot(solution[self.reduced_system_slice])
+            )
+            time_solve = time.time() - tic
+
+        stats = {
+            "time setup": time_setup,
+            "time solve": time_solve,
+        }
+        if self.linear_solver in ["amg-flux-reduced", "amg-potential"]:
+            stats["amg residuals"] = self.res_history_amg
+            stats["amg num iterations"] = len(self.res_history_amg)
+            stats["amg residual"] = self.res_history_amg[-1]
+
+        return solution, stats
 
     def remove_flux(self, jacobian: sps.csc_matrix, residual: np.ndarray) -> tuple:
         """Remove the flux block from the jacobian and residual.
@@ -466,23 +606,25 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         return reduced_jacobian, reduced_residual, J_inv
 
-    def remove_lagrange_multiplier(self, jacobian, residual, solution) -> tuple:
+    def remove_lagrange_multiplier(self, reduced_jacobian, reduced_residual) -> tuple:
         """Shortcut for removing the lagrange multiplier from the reduced jacobian.
 
         Args:
-
-            solution (np.ndarray): solution, TODO make function independent of solution
+            reduced_jacobian (sps.csc_matrix): reduced jacobian
+            reduced_residual (np.ndarray): reduced residual
 
         Returns:
             tuple: fully reduced jacobian, fully reduced residual
 
         """
         # Make sure the jacobian is a CSC matrix
-        assert isinstance(jacobian, sps.csc_matrix), "Jacobian should be a CSC matrix."
+        assert isinstance(
+            reduced_jacobian, sps.csc_matrix
+        ), "Jacobian should be a CSC matrix."
 
         # Effective Gauss-elimination for the particular case of the lagrange multiplier
         self.fully_reduced_jacobian.data[:] = np.delete(
-            self.reduced_jacobian.data.copy(), self.rm_indices
+            reduced_jacobian.data.copy(), self.rm_indices
         )
         # NOTE: The indices have to be restored if the LU factorization is to be used
         # FIXME omit if not required
@@ -491,11 +633,9 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Rhs is not affected by Gauss elimination as it is assumed that the residual
         # is zero in the constrained cell, and the pressure is zero there as well.
         # If not, we need to do a proper Gauss elimination on the right hand side!
-        if abs(residual[-1]) > 1e-6:
+        if abs(reduced_residual[-1]) > 1e-6:
             raise NotImplementedError("Implementation requires residual to be zero.")
-        if abs(solution[self.grid.num_faces + self.constrained_cell_flat_index]) > 1e-6:
-            raise NotImplementedError("Implementation requires solution to be zero.")
-        fully_reduced_residual = self.reduced_residual[
+        fully_reduced_residual = reduced_residual[
             self.fully_reduced_system_indices
         ].copy()
 
@@ -751,146 +891,6 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         )
         return approx_jacobian
 
-    def linearization_step(
-        self, solution: np.ndarray, rhs: np.ndarray, iter: int
-    ) -> tuple[np.ndarray, np.ndarray, list[float]]:
-        """Newton step for the linearization of the problem.
-
-        In the first iteration, the linearization is the linearization of the Darcy
-        problem.
-
-        Args:
-            solution (np.ndarray): solution
-            rhs (np.ndarray): right hand side
-            iter (int): iteration number
-
-        Returns:
-            tuple: update, residual, stats (timinings)
-
-        """
-        # Determine residual and (full) Jacobian
-        tic = time.time()
-        if iter == 0:
-            residual = rhs.copy()
-            approx_jacobian = self.darcy_init.copy()
-        else:
-            residual = self.residual(rhs, solution)
-            approx_jacobian = self.jacobian(solution)
-        toc = time.time()
-        time_setup = toc - tic
-
-        # Allocate update
-        update = np.zeros_like(solution, dtype=float)
-
-        # Setup linear solver
-        tic = time.time()
-
-        # Solve linear system for the update
-        if self.linear_solver == "lu":
-            # Solve full system
-            tic = time.time()
-            jacobian_lu = sps.linalg.splu(approx_jacobian)
-            time_setup = time.time() - tic
-            tic = time.time()
-            update = jacobian_lu.solve(residual)
-            time_solve = time.time() - tic
-        elif self.linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
-            # Solve potential-multiplier problem
-
-            # Reduce flux block
-            tic = time.time()
-            (
-                self.reduced_jacobian,
-                self.reduced_residual,
-                jacobian_flux_inv,
-            ) = self.remove_flux(approx_jacobian, residual)
-
-            if self.linear_solver == "lu-flux-reduced":
-                lu = sps.linalg.splu(self.reduced_jacobian)
-                time_setup = time.time() - tic
-                tic = time.time()
-                update[self.reduced_system_slice] = lu.solve(self.reduced_residual)
-
-            elif self.linear_solver == "amg-flux-reduced":
-                ml = pyamg.smoothed_aggregation_solver(
-                    self.reduced_jacobian, **self.ml_options
-                )
-                time_setup = time.time() - tic
-                tic = time.time()
-                update[self.reduced_system_slice] = ml.solve(
-                    self.reduced_residual,
-                    tol=self.tol_amg,
-                    residuals=self.res_history_amg,
-                )
-
-            # Compute flux update
-            update[self.flux_slice] = jacobian_flux_inv.dot(
-                residual[self.flux_slice]
-                + self.DT.dot(update[self.reduced_system_slice])
-            )
-            time_solve = time.time() - tic
-
-        elif self.linear_solver in ["lu-potential", "amg-potential"]:
-            # Solve pure potential problem
-
-            # Reduce flux block
-            tic = time.time()
-            (
-                self.reduced_jacobian,
-                self.reduced_residual,
-                jacobian_flux_inv,
-            ) = self.remove_flux(approx_jacobian, residual)
-
-            # Reduce to pure pressure system
-            (
-                self.fully_reduced_jacobian,
-                self.fully_reduced_residual,
-            ) = self.remove_lagrange_multiplier(
-                self.reduced_jacobian, self.reduced_residual, solution
-            )
-
-            if self.linear_solver == "lu-potential":
-                lu = sps.linalg.splu(self.fully_reduced_jacobian)
-                time_setup = time.time() - tic
-                tic = time.time()
-                update[self.fully_reduced_system_indices_full] = lu.solve(
-                    self.fully_reduced_residual
-                )
-
-            elif self.linear_solver == "amg-potential":
-                ml = pyamg.smoothed_aggregation_solver(
-                    self.fully_reduced_jacobian, **self.ml_options
-                )
-                time_setup = time.time() - tic
-                tic = time.time()
-                update[self.fully_reduced_system_indices_full] = ml.solve(
-                    self.fully_reduced_residual,
-                    tol=self.tol_amg,
-                    residuals=self.res_history_amg,
-                )
-
-            # Compute flux update
-            update[self.flux_slice] = jacobian_flux_inv.dot(
-                residual[self.flux_slice]
-                + self.DT.dot(update[self.reduced_system_slice])
-            )
-            time_solve = time.time() - tic
-
-        # Diagnostics
-        if self.linear_solver in ["amg-flux-reduced", "amg-potential"]:
-            if self.options.get("linear_solver_verbosity", False):
-                num_amg_iter = len(self.res_history_amg)
-                res_amg = self.res_history_amg[-1]
-                print(ml)
-                print(
-                    f"#AMG iterations: {num_amg_iter}; Residual after AMG step: {res_amg}"
-                )
-
-        # Collect stats
-        stats = [time_setup, time_solve]
-
-        return update, residual, stats
-
     def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
         """Solve the Beckman problem using Newton's method.
 
@@ -907,7 +907,6 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         # Setup
         tic = time.time()
-        self.setup_infrastructure()
 
         # Solver parameters
         num_iter = self.options.get("num_iter", 100)
@@ -958,10 +957,33 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             old_flux = solution_i[self.flux_slice]
             old_distance = self.l1_dissipation(old_flux, "cell_arithmetic")
 
-            # Newton step
-            update_i, residual_i, stats_i = self.linearization_step(
-                solution_i, rhs, iter
-            )
+            # Assemble linear problem in Newton step
+            tic = time.time()
+            if iter == 0:
+                # Determine residual and (full) Jacobian of a linear Darcy problem
+                residual_i = rhs.copy()
+                approx_jacobian = self.darcy_init.copy()
+            else:
+                # Determine residual and (full) Jacobian
+                residual_i = self.residual(rhs, solution_i)
+                approx_jacobian = self.jacobian(solution_i)
+            toc = time.time()
+            time_assemble = toc - tic
+
+            # Solve linear system for the update
+            update_i, stats_i = self.linear_solve(approx_jacobian, residual_i, solution_i)
+
+            # Diagnostics
+            # TODO move?
+            if self.linear_solver in ["amg-flux-reduced", "amg-potential"]:
+                if self.options.get("linear_solver_verbosity", False):
+                    # print(ml) # TODO rm?
+                    print(
+                        f"""#AMG iterations: {stats_i["amg num iterations"]}; """
+                        f"""Residual after AMG step: {stats_i["amg residual"]}"""
+                    )
+
+            # Update the solution with the full Netwon step
             solution_i += update_i
 
             # Apply Anderson acceleration to flux contribution (the only nonlinear part).
@@ -976,7 +998,10 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 )
             toc = time.time()
             time_anderson = toc - tic
-            stats_i.append(time_anderson)
+
+            # Update stats
+            stats_i["time assemble"] = time_assemble
+            stats_i["time acceleration"] = time_anderson
 
             # Update distance
             new_flux = solution_i[self.flux_slice]
@@ -1133,9 +1158,6 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         tol_increment = self.options.get("tol_increment", 1e-6)
         tol_distance = self.options.get("tol_distance", 1e-6)
 
-        # Define linear solver to be used to invert the Darcy systems
-        self.setup_infrastructure()
-
         # Relaxation parameter
         self.L = self.options.get("L", 1.0)
         rhs = np.concatenate(
@@ -1241,7 +1263,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 self.fully_reduced_jacobian,
                 self.fully_reduced_residual,
             ) = self.remove_lagrange_multiplier(
-                self.reduced_jacobian, self.reduced_residual, solution_i
+                self.reduced_jacobian, self.reduced_residual
             )
 
             if self.linear_solver == "lu-potential":
@@ -1463,7 +1485,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         self.fully_reduced_jacobian,
                         self.fully_reduced_residual,
                     ) = self.remove_lagrange_multiplier(
-                        self.reduced_jacobian, self.reduced_residual, solution_i
+                        self.reduced_jacobian, self.reduced_residual
                     )
 
                     if self.linear_solver == "lu-potential":
