@@ -70,9 +70,10 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.regularization = self.options.get("regularization", 0.0)
         self.verbose = self.options.get("verbose", False)
 
-        # Setup of finite volume discretization and acceleration
+        # Setup of method
         self._setup_dof_management()
         self._setup_discretization()
+        self._setup_linear_solver()
         self._setup_acceleration()
 
     def _setup_dof_management(self) -> None:
@@ -188,6 +189,43 @@ class VariationalWassersteinDistance(darsia.EMD):
             format="csc",
         )
         """sps.csc_matrix: initial Darcy operator"""
+
+    def _setup_linear_solver(self) -> None:
+        self.linear_solver = self.options.get("linear_solver", "lu")
+        assert self.linear_solver in [
+            "lu",
+            "lu-flux-reduced",
+            "amg-flux-reduced",
+            "lu-potential",
+            "amg-potential",
+        ], f"Linear solver {self.linear_solver} not supported."
+
+        if self.linear_solver in ["amg-flux-reduced", "amg-potential"]:
+            # TODO add possibility for user control
+            self.ml_options = {
+                # B=X.reshape(
+                #    n * n, 1
+                # ),  # the representation of the near null space (this is a poor choice)
+                # BH=None,  # the representation of the left near null space
+                "symmetry": "hermitian",  # indicate that the matrix is Hermitian
+                # strength="evolution",  # change the strength of connection
+                "aggregate": "standard",  # use a standard aggregation method
+                "smooth": (
+                    "jacobi",
+                    {"omega": 4.0 / 3.0, "degree": 2},
+                ),  # prolongation smoothing
+                "presmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
+                "postsmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
+                # improve_candidates=[
+                #    ("block_gauss_seidel", {"sweep": "symmetric", "iterations": 4}),
+                #    None,
+                # ],
+                "max_levels": 4,  # maximum number of levels
+                "max_coarse": 1000,  # maximum number on a coarse level
+                # keep=False,  # keep extra operators around in the hierarchy (memory)
+            }
+            self.tol_amg = self.options.get("linear_solver_tol", 1e-6)
+            self.res_history_amg = []
 
     def _setup_acceleration(self) -> None:
         """Setup of acceleration methods."""
@@ -734,44 +772,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         # Setup linear solver
         tic = time.time()
-        linear_solver = self.options.get("linear_solver", "lu")
-        assert linear_solver in [
-            "lu",
-            "lu-flux-reduced",
-            "amg-flux-reduced",
-            "lu-potential",
-            "amg-potential",
-        ], f"Linear solver {linear_solver} not supported."
-
-        if linear_solver in ["amg-flux-reduced", "amg-potential"]:
-            # TODO add possibility for user control
-            ml_options = {
-                # B=X.reshape(
-                #    n * n, 1
-                # ),  # the representation of the near null space (this is a poor choice)
-                # BH=None,  # the representation of the left near null space
-                "symmetry": "hermitian",  # indicate that the matrix is Hermitian
-                # strength="evolution",  # change the strength of connection
-                "aggregate": "standard",  # use a standard aggregation method
-                "smooth": (
-                    "jacobi",
-                    {"omega": 4.0 / 3.0, "degree": 2},
-                ),  # prolongation smoothing
-                "presmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
-                "postsmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
-                # improve_candidates=[
-                #    ("block_gauss_seidel", {"sweep": "symmetric", "iterations": 4}),
-                #    None,
-                # ],
-                "max_levels": 4,  # maximum number of levels
-                "max_coarse": 1000,  # maximum number on a coarse level
-                # keep=False,  # keep extra operators around in the hierarchy (memory)
-            }
-            tol_amg = self.options.get("linear_solver_tol", 1e-6)
-            res_history_amg = []
 
         # Solve linear system for the update
-        if linear_solver == "lu":
+        if self.linear_solver == "lu":
             # Solve full system
             tic = time.time()
             jacobian_lu = sps.linalg.splu(approx_jacobian)
@@ -779,7 +782,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             tic = time.time()
             update = jacobian_lu.solve(residual)
             time_solve = time.time() - tic
-        elif linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
+        elif self.linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
             # Solve potential-multiplier problem
 
             # Reduce flux block
@@ -790,22 +793,22 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 jacobian_flux_inv,
             ) = self.remove_flux(approx_jacobian, residual)
 
-            if linear_solver == "lu-flux-reduced":
+            if self.linear_solver == "lu-flux-reduced":
                 lu = sps.linalg.splu(self.reduced_jacobian)
                 time_setup = time.time() - tic
                 tic = time.time()
                 update[self.reduced_system_slice] = lu.solve(self.reduced_residual)
 
-            elif linear_solver == "amg-flux-reduced":
+            elif self.linear_solver == "amg-flux-reduced":
                 ml = pyamg.smoothed_aggregation_solver(
-                    self.reduced_jacobian, **ml_options
+                    self.reduced_jacobian, **self.ml_options
                 )
                 time_setup = time.time() - tic
                 tic = time.time()
                 update[self.reduced_system_slice] = ml.solve(
                     self.reduced_residual,
-                    tol=tol_amg,
-                    residuals=res_history_amg,
+                    tol=self.tol_amg,
+                    residuals=self.res_history_amg,
                 )
 
             # Compute flux update
@@ -815,7 +818,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             )
             time_solve = time.time() - tic
 
-        elif linear_solver in ["lu-potential", "amg-potential"]:
+        elif self.linear_solver in ["lu-potential", "amg-potential"]:
             # Solve pure potential problem
 
             # Reduce flux block
@@ -834,7 +837,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 self.reduced_jacobian, self.reduced_residual, solution
             )
 
-            if linear_solver == "lu-potential":
+            if self.linear_solver == "lu-potential":
                 lu = sps.linalg.splu(self.fully_reduced_jacobian)
                 time_setup = time.time() - tic
                 tic = time.time()
@@ -842,16 +845,16 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                     self.fully_reduced_residual
                 )
 
-            elif linear_solver == "amg-potential":
+            elif self.linear_solver == "amg-potential":
                 ml = pyamg.smoothed_aggregation_solver(
-                    self.fully_reduced_jacobian, **ml_options
+                    self.fully_reduced_jacobian, **self.ml_options
                 )
                 time_setup = time.time() - tic
                 tic = time.time()
                 update[self.fully_reduced_system_indices_full] = ml.solve(
                     self.fully_reduced_residual,
-                    tol=tol_amg,
-                    residuals=res_history_amg,
+                    tol=self.tol_amg,
+                    residuals=self.res_history_amg,
                 )
 
             # Compute flux update
@@ -862,10 +865,10 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             time_solve = time.time() - tic
 
         # Diagnostics
-        if linear_solver in ["amg-flux-reduced", "amg-potential"]:
+        if self.linear_solver in ["amg-flux-reduced", "amg-potential"]:
             if self.options.get("linear_solver_verbosity", False):
-                num_amg_iter = len(res_history_amg)
-                res_amg = res_history_amg[-1]
+                num_amg_iter = len(self.res_history_amg)
+                res_amg = self.res_history_amg[-1]
                 print(ml)
                 print(
                     f"#AMG iterations: {num_amg_iter}; Residual after AMG step: {res_amg}"
@@ -1123,41 +1126,6 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         # Define linear solver to be used to invert the Darcy systems
         self.setup_infrastructure()
-        linear_solver = self.options.get("linear_solver", "lu")
-        assert linear_solver in [
-            "lu",
-            "lu-flux-reduced",
-            "amg-flux-reduced",
-            "lu-potential",
-            "amg-potential",
-        ], f"Linear solver {linear_solver} not supported."
-
-        if linear_solver in ["amg-flux-reduced", "amg-potential"]:
-            # TODO add possibility for user control
-            ml_options = {
-                # B=X.reshape(
-                #    n * n, 1
-                # ),  # the representation of the near null space (this is a poor choice)
-                # BH=None,  # the representation of the left near null space
-                "symmetry": "hermitian",  # indicate that the matrix is Hermitian
-                # strength="evolution",  # change the strength of connection
-                "aggregate": "standard",  # use a standard aggregation method
-                "smooth": (
-                    "jacobi",
-                    {"omega": 4.0 / 3.0, "degree": 2},
-                ),  # prolongation smoothing
-                "presmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
-                "postsmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
-                # improve_candidates=[
-                #    ("block_gauss_seidel", {"sweep": "symmetric", "iterations": 4}),
-                #    None,
-                # ],
-                "max_levels": 4,  # maximum number of levels
-                "max_coarse": 1000,  # maximum number on a coarse level
-                # keep=False,  # keep extra operators around in the hierarchy (memory)
-            }
-            tol_amg = self.options.get("linear_solver_tol", 1e-6)
-            res_history_amg = []
 
         # Relaxation parameter
         self.L = self.options.get("L", 1.0)
@@ -1212,11 +1180,11 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             ],
             format="csc",
         )
-        if linear_solver == "lu":
+        if self.linear_solver == "lu":
             self.l_scheme_mixed_darcy_solver = sps.linalg.splu(l_scheme_mixed_darcy)
             solution_i = self.l_scheme_mixed_darcy_solver.solve(rhs)
 
-        elif linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
+        elif self.linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
             # Solve potential-multiplier problem
 
             # Reduce flux block
@@ -1226,21 +1194,21 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 jacobian_flux_inv,
             ) = self.remove_flux(l_scheme_mixed_darcy, rhs)
 
-            if linear_solver == "lu-flux-reduced":
+            if self.linear_solver == "lu-flux-reduced":
                 self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
                     self.reduced_jacobian
                 )
 
-            elif linear_solver == "amg-flux-reduced":
+            elif self.linear_solver == "amg-flux-reduced":
                 self.l_scheme_mixed_darcy_solver = pyamg.smoothed_aggregation_solver(
-                    self.reduced_jacobian, **ml_options
+                    self.reduced_jacobian, **self.ml_options
                 )
                 solution_i[
                     self.reduced_system_slice
                 ] = self.l_scheme_mixed_darcy_solver.solve(
                     self.reduced_residual,
-                    tol=tol_amg,
-                    residuals=res_history_amg,
+                    tol=self.tol_amg,
+                    residuals=self.res_history_amg,
                 )
 
             # Compute flux update
@@ -1249,7 +1217,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 + self.DT.dot(solution_i[self.reduced_system_slice])
             )
 
-        elif linear_solver in ["lu-potential", "amg-potential"]:
+        elif self.linear_solver in ["lu-potential", "amg-potential"]:
             # Solve pure potential problem
 
             # Reduce flux block
@@ -1267,7 +1235,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 self.reduced_jacobian, self.reduced_residual, solution_i
             )
 
-            if linear_solver == "lu-potential":
+            if self.linear_solver == "lu-potential":
                 self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
                     self.fully_reduced_jacobian
                 )
@@ -1275,16 +1243,16 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     self.fully_reduced_system_indices_full
                 ] = self.l_scheme_mixed_darcy_solver.solve(self.fully_reduced_residual)
 
-            elif linear_solver == "amg-potential":
+            elif self.linear_solver == "amg-potential":
                 self.l_scheme_mixed_darcy_solver = pyamg.smoothed_aggregation_solver(
-                    self.fully_reduced_jacobian, **ml_options
+                    self.fully_reduced_jacobian, **self.ml_options
                 )
                 solution_i[
                     self.fully_reduced_system_indices_full
                 ] = self.l_scheme_mixed_darcy_solver.solve(
                     self.fully_reduced_residual,
-                    tol=tol_amg,
-                    residuals=res_history_amg,
+                    tol=self.tol_amg,
+                    residuals=self.res_history_amg,
                 )
 
             # Compute flux update
@@ -1294,7 +1262,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             )
 
         else:
-            raise NotImplementedError(f"Linear solver {linear_solver} not supported")
+            raise NotImplementedError(
+                f"Linear solver {self.linear_solver} not supported"
+            )
 
         # Extract intial values
         old_flux = solution_i[self.flux_slice]
@@ -1420,14 +1390,14 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 )
                 solution_i = np.zeros_like(rhs_i, dtype=float)
 
-                if linear_solver == "lu":
+                if self.linear_solver == "lu":
                     if update_solver:
                         self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
                             l_scheme_mixed_darcy
                         )
                     solution_i = self.l_scheme_mixed_darcy_solver.solve(rhs_i)
 
-                elif linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
+                elif self.linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
                     # Solve potential-multiplier problem
 
                     # Reduce flux block
@@ -1437,7 +1407,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         jacobian_flux_inv,
                     ) = self.remove_flux(l_scheme_mixed_darcy, rhs_i)
 
-                    if linear_solver == "lu-flux-reduced":
+                    if self.linear_solver == "lu-flux-reduced":
                         if update_solver:
                             self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
                                 self.reduced_jacobian
@@ -1448,19 +1418,19 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                             self.reduced_residual
                         )
 
-                    elif linear_solver == "amg-flux-reduced":
+                    elif self.linear_solver == "amg-flux-reduced":
                         if update_solver:
                             self.l_scheme_mixed_darcy_solver = (
                                 pyamg.smoothed_aggregation_solver(
-                                    self.reduced_jacobian, **ml_options
+                                    self.reduced_jacobian, **self.ml_options
                                 )
                             )
                         solution_i[
                             self.reduced_system_slice
                         ] = self.l_scheme_mixed_darcy_solver.solve(
                             self.reduced_residual,
-                            tol=tol_amg,
-                            residuals=res_history_amg,
+                            tol=self.tol_amg,
+                            residuals=self.res_history_amg,
                         )
 
                     # Compute flux update
@@ -1469,7 +1439,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         + self.DT.dot(solution_i[self.reduced_system_slice])
                     )
 
-                elif linear_solver in ["lu-potential", "amg-potential"]:
+                elif self.linear_solver in ["lu-potential", "amg-potential"]:
                     # Solve pure potential problem
 
                     # Reduce flux block
@@ -1487,7 +1457,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         self.reduced_jacobian, self.reduced_residual, solution_i
                     )
 
-                    if linear_solver == "lu-potential":
+                    if self.linear_solver == "lu-potential":
                         if update_solver:
                             self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
                                 self.fully_reduced_jacobian
@@ -1498,11 +1468,11 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                             self.fully_reduced_residual
                         )
 
-                    elif linear_solver == "amg-potential":
+                    elif self.linear_solver == "amg-potential":
                         if update_solver:
                             self.l_scheme_mixed_darcy_solver = (
                                 pyamg.smoothed_aggregation_solver(
-                                    self.fully_reduced_jacobian, **ml_options
+                                    self.fully_reduced_jacobian, **self.ml_options
                                 )
                             )
                         # time_setup = time.time() - tic
@@ -1511,8 +1481,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                             self.fully_reduced_system_indices_full
                         ] = self.l_scheme_mixed_darcy_solver.solve(
                             self.fully_reduced_residual,
-                            tol=tol_amg,
-                            residuals=res_history_amg,
+                            tol=self.tol_amg,
+                            residuals=self.res_history_amg,
                         )
 
                     # Compute flux update
@@ -1522,14 +1492,14 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     )
                 else:
                     raise NotImplementedError(
-                        f"Linear solver {linear_solver} not supported"
+                        f"""Linear solver {self.linear_solver} not supported."""
                     )
 
                 # Diagnostics
-                if linear_solver in ["amg-flux-reduced", "amg-potential"]:
+                if self.linear_solver in ["amg-flux-reduced", "amg-potential"]:
                     if self.options.get("linear_solver_verbosity", False):
-                        num_amg_iter = len(res_history_amg)
-                        res_amg = res_history_amg[-1]
+                        num_amg_iter = len(self.res_history_amg)
+                        res_amg = self.res_history_amg[-1]
                         print(self.l_scheme_mixed_darcy_solver)
                         print(
                             f"""#AMG iterations: {num_amg_iter}; Residual after """
