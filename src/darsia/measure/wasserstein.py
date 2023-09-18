@@ -683,7 +683,19 @@ class VariationalWassersteinDistance(darsia.EMD):
 
 
 class WassersteinDistanceNewton(VariationalWassersteinDistance):
-    """Class to determine the L1 EMD/Wasserstein distance solved with Newton's method."""
+    """Class to determine the L1 EMD/Wasserstein distance solved with Newton's method.
+
+    Here, self.L has the interpretation of a lower cut-off value in the linearization
+    only. With such relaxation, the BEckman problem itself is not regularized, but
+    instead the solution trajectory is merely affected.
+
+    """
+
+    def __init__(self, grid, options) -> None:
+        super().__init__(grid, options)
+
+        self.L = self.options.get("L", 1.0)
+        """float: relaxation parameter, lower cut-off for the mobility"""
 
     def residual(self, rhs: np.ndarray, solution: np.ndarray) -> np.ndarray:
         """Compute the residual of the solution.
@@ -892,9 +904,6 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # TODO rm: Observation: AA can lead to less stagnation, more accurate results,
         # and therefore better solutions to mu and u. Higher depth is better, but more
         # expensive.
-
-        self.L = self.options.get("L", 1.0)
-        """float: relaxation parameter, lower cut-off for the mobility"""
 
         # Setup
         tic = time.time()
