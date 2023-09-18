@@ -62,13 +62,19 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
         # Cache geometrical infos
         self.grid = grid
-        self.voxel_size = grid.voxel_size
+        """darsia.Grid: grid"""
 
-        assert self.grid.dim == 2, "Currently only 2D images are supported."
+        self.voxel_size = grid.voxel_size
+        """np.ndarray: voxel size"""
 
         self.options = options
+        """dict: options for the solver"""
+
         self.regularization = self.options.get("regularization", 0.0)
+        """float: regularization parameter"""
+
         self.verbose = self.options.get("verbose", False)
+        """bool: verbosity"""
 
         # Setup of method
         self._setup_dof_management()
@@ -142,6 +148,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.constrained_cell_flat_index = np.ravel_multi_index(
             center_cell, self.grid.shape
         )
+        """int: flat index of the cell where the potential is constrained to zero"""
+
         num_potential_dofs = self.grid.num_cells
         self.potential_constraint = sps.csc_matrix(
             (
@@ -199,6 +207,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             "lu-potential",
             "amg-potential",
         ], f"Linear solver {self.linear_solver_type} not supported."
+        """str: type of linear solver"""
 
         if self.linear_solver_type in ["amg-flux-reduced", "amg-potential"]:
             # TODO add possibility for user control
@@ -224,12 +233,18 @@ class VariationalWassersteinDistance(darsia.EMD):
                 "max_coarse": 1000,  # maximum number on a coarse level
                 # keep=False,  # keep extra operators around in the hierarchy (memory)
             }
+            """dict: options for the AMG solver"""
+
             self.tol_amg = self.options.get("linear_solver_tol", 1e-6)
+            """float: tolerance for the AMG solver"""
+
             self.res_history_amg = []
+            """list: history of residuals for the AMG solver"""
 
         # Setup inrastructure for Schur complement reduction
         if self.linear_solver_type in ["lu-flux-reduced", "amg-flux-reduced"]:
             self.setup_one_level_schur_reduction()
+
         elif self.linear_solver_type in ["lu-potential", "amg-potential"]:
             self.setup_two_level_schur_reduction()
 
@@ -241,7 +256,6 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
         # Step 1: Compute the jacobian of the Darcy problem
 
-        # The Darcy problem is sufficient
         jacobian = self.darcy_init.copy()
 
         # Step 2: Remove flux blocks through Schur complement approach
@@ -253,16 +267,21 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Cache divergence matrix
         self.D = D.copy()
+        """sps.csc_matrix: divergence matrix"""
+
         self.DT = self.D.T.copy()
+        """sps.csc_matrix: transposed divergence matrix"""
 
         # Cache (constant) jacobian subblock
         self.jacobian_subblock = jacobian[
             self.reduced_system_slice, self.reduced_system_slice
         ].copy()
+        """sps.csc_matrix: constant jacobian subblock of the reduced system"""
 
         # Add Schur complement - use this to identify sparsity structure
         # Cache the reduced jacobian
         self.reduced_jacobian = self.jacobian_subblock + schur_complement
+        """sps.csc_matrix: reduced jacobian incl. Schur complement"""
 
     def setup_two_level_schur_reduction(self) -> None:
         """Additional setup of infrastructure for fully reduced systems."""
@@ -288,6 +307,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         )
         # Cache for later use in remove_lagrange_multiplier
         self.rm_indices = rm_indices
+        """np.ndarray: indices to be removed in the reduced system"""
 
         # Identify rows to be reduced
         rm_rows = [
@@ -332,11 +352,17 @@ class VariationalWassersteinDistance(darsia.EMD):
             ),
             shape=fully_reduced_jacobian_shape,
         )
+        """sps.csc_matrix: fully reduced jacobian"""
 
         # Cache the indices and indptr
         self.fully_reduced_jacobian_indices = fully_reduced_jacobian_indices.copy()
+        """np.ndarray: indices of the fully reduced jacobian"""
+
         self.fully_reduced_jacobian_indptr = fully_reduced_jacobian_indptr.copy()
+        """np.ndarray: indptr of the fully reduced jacobian"""
+
         self.fully_reduced_jacobian_shape = fully_reduced_jacobian_shape
+        """tuple: shape of the fully reduced jacobian"""
 
         # Step 4: Identify inclusions (index arrays)
 
@@ -350,11 +376,13 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.fully_reduced_system_indices = np.delete(
             np.arange(self.grid.num_cells), self.constrained_cell_flat_index
         )
+        """np.ndarray: indices of the fully reduced system in terms of reduced system"""
 
         # Define fully reduced system indices wrt full system
         self.fully_reduced_system_indices_full = reduced_system_indices[
             self.fully_reduced_system_indices
         ]
+        """np.ndarray: indices of the fully reduced system in terms of full system"""
 
     def _setup_acceleration(self) -> None:
         """Setup of acceleration methods."""
@@ -746,7 +774,14 @@ class VariationalWassersteinDistance(darsia.EMD):
             potential (np.ndarray): potential
             transport_density (np.ndarray): transport density
 
+        Raises:
+            NotImplementedError: plotting only implemented for 2D
+
         """
+
+        if self.grid.dim != 2:
+            raise NotImplementedError("Plotting only implemented for 2D.")
+
         # Fetch options
         plot_options = self.options.get("plot_options", {})
         name = plot_options.get("name", None)
@@ -1007,7 +1042,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 if self.options.get("linear_solver_verbosity", False):
                     # print(ml) # TODO rm?
                     print(
-                        f"""#AMG iterations: {stats_i["amg num iterations"]}; """
+                        f"""AMG iterations: {stats_i["amg num iterations"]}; """
                         f"""Residual after AMG step: {stats_i["amg residual"]}"""
                     )
 
