@@ -191,16 +191,16 @@ class VariationalWassersteinDistance(darsia.EMD):
         """sps.csc_matrix: initial Darcy operator"""
 
     def _setup_linear_solver(self) -> None:
-        self.linear_solver = self.options.get("linear_solver", "lu")
-        assert self.linear_solver in [
+        self.linear_solver_type = self.options.get("linear_solver", "lu")
+        assert self.linear_solver_type in [
             "lu",
             "lu-flux-reduced",
             "amg-flux-reduced",
             "lu-potential",
             "amg-potential",
-        ], f"Linear solver {self.linear_solver} not supported."
+        ], f"Linear solver {self.linear_solver_type} not supported."
 
-        if self.linear_solver in ["amg-flux-reduced", "amg-potential"]:
+        if self.linear_solver_type in ["amg-flux-reduced", "amg-potential"]:
             # TODO add possibility for user control
             self.ml_options = {
                 # B=X.reshape(
@@ -228,9 +228,9 @@ class VariationalWassersteinDistance(darsia.EMD):
             self.res_history_amg = []
 
         # Setup inrastructure for Schur complement reduction
-        if self.linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
+        if self.linear_solver_type in ["lu-flux-reduced", "amg-flux-reduced"]:
             self.setup_one_level_schur_reduction()
-        elif self.linear_solver in ["lu-potential", "amg-potential"]:
+        elif self.linear_solver_type in ["lu-potential", "amg-potential"]:
             self.setup_two_level_schur_reduction()
 
     def setup_one_level_schur_reduction(self) -> None:
@@ -459,7 +459,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         rhs: np.ndarray,
         previous_solution: Optional[np.ndarray] = None,
     ):
-        if self.linear_solver == "lu":
+        if self.linear_solver_type == "lu":
             # Setup LU factorization for the full system
             tic = time.time()
             lu = sps.linalg.splu(matrix)
@@ -470,7 +470,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             solution = lu.solve(rhs)
             time_solve = time.time() - tic
 
-        elif self.linear_solver in [
+        elif self.linear_solver_type in [
             "lu-flux-reduced",
             "amg-flux-reduced",
             "lu-potential",
@@ -489,7 +489,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 matrix_flux_inv,
             ) = self.remove_flux(matrix, rhs)
 
-            if self.linear_solver == "lu-flux-reduced":
+            if self.linear_solver_type == "lu-flux-reduced":
                 # LU factorization for reduced system
                 lu = sps.linalg.splu(self.reduced_matrix)
                 time_setup = time.time() - tic
@@ -498,7 +498,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 tic = time.time()
                 solution[self.reduced_system_slice] = lu.solve(self.reduced_rhs)
 
-            elif self.linear_solver == "amg-flux-reduced":
+            elif self.linear_solver_type == "amg-flux-reduced":
                 # AMG solver for reduced system
                 ml = pyamg.smoothed_aggregation_solver(
                     self.reduced_matrix, **self.ml_options
@@ -539,7 +539,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                     self.reduced_rhs,
                 )
 
-                if self.linear_solver == "lu-potential":
+                if self.linear_solver_type == "lu-potential":
                     # Finish LU factorization of the pure potential system
                     lu = sps.linalg.splu(self.fully_reduced_matrix)
                     time_setup = time.time() - tic
@@ -550,7 +550,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                         self.fully_reduced_rhs
                     )
 
-                elif self.linear_solver == "amg-potential":
+                elif self.linear_solver_type == "amg-potential":
                     # Finish AMG setup of th pure potential system
                     ml = pyamg.smoothed_aggregation_solver(
                         self.fully_reduced_jacobian, **self.ml_options
@@ -575,7 +575,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             "time setup": time_setup,
             "time solve": time_solve,
         }
-        if self.linear_solver in ["amg-flux-reduced", "amg-potential"]:
+        if self.linear_solver_type in ["amg-flux-reduced", "amg-potential"]:
             stats["amg residuals"] = self.res_history_amg
             stats["amg num iterations"] = len(self.res_history_amg)
             stats["amg residual"] = self.res_history_amg[-1]
@@ -971,11 +971,13 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             time_assemble = toc - tic
 
             # Solve linear system for the update
-            update_i, stats_i = self.linear_solve(approx_jacobian, residual_i, solution_i)
+            update_i, stats_i = self.linear_solve(
+                approx_jacobian, residual_i, solution_i
+            )
 
             # Diagnostics
             # TODO move?
-            if self.linear_solver in ["amg-flux-reduced", "amg-potential"]:
+            if self.linear_solver_type in ["amg-flux-reduced", "amg-potential"]:
                 if self.options.get("linear_solver_verbosity", False):
                     # print(ml) # TODO rm?
                     print(
@@ -1211,11 +1213,11 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             ],
             format="csc",
         )
-        if self.linear_solver == "lu":
+        if self.linear_solver_type == "lu":
             self.l_scheme_mixed_darcy_solver = sps.linalg.splu(l_scheme_mixed_darcy)
             solution_i = self.l_scheme_mixed_darcy_solver.solve(rhs)
 
-        elif self.linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
+        elif self.linear_solver_type in ["lu-flux-reduced", "amg-flux-reduced"]:
             # Solve potential-multiplier problem
 
             # Reduce flux block
@@ -1225,12 +1227,12 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 jacobian_flux_inv,
             ) = self.remove_flux(l_scheme_mixed_darcy, rhs)
 
-            if self.linear_solver == "lu-flux-reduced":
+            if self.linear_solver_type == "lu-flux-reduced":
                 self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
                     self.reduced_jacobian
                 )
 
-            elif self.linear_solver == "amg-flux-reduced":
+            elif self.linear_solver_type == "amg-flux-reduced":
                 self.l_scheme_mixed_darcy_solver = pyamg.smoothed_aggregation_solver(
                     self.reduced_jacobian, **self.ml_options
                 )
@@ -1248,7 +1250,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 + self.DT.dot(solution_i[self.reduced_system_slice])
             )
 
-        elif self.linear_solver in ["lu-potential", "amg-potential"]:
+        elif self.linear_solver_type in ["lu-potential", "amg-potential"]:
             # Solve pure potential problem
 
             # Reduce flux block
@@ -1266,7 +1268,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 self.reduced_jacobian, self.reduced_residual
             )
 
-            if self.linear_solver == "lu-potential":
+            if self.linear_solver_type == "lu-potential":
                 self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
                     self.fully_reduced_jacobian
                 )
@@ -1274,7 +1276,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     self.fully_reduced_system_indices_full
                 ] = self.l_scheme_mixed_darcy_solver.solve(self.fully_reduced_residual)
 
-            elif self.linear_solver == "amg-potential":
+            elif self.linear_solver_type == "amg-potential":
                 self.l_scheme_mixed_darcy_solver = pyamg.smoothed_aggregation_solver(
                     self.fully_reduced_jacobian, **self.ml_options
                 )
@@ -1294,7 +1296,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         else:
             raise NotImplementedError(
-                f"Linear solver {self.linear_solver} not supported"
+                f"Linear solver {self.linear_solver_type} not supported"
             )
 
         # Extract intial values
@@ -1421,14 +1423,14 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 )
                 solution_i = np.zeros_like(rhs_i, dtype=float)
 
-                if self.linear_solver == "lu":
+                if self.linear_solver_type == "lu":
                     if update_solver:
                         self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
                             l_scheme_mixed_darcy
                         )
                     solution_i = self.l_scheme_mixed_darcy_solver.solve(rhs_i)
 
-                elif self.linear_solver in ["lu-flux-reduced", "amg-flux-reduced"]:
+                elif self.linear_solver_type in ["lu-flux-reduced", "amg-flux-reduced"]:
                     # Solve potential-multiplier problem
 
                     # Reduce flux block
@@ -1438,7 +1440,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         jacobian_flux_inv,
                     ) = self.remove_flux(l_scheme_mixed_darcy, rhs_i)
 
-                    if self.linear_solver == "lu-flux-reduced":
+                    if self.linear_solver_type == "lu-flux-reduced":
                         if update_solver:
                             self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
                                 self.reduced_jacobian
@@ -1449,7 +1451,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                             self.reduced_residual
                         )
 
-                    elif self.linear_solver == "amg-flux-reduced":
+                    elif self.linear_solver_type == "amg-flux-reduced":
                         if update_solver:
                             self.l_scheme_mixed_darcy_solver = (
                                 pyamg.smoothed_aggregation_solver(
@@ -1470,7 +1472,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         + self.DT.dot(solution_i[self.reduced_system_slice])
                     )
 
-                elif self.linear_solver in ["lu-potential", "amg-potential"]:
+                elif self.linear_solver_type in ["lu-potential", "amg-potential"]:
                     # Solve pure potential problem
 
                     # Reduce flux block
@@ -1488,7 +1490,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         self.reduced_jacobian, self.reduced_residual
                     )
 
-                    if self.linear_solver == "lu-potential":
+                    if self.linear_solver_type == "lu-potential":
                         if update_solver:
                             self.l_scheme_mixed_darcy_solver = sps.linalg.splu(
                                 self.fully_reduced_jacobian
@@ -1499,7 +1501,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                             self.fully_reduced_residual
                         )
 
-                    elif self.linear_solver == "amg-potential":
+                    elif self.linear_solver_type == "amg-potential":
                         if update_solver:
                             self.l_scheme_mixed_darcy_solver = (
                                 pyamg.smoothed_aggregation_solver(
@@ -1523,11 +1525,11 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     )
                 else:
                     raise NotImplementedError(
-                        f"""Linear solver {self.linear_solver} not supported."""
+                        f"""Linear solver {self.linear_solver_type} not supported."""
                     )
 
                 # Diagnostics
-                if self.linear_solver in ["amg-flux-reduced", "amg-potential"]:
+                if self.linear_solver_type in ["amg-flux-reduced", "amg-potential"]:
                     if self.options.get("linear_solver_verbosity", False):
                         num_amg_iter = len(self.res_history_amg)
                         res_amg = self.res_history_amg[-1]
