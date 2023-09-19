@@ -275,23 +275,32 @@ def face_to_cell(grid: darsia.Grid, flat_flux: np.ndarray) -> np.ndarray:
         np.ndarray: cell-based vectorial fluxes
 
     """
-    # Reshape fluxes - use duality of faces and normals
-    horizontal_fluxes = flat_flux[: grid.num_faces_axis[0]].reshape(
-        grid.vertical_faces_shape
-    )
-    vertical_fluxes = flat_flux[grid.num_faces_axis[0] :].reshape(
-        grid.horizontal_faces_shape
-    )
-
-    # Determine a cell-based Raviart-Thomas reconstruction of the fluxes, projected
-    # onto piecewise constant functions.
+    # TODO revert order of indices
     cell_flux = np.zeros((*grid.shape, grid.dim), dtype=float)
-    # Horizontal fluxes
-    cell_flux[:, :-1, 0] += 0.5 * horizontal_fluxes
-    cell_flux[:, 1:, 0] += 0.5 * horizontal_fluxes
-    # Vertical fluxes
-    cell_flux[:-1, :, 1] += 0.5 * vertical_fluxes
-    cell_flux[1:, :, 1] += 0.5 * vertical_fluxes
+
+    if grid.dim >= 1:
+        cell_flux[:-1, ..., 0] += 0.5 * flat_flux[grid.flat_inner_faces[0]].reshape(
+            grid.inner_faces_shape[0]
+        )
+        cell_flux[1:, ..., 0] += 0.5 * flat_flux[grid.flat_inner_faces[0]].reshape(
+            grid.inner_faces_shape[0]
+        )
+    if grid.dim >= 2:
+        cell_flux[:, :-1, ..., 1] += 0.5 * flat_flux[grid.flat_inner_faces[1]].reshape(
+            grid.inner_faces_shape[1]
+        )
+        cell_flux[:, 1:, ..., 1] += 0.5 * flat_flux[grid.flat_inner_faces[1]].reshape(
+            grid.inner_faces_shape[1]
+        )
+    if grid.dim >= 3:
+        cell_flux[:, :, :-1, ..., 2] += 0.5 * flat_flux[
+            grid.flat_inner_faces[2]
+        ].reshape(grid.inner_faces_shape[2])
+        cell_flux[:, :, 1:, ..., 2] += 0.5 * flat_flux[
+            grid.flat_inner_faces[2]
+        ].reshape(grid.inner_faces_shape[2])
+    if grid.dim > 3:
+        raise NotImplementedError(f"Dimension {grid.dim} not supported.")
 
     return cell_flux
 
