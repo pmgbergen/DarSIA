@@ -150,111 +150,108 @@ class FVMass:
         self.mat = mass_matrix
 
 
-class FVFaceAverage:
+class FVTangentialReconstruction:
+    """Projection of normal fluxes on grid onto tangential components.
+
+    The tangential components are defined as the components of the fluxes that are
+    orthogonal to the normal of the face. The tangential components are determined
+    through averaging the fluxes on the faces that are orthogonal to the face of
+    interest.
+
+    The resulting tangential flux has co-dimension 1, i.e. it is a scalar quantity in
+    2d and a 2-valued vector quantity in 3d.
+
+    """
+
     def __init__(self, grid: darsia.Grid) -> None:
+        """Initialize the average operator.
+
+        Args:
+            grid (darsia.Grid): grid
+
+        """
+
         # Operator for averaging fluxes on orthogonal, neighboring faces
-        orthogonal_face_average_shape = (grid.num_faces, grid.num_faces)
-        orthogonal_face_average_data = 0.25 * np.concatenate(
-            (
-                np.ones(
-                    2 * len(grid.top_row_vertical_faces)
-                    + 4 * len(grid.inner_vertical_faces)
-                    + 2 * len(grid.bottom_row_vertical_faces)
-                    + 2 * len(grid.left_col_horizontal_faces)
-                    + 4 * len(grid.inner_horizontal_faces)
-                    + 2 * len(grid.right_col_horizontal_faces),
-                    dtype=float,
-                ),
-            )
-        )
-        orthogonal_face_average_rows = np.concatenate(
-            (
-                np.tile(grid.top_row_vertical_faces, 2),
-                np.tile(grid.inner_vertical_faces, 4),
-                np.tile(grid.bottom_row_vertical_faces, 2),
-                np.tile(grid.left_col_horizontal_faces, 2),
-                np.tile(grid.inner_horizontal_faces, 4),
-                np.tile(grid.right_col_horizontal_faces, 2),
-            )
-        )
-        orthogonal_face_average_cols = np.concatenate(
-            (
-                # top row: left cell -> bottom face
-                grid.connectivity_cell_to_horizontal_face[
-                    grid.connectivity[grid.top_row_vertical_faces, 0], 1
-                ],
-                # top row: vertical face -> right cell -> bottom face
-                grid.connectivity_cell_to_horizontal_face[
-                    grid.connectivity[grid.top_row_vertical_faces, 1], 1
-                ],
-                # inner rows: vertical face -> left cell -> top face
-                grid.connectivity_cell_to_horizontal_face[
-                    grid.connectivity[grid.inner_vertical_faces, 0], 0
-                ],
-                # inner rows: vertical face -> left cell -> bottom face
-                grid.connectivity_cell_to_horizontal_face[
-                    grid.connectivity[grid.inner_vertical_faces, 0], 1
-                ],
-                # inner rows: vertical face -> right cell -> top face
-                grid.connectivity_cell_to_horizontal_face[
-                    grid.connectivity[grid.inner_vertical_faces, 1], 0
-                ],
-                # inner rows: vertical face -> right cell -> bottom face
-                grid.connectivity_cell_to_horizontal_face[
-                    grid.connectivity[grid.inner_vertical_faces, 1], 1
-                ],
-                # bottom row: vertical face -> left cell -> top face
-                grid.connectivity_cell_to_horizontal_face[
-                    grid.connectivity[grid.bottom_row_vertical_faces, 0], 0
-                ],
-                # bottom row: vertical face -> right cell -> top face
-                grid.connectivity_cell_to_horizontal_face[
-                    grid.connectivity[grid.bottom_row_vertical_faces, 1], 0
-                ],
-                # left column: horizontal face -> top cell -> right face
-                grid.connectivity_cell_to_vertical_face[
-                    grid.connectivity[grid.left_col_horizontal_faces, 0], 1
-                ],
-                # left column: horizontal face -> bottom cell -> right face
-                grid.connectivity_cell_to_vertical_face[
-                    grid.connectivity[grid.left_col_horizontal_faces, 1], 1
-                ],
-                # inner columns: horizontal face -> top cell -> left face
-                grid.connectivity_cell_to_vertical_face[
-                    grid.connectivity[grid.inner_horizontal_faces, 0], 0
-                ],
-                # inner columns: horizontal face -> top cell -> right face
-                grid.connectivity_cell_to_vertical_face[
-                    grid.connectivity[grid.inner_horizontal_faces, 0], 1
-                ],
-                # inner columns: horizontal face -> bottom cell -> left face
-                grid.connectivity_cell_to_vertical_face[
-                    grid.connectivity[grid.inner_horizontal_faces, 1], 0
-                ],
-                # inner columns: horizontal face -> bottom cell -> right face
-                grid.connectivity_cell_to_vertical_face[
-                    grid.connectivity[grid.inner_horizontal_faces, 1], 1
-                ],
-                # right column: horizontal face -> top cell -> left face
-                grid.connectivity_cell_to_vertical_face[
-                    grid.connectivity[grid.right_col_horizontal_faces, 0], 0
-                ],
-                # right column: horizontal face -> bottom cell -> left face
-                grid.connectivity_cell_to_vertical_face[
-                    grid.connectivity[grid.right_col_horizontal_faces, 1], 0
-                ],
-            )
-        )
-        orthogonal_face_average = sps.csc_matrix(
-            (
-                orthogonal_face_average_data,
-                (orthogonal_face_average_rows, orthogonal_face_average_cols),
+        shape = ((grid.dim - 1) * grid.num_faces, grid.num_faces)
+
+        # Each interior inner face has four neighboring faces with normal direction
+        # and all oriented in the same direction. In three dimensions, two such normal
+        # directions exist. For outer inner faces, there are only two such neighboring
+        # faces.
+        data = np.tile(
+            0.25
+            * np.ones(
+                2 * np.array(grid.exterior_inner_faces).size
+                + 4 * np.array(grid.interior_inner_faces).size,
+                dtype=float,
             ),
-            shape=orthogonal_face_average_shape,
+            grid.dim - 1,
         )
 
-        # Cache
-        self.mat = orthogonal_face_average
+        # The rows correspond to the faces for which the tangential fluxes are
+        # determined times the component of the tangential fluxes.
+        rows_outer = np.concatenate(
+            [np.repeat(grid.exterior_inner_faces[d], 2) for d in range(grid.dim)]
+        )
+
+        rows_inner = np.concatenate(
+            [np.repeat(grid.interior_inner_faces[d], 4) for d in range(grid.dim)]
+        )
+
+        # The columns correspond to the (orthogonal) faces contributing to the average
+        # of the tangential fluxes. The main idea is for each face to follow the
+        # connectivity. First, we consider the outer inner faces. For each face, we
+
+        # Consider outer inner faces. For each face, we consider the two neighboring
+        # faces with normal direction and all oriented in the same direction. Need to
+        # exclude true exterior faces.
+
+        def interleaf(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+            return np.ravel(np.vstack([a, b]).T)
+
+        # Consider all close-by faces for each outer inner face which are orthogonal
+        pre_cols_outer = np.concatenate(
+            [
+                np.ravel(
+                    grid.reverse_connectivity[
+                        d_perp,
+                        np.ravel(grid.connectivity[grid.exterior_inner_faces[d]]),
+                    ]
+                )
+                for d in range(grid.dim)
+                for d_perp in np.delete(range(grid.dim), d)
+            ]
+        )
+        # Clean up - remove true exterior faces
+        pre_cols_outer = pre_cols_outer[pre_cols_outer != -1]
+
+        # Same for interior inner faces,
+        pre_cols_inner = np.concatenate(
+            [
+                np.ravel(
+                    grid.reverse_connectivity[
+                        d_perp,
+                        np.ravel(grid.connectivity[grid.interior_inner_faces[d]]),
+                    ]
+                )
+                for d in range(grid.dim)
+                for d_perp in np.delete(range(grid.dim), d)
+            ]
+        )
+        assert np.count_nonzero(pre_cols_inner == -1) == 0
+
+        # Collect all rows and columns
+        rows = np.concatenate((rows_outer, rows_inner))
+        cols = np.concatenate((pre_cols_outer, pre_cols_inner))
+
+        # Construct and cache the sparse projection matrix
+        self.mat = sps.csc_matrix(
+            (
+                data,
+                (rows, cols),
+            ),
+            shape=shape,
+        )
 
 
 # ! ---- Finite volume projection operators ----
