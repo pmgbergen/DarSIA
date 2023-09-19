@@ -28,29 +28,29 @@ def test_grid_2d():
     assert np.allclose(grid.inner_faces_shape[1], (4, 4))
 
     # Check face numbering
-    assert grid.num_inner_faces[0] == 15
-    assert grid.num_inner_faces[1] == 16
+    assert grid.num_faces_per_axis[0] == 15
+    assert grid.num_faces_per_axis[1] == 16
     assert grid.num_faces == 15 + 16
 
     # Check indexing of faces in flat format
-    assert np.allclose(grid.flat_inner_faces[0], np.arange(0, 15))
-    assert np.allclose(grid.flat_inner_faces[1], np.arange(15, 31))
+    assert np.allclose(grid.faces[0], np.arange(0, 15))
+    assert np.allclose(grid.faces[1], np.arange(15, 31))
 
     # Check indexing of faces in 2d format
-    assert np.allclose(grid.inner_faces[0][0], np.arange(0, 5))
-    assert np.allclose(grid.inner_faces[0][1], np.arange(5, 10))
-    assert np.allclose(grid.inner_faces[0][2], np.arange(10, 15))
-    assert np.allclose(grid.inner_faces[1][0], np.arange(15, 19))
-    assert np.allclose(grid.inner_faces[1][1], np.arange(19, 23))
-    assert np.allclose(grid.inner_faces[1][2], np.arange(23, 27))
+    assert np.allclose(grid.face_index[0][0], np.arange(0, 5))
+    assert np.allclose(grid.face_index[0][1], np.arange(5, 10))
+    assert np.allclose(grid.face_index[0][2], np.arange(10, 15))
+    assert np.allclose(grid.face_index[1][0], np.arange(15, 19))
+    assert np.allclose(grid.face_index[1][1], np.arange(19, 23))
+    assert np.allclose(grid.face_index[1][2], np.arange(23, 27))
 
     # Check identification of interior inner faces
-    assert np.allclose(grid.interior_inner_faces[0], [1, 2, 3, 6, 7, 8, 11, 12, 13])
-    assert np.allclose(grid.interior_inner_faces[1], [19, 20, 21, 22, 23, 24, 25, 26])
+    assert np.allclose(grid.interior_faces[0], [1, 2, 3, 6, 7, 8, 11, 12, 13])
+    assert np.allclose(grid.interior_faces[1], [19, 20, 21, 22, 23, 24, 25, 26])
 
     # Check identification of exterior inner faces
-    assert np.allclose(grid.exterior_inner_faces[0], [0, 4, 5, 9, 10, 14])
-    assert np.allclose(grid.exterior_inner_faces[1], [15, 16, 17, 18, 27, 28, 29, 30])
+    assert np.allclose(grid.exterior_faces[0], [0, 4, 5, 9, 10, 14])
+    assert np.allclose(grid.exterior_faces[1], [15, 16, 17, 18, 27, 28, 29, 30])
 
     # Check connectivity: face to cells with positive orientation
     assert np.allclose(grid.connectivity[0], [0, 5])
