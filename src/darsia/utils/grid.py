@@ -36,6 +36,12 @@ class Grid:
         )
         """np.ndarray: Size of voxels in each dimension."""
 
+        self.face_vol = [
+            np.prod(self.voxel_size[np.delete(np.arange(self.dim), d)])
+            for d in range(self.dim)
+        ]
+        """list: Volume of faces in each dimension."""
+
         assert len(self.voxel_size) == self.dim
 
         # Define cell and face numbering
