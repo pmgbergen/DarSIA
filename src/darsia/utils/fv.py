@@ -178,8 +178,8 @@ class FVTangentialReconstruction:
         data = np.tile(
             0.25
             * np.ones(
-                2 * np.array(grid.exterior_faces).size
-                + 4 * np.array(grid.interior_faces).size,
+                2 * np.array(np.concatenate(grid.exterior_faces)).size
+                + 4 * np.array(np.concatenate(grid.interior_faces)).size,
                 dtype=float,
             ),
             grid.dim - 1,
@@ -207,7 +207,7 @@ class FVTangentialReconstruction:
             return np.ravel(np.vstack([a, b]).T)
 
         # Consider all close-by faces for each outer inner face which are orthogonal
-        pre_cols_outer = np.concatenate(
+        cols_outer = np.concatenate(
             [
                 np.ravel(
                     grid.reverse_connectivity[
@@ -220,10 +220,10 @@ class FVTangentialReconstruction:
             ]
         )
         # Clean up - remove true exterior faces
-        pre_cols_outer = pre_cols_outer[pre_cols_outer != -1]
+        cols_outer = cols_outer[cols_outer != -1]
 
         # Same for interior inner faces,
-        pre_cols_inner = np.concatenate(
+        cols_inner = np.concatenate(
             [
                 np.ravel(
                     grid.reverse_connectivity[
@@ -235,11 +235,11 @@ class FVTangentialReconstruction:
                 for d_perp in np.delete(range(grid.dim), d)
             ]
         )
-        assert np.count_nonzero(pre_cols_inner == -1) == 0
+        assert np.count_nonzero(cols_inner == -1) == 0
 
         # Collect all rows and columns
         rows = np.concatenate((rows_outer, rows_inner))
-        cols = np.concatenate((pre_cols_outer, pre_cols_inner))
+        cols = np.concatenate((cols_outer, cols_inner))
 
         # Construct and cache the sparse projection matrix
         self.mat = sps.csc_matrix(
@@ -277,24 +277,24 @@ def face_to_cell(grid: darsia.Grid, flat_flux: np.ndarray) -> np.ndarray:
 
     if grid.dim >= 1:
         cell_flux[:-1, ..., 0] += 0.5 * flat_flux[grid.faces[0]].reshape(
-            grid.inner_faces_shape[0]
+            grid.faces_shape[0]
         )
         cell_flux[1:, ..., 0] += 0.5 * flat_flux[grid.faces[0]].reshape(
-            grid.inner_faces_shape[0]
+            grid.faces_shape[0]
         )
     if grid.dim >= 2:
         cell_flux[:, :-1, ..., 1] += 0.5 * flat_flux[grid.faces[1]].reshape(
-            grid.inner_faces_shape[1]
+            grid.faces_shape[1]
         )
         cell_flux[:, 1:, ..., 1] += 0.5 * flat_flux[grid.faces[1]].reshape(
-            grid.inner_faces_shape[1]
+            grid.faces_shape[1]
         )
     if grid.dim >= 3:
         cell_flux[:, :, :-1, ..., 2] += 0.5 * flat_flux[grid.faces[2]].reshape(
-            grid.inner_faces_shape[2]
+            grid.faces_shape[2]
         )
         cell_flux[:, :, 1:, ..., 2] += 0.5 * flat_flux[grid.faces[2]].reshape(
-            grid.inner_faces_shape[2]
+            grid.faces_shape[2]
         )
     if grid.dim > 3:
         raise NotImplementedError(f"Dimension {grid.dim} not supported.")
