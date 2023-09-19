@@ -173,8 +173,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
         """sps.csc_matrix: mass matrix on faces: flat fluxes -> flat fluxes"""
 
-        self.orthogonal_face_average = darsia.FVFaceAverage(self.grid).mat
-        """sps.csc_matrix: averaging operator for fluxes on orthogonal faces"""
+        self.tangential_projection = darsia.FVTangentialReconstruction(self.grid).mat
+        """sps.csc_matrix: tangential reconstruction: flat fluxes -> flat fluxes"""
 
         # Linear part of the Darcy operator with potential constraint.
         self.broken_darcy = sps.bmat(
@@ -470,7 +470,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         elif mode == "face_arithmetic":
             # Define natural vector valued flux on faces (taking arithmetic averages
             # of continuous fluxes over cells evaluated at faces)
-            tangential_flux = self.orthogonal_face_average.dot(flat_flux)
+            tangential_flux = self.tangential_projection.dot(flat_flux)
             # Determine the l2 norm of the fluxes on the faces, add some regularization
             flat_flux_norm = np.sqrt(flat_flux**2 + tangential_flux**2)
 
@@ -1194,7 +1194,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         elif mode == "face_arithmetic":
             # Define natural vector valued flux on faces (taking arithmetic averages
             # of continuous fluxes over cells evaluated at faces)
-            tangential_flux = self.orthogonal_face_average.dot(flat_flux)
+            tangential_flux = self.tangential_projection.dot(flat_flux)
             # Determine the l2 norm of the fluxes on the faces, add some regularization
             norm = np.sqrt(flat_flux**2 + tangential_flux**2)
             flat_scaling = np.maximum(norm - shrink_factor, 0) / (
