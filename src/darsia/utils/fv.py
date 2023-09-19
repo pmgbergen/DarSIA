@@ -203,9 +203,6 @@ class FVTangentialReconstruction:
         # faces with normal direction and all oriented in the same direction. Need to
         # exclude true exterior faces.
 
-        def interleaf(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-            return np.ravel(np.vstack([a, b]).T)
-
         # Consider all close-by faces for each outer inner face which are orthogonal
         cols_outer = np.concatenate(
             [
@@ -277,24 +274,24 @@ def face_to_cell(grid: darsia.Grid, flat_flux: np.ndarray) -> np.ndarray:
 
     if grid.dim >= 1:
         cell_flux[:-1, ..., 0] += 0.5 * flat_flux[grid.faces[0]].reshape(
-            grid.faces_shape[0]
+            grid.faces_shape[0], order="F"
         )
         cell_flux[1:, ..., 0] += 0.5 * flat_flux[grid.faces[0]].reshape(
-            grid.faces_shape[0]
+            grid.faces_shape[0], order="F"
         )
     if grid.dim >= 2:
         cell_flux[:, :-1, ..., 1] += 0.5 * flat_flux[grid.faces[1]].reshape(
-            grid.faces_shape[1]
+            grid.faces_shape[1], order="F"
         )
         cell_flux[:, 1:, ..., 1] += 0.5 * flat_flux[grid.faces[1]].reshape(
-            grid.faces_shape[1]
+            grid.faces_shape[1], order="F"
         )
     if grid.dim >= 3:
         cell_flux[:, :, :-1, ..., 2] += 0.5 * flat_flux[grid.faces[2]].reshape(
-            grid.faces_shape[2]
+            grid.faces_shape[2], order="F"
         )
         cell_flux[:, :, 1:, ..., 2] += 0.5 * flat_flux[grid.faces[2]].reshape(
-            grid.faces_shape[2]
+            grid.faces_shape[2], order="F"
         )
     if grid.dim > 3:
         raise NotImplementedError(f"Dimension {grid.dim} not supported.")
