@@ -59,8 +59,21 @@ class Grid:
         """np.ndarray: cell indices."""
 
         # Determine number of inner faces in each axis
+        # Flip order of axes to get the correct shape
+        if self.dim == 1:
+            order = [np.array([0])]
+        elif self.dim == 2:
+            order = [np.array([0, 1]), np.array([0, 1])]
+        elif self.dim == 3:
+            order = [
+                np.array([0, 1, 2]),
+                np.array([1, 0, 2]),
+                np.array([2, 0, 1]),
+            ]
         self.inner_faces_shape = [
-            tuple(np.array(self.shape) - np.eye(self.dim, dtype=int)[d])
+            # tuple(np.roll(np.array(self.shape) - np.eye(self.dim, dtype=int)[d], -d))
+            # tuple(np.array(self.shape) - np.eye(self.dim, dtype=int)[d])
+            tuple((np.array(self.shape) - np.eye(self.dim, dtype=int)[d])[order[d]])
             for d in range(self.dim)
         ]
         """list: Shape of inner faces in each axis."""
@@ -101,8 +114,8 @@ class Grid:
         elif self.dim == 3:
             self.interior_faces = [
                 np.ravel(self.face_index[0][:, 1:-1, 1:-1]),
-                np.ravel(self.face_index[1][1:-1, :, 1:-1]),
-                np.ravel(self.face_index[2][1:-1, 1:-1, :]),
+                np.ravel(self.face_index[1][:, 1:-1, 1:-1]),
+                np.ravel(self.face_index[2][:, 1:-1, 1:-1]),
             ]
         else:
             raise NotImplementedError(f"Grid of dimension {self.dim} not implemented.")
@@ -120,9 +133,18 @@ class Grid:
                 np.ravel(self.face_index[1][np.array([0, -1]), :]),
             ]
         elif self.dim == 3:
-            # TODO
-            raise NotImplementedError
-            self.outer_faces = []
+            # Extract boundary elements of each axis
+            self.exterior_faces = [
+                np.sort(
+                    np.concatenate(
+                        (
+                            np.ravel(self.face_index[d][:, np.array([0, -1]), :]),
+                            np.ravel(self.face_index[d][:, 1:-1, np.array([0, -1])]),
+                        )
+                    )
+                )
+                for d in range(self.dim)
+            ]
         else:
             raise NotImplementedError(f"Grid of dimension {self.dim} not implemented.")
 
@@ -139,7 +161,7 @@ class Grid:
             self.connectivity[self.faces[1], 1] = np.ravel(self.cell_index[:, 1:, ...])
         if self.dim >= 3:
             self.connectivity[self.faces[2], 0] = np.ravel(
-                self.cell_index[:, :, -1, ...]
+                self.cell_index[:, :, :-1, ...]
             )
             self.connectivity[self.faces[2], 1] = np.ravel(
                 self.cell_index[:, :, 1:, ...]
