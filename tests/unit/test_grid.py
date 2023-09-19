@@ -6,12 +6,12 @@ import darsia
 
 
 def test_grid_2d():
-    grid = darsia.Grid(shape=(4, 5))
+    grid = darsia.Grid(shape=(4, 5), voxel_size=[0.5, 0.25])
 
     # Check basic attributes
     assert np.allclose(grid.shape, (4, 5))
     assert grid.dim == 2
-    assert np.allclose(grid.voxel_size, (1, 1))
+    assert np.allclose(grid.voxel_size, [0.5, 0.25])
 
     # Probe cell numbering
     assert grid.num_cells == 20
@@ -19,6 +19,9 @@ def test_grid_2d():
     assert grid.numbering_cells[0, 4] == 4
     assert grid.numbering_cells[3, 0] == 15
     assert grid.numbering_cells[3, 4] == 19
+
+    # Check face volumes
+    assert np.allclose(grid.face_vol, [0.25, 0.5])
 
     # Check face shape
     assert np.allclose(grid.inner_faces_shape[0], (3, 5))
