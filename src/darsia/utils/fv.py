@@ -21,15 +21,12 @@ class FVDivergence:
         div_shape = (grid.num_cells, grid.num_faces)
         div_data = np.concatenate(
             [
-                grid.face_vol[d] * np.tile([1, -1], grid.num_inner_faces[d])
+                grid.face_vol[d] * np.tile([1, -1], grid.num_faces_per_axis[d])
                 for d in range(grid.dim)
             ]
         )
         div_row = np.concatenate(
-            [
-                np.ravel(grid.connectivity[grid.flat_inner_faces[d]])
-                for d in range(grid.dim)
-            ]
+            [np.ravel(grid.connectivity[grid.faces[d]]) for d in range(grid.dim)]
         )
         div_col = np.repeat(np.arange(grid.num_faces, dtype=int), 2)
         div = sps.csc_matrix(
@@ -181,8 +178,8 @@ class FVTangentialReconstruction:
         data = np.tile(
             0.25
             * np.ones(
-                2 * np.array(grid.exterior_inner_faces).size
-                + 4 * np.array(grid.interior_inner_faces).size,
+                2 * np.array(grid.exterior_faces).size
+                + 4 * np.array(grid.interior_faces).size,
                 dtype=float,
             ),
             grid.dim - 1,
@@ -191,11 +188,11 @@ class FVTangentialReconstruction:
         # The rows correspond to the faces for which the tangential fluxes are
         # determined times the component of the tangential fluxes.
         rows_outer = np.concatenate(
-            [np.repeat(grid.exterior_inner_faces[d], 2) for d in range(grid.dim)]
+            [np.repeat(grid.exterior_faces[d], 2) for d in range(grid.dim)]
         )
 
         rows_inner = np.concatenate(
-            [np.repeat(grid.interior_inner_faces[d], 4) for d in range(grid.dim)]
+            [np.repeat(grid.interior_faces[d], 4) for d in range(grid.dim)]
         )
 
         # The columns correspond to the (orthogonal) faces contributing to the average
@@ -215,7 +212,7 @@ class FVTangentialReconstruction:
                 np.ravel(
                     grid.reverse_connectivity[
                         d_perp,
-                        np.ravel(grid.connectivity[grid.exterior_inner_faces[d]]),
+                        np.ravel(grid.connectivity[grid.exterior_faces[d]]),
                     ]
                 )
                 for d in range(grid.dim)
@@ -231,7 +228,7 @@ class FVTangentialReconstruction:
                 np.ravel(
                     grid.reverse_connectivity[
                         d_perp,
-                        np.ravel(grid.connectivity[grid.interior_inner_faces[d]]),
+                        np.ravel(grid.connectivity[grid.interior_faces[d]]),
                     ]
                 )
                 for d in range(grid.dim)
@@ -279,26 +276,26 @@ def face_to_cell(grid: darsia.Grid, flat_flux: np.ndarray) -> np.ndarray:
     cell_flux = np.zeros((*grid.shape, grid.dim), dtype=float)
 
     if grid.dim >= 1:
-        cell_flux[:-1, ..., 0] += 0.5 * flat_flux[grid.flat_inner_faces[0]].reshape(
+        cell_flux[:-1, ..., 0] += 0.5 * flat_flux[grid.faces[0]].reshape(
             grid.inner_faces_shape[0]
         )
-        cell_flux[1:, ..., 0] += 0.5 * flat_flux[grid.flat_inner_faces[0]].reshape(
+        cell_flux[1:, ..., 0] += 0.5 * flat_flux[grid.faces[0]].reshape(
             grid.inner_faces_shape[0]
         )
     if grid.dim >= 2:
-        cell_flux[:, :-1, ..., 1] += 0.5 * flat_flux[grid.flat_inner_faces[1]].reshape(
+        cell_flux[:, :-1, ..., 1] += 0.5 * flat_flux[grid.faces[1]].reshape(
             grid.inner_faces_shape[1]
         )
-        cell_flux[:, 1:, ..., 1] += 0.5 * flat_flux[grid.flat_inner_faces[1]].reshape(
+        cell_flux[:, 1:, ..., 1] += 0.5 * flat_flux[grid.faces[1]].reshape(
             grid.inner_faces_shape[1]
         )
     if grid.dim >= 3:
-        cell_flux[:, :, :-1, ..., 2] += 0.5 * flat_flux[
-            grid.flat_inner_faces[2]
-        ].reshape(grid.inner_faces_shape[2])
-        cell_flux[:, :, 1:, ..., 2] += 0.5 * flat_flux[
-            grid.flat_inner_faces[2]
-        ].reshape(grid.inner_faces_shape[2])
+        cell_flux[:, :, :-1, ..., 2] += 0.5 * flat_flux[grid.faces[2]].reshape(
+            grid.inner_faces_shape[2]
+        )
+        cell_flux[:, :, 1:, ..., 2] += 0.5 * flat_flux[grid.faces[2]].reshape(
+            grid.inner_faces_shape[2]
+        )
     if grid.dim > 3:
         raise NotImplementedError(f"Dimension {grid.dim} not supported.")
 
