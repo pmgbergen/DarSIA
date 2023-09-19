@@ -57,23 +57,8 @@ class Grid:
         self.num_cells = np.prod(self.shape)
         """int: Number of cells."""
 
-        # TODO rename -> cell_index
-        self.numbering_cells = np.arange(self.num_cells, dtype=int).reshape(self.shape)
-        """np.ndarray: Numbering of cells."""
-
-        # Consider only inner faces; implicitly define indexing of faces (first
-        # vertical, then horizontal). The counting of vertical faces starts from top to
-        # bottom and left to right. The counting of horizontal faces starts from left to
-        # right and top to bottom.
-        # vertical_faces_shape = (self.shape[0], self.shape[1] - 1)
-        # horizontal_faces_shape = (self.shape[0] - 1, self.shape[1])
-        # num_vertical_faces = np.prod(vertical_faces_shape)
-        # num_horizontal_faces = np.prod(horizontal_faces_shape)
-        # num_faces_axis = [
-        #     num_vertical_faces,
-        #     num_horizontal_faces,
-        # ]
-        # num_faces = np.sum(num_faces_axis)
+        self.cell_index = np.arange(self.num_cells, dtype=int).reshape(self.shape)
+        """np.ndarray: cell indices."""
 
         # Determine number of inner faces in each axis
         self.inner_faces_shape = [
@@ -88,15 +73,6 @@ class Grid:
         self.num_faces = np.sum(self.num_inner_faces)
         """int: Number of faces."""
 
-        # Define flat indexing of faces, and order of faces, sorted by orientation.
-        # vertical faces first, then horizontal faces
-        # flat_vertical_faces = np.arange(num_vertical_faces, dtype=int)
-        # flat_horizontal_faces = num_vertical_faces + np.arange(
-        #     num_horizontal_faces, dtype=int
-        # )
-        # vertical_faces = flat_vertical_faces.reshape(vertical_faces_shape)
-        # horizontal_faces = flat_horizontal_faces.reshape(horizontal_faces_shape)
-
         # Define indexing and ordering of inner faces. Horizontal -> vertical -> depth.
         # TODO replace with slices
         self.flat_inner_faces = [
@@ -109,15 +85,6 @@ class Grid:
             self.flat_inner_faces[d].reshape(self.inner_faces_shape[d])
             for d in range(self.dim)
         ]
-
-        # # Identify vertical faces on top, inner and bottom
-        # self.top_row_vertical_faces = np.ravel(vertical_faces[0, :])
-        # self.inner_vertical_faces = np.ravel(vertical_faces[1:-1, :])
-        # self.bottom_row_vertical_faces = np.ravel(vertical_faces[-1, :])
-        # # Identify horizontal faces on left, inner and right
-        # self.left_col_horizontal_faces = np.ravel(horizontal_faces[:, 0])
-        # self.inner_horizontal_faces = np.ravel(horizontal_faces[:, 1:-1])
-        # self.right_col_horizontal_faces = np.ravel(horizontal_faces[:, -1])
 
         # Identify inner faces (full cube)
         if self.dim == 1:
@@ -162,36 +129,27 @@ class Grid:
         """np.ndarray: Connectivity (and direction) of faces to cells."""
         if self.dim >= 1:
             self.connectivity[self.flat_inner_faces[0], 0] = np.ravel(
-                self.numbering_cells[:-1, ...]
+                self.cell_index[:-1, ...]
             )
             self.connectivity[self.flat_inner_faces[0], 1] = np.ravel(
-                self.numbering_cells[1:, ...]
+                self.cell_index[1:, ...]
             )
         if self.dim >= 2:
             self.connectivity[self.flat_inner_faces[1], 0] = np.ravel(
-                self.numbering_cells[:, :-1, ...]
+                self.cell_index[:, :-1, ...]
             )
             self.connectivity[self.flat_inner_faces[1], 1] = np.ravel(
-                self.numbering_cells[:, 1:, ...]
+                self.cell_index[:, 1:, ...]
             )
         if self.dim >= 3:
             self.connectivity[self.flat_inner_faces[2], 0] = np.ravel(
-                self.numbering_cells[:, :, -1, ...]
+                self.cell_index[:, :, -1, ...]
             )
             self.connectivity[self.flat_inner_faces[2], 1] = np.ravel(
-                self.numbering_cells[:, :, 1:, ...]
+                self.cell_index[:, :, 1:, ...]
             )
         if self.dim > 3:
             raise NotImplementedError(f"Grid of dimension {self.dim} not implemented.")
-
-        ## Vertical faces to left cells
-        # connectivity[: num_faces_axis[0], 0] = np.ravel(numbering_cells[:, :-1])
-        ## Vertical faces to right cells
-        # connectivity[: num_faces_axis[0], 1] = np.ravel(numbering_cells[:, 1:])
-        ## Horizontal faces to top cells
-        # connectivity[num_faces_axis[0] :, 0] = np.ravel(numbering_cells[:-1, :])
-        ## Horizontal faces to bottom cells
-        # connectivity[num_faces_axis[0] :, 1] = np.ravel(numbering_cells[1:, :])
 
         self.reverse_connectivity = -np.ones((self.dim, self.num_cells, 2), dtype=int)
         """np.ndarray: Reverse connectivity (and direction) of cells to faces."""
@@ -202,59 +160,36 @@ class Grid:
 
         if self.dim >= 1:
             self.reverse_connectivity[
-                0, np.ravel(self.numbering_cells[1:, ...]), 0
+                0, np.ravel(self.cell_index[1:, ...]), 0
             ] = self.flat_inner_faces[0]
             self.reverse_connectivity[
-                0, np.ravel(self.numbering_cells[:-1, ...]), 1
+                0, np.ravel(self.cell_index[:-1, ...]), 1
             ] = self.flat_inner_faces[0]
 
         if self.dim >= 2:
             self.reverse_connectivity[
-                1, np.ravel(self.numbering_cells[:, 1:, ...]), 0
+                1, np.ravel(self.cell_index[:, 1:, ...]), 0
             ] = self.flat_inner_faces[1]
             self.reverse_connectivity[
-                1, np.ravel(self.numbering_cells[:, :-1, ...]), 1
+                1, np.ravel(self.cell_index[:, :-1, ...]), 1
             ] = self.flat_inner_faces[1]
 
         if self.dim >= 3:
             self.reverse_connectivity[
-                2, np.ravel(self.numbering_cells[:, :, 1:, ...]), 0
+                2, np.ravel(self.cell_index[:, :, 1:, ...]), 0
             ] = self.flat_inner_faces[2]
             self.reverse_connectivity[
-                2, np.ravel(self.numbering_cells[:, :, :-1, ...]), 1
+                2, np.ravel(self.cell_index[:, :, :-1, ...]), 1
             ] = self.flat_inner_faces[2]
-
-        ## Define reverse connectivity. Cell to vertical faces
-        # self.connectivity_cell_to_vertical_face = -np.ones((self.num_cells, 2), dtype=int)
-        ## Left vertical face of cell
-        # self.connectivity_cell_to_vertical_face[
-        #    np.ravel(numbering_cells[:, 1:]), 0
-        # ] = flat_vertical_faces
-        ## Right vertical face of cell
-        # self.connectivity_cell_to_vertical_face[
-        #    np.ravel(numbering_cells[:, :-1]), 1
-        # ] = flat_vertical_faces
-        ## Define reverse connectivity. Cell to horizontal faces
-        # self.connectivity_cell_to_horizontal_face = np.zeros((self.num_cells, 2), dtype=int)
-        ## Top horizontal face of cell
-        # self.connectivity_cell_to_horizontal_face[
-        #    np.ravel(numbering_cells[1:, :]), 0
-        # ] = flat_horizontal_faces
-        ## Bottom horizontal face of cell
-        # self.connectivity_cell_to_horizontal_face[
-        #    np.ravel(numbering_cells[:-1, :]), 1
-        # ] = flat_horizontal_faces
 
         # Info about inner cells
         # TODO rm?
-        # self.inner_cells_with_vertical_faces = np.ravel(numbering_cells[:, 1:-1])
-        # self.inner_cells_with_horizontal_faces = np.ravel(numbering_cells[1:-1, :])
         self.inner_cells_with_inner_faces = (
-            [] + [np.ravel(self.numbering_cells[1:-1, ...])]
+            [] + [np.ravel(self.cell_index[1:-1, ...])]
             if self.dim >= 1
-            else [] + [np.ravel(self.numbering_cells[:, 1:-1, ...])]
+            else [] + [np.ravel(self.cell_index[:, 1:-1, ...])]
             if self.dim >= 2
-            else [] + [np.ravel(self.numbering_cells[:, :, 1:-1, ...])]
+            else [] + [np.ravel(self.cell_index[:, :, 1:-1, ...])]
             if self.dim >= 3
             else []
         )

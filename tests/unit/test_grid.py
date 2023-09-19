@@ -15,10 +15,10 @@ def test_grid_2d():
 
     # Probe cell numbering
     assert grid.num_cells == 20
-    assert grid.numbering_cells[0, 0] == 0
-    assert grid.numbering_cells[0, 4] == 4
-    assert grid.numbering_cells[3, 0] == 15
-    assert grid.numbering_cells[3, 4] == 19
+    assert grid.cell_index[0, 0] == 0
+    assert grid.cell_index[0, 4] == 4
+    assert grid.cell_index[3, 0] == 15
+    assert grid.cell_index[3, 4] == 19
 
     # Check face volumes
     assert np.allclose(grid.face_vol, [0.25, 0.5])
