@@ -20,30 +20,18 @@ class FVDivergence:
         # faces.
         div_shape = (grid.num_cells, grid.num_faces)
         div_data = np.concatenate(
-            (
-                grid.voxel_size[0] * np.ones(grid.num_vertical_faces, dtype=float),
-                grid.voxel_size[1] * np.ones(grid.num_horizontal_faces, dtype=float),
-                -grid.voxel_size[0] * np.ones(grid.num_vertical_faces, dtype=float),
-                -grid.voxel_size[1] * np.ones(grid.num_horizontal_faces, dtype=float),
-            )
+            [
+                grid.face_vol[d] * np.tile([1, -1], grid.num_inner_faces[d])
+                for d in range(grid.dim)
+            ]
         )
         div_row = np.concatenate(
-            (
-                grid.connectivity[
-                    grid.flat_vertical_faces, 0
-                ],  # vertical faces, cells to the left
-                grid.connectivity[
-                    grid.flat_horizontal_faces, 0
-                ],  # horizontal faces, cells to the top
-                grid.connectivity[
-                    grid.flat_vertical_faces, 1
-                ],  # vertical faces, cells to the right (opposite normal)
-                grid.connectivity[
-                    grid.flat_horizontal_faces, 1
-                ],  # horizontal faces, cells to the bottom (opposite normal)
-            )
+            [
+                np.ravel(grid.connectivity[grid.flat_inner_faces[d]])
+                for d in range(grid.dim)
+            ]
         )
-        div_col = np.tile(np.arange(grid.num_faces, dtype=int), 2)
+        div_col = np.repeat(np.arange(grid.num_faces, dtype=int), 2)
         div = sps.csc_matrix(
             (div_data, (div_row, div_col)),
             shape=div_shape,
