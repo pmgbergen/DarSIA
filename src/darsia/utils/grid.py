@@ -78,20 +78,17 @@ class Grid:
             + np.arange(self.num_faces_per_axis[d], dtype=int)
             for d in range(self.dim)
         ]
-
-        self.faces_slice = [
-            slice(
-                sum(self.num_faces_per_axis[:d]),
-                None if d == self.dim - 1 else sum(self.num_faces_per_axis[: d + 1]),
-            )
-            for d in range(self.dim)
-        ]
+        """list: Indices of inner faces in each axis."""
 
         self.face_index = [
             self.faces[d].reshape(self.inner_faces_shape[d]) for d in range(self.dim)
         ]
+        """list: Indices of inner faces in each axis, using matrix indexing."""
 
         # Identify inner faces (full cube)
+        self.interior_faces = []
+        """list: Indices of interior faces."""
+
         if self.dim == 1:
             self.interior_faces = [
                 np.ravel(self.face_index[0][1:-1]),
@@ -112,6 +109,9 @@ class Grid:
 
         # Identify all faces on the outer boundary of the grid. Need to use hardcoded
         # knowledge of the orientation of axes and grid indexing.
+        self.exterior_faces = []
+        """list: Indices of exterior faces (inner faces of boundary cells)."""
+
         if self.dim == 1:
             self.exterior_faces = [np.ravel(self.face_index[0][np.array([0, -1])])]
         elif self.dim == 2:
@@ -130,6 +130,7 @@ class Grid:
 
         self.connectivity = np.zeros((self.num_faces, 2), dtype=int)
         """np.ndarray: Connectivity (and direction) of faces to cells."""
+
         if self.dim >= 1:
             self.connectivity[self.faces[0], 0] = np.ravel(self.cell_index[:-1, ...])
             self.connectivity[self.faces[0], 1] = np.ravel(self.cell_index[1:, ...])
@@ -188,6 +189,7 @@ class Grid:
             if self.dim >= 3
             else []
         )
+        """list: Indices of inner cells with inner faces."""
 
 
 def generate_grid(image: darsia.Image) -> Grid:
