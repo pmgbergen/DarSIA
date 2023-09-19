@@ -14,10 +14,10 @@ class FVDivergence:
     def __init__(self, grid: darsia.Grid) -> None:
         # Define sparse divergence operator, integrated over elements.
         # Note: The global direction of the degrees of freedom is hereby fixed for all
-        # faces. Fluxes across vertical faces go from left to right, fluxes across
-        # horizontal faces go from bottom to top. To oppose the direction of the outer
-        # normal, the sign of the divergence is flipped for one side of cells for all
-        # faces.
+        # faces. In 2d, fluxes across vertical faces go from left to right, fluxes
+        # across horizontal faces go from bottom to top. To oppose the direction of the
+        # outer normal, the sign of the divergence is flipped for one side of cells for
+        # all faces. Analogously, in 3d.
         div_shape = (grid.num_cells, grid.num_faces)
         div_data = np.concatenate(
             [
@@ -42,6 +42,17 @@ class FVDivergence:
 
 
 class FVMass:
+    """Finite volume mass matrix.
+
+    The mass matrix can be formulated for cell and face quantities. For cell
+    quantities, the mass matrix is diagonal and has the volume of the cells on the
+    diagonal. For face quantities, the mass matrix is diagonal and has half the cell
+    volumes on the diagonal, taking into accout itegration over te faces as lower
+    dimensional entities, and the double occurrence of the faces in the integration
+    over the cells.
+
+    """
+
     def __init__(
         self, grid: darsia.Grid, mode: str = "cells", lumping: bool = True
     ) -> None:
@@ -56,6 +67,8 @@ class FVMass:
                     np.prod(grid.voxel_size) * np.ones(grid.num_faces, dtype=float)
                 )
             else:
+                raise NotImplementedError
+
                 # Define true RT0 mass matrix on faces: flat fluxes -> flat fluxes
                 num_inner_cells_with_vertical_faces = len(
                     grid.inner_cells_with_vertical_faces
@@ -306,6 +319,8 @@ def cell_to_face(grid: darsia.Grid, cell_qty: np.ndarray, mode: str) -> np.ndarr
 
     # NOTE: No impact of Grid here, so far! Everything is implicit. This should/could
     # change. In particular when switching to 3d!
+
+    raise NotImplementedError
 
     # Determine the fluxes on the faces
     if mode == "arithmetic":
