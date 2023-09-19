@@ -12,10 +12,8 @@ import darsia
 class Grid:
     """Tensor grid.
 
-    Attributes:
-        shape: Shape of grid.
-        ndim: Number of dimensions.
-        size: Number of grid points.
+    The current implmentatio does nt take into accout true boundary faces assuming
+    the boundar values are not of interest.
 
     """
 
@@ -67,40 +65,47 @@ class Grid:
         ]
         """list: Shape of inner faces in each axis."""
 
-        self.num_inner_faces = [np.prod(s) for s in self.inner_faces_shape]
+        self.num_faces_per_axis = [np.prod(s) for s in self.inner_faces_shape]
         """list: Number of inner faces in each axis."""
 
-        self.num_faces = np.sum(self.num_inner_faces)
+        self.num_faces = np.sum(self.num_faces_per_axis)
         """int: Number of faces."""
 
         # Define indexing and ordering of inner faces. Horizontal -> vertical -> depth.
         # TODO replace with slices
-        self.flat_inner_faces = [
-            sum(self.num_inner_faces[:d])
-            + np.arange(self.num_inner_faces[d], dtype=int)
+        self.faces = [
+            sum(self.num_faces_per_axis[:d])
+            + np.arange(self.num_faces_per_axis[d], dtype=int)
             for d in range(self.dim)
         ]
 
-        self.inner_faces = [
-            self.flat_inner_faces[d].reshape(self.inner_faces_shape[d])
+        self.faces_slice = [
+            slice(
+                sum(self.num_faces_per_axis[:d]),
+                None if d == self.dim - 1 else sum(self.num_faces_per_axis[: d + 1]),
+            )
             for d in range(self.dim)
+        ]
+
+        self.face_index = [
+            self.faces[d].reshape(self.inner_faces_shape[d]) for d in range(self.dim)
         ]
 
         # Identify inner faces (full cube)
         if self.dim == 1:
-            self.interior_inner_faces = [
-                np.ravel(self.inner_faces[0][1:-1]),
+            self.interior_faces = [
+                np.ravel(self.face_index[0][1:-1]),
             ]
         elif self.dim == 2:
-            self.interior_inner_faces = [
-                np.ravel(self.inner_faces[0][:, 1:-1]),
-                np.ravel(self.inner_faces[1][1:-1, :]),
+            self.interior_faces = [
+                np.ravel(self.face_index[0][:, 1:-1]),
+                np.ravel(self.face_index[1][1:-1, :]),
             ]
         elif self.dim == 3:
-            self.interior_inner_faces = [
-                np.ravel(self.inner_faces[0][:, 1:-1, 1:-1]),
-                np.ravel(self.inner_faces[1][1:-1, :, 1:-1]),
-                np.ravel(self.inner_faces[2][1:-1, 1:-1, :]),
+            self.interior_faces = [
+                np.ravel(self.face_index[0][:, 1:-1, 1:-1]),
+                np.ravel(self.face_index[1][1:-1, :, 1:-1]),
+                np.ravel(self.face_index[2][1:-1, 1:-1, :]),
             ]
         else:
             raise NotImplementedError(f"Grid of dimension {self.dim} not implemented.")
@@ -108,13 +113,11 @@ class Grid:
         # Identify all faces on the outer boundary of the grid. Need to use hardcoded
         # knowledge of the orientation of axes and grid indexing.
         if self.dim == 1:
-            self.exterior_inner_faces = [
-                np.ravel(self.inner_faces[0][np.array([0, -1])])
-            ]
+            self.exterior_faces = [np.ravel(self.face_index[0][np.array([0, -1])])]
         elif self.dim == 2:
-            self.exterior_inner_faces = [
-                np.ravel(self.inner_faces[0][:, np.array([0, -1])]),
-                np.ravel(self.inner_faces[1][np.array([0, -1]), :]),
+            self.exterior_faces = [
+                np.ravel(self.face_index[0][:, np.array([0, -1])]),
+                np.ravel(self.face_index[1][np.array([0, -1]), :]),
             ]
         elif self.dim == 3:
             # TODO
@@ -128,24 +131,16 @@ class Grid:
         self.connectivity = np.zeros((self.num_faces, 2), dtype=int)
         """np.ndarray: Connectivity (and direction) of faces to cells."""
         if self.dim >= 1:
-            self.connectivity[self.flat_inner_faces[0], 0] = np.ravel(
-                self.cell_index[:-1, ...]
-            )
-            self.connectivity[self.flat_inner_faces[0], 1] = np.ravel(
-                self.cell_index[1:, ...]
-            )
+            self.connectivity[self.faces[0], 0] = np.ravel(self.cell_index[:-1, ...])
+            self.connectivity[self.faces[0], 1] = np.ravel(self.cell_index[1:, ...])
         if self.dim >= 2:
-            self.connectivity[self.flat_inner_faces[1], 0] = np.ravel(
-                self.cell_index[:, :-1, ...]
-            )
-            self.connectivity[self.flat_inner_faces[1], 1] = np.ravel(
-                self.cell_index[:, 1:, ...]
-            )
+            self.connectivity[self.faces[1], 0] = np.ravel(self.cell_index[:, :-1, ...])
+            self.connectivity[self.faces[1], 1] = np.ravel(self.cell_index[:, 1:, ...])
         if self.dim >= 3:
-            self.connectivity[self.flat_inner_faces[2], 0] = np.ravel(
+            self.connectivity[self.faces[2], 0] = np.ravel(
                 self.cell_index[:, :, -1, ...]
             )
-            self.connectivity[self.flat_inner_faces[2], 1] = np.ravel(
+            self.connectivity[self.faces[2], 1] = np.ravel(
                 self.cell_index[:, :, 1:, ...]
             )
         if self.dim > 3:
@@ -161,26 +156,26 @@ class Grid:
         if self.dim >= 1:
             self.reverse_connectivity[
                 0, np.ravel(self.cell_index[1:, ...]), 0
-            ] = self.flat_inner_faces[0]
+            ] = self.faces[0]
             self.reverse_connectivity[
                 0, np.ravel(self.cell_index[:-1, ...]), 1
-            ] = self.flat_inner_faces[0]
+            ] = self.faces[0]
 
         if self.dim >= 2:
             self.reverse_connectivity[
                 1, np.ravel(self.cell_index[:, 1:, ...]), 0
-            ] = self.flat_inner_faces[1]
+            ] = self.faces[1]
             self.reverse_connectivity[
                 1, np.ravel(self.cell_index[:, :-1, ...]), 1
-            ] = self.flat_inner_faces[1]
+            ] = self.faces[1]
 
         if self.dim >= 3:
             self.reverse_connectivity[
                 2, np.ravel(self.cell_index[:, :, 1:, ...]), 0
-            ] = self.flat_inner_faces[2]
+            ] = self.faces[2]
             self.reverse_connectivity[
                 2, np.ravel(self.cell_index[:, :, :-1, ...]), 1
-            ] = self.flat_inner_faces[2]
+            ] = self.faces[2]
 
         # Info about inner cells
         # TODO rm?
