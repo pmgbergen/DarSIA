@@ -33,13 +33,14 @@ true_distance_2d = 0.379543951823
 # ! ---- 3d version ----
 
 # Coarse src image
-src_square_3d = np.zeros((rows, cols, 1), dtype=float)
+pages = 1
+src_square_3d = np.zeros((rows, cols, pages), dtype=float)
 src_square_3d[2:5, 2:5, 0] = 1
 meta_3d = {"dimensions": [1, 1, 1], "dim": 3, "series": False, "scalar": True}
 src_image_3d = darsia.Image(src_square_3d, **meta_3d)
 
 # Coarse dst image
-dst_squares_3d = np.zeros((rows, cols, 1), dtype=float)
+dst_squares_3d = np.zeros((rows, cols, pages), dtype=float)
 dst_squares_3d[1:3, 1:2, 0] = 1
 dst_squares_3d[4:7, 7:9, 0] = 1
 dst_image_3d = darsia.Image(dst_squares_3d, **meta_3d)
@@ -144,7 +145,7 @@ options = {
 
 @pytest.mark.parametrize("a_key", range(len(accelerations)))
 @pytest.mark.parametrize("s_key", range(len(solvers)))
-@pytest.mark.parametrize("dim", [2])
+@pytest.mark.parametrize("dim", [2, 3])
 def test_newton(a_key, s_key, dim):
     """Test all combinations for Newton."""
     options.update(newton_options)
@@ -163,7 +164,7 @@ def test_newton(a_key, s_key, dim):
 
 @pytest.mark.parametrize("a_key", range(len(accelerations)))
 @pytest.mark.parametrize("s_key", range(len(solvers)))
-@pytest.mark.parametrize("dim", [2])
+@pytest.mark.parametrize("dim", [2, 3])
 def test_std_bregman(a_key, s_key, dim):
     """Test all combinations for std Bregman."""
     options.update(bregman_std_options)
@@ -182,7 +183,7 @@ def test_std_bregman(a_key, s_key, dim):
 
 @pytest.mark.parametrize("a_key", range(len(accelerations)))
 @pytest.mark.parametrize("s_key", range(len(solvers)))
-@pytest.mark.parametrize("dim", [2])
+@pytest.mark.parametrize("dim", [2, 3])
 def test_reordered_bregman(a_key, s_key, dim):
     """Test all combinations for reordered Bregman."""
     options.update(bregman_reordered_options)
@@ -201,7 +202,7 @@ def test_reordered_bregman(a_key, s_key, dim):
 
 @pytest.mark.parametrize("a_key", range(len(accelerations)))
 @pytest.mark.parametrize("s_key", range(len(solvers)))
-@pytest.mark.parametrize("dim", [2])
+@pytest.mark.parametrize("dim", [2, 3])
 def test_adaptive_bregman(a_key, s_key, dim):
     """Test all combinations for adaptive Bregman."""
     options.update(bregman_adaptive_options)
