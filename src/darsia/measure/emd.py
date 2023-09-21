@@ -46,6 +46,10 @@ class EMD:
             float or array: distance between img_1 and img_2.
 
         """
+        # Two-dimensional
+        if not (img_1.space_dim == 2 and img_2.space_dim == 2):
+            raise NotImplementedError("EMD only implemented for 2d.")
+
         # FIXME investigation required regarding resize preprocessing...
         # Preprocess images
         preprocessed_img_1 = self._preprocess(img_1)
@@ -115,9 +119,6 @@ class EMD:
 
         # Series
         assert img_1.time_num == img_2.time_num
-
-        # Two-dimensional
-        assert img_1.space_dim == 2 and img_2.space_dim == 2
 
         # Check whether the coordinate system is compatible
         equal_coordinate_system, log = darsia.check_equal_coordinatesystems(
