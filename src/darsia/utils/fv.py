@@ -147,7 +147,7 @@ class FVMass:
         self.mat = mass_matrix
 
 
-class FVTangentialReconstruction:
+class FVTangentialFaceReconstruction:
     """Projection of normal fluxes on grid onto tangential components.
 
     The tangential components are defined as the components of the fluxes that are
@@ -169,83 +169,104 @@ class FVTangentialReconstruction:
         """
 
         # Operator for averaging fluxes on orthogonal, neighboring faces
-        shape = ((grid.dim - 1) * grid.num_faces, grid.num_faces)
+        shape = (grid.num_faces, grid.num_faces)
 
         # Each interior inner face has four neighboring faces with normal direction
         # and all oriented in the same direction. In three dimensions, two such normal
         # directions exist. For outer inner faces, there are only two such neighboring
         # faces.
-        data = np.tile(
-            0.25
-            * np.ones(
-                2 * np.array(np.concatenate(grid.exterior_faces)).size
-                + 4 * np.array(np.concatenate(grid.interior_faces)).size,
-                dtype=float,
-            ),
-            grid.dim - 1,
-        )
+        data = 0.25 * np.ones(4 * grid.num_faces, dtype=float)
 
-        # The rows correspond to the faces for which the tangential fluxes are
-        # determined times the component of the tangential fluxes.
-        rows_outer = np.concatenate(
-            [np.repeat(grid.exterior_faces[d], 2) for d in range(grid.dim)]
-        )
-
-        rows_inner = np.concatenate(
-            [np.repeat(grid.interior_faces[d], 4) for d in range(grid.dim)]
-        )
+        # The rows correspond to the faces for which the tangential fluxes (later to be
+        # tiled for addressing the right amount of vectorial components).
+        rows = np.concatenate([np.repeat(grid.faces[d], 4) for d in range(grid.dim)])
 
         # The columns correspond to the (orthogonal) faces contributing to the average
         # of the tangential fluxes. The main idea is for each face to follow the
-        # connectivity. First, we consider the outer inner faces. For each face, we
+        # connectivity.
+        cols = [
+            np.concatenate(
+                [
+                    np.ravel(
+                        grid.reverse_connectivity[
+                            d_perp,
+                            np.ravel(grid.connectivity[grid.faces[d]]),
+                        ]
+                    )
+                    for d in range(grid.dim)
+                    for d_perp in [np.delete(range(grid.dim), d)[i]]
+                ]
+            )
+            for i in range(grid.dim - 1)
+        ]
 
-        # Consider outer inner faces. For each face, we consider the two neighboring
-        # faces with normal direction and all oriented in the same direction. Need to
-        # exclude true exterior faces.
+        # Construct and cache the sparse projection matrix, need to extract those faces
+        # which are not inner faces.
+        self.mat = [
+            sps.csc_matrix(
+                (
+                    data[col != -1],
+                    (rows[col != -1], col[col != -1]),
+                ),
+                shape=shape,
+            )
+            for col in cols
+        ]
 
-        # Consider all close-by faces for each outer inner face which are orthogonal
-        cols_outer = np.concatenate(
-            [
-                np.ravel(
-                    grid.reverse_connectivity[
-                        d_perp,
-                        np.ravel(grid.connectivity[grid.exterior_faces[d]]),
-                    ]
-                )
-                for d in range(grid.dim)
-                for d_perp in np.delete(range(grid.dim), d)
-            ]
-        )
-        # Clean up - remove true exterior faces
-        cols_outer = cols_outer[cols_outer != -1]
+        # Cache some informatio
+        self.num_tangential_directions = grid.dim - 1
+        self.grid = grid
 
-        # Same for interior inner faces,
-        cols_inner = np.concatenate(
-            [
-                np.ravel(
-                    grid.reverse_connectivity[
-                        d_perp,
-                        np.ravel(grid.connectivity[grid.interior_faces[d]]),
-                    ]
-                )
-                for d in range(grid.dim)
-                for d_perp in np.delete(range(grid.dim), d)
-            ]
-        )
-        assert np.count_nonzero(cols_inner == -1) == 0
+    def __call__(self, normal_flux: np.ndarray, concatenate: bool = True) -> np.ndarray:
+        """Apply the operator to the normal fluxes.
 
-        # Collect all rows and columns
-        rows = np.concatenate((rows_outer, rows_inner))
-        cols = np.concatenate((cols_outer, cols_inner))
+        Args:
+            normal_flux (np.ndarray): normal fluxes
+            concatenate (bool, optional): whether to concatenate the tangential fluxes
 
-        # Construct and cache the sparse projection matrix
-        self.mat = sps.csc_matrix(
-            (
-                data,
-                (rows, cols),
-            ),
-            shape=shape,
-        )
+        Returns:
+            np.ndarray: tangential fluxes
+
+        """
+        # Apply the operator to the normal fluxes
+        tangential_flux = [
+            self.mat[d].dot(normal_flux) for d in range(self.num_tangential_directions)
+        ]
+        if concatenate:
+            tangential_flux = np.concatenate(tangential_flux, axis=0)
+
+        return tangential_flux
+
+
+class FVFullFaceReconstruction:
+    def __init__(self, grid: darsia.Grid) -> None:
+        self.grid = grid
+        self.tangential_reconstruction = FVTangentialFaceReconstruction(grid)
+
+    def __call__(self, normal_flux: np.ndarray) -> np.ndarray:
+        """Reconstruct the full fluxes from the normal and tangential fluxes.
+
+        Args:
+            normal_flux (np.ndarray): normal fluxes
+
+        Returns:
+            np.ndarray: full fluxes
+
+        """
+        # Apply the operator to the normal fluxes
+        tangential_fluxes = self.tangential_reconstruction(normal_flux, False)
+
+        # Reconstruct the full fluxes
+        dim = self.grid.dim
+        full_flux = np.zeros((self.grid.num_faces, dim), dtype=float)
+        for d in range(dim):
+            full_flux[self.grid.faces[d], d] = normal_flux[self.grid.faces[d]]
+            for i, d_perp in enumerate(np.delete(range(dim), d)):
+                full_flux[self.grid.faces[d], d_perp] = tangential_fluxes[i][
+                    self.grid.faces[d]
+                ]
+
+        return full_flux
 
 
 # ! ---- Finite volume projection operators ----
