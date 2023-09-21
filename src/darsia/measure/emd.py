@@ -120,9 +120,10 @@ class EMD:
         assert img_1.space_dim == 2 and img_2.space_dim == 2
 
         # Check whether the coordinate system is compatible
-        assert darsia.check_equal_coordinatesystems(
+        equal_coordinate_system, log = darsia.check_equal_coordinatesystems(
             img_1.coordinatesystem, img_2.coordinatesystem
         )
+        assert equal_coordinate_system, f"{log}"
         assert np.allclose(img_1.voxel_size, img_2.voxel_size)
 
         # Compatible distributions - comparing sums is sufficient since it is implicitly
