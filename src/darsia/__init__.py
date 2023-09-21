@@ -13,8 +13,6 @@ from darsia.image.arithmetics import *
 from darsia.measure.integration import *
 from darsia.measure.emd import *
 from darsia.measure.wasserstein import *
-
-# from darsia.measure.wasserstein3d import *
 from darsia.utils.box import *
 from darsia.utils.interpolation import *
 from darsia.utils.segmentation import *
