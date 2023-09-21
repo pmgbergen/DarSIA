@@ -173,8 +173,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
         """sps.csc_matrix: mass matrix on faces: flat fluxes -> flat fluxes"""
 
-        self.tangential_projection = darsia.FVTangentialReconstruction(self.grid).mat
-        """sps.csc_matrix: tangential reconstruction: flat fluxes -> flat fluxes"""
+        self.face_reconstruction = darsia.FVFullFaceReconstruction(self.grid)
+        """sps.csc_matrix: full face reconstruction: flat fluxes -> vector fluxes"""
 
         # Linear part of the Darcy operator with potential constraint.
         self.broken_darcy = sps.bmat(
@@ -470,9 +470,9 @@ class VariationalWassersteinDistance(darsia.EMD):
         elif mode == "face_arithmetic":
             # Define natural vector valued flux on faces (taking arithmetic averages
             # of continuous fluxes over cells evaluated at faces)
-            tangential_flux = self.tangential_projection.dot(flat_flux)
-            # Determine the l2 norm of the fluxes on the faces, add some regularization
-            flat_flux_norm = np.sqrt(flat_flux**2 + tangential_flux**2)
+            full_face_flux = self.face_reconstruction(flat_flux)
+            # Determine the l2 norm of the fluxes on the faces
+            flat_flux_norm = np.linalg.norm(full_face_flux, 2, axis=1)
 
         else:
             raise ValueError(f"Mode {mode} not supported.")
@@ -1194,9 +1194,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         elif mode == "face_arithmetic":
             # Define natural vector valued flux on faces (taking arithmetic averages
             # of continuous fluxes over cells evaluated at faces)
-            tangential_flux = self.tangential_projection.dot(flat_flux)
+            full_face_flux = self.face_reconstruction(flat_flux)
             # Determine the l2 norm of the fluxes on the faces, add some regularization
-            norm = np.sqrt(flat_flux**2 + tangential_flux**2)
+            norm = np.linalg.norm(full_face_flux, 2, axis=1)
             flat_scaling = np.maximum(norm - shrink_factor, 0) / (
                 norm + self.regularization
             )
