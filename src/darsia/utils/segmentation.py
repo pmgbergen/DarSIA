@@ -238,7 +238,8 @@ def segment(
     if isinstance(img, np.ndarray):
         return labels
     elif isinstance(img, darsia.Image):
-        return darsia.Image(labels, img.metadata)
+        meta = img.metadata()
+        return darsia.Image(labels, **meta)
 
 
 # ! ---- Auxiliary functions for segment
