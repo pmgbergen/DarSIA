@@ -1,13 +1,14 @@
-"""
+"""Geometry segmentation example.
+
 Segmentation is an important part of te image analysis of multi-layered media.
 This example showcases the workflow implemented in DarSIA which is based on a
 watershed segmentation approach.
+
 """
 
 import os
 from pathlib import Path
 
-import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -15,12 +16,12 @@ import darsia
 
 # Define path to image folder
 path = Path(f"{os.path.dirname(__file__)}/images/baseline.jpg")
-image = cv2.cvtColor(cv2.imread(str(path)), cv2.COLOR_BGR2RGB)
+image = darsia.imread(path, dim=2)
 
 # Restrict image to ROI - only done here to simplify the situation and focus on the
 # workflow. The input image has shadows on the left and right sides. These are simply
 # cropped here.
-image = image[:, 55:3140]
+image = image.subregion((slice(0, None), slice(55, 3140)))
 
 # ! ---- Gradient-based approach
 
@@ -46,10 +47,10 @@ labels = darsia.segment(
 
 # Plot the gradient-based segmentation
 plt.figure("Labels")
-plt.imshow(labels)
+plt.imshow(labels.img)
 plt.figure("Image and labels")
-plt.imshow(image)
-plt.imshow(labels, alpha=0.3)
+plt.imshow(image.img)
+plt.imshow(labels.img, alpha=0.3)
 
 # ! ---- Supervised approach
 
@@ -97,10 +98,10 @@ labels_supervised = darsia.segment(
 
 # Plot the result of the supervised segmentation
 plt.figure("Labels supervised")
-plt.imshow(labels_supervised)
+plt.imshow(labels_supervised.img)
 plt.figure("Image and labels supervised")
-plt.imshow(image)
-plt.imshow(labels_supervised, alpha=0.3)
+plt.imshow(image.img)
+plt.imshow(labels_supervised.img, alpha=0.3)
 
 plt.show(block=False)
 # Pause longer if it is desired to keep the images on the screen
