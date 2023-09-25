@@ -105,7 +105,9 @@ class BaseAssistant(ABC):
             )
         else:
             self.ax.imshow(skimage.img_as_float(self.img.img))
-        self.ax.grid()
+        plot_grid = self.kwargs.get("plot_grid", False)
+        if plot_grid:
+            self.ax.grid()
         self.ax.set_xlabel("x-axis")
         self.ax.set_ylabel("y-axis")
         self.ax.set_aspect("equal")
