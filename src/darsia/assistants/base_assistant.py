@@ -112,7 +112,7 @@ class BaseAssistant(ABC):
         self.ax.set_ylabel("y-axis")
         self.ax.set_aspect("equal")
 
-        plt.show()
+        plt.show(block=True)
 
     def _plot_3d(self) -> None:
         """Side view with interactive event handler."""
@@ -273,4 +273,4 @@ class BaseAssistant(ABC):
         self.ax[2].set_ylabel("z-axis")
         self.ax[2].set_aspect("equal")
 
-        plt.show()
+        plt.show(block=True)
