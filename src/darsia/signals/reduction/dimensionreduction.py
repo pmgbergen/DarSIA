@@ -129,7 +129,7 @@ class AxisReduction:
 
         # Fetch and adapt metadata
         metadata = img.metadata()
-        metadata["dim"] = new_dim
+        metadata["space_dim"] = new_dim
         metadata["indexing"] = new_indexing
         metadata["origin"] = new_origin
         metadata["dimensions"] = new_dimensions
@@ -182,8 +182,8 @@ def extrude_along_axis(img: darsia.Image, height: float, num: int) -> darsia.Ima
 
     # Update metadata
     meta = img.metadata()
-    assert meta["dim"] == 2
-    meta["dim"] = 3
+    assert meta["space_dim"] == 2
+    meta["space_dim"] = 3
     meta["dimensions"] = [height, *meta["dimensions"]]
     meta["indexing"] = "ijk"
     meta["origin"] = [height, *meta["origin"]]
