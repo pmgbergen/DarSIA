@@ -565,14 +565,14 @@ class Image:
     def subregion(
         self,
         voxels: Optional[tuple[slice]] = None,
-        coordinates: Optional[np.ndarray] = None,
+        coordinates: Optional[Union[np.ndarray, list[float]]] = None,
     ) -> Image:
         """Extraction of spatial subregion.
 
         Args:
             voxels (tuple of slices, optional): voxel intervals in all dimensions.
-            coordinates (array, optional): points in space, in Cartesian coordinates,
-                uniquely defining a box.
+            coordinates (array or list, optional): points in space, in Cartesian
+                coordinates, uniquely defining a box, i.e., at least space_dim points.
 
         Returns:
             Image: image with restricted spatial domain.
