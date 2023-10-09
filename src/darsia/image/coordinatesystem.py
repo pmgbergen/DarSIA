@@ -246,7 +246,7 @@ def check_equal_coordinatesystems(
         failure_log.append("indexing")
 
     if not (coordinatesystem1.dim == coordinatesystem2.dim):
-        failure_log.append("dim")
+        failure_log.append("space_dim")
 
     if not exclude_size:
         if not (np.allclose(coordinatesystem1.shape, coordinatesystem2.shape)):

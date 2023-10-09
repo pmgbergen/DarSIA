@@ -439,7 +439,8 @@ def imread_from_dicom(
     # Collect all meta information for a space time image
     dimensions = [voxel_size[i] * shape[i] for i in range(dim)]
     meta = {
-        "dim": dim,
+        "name": series_description[0],
+        "space_dim": dim,
         "indexing": "ijk"[:dim],
         "dimensions": dimensions,
         "series": series,
@@ -493,7 +494,7 @@ def imread_from_vtu(
 
         # Create a space-time optical image through stacking along the time axis
         meta = data_collection[0][1]  # NOTE: No safety check
-        dim = meta["dim"]
+        dim = meta["space_dim"]
         data = np.stack([d[0] for d in data_collection], axis=dim)
 
         # Fix metadata
@@ -571,7 +572,7 @@ def _read_single_vtu_image(
 
     # Collect all metadata
     meta = {
-        "dim": dim,
+        "space_dim": dim,
         "indexing": indexing,
         "dimensions": dimensions,
         "origin": origin,
@@ -609,7 +610,7 @@ def _resample_data(
 
     """
     # Fetch meta data
-    dim = meta["dim"]
+    dim = meta["space_dim"]
     indexing = meta["indexing"]
 
     # Problem size
@@ -730,7 +731,7 @@ def _embed_data(
 
     """
     # Fetch meta data
-    dim = meta["dim"]
+    dim = meta["space_dim"]
     if dim != 2:
         raise NotImplementedError
     indexing = meta["indexing"]

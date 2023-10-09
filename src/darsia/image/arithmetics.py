@@ -149,7 +149,7 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
     dimensions = [cartesian_dimensions[i] for i in to_matrix_indexing]
 
     meta = {
-        "dim": space_dim,
+        "space_dim": space_dim,
         "indexing": indexing,
         "dimensions": dimensions,
         "origin": origin,
