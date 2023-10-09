@@ -709,12 +709,14 @@ class Image:
             **kwargs: additional arguments passed to show_matplotlib or show_plotly.
 
         """
-        assert mode in ["matplotlib", "plotly"], "Unknown mode."
-
         if mode == "matplotlib":
             self.show_matplotlib(title, duration, **kwargs)
         elif mode == "plotly":
             self.show_plotly(title, duration, **kwargs)
+        elif mode == "plain":
+            self.show_plain(title, **kwargs)
+        else:
+            raise ValueError(f"Unknown mode {mode}.")
 
     def show_matplotlib(
         self,
@@ -1383,6 +1385,34 @@ class Image:
                         )
 
                     fig_2d.show()
+
+    def show_plain(
+        self,
+        title: str = "",
+        **kwargs,
+    ) -> None:
+        """Show image using matplotlib.pyplots in plain mode.
+
+        NOTE: Only applicable for 2d images, which are not scalar. The image array is
+        plotted without any additional information and modifications.
+
+        Args:
+            title (str): title in the displayed window.
+            **kwargs: additional arguments passed to show_matplotlib or show_plotly.
+
+        """
+        # Make sure the image is 2d and not a series
+        assert self.space_dim == 2, "Only applicable for 2d images."
+        assert not self.series, "Only applicable for single images."
+
+        # Plot
+        plt.figure(title)
+        cmap = kwargs.get("cmap", "viridis")
+        plt.imshow(
+            self.img,
+            cmap=cmap,
+        )
+        plt.show(block=True)
 
     # ! ---- I/O
 
