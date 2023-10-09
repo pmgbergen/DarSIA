@@ -371,6 +371,21 @@ class Image:
         # Update relative time
         self.set_time(time)
 
+    def update_metadata(self, meta: Optional[dict] = None, **kwargs) -> None:
+        """Update metadata of image.
+
+        Args:
+            meta (dict): metadata to be updated, with keys corresponding to
+                self.metadata().
+            **kwargs: additional keyword arguments to be updated.
+
+        """
+        if meta is not None:
+            for key, value in meta.items():
+                setattr(self, key, value)
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
     # ! ---- Transformations
 
     def resize(self, cx: float, cy: Optional[float] = None) -> None:
