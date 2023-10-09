@@ -767,12 +767,10 @@ class CurvatureCorrection(darsia.BaseCorrection):
             if all([key in self.config["crop"] for key in ["width", "height"]]):
                 # NOTE: Dimensions of Image uses matrix convention, i.e. (rows, cols).
                 dimensions = [
-                    self.config["crop"][key]
-                    for key in [
-                        "height",
-                        "width",
-                    ]
+                    self.config["crop"]["height"],
+                    self.config["crop"]["width"],
                 ]
                 meta["dimensions"] = dimensions
+                meta["origin"] = [0, self.config["crop"]["height"]]
 
         return meta
