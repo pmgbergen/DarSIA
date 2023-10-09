@@ -84,7 +84,7 @@ class Image:
         """Original dtype at construction of the object."""
 
         # ! ---- Spatial meta information
-        self.space_dim: int = kwargs.get("dim", 2)
+        self.space_dim: int = kwargs.get("space_dim", 2)
         """Dimension of the spatial domain."""
 
         self.space_num: int = np.prod(self.shape[: self.space_dim])
@@ -417,7 +417,7 @@ class Image:
 
         """
         metadata = {
-            "dim": self.space_dim,
+            "space_dim": self.space_dim,
             "indexing": self.indexing,
             "dimensions": self.dimensions,
             "origin": self.origin,
@@ -1499,11 +1499,11 @@ class OpticalImage(Image):
         """
         # Define metadata specific for optical images
         optical_metadata = {
-            "dim": 2,
+            "space_dim": 2,
             "indexing": "ij",
             "scalar": False,
         }
-        kwargs.pop("dim", None)
+        kwargs.pop("space_dim", None)
         kwargs.pop("indexing", None)
         kwargs.pop("scalar", None)
 
