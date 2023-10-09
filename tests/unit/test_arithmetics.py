@@ -52,7 +52,7 @@ def test_superposition_2d():
 def test_superposition_2d_spacetime():
 
     meta = {
-        "dim": 2,
+        "space_dim": 2,
         "series": True,
         "time": [0, 1, 2, 3, 4],
     }

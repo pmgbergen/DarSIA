@@ -12,7 +12,7 @@ def test_time_interval_scalar_image_2d():
 
     # Construct space-time image
     meta = {
-        "dim": 2,
+        "space_dim": 2,
         "series": True,
         "time": [0, 1, 2, 3, 4],
     }
@@ -37,7 +37,7 @@ def test_time_interval_scalar_image_2d_reset_time():
 
     # Construct space-time image
     meta = {
-        "dim": 2,
+        "space_dim": 2,
         "series": True,
         "time": [0, 1, 2, 3, 4],
     }
@@ -63,7 +63,7 @@ def test_time_interval_advanced():
 
     # Construct space-time image
     meta = {
-        "dim": 3,
+        "space_dim": 3,
         "series": True,
         "scalar": False,
         "time": [0, 1, 2, 3, 4],

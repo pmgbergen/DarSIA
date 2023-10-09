@@ -30,7 +30,7 @@ def read_test_image(img_id: str) -> tuple[Optional[np.ndarray], Optional[dict], 
 
         # ! ---- Define some metadata corresponding to the input array
         info = {
-            "dim": 2,
+            "space_dim": 2,
             "orientation": "ij",
         }
 

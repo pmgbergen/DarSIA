@@ -39,7 +39,7 @@ def test_initialize_general_image():
     info = {
         "scalar": False,
         "series": False,
-        "dim": 2,
+        "space_dim": 2,
         "indexing": "ij",
         "dimensions": [1.5, 2.8],
     }
@@ -70,7 +70,7 @@ def test_initialize_optical_image():
     info = {
         "series": False,
         "scalar": False,
-        "dim": 2,
+        "space_dim": 2,
         "indexing": "ij",
         "dimensions": [1.5, 2.8],
     }
