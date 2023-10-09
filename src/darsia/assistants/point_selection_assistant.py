@@ -27,6 +27,9 @@ class PointSelectionAssistant(darsia.BaseAssistant):
         self.pts = None
         """Selected points."""
 
+        # Output mode
+        self.array_output = kwargs.get("to_array", True)
+
     def __call__(self) -> Optional[np.ndarray]:
         """Call the assistant."""
 
@@ -34,23 +37,25 @@ class PointSelectionAssistant(darsia.BaseAssistant):
             self._reset()
             super().__call__()
 
-        # Print information about the assistant
-        self._print_info()
+            # Print information about the assistant
+            self._print_info()
 
         # Close the figure opened by the base class
         plt.close(self.fig)
 
         # The segmentation algorithm expects the points as int pixel coordinates
-        return np.array(self.pts).astype(int)
+        if self.array_output:
+            return np.array(self.pts).astype(int)
+        else:
+            np.array(self.pts).astype(int).tolist()
 
     def _print_info(self) -> None:
         """Print out information about the assistant."""
 
         # Print the determined points to screen so one can hardcode the definition of
         # the subregion if required.
-        if self.verbosity and self.pts is not None:
-            print("The selected points:")
-            print(np.array(self.pts).astype(int))
+        print("The selected points:")
+        print(np.array(self.pts).astype(int).tolist())
 
     def _reset(self) -> None:
         """Reset list of points."""
