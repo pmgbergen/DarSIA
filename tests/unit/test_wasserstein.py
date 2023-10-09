@@ -12,7 +12,7 @@ rows = 10
 cols = rows
 src_square_2d = np.zeros((rows, cols), dtype=float)
 src_square_2d[2:5, 2:5] = 1
-meta_2d = {"width": 1, "height": 1, "dim": 2, "scalar": True}
+meta_2d = {"width": 1, "height": 1, "space_dim": 2, "scalar": True}
 src_image_2d = darsia.Image(src_square_2d, **meta_2d)
 
 # Coarse dst image
@@ -36,7 +36,7 @@ true_distance_2d = 0.379543951823
 pages = 1
 src_square_3d = np.zeros((rows, cols, pages), dtype=float)
 src_square_3d[2:5, 2:5, 0] = 1
-meta_3d = {"dimensions": [1, 1, 1], "dim": 3, "series": False, "scalar": True}
+meta_3d = {"dimensions": [1, 1, 1], "space_dim": 3, "series": False, "scalar": True}
 src_image_3d = darsia.Image(src_square_3d, **meta_3d)
 
 # Coarse dst image
