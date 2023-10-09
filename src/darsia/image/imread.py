@@ -439,7 +439,7 @@ def imread_from_dicom(
     # Collect all meta information for a space time image
     dimensions = [voxel_size[i] * shape[i] for i in range(dim)]
     meta = {
-        "name": series_description[0],
+        # "name": series_description[0],
         "space_dim": dim,
         "indexing": "ijk"[:dim],
         "dimensions": dimensions,
