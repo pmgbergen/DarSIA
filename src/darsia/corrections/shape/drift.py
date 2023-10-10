@@ -74,7 +74,15 @@ class DriftCorrection(darsia.BaseCorrection):
             """Basis/ROI for feature detection."""
 
             if "roi" in config:
-                self.roi = np.array(config["roi"])
+                roi = np.array(config["roi"])
+                if isinstance(roi, tuple):
+                    self.roi = roi
+                elif isinstance(roi, list):
+                    self.roi = tuple(roi)
+                elif isinstance(roi, np.ndarray):
+                    self.roi = tuple(roi.tolist())
+                else:
+                    raise ValueError(f"wrong format")
             elif roi is not None:
                 assert isinstance(roi, list) or isinstance(
                     roi, np.ndarray
