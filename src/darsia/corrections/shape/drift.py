@@ -75,7 +75,9 @@ class DriftCorrection(darsia.BaseCorrection):
             if "roi" in self.config:
                 self.roi = np.array(self.config["roi"])
             elif roi is not None:
-                assert isinstance(roi, list) or isinstance(roi, np.ndarray), "wrong format"
+                assert isinstance(roi, list) or isinstance(
+                    roi, np.ndarray
+                ), "wrong format"
                 self.roi = darsia.bounding_box(
                     np.array(roi),
                     padding=round(relative_padding * np.min(self.base.shape[:2])),
