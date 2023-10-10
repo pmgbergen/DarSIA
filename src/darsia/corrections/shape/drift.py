@@ -58,12 +58,13 @@ class DriftCorrection(darsia.BaseCorrection):
             raise ValueError("Data type for baseline image not supported.")
 
         if config is None:
-            """Config file storing all specs for correction."""
+            config = {}
 
             self.active = False
             """Flag controlling whether correction is active."""
 
         else:
+
             self.active: bool = config.get("active", True)
 
         if self.active:
@@ -72,8 +73,8 @@ class DriftCorrection(darsia.BaseCorrection):
             self.roi: Optional[tuple] = None
             """Basis/ROI for feature detection."""
 
-            if "roi" in self.config:
-                self.roi = np.array(self.config["roi"])
+            if "roi" in config:
+                self.roi = np.array(config["roi"])
             elif roi is not None:
                 assert isinstance(roi, list) or isinstance(
                     roi, np.ndarray
