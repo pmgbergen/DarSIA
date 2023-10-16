@@ -1,4 +1,5 @@
 import string
+from abc import ABC
 from pathlib import Path
 
 import matplotlib.patches as patches
@@ -38,6 +39,9 @@ image = darsia.imread(image_path, transformations=transformations).subregion(
 )
 
 # ! ---- COLOR MANAGEMENT ---- !
+
+# NOTE: The steps of taking differences, and apply denoising are part of
+# darsia.ConcentrationAnalysis.
 
 # LAB
 diff_LAB = (
@@ -142,67 +146,77 @@ concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)
 # ! ---- MAIN CONCENTRATION ANALYSIS ---- !
 
 
-def color_to_concentration(
-    k, colours, concentrations, signal: np.ndarray
-) -> np.ndarray:
-    """Main method.
+class KernelInterpolation:
+    def __init__(self, k, colours, concentrations):
 
-    Two operations:
-    1. Setup of kernel-based interpolation.
-    2. Translation of signal (denoised difference) to concentration.
+        self.kernel = k
 
-    """
+        # signal is rgb, transofrm to lab space because it is uniform and therefore
+        # makes sense to interpolate in
+        # signal = skimage.color.rgb2lab(signal)
+        # colours = skimage.color.rgb2lab(colours)
 
-    # ! ---- Initialization of kernel based interpolation
+        x = np.array(colours)  # data points / control points / support points
+        y = np.array(concentrations)  # goal points
+        X = np.ones((x.shape[0], x.shape[0]))  # kernel matrix
+        for i in range(x.shape[0]):
+            for j in range(x.shape[0]):
+                X[i, j] = self.kernel(x[i], x[j])
 
-    # signal is rgb, transofrm to lab space because it is uniform and therefore
-    # makes sense to interpolate in
-    # signal = skimage.color.rgb2lab(signal)
-    # colours = skimage.color.rgb2lab(colours)
+        alpha = np.linalg.solve(X, y)
 
-    x = np.array(colours)  # data points / control points / support points
-    y = np.array(concentrations)  # goal points
-    X = np.ones((x.shape[0], x.shape[0]))  # kernel matrix
-    for i in range(x.shape[0]):
-        for j in range(x.shape[0]):
-            X[i, j] = k(x[i], x[j])
+        # Cache
+        self.x = x
+        self.alpha = alpha
 
-    alpha = np.linalg.solve(X, y)
+    def __call__(self, signal: np.ndarray):
+        # Estimator / interpolant
+        def estim(signal):
+            sum = 0
+            for n in range(self.alpha.shape[0]):
+                sum += self.alpha[n] * self.kernel(signal, self.x[n])
+            return sum
 
-    # ! ---- Application of kernel based interpolation
-
-    # Estimator / interpolant
-    def estim(signal):
-        sum = 0
-        for n in range(alpha.shape[0]):
-            sum += alpha[n] * k(signal, x[n])
-        return sum
-
-    # estim = scipy.interpolate.LinearNDInterpolator(colours, concentrations, 0)
-
-    ph_image = np.zeros(signal.shape[:2])
-    for i in range(signal.shape[0]):
-        for j in range(signal.shape[1]):
-            ph_image[i, j] = estim(signal[i, j])
-    return ph_image
+        ph_image = np.zeros(signal.shape[:2])
+        for i in range(signal.shape[0]):
+            for j in range(signal.shape[1]):
+                ph_image[i, j] = estim(signal[i, j])
+        return ph_image
 
 
 # ! ---- KERNEL MANAGEMENET -----
 
+
+class BaseKernel(ABC):
+    def __call__(self, x, y):
+        pass
+
+
 # define linear kernel shifted to avoid singularities
-def k_lin(x, y, a=0):
-    return np.inner(x, y) + a
+class LinearKernel(BaseKernel):
+    def __init__(self, a=0):
+        self.a = a
+
+    def __call__(self, x, y):
+        return np.inner(x, y) + self.a
 
 
 # define gaussian kernel
-def k_gauss(x, y, gamma=9.73):  # rgb: 9.73 , lab: 24.22
-    return np.exp(-gamma * np.inner(x - y, x - y))
+class GaussianKernel(BaseKernel):
+    def __init__(self, gamma=1):
+        self.gamma = gamma
+
+    def __call__(self, x, y):
+        return np.exp(-self.gamma * np.inner(x - y, x - y))
 
 
 # ! ---- MAIN ROUTINE ---- !
 
 # Convert a discrete ph stripe to a numeric pH indicator.
-ph_image = color_to_concentration(k_gauss, colours_RGB, concentrations, smooth_RGB)
+color_to_concentration = KernelInterpolation(
+    GaussianKernel(gamma=9.73), colours_RGB, concentrations
+)  # rgb: 9.73 , lab: 24.22
+ph_image = color_to_concentration(smooth_RGB)
 # gamma=10 value retrieved from ph analysis kernel calibration was best for c = 0.95
 # which also is physically meaningful
 
