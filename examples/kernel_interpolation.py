@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
@@ -35,9 +36,8 @@ image = darsia.imread(image_path, transformations=transformations).subregion(
     voxels=(slice(2300, 2500), slice(2200, 5200))
 )
 
-# ! ---- CALIBRATION ---- !
-# NOTE:
-'''
+# ! ---- MAIN CONCENTRATION ANALYSIS AND CALIBRATION ---- !
+"""
 Before using kernel interpolation to transform the given image to a concentration image,
 the support data on which the interpolation depends has to be defined.
 In the thesis these were predefined samples of the smoothed and preprocessed image and
@@ -45,10 +45,10 @@ corresponding concentrations.
 Now it is possible to select these samples in a GUI using darsia.BoxSelectionAssistant().
 In these samples of the image, the most common colour was identified using a histogram
 analysis, which is now available through darsia.extract_characteristic_data().
-'''
+"""
 
 # Chosen as in thesis:
-'''samples = [
+"""samples = [
     (slice(50, 150), slice(100, 200)),
     (slice(50, 150), slice(400, 500)),
     (slice(50, 150), slice(600, 700)),
@@ -60,7 +60,7 @@ analysis, which is now available through darsia.extract_characteristic_data().
     (slice(50, 150), slice(2700, 2800)),
 ]
 n = len(samples)
-concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)'''
+concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)"""
 
 
 # Same but under the use of DarSIA
@@ -70,40 +70,35 @@ samples = assistant()
 n = len(samples)
 concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)
 
-
+# Predefine concentration analysis for now without any model (to be defined later).
 # Extract characteristic colors from calibration image in relative colors.
-pre_analysis = darsia.ConcentrationAnalysis(
-    base=baseline.img_as(float),
-    restoration=darsia.TVD(
-        weight=0.025, eps=1e-4, max_num_iter=100, method="isotropic Bregman"
-    ),
-    **{"diff option": "plain"}
-)
-smooth_RGB = pre_analysis(image.img_as(float)).img
-colours_RGB = darsia.extract_characteristic_data(
-    signal=smooth_RGB, samples=samples, verbosity=True, show_plot=False
-)
-
-# ! ---- MAIN CONCENTRATION ANALYSIS ---- !
-'''
-comments:
--   here, the support points as defined above are used to build a Kernel Interpolation
--   This Kernel interpolation is then used as the model in the darsia.ConcentrationAnalysis
--   use plain difference to keep all information (no cut off or norm)
-    this is the advantage of the kernel interpolation - it can handle negative colours
-'''
 analysis = darsia.ConcentrationAnalysis(
     base=baseline.img_as(float),
     restoration=darsia.TVD(
         weight=0.025, eps=1e-4, max_num_iter=100, method="isotropic Bregman"
     ),
-    model=darsia.KernelInterpolation(
-        darsia.GaussianKernel(gamma=9.73), colours_RGB, concentrations
-    ),
     **{"diff option": "plain"}
 )
-concentration_image = analysis(image.img_as(float)).img
+smooth_RGB = analysis(image.img_as(float)).img
+colours_RGB = darsia.extract_characteristic_data(
+    signal=smooth_RGB, samples=samples, verbosity=True, surpress_plot=True
+)
 
+# Now add kernel interpolation as model trained by the extracted information.
+"""
+comments:
+-   here, the support points as defined above are used to build a Kernel Interpolation
+-   This Kernel interpolation is then used as the model in the darsia.ConcentrationAnalysis
+-   use plain difference to keep all information (no cut off or norm)
+    this is the advantage of the kernel interpolation - it can handle negative colours
+-   finding the right kernel parameters is part of the modeling
+"""
+analysis.model = darsia.KernelInterpolation(
+    darsia.GaussianKernel(gamma=9.73), colours_RGB, concentrations
+)
+
+# Finally, apply the (full) concentration analysis to analyze the test image
+concentration_image = analysis(image.img_as(float)).img
 
 # ! ----- VISUALISATION ---- !
 
@@ -112,7 +107,9 @@ plt.plot(np.average(concentration_image, axis=0))
 plt.xlabel("horizontal pixel")
 plt.ylabel("concentration")
 
-concentration_image[concentration_image > 1] = 1  # für visualisierung von größer 1 values
+concentration_image[
+    concentration_image > 1
+] = 1  # für visualisierung von größer 1 values
 concentration_image[concentration_image < 0] = 0
 fig = plt.figure()
 fig.suptitle("original image and resulting concentration")
