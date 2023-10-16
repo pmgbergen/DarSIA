@@ -76,8 +76,19 @@ samples = [
 ]
 
 
-def extract_support_points(signal, samples):
-    """Assistant to extract representative colors from input image for given patches."""
+def extract_characteristic_data(signal, samples, verbosity=False, show_plot=True):
+    """Assistant to extract representative colors from input image for given patches.
+
+    Args:
+        signal (np.ndarray): input signal, assumed to have the structure of a 2d,
+            colored image.
+        samples (list of slices): list of 2d regions of interest
+        show_plot (boolean): flag controlling whether plots are displayed.
+
+    Returns:
+        np.ndarray: characteristic colors.
+
+    """
 
     # Alphabet useful for labeling in plots
     letters = list(string.ascii_uppercase)
@@ -90,7 +101,8 @@ def extract_support_points(signal, samples):
 
     # double check number of patches
     n = np.shape(samples)[0]  # number of patches
-    print("number of support patches: " + str(n))
+    if verbosity:
+        print("Number of support patches: " + str(n))
 
     # init colour vector
     colours = np.zeros((n, 3))
@@ -125,22 +137,30 @@ def extract_support_points(signal, samples):
         ]
         colours[i] = col
 
-    c = np.abs(colours)
-    plt.figure()
-    ax = plt.axes(projection="3d")
-    ax.set_xlabel("R*")
-    ax.set_ylabel("G*")
-    ax.set_zlabel("B*")
-    ax.scatter(colours[:, 0], colours[:, 1], colours[:, 2], c=c)
-    for i, c in enumerate(colours):
-        ax.text(c[0], c[1], c[2], letters[i])
+    if verbosity:
+        c = np.abs(colours)
+        plt.figure()
+        ax = plt.axes(projection="3d")
+        ax.set_xlabel("R*")
+        ax.set_ylabel("G*")
+        ax.set_zlabel("B*")
+        ax.scatter(colours[:, 0], colours[:, 1], colours[:, 2], c=c)
+        for i, c in enumerate(colours):
+            ax.text(c[0], c[1], c[2], letters[i])
+        if show_plot:
+            plt.show()
 
-    print("characteristic colours: " + str(colours))
-    return n, colours
+        print("Characteristic colours: " + str(colours))
+    return colours
 
 
-n, colours_RGB = extract_support_points(signal=smooth_RGB, samples=samples)
-n, colours_LAB = extract_support_points(signal=smooth_LAB, samples=samples)
+n = len(samples)
+colours_RGB = extract_characteristic_data(
+    signal=smooth_RGB, samples=samples, verbosity=True, show_plot=False
+)
+colours_LAB = extract_characteristic_data(
+    signal=smooth_LAB, samples=samples, verbosity=True, show_plot=False
+)
 concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)
 
 # ! ---- MAIN CONCENTRATION ANALYSIS ---- !
@@ -210,13 +230,30 @@ class GaussianKernel(BaseKernel):
 
 # ! ---- MAIN ROUTINE ---- !
 
-# Convert a discrete ph stripe to a numeric pH indicator.
-color_to_concentration = KernelInterpolation(
-    GaussianKernel(gamma=9.73), colours_RGB, concentrations
-)  # rgb: 9.73 , lab: 24.22
-ph_image = color_to_concentration(smooth_RGB)
-# gamma=10 value retrieved from ph analysis kernel calibration was best for c = 0.95
-# which also is physically meaningful
+if False:
+    # Reference solution
+
+    # Convert a discrete ph stripe to a numeric pH indicator.
+    color_to_concentration = KernelInterpolation(
+        GaussianKernel(gamma=9.73), colours_RGB, concentrations
+    )  # rgb: 9.73 , lab: 24.22
+    ph_image = color_to_concentration(smooth_RGB)
+    # gamma=10 value retrieved from ph analysis kernel calibration was best for c = 0.95
+    # which also is physically meaningful
+
+elif True:
+    # Same but under the use of DarSIA
+    analysis = darsia.ConcentrationAnalysis(
+        base=baseline.img_as(float),
+        restoration=darsia.TVD(
+            weight=0.025, eps=1e-4, max_num_iter=100, method="isotropic Bregman"
+        ),
+        model=KernelInterpolation(
+            GaussianKernel(gamma=9.73), colours_RGB, concentrations
+        ),
+        **{"diff option": "plain"}
+    )
+    ph_image = analysis(image.img_as(float)).img
 
 plt.figure("cut ph val")
 plt.plot(np.average(ph_image, axis=0))
