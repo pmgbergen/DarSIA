@@ -28,7 +28,7 @@ class TVD:
 
         """
         # Determine method
-        self.method = kwargs.pop(key + "method", "chambolle")
+        self.method = kwargs.pop(key + "method", "chambolle").lower()
 
         # Method-specific parameters
         if self.method == "heterogeneous bregman":
