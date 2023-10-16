@@ -214,7 +214,7 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
         """
 
         # Fetch the injection rate and geometry
-        injection_rate = options["injection_rate"]  # in same units as the input images
+        injection_rate = options["injection_rate"]  # in same units as geometry
         geometry = options["geometry"]
         regression_type = options.get("regression_type", "ransac").lower()
         assert regression_type in ["ransac", "linear"]
@@ -258,10 +258,13 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
 
             # Cache result for possible post-analysis
             self._slope = regression.coef_[0]
+            self._reference_slope = injection_rate
             self._intercept = regression.intercept_
 
-            # Measure deffect
+            # Measure relative defect
             defect = effective_injection_rate - injection_rate
+            if abs(injection_rate) > 1e-15:
+                defect /= injection_rate
             return defect**2
 
         return objective_function
@@ -305,9 +308,15 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
             color="black",
             linestyle=(0, (5, 5)),
         )
+        plt.plot(
+            times,
+            [self._intercept + self._reference_slope * time for time in times],
+            color="green",
+            linestyle=(0, (5, 5)),
+        )
         plt.xlabel("time [s]")
         plt.ylabel("volume [m**3]")
-        plt.legend(["rescaled signal", "reference"])
+        plt.legend(["rescaled signal", "regression", "reference"])
         plt.show()
 
     def model_calibration_postanalysis(self) -> float:
