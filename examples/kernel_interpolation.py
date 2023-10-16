@@ -1,17 +1,18 @@
-import numpy as np
-import darsia
-import skimage
-import matplotlib.pyplot as plt
-from pathlib import Path
-import matplotlib.patches as patches
 import string
+from pathlib import Path
 
-# import matplotlib.patches as patches
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+import numpy as np
+import skimage
+
+import darsia
+
+# ! ---- DATA MANAGEMENT ---- !
 
 folder = Path("images")
 baseline_path = folder / Path("20220914-142404.TIF")
 image_path = folder / Path("20220914-151727.TIF")
-# image_path = Path(".data/test/singletracer.JPG")
 
 # Setup curvature correction (here only cropping)
 curvature_correction = darsia.CurvatureCorrection(
@@ -36,10 +37,7 @@ image = darsia.imread(image_path, transformations=transformations).subregion(
     voxels=(slice(2300, 2500), slice(2200, 5200))
 )
 
-
-# baseline_full = darsia.imread(baseline_path, transformations=transformations)
-# image_full = darsia.imread(image_path, transformations=transformations)
-
+# ! ---- COLOR MANAGEMENT ---- !
 
 # LAB
 diff_LAB = (
@@ -50,9 +48,6 @@ diff_LAB = (
 # RGB
 diff_RGB = skimage.img_as_float(image.img) - skimage.img_as_float(baseline.img)
 
-# HSV
-# diff = skimage.color.rgb2hsv(baseline.img) - skimage.color.rgb2hsv(image.img)
-
 # Regularize
 smooth_RGB = skimage.restoration.denoise_tv_bregman(
     diff_RGB, weight=0.025, eps=1e-4, max_num_iter=100, isotropic=True
@@ -61,6 +56,9 @@ smooth_LAB = skimage.restoration.denoise_tv_bregman(
     diff_LAB, weight=0.025, eps=1e-4, max_num_iter=100, isotropic=True
 )
 
+# ! ---- CALIBRATION ---- !
+
+# NOTE: Samples can also be defined using a graphical assistant.
 samples = [
     (slice(50, 150), slice(100, 200)),
     (slice(50, 150), slice(400, 500)),
@@ -73,10 +71,13 @@ samples = [
     (slice(50, 150), slice(2700, 2800)),
 ]
 
-letters = list(string.ascii_uppercase)
-
 
 def extract_support_points(signal, samples):
+    """Assistant to extract representative colors from input image for given patches."""
+
+    # Alphabet useful for labeling in plots
+    letters = list(string.ascii_uppercase)
+
     # visualise patches
     fig, ax = plt.subplots()
     ax.imshow(np.abs(signal))  # visualise abs colours, because relative cols are neg
@@ -100,9 +101,6 @@ def extract_support_points(signal, samples):
             edgecolor="w",
             facecolor="none",
         )
-        # ax.text(
-        #     p[1].start + 130, p[0].start + 100, letters[i], fontsize=15, color="white"
-        # )
         ax.text(p[1].start + 5, p[0].start + 95, letters[i], fontsize=12, color="white")
         ax.add_patch(rect)
 
@@ -115,7 +113,6 @@ def extract_support_points(signal, samples):
         H, edges = np.histogramdd(
             flat_image, bins=100, range=[(-1, 1), (-1, 1), (-1, 1)]
         )
-        print(H.shape)
         index = np.unravel_index(H.argmax(), H.shape)
         col = [
             (edges[0][index[0]] + edges[0][index[0] + 1]) / 2,
@@ -142,10 +139,22 @@ n, colours_RGB = extract_support_points(signal=smooth_RGB, samples=samples)
 n, colours_LAB = extract_support_points(signal=smooth_LAB, samples=samples)
 concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)
 
+# ! ---- MAIN CONCENTRATION ANALYSIS ---- !
+
 
 def color_to_concentration(
     k, colours, concentrations, signal: np.ndarray
 ) -> np.ndarray:
+    """Main method.
+
+    Two operations:
+    1. Setup of kernel-based interpolation.
+    2. Translation of signal (denoised difference) to concentration.
+
+    """
+
+    # ! ---- Initialization of kernel based interpolation
+
     # signal is rgb, transofrm to lab space because it is uniform and therefore
     # makes sense to interpolate in
     # signal = skimage.color.rgb2lab(signal)
@@ -159,6 +168,8 @@ def color_to_concentration(
             X[i, j] = k(x[i], x[j])
 
     alpha = np.linalg.solve(X, y)
+
+    # ! ---- Application of kernel based interpolation
 
     # Estimator / interpolant
     def estim(signal):
@@ -176,6 +187,8 @@ def color_to_concentration(
     return ph_image
 
 
+# ! ---- KERNEL MANAGEMENET -----
+
 # define linear kernel shifted to avoid singularities
 def k_lin(x, y, a=0):
     return np.inner(x, y) + a
@@ -186,12 +199,12 @@ def k_gauss(x, y, gamma=9.73):  # rgb: 9.73 , lab: 24.22
     return np.exp(-gamma * np.inner(x - y, x - y))
 
 
+# ! ---- MAIN ROUTINE ---- !
+
 # Convert a discrete ph stripe to a numeric pH indicator.
-ph_image = color_to_concentration(
-    k_gauss, colours_RGB, concentrations, smooth_RGB
-)  # gamma=10 value retrieved from ph analysis kernel calibration war bester punk für c=0.95
-# was
-# physikalisch am meisten sinn ergibt
+ph_image = color_to_concentration(k_gauss, colours_RGB, concentrations, smooth_RGB)
+# gamma=10 value retrieved from ph analysis kernel calibration was best for c = 0.95
+# which also is physically meaningful
 
 plt.figure("cut ph val")
 plt.plot(np.average(ph_image, axis=0))
