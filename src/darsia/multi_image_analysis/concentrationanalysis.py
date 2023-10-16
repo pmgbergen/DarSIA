@@ -388,10 +388,7 @@ class ConcentrationAnalysis:
             np.ndarray: balanced image
 
         """
-        if self.balancing is not None:
-            return self.balancing(img)
-        else:
-            return img
+        return img if self.balancing is None else self.balancing(img)
 
     def _prepare_signal(self, signal: np.ndarray) -> np.ndarray:
         """
