@@ -173,7 +173,7 @@ class ConcentrationAnalysis:
                 diff = self._subtract_background(probe_img)
 
                 # Extract scalar version
-                monochromatic_diff = self._extract_scalar_information(diff)
+                monochromatic_diff = self._reduce_signal(diff)
 
                 # Consider elementwise max
                 self.threshold_cleaning_filter = np.maximum(
@@ -232,7 +232,7 @@ class ConcentrationAnalysis:
         self._inspect_diff(diff)
 
         # Extract monochromatic version and take difference wrt the baseline image
-        signal = self._extract_scalar_information(diff)
+        signal = self._reduce_signal(diff)
 
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_scalar_signal(signal)
@@ -332,12 +332,14 @@ class ConcentrationAnalysis:
                 diff = skimage.util.compare_images(
                     img.img, self.base.img, method="diff"
                 )
+            elif self._diff_option == "plain":
+                diff = img.img - self.base.img
             else:
                 raise ValueError(f"Diff option {self._diff_option} not supported")
 
         return diff
 
-    def _extract_scalar_information(self, img: np.ndarray) -> np.ndarray:
+    def _reduce_signal(self, img: np.ndarray) -> np.ndarray:
         """
         Make a scalar image from potentially multi-colored image.
 
