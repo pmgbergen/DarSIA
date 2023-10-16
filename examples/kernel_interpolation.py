@@ -1,4 +1,4 @@
-from pathlib import Path
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,8 +12,12 @@ import darsia
 # indicator. Green color corresponds to concentrations close to 100%, while blue
 # color corresponds to concentrations ~99-0%. The images have been cropped and resized
 # mainly for data storage reasons. It is recommended to use full resolution images.
-baseline = darsia.imread(Path("images/kernel_interpolation_example_base.npz"))
-image = darsia.imread(Path("images/kernel_interpolation_example_test.npz"))
+baseline_path = (
+    f"{os.path.dirname(__file__)}/images/kernel_interpolation_example_base.npz"
+)
+image_path = f"{os.path.dirname(__file__)}/images/kernel_interpolation_example_test.npz"
+baseline = darsia.imread(baseline_path)
+image = darsia.imread(image_path)
 
 # ! ---- MAIN CONCENTRATION ANALYSIS AND CALIBRATION ---- !
 """
@@ -32,7 +36,7 @@ analysis = darsia.ConcentrationAnalysis(
     restoration=darsia.TVD(
         weight=0.025, eps=1e-4, max_num_iter=100, method="isotropic Bregman"
     ),
-    **{"diff option": "plain"}
+    **{"diff option": "plain"},
 )
 
 # The goal is to define ome ROIs for which physical information is known.
