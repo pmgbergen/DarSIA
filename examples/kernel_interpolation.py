@@ -147,20 +147,25 @@ concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)
 
 
 class KernelInterpolation:
-    def __init__(self, k, colours, concentrations):
+    """General kernel-based interpolation."""
 
-        self.kernel = k
+    def __init__(self, kernel, colours, concentrations):
+
+        self.kernel = kernel
 
         # signal is rgb, transofrm to lab space because it is uniform and therefore
         # makes sense to interpolate in
         # signal = skimage.color.rgb2lab(signal)
         # colours = skimage.color.rgb2lab(colours)
 
+        num_data = colours.shape[0]
+        assert len(concentrations) == num_data, "Input data not compatible."
+
         x = np.array(colours)  # data points / control points / support points
         y = np.array(concentrations)  # goal points
-        X = np.ones((x.shape[0], x.shape[0]))  # kernel matrix
-        for i in range(x.shape[0]):
-            for j in range(x.shape[0]):
+        X = np.ones((num_data, num_data))  # kernel matrix
+        for i in range(num_data):
+            for j in range(num_data):
                 X[i, j] = self.kernel(x[i], x[j])
 
         alpha = np.linalg.solve(X, y)
@@ -170,17 +175,10 @@ class KernelInterpolation:
         self.alpha = alpha
 
     def __call__(self, signal: np.ndarray):
-        # Estimator / interpolant
-        def estim(signal):
-            sum = 0
-            for n in range(self.alpha.shape[0]):
-                sum += self.alpha[n] * self.kernel(signal, self.x[n])
-            return sum
-
+        """Apply interpolation."""
         ph_image = np.zeros(signal.shape[:2])
-        for i in range(signal.shape[0]):
-            for j in range(signal.shape[1]):
-                ph_image[i, j] = estim(signal[i, j])
+        for n in range(self.alpha.shape[0]):
+            ph_image += self.alpha[n] * self.kernel(signal, self.x[n])
         return ph_image
 
 
@@ -198,7 +196,7 @@ class LinearKernel(BaseKernel):
         self.a = a
 
     def __call__(self, x, y):
-        return np.inner(x, y) + self.a
+        return np.sum(np.multiply(x, y), axis=-1) + self.a
 
 
 # define gaussian kernel
@@ -207,7 +205,7 @@ class GaussianKernel(BaseKernel):
         self.gamma = gamma
 
     def __call__(self, x, y):
-        return np.exp(-self.gamma * np.inner(x - y, x - y))
+        return np.exp(-self.gamma * np.sum(np.multiply(x - y, x - y), axis=-1))
 
 
 # ! ---- MAIN ROUTINE ---- !
