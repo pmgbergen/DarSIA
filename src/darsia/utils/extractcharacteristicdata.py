@@ -53,7 +53,13 @@ def extract_characteristic_data(
             edgecolor="w",
             facecolor="none",
         )
-        ax.text(p[1].start + 5, p[0].start + 95, letters[i], fontsize=12, color="white")
+        ax.text(
+            int(p[1].start + 0.05 * (p[1].stop - p[1].start)),
+            int(p[0].start + 0.95 * (p[0].stop - p[0].start)),
+            letters[i],
+            fontsize=12,
+            color="white",
+        )
         ax.add_patch(rect)
 
         # histogramm analysis
