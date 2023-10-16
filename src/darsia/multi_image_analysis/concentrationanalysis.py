@@ -257,7 +257,11 @@ class ConcentrationAnalysis:
             plt.show()
 
         metadata = img.metadata()
-        return darsia.ScalarImage(concentration, **metadata)
+        is_scalar = len(concentration.shape) == len(img.shape) - 1
+        if is_scalar:
+            return darsia.ScalarImage(concentration, **metadata)
+        else:
+            return type(img)(concentration, **metadata)
 
     # ! ---- Inspection routines
     def _inspect_diff(self, img: np.ndarray) -> None:
