@@ -320,6 +320,8 @@ class ConcentrationAnalysis:
                 diff = np.clip(-img.img, 0, None)
             elif self._diff_option == "absolute":
                 diff = np.absolute(img.img)
+            elif self._diff_option == "plain":
+                diff = img.img
             else:
                 raise ValueError(f"Diff option {self._diff_option} not supported")
         else:
