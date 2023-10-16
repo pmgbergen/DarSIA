@@ -57,5 +57,6 @@ class BoxSelectionAssistant(darsia.PointSelectionAssistant):
         return self.boxes
 
     def _print_info(self) -> None:
+        """Print info about boxes so far assigned by the assistant."""
         self._convert_pts()
         print(self.boxes)
