@@ -8,33 +8,12 @@ import darsia
 
 # ! ---- DATA MANAGEMENT ---- !
 
-folder = Path("images")
-baseline_path = folder / Path("20220914-142404.TIF")
-image_path = folder / Path("20220914-151727.TIF")
-
-
-# Setup DarSIA curvature correction (here only cropping)
-curvature_correction = darsia.CurvatureCorrection(
-    config={
-        "crop": {
-            # Define the pixel values (x,y) of the corners of the ROI.
-            # Start at top left corner and then continue counterclockwise.
-            "pts_src": [[300, 600], [300, 4300], [7600, 4300], [7600, 600]],
-            # Specify the true dimensions of the reference points
-            "width": 0.92,
-            "height": 0.5,
-        }
-    }
-)
-transformations = [curvature_correction]
-
-# Read-in images and restrict to a small sub region for demonstration purpose
-baseline = darsia.imread(baseline_path, transformations=transformations).subregion(
-    voxels=(slice(2300, 2500), slice(2200, 5200))
-)
-image = darsia.imread(image_path, transformations=transformations).subregion(
-    voxels=(slice(2300, 2500), slice(2200, 5200))
-)
+# The example images originate from a water tracer experiment with a multi-colored
+# indicator. Green color corresponds to concentrations close to 100%, while blue
+# color corresponds to concentrations ~99-0%. The images have been cropped and resized
+# mainly for data storage reasons. It is recommended to use full resolution images.
+baseline = darsia.imread(Path("images/kernel_interpolation_example_base.npz"))
+image = darsia.imread(Path("images/kernel_interpolation_example_test.npz"))
 
 # ! ---- MAIN CONCENTRATION ANALYSIS AND CALIBRATION ---- !
 """
@@ -47,31 +26,7 @@ In these samples of the image, the most common colour was identified using a his
 analysis, which is now available through darsia.extract_characteristic_data().
 """
 
-# Chosen as in thesis:
-"""samples = [
-    (slice(50, 150), slice(100, 200)),
-    (slice(50, 150), slice(400, 500)),
-    (slice(50, 150), slice(600, 700)),
-    (slice(50, 150), slice(800, 900)),
-    (slice(50, 150), slice(1000, 1100)),
-    (slice(50, 150), slice(1200, 1300)),
-    (slice(50, 150), slice(1400, 1500)),
-    (slice(50, 150), slice(1600, 1700)),
-    (slice(50, 150), slice(2700, 2800)),
-]
-n = len(samples)
-concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)"""
-
-
-# Same but under the use of DarSIA
-# Ask user to provide characteristic regions with expected concentration values
-assistant = darsia.BoxSelectionAssistant(image)
-samples = assistant()
-n = len(samples)
-concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)
-
 # Predefine concentration analysis for now without any model (to be defined later).
-# Extract characteristic colors from calibration image in relative colors.
 analysis = darsia.ConcentrationAnalysis(
     base=baseline.img_as(float),
     restoration=darsia.TVD(
@@ -79,20 +34,44 @@ analysis = darsia.ConcentrationAnalysis(
     ),
     **{"diff option": "plain"}
 )
-smooth_RGB = analysis(image.img_as(float)).img
-colours_RGB = darsia.extract_characteristic_data(
-    signal=smooth_RGB, samples=samples, verbosity=True, surpress_plot=True
-)
+
+# The goal is to define ome ROIs for which physical information is known.
+# One possibility is to use a GUI for interactive use. This option can
+# be activated on demand. For testing purposes this example by default
+# uses a pre-defined sample selection.
+if True:
+    samples = [
+        (slice(15, 40), slice(20, 45)),
+        (slice(15, 40), slice(220, 245)),
+        (slice(15, 40), slice(420, 445)),
+        (slice(15, 40), slice(720, 745)),
+    ]
+else:
+    # Same but under the use of a graphical user interface.
+    # Ask user to provide characteristic regions with expected concentration values
+    assistant = darsia.BoxSelectionAssistant(image)
+    samples = assistant()
+
+# For simplicity the concentrations are pre-defined. These could also be defined
+# by the user.
+n = len(samples)
+concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)
 
 # Now add kernel interpolation as model trained by the extracted information.
 """
 comments:
--   here, the support points as defined above are used to build a Kernel Interpolation
+-   Here, the support points as defined above are used to build a Kernel Interpolation.
+    For this, the 'concentration' without any model is used, correpsonding to the difference
+    to the baseline.
 -   This Kernel interpolation is then used as the model in the darsia.ConcentrationAnalysis
 -   use plain difference to keep all information (no cut off or norm)
     this is the advantage of the kernel interpolation - it can handle negative colours
 -   finding the right kernel parameters is part of the modeling
 """
+smooth_RGB = analysis(image.img_as(float)).img
+colours_RGB = darsia.extract_characteristic_data(
+    signal=smooth_RGB, samples=samples, verbosity=True, surpress_plot=True
+)
 analysis.model = darsia.KernelInterpolation(
     darsia.GaussianKernel(gamma=9.73), colours_RGB, concentrations
 )
@@ -126,4 +105,10 @@ ax.set_xlabel("horizontal pixel")
 # indicator = np.arange(101) / 100
 # plt.axis("off")
 # plt.imshow([indicator, indicator, indicator, indicator, indicator])
-plt.show()
+
+# To enable the example as test, the plots are closed after short time.
+# Pause longer if it is desired to keep the images on the screen.
+print("Warning: The plot is closed after short time to enable testing.")
+plt.show(block=False)
+plt.pause(5)
+plt.close()
