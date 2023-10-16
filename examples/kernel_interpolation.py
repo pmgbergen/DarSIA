@@ -38,28 +38,6 @@ image = darsia.imread(image_path, transformations=transformations).subregion(
     voxels=(slice(2300, 2500), slice(2200, 5200))
 )
 
-# ! ---- COLOR MANAGEMENT ---- !
-
-# NOTE: The steps of taking differences, and apply denoising are part of
-# darsia.ConcentrationAnalysis.
-
-# LAB
-diff_LAB = (
-    (skimage.color.rgb2lab(image.img) - skimage.color.rgb2lab(baseline.img))
-    + [0, 128, 128]
-) / [100, 255, 255]
-
-# RGB
-diff_RGB = skimage.img_as_float(image.img) - skimage.img_as_float(baseline.img)
-
-# Regularize
-smooth_RGB = skimage.restoration.denoise_tv_bregman(
-    diff_RGB, weight=0.025, eps=1e-4, max_num_iter=100, isotropic=True
-)
-smooth_LAB = skimage.restoration.denoise_tv_bregman(
-    diff_LAB, weight=0.025, eps=1e-4, max_num_iter=100, isotropic=True
-)
-
 # ! ---- CALIBRATION ---- !
 
 # NOTE: Samples can also be defined using a graphical assistant.
@@ -80,6 +58,7 @@ if False:
     concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)
 
 else:
+    # Same but under the use of DarSIA
     # Ask user to provide characteristic regions with expected concentration values
     assistant = darsia.BoxSelectionAssistant(image)
     samples = assistant()
@@ -165,11 +144,17 @@ def extract_characteristic_data(signal, samples, verbosity=False, show_plot=True
     return colours
 
 
+# Extract characteristic colors from calibration image in relative colors.
+pre_analysis = darsia.ConcentrationAnalysis(
+    base=baseline.img_as(float),
+    restoration=darsia.TVD(
+        weight=0.025, eps=1e-4, max_num_iter=100, method="isotropic Bregman"
+    ),
+    **{"diff option": "plain"}
+)
+smooth_RGB = pre_analysis(image.img_as(float)).img
 colours_RGB = extract_characteristic_data(
     signal=smooth_RGB, samples=samples, verbosity=True, show_plot=False
-)
-colours_LAB = extract_characteristic_data(
-    signal=smooth_LAB, samples=samples, verbosity=True, show_plot=False
 )
 
 # ! ---- MAIN CONCENTRATION ANALYSIS ---- !
