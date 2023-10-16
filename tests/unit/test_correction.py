@@ -24,7 +24,7 @@ def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
 
     # ! ---- Define some metadata corresponding to the input array
     info = {
-        "dim": 2,
+        "space_dim": 2,
         "indexing": "ij",
     }
 
@@ -148,7 +148,7 @@ def test_rotation():
     img_array[4:6, 2:8] = 1
 
     info = {
-        "dim": 2,
+        "space_dim": 2,
         "indexing": "ij",
     }
 

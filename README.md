@@ -5,6 +5,9 @@
 # DarSIA
 Darcy scale image analysis toolbox
 
+# Documentation
+Visit pmgbergen.github.io/DarSIA
+
 # Citing
 
 If you use DarSIA in your research, we ask you to cite the following publication:
@@ -28,20 +31,21 @@ pip install .
 The following Python script can be applied to the test image in the examples/images folder.
 
 ```python
+import numpy as np
 import darsia as da
 
 # Create a darsia Image: An image that also contains information of physical entities
-image = da.Image("examples/images/baseline.jpg", origin = [5, 2], width = 280, height = 150)
+image = da.imread("images/baseline.jpg", width=2.8, height=1.5)
 
-# Use the show method to take a look at the imported image (push any button to close the window)
+# Use the show method to take a look at the imported image.
 image.show()
 
-# Copies the image and adds a grid on top of it.
-grid_image = image.add_grid(origin = [5, 2], dx = 10, dy = 10)
+# Copy the image and adds a grid on top of it.
+grid_image = image.add_grid(dx=0.1, dy=0.1)
 grid_image.show()
 
-# Extract region of interest (ROI) from image:
-ROI_image = da.extractROI(image, [[150, 0], [280, 70]])
+# Extract region of interest (ROI) from image (box defined by two corners):
+ROI_image = image.subregion(coordinates=np.array([[1.5, 0], [2.8, 0.7]]))
 ROI_image.show()
 ```
 

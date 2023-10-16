@@ -8,12 +8,12 @@ import os
 
 import cv2
 import numpy as np
+from deepdiff import DeepDiff
 
 import darsia
 
 
 def test_initialize_image_without_meta():
-
     #############################################################################
     # ! ---- Define image array
     path = f"{os.path.dirname(__file__)}/../../examples/images/baseline.jpg"
@@ -30,7 +30,6 @@ def test_initialize_image_without_meta():
 
 
 def test_initialize_general_image():
-
     #############################################################################
     # ! ---- Define image array
     path = f"{os.path.dirname(__file__)}/../../examples/images/baseline.jpg"
@@ -40,7 +39,7 @@ def test_initialize_general_image():
     info = {
         "scalar": False,
         "series": False,
-        "dim": 2,
+        "space_dim": 2,
         "indexing": "ij",
         "dimensions": [1.5, 2.8],
     }
@@ -63,7 +62,6 @@ def test_initialize_general_image():
 
 
 def test_initialize_optical_image():
-
     # ! ---- Define image array
     path = f"{os.path.dirname(__file__)}/../../examples/images/baseline.jpg"
     array = cv2.imread(path)
@@ -72,7 +70,7 @@ def test_initialize_optical_image():
     info = {
         "series": False,
         "scalar": False,
-        "dim": 2,
+        "space_dim": 2,
         "indexing": "ij",
         "dimensions": [1.5, 2.8],
     }
@@ -102,7 +100,6 @@ def test_initialize_optical_image():
 
 
 def test_monochromatic_optical_images():
-
     # ! ---- Define image array
     path = f"{os.path.dirname(__file__)}/../../examples/images/baseline.jpg"
     array = cv2.imread(path)
@@ -136,3 +133,28 @@ def test_monochromatic_optical_images():
     assert red_image.indexing == "ij"
     assert np.allclose(red_image.dimensions, np.array([1.5, 2.8]))
     assert np.allclose(red_image.origin, np.array([0.0, 1.5]))
+
+
+def test_io():
+    # Test whether the image can be saved and loaded.
+
+    # ! ---- Define image array
+    path = f"{os.path.dirname(__file__)}/../../examples/images/baseline.jpg"
+    array = cv2.imread(path)
+    dimensions = [1.5, 2.8]
+    image = darsia.Image(img=array, dimensions=dimensions)
+    metadata = image.metadata()
+
+    # ! ---- Save image
+    image.save("test_image.npz")
+
+    # ! ---- Load image
+    loaded_image = darsia.imread("test_image.npz")
+    loaded_metadata = loaded_image.metadata()
+
+    # ! ---- Check equality
+    assert np.allclose(image.img, loaded_image.img)
+    assert DeepDiff(metadata, loaded_metadata) == {}
+
+    # ! ---- Remove test file
+    os.remove("test_image.npz")

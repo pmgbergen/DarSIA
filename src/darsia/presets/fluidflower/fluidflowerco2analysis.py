@@ -1,9 +1,11 @@
-"""
-Module containing a standardized FluidFlower analysis.
-It will require further information for specific rigs
-to be obtained through multiple inheritance.
+"""Standardized FluidFlower analysis.
+
+It will require further information for specific rigs to be obtained through multiple
+inheritance.
 
 """
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Union
 

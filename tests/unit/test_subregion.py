@@ -12,7 +12,7 @@ def test_time_interval_scalar_image_2d():
 
     # Construct space-time image
     meta = {
-        "dim": 2,
+        "space_dim": 2,
         "series": True,
         "time": [0, 1, 2, 3, 4],
     }
@@ -37,7 +37,7 @@ def test_time_interval_scalar_image_2d_reset_time():
 
     # Construct space-time image
     meta = {
-        "dim": 2,
+        "space_dim": 2,
         "series": True,
         "time": [0, 1, 2, 3, 4],
     }
@@ -45,7 +45,8 @@ def test_time_interval_scalar_image_2d_reset_time():
     image = darsia.ScalarImage(arr, **meta)
 
     # Construct subimage
-    sub_image = image.time_interval(slice(1, 3), reset_time=True)
+    sub_image = image.time_interval(slice(1, 3))
+    sub_image.reset_reference_time()
 
     # Test whether the dimensions of the image array are correct
     assert np.allclose(sub_image.shape, (3, 4, 2))
@@ -62,7 +63,7 @@ def test_time_interval_advanced():
 
     # Construct space-time image
     meta = {
-        "dim": 3,
+        "space_dim": 3,
         "series": True,
         "scalar": False,
         "time": [0, 1, 2, 3, 4],

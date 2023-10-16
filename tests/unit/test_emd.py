@@ -15,8 +15,8 @@ def test_emd_2d_single_pixel():
     mass2_array[6, 12] = 1
 
     # Convert the arrays to actual DarSIA Images
-    mass1 = darsia.Image(mass1_array, width=2, height=1)
-    mass2 = darsia.Image(mass2_array, width=2, height=1)
+    mass1 = darsia.Image(mass1_array, width=2, height=1, scalar=True)
+    mass2 = darsia.Image(mass2_array, width=2, height=1, scalar=True)
 
     # Setup EMD object
     emd = darsia.EMD()
@@ -24,13 +24,14 @@ def test_emd_2d_single_pixel():
     # Determine the EMD
     distance = emd(mass1, mass2)
 
-    # Test whether the distance is essentially the Euclidean distance
+    # Test whether the distance is essentially the Euclidean distance, times the pixel size.
     euclidean_distance = ((0.4 * 1) ** 2 + (0.5 * 2) ** 2) ** 0.5
-    assert np.isclose(distance, euclidean_distance)
+    cell_volume = np.prod(mass1.voxel_size)
+    assert np.isclose(distance, euclidean_distance * cell_volume)
 
 
 def test_emd_2d_resize():
-    """Test simple EMD for 2d distributions with physical dimenions."""
+    """Test simple EMD for 2d distributions with physical dimensions."""
 
     # Create two mass distributions with identical mass, equal to 1
     mass1_array = np.zeros((10, 20), dtype=float)
@@ -39,13 +40,13 @@ def test_emd_2d_resize():
     mass2_array[6, 12] = 1
 
     # Convert the arrays to actual DarSIA Images
-    mass1 = darsia.Image(mass1_array, width=2, height=1)
-    mass2 = darsia.Image(mass2_array, width=2, height=1)
+    mass1 = darsia.Image(mass1_array, width=2, height=1, scalar=True)
+    mass2 = darsia.Image(mass2_array, width=2, height=1, scalar=True)
 
     # Setup EMD object, including a resize routine (needed for cv2.EMD)
     resize = darsia.Resize(
         **{
-            "resize dsize": (20, 40),  # rows, cols
+            "resize shape": (20, 40),  # rows, cols
             "resize interpolation": "inter_area",
             "resize conservative": True,
         }
@@ -55,6 +56,10 @@ def test_emd_2d_resize():
     # Determine the EMD
     distance = emd(mass1, mass2)
 
+    # Determine cell volume of resized array
+    resized_mass1 = resize(mass1)
+    resized_cell_volume = np.prod(resized_mass1.voxel_size)
+
     # Test whether the distance is essentially the Euclidean distance
     euclidean_distance = ((0.4 * 1) ** 2 + (0.5 * 2) ** 2) ** 0.5
-    assert np.isclose(distance, euclidean_distance)
+    assert np.isclose(distance, euclidean_distance * resized_cell_volume)

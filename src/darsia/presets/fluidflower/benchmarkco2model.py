@@ -20,7 +20,7 @@ def benchmark_binary_cleaning_preset(
         options (dict): options same as in benchmark_concentration_analysis_preset.
 
     """
-    original_size = base.img.shape[:2]
+    original_shape = base.img.shape[:2]
     binary_cleaning = darsia.CombinedModel(
         [
             # Binary inpainting
@@ -29,7 +29,7 @@ def benchmark_binary_cleaning_preset(
             # Resize and Smoothing
             darsia.Resize(dtype=np.float32, key="prior ", **options),
             darsia.TVD(key="prior ", **options),
-            darsia.Resize(dsize=tuple(reversed(original_size))),
+            darsia.Resize(shape=original_shape),
             # Conversion to boolean
             darsia.StaticThresholdModel(0.5),
         ]
@@ -74,12 +74,12 @@ def benchmark_concentration_analysis_preset(
 
     ########################################################################
     # Define restoration object - coarsen, tvd, resize
-    original_size = base.img.shape[:2]
+    original_shape = base.img.shape[:2]
     restoration = darsia.CombinedModel(
         [
             darsia.Resize(key="restoration ", **options),
             darsia.TVD(key="restoration ", **options),
-            darsia.Resize(dsize=tuple(reversed(original_size))),
+            darsia.Resize(shape=original_shape),
         ]
     )
 

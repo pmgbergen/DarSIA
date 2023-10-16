@@ -1,7 +1,7 @@
-"""Utils for non-standard arithmetics of images,
-as weighted superposition.
+"""Utils for non-standard arithmetics of images, as weighted superposition.
 
 """
+from __future__ import annotations
 
 from typing import Union
 
@@ -32,8 +32,10 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
         weighted_img.img *= weight
 
     elif isinstance(weight, darsia.Image):
-        assert np.allclose(img.origin, weight.origin)
-        assert np.allclose(img.dimensions, weight.dimensions)
+        equal_coordinate_system, log = darsia.check_equal_coordinatesystems(
+            img.coordinatesystem, weight.coordinatesystem, exclude_size=True
+        )
+        assert equal_coordinate_system, f"{log}"
         space_dim = img.space_dim
         assert len(weight.img.shape) == space_dim
 
@@ -50,6 +52,18 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
 
         # Rescale
         weighted_img.img = np.multiply(weighted_img.img, weight.img)
+
+    elif isinstance(weight, np.ndarray) and np.allclose(
+        weight.shape, weighted_img.shape[weighted_img.space_dim :]
+    ):
+        # Spatially constant weight, but differing for time and data indices.
+        shape = weighted_img.img.shape
+        weighted_img.img = np.multiply(
+            weighted_img.img,
+            np.outer(
+                np.ones(weighted_img.coordinatesystem.shape, dtype=float), weight
+            ).reshape(shape),
+        )
 
     else:
         raise ValueError
@@ -135,7 +149,7 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
     dimensions = [cartesian_dimensions[i] for i in to_matrix_indexing]
 
     meta = {
-        "dim": space_dim,
+        "space_dim": space_dim,
         "indexing": indexing,
         "dimensions": dimensions,
         "origin": origin,
@@ -214,5 +228,22 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
                 image.img[..., time_counter] += warped_array
             else:
                 image.img += warped_array
+
+    return image
+
+
+def stack(images: list[darsia.Image]) -> darsia.Image:
+    """Append images from list and create a new image.
+
+    Args:
+        images (list of images): images
+
+    Returns:
+        darsia.Image: stackes image
+
+    """
+    image = images[0]
+    for i in range(1, len(images)):
+        image.append(images[i])
 
     return image

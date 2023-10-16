@@ -9,27 +9,42 @@ import darsia
 
 
 class BaseCorrection(ABC):
-    """Abstract base correction, providing workflow and template for tailored corrections."""
+    """Abstract base correction, providing workflow and template for tailored
+    corrections.
+
+    """
 
     def __call__(
         self,
         image: Union[np.ndarray, darsia.Image],
-        return_image: bool = False,
+        overwrite: bool = False,
     ) -> Union[np.ndarray, darsia.Image]:
-        """Workflow for any correction routine, applied to any type of images.
+        """Workflow for any correction routine.
 
         Args:
             image (array or Image): image
-            return_image (bool): flag controlling whether the image is returned,
-                only relevant for input of type Image.
+            overwrite (bool): flag controlling whether the original image is
+                overwritten or the correction is applied to a copy.
+
+        Returns:
+            array or Image: corrected image, data type depends on input.
 
         """
         if isinstance(image, np.ndarray):
-            return self.correct_array(image)
+            if overwrite:
+                # Overwrite original array
+                image = self.correct_array(image)
+                return image
+            else:
+                # Return corrected copy of array
+                return self.correct_array(image.copy())
+
         elif isinstance(image, darsia.Image):
+            img = image.img if overwrite else image.img.copy()
+
             if image.series and hasattr(self, "correct_array_series"):
                 # Apply transformation to entrie space time image
-                image.img = self.correct_array_series(image.img)
+                img = self.correct_array_series(img)
             elif image.series:
                 # Use external data container for shape altering corrections
                 corrected_slices = []
@@ -48,13 +63,27 @@ class BaseCorrection(ABC):
                         )
 
                 # Stack slices together again
-                image.img = np.stack(corrected_slices, axis=image.space_dim)
+                img = np.stack(corrected_slices, axis=image.space_dim)
 
             else:
                 # Apply transformation to single image
-                image.img = self.correct_array(image.img)
+                img = self.correct_array(img)
 
-            return image
+            # Apply corrections to metadata
+            meta_update = (
+                self.correct_metadata() if hasattr(self, "correct_metadata") else {}
+            )
+
+            if overwrite:
+                # Overwrite original image
+                image.img = img
+                image.update_metadata(meta_update)
+                return image
+            else:
+                # Return corrected copy of image
+                meta = image.metadata()
+                meta.update(meta_update)
+                return type(image)(img, **meta)
 
     @abstractmethod
     def correct_array(

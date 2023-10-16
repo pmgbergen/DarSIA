@@ -1,6 +1,7 @@
+"""Module containing utils for segmentation of layered media.
+
 """
-Module containing utils for segmentation of layered media.
-"""
+from __future__ import annotations
 
 from typing import Optional, Union
 from warnings import warn
@@ -237,7 +238,8 @@ def segment(
     if isinstance(img, np.ndarray):
         return labels
     elif isinstance(img, darsia.Image):
-        return darsia.Image(labels, img.metadata)
+        meta = img.metadata()
+        return darsia.Image(labels, **meta)
 
 
 # ! ---- Auxiliary functions for segment

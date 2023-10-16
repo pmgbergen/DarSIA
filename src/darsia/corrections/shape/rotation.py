@@ -1,7 +1,7 @@
-"""Module containing objects useful for correcting
-images wrt rotations
+"""Module containing objects useful for correcting images wrt rotations
 
 """
+from __future__ import annotations
 
 import itertools
 from typing import Union
@@ -15,9 +15,9 @@ import darsia
 class RotationCorrection(darsia.BaseCorrection):
     """Class for rotation correction of nd images, up to 4d.
 
-    Rotations are defined as combination of multiple basic rotations.
-    In 2d, a single basic rotation is sufficient. In 3d, although
-    three are available, two are sufficient.
+    Rotations are defined as combination of multiple basic rotations. In 2d, a single
+    basic rotation is sufficient. In 3d, although three are available, two are
+    sufficient.
 
     Attributes:
         dim (int): ambient dimension
@@ -30,40 +30,60 @@ class RotationCorrection(darsia.BaseCorrection):
     def __init__(
         self,
         anchor: Union[list[int], np.ndarray],
-        rotations: list[tuple[float, str]],
-        dim: int,
+        **kwargs,
     ) -> None:
-
-        # Cache dimension
-        self.dim = dim
-
         # Cache anchor of rotation
         self.anchor = np.array(anchor)
 
+        # Cache dimension (obtained from anchor)
+        dim = len(self.anchor)
+        self.dim = dim
+
+        rotation_from_isometry = kwargs.get("rotation_from_isometry", False)
+        if rotation_from_isometry:
+            pts_src = kwargs.get("pts_src")
+            pts_dst = kwargs.get("pts_dst")
+            affine_map = darsia.AffineTransformation(
+                pts_src,
+                pts_dst,
+            )
+        else:
+            rotations = kwargs.get("rotations")
+            if rotations is None:
+                raise ValueError("No means provided to determine rotations.")
+
         # Define rotation as combination of basic rotations
         if dim == 2:
-            degree = rotations[0]
-            vector = np.array([0, 0, 1])
-            rotation = Rotation.from_rotvec(degree * vector)
-            self.rotation = rotation.as_matrix()[:2, :2]
-            rotation_inv = Rotation.from_rotvec(-degree * vector)
-            self.rotation_inv = rotation_inv.as_matrix()[:2, :2]
-        elif dim == 3:
-            self.rotation = np.eye(dim)
-            self.rotation_inv = np.eye(dim)
-            for degree, cartesian_axis in rotations:
-                indexing = "xyz"[:dim]
-                matrix_axis, reverted = darsia.interpret_indexing(
-                    cartesian_axis, indexing
-                )
-                vector = np.eye(dim)[matrix_axis]
-                scaling = -1 if reverted else 1
-                rotation = Rotation.from_rotvec(scaling * degree * vector)
-                self.rotation = np.matmul(self.rotation, rotation.as_matrix())
+            if rotation_from_isometry:
+                self.rotation = affine_map.rotation
+                self.rotation_inv = np.linalg.inv(affine_map.rotation)
+            else:
+                degree = rotations[0]
+                vector = np.array([0, 0, 1])
+                rotation = Rotation.from_rotvec(degree * vector)
+                self.rotation = rotation.as_matrix()[:2, :2]
                 rotation_inv = Rotation.from_rotvec(-degree * vector)
-                self.rotation_inv = np.matmul(
-                    self.rotation_inv, rotation_inv.as_matrix()
-                )
+                self.rotation_inv = rotation_inv.as_matrix()[:2, :2]
+        elif dim == 3:
+            if rotation_from_isometry:
+                self.rotation = affine_map.rotation
+                self.rotation_inv = np.linalg.inv(affine_map.rotation)
+            else:
+                self.rotation = np.eye(dim)
+                self.rotation_inv = np.eye(dim)
+                for degree, cartesian_axis in rotations:
+                    indexing = "xyz"[:dim]
+                    matrix_axis, reverted = darsia.interpret_indexing(
+                        cartesian_axis, indexing
+                    )
+                    vector = np.eye(dim)[matrix_axis]
+                    scaling = -1 if reverted else 1
+                    rotation = Rotation.from_rotvec(scaling * degree * vector)
+                    self.rotation = np.matmul(self.rotation, rotation.as_matrix())
+                    rotation_inv = Rotation.from_rotvec(-degree * vector)
+                    self.rotation_inv = np.matmul(
+                        self.rotation_inv, rotation_inv.as_matrix()
+                    )
 
     def correct_array(self, img: np.ndarray) -> np.ndarray:
         """Application of inherent rotation to provided image.

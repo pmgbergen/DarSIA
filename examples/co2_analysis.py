@@ -3,13 +3,8 @@ Example script for simple image analysis. By comparison of images
 of the same well test, a tracer concentration can be determined.
 """
 
-import json
 import os
 from pathlib import Path
-
-import cv2
-import matplotlib.pyplot as plt
-import numpy as np
 
 import darsia
 
@@ -23,11 +18,12 @@ class TailoredTracerAnalysis(darsia.TracerAnalysis):
         """Definition of signal to data conversion."""
 
         return darsia.ConcentrationAnalysis(
-            self.base,  # baseline image
-            darsia.MonochromaticReduction(color="red"),  # signal reduction
-            None,  # signal balancing
-            darsia.TVD(),  # restoration
-            darsia.CombinedModel(  # signal to data conversion
+            base=self.base,  # baseline image
+            signal_reduction=darsia.MonochromaticReduction(
+                color="red"
+            ),  # signal reduction
+            restoration=darsia.TVD(),  # restoration
+            model=darsia.CombinedModel(  # signal to data conversion
                 [
                     darsia.LinearModel(scaling=4.0),
                     darsia.ClipModel(**{"min value": 0.0, "max value": 1.0}),

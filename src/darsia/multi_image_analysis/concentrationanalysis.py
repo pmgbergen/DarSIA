@@ -1,8 +1,7 @@
-"""
-Module that contains a class which provides the capabilities to
-analyze concentrations/saturation profiles based on image comparison.
+"""Capabilities to analyze concentrations/saturation profiles based on image comparison.
 
 """
+from __future__ import annotations
 
 import copy
 from pathlib import Path
@@ -37,7 +36,7 @@ class ConcentrationAnalysis:
         signal_reduction: darsia.SignalReduction = None,
         balancing: Optional[darsia.Model] = None,
         restoration: Optional[darsia.TVD] = None,
-        model: darsia.Model = darsia.Identity,
+        model: Optional[darsia.Model] = None,
         labels: Optional[np.ndarray] = None,
         **kwargs,
     ) -> None:
@@ -53,9 +52,10 @@ class ConcentrationAnalysis:
             balancing (darsia.Model, optional): operator balancing the signal, e.g., in
                 different facies; the default value (None) denotes an identity
                 operation.
-            restoration (darsia.TVD): regularizer.
-            model (darsia.Model): Conversion of signals to actual physical data; default
-                value (None) denotes an identity operation.
+            restoration (darsia.TVD, optional): regularizer; the default value (`None`)
+                denotes an identity.
+            model (darsia.Model, optional): Conversion of signals to actual physical
+                data; default value (None) denotes an identity operation.
             labels (array, optional): labeled image of domain; the default value (None)
                 denotes the presence of a homogeneous medium.
             kwargs (keyword arguments): interface to all tuning parameters.
@@ -419,9 +419,10 @@ class ConcentrationAnalysis:
 
         """
         # Obtain data from model
-        data = self.model(signal)
-
-        return data
+        if self.model is None:
+            return signal
+        else:
+            return self.model(signal)
 
 
 class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):

@@ -22,6 +22,7 @@ class DriftCorrection(darsia.BaseCorrection):
         self,
         base: Union[np.ndarray, darsia.Image],
         config: Optional[dict] = None,
+        roi: Optional[Union[tuple, np.ndarray, list]] = None,
     ) -> None:
         """
         Constructor for DriftCorrection.
@@ -38,6 +39,7 @@ class DriftCorrection(darsia.BaseCorrection):
                 - padding (float): relative factor for padding.
                 - active (bool): flag whether drift correction should be
                     applied or not, default is True.
+            roi (list or array), alternative access to roi.
 
         """
 
@@ -56,12 +58,13 @@ class DriftCorrection(darsia.BaseCorrection):
             raise ValueError("Data type for baseline image not supported.")
 
         if config is None:
-            """Config file storing all specs for correction."""
+            config = {}
 
             self.active = False
             """Flag controlling whether correction is active."""
 
         else:
+
             self.active: bool = config.get("active", True)
 
         if self.active:
@@ -70,16 +73,27 @@ class DriftCorrection(darsia.BaseCorrection):
             self.roi: Optional[tuple] = None
             """Basis/ROI for feature detection."""
 
-            if isinstance(roi, tuple):
-                self.roi = roi
-            elif isinstance(roi, list) or isinstance(roi, np.ndarray):
+            if "roi" in config:
+                roi = np.array(config["roi"])
+                if isinstance(roi, tuple):
+                    self.roi = roi
+                elif isinstance(roi, list):
+                    self.roi = tuple(roi)
+                elif isinstance(roi, np.ndarray):
+                    self.roi = tuple(roi.tolist())
+                else:
+                    raise ValueError(f"wrong format")
+            elif roi is not None:
+                assert isinstance(roi, list) or isinstance(
+                    roi, np.ndarray
+                ), "wrong format"
                 self.roi = darsia.bounding_box(
                     np.array(roi),
                     padding=round(relative_padding * np.min(self.base.shape[:2])),
                     max_size=self.base.shape[:2],
                 )
             elif roi is not None:
-                raise ValueError
+                raise ValueError("Provide 'roi' in config or as argument.")
 
             self.translation_estimator = darsia.TranslationEstimator()
             """Detection of effective translation based on feature detection."""

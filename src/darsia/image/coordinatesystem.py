@@ -1,3 +1,5 @@
+"""Physical coordinate systems for Image objects."""
+
 from __future__ import annotations
 
 from typing import Union
@@ -28,7 +30,7 @@ class CoordinateSystem:
 
         """
 
-        assert img.indexing in ["ij", "ijk"]
+        assert img.indexing in ["i", "ij", "ijk"], f"Indexing not supported."
         self.indexing = img.indexing
         """Indexing of the underlying image."""
 
@@ -105,9 +107,7 @@ class CoordinateSystem:
         assert axis in self.axes
         return np.ceil(length / self.voxel_size[axis]).astype(int)
 
-    def coordinate(
-        self, voxel: Union[np.ndarray, list[int], tuple[int]], reverse: bool = False
-    ) -> np.ndarray:
+    def coordinate(self, voxel: Union[np.ndarray, list[int], tuple[int]]) -> np.ndarray:
         """
         Conversion from voxel to Cartesian coordinate, i.e., from (row,col) to (x,y)
         format plus scaling for a 2d image.
@@ -132,6 +132,8 @@ class CoordinateSystem:
         # multiple voxels stored in a 2d array. Convert to the more general
         # case. Cache the original size for the later output.
         voxel_array = np.atleast_2d(voxel)
+        if self.dim == 1:
+            voxel_array = np.swapaxes(voxel_array, 0, 1)
 
         # Determine coordinates with the help of the origin
         coordinate = np.empty_like(voxel_array, dtype=float)
@@ -217,3 +219,81 @@ class CoordinateSystem:
 
         """
         raise NotImplementedError
+
+
+def check_equal_coordinatesystems(
+    coordinatesystem1: CoordinateSystem,
+    coordinatesystem2: CoordinateSystem,
+    exclude_size: bool = False,
+) -> tuple[bool, dict]:
+    """Check whether two coordinate systems are equivalent, i.e., they share basic
+    attributes.
+
+    Args:
+        coordinatesystem1 (CoordinateSystem): first coordinate system
+        coordinatesystem2 (CoordinateSystem): second coordinate system
+        exclude_size (bool): flag controlling whether the size quantities are exluded.
+
+    Returns:
+        bool: True iff the two coordinate systems are equivalent.
+        dict: log of the failed checks.
+
+    """
+    success = True
+    failure_log = []
+
+    if not (coordinatesystem1.indexing == coordinatesystem2.indexing):
+        failure_log.append("indexing")
+
+    if not (coordinatesystem1.dim == coordinatesystem2.dim):
+        failure_log.append("space_dim")
+
+    if not exclude_size:
+        if not (np.allclose(coordinatesystem1.shape, coordinatesystem2.shape)):
+            failure_log.append("shape")
+
+    if not (np.allclose(coordinatesystem1.dimensions, coordinatesystem2.dimensions)):
+        failure_log.append("dimensions")
+
+    if not (coordinatesystem1.axes == coordinatesystem2.axes):
+        failure_log.append("axes")
+
+    if not exclude_size:
+        voxel_size_equal = True
+        for axis in coordinatesystem1.axes:
+            voxel_size_equal = (
+                voxel_size_equal
+                and coordinatesystem1.voxel_size[axis]
+                == coordinatesystem2.voxel_size[axis]
+            )
+        if not voxel_size_equal:
+            failure_log.append("voxel_size")
+
+    if not (
+        np.allclose(
+            coordinatesystem1._coordinate_of_origin_voxel,
+            coordinatesystem2._coordinate_of_origin_voxel,
+        )
+    ):
+        failure_log.append("coordinate_of_origin_voxel")
+
+    if not (
+        np.allclose(
+            coordinatesystem1._coordinate_of_opposite_voxel,
+            coordinatesystem2._coordinate_of_opposite_voxel,
+        )
+    ):
+        failure_log.append("coordinate_of_opposite_voxel")
+
+    if not exclude_size:
+        if not (
+            np.allclose(
+                coordinatesystem1._voxel_of_origin_coordinate,
+                coordinatesystem2._voxel_of_origin_coordinate,
+            )
+        ):
+            failure_log.append("voxel_of_origin_coordinate")
+
+    success = len(failure_log) == 0
+
+    return success, failure_log

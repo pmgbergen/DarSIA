@@ -58,8 +58,10 @@ for time_index in range(spacetime_optical_image.time_num):
     spacetime_slice: darsia.OpticalImage = spacetime_optical_image.time_slice(
         time_index
     )
+    _time = spacetime_slice.time
+    _date = spacetime_slice.date
     spacetime_slice.show(
-        f"slice {time_index} in space time image - {spacetime_slice.time} - {spacetime_slice.date}",
+        f"slice {time_index} in space time image - {_time} - {_date}",
         5,
     )
 
