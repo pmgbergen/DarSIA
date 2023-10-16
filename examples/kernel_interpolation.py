@@ -63,17 +63,28 @@ smooth_LAB = skimage.restoration.denoise_tv_bregman(
 # ! ---- CALIBRATION ---- !
 
 # NOTE: Samples can also be defined using a graphical assistant.
-samples = [
-    (slice(50, 150), slice(100, 200)),
-    (slice(50, 150), slice(400, 500)),
-    (slice(50, 150), slice(600, 700)),
-    (slice(50, 150), slice(800, 900)),
-    (slice(50, 150), slice(1000, 1100)),
-    (slice(50, 150), slice(1200, 1300)),
-    (slice(50, 150), slice(1400, 1500)),
-    (slice(50, 150), slice(1600, 1700)),
-    (slice(50, 150), slice(2700, 2800)),
-]
+if False:
+    # Chosen as in thesis
+    samples = [
+        (slice(50, 150), slice(100, 200)),
+        (slice(50, 150), slice(400, 500)),
+        (slice(50, 150), slice(600, 700)),
+        (slice(50, 150), slice(800, 900)),
+        (slice(50, 150), slice(1000, 1100)),
+        (slice(50, 150), slice(1200, 1300)),
+        (slice(50, 150), slice(1400, 1500)),
+        (slice(50, 150), slice(1600, 1700)),
+        (slice(50, 150), slice(2700, 2800)),
+    ]
+    n = len(samples)
+    concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)
+
+else:
+    # Ask user to provide characteristic regions with expected concentration values
+    assistant = darsia.BoxSelectionAssistant(image)
+    samples = assistant()
+    n = len(samples)
+    concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)
 
 
 def extract_characteristic_data(signal, samples, verbosity=False, show_plot=True):
@@ -122,7 +133,7 @@ def extract_characteristic_data(signal, samples, verbosity=False, show_plot=True
 
         # histo analysis
         patch = signal[p]
-        flat_image = np.reshape(patch, (10000, 3))  # all pixels in one dimension
+        flat_image = np.reshape(patch, (-1, 3))  # all pixels in one dimension
         # patch visualisation
         # plt.figure("patch" + letters[i])
         # plt.imshow(np.abs(patch))
@@ -154,14 +165,12 @@ def extract_characteristic_data(signal, samples, verbosity=False, show_plot=True
     return colours
 
 
-n = len(samples)
 colours_RGB = extract_characteristic_data(
     signal=smooth_RGB, samples=samples, verbosity=True, show_plot=False
 )
 colours_LAB = extract_characteristic_data(
     signal=smooth_LAB, samples=samples, verbosity=True, show_plot=False
 )
-concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)
 
 # ! ---- MAIN CONCENTRATION ANALYSIS ---- !
 
