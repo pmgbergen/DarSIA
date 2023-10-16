@@ -151,6 +151,8 @@ class ConcentrationAnalysis:
 
             # Use internal baseline images, if available.
             baseline_images = self._base_collection[1:]
+            if len(baseline_images) == 0:
+                baseline_images = None
 
         self.threshold_cleaning_filter = None
         """Cleaning filter."""
