@@ -1,10 +1,18 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+"""Module to extract characteristic data from input image for given patches."""
+
 import string
 
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+import numpy as np
 
-def extract_characteristic_data(signal, samples, verbosity=False, show_plot=True):
+
+def extract_characteristic_data(
+    signal: np.ndarray,
+    samples: list[tuple[slice]],
+    verbosity: bool = False,
+    surpress_plot: bool = False,
+) -> np.ndarray:
     """Assistant to extract representative colors from input image for given patches.
 
     Args:
@@ -48,7 +56,7 @@ def extract_characteristic_data(signal, samples, verbosity=False, show_plot=True
         ax.text(p[1].start + 5, p[0].start + 95, letters[i], fontsize=12, color="white")
         ax.add_patch(rect)
 
-        # histo analysis
+        # histogramm analysis
         patch = signal[p]
         flat_image = np.reshape(patch, (-1, 3))  # all pixels in one dimension
         # patch visualisation
@@ -75,8 +83,9 @@ def extract_characteristic_data(signal, samples, verbosity=False, show_plot=True
         ax.scatter(colours[:, 0], colours[:, 1], colours[:, 2], c=c)
         for i, c in enumerate(colours):
             ax.text(c[0], c[1], c[2], letters[i])
-        if show_plot:
+        if not surpress_plot:
             plt.show()
 
         print("Characteristic colours: " + str(colours))
+
     return colours
