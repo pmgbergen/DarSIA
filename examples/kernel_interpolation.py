@@ -57,9 +57,9 @@ else:
     samples = assistant()
 
 # For simplicity the concentrations are pre-defined. These could also be defined
-# by the user.
+# by the user. Here, we use concentrations in %, such that 100 means fully saturated.
 n = len(samples)
-concentrations = np.append(np.linspace(1, 0.99, n - 1), 0)
+concentrations = 100 * np.append(np.linspace(1, 0.99, n - 1), 0)
 
 # Now add kernel interpolation as model trained by the extracted information.
 """
@@ -71,13 +71,19 @@ comments:
 -   use plain difference to keep all information (no cut off or norm)
     this is the advantage of the kernel interpolation - it can handle negative colours
 -   finding the right kernel parameters is part of the modeling
+-   also clip the interpolated values at 100%
 """
 smooth_RGB = analysis(image.img_as(float)).img
 colours_RGB = darsia.extract_characteristic_data(
     signal=smooth_RGB, samples=samples, verbosity=True, surpress_plot=True
 )
-analysis.model = darsia.KernelInterpolation(
-    darsia.GaussianKernel(gamma=9.73), colours_RGB, concentrations
+analysis.model = darsia.CombinedModel(
+    [
+        darsia.KernelInterpolation(
+            darsia.GaussianKernel(gamma=9.73), colours_RGB, concentrations
+        ),
+        darsia.ClipModel(**{"max value": 100.0}),
+    ]
 )
 
 # Finally, apply the (full) concentration analysis to analyze the test image
@@ -90,25 +96,17 @@ plt.plot(np.average(concentration_image, axis=0))
 plt.xlabel("horizontal pixel")
 plt.ylabel("concentration")
 
-concentration_image[
-    concentration_image > 1
-] = 1  # für visualisierung von größer 1 values
-concentration_image[concentration_image < 0] = 0
 fig = plt.figure()
 fig.suptitle("original image and resulting concentration")
 ax = plt.subplot(212)
-ax.imshow(concentration_image)
+im = ax.imshow(concentration_image)
 ax.set_ylabel("vertical pixel")
 ax.set_xlabel("horizontal pixel")
+cb = fig.colorbar(im, orientation="horizontal", label="concentration [%]")
 ax = plt.subplot(211)
 ax.imshow(skimage.img_as_ubyte(image.img))
 ax.set_ylabel("vertical pixel")
 ax.set_xlabel("horizontal pixel")
-
-# plt.figure("indicator")
-# indicator = np.arange(101) / 100
-# plt.axis("off")
-# plt.imshow([indicator, indicator, indicator, indicator, indicator])
 
 # To enable the example as test, the plots are closed after short time.
 # Pause longer if it is desired to keep the images on the screen.
