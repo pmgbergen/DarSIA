@@ -78,7 +78,10 @@ plt.figure()
 plt.imshow(experimental_corrected_baseline.img)
 plt.figure()
 plt.imshow(corrected_baseline.img)
+
+# To enable the example as test, the plots are closed after short time.
+# Pause longer if it is desired to keep the images on the screen.
+print("Warning: The plot is closed after short time to enable testing.")
 plt.show(block=False)
-# Pause longer if it is desired to keep the images on the screen
-plt.pause(10)
+plt.pause(5)
 plt.close()
