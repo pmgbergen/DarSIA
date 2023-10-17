@@ -267,6 +267,35 @@ class ColorCorrection(darsia.BaseCorrection):
 
         elif reference == "custom":
 
+            def extract_swatches(img: np.ndarray, roi: np.ndarray) -> np.ndarray:
+                """Extract part of the image containing a color checker.
+                Use width and height (in cm - irrelevant) as provided by the
+                manufacturer Xrite.
+
+                Args:
+                    img (np.ndarray): baseline image
+                    roi (np.ndarray): roi detecting the markers of the colorchecker
+
+                Returns:
+                    np.ndarray: swatches
+
+                """
+                assert roi.shape == (4, 2)
+                colorchecker_img = darsia.extract_quadrilateral_ROI(
+                    img, pts_src=roi, width=27.3, height=17.8
+                )
+
+                # Determine swatch colors
+                swatches = self._detect_colour_checkers_segmentation(colorchecker_img)
+
+                # Scale to interval [0,1], to not loose any information, perform the
+                # scaling by hand
+                assert img.dtype in [np.uint8, np.uint16]
+                scaling = 255.0 if img.dtype == np.uint8 else 255.0**2
+                swatches /= scaling
+
+                return swatches
+
             # Allow to use provided image or some path to color patches. Prioritize image.
             if base is None:
 
@@ -294,48 +323,14 @@ class ColorCorrection(darsia.BaseCorrection):
                         self.config.get("custom_colorchecker_reference_roi", self.roi)
                     )
 
-                    # Extract part of the image containing a color checker.
-                    # Use width and height (in cm - irrelevant) as provided by the
-                    # manufacturer Xrite.
-                    assert self.roi.shape == (4, 2)
-                    colorchecker_img = darsia.extract_quadrilateral_ROI(
-                        baseline, pts_src=baseline_roi, width=27.3, height=17.8
-                    )
-
-                    # Determine swatch colors
-                    swatches = self._detect_colour_checkers_segmentation(
-                        colorchecker_img
-                    )
-
-                    # Scale to interval [0,1], to not loose any information, perform the
-                    # scaling by hand
-                    assert baseline.dtype in [np.uint8, np.uint16]
-                    scaling = 255.0 if baseline.dtype == np.uint8 else 255.0**2
-                    swatches /= scaling
-
+                    swatches = extract_swatches(baseline, baseline_roi)
                     self.colorchecker = CustomColorChecker(colorchecker_path, swatches)
 
                 else:
                     self.colorchecker = CustomColorChecker(colorchecker_path)
 
             else:
-                # Extract part of the image containing a color checker.
-                # Use width and height (in cm - irrelevant) as provided by the
-                # manufacturer Xrite.
-                assert self.roi.shape == (4, 2)
-                colorchecker_img = darsia.extract_quadrilateral_ROI(
-                    base.img, pts_src=self.roi, width=27.3, height=17.8
-                )
-
-                # Determine swatch colors
-                swatches = self._detect_colour_checkers_segmentation(colorchecker_img)
-
-                # Scale to interval [0,1], to not loose any information, perform the
-                # scaling by hand
-                assert base.img.dtype in [np.uint8, np.uint16]
-                scaling = 255.0 if base.img.dtype == np.uint8 else 255.0**2
-                swatches /= scaling
-
+                swatches = extract_swatches(base, self.roi)
                 self.colorchecker = CustomColorChecker(reference_colors=swatches)
 
     def _restrict_to_roi(self, img: np.ndarray) -> np.ndarray:
