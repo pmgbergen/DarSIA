@@ -421,6 +421,36 @@ class Image:
 
         return copy_image
 
+    def img_as(self, data_type) -> Any:
+        """Change data type via skimage.
+
+        Args:
+            data_type: target data type
+
+        Returns:
+            Image: image with transformed data type
+
+        """
+        copy_image = self.copy()
+        if data_type in [bool]:
+            copy_image.img = skimage.img_as_bool(copy_image.img)
+        elif data_type in [float]:
+            copy_image.img = skimage.img_as_float(copy_image.img)
+        elif data_type in [np.float32]:
+            copy_image.img = skimage.img_as_float32(copy_image.img)
+        elif data_type in [np.float64]:
+            copy_image.img = skimage.img_as_float64(copy_image.img)
+        elif data_type in [int]:
+            copy_image.img = skimage.img_as_int(copy_image.img)
+        elif data_type in [np.uint8]:
+            copy_image.img = skimage.img_as_ubyte(copy_image.img)
+        elif data_type in [np.uint16]:
+            copy_image.img = skimage.img_as_uint(copy_image.img)
+        else:
+            raise NotImplementedError
+
+        return copy_image
+
     # ! ---- Extraction routines
 
     def metadata(self) -> dict:

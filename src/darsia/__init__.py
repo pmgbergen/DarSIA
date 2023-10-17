@@ -27,6 +27,8 @@ from darsia.utils.andersonacceleration import *
 from darsia.utils.dtype import *
 from darsia.utils.grid import *
 from darsia.utils.fv import *
+from darsia.utils.kernels import *
+from darsia.utils.extractcharacteristicdata import *
 from darsia.corrections.basecorrection import *
 from darsia.corrections.shape.curvature import *
 from darsia.corrections.shape.affine import *
@@ -46,6 +48,7 @@ from darsia.signals.models.thresholdmodel import *
 from darsia.signals.models.staticthresholdmodel import *
 from darsia.signals.models.dynamicthresholdmodel import *
 from darsia.signals.models.binarydataselector import *
+from darsia.signals.models.kernelinterpolation import *
 from darsia.signals.reduction.signalreduction import *
 from darsia.signals.reduction.monochromatic import *
 from darsia.signals.reduction.dimensionreduction import *
@@ -68,6 +71,7 @@ from darsia.manager.traceranalysis import *
 from darsia.manager.co2analysis import *
 from darsia.assistants.base_assistant import *
 from darsia.assistants.point_selection_assistant import *
+from darsia.assistants.box_selection_assistant import *
 from darsia.assistants.rotation_correction_assistant import *
 from darsia.assistants.subregion_assistant import *
 from darsia.assistants.crop_assistant import *

@@ -151,6 +151,8 @@ class ConcentrationAnalysis:
 
             # Use internal baseline images, if available.
             baseline_images = self._base_collection[1:]
+            if len(baseline_images) == 0:
+                baseline_images = None
 
         self.threshold_cleaning_filter = None
         """Cleaning filter."""
@@ -171,7 +173,7 @@ class ConcentrationAnalysis:
                 diff = self._subtract_background(probe_img)
 
                 # Extract scalar version
-                monochromatic_diff = self._extract_scalar_information(diff)
+                monochromatic_diff = self._reduce_signal(diff)
 
                 # Consider elementwise max
                 self.threshold_cleaning_filter = np.maximum(
@@ -230,7 +232,7 @@ class ConcentrationAnalysis:
         self._inspect_diff(diff)
 
         # Extract monochromatic version and take difference wrt the baseline image
-        signal = self._extract_scalar_information(diff)
+        signal = self._reduce_signal(diff)
 
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_scalar_signal(signal)
@@ -255,7 +257,11 @@ class ConcentrationAnalysis:
             plt.show()
 
         metadata = img.metadata()
-        return darsia.ScalarImage(concentration, **metadata)
+        is_scalar = len(concentration.shape) == len(img.shape) - 1
+        if is_scalar:
+            return darsia.ScalarImage(concentration, **metadata)
+        else:
+            return type(img)(concentration, **metadata)
 
     # ! ---- Inspection routines
     def _inspect_diff(self, img: np.ndarray) -> None:
@@ -318,6 +324,8 @@ class ConcentrationAnalysis:
                 diff = np.clip(-img.img, 0, None)
             elif self._diff_option == "absolute":
                 diff = np.absolute(img.img)
+            elif self._diff_option == "plain":
+                diff = img.img
             else:
                 raise ValueError(f"Diff option {self._diff_option} not supported")
         else:
@@ -330,12 +338,14 @@ class ConcentrationAnalysis:
                 diff = skimage.util.compare_images(
                     img.img, self.base.img, method="diff"
                 )
+            elif self._diff_option == "plain":
+                diff = img.img - self.base.img
             else:
                 raise ValueError(f"Diff option {self._diff_option} not supported")
 
         return diff
 
-    def _extract_scalar_information(self, img: np.ndarray) -> np.ndarray:
+    def _reduce_signal(self, img: np.ndarray) -> np.ndarray:
         """
         Make a scalar image from potentially multi-colored image.
 
@@ -382,10 +392,7 @@ class ConcentrationAnalysis:
             np.ndarray: balanced image
 
         """
-        if self.balancing is not None:
-            return self.balancing(img)
-        else:
-            return img
+        return img if self.balancing is None else self.balancing(img)
 
     def _prepare_signal(self, signal: np.ndarray) -> np.ndarray:
         """
