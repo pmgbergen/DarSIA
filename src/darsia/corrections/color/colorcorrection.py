@@ -330,7 +330,7 @@ class ColorCorrection(darsia.BaseCorrection):
                     self.colorchecker = CustomColorChecker(colorchecker_path)
 
             else:
-                swatches = extract_swatches(base, self.roi)
+                swatches = extract_swatches(base.img, self.roi)
                 self.colorchecker = CustomColorChecker(reference_colors=swatches)
 
     def _restrict_to_roi(self, img: np.ndarray) -> np.ndarray:
