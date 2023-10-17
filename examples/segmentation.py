@@ -103,7 +103,9 @@ plt.figure("Image and labels supervised")
 plt.imshow(image.img)
 plt.imshow(labels_supervised.img, alpha=0.3)
 
+# To enable the example as test, the plots are closed after short time.
+# Pause longer if it is desired to keep the images on the screen.
+print("Warning: The plot is closed after short time to enable testing.")
 plt.show(block=False)
-# Pause longer if it is desired to keep the images on the screen
-plt.pause(3)
+plt.pause(5)
 plt.close()
