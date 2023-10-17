@@ -90,10 +90,11 @@ plt.plot(np.average(concentration_image, axis=0))
 plt.xlabel("horizontal pixel")
 plt.ylabel("concentration")
 
-concentration_image[
-    concentration_image > 1
-] = 1  # für visualisierung von größer 1 values
-concentration_image[concentration_image < 0] = 0
+# darsia.CombinedModel([kernel_interpolation, darsia.ClipModel(**{"max value": 1.})])
+# concentration_image[
+#     concentration_image > 1
+# ] = 1  # to visualise values > 1 as 1
+# concentration_image[concentration_image < 0] = 0
 fig = plt.figure()
 fig.suptitle("original image and resulting concentration")
 ax = plt.subplot(212)
@@ -104,11 +105,6 @@ ax = plt.subplot(211)
 ax.imshow(skimage.img_as_ubyte(image.img))
 ax.set_ylabel("vertical pixel")
 ax.set_xlabel("horizontal pixel")
-
-# plt.figure("indicator")
-# indicator = np.arange(101) / 100
-# plt.axis("off")
-# plt.imshow([indicator, indicator, indicator, indicator, indicator])
 
 # To enable the example as test, the plots are closed after short time.
 # Pause longer if it is desired to keep the images on the screen.
