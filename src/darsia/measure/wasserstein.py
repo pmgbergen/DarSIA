@@ -401,40 +401,53 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     # ! ---- Effective quantities ----
 
-    def compute_transport_density(self, solution: np.ndarray) -> np.ndarray:
+    def transport_density(self, flat_flux: np.ndarray, mode: str) -> np.ndarray:
         """Compute the transport density from the solution.
 
         Args:
-            solution (np.ndarray): solution
+            flat_flux (np.ndarray): face fluxes
+            mode (str): selection mode; 'raviart-thomas', 'subcell_projection', or
+                'cell_projection'
 
         Returns:
-            np.ndarray: transport density
+            np.ndarray: flat transport density
 
         """
-        # Convert (scalar) normal fluxes to vector-valued fluxes on cells
-        flat_flux = solution[self.flux_slice]
-        cell_flux = darsia.face_to_cell(self.grid, flat_flux)
-        # Simply take the norm without any other integration
-        norm = np.linalg.norm(cell_flux, 2, axis=-1)
-        return norm
+        if mode == "raviart-thomas":
+            # Apply exact integration of RT0 extensions into cells.
+            # Underlying functional for mixed finite element method (MFEM).
+            raise NotImplementedError  # TODO
+        elif mode == "subcell_projection":
+            # Apply subcell_based projection onto constant vectors and sum up.
+            # Equivalent to a mixed finite volume method (FV).
+            raise NotImplementedError  # TODO
+        elif mode == "cell_projection":
+            # Apply cell-based projection onto constant vectors and sum up.
+            # Simpler calculation than subcell-projection, but not directly
+            # connected to any discretization.
+
+            # Convert (scalar) normal fluxes to vector-valued fluxes on cells
+            cell_flux = darsia.face_to_cell(self.grid, flat_flux)
+            # Simply take the norm without any other integration
+            cell_flux_norm = np.linalg.norm(cell_flux, 2, axis=-1)
+            # Flatten
+            return np.ravel(cell_flux_norm)
 
     def l1_dissipation(self, flat_flux: np.ndarray, mode: str) -> float:
         """Compute the l1 dissipation potential of the solution.
 
         Args:
             flat_flux (np.ndarray): flat fluxes
+            mode (str): selection mode; 'raviart-thomas', 'subcell_projection', or
+                'cell_projection'
 
         Returns:
             float: l1 dissipation potential
 
         """
-        if mode == "cell_arithmetic":
-            cell_flux = darsia.face_to_cell(self.grid, flat_flux)
-            cell_flux_norm = np.ravel(np.linalg.norm(cell_flux, 2, axis=-1))
-            return self.mass_matrix_cells.dot(cell_flux_norm).sum()
-        elif mode == "face_arithmetic":
-            face_flux_norm = self.vector_face_flux_norm(flat_flux, "face_arithmetic")
-            return self.mass_matrix_faces.dot(face_flux_norm).sum()
+        # The L1 dissipation corresponds to the integral over the transport density
+        transport_density = self.transport_density(flat_flux, mode)
+        return self.mass_matrix_cells.dot(transport_density).sum()
 
     # ! ---- Lumping of effective mobility
 
