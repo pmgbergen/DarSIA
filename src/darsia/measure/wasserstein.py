@@ -926,6 +926,24 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         self.L = self.options.get("L", 1.0)
         """float: relaxation parameter, lower cut-off for the mobility"""
 
+    def _setup_discretization(self) -> None:
+        """Setup of fixed discretization operators.
+
+        Add linear contribution of the optimality conditions of the Newton linearization.
+
+        """
+        super()._setup_discretization()
+
+        self.broken_darcy = sps.bmat(
+            [
+                [None, -self.div.T, None],
+                [self.div, None, -self.potential_constraint.T],
+                [None, self.potential_constraint, None],
+            ],
+            format="csc",
+        )
+        """sps.csc_matrix: linear part of the Darcy operator with potential constraint"""
+
     def residual(self, rhs: np.ndarray, solution: np.ndarray) -> np.ndarray:
         """Compute the residual of the solution.
 
