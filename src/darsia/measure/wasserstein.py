@@ -28,14 +28,17 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     The variational Wasserstein distance is defined as the solution to the following
     optimization problem (also called the Beckman problem):
-    inf ||u||_{L^1} s.t. div u = m_1 - m_2, u in H(div).
-    u is the flux, m_1 and m_2 are the mass distributions which are transported by u
-    from m_1 to m_2.
 
-    Specialized classes implement the solution of the Beckman problem using different
-    methods. There are two main methods:
-    - Newton's method (:class:`WassersteinDistanceNewton`)
-    - Split Bregman method (:class:`WassersteinDistanceBregman`)
+        inf ||u||_{L^1} s.t. div u = m_1 - m_2, u in H(div).
+
+    u is the flux, m_1 and m_2 are the mass distributions which are transported by u
+    from m_1 to m_2. The problem is solved approximately, eploying an iterative
+    tpfa-type finite volume method. A close connection to the lowest Raviart-Thomas
+    mixed finite element method is exploited.
+
+    There are two main solution strategies implemented in sepcialized classes:
+    - Finite Volume Quasi-Newton's method (:class:`WassersteinDistanceNewton`)
+    - Finite Volume Split Bregman method (:class:`WassersteinDistanceBregman`)
 
     """
 
@@ -44,7 +47,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         grid: darsia.Grid,
         options: dict = {},
     ) -> None:
-        """
+        """Initialization of the variational Wasserstein distance.
+
         Args:
 
             grid (darsia.Grid): tensor grid associated with the images
