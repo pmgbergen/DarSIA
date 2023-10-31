@@ -71,6 +71,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.voxel_size = grid.voxel_size
         """np.ndarray: voxel size"""
 
+        # Cache solver options
         self.options = options
         """dict: options for the solver"""
 
@@ -87,14 +88,13 @@ class VariationalWassersteinDistance(darsia.EMD):
         self._setup_acceleration()
 
     def _setup_dof_management(self) -> None:
-        """Setup of DOF management.
+        """Setup of Raviart-Thomas-type DOF management.
 
         The following degrees of freedom are considered (also in this order):
         - flat fluxes (normal fluxes on the faces)
         - flat potentials (potentials on the cells)
         - lagrange multiplier (scalar variable) - Idea: Fix the potential in the
-        center of the domain to zero. This is done by adding a constraint to the
-        potential via a Lagrange multiplier.
+        center of the domain to zero via a constraint and a Lagrange multiplier.
 
         """
         # ! ---- Number of dofs ----
@@ -443,13 +443,16 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         Args:
             flat_flux (np.ndarray): flat fluxes (normal fluxes on the faces)
-            mode (str): mode of the norm, either "cell_arithmetic", "cell_harmonic" or
-                "face_arithmetic". In the cell-based modes, the fluxes are projected to
-                the cells and the norm is computed there. In the face-based mode, the
-                norm is computed directly on the faces.
+            mode (str): mode of the norm, either "cell_based", "cell_based_harmonic" (same
+                as "cell_based", "cell_based_arithmetic", "face_based", or "subcell_based".
+
+        In the cell-based modes, the fluxes are projected to the cells and the norm across
+        faces is computed via averaging. Similar for subcell_based definition. In the
+        face-based mode, the norm is computed directly on the faces; for this fluxes are
+        constructed with knowledge of RT0 basis functions.
 
         Returns:
-            np.ndarray: norm of the vector-valued fluxes on the faces
+            np.ndarray: flat norm of the vector-valued fluxes on the faces
 
         """
 
@@ -457,7 +460,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         if mode in ["cell_arithmetic", "cell_harmonic"]:
             # Consider the piecewise constant projection of vector valued fluxes
             cell_flux = darsia.face_to_cell(self.grid, flat_flux)
-            # Determine the norm of the fluxes on the cells
+
+            # Determine the norm of the fluxes on the cells, employ regularization
             cell_flux_norm = np.maximum(
                 np.linalg.norm(cell_flux, 2, axis=-1), self.regularization
             )
@@ -928,7 +932,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         )
 
     def jacobian(self, solution: np.ndarray) -> sps.linalg.LinearOperator:
-        """Compute the LU factorization of the jacobian of the solution.
+        """Compute the LU factorization of the Jacobian of the solution.
 
         Args:
             solution (np.ndarray): solution
