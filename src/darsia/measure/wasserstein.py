@@ -470,7 +470,13 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
 
         # Determine the norm of the fluxes on the faces
-        if mode in ["cell_arithmetic", "cell_harmonic"]:
+        if mode in ["cell_based", "cell_based_arithmetic", "cell_based_harmonic"]:
+            # Extract average mode from mode
+            if mode == "cell_based":
+                average_mode = "harmonic"
+            else:
+                average_mode = mode.split("-")[1]
+
             # Consider the piecewise constant projection of vector valued fluxes
             cell_flux = darsia.face_to_cell(self.grid, flat_flux)
 
@@ -478,8 +484,8 @@ class VariationalWassersteinDistance(darsia.EMD):
             cell_flux_norm = np.maximum(
                 np.linalg.norm(cell_flux, 2, axis=-1), self.regularization
             )
-            # Determine averaging mode from mode - either arithmetic or harmonic
-            average_mode = mode.split("_")[1]
+
+            # Map to faces via averaging of neighboring cells
             flat_flux_norm = darsia.cell_to_face(
                 self.grid, cell_flux_norm, mode=average_mode
             )
@@ -761,7 +767,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         potential = flat_potential.reshape(self.grid.shape)
 
         # Determine transport density
-        transport_density = self.compute_transport_density(solution)
+        transport_density = self.transport_density(flat_flux, "cell_projection")
 
         # Stop taking time
         toc = time.time()
@@ -932,7 +938,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         """
         flat_flux = solution[self.flux_slice]
-        mode = self.options.get("mode", "face_arithmetic")
+        mode = self.options.get("mode", "face_based")
         flat_flux_norm = np.maximum(
             self.vector_face_flux_norm(flat_flux, mode=mode), self.regularization
         )
@@ -955,7 +961,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         """
         flat_flux = solution[self.flux_slice]
-        mode = self.options.get("mode", "face_arithmetic")
+        mode = self.options.get("mode", "face_based")
         flat_flux_norm = np.maximum(
             self.vector_face_flux_norm(flat_flux, mode=mode), self.regularization
         )
@@ -1038,7 +1044,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             # Keep track of old flux, and old distance
             old_solution_i = solution_i.copy()
             old_flux = solution_i[self.flux_slice]
-            old_distance = self.l1_dissipation(old_flux, "cell_arithmetic")
+            old_distance = self.l1_dissipation(old_flux, "cell_projection")
 
             # Assemble linear problem in Newton step
             tic = time.time()
@@ -1088,9 +1094,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             stats_i["time assemble"] = time_assemble
             stats_i["time acceleration"] = time_anderson
 
-            # Update distance
+            # Update discrete W1 distance
             new_flux = solution_i[self.flux_slice]
-            new_distance = self.l1_dissipation(new_flux, "cell_arithmetic")
+            new_distance = self.l1_dissipation(new_flux, "cell_projection")
 
             # Compute the error:
             # - full residual
@@ -1200,7 +1206,10 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             np.ndarray: shrunk fluxes
 
         """
-        if mode == "cell_arithmetic":
+        # TODO make as in the paper.
+        if mode == "cell_based":
+            # TODO change to harmonic!
+
             # Idea: Determine the shrink factor based on the cell reconstructions of the
             # fluxes. Convert cell-based shrink factors to face-based shrink factors
             # through arithmetic averaging.
@@ -1284,8 +1293,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             )
 
         # Initialize Bregman variables and flux with Darcy flow
-        shrink_mode = "face_arithmetic"
-        dissipation_mode = "cell_arithmetic"
+        shrink_mode = "face_based"
+        dissipation_mode = "cell_based"
         weight = self.L
         shrink_factor = 1.0 / self.L
 
@@ -1402,7 +1411,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
                     # Update weight as the inverse of the norm of the flux
                     old_flux_norm = np.maximum(
-                        self.vector_face_flux_norm(old_flux, "face_arithmetic"),
+                        self.vector_face_flux_norm(old_flux, "face_based"),
                         self.regularization,
                     )
                     old_flux_norm_inv = 1.0 / old_flux_norm
