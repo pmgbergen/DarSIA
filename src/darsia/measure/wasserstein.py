@@ -705,8 +705,6 @@ class VariationalWassersteinDistance(darsia.EMD):
         self,
         img_1: darsia.Image,
         img_2: darsia.Image,
-        plot_solution: bool = False,
-        return_solution: bool = False,
     ) -> float:
         """L1 Wasserstein distance for two images with same mass.
 
@@ -715,8 +713,6 @@ class VariationalWassersteinDistance(darsia.EMD):
         Args:
             img_1 (darsia.Image): image 1
             img_2 (darsia.Image): image 2
-            plot_solution (bool): plot the solution. Defaults to False.
-            return_solution (bool): return the solution. Defaults to False.
 
         Returns:
             float or array: distance between img_1 and img_2.
@@ -753,10 +749,13 @@ class VariationalWassersteinDistance(darsia.EMD):
         status["elapsed_time"] = toc - tic
         print("Elapsed time: ", toc - tic)
 
-        # Plot the solution
+        # Plot solution
+        plot_solution = self.options.get("plot_solution", False)
         if plot_solution:
             self._plot_solution(mass_diff, flux, potential, transport_density)
 
+        # Return solution
+        return_solution = self.options.get("return_solution", False)
         if return_solution:
             return distance, flux, potential, transport_density, status
         else:
@@ -1604,31 +1603,33 @@ def wasserstein_distance(
         method (str): method to use ("newton", "bregman", or "cv2.emd")
         **kwargs: additional arguments (only for "newton" and "bregman")
             - options (dict): options for the method.
-            - plot_solution (bool): plot the solution. Defaults to False.
-            - return_solution (bool): return the solution. Defaults to False.
 
     """
+    # Define method for computing 1-Wasserstein distance
+
     if method.lower() in ["newton", "bregman"]:
+        # Use Finite Volume Iterative Method (Newton or Bregman)
+
         # Extract grid - implicitly assume mass_2 to generate same grid
         grid: darsia.Grid = darsia.generate_grid(mass_1)
 
-        # Fetch options
+        # Fetch options and define Wasserstein method
         options = kwargs.get("options", {})
-        plot_solution = kwargs.get("plot_solution", False)
-        return_solution = kwargs.get("return_solution", False)
 
+        # Define method
         if method.lower() == "newton":
             w1 = WassersteinDistanceNewton(grid, options)
         elif method.lower() == "bregman":
             w1 = WassersteinDistanceBregman(grid, options)
-        return w1(
-            mass_1, mass_2, plot_solution=plot_solution, return_solution=return_solution
-        )
 
     elif method.lower() == "cv2.emd":
+        # Use Earth Mover's Distance from CV2
         preprocess = kwargs.get("preprocess")
         w1 = darsia.EMD(preprocess)
         return w1(mass_1, mass_2)
 
     else:
         raise NotImplementedError(f"Method {method} not implemented.")
+
+    # Compute and return Wasserstein distance
+    return w1(mass_1, mass_2)
