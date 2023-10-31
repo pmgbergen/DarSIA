@@ -177,20 +177,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
         """sps.csc_matrix: mass matrix on faces: flat fluxes -> flat fluxes"""
 
-        self.face_reconstruction = darsia.FVFullFaceReconstruction(self.grid)
-        """sps.csc_matrix: full face reconstruction: flat fluxes -> vector fluxes"""
-
-        # Linear part of the Darcy operator with potential constraint.
-        self.broken_darcy = sps.bmat(
-            [
-                [None, -self.div.T, None],
-                [self.div, None, -self.potential_constraint.T],
-                [None, self.potential_constraint, None],
-            ],
-            format="csc",
-        )
-        """sps.csc_matrix: linear part of the Darcy operator"""
-
+        # TODO only construct on demand
         L_init = self.options.get("L_init", 1.0)
         self.darcy_init = sps.bmat(
             [
@@ -201,6 +188,15 @@ class VariationalWassersteinDistance(darsia.EMD):
             format="csc",
         )
         """sps.csc_matrix: initial Darcy operator"""
+
+    def _setup_face_reconstruction(self) -> None:
+        """Setup of face reconstruction via RT0 basis functions and arithmetic avg.
+
+        NOTE: Do not make part of self._setup_discretization() as not always required.
+
+        """
+        self.face_reconstruction = darsia.FVFullFaceReconstruction(self.grid)
+        """sps.csc_matrix: full face reconstruction: flat fluxes -> vector fluxes"""
 
     def _setup_linear_solver(self) -> None:
         self.linear_solver_type = self.options.get("linear_solver", "lu")
@@ -471,7 +467,13 @@ class VariationalWassersteinDistance(darsia.EMD):
                 self.grid, cell_flux_norm, mode=average_mode
             )
 
-        elif mode == "face_arithmetic":
+        elif mode == "subcell_based":
+            raise NotImplementedError
+
+        elif mode == "face_based":
+            if not hasattr(self, "face_reconstruction"):
+                self._setup_face_reconstruction()
+
             # Define natural vector valued flux on faces (taking arithmetic averages
             # of continuous fluxes over cells evaluated at faces)
             full_face_flux = self.face_reconstruction(flat_flux)
@@ -1194,7 +1196,10 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 self.grid, cell_scaling, mode="arithmetic"
             )
 
-        elif mode == "face_arithmetic":
+        elif mode == "face_based":
+            if not hasattr(self, "face_reconstruction"):
+                self._setup_face_reconstruction()
+
             # Define natural vector valued flux on faces (taking arithmetic averages
             # of continuous fluxes over cells evaluated at faces)
             full_face_flux = self.face_reconstruction(flat_flux)
