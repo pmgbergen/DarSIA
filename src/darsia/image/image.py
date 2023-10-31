@@ -664,6 +664,27 @@ class Image:
 
         return type(self)(img=img, **metadata)
 
+    @property
+    def domain(self) -> tuple:
+        """Physical domain.
+
+        Returns:
+            tuple: collection of coordinates in matrix indexing defining domain
+
+        """
+        if self.space_dim == 1:
+            return (self.origin[0], self.opposite_corner[0])
+        elif self.space_dim == 2:
+            # 1. Row interval, 2. column interval
+            return (
+                self.origin[0],
+                self.opposite_corner[0],
+                self.opposite_corner[1],
+                self.origin[1],
+            )
+        elif self.space_dim == 3:
+            raise NotImplementedError
+
     # ! ---- Arithmetics
 
     def __add__(self, other: Image) -> Image:
