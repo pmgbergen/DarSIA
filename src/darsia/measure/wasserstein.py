@@ -202,51 +202,57 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.linear_solver_type = self.options.get("linear_solver", "lu")
         assert self.linear_solver_type in [
             "lu",
-            "lu-flux-reduced",
-            "amg-flux-reduced",
-            "lu-potential",
-            "amg-potential",
+            "lu_flux_reduced",
+            "amg_flux_reduced",
+            "lu_potential",
+            "amg_potential",
         ], f"Linear solver {self.linear_solver_type} not supported."
         """str: type of linear solver"""
 
-        if self.linear_solver_type in ["amg-flux-reduced", "amg-potential"]:
-            # TODO add possibility for user control
-            self.ml_options = {
-                # B=X.reshape(
-                #    n * n, 1
-                # ),  # the representation of the near null space (this is a poor choice)
-                # BH=None,  # the representation of the left near null space
-                "symmetry": "hermitian",  # indicate that the matrix is Hermitian
-                # strength="evolution",  # change the strength of connection
-                "aggregate": "standard",  # use a standard aggregation method
-                "smooth": (
-                    "jacobi",
-                    {"omega": 4.0 / 3.0, "degree": 2},
-                ),  # prolongation smoothing
-                "presmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
-                "postsmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
-                # improve_candidates=[
-                #    ("block_gauss_seidel", {"sweep": "symmetric", "iterations": 4}),
-                #    None,
-                # ],
-                "max_levels": 4,  # maximum number of levels
-                "max_coarse": 1000,  # maximum number on a coarse level
-                # keep=False,  # keep extra operators around in the hierarchy (memory)
-            }
-            """dict: options for the AMG solver"""
-
-            self.tol_amg = self.options.get("linear_solver_tol", 1e-6)
-            """float: tolerance for the AMG solver"""
-
-            self.res_history_amg = []
-            """list: history of residuals for the AMG solver"""
+        # Setup infrastructure for multilevel metods/AMG
+        if self.linear_solver_type in ["amg_flux_reduced", "amg_potential"]:
+            self.setup_ml()
 
         # Setup inrastructure for Schur complement reduction
-        if self.linear_solver_type in ["lu-flux-reduced", "amg-flux-reduced"]:
+        if self.linear_solver_type in ["lu_flux_reduced", "amg_flux_reduced"]:
             self.setup_one_level_schur_reduction()
 
-        elif self.linear_solver_type in ["lu-potential", "amg-potential"]:
+        elif self.linear_solver_type in ["lu_potential", "amg_potential"]:
             self.setup_two_level_schur_reduction()
+
+    def setup_ml(self) -> None:
+        """Setup the infrastructure for multilevel solvers."""
+
+        # TODO add possibility for user control
+        self.ml_options = {
+            # B=X.reshape(
+            #    n * n, 1
+            # ),  # the representation of the near null space (this is a poor choice)
+            # BH=None,  # the representation of the left near null space
+            "symmetry": "hermitian",  # indicate that the matrix is Hermitian
+            # strength="evolution",  # change the strength of connection
+            "aggregate": "standard",  # use a standard aggregation method
+            "smooth": (
+                "jacobi",
+                {"omega": 4.0 / 3.0, "degree": 2},
+            ),  # prolongation smoothing
+            "presmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
+            "postsmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
+            # improve_candidates=[
+            #    ("block_gauss_seidel", {"sweep": "symmetric", "iterations": 4}),
+            #    None,
+            # ],
+            "max_levels": 10,  # maximum number of levels
+            "max_coarse": 1000,  # maximum number on a coarse level
+            # keep=False,  # keep extra operators around in the hierarchy (memory)
+        }
+        """dict: options for the AMG solver"""
+
+        self.tol_amg = self.options.get("linear_solver_tol", 1e-6)
+        """float: tolerance for the AMG solver"""
+
+        self.res_history_amg = []
+        """list: history of residuals for the AMG solver"""
 
     def setup_one_level_schur_reduction(self) -> None:
         """Setup the infrastructure for reduced systems through Gauss elimination.
@@ -406,14 +412,14 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         Args:
             flat_flux (np.ndarray): face fluxes
-            mode (str): selection mode; 'raviart-thomas', 'subcell_projection', or
+            mode (str): selection mode; 'raviart_thomas', 'subcell_projection', or
                 'cell_projection'
 
         Returns:
             np.ndarray: flat transport density
 
         """
-        if mode == "raviart-thomas":
+        if mode == "raviart_thomas":
             # Apply exact integration of RT0 extensions into cells.
             # Underlying functional for mixed finite element method (MFEM).
             raise NotImplementedError  # TODO
@@ -438,7 +444,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         Args:
             flat_flux (np.ndarray): flat fluxes
-            mode (str): selection mode; 'raviart-thomas', 'subcell_projection', or
+            mode (str): selection mode; 'raviart_thomas', 'subcell_projection', or
                 'cell_projection'
 
         Returns:
@@ -546,10 +552,10 @@ class VariationalWassersteinDistance(darsia.EMD):
             time_solve = time.time() - tic
 
         elif self.linear_solver_type in [
-            "lu-flux-reduced",
-            "amg-flux-reduced",
-            "lu-potential",
-            "amg-potential",
+            "lu_flux_reduced",
+            "amg_flux_reduced",
+            "lu_potential",
+            "amg_potential",
         ]:
             # Solve potential-multiplier problem
 
@@ -564,7 +570,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 matrix_flux_inv,
             ) = self.remove_flux(matrix, rhs)
 
-            if self.linear_solver_type == "lu-flux-reduced":
+            if self.linear_solver_type == "lu_flux_reduced":
                 # LU factorization for reduced system
                 if setup_linear_solver:
                     self.linear_solver = sps.linalg.splu(self.reduced_matrix)
@@ -576,7 +582,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                     self.reduced_rhs
                 )
 
-            elif self.linear_solver_type == "amg-flux-reduced":
+            elif self.linear_solver_type == "amg_flux_reduced":
                 # AMG solver for reduced system
                 if setup_linear_solver:
                     self.linear_solver = pyamg.smoothed_aggregation_solver(
@@ -618,7 +624,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                     self.reduced_rhs,
                 )
 
-                if self.linear_solver_type == "lu-potential":
+                if self.linear_solver_type == "lu_potential":
                     # Finish LU factorization of the pure potential system
                     if setup_linear_solver:
                         self.linear_solver = sps.linalg.splu(self.fully_reduced_matrix)
@@ -630,7 +636,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                         self.fully_reduced_system_indices_full
                     ] = self.linear_solver.solve(self.fully_reduced_rhs)
 
-                elif self.linear_solver_type == "amg-potential":
+                elif self.linear_solver_type == "amg_potential":
                     # Finish AMG setup of th pure potential system
                     if setup_linear_solver:
                         self.linear_solver = pyamg.smoothed_aggregation_solver(
@@ -658,7 +664,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             "time setup": time_setup,
             "time solve": time_solve,
         }
-        if self.linear_solver_type in ["amg-flux-reduced", "amg-potential"]:
+        if self.linear_solver_type in ["amg_flux_reduced", "amg_potential"]:
             stats["amg residuals"] = self.res_history_amg
             stats["amg num iterations"] = len(self.res_history_amg)
             stats["amg residual"] = self.res_history_amg[-1]
@@ -1084,7 +1090,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
             # Diagnostics
             # TODO move?
-            if self.linear_solver_type in ["amg-flux-reduced", "amg-potential"]:
+            if self.linear_solver_type in ["amg_flux_reduced", "amg_potential"]:
                 if self.options.get("linear_solver_verbosity", False):
                     # print(ml) # TODO rm?
                     print(
@@ -1457,7 +1463,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 )
 
                 # Diagnostics
-                if self.linear_solver_type in ["amg-flux-reduced", "amg-potential"]:
+                if self.linear_solver_type in ["amg_flux_reduced", "amg_potential"]:
                     if self.options.get("linear_solver_verbosity", False):
                         num_amg_iter = len(self.res_history_amg)
                         res_amg = self.res_history_amg[-1]
