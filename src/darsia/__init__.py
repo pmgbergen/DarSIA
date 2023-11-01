@@ -28,6 +28,7 @@ from darsia.utils.dtype import *
 from darsia.utils.grid import *
 from darsia.utils.fv import *
 from darsia.utils.kernels import *
+from darsia.utils import linalg
 from darsia.utils.extractcharacteristicdata import *
 from darsia.corrections.basecorrection import *
 from darsia.corrections.shape.curvature import *
