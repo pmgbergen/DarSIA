@@ -76,9 +76,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.verbose = self.options.get("verbose", False)
         """bool: verbosity"""
 
-        self.dissipation_mode = self.options.get(
-            "dissipation_mode", "constant_cell_projection"
-        )
+        self.l1_mode = self.options.get("l1_mode", "constant_cell_projection")
         """str: mode for computing the l1 dissipation"""
 
         self.mobility_mode = self.options.get("mobility_mode", "face_based")
@@ -229,8 +227,6 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     def setup_direct(self) -> None:
         """Setup the infrastructure for direct solvers."""
-
-        # TODO add possibility for user control
 
         self.solver_options = {}
         """dict: options for the direct solver"""
@@ -495,28 +491,40 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     # ! ---- Effective quantities ----
 
-    def transport_density(self, flat_flux: np.ndarray, mode: str) -> np.ndarray:
+    def transport_density(
+        self, flat_flux: np.ndarray, flatten: bool = True
+    ) -> np.ndarray:
         """Compute the transport density from the solution.
 
         Args:
             flat_flux (np.ndarray): face fluxes
-            mode (str): selection mode; 'raviart_thomas', 'constant_subcell_projection',
-                or 'constant_cell_projection'
+            flatten (bool): flatten the result. Defaults to True.
 
         Returns:
-            np.ndarray: flat transport density
+            np.ndarray: transport density, flattened if requested
+
+        Notes:
+        Type of integration depends on the selected mode, see self.l1_mode. Supported
+        modes are:
+        - 'raviart_thomas': Apply exact integration of RT0 extensions into cells.
+            Underlying functional for mixed finite element method (MFEM).
+        - 'constant_subcell_projection': Apply subcell_based projection onto constant
+            vectors and sum up. Equivalent to a mixed finite volume method (FV).
+        - 'constant_cell_projection': Apply cell-based L2 projection onto constant
+            vectors and sum up. Simpler calculation than subcell-projection, but not
+            directly connected to any discretization.
 
         """
-        if mode == "raviart_thomas":
+        if self.l1_mode == "raviart_thomas":
             # Apply exact integration of RT0 extensions into cells.
             # Underlying functional for mixed finite element method (MFEM).
             raise NotImplementedError  # TODO
-        elif mode == "constant_subcell_projection":
+        elif self.l1_mode == "constant_subcell_projection":
             # Apply subcell_based projection onto constant vectors and sum up.
             # Equivalent to a mixed finite volume method (FV).
             raise NotImplementedError  # TODO
-        elif mode == "constant_cell_projection":
-            # Apply cell-based projection onto constant vectors and sum up.
+        elif self.l1_mode == "constant_cell_projection":
+            # Apply cell-based L2 projection onto constant vectors and sum up.
             # Simpler calculation than subcell-projection, but not directly
             # connected to any discretization.
 
@@ -524,25 +532,26 @@ class VariationalWassersteinDistance(darsia.EMD):
             cell_flux = darsia.face_to_cell(self.grid, flat_flux)
             # Simply take the norm without any other integration
             cell_flux_norm = np.linalg.norm(cell_flux, 2, axis=-1)
-            # Flatten
+        else:
+            raise ValueError(f"Mode {self.l1_mode} not supported.")
+
+        if flatten:
             return np.ravel(cell_flux_norm)
         else:
-            raise ValueError(f"Mode {mode} not supported.")
+            return cell_flux_norm
 
-    def l1_dissipation(self, flat_flux: np.ndarray, mode: str) -> float:
-        """Compute the l1 dissipation pressure of the solution.
+    def l1_dissipation(self, flat_flux: np.ndarray) -> float:
+        """Compute the l1 dissipation of the solution.
 
         Args:
             flat_flux (np.ndarray): flat fluxes
-            mode (str): selection mode; 'raviart_thomas', 'constant_subcell_projection',
-                or 'constant_cell_projection'
 
         Returns:
-            float: l1 dissipation pressure
+            float: l1 dissipation
 
         """
         # The L1 dissipation corresponds to the integral over the transport density
-        transport_density = self.transport_density(flat_flux, mode)
+        transport_density = self.transport_density(flat_flux)
         return self.mass_matrix_cells.dot(transport_density).sum()
 
     # ! ---- Lumping of effective mobility
@@ -897,10 +906,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         pressure = flat_pressure.reshape(self.grid.shape)
 
         # Determine transport density
-        transport_density = self.transport_density(
-            flat_flux,
-            self.dissipation_mode,
-        )
+        transport_density = self.transport_density(flat_flux)
 
         # Plot solution
         plot_solution = self.options.get("plot_solution", False)
@@ -1080,7 +1086,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             # Keep track of old flux, and old distance
             old_solution_i = solution_i.copy()
             old_flux = solution_i[self.flux_slice]
-            old_distance = self.l1_dissipation(old_flux, self.dissipation_mode)
+            old_distance = self.l1_dissipation(old_flux)
 
             # Assemble linear problem in Newton step
             tic = time.time()
@@ -1116,7 +1122,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
             # Update discrete W1 distance
             new_flux = solution_i[self.flux_slice]
-            new_distance = self.l1_dissipation(new_flux, self.dissipation_mode)
+            new_distance = self.l1_dissipation(new_flux)
 
             # Update increment
             increment = solution_i - old_solution_i
