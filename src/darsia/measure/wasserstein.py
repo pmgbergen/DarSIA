@@ -1,6 +1,4 @@
-"""Wasserstein distance computed using variational methods.
-
-"""
+"""Wasserstein distance computed using variational methods."""
 from __future__ import annotations
 
 import time
@@ -14,8 +12,6 @@ import scipy.sparse as sps
 import darsia
 
 # General TODO list
-# - improve documentation, in particular with focus on keywords
-# - remove plotting
 # - improve assembling of operators through partial assembling
 # - improve stopping criteria
 # - use better quadrature for l1_dissipation?
