@@ -582,13 +582,11 @@ class VariationalWassersteinDistance(darsia.EMD):
             else:
                 average_mode = mode.split("_")[2]
 
-            # Consider the piecewise constant projection of vector valued fluxes
-            cell_flux = darsia.face_to_cell(self.grid, flat_flux)
+            # The flux norm is identical to the transport density
+            transport_density = self.transport_density(flat_flux, flatten=False)
 
-            # Determine the norm of the fluxes on the cells, employ regularization
-            cell_flux_norm = np.maximum(
-                np.linalg.norm(cell_flux, 2, axis=-1), self.regularization
-            )
+            # Add regularization to avoid division by zero
+            cell_flux_norm = np.maximum(transport_density, self.regularization)
 
             # Map to faces via averaging of neighboring cells
             flat_flux_norm = darsia.cell_to_face_scalar(
