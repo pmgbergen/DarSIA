@@ -176,7 +176,6 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
         """sps.csc_matrix: mass matrix on faces: flat fluxes -> flat fluxes"""
 
-        # TODO only construct on demand
         L_init = self.options.get("L_init", 1.0)
         self.darcy_init = sps.bmat(
             [
@@ -345,7 +344,8 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         """
         #   ---- Preliminaries ----
-        # Compute the jacobian of the Darcy problem
+
+        # Fixate some jacobian for copying the data structure
         jacobian = self.darcy_init.copy()
 
         # ! ---- Eliminate flux block ----
@@ -1023,7 +1023,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         num_iter = self.options.get("num_iter", 100)
         tol_residual = self.options.get("tol_residual", 1e-6)
         tol_increment = self.options.get("tol_increment", 1e-6)
-        tol_distance = self.options.get("tol_distance", 1e-6)
+        tol_distance = self.options.get("tol_distance", 0.0)
 
         # Define right hand side
         rhs = np.concatenate(
@@ -1063,6 +1063,11 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 "flux residual",
             )
 
+        # Initialize Newton iteration with Darcy solution for unitary mobility
+        solution_i, _ = self.linear_solve(
+            self.darcy_init.copy(), rhs.copy(), solution_i
+        )
+
         # Newton iteration
         for iter in range(num_iter):
             # Keep track of old flux, and old distance
@@ -1072,14 +1077,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
             # Assemble linear problem in Newton step
             tic = time.time()
-            if iter == 0:
-                # Determine residual and (full) Jacobian of a linear Darcy problem
-                residual_i = rhs.copy()
-                approx_jacobian = self.darcy_init.copy()
-            else:
-                # Determine residual and (full) Jacobian
-                residual_i = self.residual(rhs, solution_i)
-                approx_jacobian = self.jacobian(solution_i)
+            residual_i = self.residual(rhs, solution_i)
+            approx_jacobian = self.jacobian(solution_i)
             toc = time.time()
             time_assemble = toc - tic
 
@@ -1087,16 +1086,6 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             update_i, stats_i = self.linear_solve(
                 approx_jacobian, residual_i, solution_i
             )
-
-            # Diagnostics
-            # TODO move?
-            if self.linear_solver_type in ["amg", "cg"]:
-                if self.options.get("linear_solver_verbosity", False):
-                    # print(ml) # TODO rm?
-                    print(
-                        f"""AMG iterations: {stats_i["amg num iterations"]}; """
-                        f"""Residual after AMG step: {stats_i["amg residual"]}"""
-                    )
 
             # Update the solution with the full Netwon step
             solution_i += update_i
