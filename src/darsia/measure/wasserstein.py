@@ -91,28 +91,28 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         The following degrees of freedom are considered (also in this order):
         - flat fluxes (normal fluxes on the faces)
-        - flat potentials (potentials on the cells)
-        - lagrange multiplier (scalar variable) - Idea: Fix the potential in the
+        - flat pressures (pressures on the cells)
+        - lagrange multiplier (scalar variable) - Idea: Fix the pressure in the
         center of the domain to zero via a constraint and a Lagrange multiplier.
 
         """
         # ! ---- Number of dofs ----
         num_flux_dofs = self.grid.num_faces
-        num_potential_dofs = self.grid.num_cells
+        num_pressure_dofs = self.grid.num_cells
         num_lagrange_multiplier_dofs = 1
-        num_dofs = num_flux_dofs + num_potential_dofs + num_lagrange_multiplier_dofs
+        num_dofs = num_flux_dofs + num_pressure_dofs + num_lagrange_multiplier_dofs
 
         # ! ---- Indices in global system ----
         self.flux_indices = np.arange(num_flux_dofs)
         """np.ndarray: indices of the fluxes"""
 
-        self.potential_indices = np.arange(
-            num_flux_dofs, num_flux_dofs + num_potential_dofs
+        self.pressure_indices = np.arange(
+            num_flux_dofs, num_flux_dofs + num_pressure_dofs
         )
-        """np.ndarray: indices of the potentials"""
+        """np.ndarray: indices of the pressures"""
 
         self.lagrange_multiplier_indices = np.array(
-            [num_flux_dofs + num_potential_dofs], dtype=int
+            [num_flux_dofs + num_pressure_dofs], dtype=int
         )
         """np.ndarray: indices of the lagrange multiplier"""
 
@@ -120,17 +120,17 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.flux_slice = slice(0, num_flux_dofs)
         """slice: slice for the fluxes"""
 
-        self.potential_slice = slice(num_flux_dofs, num_flux_dofs + num_potential_dofs)
-        """slice: slice for the potentials"""
+        self.pressure_slice = slice(num_flux_dofs, num_flux_dofs + num_pressure_dofs)
+        """slice: slice for the pressures"""
 
         self.lagrange_multiplier_slice = slice(
-            num_flux_dofs + num_potential_dofs,
-            num_flux_dofs + num_potential_dofs + num_lagrange_multiplier_dofs,
+            num_flux_dofs + num_pressure_dofs,
+            num_flux_dofs + num_pressure_dofs + num_lagrange_multiplier_dofs,
         )
         """slice: slice for the lagrange multiplier"""
 
         self.reduced_system_slice = slice(num_flux_dofs, None)
-        """slice: slice for the reduced system (potentials and lagrange multiplier)"""
+        """slice: slice for the reduced system (pressures and lagrange multiplier)"""
 
         # Embedding operators
         self.flux_embedding = sps.csc_matrix(
@@ -145,32 +145,32 @@ class VariationalWassersteinDistance(darsia.EMD):
     def _setup_discretization(self) -> None:
         """Setup of fixed discretization operators."""
 
-        # ! ---- Constraint for the potential correpsonding to Lagrange multiplier ----
+        # ! ---- Constraint for the pressure correpsonding to Lagrange multiplier ----
 
         center_cell = np.array(self.grid.shape) // 2
         self.constrained_cell_flat_index = np.ravel_multi_index(
             center_cell, self.grid.shape
         )
-        """int: flat index of the cell where the potential is constrained to zero"""
+        """int: flat index of the cell where the pressure is constrained to zero"""
 
-        num_potential_dofs = self.grid.num_cells
-        self.potential_constraint = sps.csc_matrix(
+        num_pressure_dofs = self.grid.num_cells
+        self.pressure_constraint = sps.csc_matrix(
             (
                 np.ones(1, dtype=float),
                 (np.zeros(1, dtype=int), np.array([self.constrained_cell_flat_index])),
             ),
-            shape=(1, num_potential_dofs),
+            shape=(1, num_pressure_dofs),
             dtype=float,
         )
-        """sps.csc_matrix: effective constraint for the potential"""
+        """sps.csc_matrix: effective constraint for the pressure"""
 
         # ! ---- Discretization operators ----
 
         self.div = darsia.FVDivergence(self.grid).mat
-        """sps.csc_matrix: divergence operator: flat fluxes -> flat potentials"""
+        """sps.csc_matrix: divergence operator: flat fluxes -> flat pressures"""
 
         self.mass_matrix_cells = darsia.FVMass(self.grid).mat
-        """sps.csc_matrix: mass matrix on cells: flat potentials -> flat potentials"""
+        """sps.csc_matrix: mass matrix on cells: flat pressures -> flat pressures"""
 
         lumping = self.options.get("lumping", True)
         self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
@@ -181,8 +181,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.darcy_init = sps.bmat(
             [
                 [L_init * self.mass_matrix_faces, -self.div.T, None],
-                [self.div, None, -self.potential_constraint.T],
-                [None, self.potential_constraint, None],
+                [self.div, None, -self.pressure_constraint.T],
+                [None, self.pressure_constraint, None],
             ],
             format="csc",
         )
@@ -201,7 +201,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.linear_solver_type = self.options.get("linear_solver", "direct")
         """str: type of linear solver"""
 
-        self.formulation: str = self.options.get("formulation", "potential")
+        self.formulation: str = self.options.get("formulation", "pressure")
         """str: formulation type"""
 
         # Safety checks
@@ -213,14 +213,14 @@ class VariationalWassersteinDistance(darsia.EMD):
         assert self.formulation in [
             "full",
             "flux-reduced",
-            "potential",
+            "pressure",
         ], f"Formulation {self.formulation} not supported."
 
         # Setup inrastructure for Schur complement reduction
         if self.formulation == "flux_reduced":
             self.setup_eliminate_flux()
 
-        elif self.formulation == "potential":
+        elif self.formulation == "pressure":
             self.setup_eliminate_flux()
             self.setup_eliminate_lagrange_multiplier()
 
@@ -340,7 +340,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         """Setup the infrastructure for reduced systems through Gauss elimination.
 
         Provide internal data structures for the reduced system, still formulated in
-        terms of potentials and Lagrange multiplier. Merely the flux is eliminated using
+        terms of pressures and Lagrange multiplier. Merely the flux is eliminated using
         a Schur complement approach.
 
         """
@@ -458,7 +458,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Define reduced system indices wrt full system
         reduced_system_indices = np.concatenate(
-            [self.potential_indices, self.lagrange_multiplier_indices]
+            [self.pressure_indices, self.lagrange_multiplier_indices]
         )
 
         # Define fully reduced system indices wrt reduced system - need to remove cell
@@ -524,7 +524,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             return np.ravel(cell_flux_norm)
 
     def l1_dissipation(self, flat_flux: np.ndarray, mode: str) -> float:
-        """Compute the l1 dissipation potential of the solution.
+        """Compute the l1 dissipation pressure of the solution.
 
         Args:
             flat_flux (np.ndarray): flat fluxes
@@ -532,7 +532,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 'cell_projection'
 
         Returns:
-            float: l1 dissipation potential
+            float: l1 dissipation pressure
 
         """
         # The L1 dissipation corresponds to the integral over the transport density
@@ -609,7 +609,7 @@ class VariationalWassersteinDistance(darsia.EMD):
     ) -> tuple:
         """Solve the linear system.
 
-        Defines the Schur complement reduction and the pure potential reduction, if
+        Defines the Schur complement reduction and the pure pressure reduction, if
         selected. For reusing the setup, the resulting solver is cached as
         self.linear_solver.
 
@@ -642,7 +642,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             time_solve = time.time() - tic
 
         elif self.formulation == "flux_reduced":
-            # Solve flux-reduced / potential-multiplier problem, following:
+            # Solve flux-reduced / pressure-multiplier problem, following:
             # 1. Eliminate flux block
             # 2. Build linear solver for reduced system
             # 3. Solve reduced system
@@ -673,7 +673,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             # Stop timer to measure setup time
             time_setup = time.time() - tic
 
-            # 3. Solve for the potential and lagrange multiplier
+            # 3. Solve for the pressure and lagrange multiplier
             tic = time.time()
             solution[self.reduced_system_slice] = self.linear_solver.solve(
                 self.reduced_rhs, **self.solver_options
@@ -683,12 +683,12 @@ class VariationalWassersteinDistance(darsia.EMD):
             solution[self.flux_slice] = self.compute_flux_update(solution, rhs)
             time_solve = time.time() - tic
 
-        elif self.formulation == "potential":
-            # Solve pure potential problem ,following:
+        elif self.formulation == "pressure":
+            # Solve pure pressure problem ,following:
             # 1. Eliminate flux block
             # 2. Eliminate lagrange multiplier
-            # 3. Build linear solver for pure potential system
-            # 4. Solve pure potential system
+            # 3. Build linear solver for pure pressure system
+            # 4. Solve pure pressure system
             # 5. Compute lagrange multiplier - not required, as it is zero
             # 6. Compute flux update
 
@@ -720,7 +720,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 self.matrix_flux_inv,
             ) = self.eliminate_flux(matrix, rhs)
 
-            # 2. Reduce to pure potential system
+            # 2. Reduce to pure pressure system
             (
                 self.fully_reduced_matrix,
                 self.fully_reduced_rhs,
@@ -729,7 +729,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 self.reduced_rhs,
             )
 
-            # 3. Build linear solver for pure potential system
+            # 3. Build linear solver for pure pressure system
             if setup_linear_solver:
                 if self.linear_solver_type == "direct":
                     self.setup_direct_solver(self.fully_reduced_matrix)
@@ -743,7 +743,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             # Stop timer to measure setup time
             time_setup = time.time() - tic
 
-            # 4. Solve the pure potential system
+            # 4. Solve the pure pressure system
             tic = time.time()
             solution[self.fully_reduced_system_indices_full] = self.linear_solver.solve(
                 self.fully_reduced_rhs, **self.solver_options
@@ -761,7 +761,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             "time setup": time_setup,
             "time solve": time_solve,
         }
-        if self.linear_solver_type in ["amg_flux_reduced", "amg_potential"]:
+        if self.linear_solver_type in ["amg_flux_reduced", "amg_pressure"]:
             stats["amg num iterations"] = len(self.res_history_amg)
             stats["amg residual"] = self.res_history_amg[-1]
             stats["amg residuals"] = self.res_history_amg
@@ -884,11 +884,11 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Split the solution
         flat_flux = solution[self.flux_slice]
-        flat_potential = solution[self.potential_slice]
+        flat_pressure = solution[self.pressure_slice]
 
-        # Reshape the fluxes and potential to grid format
+        # Reshape the fluxes and pressure to grid format
         flux = darsia.face_to_cell(self.grid, flat_flux)
-        potential = flat_potential.reshape(self.grid.shape)
+        pressure = flat_pressure.reshape(self.grid.shape)
 
         # Determine transport density
         transport_density = self.transport_density(flat_flux, "cell_projection")
@@ -896,7 +896,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Plot solution
         plot_solution = self.options.get("plot_solution", False)
         if plot_solution:
-            self._plot_solution(mass_diff, flux, potential, transport_density)
+            self._plot_solution(mass_diff, flux, pressure, transport_density)
 
         # Return solution
         return_solution = self.options.get("return_solution", False)
@@ -905,7 +905,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 distance,
                 {
                     "flux": flux,
-                    "potential": potential,
+                    "pressure": pressure,
                     "transport density": transport_density,
                 },
                 status,
@@ -918,7 +918,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
     """Class to determine the L1 EMD/Wasserstein distance solved with Newton's method.
 
     Here, self.L has the interpretation of a lower cut-off value in the linearization
-    only. With such relaxation, the BEckman problem itself is not regularized, but
+    only. With such relaxation, the Beckman problem itself is not regularized, but
     instead the solution trajectory is merely affected.
 
     """
@@ -940,12 +940,12 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         self.broken_darcy = sps.bmat(
             [
                 [None, -self.div.T, None],
-                [self.div, None, -self.potential_constraint.T],
-                [None, self.potential_constraint, None],
+                [self.div, None, -self.pressure_constraint.T],
+                [None, self.pressure_constraint, None],
             ],
             format="csc",
         )
-        """sps.csc_matrix: linear part of the Darcy operator with potential constraint"""
+        """sps.csc_matrix: linear part of the Darcy operator with pressure constraint"""
 
     def residual(self, rhs: np.ndarray, solution: np.ndarray) -> np.ndarray:
         """Compute the residual of the solution.
@@ -994,8 +994,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                     -self.div.T,
                     None,
                 ],
-                [self.div, None, -self.potential_constraint.T],
-                [None, self.potential_constraint, None],
+                [self.div, None, -self.pressure_constraint.T],
+                [None, self.pressure_constraint, None],
             ],
             format="csc",
         )
@@ -1102,7 +1102,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             solution_i += update_i
 
             # Apply Anderson acceleration to flux contribution (the only nonlinear part).
-            # Application to full solution, or just the potential, lead to divergence,
+            # Application to full solution, or just the pressure, lead to divergence,
             # while application to the flux, results in improved performance.
             tic = time.time()
             if self.anderson is not None:
@@ -1138,7 +1138,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             convergence_history["decomposed residual"].append(
                 [
                     np.linalg.norm(residual_i[self.flux_slice], 2),
-                    np.linalg.norm(residual_i[self.potential_slice], 2),
+                    np.linalg.norm(residual_i[self.pressure_slice], 2),
                     np.linalg.norm(residual_i[self.lagrange_multiplier_slice], 2),
                 ]
             )
@@ -1146,7 +1146,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             convergence_history["decomposed increment"].append(
                 [
                     np.linalg.norm(increment[self.flux_slice], 2),
-                    np.linalg.norm(increment[self.potential_slice], 2),
+                    np.linalg.norm(increment[self.pressure_slice], 2),
                     np.linalg.norm(increment[self.lagrange_multiplier_slice], 2),
                 ]
             )
@@ -1338,8 +1338,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         l_scheme_mixed_darcy = sps.bmat(
             [
                 [self.L * self.mass_matrix_faces, -self.div.T, None],
-                [self.div, None, -self.potential_constraint.T],
-                [None, self.potential_constraint, None],
+                [self.div, None, -self.pressure_constraint.T],
+                [None, self.pressure_constraint, None],
             ],
             format="csc",
         )
@@ -1458,8 +1458,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     l_scheme_mixed_darcy = sps.bmat(
                         [
                             [weight * self.mass_matrix_faces, -self.div.T, None],
-                            [self.div, None, -self.potential_constraint.T],
-                            [None, self.potential_constraint, None],
+                            [self.div, None, -self.pressure_constraint.T],
+                            [None, self.pressure_constraint, None],
                         ],
                         format="csc",
                     )
@@ -1525,7 +1525,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
             # Determine the error in the mass conservation equation
             mass_conservation_residual = np.linalg.norm(
-                self.div.dot(new_flux) - rhs[self.potential_slice], 2
+                self.div.dot(new_flux) - rhs[self.pressure_slice], 2
             )
 
             # Determine increments
@@ -1614,8 +1614,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             #                    -self.div.T,
             #                    None
             #                 ],
-            #                 [self.div, None, -self.potential_constraint.T],
-            #                 [None, self.potential_constraint, None],
+            #                 [self.div, None, -self.pressure_constraint.T],
+            #                 [None, self.pressure_constraint, None],
             #             ],
             #             format="csc",
             #         )
@@ -1636,7 +1636,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             old_force = new_force.copy()
             old_distance = new_distance
 
-        # TODO solve for potential and multiplier
+        # TODO solve for pressure and multiplier
         solution_i = np.zeros_like(rhs)
         solution_i[self.flux_slice] = new_flux.copy()
         # TODO continue
