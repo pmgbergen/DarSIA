@@ -208,21 +208,13 @@ class VariationalWassersteinDistance(darsia.EMD):
         assert self.linear_solver_type in [
             "direct",
             "amg",
-            "krylov",
+            "cg",
         ], f"Linear solver {self.linear_solver_type} not supported."
         assert self.formulation in [
             "full",
             "flux-reduced",
             "potential",
         ], f"Formulation {self.formulation} not supported."
-
-        # Setup infrastructure for multilevel metods/AMG
-        if self.linear_solver_type == "direct":
-            self.setup_direct()
-        elif self.linear_solver_type == "amg":
-            self.setup_amg()
-        elif self.linear_solver_type == "krylov":
-            raise NotImplementedError  # TODO
 
         # Setup inrastructure for Schur complement reduction
         if self.formulation == "flux_reduced":
@@ -254,46 +246,34 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.linear_solver = sps.linalg.splu(matrix)
         self.solver_options = {}
 
-    def setup_amg(self) -> None:
-        """Setup the infrastructure for multilevel solvers."""
+    def setup_amg_options(self) -> None:
+        """Setup the infrastructure for multilevel solvers.
 
-        # TODO add possibility for user control
+        Basic default setup based on jacobi and block Gauss-Seidel smoothers.
+        User-defined options can be passed via the options dictionary, using the key
+        "amg_options". The options follow the pyamg interface.
 
+        """
         self.amg_options = {
-            # B=X.reshape(
-            #    n * n, 1
-            # ),  # the representation of the near null space (this is a poor choice)
-            # BH=None,  # the representation of the left near null space
-            "symmetry": "hermitian",  # indicate that the matrix is Hermitian
-            # strength="evolution",  # change the strength of connection
+            "strength": "symmetric",  # change the strength of connection
             "aggregate": "standard",  # use a standard aggregation method
-            "smooth": (
-                "jacobi",
-                {"omega": 4.0 / 3.0, "degree": 2},
-            ),  # prolongation smoothing
-            "presmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
-            "postsmoother": ("block_gauss_seidel", {"sweep": "symmetric"}),
-            # improve_candidates=[
-            #    ("block_gauss_seidel", {"sweep": "symmetric", "iterations": 4}),
-            #    None,
-            # ],
-            "max_levels": 10,  # maximum number of levels
-            "max_coarse": 1000,  # maximum number on a coarse level
-            # keep=False,  # keep extra operators around in the hierarchy (memory)
+            "smooth": ("jacobi"),  # prolongation smoother
+            "presmoother": (
+                "block_gauss_seidel",
+                {"sweep": "symmetric", "iterations": 1},
+            ),
+            "postsmoother": (
+                "block_gauss_seidel",
+                {"sweep": "symmetric", "iterations": 1},
+            ),
+            "coarse_solver": "pinv2",  # pseudo inverse via SVD
+            "max_coarse": 100,  # maximum number on a coarse level
         }
         """dict: options for the AMG solver"""
 
-        self.tol_amg = self.options.get("linear_solver_tol", 1e-6)
-        """float: tolerance for the AMG solver"""
-
-        self.res_history_amg = []
-        """list: history of residuals for the AMG solver"""
-
-        self.solver_options = {
-            "tol": self.tol_amg,
-            "residuals": self.res_history_amg,
-        }
-        """dict: options for the AMG solver"""
+        # Allow to overwrite default options - use pyamg interface.
+        user_defined_amg_options = self.options.get("amg_options", {})
+        self.amg_options.update(user_defined_amg_options)
 
     def setup_amg_solver(self, matrix: sps.csc_matrix) -> None:
         """Setup an AMG solver for the given matrix.
@@ -306,13 +286,55 @@ class VariationalWassersteinDistance(darsia.EMD):
             dict: options for the AMG solver
 
         """
+        # Define AMG solver
+        self.setup_amg_options()
         self.linear_solver = pyamg.smoothed_aggregation_solver(
             matrix, **self.amg_options
         )
+
+        # Define solver options
+        linear_solver_options = self.options.get("linear_solver_options", {})
+        tol = linear_solver_options.get("tol", 1e-6)
+        maxiter = linear_solver_options.get("maxiter", 100)
+        self.amg_residual_history = []
+        """list: history of residuals for the AMG solver"""
         self.solver_options = {
-            "tol": self.tol_amg,
-            "residuals": self.res_history_amg,
+            "tol": tol,
+            "maxiter": maxiter,
+            "residuals": self.amg_residual_history,
         }
+        """dict: options for the iterative linear solver"""
+
+    def setup_cg_solver(self, matrix: sps.csc_matrix) -> None:
+        """Setup an CG solver with AMG preconditioner for the given matrix.
+
+        Args:
+            matrix (sps.csc_matrix): matrix
+
+        Defines:
+            pyamg.amg_core.solve: AMG solver
+            dict: options for the AMG solver
+
+        """
+        # Define CG solver
+        self.linear_solver = darsia.linalg.CG(matrix)
+
+        # Define AMG preconditioner
+        self.setup_amg_options()
+        amg = pyamg.smoothed_aggregation_solver(
+            matrix, **self.amg_options
+        ).aspreconditioner(cycle="V")
+
+        # Define solver options
+        linear_solver_options = self.options.get("linear_solver_options", {})
+        tol = linear_solver_options.get("tol", 1e-6)
+        maxiter = linear_solver_options.get("maxiter", 100)
+        self.solver_options = {
+            "tol": tol,
+            "maxiter": maxiter,
+            "M": amg,
+        }
+        """dict: options for the iterative linear solver"""
 
     def setup_eliminate_flux(self) -> None:
         """Setup the infrastructure for reduced systems through Gauss elimination.
@@ -645,8 +667,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                     self.setup_direct_solver(self.reduced_matrix)
                 elif self.linear_solver_type == "amg":
                     self.setup_amg_solver(self.reduced_matrix)
-                elif self.linear_solver_type == "krylov":
-                    raise NotImplementedError  # TODO
+                elif self.linear_solver_type == "cg":
+                    self.setup_cg_solver(self.reduced_matrix)
 
             # Stop timer to measure setup time
             time_setup = time.time() - tic
@@ -715,8 +737,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                 elif self.linear_solver_type == "amg":
                     self.setup_amg_solver(self.fully_reduced_matrix)
 
-                elif self.linear_solver_type == "krylov":
-                    raise NotImplementedError
+                elif self.linear_solver_type == "cg":
+                    self.setup_cg_solver(self.fully_reduced_matrix)
 
             # Stop timer to measure setup time
             time_setup = time.time() - tic
@@ -1068,7 +1090,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
             # Diagnostics
             # TODO move?
-            if self.linear_solver_type in ["amg", "krylov"]:
+            if self.linear_solver_type in ["amg", "cg"]:
                 if self.options.get("linear_solver_verbosity", False):
                     # print(ml) # TODO rm?
                     print(
@@ -1453,7 +1475,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 )
 
                 # Diagnostics
-                if self.linear_solver_type in ["amg", "krylov"]:
+                if self.linear_solver_type in ["amg", "cg"]:
                     if self.options.get("linear_solver_verbosity", False):
                         num_amg_iter = len(self.res_history_amg)
                         res_amg = self.res_history_amg[-1]
