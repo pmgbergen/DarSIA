@@ -199,32 +199,68 @@ class VariationalWassersteinDistance(darsia.EMD):
         """sps.csc_matrix: full face reconstruction: flat fluxes -> vector fluxes"""
 
     def _setup_linear_solver(self) -> None:
-        self.linear_solver_type = self.options.get("linear_solver", "lu")
-        assert self.linear_solver_type in [
-            "lu",
-            "lu_flux_reduced",
-            "amg_flux_reduced",
-            "lu_potential",
-            "amg_potential",
-        ], f"Linear solver {self.linear_solver_type} not supported."
+        self.linear_solver_type = self.options.get("linear_solver", "direct")
         """str: type of linear solver"""
 
+        self.formulation: str = self.options.get("formulation", "potential")
+        """str: formulation type"""
+
+        # Safety checks
+        assert self.linear_solver_type in [
+            "direct",
+            "amg",
+            "krylov",
+        ], f"Linear solver {self.linear_solver_type} not supported."
+        assert self.formulation in [
+            "full",
+            "flux-reduced",
+            "potential",
+        ], f"Formulation {self.formulation} not supported."
+
         # Setup infrastructure for multilevel metods/AMG
-        if self.linear_solver_type in ["amg_flux_reduced", "amg_potential"]:
-            self.setup_ml()
+        if self.linear_solver_type == "direct":
+            self.setup_direct()
+        elif self.linear_solver_type == "amg":
+            self.setup_amg()
+        elif self.linear_solver_type == "krylov":
+            raise NotImplementedError  # TODO
 
         # Setup inrastructure for Schur complement reduction
-        if self.linear_solver_type in ["lu_flux_reduced", "amg_flux_reduced"]:
-            self.setup_one_level_schur_reduction()
+        if self.formulation == "flux_reduced":
+            self.setup_eliminate_flux()
 
-        elif self.linear_solver_type in ["lu_potential", "amg_potential"]:
-            self.setup_two_level_schur_reduction()
+        elif self.formulation == "potential":
+            self.setup_eliminate_flux()
+            self.setup_eliminate_lagrange_multiplier()
 
-    def setup_ml(self) -> None:
+    def setup_direct(self) -> None:
+        """Setup the infrastructure for direct solvers."""
+
+        # TODO add possibility for user control
+
+        self.solver_options = {}
+        """dict: options for the direct solver"""
+
+    def setup_direct_solver(self, matrix: sps.csc_matrix) -> sps.linalg.splu:
+        """Setup a direct solver for the given matrix.
+
+        Args:
+            matrix (sps.csc_matrix): matrix
+
+        Defines:
+            sps.linalg.splu: direct solver
+            dict: (empty) solver options
+
+        """
+        self.linear_solver = sps.linalg.splu(matrix)
+        self.solver_options = {}
+
+    def setup_amg(self) -> None:
         """Setup the infrastructure for multilevel solvers."""
 
         # TODO add possibility for user control
-        self.ml_options = {
+
+        self.amg_options = {
             # B=X.reshape(
             #    n * n, 1
             # ),  # the representation of the near null space (this is a poor choice)
@@ -254,29 +290,56 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.res_history_amg = []
         """list: history of residuals for the AMG solver"""
 
-    def setup_one_level_schur_reduction(self) -> None:
-        """Setup the infrastructure for reduced systems through Gauss elimination.
+        self.solver_options = {
+            "tol": self.tol_amg,
+            "residuals": self.res_history_amg,
+        }
+        """dict: options for the AMG solver"""
 
-        Provide internal data structures for the reduced system.
+    def setup_amg_solver(self, matrix: sps.csc_matrix) -> None:
+        """Setup an AMG solver for the given matrix.
+
+        Args:
+            matrix (sps.csc_matrix): matrix
+
+        Defines:
+            pyamg.amg_core.solve: AMG solver
+            dict: options for the AMG solver
 
         """
-        # Step 1: Compute the jacobian of the Darcy problem
+        self.linear_solver = pyamg.smoothed_aggregation_solver(
+            matrix, **self.amg_options
+        )
+        self.solver_options = {
+            "tol": self.tol_amg,
+            "residuals": self.res_history_amg,
+        }
 
+    def setup_eliminate_flux(self) -> None:
+        """Setup the infrastructure for reduced systems through Gauss elimination.
+
+        Provide internal data structures for the reduced system, still formulated in
+        terms of potentials and Lagrange multiplier. Merely the flux is eliminated using
+        a Schur complement approach.
+
+        """
+        #   ---- Preliminaries ----
+        # Compute the jacobian of the Darcy problem
         jacobian = self.darcy_init.copy()
 
-        # Step 2: Remove flux blocks through Schur complement approach
+        # ! ---- Eliminate flux block ----
 
         # Build Schur complement wrt. flux-flux block
         J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
         D = jacobian[self.reduced_system_slice, self.flux_slice].copy()
         schur_complement = D.dot(J_inv.dot(D.T))
 
-        # Cache divergence matrix
+        # Cache divergence matrix together with Lagrange multiplier
         self.D = D.copy()
-        """sps.csc_matrix: divergence matrix"""
+        """sps.csc_matrix: divergence + lagrange multiplier matrix"""
 
         self.DT = self.D.T.copy()
-        """sps.csc_matrix: transposed divergence matrix"""
+        """sps.csc_matrix: transposed divergence + lagrange multiplier  matrix"""
 
         # Cache (constant) jacobian subblock
         self.jacobian_subblock = jacobian[
@@ -289,13 +352,13 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.reduced_jacobian = self.jacobian_subblock + schur_complement
         """sps.csc_matrix: reduced jacobian incl. Schur complement"""
 
-    def setup_two_level_schur_reduction(self) -> None:
-        """Additional setup of infrastructure for fully reduced systems."""
-        # Step 1 and 2:
-        self.setup_one_level_schur_reduction()
+    def setup_eliminate_lagrange_multiplier(self) -> None:
+        """Additional setup of infrastructure for fully reduced systems.
 
-        # Step 3: Remove Lagrange multiplier block through Gauss elimination
+        Here, the Lagrange multiplier is eliminated through Gauss elimination. It is
+        implicitly assumed, that the flux block is eliminated already.
 
+        """
         # Find row entries to be removed
         rm_row_entries = np.arange(
             self.reduced_jacobian.indptr[self.constrained_cell_flat_index],
@@ -311,7 +374,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         rm_indices = np.unique(
             np.concatenate((rm_row_entries, rm_col_entries)).astype(int)
         )
-        # Cache for later use in remove_lagrange_multiplier
+        # Cache for later use in eliminate_lagrange_multiplier
         self.rm_indices = rm_indices
         """np.ndarray: indices to be removed in the reduced system"""
 
@@ -370,7 +433,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.fully_reduced_jacobian_shape = fully_reduced_jacobian_shape
         """tuple: shape of the fully reduced jacobian"""
 
-        # Step 4: Identify inclusions (index arrays)
+        # ! ---- Identify inclusions (index arrays) ----
 
         # Define reduced system indices wrt full system
         reduced_system_indices = np.concatenate(
@@ -525,7 +588,9 @@ class VariationalWassersteinDistance(darsia.EMD):
     ) -> tuple:
         """Solve the linear system.
 
-        For reusing the setup, the resulting solver is cached as self.linear_solver.
+        Defines the Schur complement reduction and the pure potential reduction, if
+        selected. For reusing the setup, the resulting solver is cached as
+        self.linear_solver.
 
         Args:
             matrix (sps.csc_matrix): matrix
@@ -539,11 +604,15 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         setup_linear_solver = not (reuse_solver) or not (hasattr(self, "linear_solver"))
 
-        if self.linear_solver_type == "lu":
+        if self.formulation == "full":
+            assert (
+                self.linear_solver_type == "direct"
+            ), "Only direct solver supported for full formulation."
+
             # Setup LU factorization for the full system
             tic = time.time()
             if setup_linear_solver:
-                self.linear_solver = sps.linalg.splu(matrix)
+                self.setup_direct_solver(matrix)
             time_setup = time.time() - tic
 
             # Solve the full system
@@ -551,128 +620,137 @@ class VariationalWassersteinDistance(darsia.EMD):
             solution = self.linear_solver.solve(rhs)
             time_solve = time.time() - tic
 
-        elif self.linear_solver_type in [
-            "lu_flux_reduced",
-            "amg_flux_reduced",
-            "lu_potential",
-            "amg_potential",
-        ]:
-            # Solve potential-multiplier problem
+        elif self.formulation == "flux_reduced":
+            # Solve flux-reduced / potential-multiplier problem, following:
+            # 1. Eliminate flux block
+            # 2. Build linear solver for reduced system
+            # 3. Solve reduced system
+            # 4. Compute flux update
+
+            # Start timer to measure setup time
+            tic = time.time()
 
             # Allocate memory for solution
             solution = np.zeros_like(rhs)
 
-            # Reduce flux block
-            tic = time.time()
+            # 1. Reduce flux block
             (
                 self.reduced_matrix,
                 self.reduced_rhs,
-                matrix_flux_inv,
-            ) = self.remove_flux(matrix, rhs)
+                self.matrix_flux_inv,
+            ) = self.eliminate_flux(matrix, rhs)
 
-            if self.linear_solver_type == "lu_flux_reduced":
-                # LU factorization for reduced system
-                if setup_linear_solver:
-                    self.linear_solver = sps.linalg.splu(self.reduced_matrix)
-                time_setup = time.time() - tic
+            # 2. Build linear solver for reduced system
+            if setup_linear_solver:
+                if self.linear_solver_type == "direct":
+                    self.setup_direct_solver(self.reduced_matrix)
+                elif self.linear_solver_type == "amg":
+                    self.setup_amg_solver(self.reduced_matrix)
+                elif self.linear_solver_type == "krylov":
+                    raise NotImplementedError  # TODO
 
-                # Solve for the potential and lagrange multiplier
-                tic = time.time()
-                solution[self.reduced_system_slice] = self.linear_solver.solve(
-                    self.reduced_rhs
-                )
+            # Stop timer to measure setup time
+            time_setup = time.time() - tic
 
-            elif self.linear_solver_type == "amg_flux_reduced":
-                # AMG solver for reduced system
-                if setup_linear_solver:
-                    self.linear_solver = pyamg.smoothed_aggregation_solver(
-                        self.reduced_matrix, **self.ml_options
-                    )
-                time_setup = time.time() - tic
-
-                # Solve for the potential and lagrange multiplier
-                tic = time.time()
-                solution[self.reduced_system_slice] = self.linear_solver.solve(
-                    self.reduced_rhs,
-                    tol=self.tol_amg,
-                    residuals=self.res_history_amg,
-                )
-            else:
-                # Solve pure potential problem
-
-                # NOTE: It is implicitly assumed that the lagrange multiplier is zero
-                # in the constrained cell. This is not checked here. And no update is
-                # performed.
-                if previous_solution is not None and (
-                    abs(
-                        previous_solution[
-                            self.grid.num_faces + self.constrained_cell_flat_index
-                        ]
-                    )
-                    > 1e-6
-                ):
-                    raise NotImplementedError(
-                        "Implementation requires solution satisfy the constraint."
-                    )
-
-                # Reduce to pure potential system
-                (
-                    self.fully_reduced_matix,
-                    self.fully_reduced_rhs,
-                ) = self.remove_lagrange_multiplier(
-                    self.reduced_matrix,
-                    self.reduced_rhs,
-                )
-
-                if self.linear_solver_type == "lu_potential":
-                    # Finish LU factorization of the pure potential system
-                    if setup_linear_solver:
-                        self.linear_solver = sps.linalg.splu(self.fully_reduced_matrix)
-                    time_setup = time.time() - tic
-
-                    # Solve the pure potential system
-                    tic = time.time()
-                    solution[
-                        self.fully_reduced_system_indices_full
-                    ] = self.linear_solver.solve(self.fully_reduced_rhs)
-
-                elif self.linear_solver_type == "amg_potential":
-                    # Finish AMG setup of th pure potential system
-                    if setup_linear_solver:
-                        self.linear_solver = pyamg.smoothed_aggregation_solver(
-                            self.fully_reduced_jacobian, **self.ml_options
-                        )
-                    time_setup = time.time() - tic
-
-                    # Solve the pure potential system
-                    tic = time.time()
-                    solution[
-                        self.fully_reduced_system_indices_full
-                    ] = self.linear_solver.solve(
-                        self.fully_reduced_rhs,
-                        tol=self.tol_amg,
-                        residuals=self.res_history_amg,
-                    )
-
-            # Compute flux update
-            solution[self.flux_slice] = matrix_flux_inv.dot(
-                rhs[self.flux_slice] + self.DT.dot(solution[self.reduced_system_slice])
+            # 3. Solve for the potential and lagrange multiplier
+            tic = time.time()
+            solution[self.reduced_system_slice] = self.linear_solver.solve(
+                self.reduced_rhs, **self.solver_options
             )
+
+            # 4. Compute flux update
+            solution[self.flux_slice] = self.compute_flux_update(solution, rhs)
             time_solve = time.time() - tic
 
+        elif self.formulation == "potential":
+            # Solve pure potential problem ,following:
+            # 1. Eliminate flux block
+            # 2. Eliminate lagrange multiplier
+            # 3. Build linear solver for pure potential system
+            # 4. Solve pure potential system
+            # 5. Compute lagrange multiplier - not required, as it is zero
+            # 6. Compute flux update
+
+            # Start timer to measure setup time
+            tic = time.time()
+
+            # Allocate memory for solution
+            solution = np.zeros_like(rhs)
+
+            # NOTE: It is implicitly assumed that the lagrange multiplier is zero
+            # in the constrained cell. This is not checked here. And no update is
+            # performed.
+            if previous_solution is not None and (
+                abs(
+                    previous_solution[
+                        self.grid.num_faces + self.constrained_cell_flat_index
+                    ]
+                )
+                > 1e-6
+            ):
+                raise NotImplementedError(
+                    "Implementation requires solution satisfy the constraint."
+                )
+
+            # 1. Reduce flux block
+            (
+                self.reduced_matrix,
+                self.reduced_rhs,
+                self.matrix_flux_inv,
+            ) = self.eliminate_flux(matrix, rhs)
+
+            # 2. Reduce to pure potential system
+            (
+                self.fully_reduced_matrix,
+                self.fully_reduced_rhs,
+            ) = self.eliminate_lagrange_multiplier(
+                self.reduced_matrix,
+                self.reduced_rhs,
+            )
+
+            # 3. Build linear solver for pure potential system
+            if setup_linear_solver:
+                if self.linear_solver_type == "direct":
+                    self.setup_direct_solver(self.fully_reduced_matrix)
+
+                elif self.linear_solver_type == "amg":
+                    self.setup_amg_solver(self.fully_reduced_matrix)
+
+                elif self.linear_solver_type == "krylov":
+                    raise NotImplementedError
+
+            # Stop timer to measure setup time
+            time_setup = time.time() - tic
+
+            # 4. Solve the pure potential system
+            tic = time.time()
+            solution[self.fully_reduced_system_indices_full] = self.linear_solver.solve(
+                self.fully_reduced_rhs, **self.solver_options
+            )
+
+            # 5. Compute lagrange multiplier - not required, as it is zero
+            pass
+
+            # 6. Compute flux update
+            solution[self.flux_slice] = self.compute_flux_update(solution, rhs)
+            time_solve = time.time() - tic
+
+        # Define solver statistics
         stats = {
             "time setup": time_setup,
             "time solve": time_solve,
         }
         if self.linear_solver_type in ["amg_flux_reduced", "amg_potential"]:
-            stats["amg residuals"] = self.res_history_amg
             stats["amg num iterations"] = len(self.res_history_amg)
             stats["amg residual"] = self.res_history_amg[-1]
+            stats["amg residuals"] = self.res_history_amg
 
         return solution, stats
 
-    def remove_flux(self, jacobian: sps.csc_matrix, residual: np.ndarray) -> tuple:
-        """Remove the flux block from the jacobian and residual.
+    def eliminate_flux(self, jacobian: sps.csc_matrix, residual: np.ndarray) -> tuple:
+        """Eliminate the flux block from the jacobian and residual.
+
+        Employ a Schur complement/block Gauss elimination approach.
 
         Args:
             jacobian (sps.csc_matrix): jacobian
@@ -695,8 +773,12 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         return reduced_jacobian, reduced_residual, J_inv
 
-    def remove_lagrange_multiplier(self, reduced_jacobian, reduced_residual) -> tuple:
-        """Shortcut for removing the lagrange multiplier from the reduced jacobian.
+    def eliminate_lagrange_multiplier(
+        self, reduced_jacobian, reduced_residual
+    ) -> tuple:
+        """Eliminate the lagrange multiplier from the reduced system.
+
+        Employ a Schur complement/block Gauss elimination approach.
 
         Args:
             reduced_jacobian (sps.csc_matrix): reduced jacobian
@@ -730,6 +812,22 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         return self.fully_reduced_jacobian, fully_reduced_residual
 
+    def compute_flux_update(self, solution: np.ndarray, rhs: np.ndarray) -> np.ndarray:
+        """Compute the flux update from the solution.
+
+        Args:
+            solution (np.ndarray): solution
+            rhs (np.ndarray): right hand side
+
+        Returns:
+            np.ndarray: flux update
+
+        """
+        rhs_flux = rhs[self.flux_slice]
+        return self.matrix_flux_inv.dot(
+            rhs_flux + self.DT.dot(solution[self.reduced_system_slice])
+        )
+
     # ! ---- Main methods ----
 
     def __call__(
@@ -746,12 +844,11 @@ class VariationalWassersteinDistance(darsia.EMD):
             img_2 (darsia.Image): image 2
 
         Returns:
-            float or array: distance between img_1 and img_2.
+            float: distance between img_1 and img_2.
+            dict (optional): solution
+            dict (optional): status
 
         """
-
-        # Start taking time
-        tic = time.time()
 
         # Compatibilty check
         assert img_1.scalar and img_2.scalar
@@ -775,11 +872,6 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Determine transport density
         transport_density = self.transport_density(flat_flux, "cell_projection")
 
-        # Stop taking time
-        toc = time.time()
-        status["elapsed_time"] = toc - tic
-        print("Elapsed time: ", toc - tic)
-
         # Plot solution
         plot_solution = self.options.get("plot_solution", False)
         if plot_solution:
@@ -788,7 +880,15 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Return solution
         return_solution = self.options.get("return_solution", False)
         if return_solution:
-            return distance, flux, potential, transport_density, status
+            return (
+                distance,
+                {
+                    "flux": flux,
+                    "potential": potential,
+                    "transport density": transport_density,
+                },
+                status,
+            )
         else:
             return distance
 
@@ -1090,7 +1190,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
             # Diagnostics
             # TODO move?
-            if self.linear_solver_type in ["amg_flux_reduced", "amg_potential"]:
+            if self.linear_solver_type in ["amg", "krylov"]:
                 if self.options.get("linear_solver_verbosity", False):
                     # print(ml) # TODO rm?
                     print(
@@ -1122,76 +1222,93 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             new_flux = solution_i[self.flux_slice]
             new_distance = self.l1_dissipation(new_flux, "cell_projection")
 
-            # Compute the error:
-            # - full residual
-            # - residual of the flux equation
-            # - residual of mass conservation equation
-            # - residual of the constraint equation
-            # - full increment
-            # - flux increment
-            # - potential increment
-            # - lagrange multiplier increment
-            # - distance increment
+            # Update increment
             increment = solution_i - old_solution_i
-            error = [
-                np.linalg.norm(residual_i, 2),
+
+            # Compute the error and store as part of the convergence history:
+            # 0 - full residual
+            # 1 - decomposed residuals
+            # 2 - full increment
+            # 3 - decomposed increments
+            # 4 - distance increment
+
+            # Update convergence history
+            convergence_history["distance"].append(new_distance)
+            convergence_history["residual"].append(np.linalg.norm(residual_i, 2))
+            convergence_history["decomposed residual"].append(
                 [
                     np.linalg.norm(residual_i[self.flux_slice], 2),
                     np.linalg.norm(residual_i[self.potential_slice], 2),
                     np.linalg.norm(residual_i[self.lagrange_multiplier_slice], 2),
-                ],
-                np.linalg.norm(increment, 2),
+                ]
+            )
+            convergence_history["increment"].append(np.linalg.norm(increment, 2))
+            convergence_history["decomposed increment"].append(
                 [
                     np.linalg.norm(increment[self.flux_slice], 2),
                     np.linalg.norm(increment[self.potential_slice], 2),
                     np.linalg.norm(increment[self.lagrange_multiplier_slice], 2),
-                ],
-                abs(new_distance - old_distance),
-            ]
-
-            # Update convergence history
-            convergence_history["distance"].append(new_distance)
-            convergence_history["residual"].append(error[0])
-            convergence_history["decomposed residual"].append(error[1])
-            convergence_history["increment"].append(error[2])
-            convergence_history["decomposed increment"].append(error[3])
-            convergence_history["distance increment"].append(error[4])
+                ]
+            )
+            convergence_history["distance increment"].append(
+                abs(new_distance - old_distance)
+            )
             convergence_history["timing"].append(stats_i)
 
-            new_distance_faces = self.l1_dissipation(new_flux, "face_arithmetic")
+            # Print performance to screen
             if self.verbose:
                 print(
                     "Newton iteration",
                     iter,
                     new_distance,
-                    new_distance_faces,
-                    error[0],  # residual
-                    error[1],  # mass conservation residual
-                    error[2],  # full increment
-                    error[3],  # flux increment
-                    error[4],  # distance increment
-                    stats_i,  # timing
+                    convergence_history["residual"][-1],
+                    convergence_history["decomposed residual"][-1],
+                    convergence_history["increment"][-1],
+                    convergence_history["decomposed increment"][-1],
+                    convergence_history["distance increment"][-1],
+                    stats_i,
                 )
 
-            # Stopping criterion
+            # Stopping criterion - force one iteration
             # TODO include criterion build on staganation of the solution
             if iter > 1 and (
-                (error[0] < tol_residual and error[2] < tol_increment)
-                or error[4] < tol_distance  # TODO rm the latter
+                (
+                    convergence_history["residual"][-1] < tol_residual
+                    and convergence_history["increment"][-1] < tol_increment
+                )
+                or (convergence_history["distance increment"][-1] < tol_distance)
             ):
                 break
+
+        # Summarize timings
+        timings = convergence_history["timing"]
+        total_timings = {
+            "assemble": sum([t["time assemble"] for t in timings]),
+            "setup": sum([t["time setup"] for t in timings]),
+            "solve": sum([t["time solve"] for t in timings]),
+            "acceleration": sum([t["time acceleration"] for t in timings]),
+        }
+        total_timings["total"] = (
+            total_timings["assemble"]
+            + total_timings["setup"]
+            + total_timings["solve"]
+            + total_timings["acceleration"]
+        )
 
         # Define performance metric
         status = {
             "converged": iter < num_iter,
-            "number iterations": iter,
-            "distance": new_distance,
-            "residual": error[0],
-            "mass conservation residual": error[1],
-            "increment": error[2],
-            "flux increment": error[3],
-            "distance increment": abs(new_distance - old_distance),
-            "convergence history": convergence_history,
+            "number_iterations": iter,
+            # "distance": new_distance,
+            # "residual": convergence_history["residual"][-1],
+            # "mass_conservation_residual": convergence_history["decomposed residual"][0][
+            #    -1
+            # ],
+            # "increment": convergence_history["increment"][-1],
+            # "flux_increment": convergence_history["decomposed increment"][0][-1],
+            # "distance_increment": abs(new_distance - old_distance),
+            "convergence_history": convergence_history,
+            "timings": total_timings,
         }
 
         return new_distance, solution_i, status
@@ -1463,7 +1580,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 )
 
                 # Diagnostics
-                if self.linear_solver_type in ["amg_flux_reduced", "amg_potential"]:
+                if self.linear_solver_type in ["amg", "krylov"]:
                     if self.options.get("linear_solver_verbosity", False):
                         num_amg_iter = len(self.res_history_amg)
                         res_amg = self.res_history_amg[-1]
