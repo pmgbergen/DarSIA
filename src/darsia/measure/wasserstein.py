@@ -1034,8 +1034,11 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             ]
         )
 
-        # Initialize solution
-        solution_i = np.zeros_like(rhs)
+        # Initialize Newton iteration with Darcy solution for unitary mobility
+        solution_i = np.zeros_like(rhs, dtype=float)
+        solution_i, _ = self.linear_solve(
+            self.darcy_init.copy(), rhs.copy(), solution_i
+        )
 
         # Initialize container for storing the convergence history
         convergence_history = {
@@ -1062,11 +1065,6 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 "flux increment",
                 "flux residual",
             )
-
-        # Initialize Newton iteration with Darcy solution for unitary mobility
-        solution_i, _ = self.linear_solve(
-            self.darcy_init.copy(), rhs.copy(), solution_i
-        )
 
         # Newton iteration
         for iter in range(num_iter):
