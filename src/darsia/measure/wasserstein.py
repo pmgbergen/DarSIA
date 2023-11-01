@@ -1150,17 +1150,19 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             "timing": [],
         }
 
-        # Print header
+        # Print  header for later printing performance to screen
+        # - distance
+        # - distance increment
+        # - flux increment (recall, Newton is a Picard method in the flux)
+        # - mass conservation residual (again, recall, Newton is a Picard method)
         if self.verbose:
             print(
                 "--- ; ",
                 "Newton iteration",
                 "distance",
-                "residual",
-                "mass conservation residual",
-                "increment",
-                "flux increment",
                 "distance increment",
+                "flux increment",
+                "mass conservation residual",
             )
 
         # Newton iteration
@@ -1256,21 +1258,21 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             convergence_history["timing"].append(stats_i)
 
             # Print performance to screen
+            # - distance
+            # - distance increment
+            # - flux increment (recall, Newton is a Picard method in the flux)
+            # - mass conservation residual (again, recall, Newton is a Picard method)
             if self.verbose:
                 print(
                     "Newton iteration",
                     iter,
                     new_distance,
-                    convergence_history["residual"][-1],
-                    convergence_history["decomposed residual"][-1],
-                    convergence_history["increment"][-1],
-                    convergence_history["decomposed increment"][-1],
                     convergence_history["distance increment"][-1],
-                    stats_i,
+                    convergence_history["decomposed increment"][-1][0],
+                    convergence_history["decomposed residual"][-1][1],
                 )
 
             # Stopping criterion - force one iteration
-            # TODO include criterion build on staganation of the solution
             if iter > 1 and (
                 (
                     convergence_history["residual"][-1] < tol_residual
@@ -1299,14 +1301,6 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         status = {
             "converged": iter < num_iter,
             "number_iterations": iter,
-            # "distance": new_distance,
-            # "residual": convergence_history["residual"][-1],
-            # "mass_conservation_residual": convergence_history["decomposed residual"][0][
-            #    -1
-            # ],
-            # "increment": convergence_history["increment"][-1],
-            # "flux_increment": convergence_history["decomposed increment"][0][-1],
-            # "distance_increment": abs(new_distance - old_distance),
             "convergence_history": convergence_history,
             "timings": total_timings,
         }
