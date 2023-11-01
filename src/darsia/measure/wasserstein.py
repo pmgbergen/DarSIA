@@ -4,10 +4,9 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
+import tracemalloc
 from typing import Optional, Union
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pyamg
 import scipy.sparse as sps
@@ -994,8 +993,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # and therefore better solutions to mu and u. Higher depth is better, but more
         # expensive.
 
-        # Setup
+        # Setup time and memory profiling
         tic = time.time()
+        tracemalloc.start()
 
         # Solver parameters
         num_iter = self.options.get("num_iter", 100)
@@ -1158,7 +1158,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             ):
                 break
 
-        # Summarize timings
+        # Summarize profiling (time in seconds, memory in GB)
         timings = convergence_history["timing"]
         total_timings = {
             "assemble": sum([t["time assemble"] for t in timings]),
@@ -1173,12 +1173,15 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             + total_timings["acceleration"]
         )
 
+        peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
+
         # Define performance metric
         status = {
             "converged": iter < num_iter,
             "number_iterations": iter,
             "convergence_history": convergence_history,
             "timings": total_timings,
+            "peak_memory_consumption": peak_memory_consumption,
         }
 
         return new_distance, solution_i, status
