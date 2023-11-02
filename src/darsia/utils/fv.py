@@ -309,24 +309,24 @@ def face_to_cell(
         pt = np.array([pt])
 
     if grid.dim >= 1:
-        cell_flux[:-1, ..., 0] += (1 - pt[0]) * flat_flux[grid.faces[0]].reshape(
+        cell_flux[:-1, ..., 0] += pt[0] * flat_flux[grid.faces[0]].reshape(
             grid.faces_shape[0], order="F"
         )
-        cell_flux[1:, ..., 0] += pt[0] * flat_flux[grid.faces[0]].reshape(
+        cell_flux[1:, ..., 0] += (1 - pt[0]) * flat_flux[grid.faces[0]].reshape(
             grid.faces_shape[0], order="F"
         )
     if grid.dim >= 2:
-        cell_flux[:, :-1, ..., 1] += (1 - pt[1]) * flat_flux[grid.faces[1]].reshape(
+        cell_flux[:, :-1, ..., 1] += pt[1] * flat_flux[grid.faces[1]].reshape(
             grid.faces_shape[1], order="F"
         )
-        cell_flux[:, 1:, ..., 1] += pt[1] * flat_flux[grid.faces[1]].reshape(
+        cell_flux[:, 1:, ..., 1] += (1 - pt[1]) * flat_flux[grid.faces[1]].reshape(
             grid.faces_shape[1], order="F"
         )
     if grid.dim >= 3:
-        cell_flux[:, :, :-1, ..., 2] += (1 - pt[2]) * flat_flux[grid.faces[2]].reshape(
+        cell_flux[:, :, :-1, ..., 2] += pt[2] * flat_flux[grid.faces[2]].reshape(
             grid.faces_shape[2], order="F"
         )
-        cell_flux[:, :, 1:, ..., 2] += pt[2] * flat_flux[grid.faces[2]].reshape(
+        cell_flux[:, :, 1:, ..., 2] += (1 - pt[2]) * flat_flux[grid.faces[2]].reshape(
             grid.faces_shape[2], order="F"
         )
     if grid.dim > 3:
