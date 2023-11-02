@@ -12,8 +12,8 @@ import darsia
 class Grid:
     """Tensor grid.
 
-    The current implmentatio does nt take into accout true boundary faces assuming
-    the boundar values are not of interest.
+    The current implmentation does not take into accout true boundary faces assuming
+    the boundary values are not of interest.
 
     """
 
@@ -117,6 +117,47 @@ class Grid:
             for d in range(self.dim)
         ]
 
+        # ! ---- Reference element ----
+
+        # Define corners of reference element (in matrix indexing)
+        if self.dim == 1:
+            # 1d cell
+            # 0 ---- 1
+            self.cell_corners = np.array([[0.0], [1.0]])
+        elif self.dim == 2:
+            # 2d cell
+            # 0 ---- 1
+            # |      |
+            # |      |
+            # 3 ---- 2
+            self.cell_corners = np.array(
+                [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]
+            )
+        elif self.dim == 3:
+            # Front face of 3d cell
+            # 0 ---- 1
+            # |      |
+            # |      |
+            # 3 ---- 2
+            #
+            # Back face of 3d cell
+            # 4 ---- 5
+            # |      |
+            # |      |
+            # 7 ---- 6
+            self.cell_corners = np.array(
+                [
+                    [0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [1.0, 1.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0],
+                    [1.0, 0.0, 1.0],
+                    [1.0, 1.0, 1.0],
+                    [0.0, 1.0, 1.0],
+                ]
+            )
+
         # ! ---- Connectivity ----
 
         self.connectivity = np.zeros((self.num_faces, 2), dtype=int)
@@ -189,6 +230,54 @@ class Grid:
             else []
         )
         """list: Indices of inner cells with inner faces."""
+
+        # Info about cell corners for each face, referring to the reference cell. The
+        # order of the corners is the same as the one of the reference cell, and it is
+        # not taken into account the orientation of the face.
+        self.cell_corner_indices = np.zeros(
+            (self.num_faces, 2, 2 ** (self.dim - 1)), dtype=int
+        )
+        """np.ndarray: Indices of neighbouring cell corners for each face."""
+
+        if self.dim == 1:
+            self.cell_corner_indices[self.faces[0], 0, 0] = 1
+            self.cell_corner_indices[self.faces[0], 1, 0] = 0
+
+        elif self.dim == 2:
+            self.cell_corner_indices[self.faces[0], 0, 0] = 1
+            self.cell_corner_indices[self.faces[0], 0, 1] = 2
+            self.cell_corner_indices[self.faces[0], 1, 0] = 0
+            self.cell_corner_indices[self.faces[0], 1, 1] = 3
+            self.cell_corner_indices[self.faces[1], 0, 0] = 3
+            self.cell_corner_indices[self.faces[1], 0, 1] = 2
+            self.cell_corner_indices[self.faces[1], 1, 0] = 0
+            self.cell_corner_indices[self.faces[1], 1, 1] = 1
+
+        elif self.dim == 3:
+            self.cell_corner_indices[self.faces[0], 0, 0] = 1
+            self.cell_corner_indices[self.faces[0], 0, 1] = 2
+            self.cell_corner_indices[self.faces[0], 0, 2] = 5
+            self.cell_corner_indices[self.faces[0], 0, 3] = 6
+            self.cell_corner_indices[self.faces[0], 1, 0] = 0
+            self.cell_corner_indices[self.faces[0], 1, 1] = 3
+            self.cell_corner_indices[self.faces[0], 1, 2] = 4
+            self.cell_corner_indices[self.faces[0], 1, 3] = 7
+            self.cell_corner_indices[self.faces[1], 0, 0] = 3
+            self.cell_corner_indices[self.faces[1], 0, 1] = 2
+            self.cell_corner_indices[self.faces[1], 0, 2] = 7
+            self.cell_corner_indices[self.faces[1], 0, 3] = 6
+            self.cell_corner_indices[self.faces[1], 1, 0] = 0
+            self.cell_corner_indices[self.faces[1], 1, 1] = 1
+            self.cell_corner_indices[self.faces[1], 1, 2] = 4
+            self.cell_corner_indices[self.faces[1], 1, 3] = 5
+            self.cell_corner_indices[self.faces[2], 0, 0] = 4
+            self.cell_corner_indices[self.faces[2], 0, 1] = 5
+            self.cell_corner_indices[self.faces[2], 0, 2] = 6
+            self.cell_corner_indices[self.faces[2], 0, 3] = 7
+            self.cell_corner_indices[self.faces[2], 1, 0] = 0
+            self.cell_corner_indices[self.faces[2], 1, 1] = 1
+            self.cell_corner_indices[self.faces[2], 1, 2] = 2
+            self.cell_corner_indices[self.faces[2], 1, 3] = 3
 
 
 def generate_grid(image: darsia.Image) -> Grid:
