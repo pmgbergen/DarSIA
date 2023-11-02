@@ -474,3 +474,40 @@ def gauss_reference_cell(dim: int, order: int) -> tuple[np.ndarray, np.ndarray]:
     pts = (pts + 1.0) / 2.0
     weights = weights / np.sum(weights)
     return pts, weights
+
+
+def reference_cell_corners(dim: int) -> tuple[np.ndarray, np.ndarray]:
+    """Return the corners of the unit cube.
+
+    Adopted from darsia.Grid - but no guarantee for consistency.
+
+    Args:
+        dim (int): Dimension of the unit cube.
+
+    Returns:
+        np.ndarray: Corners of the unit cube.
+        np.ndarray: Weights of the corners of the unit cube.
+
+    """
+    if dim == 1:
+        corners = np.array([[0.0], [1.0]])
+    elif dim == 2:
+        corners = np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]])
+    elif dim == 3:
+        corners = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [1.0, 0.0, 1.0],
+                [1.0, 1.0, 1.0],
+                [0.0, 1.0, 1.0],
+            ]
+        )
+    else:
+        raise NotImplementedError(f"Unit cube of dimension {dim} not implemented.")
+
+    weights = 0.5**dim * np.ones(2**dim, dtype=float)
+    return corners, weights
