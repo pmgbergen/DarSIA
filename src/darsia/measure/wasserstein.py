@@ -515,30 +515,43 @@ class VariationalWassersteinDistance(darsia.EMD):
             directly connected to any discretization.
 
         """
+        # The different modes merely differ in the integration rule.
+
         if self.l1_mode == "raviart_thomas":
-            # Apply exact integration of RT0 extensions into cells.
+            # Apply numerical integration of RT0 extensions into cells.
             # Underlying functional for mixed finite element method (MFEM).
-            raise NotImplementedError  # TODO
+            quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
+                self.grid.dim, 3
+            )
+
         elif self.l1_mode == "constant_subcell_projection":
             # Apply subcell_based projection onto constant vectors and sum up.
-            # Equivalent to a mixed finite volume method (FV).
-            raise NotImplementedError  # TODO
-        elif self.l1_mode == "constant_cell_projection":
-            # Apply cell-based L2 projection onto constant vectors and sum up.
-            # Simpler calculation than subcell-projection, but not directly
-            # connected to any discretization.
+            # Equivalent to a mixed finite volume method (FV). Identical to quadrature
+            # over corners.
+            quad_pts, quad_weights = darsia.quadrature.reference_cell_corners(
+                self.grid.dim
+            )
 
-            # Convert (scalar) normal fluxes to vector-valued fluxes on cells
-            cell_flux = darsia.face_to_cell(self.grid, flat_flux)
-            # Simply take the norm without any other integration
-            cell_flux_norm = np.linalg.norm(cell_flux, 2, axis=-1)
+        elif self.l1_mode == "constant_cell_projection":
+            # L2 projection onto constant vectors identical to quadrature of order 0.
+            quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
+                self.grid.dim, 0
+            )
+
         else:
             raise ValueError(f"Mode {self.l1_mode} not supported.")
 
+        # Integrate over reference cell (normalization not required)
+        transport_density = np.zeros(self.grid.shape, dtype=float)
+        for quad_pt, quad_weight in zip(quad_pts, quad_weights):
+            cell_flux = darsia.face_to_cell(self.grid, flat_flux, pt=quad_pt)
+            cell_flux_norm = np.linalg.norm(cell_flux, 2, axis=-1)
+            transport_density += quad_weight * cell_flux_norm
+
         if flatten:
-            return np.ravel(cell_flux_norm)
+            return np.ravel(transport_density)
         else:
-            return cell_flux_norm
+            return transport_density
 
     def l1_dissipation(self, flat_flux: np.ndarray) -> float:
         """Compute the l1 dissipation of the solution.
