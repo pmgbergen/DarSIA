@@ -4,6 +4,7 @@ from typing import Optional
 
 import numpy as np
 import scipy.sparse as sps
+from scipy.stats import hmean
 
 import darsia
 
@@ -331,10 +332,10 @@ def face_to_cell(
     return cell_flux
 
 
-def cell_to_face_scalar(
+def cell_to_face_average(
     grid: darsia.Grid, cell_qty: np.ndarray, mode: str
 ) -> np.ndarray:
-    """Project scalar cell quantity to scalar face quantity.
+    """Project scalar cell quantity to scalar face quantity via averaging.
 
     Allow for arithmetic or harmonic averaging of the cell quantity to the faces. In
     the harmonic case, the averaging is regularized to avoid division by zero.
@@ -350,42 +351,32 @@ def cell_to_face_scalar(
         np.ndarray: face-based quantity
 
     """
+    # Collect cell quantities for each face
+    neighbouring_cell_values = np.zeros((grid.num_faces, 2), dtype=float)
+    face_qty = np.zeros(grid.num_faces, dtype=float)
 
-    # NOTE: No impact of Grid here, so far! Everything is implicit. This should/could
-    # change. In particular when switching to 3d!
+    # Flatten cell quantities
+    flat_cell_qty = cell_qty.ravel("F")
 
-    # raise NotImplementedError
+    # Iterate over normal directions
+    for orientation in range(grid.dim):
+        # Fetch faces
+        faces = grid.faces[orientation]
 
-    # Determine the fluxes on the faces
+        # Fetch neighbouring cells
+        neighbouring_cells = grid.connectivity[faces]
+
+        # Fetch cell quantities
+        neighbouring_cell_values[faces, 0] = flat_cell_qty[neighbouring_cells[:, 0]]
+        neighbouring_cell_values[faces, 1] = flat_cell_qty[neighbouring_cells[:, 1]]
+
+    # Perform averaging
     if mode == "arithmetic":
-        # Employ arithmetic averaging
-        horizontal_face_qty = 0.5 * (cell_qty[:, :-1] + cell_qty[:, 1:])
-        vertical_face_qty = 0.5 * (cell_qty[:-1, :] + cell_qty[1:, :])
+        face_qty = 0.5 * np.sum(neighbouring_cell_values, axis=1)
     elif mode == "harmonic":
-        # Employ harmonic averaging
-        arithmetic_avg_horizontal = 0.5 * (cell_qty[:, :-1] + cell_qty[:, 1:])
-        arithmetic_avg_vertical = 0.5 * (cell_qty[:-1, :] + cell_qty[1:, :])
-        # Regularize to avoid division by zero
-        regularization = 1e-10
-        arithmetic_avg_horizontal = (
-            arithmetic_avg_horizontal
-            + (2 * np.sign(arithmetic_avg_horizontal) + 1) * regularization
-        )
-        arithmetic_avg_vertical = (
-            0.5 * arithmetic_avg_vertical
-            + (2 * np.sign(arithmetic_avg_vertical) + 1) * regularization
-        )
-        product_horizontal = np.multiply(cell_qty[:, :-1], cell_qty[:, 1:])
-        product_vertical = np.multiply(cell_qty[:-1, :], cell_qty[1:, :])
-
-        # Determine the harmonic average
-        horizontal_face_qty = product_horizontal / arithmetic_avg_horizontal
-        vertical_face_qty = product_vertical / arithmetic_avg_vertical
+        face_qty = hmean(neighbouring_cell_values, axis=1)
     else:
         raise ValueError(f"Mode {mode} not supported.")
-
-    # Reshape the fluxes - hardcoding the connectivity here
-    face_qty = np.concatenate([horizontal_face_qty.ravel(), vertical_face_qty.ravel()])
 
     return face_qty
 
