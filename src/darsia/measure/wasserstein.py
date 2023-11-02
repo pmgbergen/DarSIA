@@ -960,7 +960,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         pressure = flat_pressure.reshape(self.grid.shape)
 
         # Determine transport density
-        transport_density = self.transport_density(flat_flux)
+        transport_density = self.transport_density(flat_flux, flatten=False)
 
         # Return solution
         return_info = self.options.get("return_info", False)
@@ -1616,7 +1616,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             convergence_history["flux increment"].append(error[2])
             convergence_history["aux increment"].append(error[3])
             convergence_history["force increment"].append(error[4])
-            convergence_history["distance increment"].append(error[5])
+            convergence_history["distance_increment"].append(error[5])
             convergence_history["timing"].append(stats_i)
 
             # Print status
