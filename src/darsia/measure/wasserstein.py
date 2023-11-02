@@ -600,11 +600,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 average_mode = mode.split("_")[2]
 
             # The flux norm is identical to the transport density
-            # TODO: Do we always want to perform l1_mode here?
-            transport_density = self.transport_density(flat_flux, flatten=False)
-
-            # Add regularization to avoid division by zero
-            cell_flux_norm = np.maximum(transport_density, self.regularization)
+            cell_flux_norm = self.transport_density(flat_flux, flatten=False)
 
             # Map to faces via averaging of neighboring cells
             flat_flux_norm = darsia.cell_to_face_average(
