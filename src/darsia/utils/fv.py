@@ -1,5 +1,7 @@
 """Finite volume utilities."""
 
+from typing import Optional
+
 import numpy as np
 import scipy.sparse as sps
 
@@ -272,7 +274,9 @@ class FVFullFaceReconstruction:
 # ! ---- Finite volume projection operators ----
 
 
-def face_to_cell(grid: darsia.Grid, flat_flux: np.ndarray) -> np.ndarray:
+def face_to_cell(
+    grid: darsia.Grid, flat_flux: np.ndarray, pt: Optional[np.ndarray] = None
+) -> np.ndarray:
     """Reconstruct the vector fluxes on the cells from normal fluxes on the faces.
 
     Use the Raviart-Thomas reconstruction of the fluxes on the cells from the fluxes
@@ -285,33 +289,40 @@ def face_to_cell(grid: darsia.Grid, flat_flux: np.ndarray) -> np.ndarray:
     Args:
         grid (darsia.Grid): grid
         flat_flux (np.ndarray): flat fluxes (normal fluxes on the faces)
+        pt (np.ndarray, optional): points at which to evaluate the fluxes, relative to
+            the reference cell [0,1]**dim, in matrix-indexing. Uses Defaults to None.
+            Then the center of the reference cell is used.
 
     Returns:
         np.ndarray: cell-based vectorial fluxes
 
     """
-    # TODO revert order of indices
+    # Initialize the cell-based fluxes
     cell_flux = np.zeros((*grid.shape, grid.dim), dtype=float)
 
+    # Pick the cell center if no pt provided
+    if pt is None:
+        pt = np.ones(grid.dim) / 2
+
     if grid.dim >= 1:
-        cell_flux[:-1, ..., 0] += 0.5 * flat_flux[grid.faces[0]].reshape(
+        cell_flux[:-1, ..., 0] += (1 - pt[0]) * flat_flux[grid.faces[0]].reshape(
             grid.faces_shape[0], order="F"
         )
-        cell_flux[1:, ..., 0] += 0.5 * flat_flux[grid.faces[0]].reshape(
+        cell_flux[1:, ..., 0] += pt[0] * flat_flux[grid.faces[0]].reshape(
             grid.faces_shape[0], order="F"
         )
     if grid.dim >= 2:
-        cell_flux[:, :-1, ..., 1] += 0.5 * flat_flux[grid.faces[1]].reshape(
+        cell_flux[:, :-1, ..., 1] += (1 - pt[1]) * flat_flux[grid.faces[1]].reshape(
             grid.faces_shape[1], order="F"
         )
-        cell_flux[:, 1:, ..., 1] += 0.5 * flat_flux[grid.faces[1]].reshape(
+        cell_flux[:, 1:, ..., 1] += pt[1] * flat_flux[grid.faces[1]].reshape(
             grid.faces_shape[1], order="F"
         )
     if grid.dim >= 3:
-        cell_flux[:, :, :-1, ..., 2] += 0.5 * flat_flux[grid.faces[2]].reshape(
+        cell_flux[:, :, :-1, ..., 2] += (1 - pt[2]) * flat_flux[grid.faces[2]].reshape(
             grid.faces_shape[2], order="F"
         )
-        cell_flux[:, :, 1:, ..., 2] += 0.5 * flat_flux[grid.faces[2]].reshape(
+        cell_flux[:, :, 1:, ..., 2] += pt[2] * flat_flux[grid.faces[2]].reshape(
             grid.faces_shape[2], order="F"
         )
     if grid.dim > 3:
