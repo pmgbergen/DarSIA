@@ -827,8 +827,8 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Define solver statistics
         stats = {
-            "time setup": time_setup,
-            "time solve": time_solve,
+            "time_setup": time_setup,
+            "time_solve": time_solve,
         }
         if self.linear_solver_type in ["amg_flux_reduced", "amg_pressure"]:
             stats["amg num iterations"] = len(self.res_history_amg)
@@ -936,7 +936,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         Returns:
             float: distance between img_1 and img_2.
             dict (optional): solution
-            dict (optional): status
+            dict (optional): info
 
         """
 
@@ -949,7 +949,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         flat_mass_diff = np.ravel(mass_diff)
 
         # Main method
-        distance, solution, status = self._solve(flat_mass_diff)
+        distance, solution, info = self._solve(flat_mass_diff)
 
         # Split the solution
         flat_flux = solution[self.flux_slice]
@@ -963,18 +963,18 @@ class VariationalWassersteinDistance(darsia.EMD):
         transport_density = self.transport_density(flat_flux)
 
         # Return solution
-        return_solution = self.options.get("return_solution", False)
-        if return_solution:
-            return (
-                distance,
+        return_info = self.options.get("return_info", False)
+        if return_info:
+            info.update(
                 {
+                    "grid": self.grid,
                     "mass_diff": mass_diff,
                     "flux": flux,
                     "pressure": pressure,
-                    "transport density": transport_density,
-                },
-                status,
+                    "transport_density": transport_density,
+                }
             )
+            return distance, info
         else:
             return distance
 
@@ -1073,7 +1073,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             flat_mass_diff (np.ndarray): difference of mass distributions
 
         Returns:
-            tuple: distance, solution, status
+            tuple: distance, solution, info
 
         """
         # TODO rm: Observation: AA can lead to less stagnation, more accurate results,
@@ -1084,10 +1084,11 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         tic = time.time()
         tracemalloc.start()
 
-        # Solver parameters
+        # Solver parameters. By default tolerances for increment and distance are
+        # set, such that they do not affect the convergence.
         num_iter = self.options.get("num_iter", 100)
-        tol_residual = self.options.get("tol_residual", 1e-6)
-        tol_increment = self.options.get("tol_increment", 1e-6)
+        tol_residual = self.options.get("tol_residual", 1e-10)
+        tol_increment = self.options.get("tol_increment", np.finfo(float).max)
         tol_distance = self.options.get("tol_distance", 0.0)
 
         # Define right hand side
@@ -1109,10 +1110,10 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         convergence_history = {
             "distance": [],
             "residual": [],
-            "decomposed residual": [],
+            "decomposed_residual": [],
             "increment": [],
-            "decomposed increment": [],
-            "distance increment": [],
+            "decomposed_increment": [],
+            "distance_increment": [],
             "timing": [],
         }
 
@@ -1126,7 +1127,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 "--- ; ",
                 "Newton iteration",
                 "distance",
-                "distance increment",
+                "distance_increment",
                 "flux increment",
                 "flux residual",
             )
@@ -1167,8 +1168,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             time_anderson = toc - tic
 
             # Update stats
-            stats_i["time assemble"] = time_assemble
-            stats_i["time acceleration"] = time_anderson
+            stats_i["time_assemble"] = time_assemble
+            stats_i["time_acceleration"] = time_anderson
 
             # Update discrete W1 distance
             new_flux = solution_i[self.flux_slice]
@@ -1187,7 +1188,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             # Update convergence history
             convergence_history["distance"].append(new_distance)
             convergence_history["residual"].append(np.linalg.norm(residual_i, 2))
-            convergence_history["decomposed residual"].append(
+            convergence_history["decomposed_residual"].append(
                 [
                     np.linalg.norm(residual_i[self.flux_slice], 2),
                     np.linalg.norm(residual_i[self.pressure_slice], 2),
@@ -1195,14 +1196,14 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 ]
             )
             convergence_history["increment"].append(np.linalg.norm(increment, 2))
-            convergence_history["decomposed increment"].append(
+            convergence_history["decomposed_increment"].append(
                 [
                     np.linalg.norm(increment[self.flux_slice], 2),
                     np.linalg.norm(increment[self.pressure_slice], 2),
                     np.linalg.norm(increment[self.lagrange_multiplier_slice], 2),
                 ]
             )
-            convergence_history["distance increment"].append(
+            convergence_history["distance_increment"].append(
                 abs(new_distance - old_distance)
             )
             convergence_history["timing"].append(stats_i)
@@ -1217,28 +1218,32 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                     "Newton iteration",
                     iter,
                     new_distance,
-                    convergence_history["distance increment"][-1],
-                    convergence_history["decomposed increment"][-1][0],
-                    convergence_history["decomposed residual"][-1][0],
+                    convergence_history["distance_increment"][-1],
+                    convergence_history["decomposed_increment"][-1][0]
+                    / convergence_history["decomposed_increment"][0][0],
+                    convergence_history["decomposed_residual"][-1][0]
+                    / convergence_history["decomposed_residual"][0][0],
                 )
 
             # Stopping criterion - force one iteration
             if iter > 1 and (
                 (
-                    convergence_history["residual"][-1] < tol_residual
-                    and convergence_history["increment"][-1] < tol_increment
+                    convergence_history["decomposed_residual"][-1][0]
+                    < tol_residual * convergence_history["decomposed_residual"][0][0]
+                    and convergence_history["decomposed_increment"][-1][0]
+                    < tol_increment * convergence_history["decomposed_increment"][0][0]
                 )
-                or (convergence_history["distance increment"][-1] < tol_distance)
+                or (convergence_history["distance_increment"][-1] < tol_distance)
             ):
                 break
 
         # Summarize profiling (time in seconds, memory in GB)
         timings = convergence_history["timing"]
         total_timings = {
-            "assemble": sum([t["time assemble"] for t in timings]),
-            "setup": sum([t["time setup"] for t in timings]),
-            "solve": sum([t["time solve"] for t in timings]),
-            "acceleration": sum([t["time acceleration"] for t in timings]),
+            "assemble": sum([t["time_assemble"] for t in timings]),
+            "setup": sum([t["time_setup"] for t in timings]),
+            "solve": sum([t["time_solve"] for t in timings]),
+            "acceleration": sum([t["time_acceleration"] for t in timings]),
         }
         total_timings["total"] = (
             total_timings["assemble"]
@@ -1250,7 +1255,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
 
         # Define performance metric
-        status = {
+        info = {
             "converged": iter < num_iter,
             "number_iterations": iter,
             "convergence_history": convergence_history,
