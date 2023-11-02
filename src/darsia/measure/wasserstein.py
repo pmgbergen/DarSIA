@@ -966,17 +966,13 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Determine transport density
         transport_density = self.transport_density(flat_flux)
 
-        # Plot solution
-        plot_solution = self.options.get("plot_solution", False)
-        if plot_solution:
-            self._plot_solution(mass_diff, flux, pressure, transport_density)
-
         # Return solution
         return_solution = self.options.get("return_solution", False)
         if return_solution:
             return (
                 distance,
                 {
+                    "mass_diff": mass_diff,
                     "flux": flux,
                     "pressure": pressure,
                     "transport density": transport_density,
