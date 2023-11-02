@@ -17,7 +17,7 @@ def plot_2d_wasserstein_distance(
     grid: darsia.Grid,
     mass_diff: np.ndarray,
     flux: np.ndarray,
-    potential: np.ndarray,
+    pressure: np.ndarray,
     transport_density: np.ndarray,
     **kwargs,
 ) -> None:
@@ -29,7 +29,7 @@ def plot_2d_wasserstein_distance(
         grid (darsia.Grid): grid
         mass_diff (np.ndarray): difference of mass distributions
         flux (np.ndarray): fluxes
-        potential (np.ndarray): potential
+        pressure (np.ndarray): pressure
         transport_density (np.ndarray): transport density
         kwargs: additional keyword arguments
 
@@ -53,16 +53,16 @@ def plot_2d_wasserstein_distance(
         indexing="ij",
     )
 
-    # Plot the potential
-    plt.figure("Beckman solution potential")
-    plt.pcolormesh(X, Y, potential, cmap="turbo")
-    plt.colorbar(label="potential")
+    # Plot the pressure
+    plt.figure("Beckman solution pressure")
+    plt.pcolormesh(X, Y, pressure, cmap="turbo")
+    plt.colorbar(label="pressure")
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
     # plt.ylim(top=0.08)  # TODO rm?
     if save_plot:
         plt.savefig(
-            folder + "/" + name + "_beckman_solution_potential.png",
+            folder + "/" + name + "_beckman_solution_pressure.png",
             dpi=500,
             transparent=True,
         )
