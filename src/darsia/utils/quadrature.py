@@ -459,18 +459,18 @@ def gauss(dim: int, order: int) -> tuple[np.ndarray, np.ndarray]:
         )
 
 
-def gauss_unit_cube(dim: int, degree: int) -> tuple[np.ndarray, np.ndarray]:
+def gauss_reference_cell(dim: int, order: int) -> tuple[np.ndarray, np.ndarray]:
     """Convert Gauss points to a quadrature rule for the unit cube.
 
     Args:
         dim (int): Dimension of the Gauss points.
-        degree (int): Degree of the Gauss points.
+        order (int): order of the Gauss points.
 
     Returns:
         tuple[np.ndarray, np.ndarray]: Quadrature points and weights.
 
     """
-    pts, weights = gauss(dim, degree)
+    pts, weights = gauss(dim, order)
     pts = (pts + 1.0) / 2.0
-    weights = weights / 2.0**dim
+    weights = weights / np.sum(weights)
     return pts, weights
