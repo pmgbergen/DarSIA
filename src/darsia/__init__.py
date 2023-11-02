@@ -31,6 +31,7 @@ from darsia.utils.kernels import *
 from darsia.utils.extractcharacteristicdata import *
 from darsia.utils import linalg
 from darsia.utils import quadrature
+from darsia.utils import plotting
 from darsia.corrections.basecorrection import *
 from darsia.corrections.shape.curvature import *
 from darsia.corrections.shape.affine import *
