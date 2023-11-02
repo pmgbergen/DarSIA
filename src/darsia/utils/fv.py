@@ -331,7 +331,9 @@ def face_to_cell(
     return cell_flux
 
 
-def cell_to_face(grid: darsia.Grid, cell_qty: np.ndarray, mode: str) -> np.ndarray:
+def cell_to_face_scalar(
+    grid: darsia.Grid, cell_qty: np.ndarray, mode: str
+) -> np.ndarray:
     """Project scalar cell quantity to scalar face quantity.
 
     Allow for arithmetic or harmonic averaging of the cell quantity to the faces. In
@@ -352,7 +354,7 @@ def cell_to_face(grid: darsia.Grid, cell_qty: np.ndarray, mode: str) -> np.ndarr
     # NOTE: No impact of Grid here, so far! Everything is implicit. This should/could
     # change. In particular when switching to 3d!
 
-    raise NotImplementedError
+    # raise NotImplementedError
 
     # Determine the fluxes on the faces
     if mode == "arithmetic":
