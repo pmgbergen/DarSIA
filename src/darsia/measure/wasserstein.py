@@ -8,6 +8,7 @@ from typing import Optional, Union
 import numpy as np
 import pyamg
 import scipy.sparse as sps
+from scipy.stats import hmean
 
 import darsia
 
@@ -589,6 +590,9 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Determine the norm of the fluxes on the faces
         if mode in ["cell_based", "cell_based_arithmetic", "cell_based_harmonic"]:
+            # Cell-based mode determines the norm of the fluxes on the faces via
+            # averaging of neighboring cells.
+
             # Extract average mode from mode
             if mode == "cell_based":
                 average_mode = "harmonic"
@@ -596,6 +600,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 average_mode = mode.split("_")[2]
 
             # The flux norm is identical to the transport density
+            # TODO: Do we always want to perform l1_mode here?
             transport_density = self.transport_density(flat_flux, flatten=False)
 
             # Add regularization to avoid division by zero
@@ -607,7 +612,49 @@ class VariationalWassersteinDistance(darsia.EMD):
             )
 
         elif mode == "subcell_based":
-            raise NotImplementedError
+            # Subcell-based mode determines the norm of the fluxes on the faces via
+            # averaging of neighboring subcells.
+
+            # Initialize the flux norm
+            num_subcells = 2**self.grid.dim
+            subcell_flux_norm = np.zeros(
+                (self.grid.num_faces, num_subcells), dtype=float
+            )
+            flat_flux_norm = np.zeros(self.grid.num_faces, dtype=float)
+
+            # Fetch cell corners
+            cell_corners = self.grid.cell_corners
+
+            # Strategy: Follow the lead: 1. find all faces, 2. Visit their neighbouring
+            # cells, 3. find the corresponding corners, 4. compute the flux in each
+
+            # Iterate over all normal orientations
+            for orientation in range(self.grid.dim):
+                # Fetch all faces with this orientations
+                faces = self.grid.faces[orientation]
+
+                # Pick the neighbouring cells (use left and right just for synonyms)
+                for i, side in enumerate(range(2)):
+                    # Fetch cells and respective corners corresponding to the faces.
+                    cells = self.grid.connectivity[faces, side]
+                    # Due to the structured nature, all faces have the same connectivity
+                    # and corner indices.
+                    cell_corner_indices = self.grid.cell_corner_indices[faces[0], side]
+
+                    # Pick the corresponding coordinates
+                    coordinates = cell_corners[cell_corner_indices]
+
+                    for j, pt in enumerate(coordinates):
+                        # Evaluate the norm of the flux at the coordinates
+                        subcell_flux = darsia.face_to_cell(self.grid, flat_flux, pt=pt)
+                        # Store the norm of the subcell flux from the cell associated to the flux
+                        id = i * len(coordinates) + j
+                        subcell_flux_norm[faces, id] = np.linalg.norm(
+                            subcell_flux, 2, axis=-1
+                        ).ravel()[cells]
+
+                # Average over the subcells using harmonic averaging
+                flat_flux_norm[faces] = hmean(subcell_flux_norm[faces], axis=1)
 
         elif mode == "face_based":
             if not hasattr(self, "face_reconstruction"):
