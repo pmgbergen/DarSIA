@@ -304,6 +304,9 @@ def face_to_cell(
     # Pick the cell center if no pt provided
     if pt is None:
         pt = np.ones(grid.dim) / 2
+    # Make pt an array
+    if grid.dim == 1:
+        pt = np.array([pt])
 
     if grid.dim >= 1:
         cell_flux[:-1, ..., 0] += (1 - pt[0]) * flat_flux[grid.faces[0]].reshape(
