@@ -3,32 +3,32 @@
 import numpy as np
 
 
-def gauss(dim: int, degree: int) -> tuple[np.ndarray, np.ndarray]:
-    """Return the Gauss points and weights for the given dimension and degree.
+def gauss(dim: int, order: int) -> tuple[np.ndarray, np.ndarray]:
+    """Return the Gauss points and weights for the given dimension and order.
 
     These are the Gauss points and weights for the reference element [-1, 1]^dim.
 
     Args:
         dim (int): Dimension of the Gauss points.
-        degree (int): Degree of the Gauss points.
+        order (int): order of the Gauss points.
 
     Returns:
         tuple[np.ndarray, np.ndarray]: Gauss points and weights.
 
     """
     if dim == 1:
-        if degree == 1:
+        if order == 0:
             return np.array([0.0]), np.array([2.0])
-        elif degree == 2:
+        elif order == 1:
             return np.array([-1.0 / np.sqrt(3.0), 1.0 / np.sqrt(3.0)]), np.array(
                 [1.0, 1.0]
             )
-        elif degree == 3:
+        elif order == 2:
             return (
                 np.array([-np.sqrt(3.0 / 5.0), 0.0, np.sqrt(3.0 / 5.0)]),
                 np.array([5.0 / 9.0, 8.0 / 9.0, 5.0 / 9.0]),
             )
-        elif degree == 4:
+        elif order == 3:
             return (
                 np.array(
                     [
@@ -47,7 +47,7 @@ def gauss(dim: int, degree: int) -> tuple[np.ndarray, np.ndarray]:
                     ]
                 ),
             )
-        elif degree == 5:
+        elif order == 4:
             return (
                 np.array(
                     [
@@ -70,15 +70,15 @@ def gauss(dim: int, degree: int) -> tuple[np.ndarray, np.ndarray]:
             )
         else:
             raise NotImplementedError(
-                f"Gauss points of degree {degree} not implemented for dimension {dim}."
+                f"Gauss points of order {order} not implemented for dimension {dim}."
             )
     elif dim == 2:
-        if degree == 1:
+        if order == 0:
             return (
                 np.array([[0.0, 0.0]]),
                 np.array([4.0]),
             )
-        elif degree == 2:
+        elif order == 1:
             return (
                 np.array(
                     [
@@ -90,7 +90,7 @@ def gauss(dim: int, degree: int) -> tuple[np.ndarray, np.ndarray]:
                 ),
                 np.array([1.0, 1.0, 1.0, 1.0]),
             )
-        elif degree == 3:
+        elif order == 2:
             return (
                 np.array(
                     [
@@ -119,7 +119,7 @@ def gauss(dim: int, degree: int) -> tuple[np.ndarray, np.ndarray]:
                     ]
                 ),
             )
-        elif degree == 4:
+        elif order == 3:
             return (
                 np.array(
                     [
@@ -212,15 +212,15 @@ def gauss(dim: int, degree: int) -> tuple[np.ndarray, np.ndarray]:
             )
         else:
             raise NotImplementedError(
-                f"Gauss points of degree {degree} not implemented for dimension {dim}."
+                f"Gauss points of order {order} not implemented for dimension {dim}."
             )
     elif dim == 3:
-        if degree == 1:
+        if order == 0:
             return (
                 np.array([[0.0, 0.0, 0.0]]),
                 np.array([8.0]),
             )
-        elif degree == 2:
+        elif order == 1:
             return (
                 np.array(
                     [
@@ -238,7 +238,7 @@ def gauss(dim: int, degree: int) -> tuple[np.ndarray, np.ndarray]:
                     [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
                 ),
             )
-        elif degree == 3:
+        elif order == 2:
             return (
                 np.array(
                     [
@@ -303,13 +303,159 @@ def gauss(dim: int, degree: int) -> tuple[np.ndarray, np.ndarray]:
                     ]
                 ),
             )
+        elif order == 3:
+            raise NotImplementedError
+            return (
+                np.array(
+                    [
+                        [
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            -np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                        [
+                            -np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 - 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                            np.sqrt(3.0 / 7.0 + 2.0 / 7.0 * np.sqrt(6.0 / 5.0)),
+                        ],
+                    ]
+                ),
+                np.array(
+                    [
+                        (18.0 - np.sqrt(30.0)) / 36.0,
+                        (18.0 + np.sqrt(30.0)) / 36.0,
+                        (18.0 + np.sqrt(30.0)) / 36.0,
+                        (18.0 - np.sqrt(30.0)) / 36.0,
+                        (18.0 - np.sqrt(30.0)) / 36.0,
+                        (18.0 + np.sqrt(30.0)) / 36.0,
+                        (18.0 + np.sqrt(30.0)) / 36.0,
+                        (18.0 - np.sqrt(30.0)) / 36.0,
+                        (18.0 - np.sqrt(30.0)) / 36.0,
+                        (18.0 + np.sqrt(30.0)) / 36.0,
+                        (18.0 + np.sqrt(30.0)) / 36.0,
+                        (18.0 - np.sqrt(30.0)) / 36.0,
+                        (18.0 - np.sqrt(30.0)) / 36.0,
+                        (18.0 + np.sqrt(30.0)) / 36.0,
+                        (18.0 + np.sqrt(30.0)) / 36.0,
+                        (18.0 - np.sqrt(30.0)) / 36.0,
+                        (18.0 - np.sqrt(30.0)) / 36.0,
+                        (18.0 + np.sqrt(30.0)) / 36.0,
+                        (18.0 + np.sqrt(30.0)) / 36.0,
+                    ]
+                ),
+            )
         else:
             raise NotImplementedError(
-                f"Gauss points of degree {degree} not implemented for dimension {dim}."
+                f"Gauss points of order {order} not implemented for dimension {dim}."
             )
     else:
         raise NotImplementedError(
-            f"Gauss points of degree {degree} not implemented for dimension {dim}."
+            f"Gauss points of order {order} not implemented for dimension {dim}."
         )
 
 
