@@ -1047,14 +1047,17 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         """
         flat_flux = solution[self.flux_slice]
-        flat_flux_norm = np.maximum(
-            self.vector_face_flux_norm(flat_flux, mode=self.mobility_mode),
-            self.regularization,
+        flat_flux_norm = self.vector_face_flux_norm(flat_flux, mode=self.mobility_mode)
+        regularized_flat_flux_norm = np.clip(
+            flat_flux_norm, self.regularization, self.L
         )
         approx_jacobian = sps.bmat(
             [
                 [
-                    sps.diags(np.maximum(self.L, 1.0 / flat_flux_norm), dtype=float)
+                    sps.diags(
+                        1.0 / regularized_flat_flux_norm,
+                        dtype=float,
+                    )
                     * self.mass_matrix_faces,
                     -self.div.T,
                     None,
@@ -1263,7 +1266,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             "peak_memory_consumption": peak_memory_consumption,
         }
 
-        return new_distance, solution_i, status
+        return new_distance, solution_i, info
 
 
 class WassersteinDistanceBregman(VariationalWassersteinDistance):
