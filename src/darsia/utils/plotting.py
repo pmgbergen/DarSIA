@@ -57,17 +57,6 @@ def plot_2d_wasserstein_distance(
     plt.figure("Beckman solution potential")
     plt.pcolormesh(X, Y, potential, cmap="turbo")
     plt.colorbar(label="potential")
-    plt.quiver(
-        X[::resolution, ::resolution],
-        Y[::resolution, ::resolution],
-        scaling * flux[::resolution, ::resolution, 0],
-        -scaling * flux[::resolution, ::resolution, 1],
-        angles="xy",
-        scale_units="xy",
-        scale=1,
-        alpha=0.25,
-        width=0.005,
-    )
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
     # plt.ylim(top=0.08)  # TODO rm?
@@ -89,9 +78,9 @@ def plot_2d_wasserstein_distance(
         -scaling * flux[::resolution, ::resolution, 1],
         angles="xy",
         scale_units="xy",
-        scale=1,
+        # scale=1,
         alpha=0.25,
-        width=0.005,
+        width=0.01,
     )
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
