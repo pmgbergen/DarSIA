@@ -607,7 +607,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             cell_flux_norm = np.maximum(transport_density, self.regularization)
 
             # Map to faces via averaging of neighboring cells
-            flat_flux_norm = darsia.cell_to_face_scalar(
+            flat_flux_norm = darsia.cell_to_face_average(
                 self.grid, cell_flux_norm, mode=average_mode
             )
 
