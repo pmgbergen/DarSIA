@@ -59,7 +59,6 @@ def plot_2d_wasserstein_distance(
     plt.colorbar(label="pressure")
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
-    # plt.ylim(top=0.08)  # TODO rm?
     if save_plot:
         plt.savefig(
             folder + "/" + name + "_beckman_solution_pressure.png",
@@ -84,16 +83,6 @@ def plot_2d_wasserstein_distance(
     )
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
-    # plt.ylim(top=0.08)
-    plt.text(
-        0.0025,
-        0.075,
-        name,
-        color="white",
-        alpha=0.9,
-        rotation=0,
-        fontsize=14,
-    )  # TODO rm?
     if save_plot:
         plt.savefig(
             folder + "/" + name + "_beckman_solution_fluxes.png",
@@ -107,11 +96,11 @@ def plot_2d_wasserstein_distance(
     plt.colorbar(label="flux modulus")
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
-    # plt.ylim(top=0.08)  # TODO rm?
     if save_plot:
+        dpi = kwargs.get("dpi", 500)
         plt.savefig(
             folder + "/" + name + "_beckman_solution_transport_density.png",
-            dpi=500,
+            dpi=dpi,
             transparent=True,
         )
 
