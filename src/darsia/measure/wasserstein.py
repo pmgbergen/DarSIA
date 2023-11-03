@@ -1125,9 +1125,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # - residual
         if self.verbose:
             print(
-                "Newton iter. \t| W1 \t\t| ΔW1 \t\t| Δq \t\t| res",
+                "Newton iter. \t| W^1 \t\t| Δ W^1 \t\t| Δ flux \t\t| residual",
                 "\n",
-                "---------------|---------------|---------------|---------------|---------------"
+                "---------------|---------------|---------------|---------------|---------------",
             )
 
         # Newton iteration
