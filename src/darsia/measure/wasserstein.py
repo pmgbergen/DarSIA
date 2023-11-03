@@ -651,7 +651,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                     for j, pt in enumerate(coordinates):
                         # Evaluate the norm of the flux at the coordinates
                         subcell_flux = darsia.face_to_cell(self.grid, flat_flux, pt=pt)
-                        # Store the norm of the subcell flux from the cell associated to the flux
+                        # Store the norm of the subcell flux from the cell associated to
+                        # the flux
                         id = i * len(coordinates) + j
                         subcell_flux_norm[faces, id] = np.linalg.norm(
                             subcell_flux, 2, axis=-1
@@ -1029,7 +1030,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         super().__init__(grid, options)
 
         self.L = self.options.get("L", np.finfo(float).max)
-        """float: relaxation parameter, lower cut-off for the mobility, deactivated by default"""
+        """float: relaxation/cut-off parameter for mobility, deactivated by default"""
 
     def _setup_discretization(self) -> None:
         """Setup of fixed discretization operators.
@@ -1151,9 +1152,10 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # - residual
         if self.verbose:
             print(
-                "Newton iter. \t| W^1 \t\t| Δ W^1 \t\t| Δ flux \t\t| residual",
+                "Newton iter. \t| W^1 \t\t| Δ W^1 \t| Δ flux \t| residual",
                 "\n",
-                "---------------|---------------|---------------|---------------|---------------",
+                """---------------|---------------|---------------|---------------|"""
+                """---------------""",
             )
 
         # Newton iteration
@@ -1222,8 +1224,19 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             # - flux increment
             # - residual
             if self.verbose:
+                distance_increment = convergence_history["distance_increment"][-1]
+                flux_increment = (
+                    convergence_history["flux_increment"][-1]
+                    / convergence_history["flux_increment"][0]
+                )
+                residual = (
+                    convergence_history["residual"][-1]
+                    / convergence_history["residual"][0]
+                )
                 print(
-                    f"Iter. {iter} \t| {new_distance:.6e} \t| {convergence_history['distance_increment'][-1]:.4e} \t| {convergence_history['flux_increment'][-1]/convergence_history['flux_increment'][0]:.4e} \t| {convergence_history['residual'][-1]/convergence_history['residual'][0]:.4e}",
+                    f"""Iter. {iter} \t| {new_distance:.6e} \t| """
+                    f"""{distance_increment:.6e} \t| {flux_increment:.6e} \t| """
+                    f"""{residual:.6e}"""
                 )
 
             # Stopping criterion - force one iteration
@@ -1408,7 +1421,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             print(
                 "Bregman iter. \t| W^1 \t\t| Δ W^1 \t| Δ aux/force \t| mass residual",
                 "\n",
-                "---------------|---------------|---------------|---------------|---------------",
+                """---------------|---------------|---------------|---------------|"""
+                """---------------""",
             )
 
         # Relaxation parameter entering Bregman regularization
@@ -1522,8 +1536,19 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
             # Print status
             if self.verbose:
+                distance_increment = convergence_history["distance_increment"][-1]
+                aux_force_increment = (
+                    convergence_history["aux_force_increment"][-1]
+                    / convergence_history["aux_force_increment"][0]
+                )
+                mass_conservation_residual = convergence_history[
+                    "mass_conservation_residual"
+                ][-1]
                 print(
-                    f"Iter. {iter} \t| {new_distance:.6e} \t| {convergence_history['distance_increment'][-1]:.4e} \t| {convergence_history['aux_force_increment'][-1]/convergence_history['aux_force_increment'][0]:.4e} \t| {convergence_history['mass_conservation_residual'][-1]:.4e}",
+                    f"Iter. {iter} \t| {new_distance:.6e} \t| "
+                    ""
+                    f"""{distance_increment:.6e} \t| {aux_force_increment:.6e} \t| """
+                    f"""{mass_conservation_residual:.6e}"""
                 )
 
             # Base stopping citeria on the different interpretations of the split Bregman
