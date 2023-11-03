@@ -1090,7 +1090,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # Solver parameters. By default tolerances for increment and distance are
         # set, such that they do not affect the convergence.
         num_iter = self.options.get("num_iter", 100)
-        tol_residual = self.options.get("tol_residual", 1e-10)
+        tol_residual = self.options.get("tol_residual", np.finfo(float).max)
         tol_increment = self.options.get("tol_increment", np.finfo(float).max)
         tol_distance = self.options.get("tol_distance", np.finfo(float).max)
 
