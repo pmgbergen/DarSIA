@@ -69,7 +69,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.options = options
         """dict: options for the solver"""
 
-        self.regularization = self.options.get("regularization", np.finfo(np.float).eps)
+        self.regularization = self.options.get("regularization", np.finfo(float).eps)
         """float: regularization parameter"""
 
         self.verbose = self.options.get("verbose", False)
