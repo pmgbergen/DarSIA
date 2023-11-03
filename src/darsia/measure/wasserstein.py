@@ -1245,6 +1245,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
 
 class WassersteinDistanceBregman(VariationalWassersteinDistance):
+    """Class to determine the Wasserstein distance solved with the Bregman method."""
+
     # TODO __init__ correct method?
     def __init__(
         self,
@@ -1253,16 +1255,22 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
     ) -> None:
         super().__init__(grid, options)
         self.L = self.options.get("L", 1.0)
-        """Penality parameter for the Bregman iteration."""
+        """Penality parameter for the Bregman iteration, associated to face mobility."""
+
+    def _setup_dof_management(self) -> None:
+        """Bregman-specific setup of the dof management."""
+        super()._setup_dof_management()
 
         self.force_slice = slice(self.grid.num_faces, None)
         """slice: slice for the force."""
+
+        # TODO need any other slice?
 
     def _shrink(
         self,
         flat_flux: np.ndarray,
         shrink_factor: Union[float, np.ndarray],
-        mode: str = "cell_arithmetic",
+        mode: str = "cell_based",
     ) -> np.ndarray:
         """Shrink operation in the split Bregman method.
 
@@ -1277,57 +1285,33 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             np.ndarray: shrunk fluxes
 
         """
-        # TODO make as in the paper.
-        if mode == "cell_based":
-            # TODO change to harmonic!
-
-            # Idea: Determine the shrink factor based on the cell reconstructions of the
-            # fluxes. Convert cell-based shrink factors to face-based shrink factors
-            # through arithmetic averaging.
-            cell_flux = darsia.face_to_cell(self.grid, flat_flux)
-            norm = np.linalg.norm(cell_flux, 2, axis=-1)
-            cell_scaling = np.maximum(norm - shrink_factor, 0) / (
-                norm + self.regularization
-            )
-            flat_scaling = darsia.cell_to_face(
-                self.grid, cell_scaling, mode="arithmetic"
-            )
-
-        elif mode == "face_based":
-            if not hasattr(self, "face_reconstruction"):
-                self._setup_face_reconstruction()
-
-            # Define natural vector valued flux on faces (taking arithmetic averages
-            # of continuous fluxes over cells evaluated at faces)
-            full_face_flux = self.face_reconstruction(flat_flux)
-            # Determine the l2 norm of the fluxes on the faces, add some regularization
-            norm = np.linalg.norm(full_face_flux, 2, axis=1)
-            flat_scaling = np.maximum(norm - shrink_factor, 0) / (
-                norm + self.regularization
-            )
-
-        elif mode == "face_normal":
-            # Only consider normal direction (does not take into account the full flux)
-            # TODO rm.
-            norm = np.linalg.norm(flat_flux, 2, axis=-1)
-            flat_scaling = np.maximum(norm - shrink_factor, 0) / (
-                norm + self.regularization
-            )
-
-        else:
-            raise NotImplementedError(f"Mode {mode} not supported.")
-
+        vector_face_flux_norm = self.vector_face_flux_norm(flat_flux, mode=mode)
+        flat_scaling = np.maximum(vector_face_flux_norm - shrink_factor, 0) / (
+            vector_face_flux_norm + self.regularization
+        )
         return flat_scaling * flat_flux
 
-    def _solve(self, flat_mass_diff):
+    def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
+        """Solve the Beckman problem using the Bregman method.
+
+        Args:
+            flat_mass_diff (np.ndarray): difference of mass distributions
+
+        Returns:
+            tuple: distance, solution, info
+
+        """
+        # Setup time and memory profiling
+        tic = time.time()
+        tracemalloc.start()
+
         # Solver parameters
         num_iter = self.options.get("num_iter", 100)
-        tol_residual = self.options.get("tol_residual", 1e-6)
-        tol_increment = self.options.get("tol_increment", 1e-6)
-        tol_distance = self.options.get("tol_distance", 1e-6)
+        tol_residual = self.options.get("tol_residual", np.finfo(float).max)
+        tol_increment = self.options.get("tol_increment", np.finfo(float).max)
+        tol_distance = self.options.get("tol_distance", np.finfo(float).max)
 
-        # Relaxation parameter
-        self.L = self.options.get("L", 1.0)
+        # Define right hand side
         rhs = np.concatenate(
             [
                 np.zeros(self.grid.num_faces, dtype=float),
@@ -1336,155 +1320,104 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             ]
         )
 
-        # Keep track of how often the distance increases.
-        num_neg_diff = 0
+        # Initialize Newton iteration with Darcy solution for unitary mobility
+        solution_i = np.zeros_like(rhs, dtype=float)
+        solution_i, _ = self.linear_solve(
+            self.darcy_init.copy(), rhs.copy(), solution_i
+        )
 
         # Initialize container for storing the convergence history
         convergence_history = {
             "distance": [],
-            "mass residual": [],
-            "force": [],
-            "flux increment": [],
-            "aux increment": [],
-            "force increment": [],
-            "distance increment": [],
+            "mass_conservation_residual": [],  # TODO add other residuals?
+            "force": [],  # TODO rm?
+            "decomposed_increment": [],  # TODO rm?
+            "aux_force_increment": [],
+            "distance_increment": [],
             "timing": [],
         }
+
+        # TODO doesn't a better residual than the mass conservation equation exist?
 
         # Print header
         if self.verbose:
             print(
-                "--- ; ",
-                "Bregman iteration",
-                "L",
-                "distance",
-                "mass conservation residual",
-                "[flux, aux, force] increment",
-                "distance increment",
+                "Bregman iter. \t| W^1 \t\t| Δ W^1 \t| Δ aux/force \t| mass residual",
+                "\n",
+                "---------------|---------------|---------------|---------------|---------------",
             )
 
-        # Initialize Bregman variables and flux with Darcy flow
-        shrink_mode = "face_based"
-        dissipation_mode = "cell_based"
-        weight = self.L
-        shrink_factor = 1.0 / self.L
+        # Relaxation parameter entering Bregman regularization
+        self.L = self.options.get("L", 1.0)
+        weight = 1.0 / self.L
+        shrink_factor = self.L
 
-        # Solve linear Darcy problem as initial guess
+        # Initialize linear problem corresponding to Bregman regularization
         l_scheme_mixed_darcy = sps.bmat(
             [
-                [self.L * self.mass_matrix_faces, -self.div.T, None],
+                [weight * self.mass_matrix_faces, -self.div.T, None],
                 [self.div, None, -self.pressure_constraint.T],
                 [None, self.pressure_constraint, None],
             ],
             format="csc",
         )
-        solution_i = np.zeros_like(rhs, dtype=float)
-        solution_i, _ = self.linear_solve(l_scheme_mixed_darcy, rhs, solution_i)
 
-        # Extract intial values
+        # Initialize Bregman variables
         old_flux = solution_i[self.flux_slice]
-        old_aux_flux = self._shrink(old_flux, shrink_factor, shrink_mode)
+        old_aux_flux = self._shrink(old_flux, shrink_factor, self.mobility_mode)
         old_force = old_flux - old_aux_flux
-        old_distance = self.l1_dissipation(old_flux, dissipation_mode)
+        old_distance = self.l1_dissipation(old_flux)
 
         for iter in range(num_iter):
             bregman_mode = self.options.get("bregman_mode", "standard")
+
             if bregman_mode == "standard":
                 # std split Bregman method
 
                 # 1. Make relaxation step (solve quadratic optimization problem)
                 tic = time.time()
                 rhs_i = rhs.copy()
-                rhs_i[self.flux_slice] = self.L * self.mass_matrix_faces.dot(
+                rhs_i[self.flux_slice] = weight * self.mass_matrix_faces.dot(
                     old_aux_flux - old_force
                 )
-                solution_i, _ = self.linear_solve(
-                    l_scheme_mixed_darcy, rhs_i, reuse_solver=True
+                solution_i, stats_i = self.linear_solve(
+                    l_scheme_mixed_darcy, rhs_i, reuse_solver=(iter > 0)
                 )
                 new_flux = solution_i[self.flux_slice]
-                time_linearization = time.time() - tic
+                stats_i["time_solve"] = time.time() - tic
 
                 # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
                 # shrinkage operation merely determines the scalar. We still aim at
                 # following along the direction provided by the vectorial fluxes.
                 tic = time.time()
                 new_aux_flux = self._shrink(
-                    new_flux + old_force, shrink_factor, shrink_mode
+                    new_flux + old_force, shrink_factor, self.mobility_mode
                 )
-                time_shrink = time.time() - tic
+                stats_i["time_shrink"] = time.time() - tic
 
                 # 3. Update force
                 new_force = old_force + new_flux - new_aux_flux
 
-                # Apply Anderson acceleration to flux contribution (the only nonlinear part).
-                tic = time.time()
-                if self.anderson is not None:
-                    aux_inc = new_aux_flux - old_aux_flux
-                    force_inc = new_force - old_force
-                    inc = np.concatenate([aux_inc, force_inc])
-                    iteration = np.concatenate([new_aux_flux, new_force])
-                    new_iteration = self.anderson(iteration, inc, iter)
-                    new_aux_flux = new_iteration[self.flux_slice]
-                    new_force = new_iteration[self.force_slice]
-
-                toc = time.time()
-                time_anderson = toc - tic
-
-            elif bregman_mode == "reordered":
-                # Reordered split Bregman method
-
-                # 1. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
-                # shrinkage operation merely determines the scalar. We still aim at
-                # following along the direction provided by the vectorial fluxes.
-                tic = time.time()
-                new_aux_flux = self._shrink(
-                    old_flux + old_force, shrink_factor, shrink_mode
-                )
-                time_shrink = time.time() - tic
-
-                # 2. Update force
-                new_force = old_force + old_flux - new_aux_flux
-
-                # 3. Solve linear system with trust in current flux.
-                tic = time.time()
-                rhs_i = rhs.copy()
-                rhs_i[self.flux_slice] = self.L * self.mass_matrix_faces.dot(
-                    new_aux_flux - new_force
-                )
-                solution_i, _ = self.linear_solve(
-                    l_scheme_mixed_darcy, rhs_i, reuse_solver=True
-                )
-                new_flux = solution_i[self.flux_slice]
-                time_linearization = time.time() - tic
-
-                # Apply Anderson acceleration to flux contribution (the only nonlinear part).
-                tic = time.time()
-                if self.anderson is not None:
-                    flux_inc = new_flux - old_flux
-                    force_inc = new_force - old_force
-                    inc = np.concatenate([flux_inc, force_inc])
-                    iteration = np.concatenate([new_flux, new_force])
-                    # new_flux = self.anderson(new_flux, flux_inc, iter)
-                    new_iteration = self.anderson(iteration, inc, iter)
-                    new_flux = new_iteration[self.flux_slice]
-                    new_force = new_iteration[self.force_slice]
-                toc = time.time()
-                time_anderson = toc - tic
-
             elif bregman_mode == "adaptive":
                 # Bregman split with updated weight
-                update_cond = self.options.get(
-                    "bregman_update_cond", lambda iter: False
+                update_condition = self.options.get(
+                    "bregman_update", lambda iter: False
                 )
-                update_solver = update_cond(iter)
-                if update_solver:
-                    # TODO: self._update_weight(old_flux)
+                update_solver = update_condition(iter) and iter > 0
+                homogeneous_update = self.options.get(
+                    "bregman_update_homogeneous", False
+                )
 
+                # Measure time for extra setup
+                tic = time.time()
+                if update_solver:
                     # Update weight as the inverse of the norm of the flux
                     old_flux_norm = np.maximum(
-                        self.vector_face_flux_norm(old_flux, "face_based"),
+                        self.vector_face_flux_norm(old_flux, self.mobility_mode),
                         self.regularization,
                     )
+                    if homogeneous_update:
+                        old_flux_norm[:] = np.max(old_flux_norm)
                     old_flux_norm_inv = 1.0 / old_flux_norm
                     weight = sps.diags(old_flux_norm_inv)
                     shrink_factor = old_flux_norm
@@ -1498,6 +1431,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         ],
                         format="csc",
                     )
+                time_extra_setup = time.time() - tic
 
                 # 1. Make relaxation step (solve quadratic optimization problem)
                 tic = time.time()
@@ -1505,165 +1439,97 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 rhs_i[self.flux_slice] = weight * self.mass_matrix_faces.dot(
                     old_aux_flux - old_force
                 )
-                solution_i, _ = self.linear_solve(
-                    l_scheme_mixed_darcy, rhs_i, reuse_solver=not (update_solver)
+                solution_i, stats_i = self.linear_solve(
+                    l_scheme_mixed_darcy,
+                    rhs_i,
+                    reuse_solver=not (update_solver),
                 )
-
-                # Diagnostics
-                if self.linear_solver_type in ["amg", "cg"]:
-                    if self.options.get("linear_solver_verbosity", False):
-                        num_amg_iter = len(self.res_history_amg)
-                        res_amg = self.res_history_amg[-1]
-                        print(self.l_scheme_mixed_darcy_solver)
-                        print(
-                            f"""#AMG iterations: {num_amg_iter}; Residual after """
-                            f"""AMG step: {res_amg}"""
-                        )
-
                 new_flux = solution_i[self.flux_slice]
-                time_linearization = time.time() - tic
+                stats_i["time_solve"] = time.time() - tic
+                stats_i["time_setup"] += time_extra_setup
 
                 # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
                 # shrinkage operation merely determines the scalar. We still aim at
                 # following along the direction provided by the vectorial fluxes.
                 tic = time.time()
                 new_aux_flux = self._shrink(
-                    new_flux + old_force, shrink_factor, shrink_mode
+                    new_flux + old_force, shrink_factor, self.mobility_mode
                 )
-                time_shrink = time.time() - tic
+                stats_i["time_shrink"] = time.time() - tic
 
                 # 3. Update force
                 new_force = old_force + new_flux - new_aux_flux
 
-                # Apply Anderson acceleration to flux contribution (the only nonlinear part).
-                tic = time.time()
-                if self.anderson is not None:
-                    aux_inc = new_aux_flux - old_aux_flux
-                    force_inc = new_force - old_force
-                    inc = np.concatenate([aux_inc, force_inc])
-                    iteration = np.concatenate([new_aux_flux, new_force])
-                    new_iteration = self.anderson(iteration, inc, iter)
-                    new_aux_flux = new_iteration[self.flux_slice]
-                    new_force = new_iteration[self.force_slice]
-
-                toc = time.time()
-                time_anderson = toc - tic
-
             else:
                 raise NotImplementedError(f"Bregman mode {bregman_mode} not supported.")
 
-            # Collect stats
-            stats_i = [time_linearization, time_shrink, time_anderson]
+            # Apply Anderson acceleration to flux contribution (the only nonlinear part).
+            tic = time.time()
+            if self.anderson is not None:
+                aux_inc = new_aux_flux - old_aux_flux
+                force_inc = new_force - old_force
+                inc = np.concatenate([aux_inc, force_inc])
+                iteration = np.concatenate([new_aux_flux, new_force])
+                new_iteration = self.anderson(iteration, inc, iter)
+                new_aux_flux = new_iteration[self.flux_slice]
+                new_force = new_iteration[self.force_slice]
+            stats_i["time_acceleration"] = time.time() - tic
 
             # Update distance
-            new_distance = self.l1_dissipation(new_flux, dissipation_mode)
+            new_distance = self.l1_dissipation(new_flux)
 
             # Determine the error in the mass conservation equation
-            mass_conservation_residual = np.linalg.norm(
-                self.div.dot(new_flux) - rhs[self.pressure_slice], 2
+            mass_conservation_residual = (
+                self.div.dot(new_flux) - rhs[self.pressure_slice]
             )
 
             # Determine increments
-            flux_increment = new_flux - old_flux
             aux_increment = new_aux_flux - old_aux_flux
             force_increment = new_force - old_force
+            distance_increment = new_distance - old_distance
 
-            # Determine force
-            force = np.linalg.norm(new_force, 2)
-
-            # Compute the error:
-            # - residual of mass conservation equation - zero only if exact solver used
-            # - force
-            # - flux increment
-            # - aux increment
-            # - force increment
-            # - distance increment
-            error = [
-                mass_conservation_residual,
-                force,
-                np.linalg.norm(flux_increment),
-                np.linalg.norm(aux_increment),
-                np.linalg.norm(force_increment),
-                abs(new_distance - old_distance),
-            ]
+            # Compute the error and store as part of the convergence history:
+            # 0 - aux/force increments (fixed-point formulation)
+            # 1 - distance increment (minimization formulation)
+            # 2 - mass conservation residual (constraint in optimization formulation)
 
             # Update convergence history
             convergence_history["distance"].append(new_distance)
-            convergence_history["mass residual"].append(error[0])
-            convergence_history["force"].append(error[1])
-            convergence_history["flux increment"].append(error[2])
-            convergence_history["aux increment"].append(error[3])
-            convergence_history["force increment"].append(error[4])
-            convergence_history["distance_increment"].append(error[5])
+            convergence_history["aux_force_increment"].append(
+                np.linalg.norm(np.concatenate([aux_increment, force_increment]), 2)
+            )
+            convergence_history["distance_increment"].append(abs(distance_increment))
+            convergence_history["mass_conservation_residual"].append(
+                np.linalg.norm(mass_conservation_residual, 2)
+            )
             convergence_history["timing"].append(stats_i)
+
+            stats_i["time_assemble"] = 0
 
             # Print status
             if self.verbose:
                 print(
-                    "Bregman iteration",
-                    iter,
-                    new_distance,
-                    self.L,
-                    error[0],  # mass conservation residual
-                    [
-                        error[2],  # flux increment
-                        error[3],  # aux increment
-                        error[4],  # force increment
-                    ],
-                    error[5],  # distance increment
-                    # stats_i,  # timings
+                    f"Iter. {iter} \t| {new_distance:.6e} \t| {convergence_history['distance_increment'][-1]:.4e} \t| {convergence_history['aux_force_increment'][-1]/convergence_history['aux_force_increment'][0]:.4e} \t| {convergence_history['mass_conservation_residual'][-1]:.4e}",
                 )
 
-            # Keep track if the distance increases.
-            if new_distance > old_distance:
-                num_neg_diff += 1
-
-            # TODO include criterion build on staganation of the solution
+            # Base stopping citeria on the different interpretations of the split Bregman
+            # method:
+            # - fixed-point formulation: aux flux and force increment
+            # - minimization formulation: distance increment
+            # - constrained optimization formulation: mass conservation residual
             if iter > 1 and (
-                (error[0] < tol_residual and error[4] < tol_increment)
-                or error[5] < tol_distance
+                (
+                    # Aux flux / force increment (fixed-point interpretation)
+                    convergence_history["aux_force_increment"][-1]
+                    < tol_increment * convergence_history["aux_force_increment"][0]
+                    # Distance increment (Minimization formulation)
+                    and convergence_history["distance_increment"][-1] < tol_distance
+                    # Mass conservation residual (constraint in optimization formulation)
+                    and convergence_history["mass_conservation_residual"][-1]
+                    < tol_residual
+                )
             ):
                 break
-
-            # TODO rm?
-            # update_l = self.options.get("update_l", False)
-            # if update_l:
-            #     tol_distance = self.options.get("tol_distance", 1e-12)
-            #     max_iter_increase_diff = self.options.get(
-            #        "max_iter_increase_diff",
-            #        20
-            #     )
-            #     l_factor = self.options.get("l_factor", 2)
-            #     if (
-            #         abs(new_distance - old_distance) < tol_distance
-            #         or num_neg_diff > max_iter_increase_diff
-            #     ):
-            #         # Update L
-            #         self.L = self.L * l_factor
-            #
-            #         # Update linear system
-            #         l_scheme_mixed_darcy = sps.bmat(
-            #             [
-            #                 [
-            #                    self.L * self.mass_matrix_faces,
-            #                    -self.div.T,
-            #                    None
-            #                 ],
-            #                 [self.div, None, -self.pressure_constraint.T],
-            #                 [None, self.pressure_constraint, None],
-            #             ],
-            #             format="csc",
-            #         )
-            #         self.l_scheme_mixed_darcy_lu = (
-            #            sps.linalg.splu(l_scheme_mixed_darcy)
-            #         )
-            #
-            #         # Reset stagnation counter
-            #         num_neg_diff = 0
-            #
-            #     L_max = self.options.get("L_max", 1e8)
-            #     if self.L > L_max:
-            #         break
 
             # Update Bregman variables
             old_flux = new_flux.copy()
@@ -1676,18 +1542,32 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         solution_i[self.flux_slice] = new_flux.copy()
         # TODO continue
 
+        # Summarize profiling (time in seconds, memory in GB)
+        timings = convergence_history["timing"]
+        total_timings = {
+            "assemble": sum([t["time_assemble"] for t in timings]),
+            "setup": sum([t["time_setup"] for t in timings]),
+            "solve": sum([t["time_solve"] for t in timings]),
+            "acceleration": sum([t["time_acceleration"] for t in timings]),
+        }
+        total_timings["total"] = (
+            total_timings["assemble"]
+            + total_timings["setup"]
+            + total_timings["solve"]
+            + total_timings["acceleration"]
+        )
+        peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
+
         # Define performance metric
-        status = {
+        info = {
             "converged": iter < num_iter,
-            "number iterations": iter,
-            "distance": new_distance,
-            "mass conservation residual": error[0],
-            "flux increment": error[2],
-            "distance increment": abs(new_distance - old_distance),
-            "convergence history": convergence_history,
+            "number_iterations": iter,
+            "convergence_history": convergence_history,
+            "timings": total_timings,
+            "peak_memory_consumption": peak_memory_consumption,
         }
 
-        return new_distance, solution_i, status
+        return new_distance, solution_i, info
 
 
 # Unified access
