@@ -1132,7 +1132,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 "distance",
                 "distance_increment",
                 "flux increment",
-                "flux residual",
+                "residual",
             )
 
         # Newton iteration
@@ -1224,17 +1224,20 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                     convergence_history["distance_increment"][-1],
                     convergence_history["decomposed_increment"][-1][0]
                     / convergence_history["decomposed_increment"][0][0],
-                    convergence_history["decomposed_residual"][-1][0]
-                    / convergence_history["decomposed_residual"][0][0],
+                    convergence_history["residual"][-1][0]
+                    / convergence_history["residual"][0][0],
                 )
 
             # Stopping criterion - force one iteration
             if iter > 1 and (
                 (
+                    # Full residual (Newton interpretation)
                     convergence_history["residual"][-1]
                     < tol_residual * convergence_history["residual"][0]
+                    # Flux increment (fixed-point interpretation)
                     and convergence_history["decomposed_increment"][-1][0]
                     < tol_increment * convergence_history["decomposed_increment"][0][0]
+                    # Distance increment (Minimization formulation)
                     and convergence_history["distance_increment"][-1]
                     < tol_distance * convergence_history["distance_increment"][0]
                 )
