@@ -14,8 +14,6 @@ import darsia
 
 # General TODO list
 # - improve assembling of operators through partial assembling
-# - improve stopping criteria
-# - use better quadrature for l1_dissipation?
 # - allow to reuse setup.
 
 
@@ -189,6 +187,16 @@ class VariationalWassersteinDistance(darsia.EMD):
             format="csc",
         )
         """sps.csc_matrix: initial Darcy operator"""
+
+        self.broken_darcy = sps.bmat(
+            [
+                [None, -self.div.T, None],
+                [self.div, None, -self.pressure_constraint.T],
+                [None, self.pressure_constraint, None],
+            ],
+            format="csc",
+        )
+        """sps.csc_matrix: linear part of the Darcy operator with pressure constraint"""
 
     def _setup_face_reconstruction(self) -> None:
         """Setup of face reconstruction via RT0 basis functions and arithmetic avg.
@@ -667,6 +675,34 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         return flat_flux_norm
 
+    def optimality_conditions(
+        self, rhs: np.ndarray, solution: np.ndarray
+    ) -> np.ndarray:
+        """Evaluate optimality conditions of the constrained minimization problem.
+
+        This is identical to the residual of the Newton system.
+
+        Args:
+            rhs (np.ndarray): right hand side
+            solution (np.ndarray): solution
+
+        Returns:
+            np.ndarray: residual
+
+        """
+        flat_flux = solution[self.flux_slice]
+        flat_flux_norm = np.maximum(
+            self.vector_face_flux_norm(flat_flux, mode=self.mobility_mode),
+            self.regularization,
+        )
+        flat_flux_normed = flat_flux / flat_flux_norm
+
+        return (
+            rhs
+            - self.broken_darcy.dot(solution)
+            - self.flux_embedding.dot(self.mass_matrix_faces.dot(flat_flux_normed))
+        )
+
     # ! ---- Solver methods ----
 
     def linear_solve(
@@ -686,6 +722,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             matrix (sps.csc_matrix): matrix
             rhs (np.ndarray): right hand side
             previous_solution (np.ndarray): previous solution. Defaults to None.
+            reuse_solver (bool): reuse the solver. Defaults to False.
 
         Returns:
             tuple: solution, stats
@@ -1023,18 +1060,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             np.ndarray: residual
 
         """
-        flat_flux = solution[self.flux_slice]
-        flat_flux_norm = np.maximum(
-            self.vector_face_flux_norm(flat_flux, mode=self.mobility_mode),
-            self.regularization,
-        )
-        flat_flux_normed = flat_flux / flat_flux_norm
-
-        return (
-            rhs
-            - self.broken_darcy.dot(solution)
-            - self.flux_embedding.dot(self.mass_matrix_faces.dot(flat_flux_normed))
-        )
+        return self.optimality_conditions(rhs, solution)
 
     def jacobian(self, solution: np.ndarray) -> sps.linalg.LinearOperator:
         """Compute the LU factorization of the Jacobian of the solution.
@@ -1247,12 +1273,18 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 class WassersteinDistanceBregman(VariationalWassersteinDistance):
     """Class to determine the Wasserstein distance solved with the Bregman method."""
 
-    # TODO __init__ correct method?
     def __init__(
         self,
         grid: darsia.Grid,
         options: dict = {},
     ) -> None:
+        """Initialize the Bregman method.
+
+        Args:
+            grid (darsia.Grid): grid
+            options (dict, optional): options. Defaults to {}.
+
+        """
         super().__init__(grid, options)
         self.L = self.options.get("L", 1.0)
         """Penality parameter for the Bregman iteration, associated to face mobility."""
@@ -1263,8 +1295,6 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         self.force_slice = slice(self.grid.num_faces, None)
         """slice: slice for the force."""
-
-        # TODO need any other slice?
 
     def _shrink(
         self,
@@ -1290,6 +1320,44 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             vector_face_flux_norm + self.regularization
         )
         return flat_scaling * flat_flux
+
+    def _update_regularization(
+        self, flat_flux: np.ndarray, homogeneous: bool = False
+    ) -> tuple:
+        """Update the regularization based on the current approximation of the flux.
+
+        Args:
+            flat_flux (np.ndarray): flux
+            homogeneous (bool, optional): homogeneous regularization. Defaults to False.
+
+        Returns:
+            tuple: l_scheme_mixed_darcy, weight, shrink_factor
+
+        """
+
+        # Add regularization to the norm of the flux
+        flux_norm = np.maximum(
+            self.vector_face_flux_norm(flat_flux, self.mobility_mode),
+            self.regularization,
+        )
+        # Pick the max value if homogeneous regularization is desired
+        if homogeneous:
+            flux_norm[:] = np.max(flux_norm)
+        # Assign the weight and shrink factor
+        weight = sps.diags(1.0 / flux_norm)
+        shrink_factor = flux_norm
+
+        # Update the Darcy system
+        l_scheme_mixed_darcy = sps.bmat(
+            [
+                [weight * self.mass_matrix_faces, -self.div.T, None],
+                [self.div, None, -self.pressure_constraint.T],
+                [None, self.pressure_constraint, None],
+            ],
+            format="csc",
+        )
+
+        return l_scheme_mixed_darcy, weight, shrink_factor
 
     def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
         """Solve the Beckman problem using the Bregman method.
@@ -1329,15 +1397,11 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         # Initialize container for storing the convergence history
         convergence_history = {
             "distance": [],
-            "mass_conservation_residual": [],  # TODO add other residuals?
-            "force": [],  # TODO rm?
-            "decomposed_increment": [],  # TODO rm?
+            "mass_conservation_residual": [],
             "aux_force_increment": [],
             "distance_increment": [],
             "timing": [],
         }
-
-        # TODO doesn't a better residual than the mass conservation equation exist?
 
         # Print header
         if self.verbose:
@@ -1368,100 +1432,50 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         old_force = old_flux - old_aux_flux
         old_distance = self.l1_dissipation(old_flux)
 
+        # Control the update of the Bregman weight
+        bregman_update = self.options.get("bregman_update", lambda iter: False)
+        bregman_homogeneous = self.options.get("bregman_homogeneous", False)
+
         for iter in range(num_iter):
-            bregman_mode = self.options.get("bregman_mode", "standard")
-
-            if bregman_mode == "standard":
-                # std split Bregman method
-
-                # 1. Make relaxation step (solve quadratic optimization problem)
-                tic = time.time()
-                rhs_i = rhs.copy()
-                rhs_i[self.flux_slice] = weight * self.mass_matrix_faces.dot(
-                    old_aux_flux - old_force
-                )
-                solution_i, stats_i = self.linear_solve(
-                    l_scheme_mixed_darcy, rhs_i, reuse_solver=(iter > 0)
-                )
-                new_flux = solution_i[self.flux_slice]
-                stats_i["time_solve"] = time.time() - tic
-
-                # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
-                # shrinkage operation merely determines the scalar. We still aim at
-                # following along the direction provided by the vectorial fluxes.
-                tic = time.time()
-                new_aux_flux = self._shrink(
-                    new_flux + old_force, shrink_factor, self.mobility_mode
-                )
-                stats_i["time_shrink"] = time.time() - tic
-
-                # 3. Update force
-                new_force = old_force + new_flux - new_aux_flux
-
-            elif bregman_mode == "adaptive":
-                # Bregman split with updated weight
-                update_condition = self.options.get(
-                    "bregman_update", lambda iter: False
-                )
-                update_solver = update_condition(iter) and iter > 0
-                homogeneous_update = self.options.get(
-                    "bregman_update_homogeneous", False
-                )
-
-                # Measure time for extra setup
-                tic = time.time()
-                if update_solver:
-                    # Update weight as the inverse of the norm of the flux
-                    old_flux_norm = np.maximum(
-                        self.vector_face_flux_norm(old_flux, self.mobility_mode),
-                        self.regularization,
-                    )
-                    if homogeneous_update:
-                        old_flux_norm[:] = np.max(old_flux_norm)
-                    old_flux_norm_inv = 1.0 / old_flux_norm
-                    weight = sps.diags(old_flux_norm_inv)
-                    shrink_factor = old_flux_norm
-
-                    # Redefine Darcy system
-                    l_scheme_mixed_darcy = sps.bmat(
-                        [
-                            [weight * self.mass_matrix_faces, -self.div.T, None],
-                            [self.div, None, -self.pressure_constraint.T],
-                            [None, self.pressure_constraint, None],
-                        ],
-                        format="csc",
-                    )
-                time_extra_setup = time.time() - tic
-
-                # 1. Make relaxation step (solve quadratic optimization problem)
-                tic = time.time()
-                rhs_i = rhs.copy()
-                rhs_i[self.flux_slice] = weight * self.mass_matrix_faces.dot(
-                    old_aux_flux - old_force
-                )
-                solution_i, stats_i = self.linear_solve(
+            # (Possibly) update the regularization, based on the current approximation
+            # of the flux - use the inverse of the norm of the flux
+            tic = time.time()
+            update_solver = bregman_update(iter)
+            if update_solver:
+                (
                     l_scheme_mixed_darcy,
-                    rhs_i,
-                    reuse_solver=not (update_solver),
-                )
-                new_flux = solution_i[self.flux_slice]
-                stats_i["time_solve"] = time.time() - tic
-                stats_i["time_setup"] += time_extra_setup
+                    weight,
+                    shrink_factor,
+                ) = self._update_regularization(old_flux, bregman_homogeneous)
+            time_extra_setup = time.time() - tic
 
-                # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
-                # shrinkage operation merely determines the scalar. We still aim at
-                # following along the direction provided by the vectorial fluxes.
-                tic = time.time()
-                new_aux_flux = self._shrink(
-                    new_flux + old_force, shrink_factor, self.mobility_mode
-                )
-                stats_i["time_shrink"] = time.time() - tic
+            # 1. Make relaxation step (solve quadratic optimization problem)
+            tic = time.time()
+            rhs_i = rhs.copy()
+            rhs_i[self.flux_slice] = weight * self.mass_matrix_faces.dot(
+                old_aux_flux - old_force
+            )
+            # Force to update the internally stored linear solver
+            solution_i, stats_i = self.linear_solve(
+                l_scheme_mixed_darcy,
+                rhs_i,
+                reuse_solver=not (update_solver) and iter > 0,
+            )
+            new_flux = solution_i[self.flux_slice]
+            stats_i["time_solve"] = time.time() - tic
+            stats_i["time_setup"] += time_extra_setup
 
-                # 3. Update force
-                new_force = old_force + new_flux - new_aux_flux
+            # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
+            # shrinkage operation merely determines the scalar. We still aim at
+            # following along the direction provided by the vectorial fluxes.
+            tic = time.time()
+            new_aux_flux = self._shrink(
+                new_flux + old_force, shrink_factor, self.mobility_mode
+            )
+            stats_i["time_shrink"] = time.time() - tic
 
-            else:
-                raise NotImplementedError(f"Bregman mode {bregman_mode} not supported.")
+            # 3. Update force
+            new_force = old_force + new_flux - new_aux_flux
 
             # Apply Anderson acceleration to flux contribution (the only nonlinear part).
             tic = time.time()
@@ -1537,10 +1551,15 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             old_force = new_force.copy()
             old_distance = new_distance
 
-        # TODO solve for pressure and multiplier
+        # Solve for the pressure by solving a single Newton iteration
+        newton_jacobian, _, _ = self._update_regularization(old_flux)
         solution_i = np.zeros_like(rhs)
         solution_i[self.flux_slice] = new_flux.copy()
-        # TODO continue
+        newton_residual = self.optimality_conditions(rhs, solution_i)
+        newton_update, _ = self.linear_solve(
+            newton_jacobian, newton_residual, solution_i
+        )
+        solution_i[self.pressure_slice] = newton_update[self.pressure_slice]
 
         # Summarize profiling (time in seconds, memory in GB)
         timings = convergence_history["timing"]
