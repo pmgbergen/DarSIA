@@ -991,8 +991,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
     def __init__(self, grid, options) -> None:
         super().__init__(grid, options)
 
-        self.L = self.options.get("L", 1.0)
-        """float: relaxation parameter, lower cut-off for the mobility"""
+        self.L = self.options.get("L", np.finfo(float).max)
+        """float: relaxation parameter, lower cut-off for the mobility, deactivated by default"""
 
     def _setup_discretization(self) -> None:
         """Setup of fixed discretization operators.
@@ -1092,7 +1092,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         num_iter = self.options.get("num_iter", 100)
         tol_residual = self.options.get("tol_residual", 1e-10)
         tol_increment = self.options.get("tol_increment", np.finfo(float).max)
-        tol_distance = self.options.get("tol_distance", 0.0)
+        tol_distance = self.options.get("tol_distance", np.finfo(float).max)
 
         # Define right hand side
         rhs = np.concatenate(
@@ -1231,12 +1231,13 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             # Stopping criterion - force one iteration
             if iter > 1 and (
                 (
-                    convergence_history["decomposed_residual"][-1][0]
-                    < tol_residual * convergence_history["decomposed_residual"][0][0]
+                    convergence_history["residual"][-1]
+                    < tol_residual * convergence_history["residual"][0]
                     and convergence_history["decomposed_increment"][-1][0]
                     < tol_increment * convergence_history["decomposed_increment"][0][0]
+                    and convergence_history["distance_increment"][-1]
+                    < tol_distance * convergence_history["distance_increment"][0]
                 )
-                or (convergence_history["distance_increment"][-1] < tol_distance)
             ):
                 break
 
