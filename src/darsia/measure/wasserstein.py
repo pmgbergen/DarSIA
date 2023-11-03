@@ -1608,7 +1608,6 @@ def wasserstein_distance(
         # Use Earth Mover's Distance from CV2
         preprocess = kwargs.get("preprocess")
         w1 = darsia.EMD(preprocess)
-        return w1(mass_1, mass_2)
 
     else:
         raise NotImplementedError(f"Method {method} not implemented.")
