@@ -550,7 +550,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             transport_density += quad_weight * cell_flux_norm
 
         if flatten:
-            return np.ravel(transport_density)
+            return np.ravel(transport_density, "F")
         else:
             return transport_density
 
@@ -647,7 +647,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                         id = i * len(coordinates) + j
                         subcell_flux_norm[faces, id] = np.linalg.norm(
                             subcell_flux, 2, axis=-1
-                        ).ravel()[cells]
+                        ).ravel("F")[cells]
 
                 # Average over the subcells using harmonic averaging
                 flat_flux_norm[faces] = hmean(subcell_flux_norm[faces], axis=1)
@@ -944,9 +944,9 @@ class VariationalWassersteinDistance(darsia.EMD):
         assert img_1.scalar and img_2.scalar
         self._compatibility_check(img_1, img_2)
 
-        # Determine difference of distriutions and define corresponding rhs
+        # Determine difference of distributions and define corresponding rhs
         mass_diff = img_1.img - img_2.img
-        flat_mass_diff = np.ravel(mass_diff)
+        flat_mass_diff = np.ravel(mass_diff, "F")  # TODO test with non-symmetric setup
 
         # Main method
         distance, solution, info = self._solve(flat_mass_diff)
