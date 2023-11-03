@@ -1113,9 +1113,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         convergence_history = {
             "distance": [],
             "residual": [],
-            "decomposed_residual": [],
-            "increment": [],
-            "decomposed_increment": [],
+            "flux_increment": [],
             "distance_increment": [],
             "timing": [],
         }
@@ -1123,16 +1121,13 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # Print  header for later printing performance to screen
         # - distance
         # - distance increment
-        # - flux increment (recall, Newton is a Picard method in the flux)
-        # - mass conservation residual (again, recall, Newton is a Picard method)
+        # - flux increment
+        # - residual
         if self.verbose:
             print(
-                "--- ; ",
-                "Newton iteration",
-                "distance",
-                "distance_increment",
-                "flux increment",
-                "residual",
+                "Newton iter. \t| W1 \t\t| ΔW1 \t\t| Δq \t\t| res",
+                "\n",
+                "---------------|---------------|---------------|---------------|---------------"
             )
 
         # Newton iteration
@@ -1154,6 +1149,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 approx_jacobian, residual_i, solution_i
             )
 
+            # Include assembly in statistics
+            stats_i["time_assemble"] = time_assemble
+
             # Update the solution with the full Netwon step
             solution_i += update_i
 
@@ -1167,12 +1165,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                     update_i[self.flux_slice],
                     iter,
                 )
-            toc = time.time()
-            time_anderson = toc - tic
-
-            # Update stats
-            stats_i["time_assemble"] = time_assemble
-            stats_i["time_acceleration"] = time_anderson
+            stats_i["time_acceleration"] = time.time() - tic
 
             # Update discrete W1 distance
             new_flux = solution_i[self.flux_slice]
@@ -1182,29 +1175,15 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             increment = solution_i - old_solution_i
 
             # Compute the error and store as part of the convergence history:
-            # 0 - full residual
-            # 1 - decomposed residuals
-            # 2 - full increment
-            # 3 - decomposed increments
-            # 4 - distance increment
+            # 0 - full residual (Newton interpretation)
+            # 1 - flux increment (fixed-point interpretation)
+            # 2 - distance increment (Minimization interpretation)
 
             # Update convergence history
             convergence_history["distance"].append(new_distance)
             convergence_history["residual"].append(np.linalg.norm(residual_i, 2))
-            convergence_history["decomposed_residual"].append(
-                [
-                    np.linalg.norm(residual_i[self.flux_slice], 2),
-                    np.linalg.norm(residual_i[self.pressure_slice], 2),
-                    np.linalg.norm(residual_i[self.lagrange_multiplier_slice], 2),
-                ]
-            )
-            convergence_history["increment"].append(np.linalg.norm(increment, 2))
-            convergence_history["decomposed_increment"].append(
-                [
-                    np.linalg.norm(increment[self.flux_slice], 2),
-                    np.linalg.norm(increment[self.pressure_slice], 2),
-                    np.linalg.norm(increment[self.lagrange_multiplier_slice], 2),
-                ]
+            convergence_history["flux_increment"].append(
+                np.linalg.norm(increment[self.flux_slice], 2)
             )
             convergence_history["distance_increment"].append(
                 abs(new_distance - old_distance)
@@ -1214,18 +1193,11 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             # Print performance to screen
             # - distance
             # - distance increment
-            # - flux increment (recall, Newton is a Picard method in the flux)
-            # - mass conservation residual (again, recall, Newton is a Picard method)
+            # - flux increment
+            # - residual
             if self.verbose:
                 print(
-                    "Newton iteration",
-                    iter,
-                    new_distance,
-                    convergence_history["distance_increment"][-1],
-                    convergence_history["decomposed_increment"][-1][0]
-                    / convergence_history["decomposed_increment"][0][0],
-                    convergence_history["residual"][-1][0]
-                    / convergence_history["residual"][0][0],
+                    f"Iter. {iter} \t| {new_distance:.6e} \t| {convergence_history['distance_increment'][-1]:.4e} \t| {convergence_history['flux_increment'][-1]/convergence_history['flux_increment'][0]:.4e} \t| {convergence_history['residual'][-1]/convergence_history['residual'][0]:.4e}",
                 )
 
             # Stopping criterion - force one iteration
@@ -1235,11 +1207,10 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                     convergence_history["residual"][-1]
                     < tol_residual * convergence_history["residual"][0]
                     # Flux increment (fixed-point interpretation)
-                    and convergence_history["decomposed_increment"][-1][0]
-                    < tol_increment * convergence_history["decomposed_increment"][0][0]
+                    and convergence_history["flux_increment"][-1]
+                    < tol_increment * convergence_history["flux_increment"][0]
                     # Distance increment (Minimization formulation)
-                    and convergence_history["distance_increment"][-1]
-                    < tol_distance * convergence_history["distance_increment"][0]
+                    and convergence_history["distance_increment"][-1] < tol_distance
                 )
             ):
                 break
