@@ -968,8 +968,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         NOTE: Images need to comply with the setup of the object.
 
         Args:
-            img_1 (darsia.Image): image 1
-            img_2 (darsia.Image): image 2
+            img_1 (darsia.Image): image 1, source distribution
+            img_2 (darsia.Image): image 2, destination distribution
 
         Returns:
             float: distance between img_1 and img_2.
@@ -983,7 +983,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         self._compatibility_check(img_1, img_2)
 
         # Determine difference of distributions and define corresponding rhs
-        mass_diff = img_1.img - img_2.img
+        mass_diff = img_2.img - img_1.img
         flat_mass_diff = np.ravel(mass_diff, "F")  # TODO test with non-symmetric setup
 
         # Main method
@@ -1106,10 +1106,6 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             tuple: distance, solution, info
 
         """
-        # TODO rm: Observation: AA can lead to less stagnation, more accurate results,
-        # and therefore better solutions to mu and u. Higher depth is better, but more
-        # expensive.
-
         # Setup time and memory profiling
         tic = time.time()
         tracemalloc.start()
@@ -1624,8 +1620,8 @@ def wasserstein_distance(
     """Unified access to Wasserstein distance computation between images with same mass.
 
     Args:
-        mass_1 (darsia.Image): image 1
-        mass_2 (darsia.Image): image 2
+        mass_1 (darsia.Image): image 1, source distribution
+        mass_2 (darsia.Image): image 2, destination distribution
         method (str): method to use ("newton", "bregman", or "cv2.emd")
         **kwargs: additional arguments (only for "newton" and "bregman")
             - options (dict): options for the method.
