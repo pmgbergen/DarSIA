@@ -6,6 +6,8 @@ particular, grid information etc. may need to be adapted.
 """
 
 from pathlib import Path
+from typing import Union
+from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -113,3 +115,105 @@ def plot_2d_wasserstein_distance(
         plt.show()
     else:
         plt.close("all")
+
+
+def to_vtk(
+    path: Union[str, Path],
+    data: list[tuple[Union[darsia.Image, np.ndarray], str]],
+) -> None:
+    """Write data to a VTK file.
+
+    Args:
+        path (Union[str, Path]): path to the VTK file
+        data (list[tuple[Union[darsia.Image, np.ndarray], str]]): data to write, includes
+            the data and the name of the data. Require at least one data point to be an
+            image.
+
+    NOTE: Requires pyevtk to be installed.
+
+    """
+    try:
+        from pyevtk.hl import gridToVTK
+
+        # Check whether the data contains at least one image, and pick the first one
+        image = None
+        for d in data:
+            name, img = d
+            if isinstance(img, darsia.Image):
+                image = img
+                break
+        assert image is not None, "At least one data point must be an image."
+
+        # Extract grid axes
+        if image.space_dim == 1:
+            x = np.linspace(
+                image.origin[0], image.opposite_corner[0], image.num_voxels[0] + 1
+            )
+            y = np.array([0])
+            z = np.array([0])
+        elif image.space_dim == 2:
+            y, x = [
+                np.linspace(
+                    image.origin[i], image.opposite_corner[i], image.num_voxels[i] + 1
+                )
+                for i in range(2)
+            ]
+            z = np.array([0])
+        elif image.space_dim == 3:
+            z, x, y = [
+                np.linspace(
+                    image.origin[i], image.opposite_corner[i], image.num_voxels[i] + 1
+                )
+                for i in range(3)
+            ]
+        target_shape = tuple(
+            np.maximum(1, np.array([x.size, y.size, z.size]) - 1).tolist()
+        )
+
+        # Convert cell data to right format
+        cellData = {}
+        for d in data:
+            name, img = d
+            if isinstance(img, darsia.Image):
+                img = img.img.copy()
+            assert isinstance(img, np.ndarray), "Data must be of type np.ndarray."
+
+            is_scalar = img.ndim == image.space_dim
+            if not is_scalar:
+                assert (
+                    img.ndim == image.space_dim + 1
+                ), "Data must be of dimension %d or %d." % (
+                    image.space_dim,
+                    image.space_dim + 1,
+                )
+            assert np.allclose(
+                img.shape[: image.space_dim], image.img.shape[: image.space_dim]
+            ), "Data must have the same shape."
+
+            # Convert to cartesian indexing
+            if is_scalar:
+                img = np.ascontiguousarray(
+                    darsia.matrixToCartesianIndexing(img, image.space_dim).reshape(
+                        target_shape, order="F"
+                    )
+                )
+            else:
+                img = [
+                    np.ascontiguousarray(
+                        darsia.matrixToCartesianIndexing(
+                            img[..., i], image.space_dim
+                        ).reshape(target_shape, order="F")
+                    )
+                    for i in range(img.shape[-1])
+                ]
+                while len(img) < 3:
+                    img.append(np.zeros(target_shape))
+                assert len(img) == 3, "pyevtk only allows 3 components"
+                img = tuple(img)
+            cellData[name] = img
+
+        # Write to VTK
+        gridToVTK(str(Path(path)), x, y, z, cellData=cellData)
+
+    except ImportError:
+        warn("pyevtk not installed. Cannot save as vtk.")
