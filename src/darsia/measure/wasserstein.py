@@ -23,7 +23,7 @@ class VariationalWassersteinDistance(darsia.EMD):
     The variational Wasserstein distance is defined as the solution to the following
     optimization problem (also called the Beckman problem):
 
-        inf ||u||_{L^1} s.t. div u = m_1 - m_2, u in H(div).
+        inf ||u||_{L^1} s.t. div u = m_2 - m_1, u in H(div).
 
     u is the flux, m_1 and m_2 are the mass distributions which are transported by u
     from m_1 to m_2. The problem is solved approximately, eploying an iterative
@@ -46,15 +46,62 @@ class VariationalWassersteinDistance(darsia.EMD):
         Args:
 
             grid (darsia.Grid): tensor grid associated with the images
-            options (dict): options for the solver
+            options (dict): options for the nonlinear and linear solver. The following
+                options are supported:
+                - l1_mode (str): mode for computing the l1 dissipation. Defaults to
+                    "raviart_thomas". Supported modes are:
+                    - "raviart_thomas": Apply exact integration of RT0 extensions into
+                        cells. Underlying functional for mixed finite element method
+                        (MFEM).
+                    - "constant_subcell_projection": Apply subcell_based projection onto
+                        constant vectors and sum up. Equivalent to a mixed finite volume
+                        method (FV).
+                    - "constant_cell_projection": Apply cell-based L2 projection onto
+                        constant vectors and sum up. Simpler calculation than
+                        subcell-projection, but not directly connected to any
+                        discretization.
+                - mobility_mode (str): mode for computing the mobility. Defaults to
+                    "face_based". Supported modes are:
+                    - "cell_based": Cell-based mode determines the norm of the fluxes on
+                        the faces via averaging of neighboring cells.
+                    - "cell_based_arithmetic": Cell-based mode determines the norm of
+                        the fluxes on the faces via arithmetic averaging of neighboring
+                        cells.
+                    - "cell_based_harmonic": Cell-based mode determines the norm of the
+                        fluxes on the faces via harmonic averaging of neighboring cells.
+                    - "subcell_based": Subcell-based mode determines the norm of the
+                        fluxes on the faces via averaging of neighboring subcells.
+                    - "face_based": Face-based mode determines the norm of the fluxes on
+                        the faces via direct computation on the faces.
                 - num_iter (int): maximum number of iterations. Defaults to 100.
-                - tol (float): tolerance for the stopping criterion. Defaults to 1e-6.
-                - L (float): parameter for the Bregman iteration. Defaults to 1.0.
-                - regularization (float): regularization parameter for the Bregman
-                    iteration. Defaults to 0.0.
+                - tol_residual (float): tolerance for the residual. Defaults to
+                    np.finfo(float).max.
+                - tol_increment (float): tolerance for the increment. Defaults to
+                    np.finfo(float).max.
+                - tol_distance (float): tolerance for the distance. Defaults to
+                    np.finfo(float).max.
+                - L (float): regularization parameter for the Newton and Bregman method.
+                    Represents an approximate flux norm (scalar or vector). Defaults to
+                    1.0.
+                - linear_solver (str): type of linear solver. Defaults to "direct".
+                    Supported solvers are:
+                    - "direct": direct solver
+                    - "amg": algebraic multigrid solver
+                    - "cg": conjugate gradient solver preconditioned with AMG
+                - formulation (str): formulation of the linear system. Defaults to
+                    "pressure". Supported formulations are:
+                    - "full": full system
+                    - "flux_reduced": reduced system with fluxes eliminated
+                    - "pressure": reduced system with fluxes and lagrange multiplier
+                        eliminated
+                - linear_solver_options (dict): options for the linear solver. Defaults
+                    to {}.
+                - amg_options (dict): options for the AMG solver. Defaults to {}.
                 - aa_depth (int): depth of the Anderson acceleration. Defaults to 0.
-                - aa_restart (int): restart of the Anderson acceleration. Defaults to None.
-                - scaling (float): scaling of the fluxes in the plot. Defaults to 1.0.
+                - aa_restart (int): restart of the Anderson acceleration. Defaults to
+                    None.
+                - regularization (float): regularization parameter for avoiding division
+                    by zero. Defaults to np.finfo(float).eps.
                 - lumping (bool): lump the mass matrix. Defaults to True.
 
         """
