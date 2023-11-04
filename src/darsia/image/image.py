@@ -1480,6 +1480,20 @@ class Image:
         """
         np.savez(str(Path(path)), array=self.img, metadata=self.metadata())
 
+    def to_vtk(self, path: Union[str, Path], name: Optional[str] = None) -> None:
+        """Save image to file in vtk format.
+
+        Args:
+            path (Path): full path to image, without ending.
+            name (str, optional): name of the data. Defaults to None.
+
+        """
+        if name is None:
+            name = self.name
+        if name is None:
+            name = "data"
+        darsia.plotting.to_vtk(path, [(name, self)])
+
     # ! ---- Auxiliary routines
 
     def _is_none(self, item) -> bool:
