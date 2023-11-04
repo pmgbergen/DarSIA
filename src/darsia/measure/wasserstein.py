@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 import tracemalloc
+from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
@@ -1057,6 +1058,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                     "flux": flux,
                     "pressure": pressure,
                     "transport_density": transport_density,
+                    "src": img_1,
+                    "dst": img_2,
                 }
             )
             return distance, info
@@ -1701,3 +1704,25 @@ def wasserstein_distance(
 
     # Compute and return Wasserstein distance
     return w1(mass_1, mass_2)
+
+
+def wasserstein_distance_to_vtk(
+    path: Union[str, Path],
+    info: dict,
+) -> None:
+    """Write the output of the Wasserstein distance to a VTK file.
+
+    Args:
+        path (Union[str, Path]): path to the VTK file
+        info (dict): information dictionary
+
+    NOTE: Requires pyevtk to be installed.
+
+    """
+    data = [
+        (key, info[key])
+        for key in ["src", "dst", "mass_diff", "flux", "pressure", "transport_density"]
+    ]
+    print(type(info["src"]))
+    print(isinstance(info["src"], darsia.Image))
+    darsia.plotting.to_vtk(path, data)
