@@ -122,6 +122,9 @@ solvers = [lu_options, amg_options]
 
 # General options
 options = {
+    # Method definition
+    "l1_mode": "constant_cell_projection",
+    "mobility_mode": "face_based",
     # Performance control
     "num_iter": 400,
     "tol_residual": 1e-10,
