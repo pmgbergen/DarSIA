@@ -122,10 +122,10 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.verbose = self.options.get("verbose", False)
         """bool: verbosity"""
 
-        self.l1_mode = self.options.get("l1_mode", "constant_cell_projection")
+        self.l1_mode = self.options.get("l1_mode", "raviart_thomas")
         """str: mode for computing the l1 dissipation"""
 
-        self.mobility_mode = self.options.get("mobility_mode", "face_based")
+        self.mobility_mode = self.options.get("mobility_mode", "cell_based")
         """str: mode for computing the mobility"""
 
         # Setup of method
