@@ -304,7 +304,8 @@ def face_to_cell(
     # Pick the cell center if no pt provided
     if pt is None:
         pt = np.ones(grid.dim) / 2
-    # Make pt an array
+
+    # Make pt an array - needed for 1d case
     if grid.dim == 1:
         pt = np.array([pt])
 
