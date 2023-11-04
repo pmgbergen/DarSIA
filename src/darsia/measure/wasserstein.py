@@ -705,8 +705,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                             subcell_flux, 2, axis=-1
                         ).ravel("F")[cells]
 
-                # Average over the subcells using harmonic averaging
-                flat_flux_norm[faces] = hmean(subcell_flux_norm[faces], axis=1)
+            # Average over the subcells using harmonic averaging
+            flat_flux_norm = hmean(subcell_flux_norm, axis=1)
 
         elif mode == "face_based":
             if not hasattr(self, "face_reconstruction"):
