@@ -984,7 +984,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Determine difference of distributions and define corresponding rhs
         mass_diff = img_2.img - img_1.img
-        flat_mass_diff = np.ravel(mass_diff, "F")  # TODO test with non-symmetric setup
+        flat_mass_diff = np.ravel(mass_diff, "F")
 
         # Main method
         distance, solution, info = self._solve(flat_mass_diff)
@@ -995,7 +995,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Reshape the fluxes and pressure to grid format
         flux = darsia.face_to_cell(self.grid, flat_flux)
-        pressure = flat_pressure.reshape(self.grid.shape)
+        pressure = flat_pressure.reshape(self.grid.shape, order="F")
 
         # Determine transport density
         transport_density = self.transport_density(flat_flux, flatten=False)
