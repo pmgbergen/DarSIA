@@ -1212,6 +1212,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             self.darcy_init.copy(), rhs.copy(), solution_i
         )
 
+        # Initialize distance in case below iteration fails
+        new_distance = 0
+
         # Initialize container for storing the convergence history
         convergence_history = {
             "distance": [],
@@ -1488,6 +1491,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         solution_i, _ = self.linear_solve(
             self.darcy_init.copy(), rhs.copy(), solution_i
         )
+
+        # Initialize distance in case below iteration fails
+        new_distance = 0
 
         # Initialize container for storing the convergence history
         convergence_history = {
