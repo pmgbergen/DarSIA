@@ -214,7 +214,7 @@ def matrixToCartesianIndexing(img: np.ndarray, dim: int = 2) -> np.ndarray:
         # Two operations are require: Swapping axis and flipping the vertical axis.
         # Exchange first and second component, to change from (row,col) to (x,y) format.
         img = np.swapaxes(img, 0, 1)
-        # Flip the orientation of the second axis, such that later y=0 is located at the bottom.
+        # Flip the orientation of the 2nd axis, such that later y=0 corresonds to the bottom.
         img = np.flip(img, 1)
     elif dim == 3:
         # Need to convert from z,x,y to x,y,z and flip the z-axis and y-axis.
