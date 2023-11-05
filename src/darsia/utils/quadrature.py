@@ -3,6 +3,7 @@
 import numpy as np
 from typing import Union
 
+
 def gauss(dim: int, order: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
     """Return the Gauss points and weights for the given dimension and order.
 
@@ -18,7 +19,7 @@ def gauss(dim: int, order: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
     """
     if dim == 1:
         if order == "max":
-          order = 4
+            order = 4
         if order == 0:
             return np.array([0.0]), np.array([2.0])
         elif order == 1:
@@ -76,7 +77,7 @@ def gauss(dim: int, order: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
             )
     elif dim == 2:
         if order == "max":
-          order = 3
+            order = 3
         if order == 0:
             return (
                 np.array([[0.0, 0.0]]),
@@ -220,7 +221,7 @@ def gauss(dim: int, order: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
             )
     elif dim == 3:
         if order == "max":
-          order = 2
+            order = 2
         if order == 0:
             return (
                 np.array([[0.0, 0.0, 0.0]]),
