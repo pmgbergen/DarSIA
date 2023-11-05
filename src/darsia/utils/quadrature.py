@@ -1,9 +1,9 @@
 """Quadrature rules for numerical integration."""
 
 import numpy as np
+from typing import Union
 
-
-def gauss(dim: int, order: int) -> tuple[np.ndarray, np.ndarray]:
+def gauss(dim: int, order: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
     """Return the Gauss points and weights for the given dimension and order.
 
     These are the Gauss points and weights for the reference element [-1, 1]^dim.
@@ -17,6 +17,8 @@ def gauss(dim: int, order: int) -> tuple[np.ndarray, np.ndarray]:
 
     """
     if dim == 1:
+        if order == "max":
+          order = 4
         if order == 0:
             return np.array([0.0]), np.array([2.0])
         elif order == 1:
@@ -73,6 +75,8 @@ def gauss(dim: int, order: int) -> tuple[np.ndarray, np.ndarray]:
                 f"Gauss points of order {order} not implemented for dimension {dim}."
             )
     elif dim == 2:
+        if order == "max":
+          order = 3
         if order == 0:
             return (
                 np.array([[0.0, 0.0]]),
@@ -215,6 +219,8 @@ def gauss(dim: int, order: int) -> tuple[np.ndarray, np.ndarray]:
                 f"Gauss points of order {order} not implemented for dimension {dim}."
             )
     elif dim == 3:
+        if order == "max":
+          order = 2
         if order == 0:
             return (
                 np.array([[0.0, 0.0, 0.0]]),
