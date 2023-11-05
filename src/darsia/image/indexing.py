@@ -190,7 +190,7 @@ def interpret_indexing(axis: str, indexing: str) -> tuple[int, bool]:
     raise ValueError
 
 
-def matrixToCartesianIndexing(img: np.ndarray) -> np.ndarray:
+def matrixToCartesianIndexing(img: np.ndarray, dim: int = 2) -> np.ndarray:
     """
     Reordering data indexing converting from (row,col) to (x,y) indexing.
 
@@ -201,21 +201,29 @@ def matrixToCartesianIndexing(img: np.ndarray) -> np.ndarray:
     when communicating image data to conventional simulators, which use
     the Cartesian indexing.
 
-    NOTE: Assumes 2d images.
-
     Arguments:
         np.ndarray: image array with matrix indexing
+        dim (int): dimension of the image, default is 2
 
     Returns:
         np.ndarray: image array with Cartesian indexing
     """
-    # Two operations are require: Swapping axis and flipping the vertical axis.
-
-    # Exchange first and second component, to change from (row,col) to (x,y) format.
-    img = np.swapaxes(img, 0, 1)
-
-    # Flip the orientation of the second axis, such that later y=0 is located at the bottom.
-    img = np.flip(img, 1)
+    if dim == 1:
+        pass
+    elif dim == 2:
+        # Two operations are require: Swapping axis and flipping the vertical axis.
+        # Exchange first and second component, to change from (row,col) to (x,y) format.
+        img = np.swapaxes(img, 0, 1)
+        # Flip the orientation of the second axis, such that later y=0 is located at the bottom.
+        img = np.flip(img, 1)
+    elif dim == 3:
+        # Need to convert from z,x,y to x,y,z and flip the z-axis and y-axis.
+        img = np.swapaxes(img, 0, 2)
+        img = np.swapaxes(img, 0, 1)
+        img = np.flip(img, 1)
+        img = np.flip(img, 2)
+    else:
+        raise ValueError("Only 1d, 2d, and 3d images are supported.")
 
     return img
 
