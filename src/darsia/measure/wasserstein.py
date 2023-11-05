@@ -579,7 +579,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             # Apply numerical integration of RT0 extensions into cells.
             # Underlying functional for mixed finite element method (MFEM).
             quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
-                self.grid.dim, 3
+                self.grid.dim, "max"
             )
 
         elif self.l1_mode == "constant_subcell_projection":
