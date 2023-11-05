@@ -1723,6 +1723,4 @@ def wasserstein_distance_to_vtk(
         (key, info[key])
         for key in ["src", "dst", "mass_diff", "flux", "pressure", "transport_density"]
     ]
-    print(type(info["src"]))
-    print(isinstance(info["src"], darsia.Image))
     darsia.plotting.to_vtk(path, data)
