@@ -1,7 +1,8 @@
 """Quadrature rules for numerical integration."""
 
-import numpy as np
 from typing import Union
+
+import numpy as np
 
 
 def gauss(dim: int, order: Union[int, str]) -> tuple[np.ndarray, np.ndarray]:
