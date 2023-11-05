@@ -209,7 +209,13 @@ def to_vtk(
                 while len(img) < 3:
                     img.append(np.zeros(target_shape))
                 assert len(img) == 3, "pyevtk only allows 3 components"
-                img = tuple(img)
+                # Flip the directions as part of the conversion
+                if image.space_dim == 1:
+                    img = tuple(img)
+                elif image.space_dim == 2:
+                    img = (img[1], img[0], img[2])
+                elif image.space_dim == 3:
+                    img = (img[1], img[2], img[0])
             cellData[name] = img
 
         # Write to VTK
