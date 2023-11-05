@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 import tracemalloc
+import warnings
 from pathlib import Path
 from typing import Optional, Union
 
@@ -1066,6 +1067,35 @@ class VariationalWassersteinDistance(darsia.EMD):
         else:
             return distance
 
+    # ! ---- Utility methods ----
+
+    def _analyze_timings(self, timings: dict) -> dict:
+        """Analyze the timing of the current iteration.
+
+        Utility function for self._solve().
+
+        Args:
+            timings (dict): timings
+
+        Returns:
+            dict: total time
+
+        """
+        total_timings = {
+            "assemble": sum([t["time_assemble"] for t in timings]),
+            "setup": sum([t["time_setup"] for t in timings]),
+            "solve": sum([t["time_solve"] for t in timings]),
+            "acceleration": sum([t["time_acceleration"] for t in timings]),
+        }
+        total_timings["total"] = (
+            total_timings["assemble"]
+            + total_timings["setup"]
+            + total_timings["solve"]
+            + total_timings["acceleration"]
+        )
+
+        return total_timings
+
 
 class WassersteinDistanceNewton(VariationalWassersteinDistance):
     """Class to determine the L1 EMD/Wasserstein distance solved with Newton's method.
@@ -1189,6 +1219,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             "flux_increment": [],
             "distance_increment": [],
             "timing": [],
+            "run_time": [],
         }
 
         # Print  header for later printing performance to screen
@@ -1206,115 +1237,120 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         # Newton iteration
         for iter in range(num_iter):
-            # Keep track of old flux, and old distance
-            old_solution_i = solution_i.copy()
-            old_flux = solution_i[self.flux_slice]
-            old_distance = self.l1_dissipation(old_flux)
+            # It is possible that the linear solver fails. In this case, we simply
+            # stop the iteration and return the current solution.
+            try:
+                # Keep track of old flux, and old distance
+                old_solution_i = solution_i.copy()
+                old_flux = solution_i[self.flux_slice]
+                old_distance = self.l1_dissipation(old_flux)
 
-            # Assemble linear problem in Newton step
-            tic = time.time()
-            residual_i = self.residual(rhs, solution_i)
-            approx_jacobian = self.jacobian(solution_i)
-            toc = time.time()
-            time_assemble = toc - tic
+                # Assemble linear problem in Newton step
+                tic = time.time()
+                residual_i = self.residual(rhs, solution_i)
+                approx_jacobian = self.jacobian(solution_i)
+                toc = time.time()
+                time_assemble = toc - tic
 
-            # Solve linear system for the update
-            update_i, stats_i = self.linear_solve(
-                approx_jacobian, residual_i, solution_i
-            )
-
-            # Include assembly in statistics
-            stats_i["time_assemble"] = time_assemble
-
-            # Update the solution with the full Netwon step
-            solution_i += update_i
-
-            # Apply Anderson acceleration to flux contribution (the only nonlinear part).
-            # Application to full solution, or just the pressure, lead to divergence,
-            # while application to the flux, results in improved performance.
-            tic = time.time()
-            if self.anderson is not None:
-                solution_i[self.flux_slice] = self.anderson(
-                    solution_i[self.flux_slice],
-                    update_i[self.flux_slice],
-                    iter,
-                )
-            stats_i["time_acceleration"] = time.time() - tic
-
-            # Update discrete W1 distance
-            new_flux = solution_i[self.flux_slice]
-            new_distance = self.l1_dissipation(new_flux)
-
-            # Update increment
-            increment = solution_i - old_solution_i
-
-            # Compute the error and store as part of the convergence history:
-            # 0 - full residual (Newton interpretation)
-            # 1 - flux increment (fixed-point interpretation)
-            # 2 - distance increment (Minimization interpretation)
-
-            # Update convergence history
-            convergence_history["distance"].append(new_distance)
-            convergence_history["residual"].append(np.linalg.norm(residual_i, 2))
-            convergence_history["flux_increment"].append(
-                np.linalg.norm(increment[self.flux_slice], 2)
-            )
-            convergence_history["distance_increment"].append(
-                abs(new_distance - old_distance)
-            )
-            convergence_history["timing"].append(stats_i)
-
-            # Print performance to screen
-            # - distance
-            # - distance increment
-            # - flux increment
-            # - residual
-            if self.verbose:
-                distance_increment = convergence_history["distance_increment"][-1]
-                flux_increment = (
-                    convergence_history["flux_increment"][-1]
-                    / convergence_history["flux_increment"][0]
-                )
-                residual = (
-                    convergence_history["residual"][-1]
-                    / convergence_history["residual"][0]
-                )
-                print(
-                    f"""Iter. {iter} \t| {new_distance:.6e} \t| """
-                    f"""{distance_increment:.6e} \t| {flux_increment:.6e} \t| """
-                    f"""{residual:.6e}"""
+                # Solve linear system for the update
+                update_i, stats_i = self.linear_solve(
+                    approx_jacobian, residual_i, solution_i
                 )
 
-            # Stopping criterion - force one iteration
-            if iter > 1 and (
-                (
-                    # Full residual (Newton interpretation)
-                    convergence_history["residual"][-1]
-                    < tol_residual * convergence_history["residual"][0]
-                    # Flux increment (fixed-point interpretation)
-                    and convergence_history["flux_increment"][-1]
-                    < tol_increment * convergence_history["flux_increment"][0]
-                    # Distance increment (Minimization formulation)
-                    and convergence_history["distance_increment"][-1] < tol_distance
+                # Include assembly in statistics
+                stats_i["time_assemble"] = time_assemble
+
+                # Update the solution with the full Netwon step
+                solution_i += update_i
+
+                # Apply Anderson acceleration to flux contribution (the only nonlinear part).
+                # Application to full solution, or just the pressure, lead to divergence,
+                # while application to the flux, results in improved performance.
+                tic = time.time()
+                if self.anderson is not None:
+                    solution_i[self.flux_slice] = self.anderson(
+                        solution_i[self.flux_slice],
+                        update_i[self.flux_slice],
+                        iter,
+                    )
+                stats_i["time_acceleration"] = time.time() - tic
+
+                # Update discrete W1 distance
+                new_flux = solution_i[self.flux_slice]
+                new_distance = self.l1_dissipation(new_flux)
+
+                # Update increment
+                increment = solution_i - old_solution_i
+
+                # Compute the error and store as part of the convergence history:
+                # 0 - full residual (Newton interpretation)
+                # 1 - flux increment (fixed-point interpretation)
+                # 2 - distance increment (Minimization interpretation)
+
+                # Update convergence history
+                convergence_history["distance"].append(new_distance)
+                convergence_history["residual"].append(np.linalg.norm(residual_i, 2))
+                convergence_history["flux_increment"].append(
+                    np.linalg.norm(increment[self.flux_slice], 2)
                 )
-            ):
+                convergence_history["distance_increment"].append(
+                    abs(new_distance - old_distance)
+                )
+                convergence_history["timing"].append(stats_i)
+
+                # Extract current total run time
+                current_run_time = self._analyze_timings(convergence_history["timing"])[
+                    "total"
+                ]
+                convergence_history["run_time"].append(current_run_time)
+
+                # Print performance to screen
+                # - distance
+                # - distance increment
+                # - flux increment
+                # - residual
+                if self.verbose:
+                    distance_increment = convergence_history["distance_increment"][-1]
+                    flux_increment = (
+                        convergence_history["flux_increment"][-1]
+                        / convergence_history["flux_increment"][0]
+                    )
+                    residual = (
+                        convergence_history["residual"][-1]
+                        / convergence_history["residual"][0]
+                    )
+                    print(
+                        f"""Iter. {iter} \t| {new_distance:.6e} \t| """
+                        f"""{distance_increment:.6e} \t| {flux_increment:.6e} \t| """
+                        f"""{residual:.6e}"""
+                    )
+
+                # Stopping criterion - force one iteration. BAse stopping criterion on
+                # different interpretations of the Newton method:
+                # - Newton interpretation: full residual
+                # - Fixed-point interpretation: flux increment
+                # - Minimization interpretation: distance increment
+                # For default tolerances, the code is prone to overflow. Surpress the
+                # warnings here.
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", message="overflow encountered")
+                    if iter > 1 and (
+                        (
+                            convergence_history["residual"][-1]
+                            < tol_residual * convergence_history["residual"][0]
+                            and convergence_history["flux_increment"][-1]
+                            < tol_increment * convergence_history["flux_increment"][0]
+                            and convergence_history["distance_increment"][-1]
+                            < tol_distance
+                        )
+                    ):
+                        break
+            except Exception:
+                warnings.warn("Newton iteration abruptly stopped due to some error.")
                 break
 
         # Summarize profiling (time in seconds, memory in GB)
-        timings = convergence_history["timing"]
-        total_timings = {
-            "assemble": sum([t["time_assemble"] for t in timings]),
-            "setup": sum([t["time_setup"] for t in timings]),
-            "solve": sum([t["time_solve"] for t in timings]),
-            "acceleration": sum([t["time_acceleration"] for t in timings]),
-        }
-        total_timings["total"] = (
-            total_timings["assemble"]
-            + total_timings["setup"]
-            + total_timings["solve"]
-            + total_timings["acceleration"]
-        )
-
+        total_timings = self._analyze_timings(convergence_history["timing"])
         peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
 
         # Define performance metric
@@ -1460,6 +1496,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             "aux_force_increment": [],
             "distance_increment": [],
             "timing": [],
+            "run_time": [],
         }
 
         # Print header
@@ -1497,133 +1534,149 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         bregman_homogeneous = self.options.get("bregman_homogeneous", False)
 
         for iter in range(num_iter):
-            # (Possibly) update the regularization, based on the current approximation
-            # of the flux - use the inverse of the norm of the flux
-            tic = time.time()
-            update_solver = bregman_update(iter)
-            if update_solver:
-                (
+            # It is possible that the linear solver fails. In this case, we simply
+            # stop the iteration and return the current solution.
+            try:
+                # (Possibly) update the regularization, based on the current approximation
+                # of the flux - use the inverse of the norm of the flux
+                tic = time.time()
+                update_solver = bregman_update(iter)
+                if update_solver:
+                    (
+                        l_scheme_mixed_darcy,
+                        weight,
+                        shrink_factor,
+                    ) = self._update_regularization(old_flux, bregman_homogeneous)
+
+                # 1. Make relaxation step (solve quadratic optimization problem)
+                rhs_i = rhs.copy()
+                rhs_i[self.flux_slice] = weight * self.mass_matrix_faces.dot(
+                    old_aux_flux - old_force
+                )
+                time_assemble = time.time() - tic
+                # Force to update the internally stored linear solver
+                tic = time.time()
+                solution_i, stats_i = self.linear_solve(
                     l_scheme_mixed_darcy,
-                    weight,
-                    shrink_factor,
-                ) = self._update_regularization(old_flux, bregman_homogeneous)
-            time_extra_setup = time.time() - tic
-
-            # 1. Make relaxation step (solve quadratic optimization problem)
-            tic = time.time()
-            rhs_i = rhs.copy()
-            rhs_i[self.flux_slice] = weight * self.mass_matrix_faces.dot(
-                old_aux_flux - old_force
-            )
-            # Force to update the internally stored linear solver
-            solution_i, stats_i = self.linear_solve(
-                l_scheme_mixed_darcy,
-                rhs_i,
-                reuse_solver=not (update_solver) and iter > 0,
-            )
-            new_flux = solution_i[self.flux_slice]
-            stats_i["time_solve"] = time.time() - tic
-            stats_i["time_setup"] += time_extra_setup
-
-            # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
-            # shrinkage operation merely determines the scalar. We still aim at
-            # following along the direction provided by the vectorial fluxes.
-            tic = time.time()
-            new_aux_flux = self._shrink(
-                new_flux + old_force, shrink_factor, self.mobility_mode
-            )
-            stats_i["time_shrink"] = time.time() - tic
-
-            # 3. Update force
-            new_force = old_force + new_flux - new_aux_flux
-
-            # Apply Anderson acceleration to flux contribution (the only nonlinear part).
-            tic = time.time()
-            if self.anderson is not None:
-                aux_inc = new_aux_flux - old_aux_flux
-                force_inc = new_force - old_force
-                inc = np.concatenate([aux_inc, force_inc])
-                iteration = np.concatenate([new_aux_flux, new_force])
-                new_iteration = self.anderson(iteration, inc, iter)
-                new_aux_flux = new_iteration[self.flux_slice]
-                new_force = new_iteration[self.force_slice]
-            stats_i["time_acceleration"] = time.time() - tic
-
-            # Update distance
-            new_distance = self.l1_dissipation(new_flux)
-
-            # Determine the error in the mass conservation equation
-            mass_conservation_residual = (
-                self.div.dot(new_flux) - rhs[self.pressure_slice]
-            )
-
-            # Determine increments
-            aux_increment = new_aux_flux - old_aux_flux
-            force_increment = new_force - old_force
-            distance_increment = new_distance - old_distance
-
-            # Compute the error and store as part of the convergence history:
-            # 0 - aux/force increments (fixed-point formulation)
-            # 1 - distance increment (minimization formulation)
-            # 2 - mass conservation residual (constraint in optimization formulation)
-
-            # Update convergence history
-            convergence_history["distance"].append(new_distance)
-            convergence_history["aux_force_increment"].append(
-                np.linalg.norm(np.concatenate([aux_increment, force_increment]), 2)
-            )
-            convergence_history["distance_increment"].append(abs(distance_increment))
-            convergence_history["mass_conservation_residual"].append(
-                np.linalg.norm(mass_conservation_residual, 2)
-            )
-            convergence_history["timing"].append(stats_i)
-
-            stats_i["time_assemble"] = 0
-
-            # Print status
-            if self.verbose:
-                distance_increment = convergence_history["distance_increment"][-1]
-                aux_force_increment = (
-                    convergence_history["aux_force_increment"][-1]
-                    / convergence_history["aux_force_increment"][0]
+                    rhs_i,
+                    reuse_solver=not (update_solver) and iter > 0,
                 )
-                mass_conservation_residual = convergence_history[
-                    "mass_conservation_residual"
-                ][-1]
-                print(
-                    f"Iter. {iter} \t| {new_distance:.6e} \t| "
-                    ""
-                    f"""{distance_increment:.6e} \t| {aux_force_increment:.6e} \t| """
-                    f"""{mass_conservation_residual:.6e}"""
+                new_flux = solution_i[self.flux_slice]
+                stats_i["time_solve"] = time.time() - tic
+                stats_i["time_assemble"] = time_assemble
+
+                # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
+                # shrinkage operation merely determines the scalar. We still aim at
+                # following along the direction provided by the vectorial fluxes.
+                tic = time.time()
+                new_aux_flux = self._shrink(
+                    new_flux + old_force, shrink_factor, self.mobility_mode
+                )
+                stats_i["time_shrink"] = time.time() - tic
+
+                # 3. Update force
+                new_force = old_force + new_flux - new_aux_flux
+
+                # Apply Anderson acceleration to flux contribution (the only nonlinear part).
+                tic = time.time()
+                if self.anderson is not None:
+                    aux_inc = new_aux_flux - old_aux_flux
+                    force_inc = new_force - old_force
+                    inc = np.concatenate([aux_inc, force_inc])
+                    iteration = np.concatenate([new_aux_flux, new_force])
+                    new_iteration = self.anderson(iteration, inc, iter)
+                    new_aux_flux = new_iteration[self.flux_slice]
+                    new_force = new_iteration[self.force_slice]
+                stats_i["time_acceleration"] = time.time() - tic
+
+                # Update distance
+                new_distance = self.l1_dissipation(new_flux)
+
+                # Determine the error in the mass conservation equation
+                mass_conservation_residual = (
+                    self.div.dot(new_flux) - rhs[self.pressure_slice]
                 )
 
-            # Base stopping citeria on the different interpretations of the split Bregman
-            # method:
-            # - fixed-point formulation: aux flux and force increment
-            # - minimization formulation: distance increment
-            # - constrained optimization formulation: mass conservation residual
-            if iter > 1 and (
-                (
-                    # Aux flux / force increment (fixed-point interpretation)
-                    convergence_history["aux_force_increment"][-1]
-                    < tol_increment * convergence_history["aux_force_increment"][0]
-                    # Distance increment (Minimization formulation)
-                    and convergence_history["distance_increment"][-1] < tol_distance
-                    # Mass conservation residual (constraint in optimization formulation)
-                    and convergence_history["mass_conservation_residual"][-1]
-                    < tol_residual
+                # Determine increments
+                aux_increment = new_aux_flux - old_aux_flux
+                force_increment = new_force - old_force
+                distance_increment = new_distance - old_distance
+
+                # Compute the error and store as part of the convergence history:
+                # 0 - aux/force increments (fixed-point formulation)
+                # 1 - distance increment (minimization formulation)
+                # 2 - mass conservation residual (constraint in optimization formulation)
+
+                # Update convergence history
+                convergence_history["distance"].append(new_distance)
+                convergence_history["aux_force_increment"].append(
+                    np.linalg.norm(np.concatenate([aux_increment, force_increment]), 2)
                 )
-            ):
+                convergence_history["distance_increment"].append(
+                    abs(distance_increment)
+                )
+                convergence_history["mass_conservation_residual"].append(
+                    np.linalg.norm(mass_conservation_residual, 2)
+                )
+                convergence_history["timing"].append(stats_i)
+
+                # Extract current total run time
+                current_run_time = self._analyze_timings(convergence_history["timing"])[
+                    "total"
+                ]
+                convergence_history["run_time"].append(current_run_time)
+
+                # Print status
+                if self.verbose:
+                    distance_increment = convergence_history["distance_increment"][-1]
+                    aux_force_increment = (
+                        convergence_history["aux_force_increment"][-1]
+                        / convergence_history["aux_force_increment"][0]
+                    )
+                    mass_conservation_residual = convergence_history[
+                        "mass_conservation_residual"
+                    ][-1]
+                    print(
+                        f"Iter. {iter} \t| {new_distance:.6e} \t| "
+                        ""
+                        f"""{distance_increment:.6e} \t| {aux_force_increment:.6e} \t| """
+                        f"""{mass_conservation_residual:.6e}"""
+                    )
+
+                # Base stopping citeria on the different interpretations of the split Bregman
+                # method:
+                # - fixed-point formulation: aux flux and force increment
+                # - minimization formulation: distance increment
+                # - constrained optimization formulation: mass conservation residual
+                # For default tolerances, the code is prone to overflow. Surpress the
+                # warnings here.
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", message="overflow encountered")
+                    if iter > 1 and (
+                        (
+                            convergence_history["aux_force_increment"][-1]
+                            < tol_increment
+                            * convergence_history["aux_force_increment"][0]
+                            and convergence_history["distance_increment"][-1]
+                            < tol_distance
+                            and convergence_history["mass_conservation_residual"][-1]
+                            < tol_residual
+                        )
+                    ):
+                        break
+
+                # Update Bregman variables
+                old_flux = new_flux.copy()
+                old_aux_flux = new_aux_flux.copy()
+                old_force = new_force.copy()
+                old_distance = new_distance
+
+            except Exception:
+                warnings.warn("Bregman iteration abruptly stopped due to some error.")
                 break
 
-            # Update Bregman variables
-            old_flux = new_flux.copy()
-            old_aux_flux = new_aux_flux.copy()
-            old_force = new_force.copy()
-            old_distance = new_distance
-
         # Solve for the pressure by solving a single Newton iteration
-        newton_jacobian, _, _ = self._update_regularization(old_flux)
+        newton_jacobian, _, _ = self._update_regularization(new_flux)
         solution_i = np.zeros_like(rhs)
         solution_i[self.flux_slice] = new_flux.copy()
         newton_residual = self.optimality_conditions(rhs, solution_i)
@@ -1633,19 +1686,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         solution_i[self.pressure_slice] = newton_update[self.pressure_slice]
 
         # Summarize profiling (time in seconds, memory in GB)
-        timings = convergence_history["timing"]
-        total_timings = {
-            "assemble": sum([t["time_assemble"] for t in timings]),
-            "setup": sum([t["time_setup"] for t in timings]),
-            "solve": sum([t["time_solve"] for t in timings]),
-            "acceleration": sum([t["time_acceleration"] for t in timings]),
-        }
-        total_timings["total"] = (
-            total_timings["assemble"]
-            + total_timings["setup"]
-            + total_timings["solve"]
-            + total_timings["acceleration"]
-        )
+        total_timings = self._analyze_timings(convergence_history["timing"])
         peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
 
         # Define performance metric
