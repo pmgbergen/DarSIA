@@ -74,7 +74,7 @@ class Resize:
         interpolation_pre = (
             kwargs.get(key + "resize interpolation", None)
             if interpolation is None
-            else None
+            else interpolation
         )
         if interpolation_pre is None:
             self.interpolation = None
