@@ -583,7 +583,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             # Apply numerical integration of RT0 extensions into cells.
             # Underlying functional for mixed finite element method (MFEM).
             quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
-                self.grid.dim, 3
+                self.grid.dim, "max"
             )
 
         elif self.l1_mode == "constant_subcell_projection":
@@ -1216,6 +1216,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             self.darcy_init.copy(), rhs.copy(), solution_i
         )
 
+        # Initialize distance in case below iteration fails
+        new_distance = 0
+
         # Initialize container for storing the convergence history
         convergence_history = {
             "distance": [],
@@ -1492,6 +1495,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         solution_i, _ = self.linear_solve(
             self.darcy_init.copy(), rhs.copy(), solution_i
         )
+
+        # Initialize distance in case below iteration fails
+        new_distance = 0
 
         # Initialize container for storing the convergence history
         convergence_history = {
