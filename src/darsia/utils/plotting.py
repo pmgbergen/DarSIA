@@ -141,27 +141,37 @@ def to_vtk(
         assert image is not None, "At least one data point must be an image."
 
         # Extract grid axes
-        if image.space_dim == 1:
-            x = np.linspace(
-                image.origin[0], image.opposite_corner[0], image.num_voxels[0] + 1
+        dim = image.space_dim
+        indices = [
+            darsia.interpret_indexing(index, "ijk"[:dim])[0] for index in "xyz"[:dim]
+        ]
+        revert = [
+            darsia.interpret_indexing(index, "ijk"[:dim])[1] for index in "xyz"[:dim]
+        ]
+
+        def conditional_flip(x, cond):
+            return np.ascontiguousarray(np.flip(x)) if cond else x
+
+        xyz = [
+            conditional_flip(
+                np.linspace(
+                    image.origin[i],
+                    image.opposite_corner[i],
+                    image.num_voxels[indices[i]] + 1,
+                ),
+                revert[i],
             )
+            for i in range(dim)
+        ]
+        if image.space_dim == 1:
+            x = xyz[0]
             y = np.array([0])
             z = np.array([0])
         elif image.space_dim == 2:
-            y, x = [
-                np.linspace(
-                    image.origin[i], image.opposite_corner[i], image.num_voxels[i] + 1
-                )
-                for i in range(2)
-            ]
+            x, y = xyz
             z = np.array([0])
         elif image.space_dim == 3:
-            z, x, y = [
-                np.linspace(
-                    image.origin[i], image.opposite_corner[i], image.num_voxels[i] + 1
-                )
-                for i in range(3)
-            ]
+            x, y, z = xyz
         target_shape = tuple(
             np.maximum(1, np.array([x.size, y.size, z.size]) - 1).tolist()
         )
