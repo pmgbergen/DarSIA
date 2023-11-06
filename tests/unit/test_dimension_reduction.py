@@ -19,16 +19,16 @@ def test_axis_averaging_x():
     )
 
     averaging_axis = darsia.AxisReduction(axis="x", dim=3, mode="sum")
-    averaging_index = darsia.AxisReduction(axis=2, dim=3, mode="sum")
+    averaging_index = darsia.AxisReduction(axis=1, dim=3, mode="sum")
 
     image_2d_via_axis = averaging_axis(image_3d)
     image_2d_via_index = averaging_index(image_3d)
 
     assert np.allclose(image_2d_via_axis.img, image_2d_via_index.img)
-    assert np.allclose(image_2d_via_axis.img, 5 * np.ones((3, 4)))
+    assert np.allclose(image_2d_via_axis.img, 4 * np.ones((3, 5)))
 
     assert np.allclose(image_2d_via_axis.dimensions, image_2d_via_index.dimensions)
-    assert np.allclose(image_2d_via_axis.dimensions, [2, 3])
+    assert np.allclose(image_2d_via_axis.dimensions, [2, 4])
 
     assert np.allclose(image_2d_via_axis.origin, image_2d_via_index.origin)
     assert np.allclose(image_2d_via_axis.origin, [0, 2])
@@ -46,16 +46,16 @@ def test_axis_averaging_y():
     )
 
     averaging_axis = darsia.AxisReduction(axis="y", dim=3, mode="sum")
-    averaging_index = darsia.AxisReduction(axis=1, dim=3, mode="sum")
+    averaging_index = darsia.AxisReduction(axis=2, dim=3, mode="sum")
 
     image_2d_via_axis = averaging_axis(image_3d)
     image_2d_via_index = averaging_index(image_3d)
 
     assert np.allclose(image_2d_via_axis.img, image_2d_via_index.img)
-    assert np.allclose(image_2d_via_axis.img, 4 * np.ones((3, 5)))
+    assert np.allclose(image_2d_via_axis.img, 5 * np.ones((3, 4)))
 
     assert np.allclose(image_2d_via_axis.dimensions, image_2d_via_index.dimensions)
-    assert np.allclose(image_2d_via_axis.dimensions, [2, 4])
+    assert np.allclose(image_2d_via_axis.dimensions, [2, 3])
 
     assert np.allclose(image_2d_via_axis.origin, image_2d_via_index.origin)
     assert np.allclose(image_2d_via_axis.origin, [0, 2])
@@ -104,16 +104,16 @@ def test_axis_averaging_series_x():
     )
 
     averaging_axis = darsia.AxisReduction(axis="x", dim=3, mode="sum")
-    averaging_index = darsia.AxisReduction(axis=2, dim=3, mode="sum")
+    averaging_index = darsia.AxisReduction(axis=1, dim=3, mode="sum")
 
     image_2d_via_axis = averaging_axis(image_3d)
     image_2d_via_index = averaging_index(image_3d)
 
     assert np.allclose(image_2d_via_axis.img, image_2d_via_index.img)
-    assert np.allclose(image_2d_via_axis.img, 5 * np.ones((3, 4, 6)))
+    assert np.allclose(image_2d_via_axis.img, 4 * np.ones((3, 5, 6)))
 
     assert np.allclose(image_2d_via_axis.dimensions, image_2d_via_index.dimensions)
-    assert np.allclose(image_2d_via_axis.dimensions, [2, 3])
+    assert np.allclose(image_2d_via_axis.dimensions, [2, 4])
 
     assert np.allclose(image_2d_via_axis.origin, image_2d_via_index.origin)
     assert np.allclose(image_2d_via_axis.origin, [0, 2])
