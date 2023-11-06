@@ -188,14 +188,14 @@ def to_vtk(
 
             # Convert to cartesian indexing
             if is_scalar:
-                img = np.ascontiguousarray(
+                img = np.asfortranarray(
                     darsia.matrixToCartesianIndexing(img, image.space_dim).reshape(
                         target_shape, order="F"
                     )
                 )
             else:
                 img = [
-                    np.ascontiguousarray(
+                    np.asfortranarray(
                         darsia.matrixToCartesianIndexing(
                             img[..., i], image.space_dim
                         ).reshape(target_shape, order="F")
@@ -209,9 +209,9 @@ def to_vtk(
                 if image.space_dim == 1:
                     img = tuple(img)
                 elif image.space_dim == 2:
-                    img = (img[1], img[0], img[2])
+                    img = (-img[1], img[0], img[2])
                 elif image.space_dim == 3:
-                    img = (img[1], img[2], img[0])
+                    img = (-img[1], img[2], img[0])
             cellData[name] = img
 
         # Make directory if necessary
