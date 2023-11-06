@@ -165,17 +165,17 @@ def interpret_indexing(axis: str, indexing: str) -> tuple[int, bool]:
         elif axis == "i":
             return 2, True
         elif axis == "j":
-            return 1, False
+            return 0, False
         elif axis == "k":
-            return 0, True
+            return 1, True
 
     # ! ---- 3D matrix indexing
 
     elif indexing == "ijk":
         if axis == "x":
-            return 2, True
-        elif axis == "y":
             return 1, False
+        elif axis == "y":
+            return 2, True
         elif axis == "z":
             return 0, True
         elif axis == "i":
@@ -217,7 +217,7 @@ def matrixToCartesianIndexing(img: np.ndarray, dim: int = 2) -> np.ndarray:
         # Flip the orientation of the 2nd axis, such that later y=0 corresonds to the bottom.
         img = np.flip(img, 1)
     elif dim == 3:
-        # Need to convert from z,x,y to x,y,z and flip the z-axis and y-axis.
+        # Need to convert from i,j,k to x,y,z and flip the z-axis and x-axis.
         img = np.swapaxes(img, 0, 2)
         img = np.swapaxes(img, 0, 1)
         img = np.flip(img, 1)
