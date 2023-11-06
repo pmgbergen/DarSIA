@@ -345,9 +345,11 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
         # Define AMG solver
         self.setup_amg_options()
-        self.linear_solver = pyamg.smoothed_aggregation_solver(
-            matrix, **self.amg_options
-        )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Implicit conversion of A to CSR")
+            self.linear_solver = pyamg.smoothed_aggregation_solver(
+                matrix, **self.amg_options
+            )
 
         # Define solver options
         linear_solver_options = self.options.get("linear_solver_options", {})
@@ -378,9 +380,11 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Define AMG preconditioner
         self.setup_amg_options()
-        amg = pyamg.smoothed_aggregation_solver(
-            matrix, **self.amg_options
-        ).aspreconditioner(cycle="V")
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Implicit conversion of A to CSR")
+            amg = pyamg.smoothed_aggregation_solver(
+                matrix, **self.amg_options
+            ).aspreconditioner(cycle="V")
 
         # Define solver options
         linear_solver_options = self.options.get("linear_solver_options", {})
