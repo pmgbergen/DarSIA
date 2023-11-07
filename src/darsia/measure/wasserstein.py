@@ -1404,14 +1404,17 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         shrink_factor: Union[float, np.ndarray],
         mode: str = "cell_based",
     ) -> np.ndarray:
-        """Shrink operation in the split Bregman method.
+        """Shrink operation in the split Bregman method, operating on fluxes.
 
-        Operation on fluxes.
+        To comply with the RT0 setting, the shrinkage operation merely determines the
+        scalar. We still aim at following along the direction provided by the vectorial
+        fluxes.
 
         Args:
             flat_flux (np.ndarray): flux
             shrink_factor (float or np.ndarray): shrink factor
-            mode (str, optional): mode of the shrink operation. Defaults to "cell_arithmetic".
+            mode (str, optional): mode of the shrink operation. Defaults to
+                "cell_based".
 
         Returns:
             np.ndarray: shrunk fluxes
@@ -1549,43 +1552,68 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             try:
                 # (Possibly) update the regularization, based on the current approximation
                 # of the flux - use the inverse of the norm of the flux
-                tic = time.time()
                 update_solver = bregman_update(iter)
                 if update_solver:
+                    # 0. Update regularization
+                    tic = time.time()
                     (
                         l_scheme_mixed_darcy,
                         weight,
                         shrink_factor,
                     ) = self._update_regularization(old_flux, bregman_homogeneous)
+                    # 1. Make relaxation step (solve quadratic optimization problem)
+                    # Here, re-initialize the aux flux and force with zero values again.
+                    rhs_i = rhs.copy()
+                    time_assemble = time.time() - tic
+                    # Force to update the internally stored linear solver
+                    tic = time.time()
+                    solution_i, stats_i = self.linear_solve(
+                        l_scheme_mixed_darcy,
+                        rhs_i,
+                        reuse_solver=False,
+                    )
+                    new_flux = solution_i[self.flux_slice]
+                    stats_i["time_solve"] = time.time() - tic
+                    stats_i["time_assemble"] = time_assemble
 
-                # 1. Make relaxation step (solve quadratic optimization problem)
-                rhs_i = rhs.copy()
-                rhs_i[self.flux_slice] = weight * self.mass_matrix_faces.dot(
-                    old_aux_flux - old_force
-                )
-                time_assemble = time.time() - tic
-                # Force to update the internally stored linear solver
-                tic = time.time()
-                solution_i, stats_i = self.linear_solve(
-                    l_scheme_mixed_darcy,
-                    rhs_i,
-                    reuse_solver=not (update_solver) and iter > 0,
-                )
-                new_flux = solution_i[self.flux_slice]
-                stats_i["time_solve"] = time.time() - tic
-                stats_i["time_assemble"] = time_assemble
+                    # 2. Shrink step for vectorial fluxes.
+                    tic = time.time()
+                    new_aux_flux = self._shrink(
+                        new_flux, shrink_factor, self.mobility_mode
+                    )
+                    stats_i["time_shrink"] = time.time() - tic
 
-                # 2. Shrink step for vectorial fluxes. To comply with the RT0 setting, the
-                # shrinkage operation merely determines the scalar. We still aim at
-                # following along the direction provided by the vectorial fluxes.
-                tic = time.time()
-                new_aux_flux = self._shrink(
-                    new_flux + old_force, shrink_factor, self.mobility_mode
-                )
-                stats_i["time_shrink"] = time.time() - tic
+                    # 3. Update force
+                    new_force = new_flux - new_aux_flux
 
-                # 3. Update force
-                new_force = old_force + new_flux - new_aux_flux
+                else:
+                    # 1. Make relaxation step (solve quadratic optimization problem)
+                    tic = time.time()
+                    rhs_i = rhs.copy()
+                    rhs_i[self.flux_slice] = weight * self.mass_matrix_faces.dot(
+                        old_aux_flux - old_force
+                    )
+                    time_assemble = time.time() - tic
+                    # Force to update the internally stored linear solver
+                    tic = time.time()
+                    solution_i, stats_i = self.linear_solve(
+                        l_scheme_mixed_darcy,
+                        rhs_i,
+                        reuse_solver=iter > 0,
+                    )
+                    new_flux = solution_i[self.flux_slice]
+                    stats_i["time_solve"] = time.time() - tic
+                    stats_i["time_assemble"] = time_assemble
+
+                    # 2. Shrink step for vectorial fluxes.
+                    tic = time.time()
+                    new_aux_flux = self._shrink(
+                        new_flux + old_force, shrink_factor, self.mobility_mode
+                    )
+                    stats_i["time_shrink"] = time.time() - tic
+
+                    # 3. Update force
+                    new_force = old_force + new_flux - new_aux_flux
 
                 # Apply Anderson acceleration to flux contribution (the only nonlinear part).
                 tic = time.time()
