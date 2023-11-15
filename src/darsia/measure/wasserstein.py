@@ -268,6 +268,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             "direct",
             "amg",
             "cg",
+            "ksp"
         ], f"Linear solver {self.linear_solver_type} not supported."
         assert self.formulation in [
             "full",
@@ -397,6 +398,33 @@ class VariationalWassersteinDistance(darsia.EMD):
         }
         """dict: options for the iterative linear solver"""
 
+    def setup_ksp_solver(self, matrix: sps.csc_matrix) -> None:
+        """Setup an KSP solver from PETSc for the given matrix.
+
+        Args:
+            matrix (sps.csc_matrix): matrix
+
+        Defines:
+            pyamg.amg_core.solve: AMG solver
+            dict: options for the AMG solver
+
+        """
+        # Define CG solver
+        self.linear_solver = darsia.linalg.KSP(matrix)
+
+        # Define solver options
+        linear_solver_options = self.options.get("linear_solver_options", {})
+        tol = linear_solver_options.get("tol", 1e-6)
+        maxiter = linear_solver_options.get("maxiter", 100)
+        self.solver_options = {
+            'ksp_rtol': tol,
+            'ksp_maxit': maxiter,
+            'pc_type': 'hypre',
+        }
+        self.linear_solver.setup(self.solver_options)
+        """dict: options for the iterative linear solver"""
+        
+        
     def setup_eliminate_flux(self) -> None:
         """Setup the infrastructure for reduced systems through Gauss elimination.
 
@@ -829,6 +857,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                     self.setup_amg_solver(self.reduced_matrix)
                 elif self.linear_solver_type == "cg":
                     self.setup_cg_solver(self.reduced_matrix)
+                
 
             # Stop timer to measure setup time
             time_setup = time.time() - tic
@@ -899,6 +928,11 @@ class VariationalWassersteinDistance(darsia.EMD):
 
                 elif self.linear_solver_type == "cg":
                     self.setup_cg_solver(self.fully_reduced_matrix)
+                
+                elif self.linear_solver_type == "ksp":
+                    self.setup_ksp_solver(self.fully_reduced_matrix)
+
+                
 
             # Stop timer to measure setup time
             time_setup = time.time() - tic
@@ -1757,7 +1791,6 @@ def wasserstein_distance(
 
     """
     # Define method for computing 1-Wasserstein distance
-
     if method.lower() in ["newton", "bregman"]:
         # Use Finite Volume Iterative Method (Newton or Bregman)
 
