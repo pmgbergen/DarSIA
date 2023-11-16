@@ -268,7 +268,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             "direct",
             "amg",
             "cg",
-            "ksp"
+            "ksp",
         ], f"Linear solver {self.linear_solver_type} not supported."
         assert self.formulation in [
             "full",
@@ -417,14 +417,13 @@ class VariationalWassersteinDistance(darsia.EMD):
         tol = linear_solver_options.get("tol", 1e-6)
         maxiter = linear_solver_options.get("maxiter", 100)
         self.solver_options = {
-            'ksp_rtol': tol,
-            'ksp_maxit': maxiter,
-            'pc_type': 'hypre',
+            "ksp_rtol": tol,
+            "ksp_maxit": maxiter,
+            "pc_type": "hypre",
         }
         self.linear_solver.setup(self.solver_options)
         """dict: options for the iterative linear solver"""
-        
-        
+
     def setup_eliminate_flux(self) -> None:
         """Setup the infrastructure for reduced systems through Gauss elimination.
 
@@ -857,7 +856,6 @@ class VariationalWassersteinDistance(darsia.EMD):
                     self.setup_amg_solver(self.reduced_matrix)
                 elif self.linear_solver_type == "cg":
                     self.setup_cg_solver(self.reduced_matrix)
-                
 
             # Stop timer to measure setup time
             time_setup = time.time() - tic
@@ -928,11 +926,9 @@ class VariationalWassersteinDistance(darsia.EMD):
 
                 elif self.linear_solver_type == "cg":
                     self.setup_cg_solver(self.fully_reduced_matrix)
-                
+
                 elif self.linear_solver_type == "ksp":
                     self.setup_ksp_solver(self.fully_reduced_matrix)
-
-                
 
             # Stop timer to measure setup time
             time_setup = time.time() - tic

@@ -152,7 +152,7 @@ def test_newton(a_key, s_key, dim):
     options.update(newton_options)
     options.update(accelerations[a_key])
     options.update(solvers[s_key])
-    options.update({'formulation': 'pressure'})
+    options.update({"formulation": "pressure"})
     distance, info = darsia.wasserstein_distance(
         src_image[dim],
         dst_image[dim],
@@ -162,7 +162,7 @@ def test_newton(a_key, s_key, dim):
     assert np.isclose(distance, true_distance[dim], atol=1e-5)
     assert info["converged"]
 
-       
+
 @pytest.mark.parametrize("a_key", range(len(accelerations)))
 @pytest.mark.parametrize("s_key", range(len(solvers)))
 @pytest.mark.parametrize("dim", [2, 3])
@@ -171,7 +171,7 @@ def test_std_bregman(a_key, s_key, dim):
     options.update(bregman_std_options)
     options.update(accelerations[a_key])
     options.update(solvers[s_key])
-    options.update({'formulation': 'pressure'})
+    options.update({"formulation": "pressure"})
     distance, info = darsia.wasserstein_distance(
         src_image[dim],
         dst_image[dim],
@@ -190,7 +190,7 @@ def test_adaptive_bregman(a_key, s_key, dim):
     options.update(bregman_adaptive_options)
     options.update(accelerations[a_key])
     options.update(solvers[s_key])
-    options.update({'formulation': 'pressure'})
+    options.update({"formulation": "pressure"})
     distance, info = darsia.wasserstein_distance(
         src_image[dim],
         dst_image[dim],
