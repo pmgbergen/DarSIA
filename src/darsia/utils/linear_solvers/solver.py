@@ -58,12 +58,15 @@ class Solver:
         )
 
     @abc.abstractmethod
-    def __call__(self, x0: np.ndarray, rhs: np.ndarray) -> np.ndarray:
+    def __call__(
+        self, x0: np.ndarray, rhs: np.ndarray, h: Optional[Union[float, list]] = None
+    ) -> np.ndarray:
         """Main method of the solver - run the solver.
 
         Args:
             x0 (np.ndarray): initial guess
             rhs (np.ndarray): right hand side
+            h (float or list, optional): voxel size
 
         Returns:
             np.ndarray: solution

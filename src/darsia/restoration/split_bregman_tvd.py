@@ -11,8 +11,8 @@ import darsia as da
 
 
 def split_bregman_tvd(
-    img: np.ndarray,
-    mu: Union[float, np.ndarray] = 1.0,
+    img: Union[np.ndarray, da.Image],
+    mu: Union[float, np.ndarray, list] = 1.0,
     omega: Union[float, np.ndarray] = 1.0,
     ell: Optional[Union[float, np.ndarray]] = None,
     dim: int = 2,
@@ -31,8 +31,10 @@ def split_bregman_tvd(
     shrinkage step. The regularization term is weighted by the parameter ell.
 
     Args:
-        img (array): image array
-        mu (float or array): TV penalization parameter
+        img (array, da.Image): image
+        mu (float or array or list): inverse TV penalization parameter, if list
+            it must have the lenght of the dimension and each entry corresponds
+            to the penalization in the respective direction.
         omega (float or array): mass penalization parameter
         ell (float or array): regularization parameter
         dim (int): spatial dimension of the image
@@ -48,16 +50,26 @@ def split_bregman_tvd(
         array: denoised image
 
     """
+
     # Keep track of input type and convert input image to float for further calculations
     img_dtype = img.dtype
 
     # Store input image and its norm for convergence check
     img_nrm = np.linalg.norm(img)
 
+    # Controll that mu has correct length if its a list
+    if isinstance(mu, list):
+        assert len(mu) == dim, "mu must be a list of length dim"
+
     # Feed the solver with parameters, follow the suggestion to use double the weight
-    # for the diffusion coefficient if no value is provided.
+    # for the mass coefficient if no value is provided.
     if ell is None:
-        ell = 2 * mu
+        if isinstance(omega, float):
+            ell = 2 * omega
+        elif isinstance(omega, np.ndarray):
+            ell = 2 * omega.copy()
+            ell[ell == 0] = 1
+
     solver.update_params(
         mass_coeff=omega,
         diffusion_coeff=ell,
@@ -66,12 +78,20 @@ def split_bregman_tvd(
 
     # Define energy functional for verbose
     def _functional(x: np.ndarray) -> float:
-        return 0.5 * np.linalg.norm(omega * (x - img)) ** 2 + sum(
-            [
-                np.sum(np.abs(mu * da.backward_diff(img=x, axis=j, dim=dim)))
-                for j in range(dim)
-            ]
-        )
+        if isinstance(mu, list):
+            return 0.5 * np.linalg.norm(omega * (x - img)) ** 2 + sum(
+                [
+                    np.sum(np.abs(mu[j] * da.backward_diff(img=x, axis=j, dim=dim)))
+                    for j in range(dim)
+                ]
+            )
+        else:
+            return 0.5 * np.linalg.norm(omega * (x - img)) ** 2 + sum(
+                [
+                    np.sum(np.abs(mu * da.backward_diff(img=x, axis=j, dim=dim)))
+                    for j in range(dim)
+                ]
+            )
 
     # Define shrinkage operator (shrinks element-wise by k)
     def _shrink(x: np.ndarray, k: Union[float, np.ndarray]) -> np.ndarray:
@@ -86,7 +106,7 @@ def split_bregman_tvd(
             ]
         )
 
-    # Define initial guess if provided, otherwise start with input image and allovate
+    # Define initial guess if provided, otherwise start with input image and allocate
     # zero arrays for the split Bregman variables.
     if x0 is not None:
         img0, d0, b0 = x0
@@ -115,6 +135,11 @@ def split_bregman_tvd(
             shrinkage_factor = np.maximum(s - mu / ell, 0) / (s + 1e-18)
             d = dub * shrinkage_factor[..., None]
             b = dub - d
+        elif isinstance(mu, list):
+            for j in range(dim):
+                dub = da.backward_diff(img=img_new, axis=j, dim=dim) + b[..., j]
+                d[..., j] = _shrink(dub, mu[j] / ell)
+                b[..., j] = dub - d[..., j]
         else:
             for j in range(dim):
                 dub = da.backward_diff(img=img_new, axis=j, dim=dim) + b[..., j]
@@ -123,15 +148,16 @@ def split_bregman_tvd(
 
         # Monitor performance
         relative_increment = np.linalg.norm(img_new - img_iter) / img_nrm
-        if verbose if isinstance(verbose, bool) else iter % verbose == 0:
-            print(
-                f"""Split Bregman iteration {iter} - """
-                f"""relative increment: {relative_increment}, """
-                f"""energy functional: {_functional(img_iter)}"""
-            )
 
         # Update of result
         img_iter = img_new.copy()
+
+        if verbose if isinstance(verbose, bool) else iter % verbose == 0:
+            print(
+                f"""Split Bregman iteration {iter} - """
+                f"""relative increment: {round(relative_increment,5)}, """
+                f"""energy functional: {_functional(img_iter)}"""
+            )
 
         # Convergence check
         if eps is not None:

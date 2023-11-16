@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import scipy.sparse as sps
@@ -14,7 +14,7 @@ class CG(da.Solver):
     """
 
     def __call__(
-        self, x0: np.ndarray, rhs: np.ndarray, h: Optional[float] = None
+        self, x0: np.ndarray, rhs: np.ndarray, h: Optional[Union[float, list]] = None
     ) -> np.ndarray:
         """Solve the problem.
 
