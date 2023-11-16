@@ -76,11 +76,14 @@ class BaseAssistant(ABC):
         else:
             raise NotImplementedError
 
-    def _plot_2d(self) -> None:
+    def _setup_plot_2d(
+        self, img: darsia.Image, new_figure: bool = True, alpha: float = 1.0
+    ) -> None:
         """Plot in 2d with interactive event handler."""
 
         # Setup figure
-        self.fig, self.ax = plt.subplots(1, 1)
+        if new_figure:
+            self.fig, self.ax = plt.subplots(1, 1)
 
         # Setup event handler
         self._setup_event_handler()
@@ -90,21 +93,22 @@ class BaseAssistant(ABC):
 
         # Plot the entire 2d image in plain mode. Only works for scalar and optical
         # images.
-        assert self.img.scalar or self.img.range_num in [1, 3]
-        assert not self.img.series
+        assert img.scalar or img.range_num in [1, 3]
+        assert not img.series
 
         # Extract physical coordinates of corners
         if self.use_coordinates:
-            origin = self.img.origin
-            opposite_corner = self.img.opposite_corner
+            origin = img.origin
+            opposite_corner = img.opposite_corner
 
             # Plot
             self.ax.imshow(
-                skimage.img_as_float(self.img.img),
+                skimage.img_as_float(img.img),
                 extent=(origin[0], opposite_corner[0], opposite_corner[1], origin[1]),
+                alpha=alpha,
             )
         else:
-            self.ax.imshow(skimage.img_as_float(self.img.img))
+            self.ax.imshow(skimage.img_as_float(img.img), alpha=alpha)
         plot_grid = self.kwargs.get("plot_grid", False)
         if plot_grid:
             self.ax.grid()
@@ -112,6 +116,9 @@ class BaseAssistant(ABC):
         self.ax.set_ylabel("y-axis")
         self.ax.set_aspect("equal")
 
+    def _plot_2d(self) -> None:
+        """Plot in 2d with interactive event handler."""
+        self._setup_plot_2d(self.img)
         plt.show(block=True)
 
     def _plot_3d(self) -> None:
