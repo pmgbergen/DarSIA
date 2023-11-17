@@ -78,6 +78,3 @@ from darsia.assistants.box_selection_assistant import *
 from darsia.assistants.rotation_correction_assistant import *
 from darsia.assistants.subregion_assistant import *
 from darsia.assistants.crop_assistant import *
-from darsia.assistants.segmentation_assistant import *
-
-# from darsia.assistants.curvature_correction_assistant import *
