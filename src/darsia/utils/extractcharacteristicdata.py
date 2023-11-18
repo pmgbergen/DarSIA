@@ -73,9 +73,9 @@ def extract_characteristic_data(
         )
         index = np.unravel_index(H.argmax(), H.shape)
         col = [
-            (edges[0][index[0]] + edges[0][index[0] + 1]) / 2,
-            (edges[1][index[1]] + edges[1][index[1] + 1]) / 2,
-            (edges[2][index[2]] + edges[2][index[2] + 1]) / 2,
+            edges[0][index[0]],
+            edges[1][index[1]],
+            edges[2][index[2]],
         ]
         colours[i] = col
 
