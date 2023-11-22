@@ -34,11 +34,13 @@ class PointSelectionAssistant(darsia.BaseAssistant):
         """Call the assistant."""
 
         if not self.finalized:
+            # Select points
             self._reset()
             super().__call__()
 
-            # Print information about the assistant
-            self._print_info()
+            # Print selected points
+            if self.verbosity:
+                self._print_info()
 
         # Close the figure opened by the base class
         plt.close(self.fig)
