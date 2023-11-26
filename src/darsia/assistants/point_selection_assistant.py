@@ -105,7 +105,7 @@ class PointSelectionAssistant(darsia.BaseAssistant):
         if state == "":
             # Fetch the physical coordinates in 2d plane and interpret 2d point in
             # three dimensions
-            if event.button == 1:
+            if event.button == 1 and event.inaxes is not None:
                 # Add point to subregion (in 2d)
                 self.pts.append([event.xdata, event.ydata])
 
