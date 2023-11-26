@@ -42,7 +42,7 @@ class BaseAssistant(ABC):
         """Flag controlling whether figure is blocking."""
 
         if self.img.space_dim == 2:
-            self.plot_grid = kwargs.get("plot_grid", True)
+            self.plot_grid = kwargs.get("plot_grid", False)
             """Flag controlling whether grid is plotted (in 2d)."""
         elif self.img.space_dim == 3:
             self.threshold = kwargs.get("threshold")
