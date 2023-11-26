@@ -1,7 +1,6 @@
 """"Labels assistant built from modules."""
 
-from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
