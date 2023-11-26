@@ -11,12 +11,16 @@ import darsia
 
 class PointSelectionAssistant(darsia.BaseAssistant):
     def __init__(self, img: darsia.Image, **kwargs) -> None:
+        if img is None:
+            img = kwargs.get("background")
+            assert img is not None, "No image provided."
+
         # Only continue for 2d images
         assert img.space_dim == 2, "Only 2d images are supported."
 
         # Set name for titles in plots
-        self.name = "Point selection assistant"
-        """Name of assistant."""
+        self.name = kwargs.get("name", "Point selection assistant")
+        """Name of assistant / short version of instructions."""
 
         super().__init__(img, use_coordinates=False, **kwargs)
 
