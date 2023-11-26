@@ -38,7 +38,7 @@ class BaseAssistant(ABC):
             elif self.img.space_dim == 3:
                 self.ax = self.fig.subplots(1, 3)
                 self.fig.suptitle(f"{self.name} -- 2d side views")
-        self.block = kwargs.get("block", False)
+        self.block = kwargs.get("block", True)
         """Flag controlling whether figure is blocking."""
 
         if self.img.space_dim == 2:
@@ -65,7 +65,7 @@ class BaseAssistant(ABC):
 
     def _print_event(self, event) -> None:
         if self.verbosity:
-            print(f"Base assistant event: {event}")
+            print(f"{self.name} - event: {event}")
 
     def _setup_event_handler(self) -> None:
         """Setup event handler."""
@@ -94,9 +94,10 @@ class BaseAssistant(ABC):
             # Quit
             plt.close(self.fig)
 
-    @abstractmethod  # TODO rm tag ???
     def __call__(self) -> Any:
         """Call the assistant."""
+        # Setup event handler
+        self._setup_event_handler()
         if self.img.space_dim == 2:
             self._plot_2d()
         elif self.img.space_dim == 3:
@@ -104,18 +105,19 @@ class BaseAssistant(ABC):
 
     def _plot_2d(self) -> None:
         """Plot in 2d with interactive event handler."""
-        if self.background is None:
+        if self.img is not None and self.background is None:
             self._setup_plot_2d(self.img)
-        else:
+        elif self.img is None and self.background is not None:
+            self._setup_plot_2d(self.background)
+        elif self.img is not None and self.background is not None:
             self._setup_plot_2d(self.background, alpha=0.7)
             self._setup_plot_2d(self.img, alpha=0.3)
+        else:
+            raise ValueError("Either img or background must be provided.")
         plt.show(block=self.block)
 
     def _setup_plot_2d(self, img: darsia.Image, alpha: float = 1.0) -> None:
         """Plot in 2d with interactive event handler."""
-
-        # Setup event handler
-        self._setup_event_handler()
 
         # Plot the entire 2d image in plain mode. Only works for scalar and optical
         # images.
@@ -146,9 +148,6 @@ class BaseAssistant(ABC):
 
     def _plot_3d(self) -> None:
         """Side view with interactive event handler."""
-
-        # Setup event handler
-        self._setup_event_handler()
 
         # Print instructions
         self._print_instructions()
@@ -298,4 +297,4 @@ class BaseAssistant(ABC):
         self.ax[2].set_ylabel("z-axis")
         self.ax[2].set_aspect("equal")
 
-        plt.show(block=True)
+        plt.show(block=self.block)
