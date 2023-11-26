@@ -11,21 +11,19 @@ import darsia
 
 class PointSelectionAssistant(darsia.BaseAssistant):
     def __init__(self, img: darsia.Image, **kwargs) -> None:
-        super().__init__(img, use_coordinates=False, **kwargs)
-
         # Only continue for 2d images
-        assert self.img.space_dim == 2, "Only 2d images are supported."
-
-        # Initialize containers
-        self._reset()
+        assert img.space_dim == 2, "Only 2d images are supported."
 
         # Set name for titles in plots
         self.name = "Point selection assistant"
         """Name of assistant."""
 
-        # Prepare output
+        super().__init__(img, use_coordinates=False, **kwargs)
+
+        # Initialize containers
         self.pts = None
         """Selected points."""
+        self._reset()
 
         # Output mode
         self.array_output = kwargs.get("to_array", True)
@@ -155,5 +153,5 @@ class PointSelectionAssistant(darsia.BaseAssistant):
 
         self.finalized = True
 
-        # Next round.
+        # Next round - needed to close the figure
         self.__call__()
