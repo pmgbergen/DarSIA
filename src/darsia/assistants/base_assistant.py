@@ -1,7 +1,7 @@
 """Module containing the base assistant class."""
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,19 +14,49 @@ class BaseAssistant(ABC):
     """Matplotlib based interactive assistant."""
 
     def __init__(self, img: darsia.Image, **kwargs) -> None:
+        # Image(s)
         self.img = img
         """Image to be analyzed."""
         assert not self.img.series, "Image series not supported."
-        self.kwargs = kwargs
-        """Keyword arguments."""
-        self.verbosity = kwargs.get("verbosity", False)
-        """Flag controlling verbosity."""
-        self.fig = None
+        assert self.img.space_dim in [2, 3], "Only 2d and 3d images supported."
+        self.background: Optional[darsia.Image] = kwargs.get("background")
+        """Background image for plotting."""
+
+        # Figure options - Generate new figure and axes if not provided
+        self.fig = kwargs.get("fig")
         """Figure for analysis."""
-        self.ax = None
+        self.ax = kwargs.get("ax")
         """Axes for analysis."""
+        assert (self.fig is None) == (
+            self.ax is None
+        ), "Both fig and ax must be None or not None."
+        if self.fig is None and self.ax is None:
+            self.fig = plt.figure()  # self.name)
+            if self.img.space_dim == 2:
+                self.ax = self.fig.subplots(1, 1)
+                self.fig.suptitle(self.name)
+            elif self.img.space_dim == 3:
+                self.ax = self.fig.subplots(1, 3)
+                self.fig.suptitle(f"{self.name} -- 2d side views")
+        self.block = kwargs.get("block", False)
+        """Flag controlling whether figure is blocking."""
+
+        if self.img.space_dim == 2:
+            self.plot_grid = kwargs.get("plot_grid", True)
+            """Flag controlling whether grid is plotted (in 2d)."""
+        elif self.img.space_dim == 3:
+            self.threshold = kwargs.get("threshold")
+            """Threshold for active voxels (in 3d)."""
+            self.relative = kwargs.get("relative", False)
+            """Flag controlling whether threshold is relative (in 3d)."""
+            self.scaling = kwargs.get("scaling", 1)
+            """Scaling of points (in 3d)."""
+            self.scatter = kwargs.get("scatter", True)
+            """Flag controlling whether scatter plot is used (in 3d)."""
         self.use_coordinates = kwargs.get("use_coordinates", False)
         """Flag controlling whether plots use physical coordinates."""
+        self.verbosity = kwargs.get("verbosity", False)
+        """Flag controlling verbosity."""
 
     @abstractmethod
     def _print_instructions() -> None:
@@ -35,7 +65,7 @@ class BaseAssistant(ABC):
 
     def _print_event(self, event) -> None:
         if self.verbosity:
-            print(event)
+            print(f"Base assistant event: {event}")
 
     def _setup_event_handler(self) -> None:
         """Setup event handler."""
@@ -64,32 +94,28 @@ class BaseAssistant(ABC):
             # Quit
             plt.close(self.fig)
 
-    @abstractmethod
+    @abstractmethod  # TODO rm tag ???
     def __call__(self) -> Any:
         """Call the assistant."""
-        if self.fig is not None:
-            plt.close(self.fig)
         if self.img.space_dim == 2:
             self._plot_2d()
         elif self.img.space_dim == 3:
             self._plot_3d()
-        else:
-            raise NotImplementedError
 
-    def _setup_plot_2d(
-        self, img: darsia.Image, new_figure: bool = True, alpha: float = 1.0
-    ) -> None:
+    def _plot_2d(self) -> None:
         """Plot in 2d with interactive event handler."""
+        if self.background is None:
+            self._setup_plot_2d(self.img)
+        else:
+            self._setup_plot_2d(self.background, alpha=0.7)
+            self._setup_plot_2d(self.img, alpha=0.3)
+        plt.show(block=self.block)
 
-        # Setup figure
-        if new_figure:
-            self.fig, self.ax = plt.subplots(1, 1)
+    def _setup_plot_2d(self, img: darsia.Image, alpha: float = 1.0) -> None:
+        """Plot in 2d with interactive event handler."""
 
         # Setup event handler
         self._setup_event_handler()
-
-        # Print instructions
-        self._print_instructions()
 
         # Plot the entire 2d image in plain mode. Only works for scalar and optical
         # images.
@@ -109,24 +135,17 @@ class BaseAssistant(ABC):
             )
         else:
             self.ax.imshow(skimage.img_as_float(img.img), alpha=alpha)
-        plot_grid = self.kwargs.get("plot_grid", False)
+
+        # Plot grid
+        plot_grid = self.plot_grid
         if plot_grid:
             self.ax.grid()
         self.ax.set_xlabel("x-axis")
         self.ax.set_ylabel("y-axis")
         self.ax.set_aspect("equal")
 
-    def _plot_2d(self) -> None:
-        """Plot in 2d with interactive event handler."""
-        self._setup_plot_2d(self.img)
-        plt.show(block=True)
-
     def _plot_3d(self) -> None:
         """Side view with interactive event handler."""
-
-        # Setup figure
-        self.fig, self.ax = plt.subplots(1, 3)
-        self.fig.suptitle("2d side views")
 
         # Setup event handler
         self._setup_event_handler()
@@ -147,9 +166,12 @@ class BaseAssistant(ABC):
         flat_array = array.reshape((1, -1))[0]
 
         # Restrict to active voxels
-        threshold = self.kwargs.get("threshold", np.min(self.img.img))
-        relative = self.kwargs.get("relative", False)
-        if relative:
+        threshold = (
+            self.threshold if self.threshold is not None else np.min(self.img.img)
+        )
+        # relative = self.relative
+
+        if self.relative:
             threshold = threshold * np.max(self.img.img)
         active = flat_array > threshold
 
@@ -165,15 +187,11 @@ class BaseAssistant(ABC):
             0,
             1,
         )
-        scaling = self.kwargs.get("scaling", 1)
-        s = scaling * alpha
-
-        # Plotting style
-        scatter = self.kwargs.get("scatter", True)
+        s = self.scaling * alpha
 
         # xy-plane
         self.ax[0].set_title(self.name + " - x-y plane")
-        if scatter:
+        if self.scatter:
             self.ax[0].scatter(
                 coordinates[active, 0],
                 coordinates[active, 1],
@@ -210,7 +228,7 @@ class BaseAssistant(ABC):
 
         # xz-plane
         self.ax[1].set_title(self.name + " - x-z plane")
-        if scatter:
+        if self.scatter:
             self.ax[1].scatter(
                 coordinates[active, 0],
                 coordinates[active, 2],
@@ -246,7 +264,7 @@ class BaseAssistant(ABC):
 
         # yz-plane
         self.ax[2].set_title(self.name + " - y-z plane")
-        if scatter:
+        if self.scatter:
             self.ax[2].scatter(
                 coordinates[active, 1],
                 coordinates[active, 2],
