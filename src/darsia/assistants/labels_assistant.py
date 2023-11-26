@@ -7,6 +7,11 @@ import numpy as np
 
 import darsia
 
+# TODOs:
+# Add possibility to manipulate the monochromatic input image for segmentation
+# Test plain segmentation from start
+# Add possibility to control the boundary during the segmentation
+
 
 class LabelsAssistantMenu(darsia.BaseAssistant):
     """Module for LabelsAssistant to choose what to do with labels.
@@ -21,7 +26,6 @@ class LabelsAssistantMenu(darsia.BaseAssistant):
     def __init__(
         self, img: darsia.Image, background: Optional[darsia.Image] = None, **kwargs
     ) -> None:
-        # TODO decide how to handle kwargs
         """Initialize module.
 
         Args:
@@ -301,7 +305,6 @@ class LabelsAssistant:
 
         # Call menu module
         self.next_module = self.menu()
-        print("Next module:", self.next_module)
 
     def _call_next_module(self) -> None:
         """Call next module."""
