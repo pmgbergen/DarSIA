@@ -48,7 +48,7 @@ class LabelsAssistantMenu(darsia.BaseAssistant):
         print("  - 'r': refine labels")
         print("  - 'i': print info")
         print("  - 'b': toggle background")
-        print("  - 'shift+m': adapt monochromatic background image")
+        print("  - 'shift+m': adapt monochromatic background image (default: gray)")
         print("  - 'u': undo")
         print("  - 'escape': reset labels to input")
         print("  - 'q': quit/abort\n")
@@ -96,15 +96,21 @@ class LabelsAssistantMenu(darsia.BaseAssistant):
             self.action = "quit"
             plt.close(self.fig)
 
-    def __call__(self) -> darsia.Image:
-        """Call the assistant."""
+    def __call__(self) -> str:
+        """Call the assistant.
 
+        Returns:
+            str: next action to be executed by LabelsAssistant.
+
+        """
         self.action = None
         super().__call__()
         return self.action
 
 
 class LabelsSegmentAssistant:
+    """Module for LabelsAssistant to segment labels."""
+
     def __init__(
         self,
         labels: Optional[darsia.Image],
@@ -112,6 +118,14 @@ class LabelsSegmentAssistant:
         mask: Optional[np.ndarray] = None,
         **kwargs,
     ) -> None:
+        """Initialize module.
+
+        Args:
+            labels (Optional[darsia.Image]): input labels
+            background (darsia.Image): background image
+            mask (Optional[np.ndarray]): mask to be used for segmentation
+
+        """
         self.labels = labels
         """Input labels."""
         self.background = background
@@ -140,6 +154,12 @@ class LabelsSegmentAssistant:
             self.roi.img[mask] = 1
 
     def __call__(self) -> darsia.Image:
+        """Call the assistant.
+
+        Returns:
+            darsia.Image: new labels through segmentation
+
+        """
         point_selection_assistant = darsia.PointSelectionAssistant(
             name="Pick characteristic points for segmentation.",
             img=self.roi,
@@ -184,7 +204,15 @@ class LabelsSegmentAssistant:
 
 
 class MonochromaticAssistant(darsia.BaseAssistant):
+    """Assistant to choose monochromatic image."""
+
     def __init__(self, img: darsia.Image, **kwargs) -> None:
+        """Initialize module.
+
+        Args:
+            img (darsia.Image): input image
+
+        """
         self.name = "Monochromatic assistant"
         """Name of the module."""
         self.input_img = img
@@ -199,6 +227,7 @@ class MonochromaticAssistant(darsia.BaseAssistant):
         """Flag indicating whether the assistant has been finalized."""
 
     def _print_instructions(self) -> None:
+        """Print instructions."""
         print("")
         print("Welcome to the monochromatic assistant.")
         print("Please choose one of the following options:")
@@ -209,9 +238,15 @@ class MonochromaticAssistant(darsia.BaseAssistant):
         print("  - 'H': hue")
         print("  - 'S': saturation")
         print("  - 'V': value")
-        print("  - 'q': quit/abort\n")
+        print("  - 'q/enter/escape': quit\n")
 
     def _on_key_press(self, event) -> None:
+        """Key press event handler.
+
+        Args:
+            event: key press event
+
+        """
         if self.verbosity:
             print(f"Current key: {event}")
 
@@ -230,7 +265,7 @@ class MonochromaticAssistant(darsia.BaseAssistant):
             self.img = self.input_img.to_monochromatic("saturation")
         elif event.key == "V":
             self.img = self.input_img.to_monochromatic("value")
-        elif event.key == "q":
+        elif event.key in ["q", "enter", "escape"]:
             self.finalized = True
             plt.close(self.fig)
 
@@ -239,8 +274,12 @@ class MonochromaticAssistant(darsia.BaseAssistant):
             self._plot_2d()
 
     def __call__(self) -> darsia.Image:
-        """Call the assistant."""
+        """Call the assistant.
 
+        Returns:
+            darsia.Image: monochromatic image
+
+        """
         self._print_instructions()
         plt.ion()
         super().__call__()
@@ -249,15 +288,34 @@ class MonochromaticAssistant(darsia.BaseAssistant):
 
 
 class LabelsMaskSelectionAssistant:
+    """Module for LabelsAssistant to select a mask from labels."""
+
     def __init__(
         self, labels: darsia.Image, background: Optional[darsia.Image] = None, **kwargs
     ) -> None:
+        """Initialize module.
+
+        Args:
+            labels (darsia.Image): input labels
+            background (Optional[darsia.Image]): background image
+
+        """
         self.name = "Labels mask selection assistant"
+        """Name of the module."""
         self.labels = labels
+        """Input labels."""
         self.background = background
+        """Background image."""
         self.verbosity = kwargs.get("verbosity", False)
+        """Verbosity flag."""
 
     def __call__(self) -> np.ndarray:
+        """Call the assistant.
+
+        Returns:
+            np.ndarray: mask
+
+        """
         # Identify points characterizing different regions to be merged
         point_selection_assistant = darsia.PointSelectionAssistant(
             name="Mark labels.",
@@ -285,14 +343,32 @@ class LabelsMaskSelectionAssistant:
 
 
 class LabelsPickAssistant:
+    """Module for LabelsAssistant to pick labels."""
+
     def __init__(
         self, labels: darsia.Image, background: darsia.Image, **kwargs
     ) -> None:
+        """Initialize module.
+
+        Args:
+            labels (darsia.Image): input labels
+            background (darsia.Image): background image
+
+        """
         self.labels = labels
+        """Input labels."""
         self.background = background
+        """Background image."""
         self.verbosity = kwargs.get("verbosity", False)
+        """Verbosity flag."""
 
     def __call__(self) -> darsia.Image:
+        """Call the assistant.
+
+        Returns:
+            darsia.Image: selected labels
+
+        """
         # Extract mask corresponding to chosen points
         mask_selection_assistant = darsia.LabelsMaskSelectionAssistant(
             labels=self.labels,
@@ -309,13 +385,26 @@ class LabelsPickAssistant:
 
 
 class LabelsMergeAssistant:
+    """Module for LabelsAssistant to merge labels."""
+
     def __init__(
         self, labels: darsia.Image, background: Optional[darsia.Image] = None, **kwargs
     ) -> None:
+        """Initialize module.
+
+        Args:
+            labels (darsia.Image): input labels
+            background (Optional[darsia.Image]): background image
+
+        """
         self.name = "Labels merge assistant"
+        """Name of the module."""
         self.labels = labels
+        """Input labels."""
         self.background = background
+        """Background image."""
         self.verbosity = kwargs.get("verbosity", False)
+        """Verbosity flag."""
 
     def __call__(self):
         # Extract mask corresponding to chosen points
@@ -334,12 +423,21 @@ class LabelsMergeAssistant:
 
 
 class LabelsAssistant:
+    """Assistant to modify labels."""
+
     def __init__(
         self,
         labels: Optional[darsia.Image] = None,
         background: Optional[darsia.Image] = None,
         **kwargs,
     ) -> None:
+        """Initialize module.
+
+        Args:
+            labels (Optional[darsia.Image]): input labels
+            background (Optional[darsia.Image]): background image
+
+        """
         self.name = "Labels assistant"
         """Name of the assistant."""
         self.background = background
@@ -384,7 +482,6 @@ class LabelsAssistant:
             darsia.Image: current labels
 
         """
-
         if not self.finalized:
             # Call menu
             self._call_menu()
@@ -532,6 +629,8 @@ class LabelsAssistant:
                 self.background = None
 
     def _call_monochromatic_module(self) -> None:
+        """Call monochromatic module."""
+
         if isinstance(self.background, darsia.OpticalImage):
             monochromatic_assistant = darsia.MonochromaticAssistant(
                 img=self.background,
