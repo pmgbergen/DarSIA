@@ -122,17 +122,17 @@ class LabelsSegmentAssistant:
             edges_method="scharr",
             marker_points=points,
             mask=self.mask,
-            region_size=20,
+            region_size=2,
         )
 
         if self.mask is not None:
             # Use old values
             old_labels = np.unique(self.labels.img[~self.mask])
-            unique_old_labels = np.unique(old_labels)
-            num_old_labels = unique_old_labels.size
 
             # Determine holes in the old labels
-            missing_labels = np.setdiff1d(np.arange(num_old_labels), unique_old_labels)
+            missing_labels = np.setdiff1d(
+                np.unique(self.labels.img), np.unique(self.labels.img[~self.mask])
+            )
             num_missing_labels = missing_labels.size
 
             # Fetch new values and map them on consecutive integers into old labels
@@ -152,7 +152,7 @@ class LabelsSegmentAssistant:
                 labels.img[label_mask] = unique_mapped_labels[i]
 
             # Use old values in non-marked area
-            labels[~self.mask] = self.labels.img[~self.mask]
+            labels.img[~self.mask] = self.labels.img[~self.mask]
 
         return labels
 
@@ -358,7 +358,7 @@ class LabelsAssistant:
             background=self.background,
             verbosity=self.verbosity,
         )
-        self.current_labels = pick_selection()
+        self.current_labels = pick_assistant()
 
     def _call_merge_module(self) -> None:
         """Call merge module."""
