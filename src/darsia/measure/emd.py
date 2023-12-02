@@ -99,9 +99,7 @@ class EMD:
         return preprocessed_img
 
     def _compatibility_check(
-        self,
-        img_1: darsia.Image,
-        img_2: darsia.Image,
+        self, img_1: darsia.Image, img_2: darsia.Image, tol=1e-6
     ) -> bool:
         """
         Compatibility check.
@@ -130,7 +128,7 @@ class EMD:
         # Compatible distributions - comparing sums is sufficient since it is implicitly
         # assumed that the coordinate systems are equivalent. Check each time step
         # separately.
-        assert np.allclose(self._sum(img_1), self._sum(img_2))
+        assert np.allclose(self._sum(img_1), self._sum(img_2), atol=tol)
 
     def _sum(self, img: darsia.Image) -> Union[float, np.ndarray]:
         """Sum over spatial entries.
