@@ -738,9 +738,6 @@ class Image:
 
     __rmul__ = __mul__
 
-    # TODO add more standard routines with NotImplementedError
-    # TODO try TVD.
-
     # ! ---- Display methods and I/O
 
     def show(
