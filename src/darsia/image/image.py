@@ -1051,21 +1051,16 @@ class Image:
                             reduction = darsia.AxisReduction(axis="z", dim=3)
                             reduced_image = reduction(time_slice)
                             axs[0].imshow(
-                                skimage.img_as_float(reduced_image.img),
+                                skimage.img_as_float(reduced_image.img.T),
                                 cmap=cmap,
-                                extent=(
-                                    reduced_image.origin[0],
-                                    reduced_image.opposite_corner[0],
-                                    reduced_image.opposite_corner[1],
-                                    reduced_image.origin[1],
-                                ),
+                                extent=reduced_image.domain,
                             )
                         axs[0].set_xlabel("x-axis")
                         axs[0].set_ylabel("y-axis")
                         axs[0].set_aspect("equal")
 
                         # xz-plane
-                        axs[1].set_title(_title + " - x-z plane")
+                        axs[1].set_title(_title + " - y-z plane")
                         if side_view == "scatter":
                             axs[1].scatter(
                                 coordinates[active, 0],
@@ -1083,19 +1078,14 @@ class Image:
                             axs[1].imshow(
                                 skimage.img_as_float(reduced_image.img),
                                 cmap=cmap,
-                                extent=(
-                                    reduced_image.origin[0],
-                                    reduced_image.opposite_corner[0],
-                                    reduced_image.opposite_corner[1],
-                                    reduced_image.origin[1],
-                                ),
+                                extent=reduced_image.domain,
                             )
-                        axs[1].set_xlabel("x-axis")
+                        axs[1].set_xlabel("y-axis")
                         axs[1].set_ylabel("z-axis")
                         axs[1].set_aspect("equal")
 
                         # yz-plane
-                        axs[2].set_title(_title + " - y-z plane")
+                        axs[2].set_title(_title + " - x-z plane")
                         if side_view == "scatter":
                             axs[2].scatter(
                                 coordinates[active, 1],
@@ -1111,16 +1101,11 @@ class Image:
                             reduction = darsia.AxisReduction(axis="x", dim=3)
                             reduced_image = reduction(time_slice)
                             axs[2].imshow(
-                                skimage.img_as_float(reduced_image.img),
+                                skimage.img_as_float(np.flip(reduced_image.img, axis=1)),
                                 cmap=cmap,
-                                extent=(
-                                    reduced_image.origin[0],
-                                    reduced_image.opposite_corner[0],
-                                    reduced_image.opposite_corner[1],
-                                    reduced_image.origin[1],
-                                ),
+                                extent=reduced_image.domain,
                             )
-                        axs[2].set_xlabel("y-axis")
+                        axs[2].set_xlabel("x-axis")
                         axs[2].set_ylabel("z-axis")
                         axs[2].set_aspect("equal")
 
@@ -1328,7 +1313,7 @@ class Image:
                     fig_2d = make_subplots(
                         rows=1,
                         cols=3,
-                        subplot_titles=["x-y plane", "x-z plane", "y-z plane"],
+                        subplot_titles=["x-y plane", "y-z plane", "x-z plane"],
                     )
                     fig_2d.update_layout(title_text="2d side views")
 
