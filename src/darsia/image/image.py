@@ -784,11 +784,12 @@ class Image:
                 threshold (float): threshold for displaying 3d images.
                 relative (bool): flag controlling whether the threshold is relative.
                 view (str): view type; either "scatter" or "voxel"; only for 3d images.
-                    NOTE: "voxel" plots are more time consuming.
+                    NOTE: "voxel" plots are more time consuming for 3d.
                 side_view (str): side view type of 3d image; only for 3d images;
                     either "scatter" or "voxel".
                 surpress_2d (bool): flag controlling whether 2d images are displayed.
                 surpress_3d (bool): flag controlling whether 3d images are displayed.
+                    By default true as time consuming.
                 delay (bool): flag controlling whether the display is delayed; can be
                     used to display multiple images at the same time.
 
@@ -965,7 +966,7 @@ class Image:
 
                     # Offer two possibilities. Either a scatter plot or a voxel plot.
 
-                    surpress_3d = kwargs.get("surpress_3d", False)
+                    surpress_3d = kwargs.get("surpress_3d", True)
                     if not surpress_3d:
                         fig_3d = plt.figure(_title + " - 3d view")
                         ax_3d = Axes3D(fig_3d)
@@ -1028,7 +1029,7 @@ class Image:
 
                     surpress_2d = kwargs.get("surpress_2d", False)
                     if not surpress_2d:
-                        side_view = kwargs.get("side_view", "scatter").lower()
+                        side_view = kwargs.get("side_view", "voxel").lower()
                         assert side_view in ["scatter", "voxel"]
                         fig_2d, axs = plt.subplots(1, 3)
                         fig_2d.suptitle("2d side views")
@@ -1321,7 +1322,7 @@ class Image:
 
                 surpress_2d = kwargs.get("surpress_2d", False)
                 if not surpress_2d:
-                    side_view = kwargs.get("side_view", "scatter").lower()
+                    side_view = kwargs.get("side_view", "voxel").lower()
                     assert side_view in ["scatter", "voxel"]
 
                     fig_2d = make_subplots(
