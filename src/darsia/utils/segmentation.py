@@ -23,9 +23,9 @@ def segment(
     verbosity: bool = False,
     **kwargs,
 ) -> Union[np.ndarray, darsia.Image]:
-    """
-    Prededfined workflow for segmenting an image based on
-    watershed segmentation. In addition, denoising is used.
+    """Prededfined workflow for segmenting an image based on watershed segmentation.
+
+    In addition, denoising is used.
 
     Args:
         img (np.ndarray, or darsia.Image): input image in RGB color space
@@ -73,22 +73,27 @@ def segment(
     # Require scalar representation - the most natural general choice is either to
     # use a grayscale representation or the value component of the HSV version,
     # when.
-    monochromatic = kwargs.get("monochromatic_color", "gray")
-    if monochromatic == "gray":
-        monochromatic_basis = cv2.cvtColor(
-            skimage.img_as_ubyte(basis), cv2.COLOR_RGB2GRAY
-        )
-    elif monochromatic == "red":
-        monochromatic_basis = basis[:, :, 0]
-    elif monochromatic == "green":
-        monochromatic_basis = basis[:, :, 1]
-    elif monochromatic == "blue":
-        monochromatic_basis = basis[:, :, 2]
-    elif monochromatic == "value":
-        hsv = cv2.cvtColor(basis, cv2.COLOR_RGB2HSV)
-        monochromatic_basis = hsv[:, :, 2]
+    if len(basis.shape) == 2:
+        monochromatic_basis = basis
     else:
-        raise ValueError(f"Monochromatic color space {monochromatic} not supported.")
+        monochromatic = kwargs.get("monochromatic_color", "gray")
+        if monochromatic == "gray":
+            monochromatic_basis = cv2.cvtColor(
+                skimage.img_as_ubyte(basis), cv2.COLOR_RGB2GRAY
+            )
+        elif monochromatic == "red":
+            monochromatic_basis = basis[:, :, 0]
+        elif monochromatic == "green":
+            monochromatic_basis = basis[:, :, 1]
+        elif monochromatic == "blue":
+            monochromatic_basis = basis[:, :, 2]
+        elif monochromatic == "value":
+            hsv = cv2.cvtColor(basis, cv2.COLOR_RGB2HSV)
+            monochromatic_basis = hsv[:, :, 2]
+        else:
+            raise ValueError(
+                f"Monochromatic color space {monochromatic} not supported."
+            )
 
     if verbosity:
         plt.figure("Monochromatic input image")
@@ -139,7 +144,6 @@ def segment(
         labeled_markers = _detect_markers_from_gradient(rescaled, verbosity, **kwargs)
 
     elif markers_method == "supervised":
-
         # Read markers from input, provided for the large scale image
         shape = basis.shape[:2]
         labeled_markers = _detect_markers_from_input(shape, **kwargs)
@@ -152,7 +156,6 @@ def segment(
         )
 
     else:
-
         raise ValueError(
             f"Method {markers_method} for detecting markers not supported."
         )
@@ -224,7 +227,8 @@ def segment(
     # tiny lines, etc. Define some auxiliary methods for this.
     # Simplify the segmentation drastically by removing small entities,
     # and correct for boundary effects.
-    labels = _cleanup(labels, **kwargs)
+    if kwargs.get("cleanup", True):
+        labels = _cleanup(labels, **kwargs)
 
     if verbosity:
         plt.figure("Final result after clean up")
