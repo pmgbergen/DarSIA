@@ -21,7 +21,7 @@ class AxisReduction:
             dim (int): dimension of the input image
             mode (str): mode used in the reduction ("average", "sum", "slice")
             kwargs: additional arguments:
-                - "depth" (int): depth of the slice (only for mode "slice")
+                - "slice_idx" (int): index of the slice (only for mode "slice")
 
         Raises:
             NotImplementedError: if dim not 3.
@@ -92,8 +92,8 @@ class AxisReduction:
             full_arr = np.moveaxis(full_arr, self.index, 0)
             for i in range(self.index - 1, 0, -1):
                 full_arr = np.moveaxis(full_arr, i - 1, i)
-            depth = self.kwargs["depth"]
-            img_arr = full_arr[depth, ...]
+            slice_idx = self.kwargs["slice_idx"]
+            img_arr = full_arr[slice_idx, ...]
 
         # Reduce dimensions
         new_dimensions = img.dimensions.copy()
@@ -148,7 +148,7 @@ def reduce_axis(
             Cartesian axis
         mode (str): mode used in the reduction ("sum", "scaled", "slice")
         kwargs: additional arguments:
-            - "depth" (int): depth of the slice (only for mode "slice")
+            - "slice_idx" (int): index of the slice (only for mode "slice")
 
     Returns:
         Image: (n-1)d image.
