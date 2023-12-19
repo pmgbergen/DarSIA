@@ -1098,7 +1098,9 @@ class Image:
                             reduction = darsia.AxisReduction(axis="x", dim=3)
                             reduced_image = reduction(time_slice)
                             axs[2].imshow(
-                                skimage.img_as_float(np.flip(reduced_image.img, axis=1)),
+                                skimage.img_as_float(
+                                    np.flip(reduced_image.img, axis=1)
+                                ),
                                 cmap=cmap,
                                 extent=reduced_image.domain,
                             )
