@@ -738,9 +738,6 @@ class Image:
 
     __rmul__ = __mul__
 
-    # TODO add more standard routines with NotImplementedError
-    # TODO try TVD.
-
     # ! ---- Display methods and I/O
 
     def show(
@@ -784,11 +781,12 @@ class Image:
                 threshold (float): threshold for displaying 3d images.
                 relative (bool): flag controlling whether the threshold is relative.
                 view (str): view type; either "scatter" or "voxel"; only for 3d images.
-                    NOTE: "voxel" plots are more time consuming.
+                    NOTE: "voxel" plots are more time consuming for 3d.
                 side_view (str): side view type of 3d image; only for 3d images;
                     either "scatter" or "voxel".
                 surpress_2d (bool): flag controlling whether 2d images are displayed.
                 surpress_3d (bool): flag controlling whether 3d images are displayed.
+                    By default true as time consuming.
                 delay (bool): flag controlling whether the display is delayed; can be
                     used to display multiple images at the same time.
 
@@ -965,7 +963,7 @@ class Image:
 
                     # Offer two possibilities. Either a scatter plot or a voxel plot.
 
-                    surpress_3d = kwargs.get("surpress_3d", False)
+                    surpress_3d = kwargs.get("surpress_3d", True)
                     if not surpress_3d:
                         fig_3d = plt.figure(_title + " - 3d view")
                         ax_3d = Axes3D(fig_3d)
@@ -1028,7 +1026,7 @@ class Image:
 
                     surpress_2d = kwargs.get("surpress_2d", False)
                     if not surpress_2d:
-                        side_view = kwargs.get("side_view", "scatter").lower()
+                        side_view = kwargs.get("side_view", "voxel").lower()
                         assert side_view in ["scatter", "voxel"]
                         fig_2d, axs = plt.subplots(1, 3)
                         fig_2d.suptitle("2d side views")
@@ -1050,21 +1048,16 @@ class Image:
                             reduction = darsia.AxisReduction(axis="z", dim=3)
                             reduced_image = reduction(time_slice)
                             axs[0].imshow(
-                                skimage.img_as_float(reduced_image.img),
+                                skimage.img_as_float(reduced_image.img.T),
                                 cmap=cmap,
-                                extent=(
-                                    reduced_image.origin[0],
-                                    reduced_image.opposite_corner[0],
-                                    reduced_image.opposite_corner[1],
-                                    reduced_image.origin[1],
-                                ),
+                                extent=reduced_image.domain,
                             )
                         axs[0].set_xlabel("x-axis")
                         axs[0].set_ylabel("y-axis")
                         axs[0].set_aspect("equal")
 
                         # xz-plane
-                        axs[1].set_title(_title + " - x-z plane")
+                        axs[1].set_title(_title + " - y-z plane")
                         if side_view == "scatter":
                             axs[1].scatter(
                                 coordinates[active, 0],
@@ -1082,19 +1075,14 @@ class Image:
                             axs[1].imshow(
                                 skimage.img_as_float(reduced_image.img),
                                 cmap=cmap,
-                                extent=(
-                                    reduced_image.origin[0],
-                                    reduced_image.opposite_corner[0],
-                                    reduced_image.opposite_corner[1],
-                                    reduced_image.origin[1],
-                                ),
+                                extent=reduced_image.domain,
                             )
-                        axs[1].set_xlabel("x-axis")
+                        axs[1].set_xlabel("y-axis")
                         axs[1].set_ylabel("z-axis")
                         axs[1].set_aspect("equal")
 
                         # yz-plane
-                        axs[2].set_title(_title + " - y-z plane")
+                        axs[2].set_title(_title + " - x-z plane")
                         if side_view == "scatter":
                             axs[2].scatter(
                                 coordinates[active, 1],
@@ -1110,16 +1098,13 @@ class Image:
                             reduction = darsia.AxisReduction(axis="x", dim=3)
                             reduced_image = reduction(time_slice)
                             axs[2].imshow(
-                                skimage.img_as_float(reduced_image.img),
-                                cmap=cmap,
-                                extent=(
-                                    reduced_image.origin[0],
-                                    reduced_image.opposite_corner[0],
-                                    reduced_image.opposite_corner[1],
-                                    reduced_image.origin[1],
+                                skimage.img_as_float(
+                                    np.flip(reduced_image.img, axis=1)
                                 ),
+                                cmap=cmap,
+                                extent=reduced_image.domain,
                             )
-                        axs[2].set_xlabel("y-axis")
+                        axs[2].set_xlabel("x-axis")
                         axs[2].set_ylabel("z-axis")
                         axs[2].set_aspect("equal")
 
@@ -1321,13 +1306,13 @@ class Image:
 
                 surpress_2d = kwargs.get("surpress_2d", False)
                 if not surpress_2d:
-                    side_view = kwargs.get("side_view", "scatter").lower()
+                    side_view = kwargs.get("side_view", "voxel").lower()
                     assert side_view in ["scatter", "voxel"]
 
                     fig_2d = make_subplots(
                         rows=1,
                         cols=3,
-                        subplot_titles=["x-y plane", "x-z plane", "y-z plane"],
+                        subplot_titles=["x-y plane", "y-z plane", "x-z plane"],
                     )
                     fig_2d.update_layout(title_text="2d side views")
 

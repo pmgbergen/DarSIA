@@ -24,6 +24,9 @@ class RotationCorrectionAssistant(darsia.BaseAssistant):
                 verbosity (bool): flag controlling verbosity, default is False
 
         """
+        # Set name for titles in plots
+        self.name = "Rotation correction assistant"
+
         # Make sure to use pixel (currently the assistant is constructed to work
         # merely with pixel coordinates) FIXME.
         super().__init__(img, use_coordinates=False, **kwargs)
@@ -34,9 +37,6 @@ class RotationCorrectionAssistant(darsia.BaseAssistant):
 
         # Determine the center of the image
         self.center = 0.5 * (self.img.origin + self.img.opposite_corner)
-
-        # Set name for titles in plots
-        self.name = "Rotation correction assistant"
 
     def __call__(self) -> list[darsia.RotationCorrection]:
         """Call the assistant."""

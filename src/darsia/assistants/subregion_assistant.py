@@ -10,6 +10,9 @@ import darsia
 
 class SubregionAssistant(darsia.BaseAssistant):
     def __init__(self, img: darsia.Image, **kwargs) -> None:
+        # Set name for titles in plots
+        self.name = "Subregion assistant"
+
         # Make sure to use pixel coordinates - currently not possible to use physical
         # coordinates - FIXME.
         super().__init__(img, use_coordinates=False, **kwargs)
@@ -17,8 +20,6 @@ class SubregionAssistant(darsia.BaseAssistant):
         # Initialize containers
         self._reset()
 
-        # Set name for titles in plots
-        self.name = "Subregion assistant"
         # Prepare output
         self.coordinates = None
         """Coordinates uniquely defining a box."""
