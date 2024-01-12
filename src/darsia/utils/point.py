@@ -58,7 +58,7 @@ class Voxel(BasePoint):
     """Voxel coordinate."""
 
     def __new__(cls, input_array, matrix_indexing=True):
-        obj = np.asarray(input_array).view(cls)
+        obj = np.asarray(input_array).astype(int).view(cls)
         obj.matrix_indexing = True
         return obj
 
