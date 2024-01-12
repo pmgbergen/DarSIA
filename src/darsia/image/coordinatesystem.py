@@ -56,11 +56,13 @@ class CoordinateSystem:
         """Coordinate of origin voxel."""
 
         opposite_corner_voxel = img.img.shape[: self.dim]
-        self._coordinate_of_opposite_voxel = self.coordinate(opposite_corner_voxel)
+        self._coordinate_of_opposite_voxel: darsia.Coordinate = self.coordinate(
+            opposite_corner_voxel
+        )
         """Coordinate of opposite voxel."""
 
         origin_coordinate = img.origin
-        self._voxel_of_origin_coordinate: np.ndarray = self.voxel(origin_coordinate)
+        self._voxel_of_origin_coordinate: darsia.Voxel = self.voxel(origin_coordinate)
         """Voxel corresponding to the origin."""
 
         corners = np.vstack(
@@ -71,6 +73,32 @@ class CoordinateSystem:
         for i, axis in enumerate(self.axes):
             self.domain[axis + "min"] = np.min(corners[:, i])
             self.domain[axis + "max"] = np.max(corners[:, i])
+
+    @property
+    def voxels(self) -> darsia.VoxelArray:
+        """Voxel array of image, collecting all voxels.
+
+        Returns:
+            VoxelArray: voxel array of image
+
+        """
+        if not hasattr(self, "_voxels"):
+            self._voxels = darsia.make_voxel(
+                np.indices(self.shape, dtype=int).reshape((self.dim, -1), order="F").T
+            )
+        return self._voxels
+
+    @property
+    def coordinates(self) -> darsia.CoordinateArray:
+        """Coordinate array of image, collecting all coordinates.
+
+        Returns:
+            CoordinateArray: coordinate array of image
+
+        """
+        if not hasattr(self, "_coordinates"):
+            self._coordinates = self.coordinate(self.voxels)
+        return self._coordinates
 
     def length(self, num: Union[int, np.ndarray], axis: str) -> float:
         """
@@ -107,7 +135,16 @@ class CoordinateSystem:
         assert axis in self.axes
         return np.ceil(length / self.voxel_size[axis]).astype(int)
 
-    def coordinate(self, voxel: Union[np.ndarray, list[int], tuple[int]]) -> np.ndarray:
+    def coordinate(
+        self,
+        voxel: Union[
+            np.ndarray,
+            list[int],
+            tuple[int],
+            darsia.Voxel,
+            darsia.VoxelArray,
+        ],
+    ) -> Union[darsia.Voxel, darsia.VoxelArray]:
         """
         Conversion from voxel to Cartesian coordinate, i.e., from (row,col) to (x,y)
         format plus scaling for a 2d image.
@@ -115,8 +152,9 @@ class CoordinateSystem:
         Handles both single and multiple voxels.
 
         Arguments:
-            voxel (np.ndarray): voxel location in the same format as the indexing
-                of the underlying baseline image (see __init__); one voxel per row.
+            voxel (np.ndarray, list, tuple, Coordinate, or Voxel): voxel location in the
+                same format as the indexing of the underlying baseline image (see __init__);
+                one voxel per row.
 
         Returns:
             np.ndarray: corresponding coordinate in (x,y) format
@@ -132,8 +170,6 @@ class CoordinateSystem:
         # multiple voxels stored in a 2d array. Convert to the more general
         # case. Cache the original size for the later output.
         voxel_array = np.atleast_2d(voxel)
-        if self.dim == 1:
-            voxel_array = np.swapaxes(voxel_array, 0, 1)
 
         # Determine coordinates with the help of the origin
         coordinate = np.empty_like(voxel_array, dtype=float)
@@ -146,17 +182,20 @@ class CoordinateSystem:
             )
 
         # Return in same format as the input
-        return coordinate.reshape(voxel.shape)
+        return darsia.make_coordinate(coordinate.reshape(voxel.shape))
 
-    def voxel(self, coordinate: Union[np.ndarray, list[float]]) -> np.ndarray:
+    def voxel(
+        self,
+        coordinate: Union[np.ndarray, list[float], darsia.Voxel, darsia.Coordinate],
+    ) -> np.ndarray:
         """
         Conversion from Cartesian coordinate to voxel in matrix indexing format.
 
         Handles both single and multiple coordinates.
 
         Arguments:
-            coordinate (np.ndarray): coordinate in Cartesian format, i.e., [x,y,z];
-                one coordinate per row.
+            coordinate (np.ndarray, list, Coordinate or Voxel): coordinate in Cartesian
+                format, i.e., [x,y,z]; one coordinate per row.
 
         Returns:
             np.ndarray: corresponding pixels in "ij"/"ijk" format.
@@ -184,7 +223,7 @@ class CoordinateSystem:
             )
 
         # Return in same format as the input, and force int dtype.
-        return np.round(pixel.reshape(coordinate.shape)).astype(int)
+        return darsia.make_voxel(np.round(pixel.reshape(coordinate.shape)).astype(int))
 
     def coordinate_vector(self, pixel_vector: np.ndarray) -> np.ndarray:
         """
