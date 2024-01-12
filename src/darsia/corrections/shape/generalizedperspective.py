@@ -5,7 +5,7 @@ In addition, quick-access is provided for routine-based use of DarSIA.
 
 """
 
-from typing import Optional, Union, overload
+from typing import Optional, Union
 
 import numpy as np
 import scipy.optimize as optimize
@@ -302,7 +302,19 @@ class GeneralizedPerspectiveTransformation:
             darsia.Image: warped image
 
         """
-        assert len(img.img.shape) == 3, "currently only support for 2d images"
+        assert img.space_dim == 2, "currently only support for 2d images"
+
+        # Define new output image with same resolution as the input image and the same
+        # aspect ratio as the reference image
+        scaling = np.max([img.img.shape[i] / self.reference_shape[i] for i in range(2)])
+        warped_shape = (scaling * np.array(self.reference_shape)).astype(int)
+        warped_metadata = img.metadata()
+        for key in ["dimensions", "origin"]:
+            warped_metadata[key] = self.reference_metadata[key]
+        warped_image = type(img)(
+            np.zeros((*warped_shape, *img.img.shape[2:]), dtype=img.img.dtype),
+            **warped_metadata,
+        )
 
         # Define coordinates (of the input image)
         voxels = img.coordinatesystem.voxels
@@ -311,38 +323,24 @@ class GeneralizedPerspectiveTransformation:
         # Apply generalized perspective (wrt reference image), which is defined in
         # physical coordinates and maps to physical coordinates
         warped_coordinates = self.__call__(coordinates)
-        warped_voxels = self.reference_coordinatesystem.voxel(warped_coordinates)
+        warped_voxels = warped_image.coordinatesystem.voxel(warped_coordinates)
 
         # Identify valid coordinates
-        valid_coordinates = np.all(
+        valid_voxels = np.all(
             np.logical_and(
-                warped_coordinates >= self.min_coordinate,
-                warped_coordinates < self.max_coordinate,
+                warped_voxels >= np.zeros(2, dtype=int),
+                warped_voxels < warped_image.num_voxels,
             ),
             axis=1,
         )
 
         # Restrict to valid coordinates
-        voxels = voxels[valid_coordinates]
-        warped_voxels = warped_voxels[valid_coordinates]
-
-        # TODO use resultion of input image
-
-        # Initialize data array
-        warped_image_array = np.zeros(
-            (*self.reference_shape, img.img.shape[2]), dtype=img.img.dtype
-        )
+        voxels = voxels[valid_voxels]
+        warped_voxels = warped_voxels[valid_voxels]
 
         # Assign output to valid coordinates
-        warped_image_array[warped_voxels[:, 0], warped_voxels[:, 1]] = img.img[
+        warped_image.img[warped_voxels[:, 0], warped_voxels[:, 1]] = img.img[
             voxels[:, 0], voxels[:, 1]
         ]
 
-        # Convert data to Image
-        warped_image = type(img)(warped_image_array, **self.reference_metadata)
         return warped_image
-
-
-# Quick-access
-def make_generalizedperspective():
-    return None
