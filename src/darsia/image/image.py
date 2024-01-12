@@ -128,7 +128,7 @@ class Image:
             )
             if reverse_axis:
                 default_origin[axis] = self.dimensions[index_counter]
-        self.origin = np.array(kwargs.pop("origin", default_origin))
+        self.origin = darsia.Coordinate(np.array(kwargs.pop("origin", default_origin)))
         """Cartesian coordinates associated to the [0,0,0] voxel (after
         applying transformations), using Cartesian indexing."""
 
@@ -222,7 +222,7 @@ class Image:
         """Physical coordinate system with equipped transformation from voxel to
         Cartesian space."""
 
-        self.opposite_corner = self.coordinatesystem.coordinate(
+        self.opposite_corner: darsia.Coordinate = self.coordinatesystem.coordinate(
             self.shape[: self.space_dim]
         )
         """Cartesian coordinate of the corner opposite to origin."""
