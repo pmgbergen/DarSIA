@@ -685,6 +685,36 @@ class Image:
         elif self.space_dim == 3:
             raise NotImplementedError
 
+    # ! ---- Routines on metadata
+
+    def reset_coordinatesystem(
+        self, return_image: bool = False
+    ) -> Optional[darsia.Image]:
+        """Reset origin and coordinatesystem.
+
+        Args:
+            return_image (bool, optional): flag controlling whether a copy of the image
+                is returned. Defaults to False.
+
+        Returns:
+            Image: copy of image with reset coordinatesystem
+
+        """
+        # ! ---- Fetch and adapt metadata - simply remove origin and reinitialize
+        metadata = self.metadata()
+        origin = self.space_dim * [0]
+        for index_counter, index in enumerate(self.indexing):
+            axis, reverse_axis = darsia.interpret_indexing(
+                index, "xyz"[: self.space_dim]
+            )
+            if reverse_axis:
+                origin[axis] = self.dimensions[index_counter]
+        self.origin = darsia.Coordinate(origin)
+        self.coordinatesystem: darsia.CoordinateSystem = darsia.CoordinateSystem(self)
+
+        if return_image:
+            return type(self)(img=self.img.copy(), **metadata)
+
     # ! ---- Arithmetics
 
     def __add__(self, other: Image) -> Image:
