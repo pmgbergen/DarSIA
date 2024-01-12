@@ -1,6 +1,6 @@
 """Module for point selection."""
 
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -25,14 +25,14 @@ class PointSelectionAssistant(darsia.BaseAssistant):
         super().__init__(img, use_coordinates=False, **kwargs)
 
         # Initialize containers
-        self.pts = None
-        """Selected points."""
+        self.pts: Optional[darsia.CoordinateArray, darsia.VoxelArray] = None
+        """Selected points in voxel format with matrix indexing."""
         self._reset()
 
         # Output mode
-        self.array_output = kwargs.get("to_array", True)
+        self.return_coordinates = kwargs.get("coordinates", False)
 
-    def __call__(self) -> Optional[np.ndarray]:
+    def __call__(self) -> Union[darsia.CoordinateArray, darsia.VoxelArray]:
         """Call the assistant."""
 
         if not self.finalized:
@@ -47,18 +47,19 @@ class PointSelectionAssistant(darsia.BaseAssistant):
         # Close the figure opened by the base class
         plt.close(self.fig)
 
-        # The segmentation algorithm expects the points as int pixel coordinates
-        if self.array_output:
-            return np.array(self.pts).astype(int)
+        # Convert to right format.
+        voxels = np.array(self.pts)
+        if self.return_coordinates:
+            return self.img.coordinatesystem.coordinate(voxels)
         else:
-            np.array(self.pts).astype(int).tolist()
+            return darsia.make_voxel(voxels)
 
     def _print_info(self) -> None:
         """Print out information about the assistant."""
 
         # Print the determined points to screen so one can hardcode the definition of
         # the subregion if required.
-        print("The selected points:")
+        print("The selected points in matrix indexing format:")
         print(np.array(self.pts).astype(int).tolist())
 
     def _reset(self) -> None:
@@ -110,8 +111,8 @@ class PointSelectionAssistant(darsia.BaseAssistant):
             # Fetch the physical coordinates in 2d plane and interpret 2d point in
             # three dimensions
             if event.button == 1 and event.inaxes is not None:
-                # Add point to subregion (in 2d)
-                self.pts.append([event.xdata, event.ydata])
+                # Add point to subregion (in 2d) in matrix indexing
+                self.pts.append([event.ydata, event.xdata])
 
                 # Draw a circle around the selected point
                 self.ax.plot(
