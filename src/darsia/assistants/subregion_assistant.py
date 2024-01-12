@@ -1,4 +1,4 @@
-"""Module for defining subregions interactively."""
+"""Module for defining subregions in 2d and 3d interactively."""
 
 from typing import Any, Optional
 from warnings import warn
@@ -9,9 +9,18 @@ import darsia
 
 
 class SubregionAssistant(darsia.BaseAssistant):
+    """Graphical assistant to define subregions in 2d and 3d."""
+
     def __init__(self, img: darsia.Image, **kwargs) -> None:
+        """Constructor.
+
+        Args:
+            img (darsia.Image): input image
+
+        """
         # Set name for titles in plots
         self.name = "Subregion assistant"
+        """Name of assistant."""
 
         # Make sure to use pixel coordinates - currently not possible to use physical
         # coordinates - FIXME.
