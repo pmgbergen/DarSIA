@@ -167,6 +167,8 @@ class LabelsSegmentAssistant:
             verbosity=self.verbosity,
         )
         points = point_selection_assistant()
+        assert False, """need to check wheter the output still in right format expect the
+            flip to be redundant"""
         if points is not None and len(points) > 0:
             points = np.fliplr(points)
 
