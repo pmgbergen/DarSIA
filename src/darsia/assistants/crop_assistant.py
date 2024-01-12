@@ -5,19 +5,31 @@ Main prupose of the assistant is to produce input arguments for the
 
 """
 
+from typing import Optional
+
 import darsia
 
 
 class CropAssistant(darsia.PointSelectionAssistant):
+    """Graphical assistant for cropping images as part of CurvatureCorrection."""
+
     def __init__(self, img: darsia.Image, **kwargs) -> None:
+        """Constructor.
+
+        Based on PointSelectionAssistant configured to use points in Voxel format.
+
+        Args:
+            img (darsia.Image): input image
+
+        """
         super().__init__(img, **kwargs)
 
         # Initialize containers
         self._reset()
 
         # Redefine pre-defined attributes
-        self.pts = None
-        """Selected corners to define box after cropping."""
+        self.pts: Optional[darsia.VoxelArray] = None
+        """Selected corners to define box after cropping (voxels in matrix indexing)."""
 
         # Prepare further output
         self.finalized_prompt_input = False
