@@ -205,7 +205,9 @@ class GeneralizedPerspectiveTransformation:
         strategy: list = ["all"],
     ):
         """
-        Fit generalized perspective transformation to given points.
+        Fit inverse generalized perspective transformation to given src and dst points.
+
+        The inverse is in practice more useful for warping of images.
 
         Also fixes types of input and output. Later evaluation of the transformation
         will require the same type of input and output.
@@ -255,16 +257,16 @@ class GeneralizedPerspectiveTransformation:
         # Define initial parameters
         self.initial_parameters = self.default_parameters.copy()
 
-        # Define the generalized perspective transformation for optimization
+        # Define the (inverse) generalized perspective transformation for optimization
         def objective_function(params: np.ndarray):
             """LS objective function for generalized perspective transformation."""
             self.set_parameters_as_vector(params)
-            pts_src_warped = self.__call__(pts_src)
+            pts_dst_warped = self.__call__(pts_dst)
             regularization = np.sum(
                 (params - self.initial_parameters[: len(params)]) ** 2
             )
             return (
-                np.linalg.norm(pts_src_warped - pts_dst, "fro") ** 2
+                np.linalg.norm(pts_dst_warped - pts_src, "fro") ** 2
                 + 1e-8 * regularization
             )
 
@@ -316,20 +318,19 @@ class GeneralizedPerspectiveTransformation:
             **warped_metadata,
         )
 
-        # Define coordinates (of the input image)
-        voxels = img.coordinatesystem.voxels
-        coordinates = img.coordinatesystem.coordinates
+        # Fetch target
+        warped_voxels = warped_image.coordinatesystem.voxels
+        warped_coordinates = warped_image.coordinatesystem.coordinates
 
-        # Apply generalized perspective (wrt reference image), which is defined in
-        # physical coordinates and maps to physical coordinates
-        warped_coordinates = self.__call__(coordinates)
-        warped_voxels = warped_image.coordinatesystem.voxel(warped_coordinates)
+        # Apply map
+        coordinates = self.__call__(warped_coordinates)
+        voxels = img.coordinatesystem.voxel(coordinates)
 
         # Identify valid coordinates
         valid_voxels = np.all(
             np.logical_and(
-                warped_voxels >= np.zeros(2, dtype=int),
-                warped_voxels < warped_image.num_voxels,
+                voxels >= np.zeros(2, dtype=int),
+                voxels < img.num_voxels,
             ),
             axis=1,
         )
