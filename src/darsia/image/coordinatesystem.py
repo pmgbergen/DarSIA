@@ -140,7 +140,7 @@ class CoordinateSystem:
             darsia.Voxel,
             darsia.VoxelArray,
         ],
-    ) -> Union[darsia.Voxel, darsia.VoxelArray]:
+    ) -> Union[darsia.Coordinate, darsia.CoordinateArray]:
         """
         Conversion from voxel to Cartesian coordinate, i.e., from (row,col) to (x,y)
         format plus scaling for a 2d image.
