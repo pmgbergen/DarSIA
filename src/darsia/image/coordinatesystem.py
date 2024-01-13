@@ -61,10 +61,6 @@ class CoordinateSystem:
         )
         """Coordinate of opposite voxel."""
 
-        origin_coordinate = img.origin
-        self._voxel_of_origin_coordinate: darsia.Voxel = self.voxel(origin_coordinate)
-        """Voxel corresponding to the origin."""
-
         corners = np.vstack(
             (self._coordinate_of_origin_voxel, self._coordinate_of_opposite_voxel)
         )
@@ -323,15 +319,6 @@ def check_equal_coordinatesystems(
         )
     ):
         failure_log.append("coordinate_of_opposite_voxel")
-
-    if not exclude_size:
-        if not (
-            np.allclose(
-                coordinatesystem1._voxel_of_origin_coordinate,
-                coordinatesystem2._voxel_of_origin_coordinate,
-            )
-        ):
-            failure_log.append("voxel_of_origin_coordinate")
 
     success = len(failure_log) == 0
 
