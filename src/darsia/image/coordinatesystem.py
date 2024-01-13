@@ -52,7 +52,7 @@ class CoordinateSystem:
             pos, _ = darsia.interpret_indexing(axis, self.indexing)
             self.voxel_size[axis] = img.voxel_size[pos]
 
-        self._coordinate_of_origin_voxel: np.ndarray = img.origin
+        self._coordinate_of_origin_voxel: darsia.Coordinate = img.origin
         """Coordinate of origin voxel."""
 
         opposite_corner_voxel = img.img.shape[: self.dim]
