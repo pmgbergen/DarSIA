@@ -1,8 +1,10 @@
-"""
-Module collecting tools for geometric integration,
-taking into account width, height and depth of pixels.
+"""Module collecting tools for geometric integration.
+
+Various versions of the general algorithm are provided, taking into account width,
+height and depth of pixels.
 
 """
+from __future__ import annotations
 
 from typing import Optional, Union
 
@@ -32,7 +34,7 @@ class Geometry:
         num_voxels: Union[tuple[int], list[int]],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Constructor.
@@ -84,6 +86,10 @@ class Geometry:
         Returns:
             float or array: integral of data over geometry, array if time series and/or
                 non-scalar data is provided.
+
+        Raises:
+            ValueError: In dimensions other than 2, if data and geometry incompatible
+                and reshape is needed.
 
         """
         # ! ---- Make sure that the geometry is compatible with the provided data
@@ -172,7 +178,7 @@ class WeightedGeometry(Geometry):
         num_voxels: Union[tuple[int], list[int]],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Constructor for extruded two-dimensional geometry.
@@ -202,25 +208,22 @@ class WeightedGeometry(Geometry):
 
 
 class ExtrudedGeometry(WeightedGeometry):
-    """Two-dimensional geometry extruded in third dimension with
-    possibly variable depth.
-
-    """
+    """One or two-dimensional geometry extruded to three dimensions."""
 
     def __init__(
         self,
-        depth: Union[float, np.ndarray],
+        expansion: Union[float, np.ndarray],
         space_dim: int,
         num_voxels: Union[tuple[int], list[int]],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Constructor for extruded two-dimensional geometry.
 
         Args:
-            depth (float or array): effective depth of geometry.
+            expansion (float or array): effective depth/area of 1d/2d geometry.
             space_dim (int): see Geometry.
             num_voxels (tuple): see Geometry.
             dimensions (list): see Geometry.
@@ -230,11 +233,7 @@ class ExtrudedGeometry(WeightedGeometry):
             ValueError: if spatial dimension not 2.
 
         """
-        # Sanity check
-        if space_dim != 2:
-            raise ValueError("Extruded geometries only defined for 2d domains.")
-
-        super().__init__(depth, space_dim, num_voxels, dimensions, voxel_size)
+        super().__init__(expansion, space_dim, num_voxels, dimensions, voxel_size)
 
 
 class PorousGeometry(WeightedGeometry):
@@ -247,7 +246,7 @@ class PorousGeometry(WeightedGeometry):
         num_voxels: Union[tuple[int], list[int]],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Constructor for extruded two-dimensional geometry.
@@ -274,7 +273,7 @@ class ExtrudedPorousGeometry(ExtrudedGeometry):
         num_voxels: Union[tuple[int], list[int]],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Constructor for extruded, porous, two-dimensional geometry.

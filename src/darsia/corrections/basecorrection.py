@@ -69,13 +69,20 @@ class BaseCorrection(ABC):
                 # Apply transformation to single image
                 img = self.correct_array(img)
 
+            # Apply corrections to metadata
+            meta_update = (
+                self.correct_metadata() if hasattr(self, "correct_metadata") else {}
+            )
+
             if overwrite:
                 # Overwrite original image
                 image.img = img
+                image.update_metadata(meta_update)
                 return image
             else:
                 # Return corrected copy of image
                 meta = image.metadata()
+                meta.update(meta_update)
                 return type(image)(img, **meta)
 
     @abstractmethod

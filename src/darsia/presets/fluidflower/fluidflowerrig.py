@@ -1,8 +1,8 @@
-"""
-Module containing the general setup for a fluidflower rig
-with segmented geometry.
+"""Module containing the general setup for a fluidflower rig with segmented geometry.
 
 """
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Union
 
@@ -57,7 +57,7 @@ class FluidFlowerRig(darsia.AnalysisBase):
                 self.base.img,
                 markers_method="supervised",
                 edges_method="scharr",
-                **self.config["segmentation"]
+                **self.config["segmentation"],
             )
             labels_path = Path(self.config["segmentation"]["labels_path"])
             labels_path.parents[0].mkdir(parents=True, exist_ok=True)

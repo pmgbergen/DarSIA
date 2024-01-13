@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from math import ceil
 
 import numpy as np
+import skimage
 
 import darsia
 
@@ -344,308 +347,304 @@ class Patches:
         elif self.base.space_dim == 3:
             raise NotImplementedError
 
+    # ! ---- (Re-)assembly of patched image.
 
-#    # ! ---- (Re-)assembly of patched image.
-#
-#    # TODO the interpolation may be not required after all. Keep it for now, but it may
-#    # disappear afterall.
-#
-#    def _prepare_weights(self):
-#        """
-#        Auxiliary setup method for defining weights to be used in blend_and_assemble.
-#        """
-#
-#        # Fetch some abbreviations
-#        pw = self.pw
-#        ph = self.ph
-#        ow = self.ow
-#        oh = self.oh
-#        cw = self.cw
-#        ch = self.ch
-#        off_w = self.off_w
-#        off_h = self.off_h
-#
-#        # Define partition of unity later to be used as weighting masks for blending in
-#        # x-direction. Distinguish between th three different cases: (i) left border,
-#        # (ii) internal, and (iii) right border.
-#        self.weight_x = {}
-#
-#        # Corresponding to the most left patches
-#        self.weight_x["left"] = np.hstack(
-#            (
-#                np.ones(pw - cw, dtype=float),
-#                np.linspace(1, 0, ow),
-#                np.zeros(cw, dtype=float),
-#            )
-#        )
-#
-#        if pw - 2 * cw <= 0:
-#            raise ValueError("Overlap chosen to large")
-#
-#        # Corresponding to the internal patches
-#        self.weight_x["internal"] = np.hstack(
-#            (
-#                np.zeros(cw, dtype=float),
-#                np.linspace(0, 1, ow),
-#                np.ones(pw - 2 * cw, dtype=float),
-#                np.linspace(1, 0, ow),
-#                np.zeros(cw, dtype=float),
-#            )
-#        )
-#
-#        # Have to take into account that not all patches have perfect size, and small
-#        # adjustments have to be made at the right boundary patches. Thus, compute the
-#        # so far total width occupied - goal: determine the amount of pixels which are
-#        # left for true 1 values in the weight corresponding to the most right patch.
-#        marked_width = (
-#            # left patch
-#            pw
-#            - cw
-#            + ow
-#            + off_w
-#            # all internal patches
-#            + (self.num_patches_x - 2) * (pw - 2 * cw + ow + off_w)
-#        )
-#
-#        # Corresponding to the most right patches
-#        self.weight_x["right"] = np.hstack(
-#            (
-#                np.zeros(cw, dtype=float),
-#                np.linspace(0, 1, ow),
-#                np.ones(self.base.num_pixels_width - marked_width, dtype=float),
-#            )
-#        )
-#
-#        # Analogously, define the weighting in y-direction.
-#        # NOTE: The weight has to be defined consistently with the conventional matrix
-#        # indexing of images, i.e., the first pixel lies at the top.
-#        self.weight_y = {}
-#
-#        # Corresponding to the bottom patches
-#        self.weight_y["bottom"] = np.hstack(
-#            (
-#                np.zeros(ch, dtype=float),
-#                np.linspace(0, 1, oh),
-#                np.ones(ph - ch, dtype=float),
-#            )
-#        )
-#
-#        # Corresponding to the internal patches
-#        self.weight_y["internal"] = np.hstack(
-#            (
-#                np.zeros(ch, dtype=float),
-#                np.linspace(0, 1, oh),
-#                np.ones(ph - 2 * ch, dtype=float),
-#                np.linspace(1, 0, oh),
-#                np.zeros(ch, dtype=float),
-#            )
-#        )
-#
-#        # Analogously to weight_x, have to determine the marked height
-#        marked_height = (
-#            # bottom patch
-#            (ph - ch + oh + off_h)
-#            # all internal patches
-#            + (self.num_patches_y - 2) * (ph - 2 * ch + oh + off_h)
-#        )
-#
-#        # Corresponding to the top patches
-#        self.weight_y["top"] = np.hstack(
-#            (
-#                np.ones(self.base.num_pixels_height - marked_height, dtype=float),
-#                np.linspace(1, 0, oh),
-#                np.zeros(ch, dtype=float),
-#            )
-#        )
-#
-#        # Mark flag that weights are defined.
-#        self.weights_defined = True
-#
-#    def position(self, i: int, j: int) -> tuple[str, str]:
-#        """
-#        Determine positioning of patch wrt. boundary or internal patches
-#        in both x- and y-direction.
-#
-#        Args:
-#            i (int): patch coordinate in x-direction
-#            j (int): patch coordinate in y-direction
-#
-#        NOTE: The patch coordinates employ the Cartesian indexing, i.e., (x,y).
-#
-#        Returns:
-#            str: "left" or "right" if the patch is touching the left or right boundary
-#                of the image; otherwise "internal"
-#            str: "top" or "bottom" if the patch is touching the top or bottom boundary
-#                of the image; otherwise "internal"
-#        """
-#        # TODO is this used? rm?
-#        # Determine horizontal position (x-direction)
-#        if i == 0:
-#            horizontal_position: str = "left"
-#        elif i == self.num_patches_x - 1:
-#            horizontal_position = "right"
-#        else:
-#            horizontal_position = "internal"
-#
-#        # Determine vertical position (y-direction)
-#        if j == 0:
-#            vertical_position: str = "bottom"
-#        elif j == self.num_patches_y - 1:
-#            vertical_position = "top"
-#        else:
-#            vertical_position = "internal"
-#
-#        return horizontal_position, vertical_position
-#
-#    def assemble(self, update_img: bool = False) -> darsia.Image:
-#        """
-#        Reassembles without taking into account the overlap.
-#
-#        Args:
-#            update_img (bool): flag controlling whether the base image will be updated
-#                with the assembled image; default set to False
-#
-#        Returns:
-#            darsia.image: assembled image as darsia image
-#        """
-#
-#        # TODO naturally extends to 3d?
-#
-#        # Initialize empty row of the final image. It will be used
-#        # to assemble the patches 'row' by 'row' (here row is not
-#        # meant as for images, as patches use Cartesian coordinates).
-#        assembled_img = np.zeros(
-#            (0, *self.base.img.shape[1:]), dtype=self.base.img.dtype
-#        )
-#
-#        # Create "image-strips" that are assembled by concatenation
-#        for j in range(self.num_patches_y):
-#
-#            # Initialize the row with y coordinate j of the final image
-#            # with the first patch image.
-#            rel_roi = self.relative_rois_without_overlap[0][j]
-#            assembled_y_j = self.images[0][j].img[rel_roi]
-#
-#            # And assemble the remainder of the row by concatenation
-#            # over the patches in x-direction with same y coordinate (=j).
-#            for i in range(1, self.num_patches_x):
-#                rel_roi = self.relative_rois_without_overlap[i][j]
-#                assembled_y_j = np.hstack(
-#                    (assembled_y_j, self.images[i][j].img[rel_roi])
-#                )
-#
-#            # Concatenate the row and the current image
-#            assembled_img = np.vstack((assembled_y_j, assembled_img))
-#
-#        # Make sure that the resulting image has the same resolution
-#        assert assembled_img.shape == self.base.img.shape
-#
-#        # Define resulting darsia image
-#        da_assembled_img = darsia.Image(
-#            img=assembled_img,
-#            origin=self.base.origin,
-#            width=self.base.width,
-#            height=self.base.height,
-#            color_space=self.base.colorspace,
-#        )
-#
-#        # Update the base image if required
-#        if update_img:
-#            self.base = da_assembled_img.copy()
-#
-#        return da_assembled_img
-#
-#    def blend_and_assemble(self, update_img: bool = False) -> darsia.Image:
-#        """
-#        Reassembles taking into account the overlap as well.
-#        On the overlap, a convex combination is used for
-#        smooth blending.
-#
-#        Args:
-#            update_img (bool): flag controlling whether the base image will be updated
-#                with the assembled image; default set to False
-#
-#        Returns:
-#            darsia.Image: assembled image as darsia image
-#
-#        """
-#
-#        # TODO naturally extends to 3d?
-#
-#        # Require weights. Define if needed.
-#        if not self.weights_defined:
-#            self._prepare_weights()
-#
-#        # The procedure is as follows. The image is reassembled, row by row.
-#        # Each row is reconstructed by concatenation. Overlapping regions
-#        # have to handled separately by a weighted sum (convex combination).
-#        # For this, the above defined partition of unity will be used.
-#        # Then, rows are combined in a similar manner, but now entire rows are
-#        # concatenated, and added using the partition of unity.
-#
-#        # Allocate memory for resassembled image
-#        assembled_img = np.zeros_like(self.base.img, dtype=float)
-#
-#        # Loop over patches
-#        for j in range(self.num_patches_y):
-#
-#            # Allocate memory for row  with y-coordinate j.
-#            shape = [self.images[0][j].num_pixels_height, *self.base.img.shape[1:]]
-#            assembled_y_j = np.zeros(tuple(shape), dtype=float)
-#
-#            # Assemble the row with y-coordinate j by a suitable weighted combination
-#            # of the patches in row j
-#            for i in range(self.num_patches_x):
-#
-#                # Determine the active pixel range
-#                roi = self.rois[i][j]
-#                roi_x = roi[1]
-#
-#                # Fetch patch, and convert to float
-#                img_i_j = skimage.img_as_float(self.images[i][j].img)
-#
-#                # Fetch weight and convert to tensor
-#                weight_i_j = self.weight_x[self.position(i, j)[0]]
-#                # Convert to tensor
-#                weight_i_j = weight_i_j.reshape(1, np.size(weight_i_j), 1)
-#
-#                # Add weighted patch at the active pixel range
-#                assembled_y_j[:, roi_x] += np.multiply(img_i_j, weight_i_j)
-#
-#            # Anologous procedure, but now on row-level and not single-patch level.
-#
-#            # Determine active pixel range. NOTE: roi[0] still contains the relevant
-#            # pixel range, relevant for addressing the base image.
-#            roi_y = roi[0]
-#
-#            # Fetch weight
-#            weight_j = self.weight_y[self.position(i, j)[1]]
-#            # Convert to tensor
-#            weight_j = weight_j.reshape(np.size(weight_j), 1, 1)
-#
-#            # Add weighted row at the active pixel range
-#            assembled_img[roi_y, :] += np.multiply(assembled_y_j, weight_j)
-#
-#        # Make sure the newly assembled image is compatible with the original base image
-#        assert assembled_img.shape == self.base.img.shape
-#
-#        # Convert final image to uint8 format
-#        if self.base.original_dtype == np.uint8:
-#            assembled_img = skimage.img_as_ubyte(assembled_img)
-#        elif self.base.original_dtype == np.uint16:
-#            assembled_img = skimage.img_as_uint(assembled_img)
-#
-#        # Define resulting darsia image
-#        da_assembled_img = darsia.Image(
-#            img=assembled_img,
-#            origin=self.base.origin,
-#            width=self.base.width,
-#            height=self.base.height,
-#            color_space=self.base.colorspace,
-#        )
-#
-#        # Update the base image if required
-#        if update_img:
-#            self.base = da_assembled_img.copy()
-#
-#        return da_assembled_img
+    def _prepare_weights(self):
+        """
+        Auxiliary setup method for defining weights to be used in blend_and_assemble.
+        """
+
+        # Fetch some abbreviations
+        pw = self.pw
+        ph = self.ph
+        ow = self.ow
+        oh = self.oh
+        cw = self.cw
+        ch = self.ch
+        off_w = self.off_w
+        off_h = self.off_h
+
+        # Define partition of unity later to be used as weighting masks for blending in
+        # x-direction. Distinguish between th three different cases: (i) left border,
+        # (ii) internal, and (iii) right border.
+        self.weight_x = {}
+
+        # Corresponding to the most left patches
+        self.weight_x["left"] = np.hstack(
+            (
+                np.ones(pw - cw, dtype=float),
+                np.linspace(1, 0, ow),
+                np.zeros(cw, dtype=float),
+            )
+        )
+
+        if pw - 2 * cw <= 0:
+            raise ValueError("Overlap chosen to large")
+
+        # Corresponding to the internal patches
+        self.weight_x["internal"] = np.hstack(
+            (
+                np.zeros(cw, dtype=float),
+                np.linspace(0, 1, ow),
+                np.ones(pw - 2 * cw, dtype=float),
+                np.linspace(1, 0, ow),
+                np.zeros(cw, dtype=float),
+            )
+        )
+
+        # Have to take into account that not all patches have perfect size, and small
+        # adjustments have to be made at the right boundary patches. Thus, compute the
+        # so far total width occupied - goal: determine the amount of pixels which are
+        # left for true 1 values in the weight corresponding to the most right patch.
+        marked_width = (
+            # left patch
+            pw
+            - cw
+            + ow
+            + off_w
+            # all internal patches
+            + (self.num_patches_x - 2) * (pw - 2 * cw + ow + off_w)
+        )
+
+        # Corresponding to the most right patches
+        self.weight_x["right"] = np.hstack(
+            (
+                np.zeros(cw, dtype=float),
+                np.linspace(0, 1, ow),
+                np.ones(self.base.num_pixels_width - marked_width, dtype=float),
+            )
+        )
+
+        # Analogously, define the weighting in y-direction.
+        # NOTE: The weight has to be defined consistently with the conventional matrix
+        # indexing of images, i.e., the first pixel lies at the top.
+        self.weight_y = {}
+
+        # Corresponding to the bottom patches
+        self.weight_y["bottom"] = np.hstack(
+            (
+                np.zeros(ch, dtype=float),
+                np.linspace(0, 1, oh),
+                np.ones(ph - ch, dtype=float),
+            )
+        )
+
+        # Corresponding to the internal patches
+        self.weight_y["internal"] = np.hstack(
+            (
+                np.zeros(ch, dtype=float),
+                np.linspace(0, 1, oh),
+                np.ones(ph - 2 * ch, dtype=float),
+                np.linspace(1, 0, oh),
+                np.zeros(ch, dtype=float),
+            )
+        )
+
+        # Analogously to weight_x, have to determine the marked height
+        marked_height = (
+            # bottom patch
+            (ph - ch + oh + off_h)
+            # all internal patches
+            + (self.num_patches_y - 2) * (ph - 2 * ch + oh + off_h)
+        )
+
+        # Corresponding to the top patches
+        self.weight_y["top"] = np.hstack(
+            (
+                np.ones(self.base.num_pixels_height - marked_height, dtype=float),
+                np.linspace(1, 0, oh),
+                np.zeros(ch, dtype=float),
+            )
+        )
+
+        # Mark flag that weights are defined.
+        self.weights_defined = True
+
+    def position(self, i: int, j: int) -> tuple[str, str]:
+        """
+        Determine positioning of patch wrt. boundary or internal patches
+        in both x- and y-direction.
+
+        Args:
+            i (int): patch coordinate in x-direction
+            j (int): patch coordinate in y-direction
+
+        NOTE: The patch coordinates employ the Cartesian indexing, i.e., (x,y).
+
+        Returns:
+            str: "left" or "right" if the patch is touching the left or right boundary
+                of the image; otherwise "internal"
+            str: "top" or "bottom" if the patch is touching the top or bottom boundary
+                of the image; otherwise "internal"
+        """
+        # TODO is this used? rm?
+        # Determine horizontal position (x-direction)
+        if i == 0:
+            horizontal_position: str = "left"
+        elif i == self.num_patches_x - 1:
+            horizontal_position = "right"
+        else:
+            horizontal_position = "internal"
+
+        # Determine vertical position (y-direction)
+        if j == 0:
+            vertical_position: str = "bottom"
+        elif j == self.num_patches_y - 1:
+            vertical_position = "top"
+        else:
+            vertical_position = "internal"
+
+        return horizontal_position, vertical_position
+
+    def assemble(self, update_img: bool = False) -> darsia.Image:
+        """
+        Reassembles without taking into account the overlap.
+
+        Args:
+            update_img (bool): flag controlling whether the base image will be updated
+                with the assembled image; default set to False
+
+        Returns:
+            darsia.image: assembled image as darsia image
+        """
+
+        # TODO naturally extends to 3d?
+
+        # Initialize empty row of the final image. It will be used
+        # to assemble the patches 'row' by 'row' (here row is not
+        # meant as for images, as patches use Cartesian coordinates).
+        assembled_img = np.zeros(
+            (0, *self.base.img.shape[1:]), dtype=self.base.img.dtype
+        )
+
+        # Create "image-strips" that are assembled by concatenation
+        for j in range(self.num_patches_y):
+
+            # Initialize the row with y coordinate j of the final image
+            # with the first patch image.
+            rel_roi = self.relative_rois_without_overlap[0][j]
+            assembled_y_j = self.images[0][j].img[rel_roi]
+
+            # And assemble the remainder of the row by concatenation
+            # over the patches in x-direction with same y coordinate (=j).
+            for i in range(1, self.num_patches_x):
+                rel_roi = self.relative_rois_without_overlap[i][j]
+                assembled_y_j = np.hstack(
+                    (assembled_y_j, self.images[i][j].img[rel_roi])
+                )
+
+            # Concatenate the row and the current image
+            assembled_img = np.vstack((assembled_y_j, assembled_img))
+
+        # Make sure that the resulting image has the same resolution
+        assert assembled_img.shape == self.base.img.shape
+
+        # Define resulting darsia image
+        da_assembled_img = darsia.Image(
+            img=assembled_img,
+            origin=self.base.origin,
+            width=self.base.width,
+            height=self.base.height,
+            color_space=self.base.colorspace,
+        )
+
+        # Update the base image if required
+        if update_img:
+            self.base = da_assembled_img.copy()
+
+        return da_assembled_img
+
+    def blend_and_assemble(self, update_img: bool = False) -> darsia.Image:
+        """
+        Reassembles taking into account the overlap as well.
+        On the overlap, a convex combination is used for
+        smooth blending.
+
+        Args:
+            update_img (bool): flag controlling whether the base image will be updated
+                with the assembled image; default set to False
+
+        Returns:
+            darsia.Image: assembled image as darsia image
+
+        """
+
+        # TODO naturally extends to 3d?
+
+        # Require weights. Define if needed.
+        if not self.weights_defined:
+            self._prepare_weights()
+
+        # The procedure is as follows. The image is reassembled, row by row.
+        # Each row is reconstructed by concatenation. Overlapping regions
+        # have to handled separately by a weighted sum (convex combination).
+        # For this, the above defined partition of unity will be used.
+        # Then, rows are combined in a similar manner, but now entire rows are
+        # concatenated, and added using the partition of unity.
+
+        # Allocate memory for resassembled image
+        assembled_img = np.zeros_like(self.base.img, dtype=float)
+
+        # Loop over patches
+        for j in range(self.num_patches_y):
+
+            # Allocate memory for row  with y-coordinate j.
+            shape = [self.images[0][j].num_pixels_height, *self.base.img.shape[1:]]
+            assembled_y_j = np.zeros(tuple(shape), dtype=float)
+
+            # Assemble the row with y-coordinate j by a suitable weighted combination
+            # of the patches in row j
+            for i in range(self.num_patches_x):
+
+                # Determine the active pixel range
+                roi = self.rois[i][j]
+                roi_x = roi[1]
+
+                # Fetch patch, and convert to float
+                img_i_j = skimage.img_as_float(self.images[i][j].img)
+
+                # Fetch weight and convert to tensor
+                weight_i_j = self.weight_x[self.position(i, j)[0]]
+                # Convert to tensor
+                weight_i_j = weight_i_j.reshape(1, np.size(weight_i_j), 1)
+
+                # Add weighted patch at the active pixel range
+                assembled_y_j[:, roi_x] += np.multiply(img_i_j, weight_i_j)
+
+            # Anologous procedure, but now on row-level and not single-patch level.
+
+            # Determine active pixel range. NOTE: roi[0] still contains the relevant
+            # pixel range, relevant for addressing the base image.
+            roi_y = roi[0]
+
+            # Fetch weight
+            weight_j = self.weight_y[self.position(i, j)[1]]
+            # Convert to tensor
+            weight_j = weight_j.reshape(np.size(weight_j), 1, 1)
+
+            # Add weighted row at the active pixel range
+            assembled_img[roi_y, :] += np.multiply(assembled_y_j, weight_j)
+
+        # Make sure the newly assembled image is compatible with the original base image
+        assert assembled_img.shape == self.base.img.shape
+
+        # Convert final image to uint8 format
+        if self.base.original_dtype == np.uint8:
+            assembled_img = skimage.img_as_ubyte(assembled_img)
+        elif self.base.original_dtype == np.uint16:
+            assembled_img = skimage.img_as_uint(assembled_img)
+
+        # Define resulting darsia image
+        da_assembled_img = darsia.Image(
+            img=assembled_img,
+            origin=self.base.origin,
+            width=self.base.width,
+            height=self.base.height,
+            color_space=self.base.colorspace,
+        )
+
+        # Update the base image if required
+        if update_img:
+            self.base = da_assembled_img.copy()
+
+        return da_assembled_img

@@ -1,8 +1,10 @@
+"""Module providing structures for any general concentration analysis.
+
+This include tracer, co2, multicomponent, etc. analyses. The resulting class is abstract
+and needs to be tailored to the specific situation by inheritance.
+
 """
-Module providing structures for any general concentration analysis (tracer, co2,
-multicomponent, etc. The resulting class is abstract and needs to be tailored
-to the specific situation by inheritance.
-"""
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Union

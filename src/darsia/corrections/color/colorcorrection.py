@@ -66,7 +66,7 @@ class CustomColorChecker:
     """Swatch colors determined from user-prescribed input image."""
 
     def __init__(
-        self, path: Path, reference_colors: Optional[np.ndarray] = None
+        self, path: Optional[Path] = None, reference_colors: Optional[np.ndarray] = None
     ) -> None:
         """
         Either read reference colors from file or from provided array.
@@ -83,8 +83,9 @@ class CustomColorChecker:
 
         else:
             self.reference_swatches_rgb = reference_colors
-            path.parents[0].mkdir(parents=True, exist_ok=True)
-            np.save(path, reference_colors)
+            if path is not None:
+                path.parents[0].mkdir(parents=True, exist_ok=True)
+                np.save(path, reference_colors)
 
 
 class ColorCorrection(darsia.BaseCorrection):
@@ -101,6 +102,7 @@ class ColorCorrection(darsia.BaseCorrection):
 
     def __init__(
         self,
+        base: Optional[darsia.Image] = None,
         config: Optional[dict] = None,
         roi: Optional[Union[tuple, np.ndarray, list]] = None,
         verbosity: bool = False,
@@ -110,6 +112,7 @@ class ColorCorrection(darsia.BaseCorrection):
         Constructor of converter, setting up a priori all data needed for fast conversion.
 
         Args:
+            base (Image, optional): reference image defining a custom color checker.
             config (dict, str, Path): config file for initialization of images. Can be
                 used instead of roi, but roi is always prefered if it is present.
             roi (tuple of slices, np.ndarray, or None): ROI containing a colour checker,
@@ -154,7 +157,8 @@ class ColorCorrection(darsia.BaseCorrection):
 
         # Reference of the class color checker - allow for the classic color checker and
         # a custom one - assist in creating the latter with tools from ColorCorrection.
-        self._setup_colorchecker()
+        # Use the input image to define a custom color checker if provided.
+        self._setup_colorchecker(base)
 
     def correct_array(
         self,
@@ -240,13 +244,19 @@ class ColorCorrection(darsia.BaseCorrection):
 
     # ! ---- Auxiliary files
 
-    def _setup_colorchecker(self) -> None:
-        """
-        Auxiliary setup routine for the custom color checker, making use
-        of capailities of this class. Defines self.colorchecker.
+    def _setup_colorchecker(self, base: Optional[darsia.Image]) -> None:
+        """Auxiliary setup routine for setting up the custom color checker.
+
+        Defines self.colorchecker.
+
+        Args:
+            base (Image, optional): reference image if provided
+
         """
         # Fetch type of colorchecker
-        reference = self.config.get("reference", "classic")
+        reference = self.config.get(
+            "reference", "classic" if base is None else "custom"
+        )
         assert reference in ["classic", "custom"]
 
         # Set up either classic or custom color checker
@@ -257,34 +267,22 @@ class ColorCorrection(darsia.BaseCorrection):
 
         elif reference == "custom":
 
-            # Fetch path and flag on updating
-            colorchecker_path: Path = Path(
-                self.config.get("custom_colorchecker_path", "custom_colorchecker.npy")
-            )
-            update_colorchecker: bool = self.config.get(
-                "custom_colorchecker_update", False
-            )
+            def extract_swatches(img: np.ndarray, roi: np.ndarray) -> np.ndarray:
+                """Extract part of the image containing a color checker.
+                Use width and height (in cm - irrelevant) as provided by the
+                manufacturer Xrite.
 
-            # If required, extract swatches from a provided baseline image and use these
-            # as reference colors; otherwise fetch info form file.
-            if update_colorchecker or not colorchecker_path.exists():
+                Args:
+                    img (np.ndarray): baseline image
+                    roi (np.ndarray): roi detecting the markers of the colorchecker
 
-                # Fetch info on baseline image and roi
-                baseline_path: str = self.config.get("baseline")
-                baseline = cv2.cvtColor(
-                    cv2.imread(str(Path(baseline_path)), cv2.IMREAD_UNCHANGED),
-                    cv2.COLOR_BGR2RGB,
-                )
-                baseline_roi: np.ndarray = np.array(
-                    self.config.get("custom_colorchecker_reference_roi", self.roi)
-                )
+                Returns:
+                    np.ndarray: swatches
 
-                # Extract part of the image containing a color checker.
-                # Use width and height (in cm - irrelevant) as provided by the
-                # manufacturer Xrite.
-                assert self.roi.shape == (4, 2)
+                """
+                assert roi.shape == (4, 2)
                 colorchecker_img = darsia.extract_quadrilateral_ROI(
-                    baseline, pts_src=baseline_roi, width=27.3, height=17.8
+                    img, pts_src=roi, width=27.3, height=17.8
                 )
 
                 # Determine swatch colors
@@ -292,14 +290,48 @@ class ColorCorrection(darsia.BaseCorrection):
 
                 # Scale to interval [0,1], to not loose any information, perform the
                 # scaling by hand
-                assert baseline.dtype in [np.uint8, np.uint16]
-                scaling = 255.0 if baseline.dtype == np.uint8 else 255.0**2
+                assert img.dtype in [np.uint8, np.uint16]
+                scaling = 255.0 if img.dtype == np.uint8 else 255.0**2
                 swatches /= scaling
 
-                self.colorchecker = CustomColorChecker(colorchecker_path, swatches)
+                return swatches
+
+            # Allow to use provided image or some path to color patches. Prioritize image.
+            if base is None:
+
+                # Fetch path and flag on updating
+                colorchecker_path: Path = Path(
+                    self.config.get(
+                        "custom_colorchecker_path", "custom_colorchecker.npy"
+                    )
+                )
+                update_colorchecker: bool = self.config.get(
+                    "custom_colorchecker_update", False
+                )
+
+                # If required, extract swatches from a provided baseline image and use these
+                # as reference colors; otherwise fetch info form file.
+                if update_colorchecker or not colorchecker_path.exists():
+
+                    # Fetch info on baseline image and roi
+                    baseline_path: str = self.config.get("baseline")
+                    baseline = cv2.cvtColor(
+                        cv2.imread(str(Path(baseline_path)), cv2.IMREAD_UNCHANGED),
+                        cv2.COLOR_BGR2RGB,
+                    )
+                    baseline_roi: np.ndarray = np.array(
+                        self.config.get("custom_colorchecker_reference_roi", self.roi)
+                    )
+
+                    swatches = extract_swatches(baseline, baseline_roi)
+                    self.colorchecker = CustomColorChecker(colorchecker_path, swatches)
+
+                else:
+                    self.colorchecker = CustomColorChecker(colorchecker_path)
 
             else:
-                self.colorchecker = CustomColorChecker(colorchecker_path)
+                swatches = extract_swatches(base.img, self.roi)
+                self.colorchecker = CustomColorChecker(reference_colors=swatches)
 
     def _restrict_to_roi(self, img: np.ndarray) -> np.ndarray:
         """

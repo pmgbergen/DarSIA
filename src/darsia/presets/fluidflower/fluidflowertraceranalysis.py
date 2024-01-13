@@ -1,9 +1,11 @@
-"""
-Module containing the standardized tracer concentration analysis applicable
-for the tracer experiments in the FluidFlower (and other similar assets),
+"""Standardized tracer concentration analysis.
+
+Applicable for the tracer experiments in the FluidFlower (and other similar assets),
 allowing for heterogeneous media.
 
 """
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Union
 

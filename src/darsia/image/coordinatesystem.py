@@ -1,3 +1,5 @@
+"""Physical coordinate systems for Image objects."""
+
 from __future__ import annotations
 
 from typing import Union
@@ -28,7 +30,7 @@ class CoordinateSystem:
 
         """
 
-        assert img.indexing in ["ij", "ijk"]
+        assert img.indexing in ["i", "ij", "ijk"], f"Indexing not supported."
         self.indexing = img.indexing
         """Indexing of the underlying image."""
 
@@ -50,16 +52,14 @@ class CoordinateSystem:
             pos, _ = darsia.interpret_indexing(axis, self.indexing)
             self.voxel_size[axis] = img.voxel_size[pos]
 
-        self._coordinate_of_origin_voxel: np.ndarray = img.origin
+        self._coordinate_of_origin_voxel: darsia.Coordinate = img.origin
         """Coordinate of origin voxel."""
 
         opposite_corner_voxel = img.img.shape[: self.dim]
-        self._coordinate_of_opposite_voxel = self.coordinate(opposite_corner_voxel)
+        self._coordinate_of_opposite_voxel: darsia.Coordinate = self.coordinate(
+            opposite_corner_voxel
+        )
         """Coordinate of opposite voxel."""
-
-        origin_coordinate = img.origin
-        self._voxel_of_origin_coordinate: np.ndarray = self.voxel(origin_coordinate)
-        """Voxel corresponding to the origin."""
 
         corners = np.vstack(
             (self._coordinate_of_origin_voxel, self._coordinate_of_opposite_voxel)
@@ -69,6 +69,32 @@ class CoordinateSystem:
         for i, axis in enumerate(self.axes):
             self.domain[axis + "min"] = np.min(corners[:, i])
             self.domain[axis + "max"] = np.max(corners[:, i])
+
+    @property
+    def voxels(self) -> darsia.VoxelArray:
+        """Voxel array of image, collecting all voxels.
+
+        Returns:
+            VoxelArray: voxel array of image
+
+        """
+        if not hasattr(self, "_voxels"):
+            self._voxels = darsia.make_voxel(
+                np.indices(self.shape, dtype=int).reshape((self.dim, -1), order="F").T
+            )
+        return self._voxels
+
+    @property
+    def coordinates(self) -> darsia.CoordinateArray:
+        """Coordinate array of image, collecting all coordinates.
+
+        Returns:
+            CoordinateArray: coordinate array of image
+
+        """
+        if not hasattr(self, "_coordinates"):
+            self._coordinates = self.coordinate(self.voxels)
+        return self._coordinates
 
     def length(self, num: Union[int, np.ndarray], axis: str) -> float:
         """
@@ -105,7 +131,16 @@ class CoordinateSystem:
         assert axis in self.axes
         return np.ceil(length / self.voxel_size[axis]).astype(int)
 
-    def coordinate(self, voxel: Union[np.ndarray, list[int], tuple[int]]) -> np.ndarray:
+    def coordinate(
+        self,
+        voxel: Union[
+            np.ndarray,
+            list[int],
+            tuple[int],
+            darsia.Voxel,
+            darsia.VoxelArray,
+        ],
+    ) -> Union[darsia.Coordinate, darsia.CoordinateArray]:
         """
         Conversion from voxel to Cartesian coordinate, i.e., from (row,col) to (x,y)
         format plus scaling for a 2d image.
@@ -113,8 +148,9 @@ class CoordinateSystem:
         Handles both single and multiple voxels.
 
         Arguments:
-            voxel (np.ndarray): voxel location in the same format as the indexing
-                of the underlying baseline image (see __init__); one voxel per row.
+            voxel (np.ndarray, list, tuple, Coordinate, or Voxel): voxel location in the
+                same format as the indexing of the underlying baseline image (see __init__);
+                one voxel per row.
 
         Returns:
             np.ndarray: corresponding coordinate in (x,y) format
@@ -142,17 +178,20 @@ class CoordinateSystem:
             )
 
         # Return in same format as the input
-        return coordinate.reshape(voxel.shape)
+        return darsia.make_coordinate(coordinate.reshape(voxel.shape))
 
-    def voxel(self, coordinate: Union[np.ndarray, list[float]]) -> np.ndarray:
+    def voxel(
+        self,
+        coordinate: Union[np.ndarray, list[float], darsia.Voxel, darsia.Coordinate],
+    ) -> np.ndarray:
         """
         Conversion from Cartesian coordinate to voxel in matrix indexing format.
 
         Handles both single and multiple coordinates.
 
         Arguments:
-            coordinate (np.ndarray): coordinate in Cartesian format, i.e., [x,y,z];
-                one coordinate per row.
+            coordinate (np.ndarray, list, Coordinate or Voxel): coordinate in Cartesian
+                format, i.e., [x,y,z]; one coordinate per row.
 
         Returns:
             np.ndarray: corresponding pixels in "ij"/"ijk" format.
@@ -180,7 +219,7 @@ class CoordinateSystem:
             )
 
         # Return in same format as the input, and force int dtype.
-        return np.round(pixel.reshape(coordinate.shape)).astype(int)
+        return darsia.make_voxel(np.round(pixel.reshape(coordinate.shape)).astype(int))
 
     def coordinate_vector(self, pixel_vector: np.ndarray) -> np.ndarray:
         """
@@ -221,7 +260,7 @@ def check_equal_coordinatesystems(
     coordinatesystem1: CoordinateSystem,
     coordinatesystem2: CoordinateSystem,
     exclude_size: bool = False,
-) -> bool:
+) -> tuple[bool, dict]:
     """Check whether two coordinate systems are equivalent, i.e., they share basic
     attributes.
 
@@ -232,38 +271,53 @@ def check_equal_coordinatesystems(
 
     Returns:
         bool: True iff the two coordinate systems are equivalent.
+        dict: log of the failed checks.
 
     """
     success = True
-    success = success and coordinatesystem1.indexing == coordinatesystem2.indexing
-    success = success and coordinatesystem1.dim == coordinatesystem2.dim
-    if not exclude_size:
-        success = success and np.allclose(
-            coordinatesystem1.shape, coordinatesystem2.shape
-        )
-    success = success and np.allclose(
-        coordinatesystem1.dimensions, coordinatesystem2.dimensions
-    )
-    success = success and coordinatesystem1.axes == coordinatesystem2.axes
-    if not exclude_size:
-        for axis in coordinatesystem1.axes:
-            success = (
-                success
-                and coordinatesystem1.voxel_size[axis]
-                == coordinatesystem2.voxel_size[axis]
-            )
-    success = success and np.allclose(
-        coordinatesystem1._coordinate_of_origin_voxel,
-        coordinatesystem2._coordinate_of_origin_voxel,
-    )
-    success = success and np.allclose(
-        coordinatesystem1._coordinate_of_opposite_voxel,
-        coordinatesystem2._coordinate_of_opposite_voxel,
-    )
-    if not exclude_size:
-        success = success and np.allclose(
-            coordinatesystem1._voxel_of_origin_coordinate,
-            coordinatesystem2._voxel_of_origin_coordinate,
-        )
+    failure_log = []
 
-    return success
+    if not (coordinatesystem1.indexing == coordinatesystem2.indexing):
+        failure_log.append("indexing")
+
+    if not (coordinatesystem1.dim == coordinatesystem2.dim):
+        failure_log.append("space_dim")
+
+    if not exclude_size:
+        if not (np.allclose(coordinatesystem1.shape, coordinatesystem2.shape)):
+            failure_log.append("shape")
+
+    if not (np.allclose(coordinatesystem1.dimensions, coordinatesystem2.dimensions)):
+        failure_log.append("dimensions")
+
+    if not (coordinatesystem1.axes == coordinatesystem2.axes):
+        failure_log.append("axes")
+
+    if not exclude_size:
+        voxel_size_equal = True
+        for axis in coordinatesystem1.axes:
+            voxel_size_equal = voxel_size_equal and np.isclose(
+                coordinatesystem1.voxel_size[axis], coordinatesystem2.voxel_size[axis]
+            )
+        if not voxel_size_equal:
+            failure_log.append("voxel_size")
+
+    if not (
+        np.allclose(
+            coordinatesystem1._coordinate_of_origin_voxel,
+            coordinatesystem2._coordinate_of_origin_voxel,
+        )
+    ):
+        failure_log.append("coordinate_of_origin_voxel")
+
+    if not (
+        np.allclose(
+            coordinatesystem1._coordinate_of_opposite_voxel,
+            coordinatesystem2._coordinate_of_opposite_voxel,
+        )
+    ):
+        failure_log.append("coordinate_of_opposite_voxel")
+
+    success = len(failure_log) == 0
+
+    return success, failure_log

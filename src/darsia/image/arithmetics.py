@@ -1,7 +1,7 @@
-"""Utils for non-standard arithmetics of images,
-as weighted superposition.
+"""Utils for non-standard arithmetics of images, as weighted superposition.
 
 """
+from __future__ import annotations
 
 from typing import Union
 
@@ -32,9 +32,10 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
         weighted_img.img *= weight
 
     elif isinstance(weight, darsia.Image):
-        assert darsia.check_equal_coordinatesystems(
+        equal_coordinate_system, log = darsia.check_equal_coordinatesystems(
             img.coordinatesystem, weight.coordinatesystem, exclude_size=True
         )
+        assert equal_coordinate_system, f"{log}"
         space_dim = img.space_dim
         assert len(weight.img.shape) == space_dim
 
@@ -148,7 +149,7 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
     dimensions = [cartesian_dimensions[i] for i in to_matrix_indexing]
 
     meta = {
-        "dim": space_dim,
+        "space_dim": space_dim,
         "indexing": indexing,
         "dimensions": dimensions,
         "origin": origin,

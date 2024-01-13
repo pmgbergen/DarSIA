@@ -1,8 +1,10 @@
-"""
-Module containing wrappers to resize routines from skimage and cv2. Access is given
-through objects. Also contains utility routine which equalizes voxel size lengths.
+"""Module containing wrappers to resize routines from skimage and cv2.
+
+Access is given through objects. Also contains utility routine which equalizes voxel
+size lengths.
 
 """
+from __future__ import annotations
 
 from typing import Optional, Union
 
@@ -72,7 +74,7 @@ class Resize:
         interpolation_pre = (
             kwargs.get(key + "resize interpolation", None)
             if interpolation is None
-            else None
+            else interpolation
         )
         if interpolation_pre is None:
             self.interpolation = None
@@ -161,6 +163,39 @@ class Resize:
             return resized_img_array
 
 
+def resize(
+    image: darsia.Image,
+    shape: Optional[tuple[int]] = None,
+    fx: Optional[float] = None,
+    fy: Optional[float] = None,
+    interpolation: Optional[str] = None,
+    dtype=None,
+) -> darsia.Image:
+    """Function wrapper to Resize object.
+
+    Args:
+        image (darsia.Image): image to be resized
+        shape (tuple of int, optional): desired shape (in matrix indexing)
+        fx (float, optional): resize factor in x-dimension.
+        fy (float, optional): resize factor in y-dimension.
+        interpolation (str, optional): interpolation method, default: None, invoking
+            the default option in cv2.resize.
+        dtype: conversion dtype before resizing; noting happens if None
+
+    """
+    # Define Resize object
+    resizer = Resize(
+        shape=shape,
+        fx=fx,
+        fy=fy,
+        interpolation=interpolation,
+        dtype=dtype,
+    )
+
+    # Return resized image
+    return resizer(image)
+
+
 def equalize_voxel_size(
     image: darsia.Image, voxel_size: Optional[float] = None, **kwargs
 ) -> darsia.Image:
@@ -206,7 +241,6 @@ def uniform_refinement(image: darsia.Image, levels: int) -> darsia.Image:
     array = image.img.copy()
 
     for level in range(abs(levels)):
-
         if levels > 0:
             # Refinement
             for i in range(image.space_dim):

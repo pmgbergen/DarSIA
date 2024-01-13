@@ -1,7 +1,8 @@
+"""Module containing class for translation analysis.
+
+This is relevant e.g. for studying compaction of porous media.
 """
-Module containing class for translation analysis, relevant e.g. for
-studying compaction of porous media.
-"""
+from __future__ import annotations
 
 from typing import Optional, cast
 

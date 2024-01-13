@@ -1,8 +1,7 @@
-"""
-Module that contains a class which provides the capabilities to
-analyze concentrations/saturation profiles based on image comparison.
+"""Capabilities to analyze concentrations/saturation profiles based on image comparison.
 
 """
+from __future__ import annotations
 
 import copy
 from pathlib import Path
@@ -17,8 +16,7 @@ import darsia
 
 
 class ConcentrationAnalysis:
-    """
-    Class providing the capabilities to determine concentration/saturation
+    """Class providing the capabilities to determine concentration/saturation
     profiles based on image comparison, and tuning of concentration-intensity
     maps.
 
@@ -37,12 +35,11 @@ class ConcentrationAnalysis:
         signal_reduction: darsia.SignalReduction = None,
         balancing: Optional[darsia.Model] = None,
         restoration: Optional[darsia.TVD] = None,
-        model: darsia.Model = darsia.Identity,
+        model: Optional[darsia.Model] = None,
         labels: Optional[np.ndarray] = None,
         **kwargs,
     ) -> None:
-        """
-        Constructor of ConcentrationAnalysis.
+        """Constructor of ConcentrationAnalysis.
 
         Args:
             base (Image or list of such): baseline image(s); if multiple provided,
@@ -53,9 +50,10 @@ class ConcentrationAnalysis:
             balancing (darsia.Model, optional): operator balancing the signal, e.g., in
                 different facies; the default value (None) denotes an identity
                 operation.
-            restoration (darsia.TVD): regularizer.
-            model (darsia.Model): Conversion of signals to actual physical data; default
-                value (None) denotes an identity operation.
+            restoration (darsia.TVD, optional): regularizer; the default value (`None`)
+                denotes an identity.
+            model (darsia.Model, optional): Conversion of signals to actual physical
+                data; default value (None) denotes an identity operation.
             labels (array, optional): labeled image of domain; the default value (None)
                 denotes the presence of a homogeneous medium.
             kwargs (keyword arguments): interface to all tuning parameters.
@@ -96,6 +94,9 @@ class ConcentrationAnalysis:
         self._diff_option = kwargs.get("diff option", "absolute")
         """Option for defining differences of images."""
 
+        self.first_restoration_then_model = kwargs.get("restoration -> model", True)
+        """Option for defining order of routines."""
+
         # Define a cleaning filter based on remaining images.
         self.find_cleaning_filter()
 
@@ -113,8 +114,7 @@ class ConcentrationAnalysis:
         base: Optional[darsia.Image] = None,
         mask: Optional[np.ndarray] = None,
     ) -> None:
-        """
-        Update of the baseline image or parameters.
+        """Update of the baseline image or parameters.
 
         Args:
             base (Image, optional): image array
@@ -134,8 +134,7 @@ class ConcentrationAnalysis:
         baseline_images: Optional[list[darsia.Image]] = None,
         reset: bool = False,
     ) -> None:
-        """
-        Determine structural noise by studying a series of baseline images.
+        """Determine structural noise by studying a series of baseline images.
         The resulting cleaning filter will be used prior to the conversion
         of signal to concentration. The cleaning filter should be understood
         as thresholding mask.
@@ -151,6 +150,8 @@ class ConcentrationAnalysis:
 
             # Use internal baseline images, if available.
             baseline_images = self._base_collection[1:]
+            if len(baseline_images) == 0:
+                baseline_images = None
 
         self.threshold_cleaning_filter = None
         """Cleaning filter."""
@@ -171,7 +172,7 @@ class ConcentrationAnalysis:
                 diff = self._subtract_background(probe_img)
 
                 # Extract scalar version
-                monochromatic_diff = self._extract_scalar_information(diff)
+                monochromatic_diff = self._reduce_signal(diff)
 
                 # Consider elementwise max
                 self.threshold_cleaning_filter = np.maximum(
@@ -179,8 +180,7 @@ class ConcentrationAnalysis:
                 )
 
     def read_cleaning_filter_from_file(self, path: Union[str, Path]) -> None:
-        """
-        Read cleaning filter from file.
+        """Read cleaning filter from file.
 
         Args:
             path (str or Path): path to cleaning filter array.
@@ -198,8 +198,7 @@ class ConcentrationAnalysis:
                 )
 
     def write_cleaning_filter_to_file(self, path_to_filter: Union[str, Path]) -> None:
-        """
-        Store cleaning filter to file.
+        """Store cleaning filter to file.
 
         Args:
             path_to_filter (str or Path): path for storage of the cleaning filter.
@@ -230,7 +229,7 @@ class ConcentrationAnalysis:
         self._inspect_diff(diff)
 
         # Extract monochromatic version and take difference wrt the baseline image
-        signal = self._extract_scalar_information(diff)
+        signal = self._reduce_signal(diff)
 
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_scalar_signal(signal)
@@ -244,23 +243,29 @@ class ConcentrationAnalysis:
         # Balance signal (take into account possible heterogeneous effects)
         balanced_signal = self._balance_signal(clean_signal)
 
-        # Regularize/upscale signal to Darcy scale
-        smooth_signal = self._prepare_signal(balanced_signal)
-
-        # Convert from signal to concentration
-        concentration = self._convert_signal(smooth_signal, diff)
+        # Regularize/upscale signal to Darcy scale and convert from signal to concentration
+        # or other way around.
+        if self.first_restoration_then_model:
+            smooth_signal = self._restore_signal(balanced_signal)
+            concentration = self._convert_signal(smooth_signal, diff)
+        else:
+            nonsmooth_concentration = self._convert_signal(balanced_signal, diff)
+            concentration = self._restore_signal(nonsmooth_concentration)
 
         # Invoke plot
         if self.verbosity >= 1:
             plt.show()
 
         metadata = img.metadata()
-        return darsia.ScalarImage(concentration, **metadata)
+        is_scalar = len(concentration.shape) == len(img.shape) - 1
+        if is_scalar:
+            return darsia.ScalarImage(concentration, **metadata)
+        else:
+            return type(img)(concentration, **metadata)
 
     # ! ---- Inspection routines
     def _inspect_diff(self, img: np.ndarray) -> None:
-        """
-        Routine allowing for plotting of intermediate results.
+        """Routine allowing for plotting of intermediate results.
         Requires overwrite.
 
         Args:
@@ -272,8 +277,7 @@ class ConcentrationAnalysis:
             plt.imshow(img)
 
     def _inspect_scalar_signal(self, img: np.ndarray) -> None:
-        """
-        Routine allowing for plotting of intermediate results.
+        """Routine allowing for plotting of intermediate results.
         Requires overwrite.
 
         Args:
@@ -285,8 +289,7 @@ class ConcentrationAnalysis:
             plt.imshow(img)
 
     def _inspect_clean_signal(self, img: np.ndarray) -> None:
-        """
-        Routine allowing for plotting of intermediate results.
+        """Routine allowing for plotting of intermediate results.
         Requires overwrite.
 
         Args:
@@ -299,8 +302,7 @@ class ConcentrationAnalysis:
 
     # ! ---- Pre- and post-processing methods
     def _subtract_background(self, img: darsia.Image) -> darsia.Image:
-        """
-        Take difference between input image and baseline image, based
+        """Take difference between input image and baseline image, based
         on cached option.
 
         Args:
@@ -318,6 +320,8 @@ class ConcentrationAnalysis:
                 diff = np.clip(-img.img, 0, None)
             elif self._diff_option == "absolute":
                 diff = np.absolute(img.img)
+            elif self._diff_option == "plain":
+                diff = img.img
             else:
                 raise ValueError(f"Diff option {self._diff_option} not supported")
         else:
@@ -330,14 +334,15 @@ class ConcentrationAnalysis:
                 diff = skimage.util.compare_images(
                     img.img, self.base.img, method="diff"
                 )
+            elif self._diff_option == "plain":
+                diff = img.img - self.base.img
             else:
                 raise ValueError(f"Diff option {self._diff_option} not supported")
 
         return diff
 
-    def _extract_scalar_information(self, img: np.ndarray) -> np.ndarray:
-        """
-        Make a scalar image from potentially multi-colored image.
+    def _reduce_signal(self, img: np.ndarray) -> np.ndarray:
+        """Make a scalar image from potentially multi-colored image.
 
         Args:
             img (np.ndarray): image
@@ -352,8 +357,7 @@ class ConcentrationAnalysis:
             return self.signal_reduction(img)
 
     def _clean_signal(self, img: np.ndarray) -> np.ndarray:
-        """
-        Apply cleaning thresholds.
+        """Apply cleaning thresholds.
 
         Args:
             img (np.ndarray): input image
@@ -369,8 +373,7 @@ class ConcentrationAnalysis:
         )
 
     def _balance_signal(self, img: np.ndarray) -> np.ndarray:
-        """
-        Routine responsible for rescaling wrt segments.
+        """Routine responsible for rescaling wrt segments.
 
         Here, it is assumed that only one segment is present.
         Thus, no rescaling is performed.
@@ -382,14 +385,10 @@ class ConcentrationAnalysis:
             np.ndarray: balanced image
 
         """
-        if self.balancing is not None:
-            return self.balancing(img)
-        else:
-            return img
+        return img if self.balancing is None else self.balancing(img)
 
-    def _prepare_signal(self, signal: np.ndarray) -> np.ndarray:
-        """
-        Apply restoration.
+    def _restore_signal(self, signal: np.ndarray) -> np.ndarray:
+        """Apply restoration.
 
         Args:
             signal (np.ndarray): input signal
@@ -404,8 +403,7 @@ class ConcentrationAnalysis:
         return signal
 
     def _convert_signal(self, signal: np.ndarray, diff: np.ndarray) -> np.ndarray:
-        """
-        Postprocessing routine, essentially converting a continuous
+        """Postprocessing routine, essentially converting a continuous
         signal into physical data (binary, continuous concentration etc.)
 
         Args:
@@ -419,14 +417,14 @@ class ConcentrationAnalysis:
 
         """
         # Obtain data from model
-        data = self.model(signal)
-
-        return data
+        if self.model is None:
+            return signal
+        else:
+            return self.model(signal)
 
 
 class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
-    """
-    Special case of the ConcentrationAnalysis performing a
+    """Special case of the ConcentrationAnalysis performing a
     prior-posterior analysis, i.e., allowing to review the
     conversion performed through a prior model.
 
@@ -462,8 +460,7 @@ class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
         )
 
     def _convert_signal(self, signal: np.ndarray, diff: np.ndarray) -> np.ndarray:
-        """
-        Postprocessing routine, essentially converting a continuous
+        """Postprocessing routine, essentially converting a continuous
         signal into physical data (binary, continuous concentration etc.)
         Use a prior-posterior approach, allowing to review the prior choice.
 

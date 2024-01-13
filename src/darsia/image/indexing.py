@@ -1,6 +1,4 @@
-"""
-Module containing auxiliary interpreters
-for indexing of axes used for images.
+"""Auxiliary interpreters for indexing of axes used for images.
 
 Conventions. For unified use in the code base,
 we introduce conventions of coordinate systems.
@@ -21,6 +19,7 @@ to the y-axis, and the third component corresponds to
 the x-axis.
 
 """
+from __future__ import annotations
 
 from typing import Union
 
@@ -103,18 +102,36 @@ def interpret_indexing(axis: str, indexing: str) -> tuple[int, bool]:
         indexing (str): indexing of an image, e.g., "ijk"
 
     Returns:
-        int: component corresponding to the axis. Covered: "x", "y", "z",
-            "i", "j", "k".
-        bool: flag controlling whether the axis has to be reverted
-            when converting. Covered: "xyz", "ijk".
+        int: component corresponding to the axis. Covered: "x", "y", "z", "i", "j", "k".
+        bool: flag controlling whether the axis has to be reverted when converting.
+            Covered: "xyz", "ijk", and reduced cases in 1d and 2d.
+
+    Raises:
+        ValueError: if not supported combination used as input.
 
     """
 
     # Consider all possible combinations.
 
+    # ! ---- 1D Cartesian indexing
+
+    if indexing == "x":
+        if axis == "x":
+            return 0, False
+        elif axis == "i":
+            return 0, False
+
+    # ! ---- 1D matrix indexing
+
+    elif indexing == "i":
+        if axis == "x":
+            return 0, False
+        elif axis == "i":
+            return 0, False
+
     # ! ---- 2D Cartesian indexing
 
-    if indexing == "xy":
+    elif indexing == "xy":
         if axis == "x":
             return 0, False
         elif axis == "y":
@@ -148,17 +165,17 @@ def interpret_indexing(axis: str, indexing: str) -> tuple[int, bool]:
         elif axis == "i":
             return 2, True
         elif axis == "j":
-            return 1, False
+            return 0, False
         elif axis == "k":
-            return 0, True
+            return 1, True
 
     # ! ---- 3D matrix indexing
 
     elif indexing == "ijk":
         if axis == "x":
-            return 2, True
-        elif axis == "y":
             return 1, False
+        elif axis == "y":
+            return 2, True
         elif axis == "z":
             return 0, True
         elif axis == "i":
@@ -173,7 +190,7 @@ def interpret_indexing(axis: str, indexing: str) -> tuple[int, bool]:
     raise ValueError
 
 
-def matrixToCartesianIndexing(img: np.ndarray) -> np.ndarray:
+def matrixToCartesianIndexing(img: np.ndarray, dim: int = 2) -> np.ndarray:
     """
     Reordering data indexing converting from (row,col) to (x,y) indexing.
 
@@ -184,21 +201,29 @@ def matrixToCartesianIndexing(img: np.ndarray) -> np.ndarray:
     when communicating image data to conventional simulators, which use
     the Cartesian indexing.
 
-    NOTE: Assumes 2d images.
-
     Arguments:
         np.ndarray: image array with matrix indexing
+        dim (int): dimension of the image, default is 2
 
     Returns:
         np.ndarray: image array with Cartesian indexing
     """
-    # Two operations are require: Swapping axis and flipping the vertical axis.
-
-    # Exchange first and second component, to change from (row,col) to (x,y) format.
-    img = np.swapaxes(img, 0, 1)
-
-    # Flip the orientation of the second axis, such that later y=0 is located at the bottom.
-    img = np.flip(img, 1)
+    if dim == 1:
+        pass
+    elif dim == 2:
+        # Two operations are require: Swapping axis and flipping the vertical axis.
+        # Exchange first and second component, to change from (row,col) to (x,y) format.
+        img = np.swapaxes(img, 0, 1)
+        # Flip the orientation of the 2nd axis, such that later y=0 corresonds to the bottom.
+        img = np.flip(img, 1)
+    elif dim == 3:
+        # Need to convert from i,j,k to x,y,z and flip the z-axis and x-axis.
+        img = np.swapaxes(img, 0, 2)
+        img = np.swapaxes(img, 0, 1)
+        img = np.flip(img, 1)
+        img = np.flip(img, 2)
+    else:
+        raise ValueError("Only 1d, 2d, and 3d images are supported.")
 
     return img
 

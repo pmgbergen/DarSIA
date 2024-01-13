@@ -14,28 +14,30 @@ If you use DarSIA in your research, we ask you to cite the following publication
 
 Nordbotten, J. M., Benali, B., Both, J. W., Brattekås, B., Storvik, E., & Fernø, M. A. (2023).
 DarSIA: An open-source Python toolbox for two-scale image processing of dynamics in porous media.
-arXiv preprint arXiv:2301.05455.
+Transport in Porous Media, https://doi.org/10.1007/s11242-023-02000-9
 
 The first release can be also found on Zenodo:
 10.5281/zenodo.7515016
 
 ## Installation
-Clone the repository from github and enter the DarSIA folder. Then, run the following command to install:
+DarSIA is developed under Python 3.10. Clone the repository from github and enter the DarSIA folder. Then, run the following command to install:
 
 ```bash
 pip install .
 ```
-
+To install DarSIA as editable (recommended), along with the tools to develop and run tests, run the following in your virtual environment:
+```bash
+$ pip install -e .[dev]
+```
 ## Usage
 
 The following Python script can be applied to the test image in the examples/images folder.
 
 ```python
 import numpy as np
-import darsia as da
 
 # Create a darsia Image: An image that also contains information of physical entities
-image = da.imread("images/baseline.jpg", width=2.8, height=1.5)
+image = darsia.imread("images/baseline.jpg", width=2.8, height=1.5)
 
 # Use the show method to take a look at the imported image.
 image.show()
@@ -49,13 +51,8 @@ ROI_image = image.subregion(coordinates=np.array([[1.5, 0], [2.8, 0.7]]))
 ROI_image.show()
 ```
 
-Furthermore, we encourage any user to checkout the jupyter notebooks in the examples/notebooks folder.
+Furthermore, we encourage any user to checkout the examples in the examples folder and the jupyter notebooks in the examples/notebooks folder.
 
 ## Developing DarSIA
-To install darsia, along with the tools to develop and run tests, run the following in your virtual environment:
-```bash
-$ pip install -e .[dev]
-```
 
 Use black (version 22.3.0), flake8 and isort formatting.
-

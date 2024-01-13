@@ -1,8 +1,7 @@
-"""
-Module containing functionality to determine the
-Earth Mover's distance between images.
+"""Functionality to determine the Earth Mover's distance between images via cv2.
 
 """
+from __future__ import annotations
 
 from typing import Optional, Union
 
@@ -15,8 +14,10 @@ import darsia
 
 
 class EMD:
-    """
-    Class to determine the EMD through cv2.
+    """Class to determine the EMD through cv2.
+
+    NOTE: EMD from cv2 suffers from strict memory limitations. Alternative algorithms
+    are provided in the module :mod:wasserstein.
 
     """
 
@@ -45,6 +46,11 @@ class EMD:
             float or array: distance between img_1 and img_2.
 
         """
+        # Two-dimensional
+        if not (img_1.space_dim == 2 and img_2.space_dim == 2):
+            raise NotImplementedError("EMD only implemented for 2d.")
+
+        # FIXME investigation required regarding resize preprocessing...
         # Preprocess images
         preprocessed_img_1 = self._preprocess(img_1)
         preprocessed_img_2 = self._preprocess(img_2)
@@ -52,7 +58,11 @@ class EMD:
         # Compatibilty check
         self._compatibility_check(preprocessed_img_1, preprocessed_img_2)
 
-        # Normalization
+        # Normalization I - required to put the final EMD in physical units. Scale all
+        # cell values with the respective cell volume.
+        cell_volume = np.prod(preprocessed_img_1.voxel_size)
+
+        # Normalization II - required to run cv2.EMD
         integral = self._sum(preprocessed_img_1)
         normalized_img_1 = self._normalize(preprocessed_img_1)
         normalized_img_2 = self._normalize(preprocessed_img_2)
@@ -68,7 +78,8 @@ class EMD:
         for i in range(time_num):
             dist[i], _, flow = cv2.EMD(sig_1[i], sig_2[i], cv2.DIST_L2)
 
-        rescaled_distance = np.multiply(dist, integral)
+        # Put the EMD in physical units, and rescale to the original sum.
+        rescaled_distance = np.multiply(dist, integral * cell_volume)
 
         return float(rescaled_distance) if time_num == 1 else rescaled_distance
 
@@ -88,9 +99,7 @@ class EMD:
         return preprocessed_img
 
     def _compatibility_check(
-        self,
-        img_1: darsia.Image,
-        img_2: darsia.Image,
+        self, img_1: darsia.Image, img_2: darsia.Image, tol=1e-6
     ) -> bool:
         """
         Compatibility check.
@@ -109,19 +118,17 @@ class EMD:
         # Series
         assert img_1.time_num == img_2.time_num
 
-        # Two-dimensional
-        assert img_1.space_dim == 2 and img_2.space_dim == 2
-
         # Check whether the coordinate system is compatible
-        assert darsia.check_equal_coordinatesystems(
+        equal_coordinate_system, log = darsia.check_equal_coordinatesystems(
             img_1.coordinatesystem, img_2.coordinatesystem
         )
+        assert equal_coordinate_system, f"{log}"
         assert np.allclose(img_1.voxel_size, img_2.voxel_size)
 
         # Compatible distributions - comparing sums is sufficient since it is implicitly
         # assumed that the coordinate systems are equivalent. Check each time step
         # separately.
-        assert np.allclose(self._sum(img_1), self._sum(img_2))
+        assert np.allclose(self._sum(img_1), self._sum(img_2), atol=tol)
 
     def _sum(self, img: darsia.Image) -> Union[float, np.ndarray]:
         """Sum over spatial entries.

@@ -1,5 +1,4 @@
-"""
-Curvature correction class.
+"""Curvature correction class.
 
 A class for setup and application of curvature correction.
 """
@@ -151,7 +150,6 @@ class CurvatureCorrection(darsia.BaseCorrection):
             path (Path): path to the json-file.
         """
         with open(str(path), "r") as openfile:
-
             self.config = json.load(openfile)
 
     def return_image(self) -> darsia.Image:
@@ -519,7 +517,6 @@ class CurvatureCorrection(darsia.BaseCorrection):
                 np.save(self.cache_path, self.cache)
 
         elif self.use_cache and self.cache_path.exists():
-
             # Reache cache from file
             self.cache = np.load(self.cache_path, allow_pickle=True).item()
 
@@ -753,3 +750,27 @@ class CurvatureCorrection(darsia.BaseCorrection):
             corrected_img[:, :, i] = im_array_as_vector.reshape(shape).astype(img.dtype)
 
         return np.squeeze(corrected_img)
+
+    def correct_metadata(self) -> dict:
+        """Extract metadata from the config file.
+
+        Returns:
+            dict: metadata
+
+        """
+        # Initialize metadata
+        meta = {}
+
+        # Read physical dimensions from config file
+        if "crop" in self.config:
+            # Update the metadata
+            if all([key in self.config["crop"] for key in ["width", "height"]]):
+                # NOTE: Dimensions of Image uses matrix convention, i.e. (rows, cols).
+                dimensions = [
+                    self.config["crop"]["height"],
+                    self.config["crop"]["width"],
+                ]
+                meta["dimensions"] = dimensions
+                meta["origin"] = [0, self.config["crop"]["height"]]
+
+        return meta
