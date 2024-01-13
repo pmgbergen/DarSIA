@@ -296,10 +296,8 @@ def check_equal_coordinatesystems(
     if not exclude_size:
         voxel_size_equal = True
         for axis in coordinatesystem1.axes:
-            voxel_size_equal = (
-                voxel_size_equal
-                and coordinatesystem1.voxel_size[axis]
-                == coordinatesystem2.voxel_size[axis]
+            voxel_size_equal = voxel_size_equal and np.isclose(
+                coordinatesystem1.voxel_size[axis], coordinatesystem2.voxel_size[axis]
             )
         if not voxel_size_equal:
             failure_log.append("voxel_size")
