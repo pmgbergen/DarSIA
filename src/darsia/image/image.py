@@ -854,7 +854,9 @@ class Image:
                             self.time[-1],
                         ),
                     )
-                    plt.colorbar(label=self.name, orientation="vertical")
+                    use_colorbar = kwargs.get("use_colorbar", False)
+                    if use_colorbar:
+                        plt.colorbar(label=self.name, orientation="vertical")
                     ax.set_xlabel("x-axis")
                     ax.set_ylabel("time-axis")
             else:
@@ -935,7 +937,9 @@ class Image:
                             self.origin[1],
                         ),
                     )
-                    plt.colorbar(label=self.name, orientation="vertical")
+                    use_colorbar = kwargs.get("use_colorbar", False)
+                    if use_colorbar:
+                        plt.colorbar(label=self.name, orientation="vertical")
                     plt.xlabel("x")
                     plt.ylabel("y")
 
@@ -1142,7 +1146,9 @@ class Image:
                     assert not (surpress_2d and surpress_3d)
 
                 delay = kwargs.get("delay", False)
-                if not delay or time_index == self.time_num - 1:
+                if (not delay and not self.series) or (
+                    not delay and self.series and time_index == self.time_num - 1
+                ):
                     if duration is None:
                         plt.show()
                     else:
