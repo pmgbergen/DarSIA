@@ -48,17 +48,21 @@ def test_initialize_general_image():
 
     image = darsia.Image(img=array, **info)
 
-    assert hasattr(image, "img")
-    assert hasattr(image, "coordinatesystem")
-    assert not image.scalar
-    assert not image.series
-    assert image.space_dim == 2
-    assert image.time_dim == 0
-    assert image.range_dim == 1
-    assert image.range_num == 3
-    assert image.indexing == "ij"
-    assert np.allclose(image.dimensions, np.array([1.5, 2.8]))
-    assert np.allclose(image.origin, np.array([0.0, 1.5]))
+    assert hasattr(image, "img"), "image array not defined"
+    assert hasattr(image, "coordinatesystem"), "coordinatesystem not defined"
+    assert not image.scalar, "scalar not correct"
+    assert not image.series, "series not correct"
+    assert image.space_dim == 2, "space_dim not correct"
+    assert image.time_dim == 0, "time_dim not correct"
+    assert image.range_dim == 1, "range_dim not correct"
+    assert image.range_num == 3, "range_num not correct"
+    assert image.indexing == "ij", "indexing not correct"
+    assert np.allclose(image.dimensions, np.array([1.5, 2.8])), "dimensions not correct"
+    assert np.allclose(image.origin, np.array([0.0, 1.5])), "origin not correct"
+    assert np.allclose(image.num_voxels, [1788, 3180]), "num_voxels not correct"
+    assert np.allclose(
+        image.voxel_size, [1.5 / 1788, 2.8 / 3180]
+    ), "voxel_size not correct"
 
 
 def test_initialize_optical_image():
