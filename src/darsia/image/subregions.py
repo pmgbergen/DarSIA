@@ -154,7 +154,7 @@ def extract_quadrilateral_ROI(
             img_src.astype(np.float32),
             P,
             (width, height),
-            flags=interpolation_flag,
+            flags=interpolation_flag,  # type: ignore
         )
     ).astype(dtype)
 
