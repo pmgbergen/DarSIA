@@ -3,6 +3,7 @@
 Implemented are Cartesian coordinates and voxel coordinates allowing for different indexing.
 
 """
+from __future__ import annotations
 
 from typing import Any, Union, overload
 
@@ -51,56 +52,42 @@ class Voxel(BasePoint):
 class VoxelArray(Voxel):
     """Container for collection of Voxel."""
 
-    ...
+    @overload
+    def __getitem__(self, arg: int) -> Voxel:
+        """Specialized item-access, returning objects instead of simple np.ndarray.
 
+        Args:
+            arg (int): identificator (for row in VoxelArray)
 
-@overload
-def _aux_voxelarray__getitem__(self, arg: int) -> Voxel:
-    """Specialized item-access, returning objects instead of simple np.ndarray.
+        Returns:
+            Voxel: corresponding voxel
 
-    Args:
-        arg (int): identificator (for row in VoxelArray)
+        """
+        ...
 
-    Returns:
-        Voxel: corresponding voxel
+    @overload
+    def __getitem__(self, arg: np.ndarray) -> VoxelArray:
+        """Specialized item-access, returning objects instead of simple np.ndarray.
 
-    """
-    ...
+        Args:
+            arg (np.ndarray): identificator (for rows in VoxelArray)
 
+        Returns:
+            VoxelArray: corresponding voxels
 
-@overload
-def _aux_voxelarray__getitem__(self, arg: np.ndarray) -> VoxelArray:
-    """Specialized item-access, returning objects instead of simple np.ndarray.
+        """
+        ...
 
-    Args:
-        arg (np.ndarray): identificator (for rows in VoxelArray)
-
-    Returns:
-        VoxelArray: corresponding voxels
-
-    """
-    ...
-
-
-def _aux_voxelarray__getitem__(
-    self, arg: Union[int, np.ndarray, Any]
-) -> Union[Voxel, VoxelArray, np.ndarray]:
-    """Specialized item-access, returning objects instead of simple np.ndarray."""
-    if isinstance(arg, int):
-        return Voxel(np.asarray(self)[arg])
-    elif isinstance(arg, np.ndarray) and len(arg.shape) == 1:
-        return VoxelArray(np.asarray(self)[arg])
-    else:
-        return np.asarray(self)[arg]
-
-
-VoxelArray.__getitem__ = _aux_voxelarray__getitem__
-
-
-class CoordinateArray(Coordinate):
-    """Container for collection of Coordinate."""
-
-    ...
+    def __getitem__(
+        self, arg: Union[int, np.ndarray, Any]
+    ) -> Union[Voxel, VoxelArray, np.ndarray]:
+        """Specialized item-access, returning objects instead of simple np.ndarray."""
+        if isinstance(arg, int):
+            return Voxel(np.asarray(self)[arg])
+        elif isinstance(arg, np.ndarray) and len(arg.shape) == 1:
+            return VoxelArray(np.asarray(self)[arg])
+        else:
+            return np.asarray(self)[arg]
 
 
 class CoordinateArray(Coordinate):
