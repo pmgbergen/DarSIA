@@ -137,7 +137,7 @@ def extract_quadrilateral_ROI(
     # routine returns arrays of same dtype again.
     dtype = img_src.dtype
 
-    interpolation_flag: Optional[int] = None
+    interpolation_flag = None  # type: ignore
     if interpolation == "inter_nearest":
         interpolation_flag = cv2.INTER_NEAREST
     elif interpolation == "inter_linear":
