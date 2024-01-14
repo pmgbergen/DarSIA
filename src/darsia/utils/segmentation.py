@@ -123,7 +123,7 @@ def segment(
 
     # Resize image
     rescaling_factor = kwargs.get("rescaling factor", 1.0)
-    rescaled = skimage.img_as_ubyte(
+    rescaled = skimage.img_as_ubyte(  # type: ignore[attr-defined]
         cv2.resize(
             denoised,
             None,
@@ -131,7 +131,7 @@ def segment(
             fy=rescaling_factor,
             interpolation=cv2.INTER_NEAREST,
         )
-    )  # type: ignore[attr-defined]
+    )
 
     if verbosity:
         plt.figure("Rescaled input image")
@@ -212,13 +212,13 @@ def segment(
     labels_rescaled = _dilate_by_size(labels_rescaled, 1, True)
 
     # Resize to original size
-    labels = skimage.img_as_ubyte(
+    labels = skimage.img_as_ubyte(  # type: ignore[attr-defined]
         cv2.resize(
             labels_rescaled,
             tuple(reversed(basis.shape[:2])),
             interpolation=cv2.INTER_NEAREST,
         )
-    )  # type: ignore[attr-defined]
+    )
 
     if verbosity:
         plt.figure("Segmentation after watershed algorithm")
@@ -309,7 +309,7 @@ def _detect_markers_from_input(shape, **kwargs) -> np.ndarray:
 
     # Fetch user-defined coordinates of markers
     patch: int = kwargs.get("region_size", 1)
-    pts: np.ndarray = kwargs.get("marker_points")
+    pts: list = kwargs.get("marker_points")
 
     # Mark squares with points providing the top left corner.
     markers = np.zeros(shape, dtype=bool)
@@ -361,9 +361,9 @@ def _detect_edges_from_scharr(img, **kwargs) -> np.ndarray:
 
     # Resize mask if necessary
     if mask.shape[:2] != img.shape[:2]:
-        mask = skimage.img_as_bool(
+        mask = skimage.img_as_bool(  # type: ignore[attr-defined]
             skimage.transform.resize(mask, img.shape)
-        )  # type: ignore[attr-defined]
+        )
 
     edges = skimage.filters.scharr(img, mask=mask)
 
