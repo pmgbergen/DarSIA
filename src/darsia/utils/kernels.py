@@ -6,7 +6,7 @@ Provided:
 
 """
 
-from abc import ABC
+from abc import ABC, abstractmethod
 
 import numpy as np
 
@@ -14,6 +14,7 @@ import numpy as np
 class BaseKernel(ABC):
     """Abstract base class for kernel."""
 
+    @abstractmethod
     def __call__(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         """Compute kernel between two arrays.
 
