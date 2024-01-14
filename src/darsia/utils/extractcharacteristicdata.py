@@ -30,13 +30,13 @@ def extract_characteristic_data(
     letters = list(string.ascii_uppercase)
 
     # visualise patches
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
     ax.imshow(np.abs(signal))  # visualise abs colours, because relative cols are neg
     ax.set_xlabel("horizontal pixel")
     ax.set_ylabel("vertical pixel")
 
     # double check number of patches
-    n = np.shape(samples)[0]  # number of patches
+    n = len(samples)  # number of patches
     if verbosity:
         print("Number of support patches: " + str(n))
 
@@ -44,6 +44,7 @@ def extract_characteristic_data(
     colours = np.zeros((n, 3))
     # enumerate through all patches
     for i, p in enumerate(samples):
+        assert len(p) == 2, "Patch must be 2d"
         # visualise patches on image
         rect = patches.Rectangle(
             (p[1].start, p[0].start),
