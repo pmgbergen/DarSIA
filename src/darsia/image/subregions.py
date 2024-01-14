@@ -2,7 +2,7 @@
 Module containing auxiliary methods to extract ROIs from darsia Images.
 """
 
-from typing import Literal
+from typing import Literal, Optional
 
 import cv2
 import numpy as np
@@ -75,11 +75,13 @@ def extract_quadrilateral_ROI(
 
     if "width" in kwargs and "height" in kwargs:
         # Determine target image dimensions based on physical units.
-        target_width = kwargs.get("width")
-        target_height = kwargs.get("height")
+        target_width: Optional[float] = kwargs.get("width")
+        target_height: Optional[float] = kwargs.get("height")
 
         # Aim at comparably many pixels as in the provided
         # image, modulo the ratio.
+        assert target_width is not None  # required by mypy
+        assert target_height is not None  # required by mypy
         aspect_ratio = target_width / target_height
 
         # Try to keep this aspect ratio, but do not use more pixels than before.
@@ -102,13 +104,11 @@ def extract_quadrilateral_ROI(
 
     # Assign corner points as destination points if none are provided.
     if "pts_dst" in kwargs:
-
         pts_dst: np.ndarray = to_reverse_matrix_indexing(
             np.array(kwargs.get("pts_dst")), indexing
         )
 
     else:
-
         # Assume implicitly that corner points have been provided,
         # and that their orientation is mathematically positive,
         # starting with the top left corner.
@@ -137,7 +137,7 @@ def extract_quadrilateral_ROI(
     # routine returns arrays of same dtype again.
     dtype = img_src.dtype
 
-    interpolation_flag = None
+    interpolation_flag: Optional[int] = None
     if interpolation == "inter_nearest":
         interpolation_flag = cv2.INTER_NEAREST
     elif interpolation == "inter_linear":
@@ -146,6 +146,7 @@ def extract_quadrilateral_ROI(
         interpolation_flag == cv2.INTER_AREA
     else:
         raise NotImplementedError
+    assert interpolation_flag is not None
 
     # Warp source image. Warping may convert a 3-tensor to a 2-tensor.
     # Force to use a 3-tensor structure.
