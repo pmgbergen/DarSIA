@@ -49,8 +49,6 @@ def to_matrix_indexing(axis: Union[str, int], indexing: str) -> str:
             return "j"
         elif axis == "y":
             return "i"
-        else:
-            raise ValueError
     elif indexing == "xyz":
         if axis == "x":
             return "k"
@@ -58,8 +56,8 @@ def to_matrix_indexing(axis: Union[str, int], indexing: str) -> str:
             return "j"
         elif axis == "z":
             return "i"
-        else:
-            raise ValueError
+
+    raise ValueError
 
 
 def to_cartesian_indexing(axis: Union[str, int], indexing: str) -> str:
@@ -81,8 +79,6 @@ def to_cartesian_indexing(axis: Union[str, int], indexing: str) -> str:
             return "y"
         elif axis == "j":
             return "x"
-        else:
-            raise ValueError
     elif indexing == "ijk":
         if axis == "i":
             return "z"
@@ -90,8 +86,8 @@ def to_cartesian_indexing(axis: Union[str, int], indexing: str) -> str:
             return "y"
         elif axis == "k":
             return "x"
-        else:
-            raise ValueError
+
+    raise ValueError
 
 
 def interpret_indexing(axis: str, indexing: str) -> tuple[int, bool]:
