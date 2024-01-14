@@ -5,6 +5,7 @@ from typing import Optional
 
 import cv2
 import numpy as np
+import skimage
 from skimage import img_as_ubyte
 
 
