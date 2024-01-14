@@ -5,7 +5,7 @@ from typing import Optional
 
 import cv2
 import numpy as np
-import skimage
+import skimage  # type: ignore
 
 
 class FeatureDetection:
