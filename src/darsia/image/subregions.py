@@ -146,7 +146,6 @@ def extract_quadrilateral_ROI(
         interpolation_flag == cv2.INTER_AREA
     else:
         raise NotImplementedError
-    assert interpolation_flag is not None
 
     # Warp source image. Warping may convert a 3-tensor to a 2-tensor.
     # Force to use a 3-tensor structure.
