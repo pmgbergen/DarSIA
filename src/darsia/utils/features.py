@@ -63,15 +63,15 @@ class FeatureDetection:
         # Exclude features outside the restricted mask
         if mask is not None and len(kps_all) > 0:
             include_ids = np.zeros(len(kps_all), dtype=bool)
-            kps = []
+            kps_list: list = []
             for i, kp in enumerate(kps_all):
                 pt = np.array(kp.pt).astype(np.int32)
                 if mask_roi[pt[1], pt[0]]:
                     include_ids[i] = True
-                    kps.append(kp)
+                    kps_list.append(kp)
 
             # Convert to right format
-            kps = tuple(kps)
+            kps = tuple(kps_list)
             descs = descs_all[include_ids, :] if len(kps) > 0 else None
         else:
             kps = kps_all
@@ -147,9 +147,8 @@ class FeatureDetection:
         # Only continue if matching features have been found, and it is at least four;
         # four matches are needed to find a homography.
         if have_matched_features:
-
             # Loop over the top matches
-            for (i, m) in enumerate(matches):
+            for i, m in enumerate(matches):
                 # Indicate that the two keypoints in the respective images
                 # map to each other
                 pts_src[i] = kps_src[m.queryIdx].pt
