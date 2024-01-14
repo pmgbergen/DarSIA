@@ -6,7 +6,6 @@ from typing import Optional
 import cv2
 import numpy as np
 import skimage
-from cv2 import DescriptorMatcher_create, ORB_create  # type: ignore[attr-defined]
 
 
 class FeatureDetection:
@@ -61,7 +60,7 @@ class FeatureDetection:
 
         # Determine matching features; use ORB to detect keypoints
         # and extract (binary) local invariant features
-        orb = ORB_create(max_features)
+        orb = cv2.ORB_create(max_features)  # type: ignore[attr-defined]
         (kps_all, descs_all) = orb.detectAndCompute(img_gray, None)
 
         # Exclude features outside the restricted mask
@@ -117,7 +116,7 @@ class FeatureDetection:
 
         # Match features in both images
         method = cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING
-        matcher = DescriptorMatcher_create(method)
+        matcher = cv2.DescriptorMatcher_create(method)  # type: ignore[attr-defined]
         matches = matcher.match(descs_src, descs_dst, None)
 
         # sort the matches by their distance (the smaller the distance,

@@ -10,29 +10,6 @@ import numpy as np
 
 import darsia
 
-# ! ---- Predefine all classes
-
-
-class BasePoint(np.ndarray):
-    ...
-
-
-class Coordinate(BasePoint):
-    ...
-
-
-class Voxel(BasePoint):
-    ...
-
-
-class VoxelArray(Voxel):
-    ...
-
-
-class CoordinateArray(Coordinate):
-    ...
-
-
 # ! ---- Implementation for single points ----
 
 
@@ -66,12 +43,6 @@ class Voxel(BasePoint):
         if obj is None:
             return
         self.matrix_indexing = getattr(obj, "matrix_indexing", True)
-
-    def to_matrix_indexing() -> None:
-        raise NotImplementedError("Currently merely matrix indexing supported.")
-
-    def to_reverse_matrix_indexing() -> None:
-        raise NotImplementedError("Currently merely matrix indexing supported.")
 
 
 # ! ---- Implementation for collection of points ----

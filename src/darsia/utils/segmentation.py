@@ -79,7 +79,8 @@ def segment(
         monochromatic = kwargs.get("monochromatic_color", "gray")
         if monochromatic == "gray":
             monochromatic_basis = cv2.cvtColor(
-                skimage.img_as_ubyte(basis), cv2.COLOR_RGB2GRAY
+                skimage.img_as_ubyte(basis),  # type: ignore[attr-defined]
+                cv2.COLOR_RGB2GRAY,
             )
         elif monochromatic == "red":
             monochromatic_basis = basis[:, :, 0]
@@ -100,7 +101,7 @@ def segment(
         plt.imshow(monochromatic_basis)
 
     # In order to surpress any warnings from skimage, reduce to ubyte data type
-    basis_ubyte = skimage.img_as_ubyte(monochromatic_basis)
+    basis_ubyte = skimage.img_as_ubyte(monochromatic_basis)  # type: ignore[attr-defined]
 
     # Smooth the image to get rid of sand grains
     smoothing_method = kwargs.get("method", "median")
@@ -169,7 +170,7 @@ def segment(
                 tuple(reversed(img.shape[:2])),
                 interpolation=cv2.INTER_NEAREST,
             )
-            img_copy = skimage.img_as_ubyte(img)
+            img_copy = skimage.img_as_ubyte(img)  # type: ignore[attr-defined]
 
         elif isinstance(img, darsia.Image):
             labeled_markers_large = cv2.resize(
@@ -177,7 +178,7 @@ def segment(
                 tuple(reversed(img.img.shape[:2])),
                 interpolation=cv2.INTER_NEAREST,
             )
-            img_copy = skimage.img_as_ubyte(img.img)
+            img_copy = skimage.img_as_ubyte(img.img)  # type: ignore[attr-defined]
         img_copy[labeled_markers_large != 0] = [255, 255, 255]
         plt.figure("Original image with markers")
         plt.imshow(img_copy)
@@ -203,7 +204,7 @@ def segment(
         mask = np.ones(edges.shape[:2], dtype=bool)
     labels_rescaled = skimage.img_as_ubyte(
         skimage.segmentation.watershed(edges, labeled_markers, mask=mask)
-    )
+    )  # type: ignore[attr-defined]
 
     # ! ---- Postprocessing of the labels
 
@@ -217,7 +218,7 @@ def segment(
             tuple(reversed(basis.shape[:2])),
             interpolation=cv2.INTER_NEAREST,
         )
-    )
+    )  # type: ignore[attr-defined]
 
     if verbosity:
         plt.figure("Segmentation after watershed algorithm")
@@ -360,7 +361,9 @@ def _detect_edges_from_scharr(img, **kwargs) -> np.ndarray:
 
     # Resize mask if necessary
     if mask.shape[:2] != img.shape[:2]:
-        mask = skimage.img_as_bool(skimage.transform.resize(mask, img.shape))
+        mask = skimage.img_as_bool(
+            skimage.transform.resize(mask, img.shape)
+        )  # type: ignore[attr-defined]
 
     edges = skimage.filters.scharr(img, mask=mask)
 
