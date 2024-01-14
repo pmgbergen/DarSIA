@@ -7,7 +7,6 @@ import cv2
 import numpy as np
 import skimage
 from cv2 import DescriptorMatcher_create, ORB_create  # type: ignore[attr-defined]
-from skimage import img_as_ubyte  # type: ignore[attr-defined]
 
 
 class FeatureDetection:
@@ -51,11 +50,14 @@ class FeatureDetection:
             mask_roi = mask[roi] if roi is not None else mask.copy()
 
         # Convert to gray color space
-        img_gray = cv2.cvtColor(img_as_ubyte(img_roi), cv2.COLOR_RGB2GRAY)
+        img_gray = cv2.cvtColor(
+            skimage.img_as_ubyte(img_roi),  # type: ignore[attr-defined]
+            cv2.COLOR_RGB2GRAY,
+        )
 
         # Orb does not allow for uint16, so convert to uint8.
         if img_gray.dtype in [np.uint16, np.float32, np.float64]:
-            img_gray = img_as_ubyte(img_gray)
+            img_gray = skimage.img_as_ubyte(img_gray)  # type: ignore[attr-defined]
 
         # Determine matching features; use ORB to detect keypoints
         # and extract (binary) local invariant features
