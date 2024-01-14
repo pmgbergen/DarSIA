@@ -131,7 +131,7 @@ def segment(
             fy=rescaling_factor,
             interpolation=cv2.INTER_NEAREST,
         )
-    )
+    )  # type: ignore[attr-defined]
 
     if verbosity:
         plt.figure("Rescaled input image")
@@ -202,9 +202,9 @@ def segment(
     # Process the watershed algorithm
     if mask is None:
         mask = np.ones(edges.shape[:2], dtype=bool)
-    labels_rescaled = skimage.img_as_ubyte(
+    labels_rescaled = skimage.img_as_ubyte(  # type: ignore[attr-defined]
         skimage.segmentation.watershed(edges, labeled_markers, mask=mask)
-    )  # type: ignore[attr-defined]
+    )
 
     # ! ---- Postprocessing of the labels
 
