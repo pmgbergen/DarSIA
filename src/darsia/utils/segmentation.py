@@ -310,7 +310,7 @@ def _detect_markers_from_input(shape, **kwargs) -> np.ndarray:
     # Fetch user-defined coordinates of markers
     patch: int = kwargs.get("region_size", 1)
     pts = kwargs.get("marker_points")
-    assert type(pts) is list
+    assert pts is not None
 
     # Mark squares with points providing the top left corner.
     markers = np.zeros(shape, dtype=bool)
