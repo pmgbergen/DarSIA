@@ -22,15 +22,17 @@ with open(image_folder + "config.json", "r") as openfile:
 curvature_correction = darsia.CurvatureCorrection(config=config["curvature"])
 
 # Define color correction object
-roi_cc = np.array(
-    [
-        [152, 202],
-        [225, 206],
-        [226, 101],
-        [153, 98],
-    ]
-)
-color_correction = darsia.ColorCorrection(roi=roi_cc)
+config = {
+    "roi": darsia.make_voxel(
+        [
+            [152, 202],
+            [225, 206],
+            [226, 101],
+            [153, 98],
+        ]
+    )
+}
+color_correction = darsia.ColorCorrection(config=config)
 
 # !----- Main routine for co2 analysis
 

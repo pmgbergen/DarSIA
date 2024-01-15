@@ -46,17 +46,19 @@ experimental_corrected_baseline = darsia.Image(
 # closest to the brown swatch. Continue in counter-clockwise direction.
 # NOTE: That this example uses a crudely coarsened image. Thus, the marks
 # are not very obvious. They are small white L's.
-roi_cc = np.array(
-    [
-        [154, 176],
-        [222, 176],
-        [222, 68],
-        [154, 68],
-    ]
-)
+config = {
+    "roi": darsia.make_voxel(
+        [
+            [154, 176],
+            [222, 176],
+            [222, 68],
+            [154, 68],
+        ]
+    )
+}
 color_correction = darsia.ColorCorrection(
-    roi=roi_cc,
-    # verbosity = True,
+    base = uncorrected_baseline,
+    config = config
 )
 
 # NOTE: Setting the flag verbosity to True allows to debug some
