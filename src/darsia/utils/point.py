@@ -52,12 +52,12 @@ class Voxel(BasePoint):
 class VoxelArray(Voxel):
     """Container for collection of Voxel."""
 
-    @overload
-    def __getitem__(self, arg: int) -> Voxel:
+    @overload  # type: ignore [override]
+    def __getitem__(self, key: int, /) -> Voxel:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
         Args:
-            arg (int): identificator (for row in VoxelArray)
+            key (int): identificator (for row in VoxelArray)
 
         Returns:
             Voxel: corresponding voxel
@@ -66,11 +66,11 @@ class VoxelArray(Voxel):
         ...
 
     @overload
-    def __getitem__(self, arg: np.ndarray) -> VoxelArray:
+    def __getitem__(self, key: np.ndarray, /) -> VoxelArray:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
         Args:
-            arg (np.ndarray): identificator (for rows in VoxelArray)
+            key (np.ndarray): identificator (for rows in VoxelArray)
 
         Returns:
             VoxelArray: corresponding voxels
@@ -78,27 +78,25 @@ class VoxelArray(Voxel):
         """
         ...
 
-    def __getitem__(
-        self, arg: Union[int, np.ndarray, Any]
-    ) -> Union[Voxel, VoxelArray, np.ndarray]:
+    def __getitem__(self, key: Any, /) -> Union[Voxel, VoxelArray, np.ndarray]:
         """Specialized item-access, returning objects instead of simple np.ndarray."""
-        if isinstance(arg, int):
-            return Voxel(np.asarray(self)[arg])
-        elif isinstance(arg, np.ndarray) and len(arg.shape) == 1:
-            return VoxelArray(np.asarray(self)[arg])
+        if isinstance(key, int):
+            return Voxel(np.asarray(self)[key])
+        elif isinstance(key, np.ndarray) and len(key.shape) == 1:
+            return VoxelArray(np.asarray(self)[key])
         else:
-            return np.asarray(self)[arg]
+            return np.asarray(self)[key]
 
 
 class CoordinateArray(Coordinate):
     """Container for collection of Coordinate."""
 
-    @overload
-    def __getitem__(self, arg: int) -> Coordinate:
+    @overload  # type: ignore [override]
+    def __getitem__(self, key: int, /) -> Coordinate:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
         Args:
-            arg (int): identificator (for row in CoordinateArray)
+            key (int): identificator (for row in CoordinateArray)
 
         Returns:
             Coordinate: corresponding coordinate
@@ -107,11 +105,11 @@ class CoordinateArray(Coordinate):
         ...
 
     @overload
-    def __getitem__(self, arg: np.ndarray) -> CoordinateArray:
+    def __getitem__(self, key: np.ndarray, /) -> CoordinateArray:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
         Args:
-            arg (np.ndarray): identificator (for rows in CoordinateArray)
+            key (np.ndarray): identificator (for rows in CoordinateArray)
 
         Returns:
             CoordinateArray: corresponding coordinates
@@ -120,15 +118,15 @@ class CoordinateArray(Coordinate):
         ...
 
     def __getitem__(
-        self, arg: Union[int, np.ndarray, Any]
+        self, key: Any, /
     ) -> Union[Coordinate, CoordinateArray, np.ndarray]:
         """Specialized item-access, returning objects instead of simple np.ndarray."""
-        if isinstance(arg, int):
-            return Coordinate(np.asarray(self)[arg])
-        elif isinstance(arg, np.ndarray) and len(arg.shape) == 1:
-            return CoordinateArray(np.asarray(self)[arg])
+        if isinstance(key, int):
+            return Coordinate(np.asarray(self)[key])
+        elif isinstance(key, np.ndarray) and len(key.shape) == 1:
+            return CoordinateArray(np.asarray(self)[key])
         else:
-            return np.asarray(self)[arg]
+            return np.asarray(self)[key]
 
 
 # ! ---- Constructor routines
@@ -166,20 +164,6 @@ def make_voxel(pts: Union[list, np.ndarray]) -> Union[Voxel, VoxelArray]:
 # type, the output differs.
 
 
-@overload
-def to_coordinate(
-    self: Union[Coordinate, Voxel], coordinatesystem: darsia.CoordinateSystem
-) -> Coordinate:
-    ...
-
-
-@overload
-def to_coordinate(
-    self: Union[CoordinateArray, VoxelArray], coordinatesystem: darsia.CoordinateSystem
-) -> CoordinateArray:
-    ...
-
-
 def to_coordinate(
     self, coordinatesystem: darsia.CoordinateSystem
 ) -> Union[Coordinate, CoordinateArray]:
@@ -198,20 +182,6 @@ def to_coordinate(
         return make_coordinate(coordinatesystem.coordinate(self))
     else:
         raise NotImplementedError(f"{type(self)} not supported")
-
-
-@overload
-def to_voxel(
-    self: Union[Coordinate, Voxel], coordinatesystem: darsia.CoordinateSystem
-) -> Voxel:
-    ...
-
-
-@overload
-def to_voxel(
-    self: Union[CoordinateArray, VoxelArray], coordinatesystem: darsia.CoordinateSystem
-) -> VoxelArray:
-    ...
 
 
 def to_voxel(
@@ -235,5 +205,5 @@ def to_voxel(
 
 
 # Assign method to base class
-BasePoint.to_coordinate = to_coordinate
-BasePoint.to_voxel = to_voxel
+BasePoint.to_coordinate = to_coordinate  # type: ignore [attr-defined]
+BasePoint.to_voxel = to_voxel  # type: ignore [attr-defined]
