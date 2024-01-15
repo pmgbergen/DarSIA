@@ -79,7 +79,8 @@ def segment(
         monochromatic = kwargs.get("monochromatic_color", "gray")
         if monochromatic == "gray":
             monochromatic_basis = cv2.cvtColor(
-                skimage.img_as_ubyte(basis), cv2.COLOR_RGB2GRAY
+                skimage.img_as_ubyte(basis),  # type: ignore[attr-defined]
+                cv2.COLOR_RGB2GRAY,
             )
         elif monochromatic == "red":
             monochromatic_basis = basis[:, :, 0]
@@ -100,7 +101,7 @@ def segment(
         plt.imshow(monochromatic_basis)
 
     # In order to surpress any warnings from skimage, reduce to ubyte data type
-    basis_ubyte = skimage.img_as_ubyte(monochromatic_basis)
+    basis_ubyte = skimage.img_as_ubyte(monochromatic_basis)  # type: ignore[attr-defined]
 
     # Smooth the image to get rid of sand grains
     smoothing_method = kwargs.get("method", "median")
@@ -122,7 +123,7 @@ def segment(
 
     # Resize image
     rescaling_factor = kwargs.get("rescaling factor", 1.0)
-    rescaled = skimage.img_as_ubyte(
+    rescaled = skimage.img_as_ubyte(  # type: ignore[attr-defined]
         cv2.resize(
             denoised,
             None,
@@ -169,7 +170,7 @@ def segment(
                 tuple(reversed(img.shape[:2])),
                 interpolation=cv2.INTER_NEAREST,
             )
-            img_copy = skimage.img_as_ubyte(img)
+            img_copy = skimage.img_as_ubyte(img)  # type: ignore[attr-defined]
 
         elif isinstance(img, darsia.Image):
             labeled_markers_large = cv2.resize(
@@ -177,7 +178,7 @@ def segment(
                 tuple(reversed(img.img.shape[:2])),
                 interpolation=cv2.INTER_NEAREST,
             )
-            img_copy = skimage.img_as_ubyte(img.img)
+            img_copy = skimage.img_as_ubyte(img.img)  # type: ignore[attr-defined]
         img_copy[labeled_markers_large != 0] = [255, 255, 255]
         plt.figure("Original image with markers")
         plt.imshow(img_copy)
@@ -201,7 +202,7 @@ def segment(
     # Process the watershed algorithm
     if mask is None:
         mask = np.ones(edges.shape[:2], dtype=bool)
-    labels_rescaled = skimage.img_as_ubyte(
+    labels_rescaled = skimage.img_as_ubyte(  # type: ignore[attr-defined]
         skimage.segmentation.watershed(edges, labeled_markers, mask=mask)
     )
 
@@ -211,7 +212,7 @@ def segment(
     labels_rescaled = _dilate_by_size(labels_rescaled, 1, True)
 
     # Resize to original size
-    labels = skimage.img_as_ubyte(
+    labels = skimage.img_as_ubyte(  # type: ignore[attr-defined]
         cv2.resize(
             labels_rescaled,
             tuple(reversed(basis.shape[:2])),
@@ -308,7 +309,8 @@ def _detect_markers_from_input(shape, **kwargs) -> np.ndarray:
 
     # Fetch user-defined coordinates of markers
     patch: int = kwargs.get("region_size", 1)
-    pts: np.ndarray = kwargs.get("marker_points")
+    pts = kwargs.get("marker_points")
+    assert pts is not None
 
     # Mark squares with points providing the top left corner.
     markers = np.zeros(shape, dtype=bool)
@@ -360,7 +362,9 @@ def _detect_edges_from_scharr(img, **kwargs) -> np.ndarray:
 
     # Resize mask if necessary
     if mask.shape[:2] != img.shape[:2]:
-        mask = skimage.img_as_bool(skimage.transform.resize(mask, img.shape))
+        mask = skimage.img_as_bool(  # type: ignore[attr-defined]
+            skimage.transform.resize(mask, img.shape)
+        )
 
     edges = skimage.filters.scharr(img, mask=mask)
 

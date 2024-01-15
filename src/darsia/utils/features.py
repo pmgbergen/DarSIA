@@ -49,29 +49,32 @@ class FeatureDetection:
             mask_roi = mask[roi] if roi is not None else mask.copy()
 
         # Convert to gray color space
-        img_gray = cv2.cvtColor(skimage.img_as_ubyte(img_roi), cv2.COLOR_RGB2GRAY)
+        img_gray = cv2.cvtColor(
+            skimage.img_as_ubyte(img_roi),  # type: ignore[attr-defined]
+            cv2.COLOR_RGB2GRAY,
+        )
 
         # Orb does not allow for uint16, so convert to uint8.
         if img_gray.dtype in [np.uint16, np.float32, np.float64]:
-            img_gray = skimage.img_as_ubyte(img_gray)
+            img_gray = skimage.img_as_ubyte(img_gray)  # type: ignore[attr-defined]
 
         # Determine matching features; use ORB to detect keypoints
         # and extract (binary) local invariant features
-        orb = cv2.ORB_create(max_features)
+        orb = cv2.ORB_create(max_features)  # type: ignore[attr-defined]
         (kps_all, descs_all) = orb.detectAndCompute(img_gray, None)
 
         # Exclude features outside the restricted mask
         if mask is not None and len(kps_all) > 0:
             include_ids = np.zeros(len(kps_all), dtype=bool)
-            kps = []
+            kps_list: list = []
             for i, kp in enumerate(kps_all):
                 pt = np.array(kp.pt).astype(np.int32)
                 if mask_roi[pt[1], pt[0]]:
                     include_ids[i] = True
-                    kps.append(kp)
+                    kps_list.append(kp)
 
             # Convert to right format
-            kps = tuple(kps)
+            kps = tuple(kps_list)
             descs = descs_all[include_ids, :] if len(kps) > 0 else None
         else:
             kps = kps_all
@@ -113,7 +116,7 @@ class FeatureDetection:
 
         # Match features in both images
         method = cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING
-        matcher = cv2.DescriptorMatcher_create(method)
+        matcher = cv2.DescriptorMatcher_create(method)  # type: ignore[attr-defined]
         matches = matcher.match(descs_src, descs_dst, None)
 
         # sort the matches by their distance (the smaller the distance,
@@ -147,9 +150,8 @@ class FeatureDetection:
         # Only continue if matching features have been found, and it is at least four;
         # four matches are needed to find a homography.
         if have_matched_features:
-
             # Loop over the top matches
-            for (i, m) in enumerate(matches):
+            for i, m in enumerate(matches):
                 # Indicate that the two keypoints in the respective images
                 # map to each other
                 pts_src[i] = kps_src[m.queryIdx].pt

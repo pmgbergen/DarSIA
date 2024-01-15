@@ -43,12 +43,13 @@ def interpolate_measurements(
     )
 
     # Create a mesh of points at which the interpolator shall be evaluated.
+    assert len(shape) == 2
     Ny, Nx = shape
     x = np.arange(Nx)
     y = np.arange(Ny)
     X_pixel, Y_pixel = np.meshgrid(x, y)
     pixel_vector = np.transpose(np.vstack((np.ravel(Y_pixel), np.ravel(X_pixel))))
-    coords_vector = coordinate_system.pixelToCoordinate(pixel_vector)
+    coords_vector = coordinate_system.coordinate(pixel_vector)
 
     # Evaluate interpolation
     interpolated_data_vector = interpolator(coords_vector)
