@@ -33,17 +33,22 @@ class Coordinate(BasePoint):
 
 
 class Voxel(BasePoint):
-    """Voxel coordinate."""
+    """Voxel coordinate.
+
+    A Voxel by default uses matrix indexing, i.e. the first index corresponds to the
+    row, the second to the column and the third to the depth (if applicable).
+
+    """
 
     def __new__(cls, input_array, matrix_indexing=True):
         obj = np.asarray(input_array).astype(int).view(cls)
-        obj.matrix_indexing = True
+        if not matrix_indexing:
+            obj = np.fliplr(np.atleast_2d(obj)).reshape(obj.shape).view(cls)
         return obj
 
     def __array_finalize__(self, obj):
         if obj is None:
             return
-        self.matrix_indexing = getattr(obj, "matrix_indexing", True)
 
 
 # ! ---- Implementation for collection of points ----
@@ -132,6 +137,18 @@ class CoordinateArray(Coordinate):
 
 
 def make_coordinate(pts: Union[list, np.ndarray]) -> Union[Coordinate, CoordinateArray]:
+    """Quick-access constructor for Coordinate or CoordinateArray.
+
+    Args:
+        pts (Union[list, np.ndarray]): list of points or array of points
+
+    Returns:
+        Union[Coordinate, CoordinateArray]: Coordinate or CoordinateArray variant of
+            point (type depends on input), i.e. if a single point is provided, a
+            Coordinate is returned, if a list of points is provided, a CoordinateArray
+            is returned.
+
+    """
     pts = np.array(pts)
     if len(pts.shape) == 1:
         return Coordinate(pts)
@@ -144,17 +161,32 @@ def make_coordinate(pts: Union[list, np.ndarray]) -> Union[Coordinate, Coordinat
         return CoordinateArray(pts)
 
 
-def make_voxel(pts: Union[list, np.ndarray]) -> Union[Voxel, VoxelArray]:
-    pts = np.array(pts)
-    if len(pts.shape) == 1:
-        return Voxel(pts)
+def make_voxel(
+    pts: Union[list, np.ndarray], matrix_indexing: bool = True
+) -> Union[Voxel, VoxelArray]:
+    """Quick-access constructor for Voxel or VoxelArray.
+
+    Args:
+        pts (Union[list, np.ndarray]): list of points or array of points
+        matrix_indexing (bool, optional): whether to use matrix indexing (first index
+            corresponds to row, second to column, third to depth). Defaults to True.
+
+    Returns:
+        Union[Voxel, VoxelArray]: Voxel or VoxelArray variant of point (type depends on
+            input), i.e. if a single point is provided, a Voxel is returned, if a list
+            of points is provided, a VoxelArray is returned.
+
+    """
+    pts_array = np.array(pts).astype(int)
+    if len(pts_array.shape) == 1:
+        return Voxel(pts_array, matrix_indexing=matrix_indexing)
     else:
-        assert len(pts.shape) == 2 and pts.shape[1] in [
+        assert len(pts_array.shape) == 2 and pts_array.shape[1] in [
             1,
             2,
             3,
         ], "only support 1d, 2d, 3d"
-        return VoxelArray(pts)
+        return VoxelArray(pts_array, matrix_indexing=matrix_indexing)
 
 
 # ! ---- Conversion routines
