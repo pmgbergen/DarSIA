@@ -129,7 +129,7 @@ def to_vtk(
 
     """
     try:
-        from pyevtk.hl import gridToVTK
+        from pyevtk.hl import gridToVTK  # type: ignore [import-not-found]
 
         # Check whether the data contains at least one image, and pick the first one
         image = None
