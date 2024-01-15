@@ -1,7 +1,7 @@
-"""
-Module containing objects to align images with a baseline image,
-when restricted to a significant ROI. By this correction for drift
-is taking care of.
+"""Module containing objects to align images with respect to a baseline image.
+
+The alignment is based on feature detection. It is possible to use segments of the image.
+Finally, corrections are based on single, global translation.
 
 """
 
@@ -13,16 +13,12 @@ import darsia
 
 
 class DriftCorrection(darsia.BaseCorrection):
-    """
-    Class for drift correction of images wrt. a baseline image.
-
-    """
+    """Class for drift correction of images wrt. a baseline image."""
 
     def __init__(
         self,
         base: Union[np.ndarray, darsia.Image],
         config: Optional[dict] = None,
-        roi: Optional[Union[tuple, np.ndarray, list]] = None,
     ) -> None:
         """
         Constructor for DriftCorrection.
@@ -31,7 +27,7 @@ class DriftCorrection(darsia.BaseCorrection):
             base (array or Image): baseline.
             config (dict): config file for initialization of images. Main
                 attributes:
-                - roi (2-tuple of slices or array): region of interest defining
+                - roi (2-tuple  or array): region of interest defining
                     the considered area for detecting features and aligning
                     images. Either as tuple of ranges, or array of points.
                     Can also be provided in config; roi in config is
@@ -39,7 +35,6 @@ class DriftCorrection(darsia.BaseCorrection):
                 - padding (float): relative factor for padding.
                 - active (bool): flag whether drift correction should be
                     applied or not, default is True.
-            roi (list or array), alternative access to roi.
 
         """
 
@@ -57,50 +52,36 @@ class DriftCorrection(darsia.BaseCorrection):
         else:
             raise ValueError("Data type for baseline image not supported.")
 
+        # Establish config
         if config is None:
             config = {}
 
-            self.active = False
-            """Flag controlling whether correction is active."""
+        self.active = config.get("active", True)
+        """Flag controlling whether correction is active."""
 
-        else:
+        relative_padding: float = config.get("padding", 0.0)
+        """Allow for extra padding around the provided roi (relative sense)."""
 
-            self.active: bool = config.get("active", True)
+        roi: Optional[Union[list, np.ndarray]] = config.get("roi")
+        self.roi: Optional[tuple[slice, ...]] = (
+            None
+            if roi is None
+            else darsia.bounding_box(
+                np.array(roi),
+                padding=round(relative_padding * np.min(self.base.shape[:2])),
+                max_size=self.base.shape[:2],
+            )
+        )
+        """ROI for feature detection."""
 
-        if self.active:
-            roi: Optional[Union[list, tuple]] = config.get("roi", None)
-            relative_padding: float = config.get("padding", 0.0)
-            self.roi: Optional[tuple] = None
-            """Basis/ROI for feature detection."""
-
-            if "roi" in config:
-                roi = np.array(config["roi"])
-                if isinstance(roi, tuple):
-                    self.roi = roi
-                elif isinstance(roi, list):
-                    self.roi = tuple(roi)
-                elif isinstance(roi, np.ndarray):
-                    self.roi = tuple(roi.tolist())
-                else:
-                    raise ValueError(f"wrong format")
-            elif roi is not None:
-                assert isinstance(roi, list) or isinstance(
-                    roi, np.ndarray
-                ), "wrong format"
-                self.roi = darsia.bounding_box(
-                    np.array(roi),
-                    padding=round(relative_padding * np.min(self.base.shape[:2])),
-                    max_size=self.base.shape[:2],
-                )
-            elif roi is not None:
-                raise ValueError("Provide 'roi' in config or as argument.")
-
-            self.translation_estimator = darsia.TranslationEstimator()
-            """Detection of effective translation based on feature detection."""
+        self.translation_estimator = darsia.TranslationEstimator()
+        """Detection of effective translation based on feature detection."""
 
     # ! ---- Main correction routines
 
-    def correct_array(self, img: np.ndarray, roi: Optional[tuple] = None) -> np.ndarray:
+    def correct_array(
+        self, img: np.ndarray, roi: Optional[tuple[slice, ...]] = None
+    ) -> np.ndarray:
         """
         Main routine for aligning image with baseline image.
 
