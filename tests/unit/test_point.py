@@ -39,14 +39,36 @@ def test_make_voxel():
     assert np.allclose(voxel, [1, 2])
 
     # Multiple voxels - VoxelArray
-    voxels = darsia.VoxelArray([[1, 2], [3, 4]])
+    voxels = darsia.VoxelArray([[1, 2], [3.2, 4.8]])
     assert isinstance(voxels, darsia.VoxelArray)
     assert np.allclose(voxels, [[1, 2], [3, 4]])
 
     # Multiple voxels - make_voxel
-    voxels = darsia.make_voxel([[1, 2], [3, 4]])
+    voxels = darsia.make_voxel([[1, 2], [3.2, 4.8]])
     assert isinstance(voxels, darsia.VoxelArray)
     assert np.allclose(voxels, [[1, 2], [3, 4]])
+
+
+def test_make_voxel_reverse_matrix_indexing():
+    # Single voxel - Voxel
+    voxel = darsia.Voxel([1, 2], matrix_indexing=False)
+    assert isinstance(voxel, darsia.Voxel)
+    assert np.allclose(voxel, [2, 1])
+
+    # Single voxel - make_voxel
+    voxel = darsia.make_voxel([1, 2], matrix_indexing=False)
+    assert isinstance(voxel, darsia.Voxel)
+    assert np.allclose(voxel, [2, 1])
+
+    # Multiple voxels - VoxelArray
+    voxels = darsia.VoxelArray([[1, 2], [3.2, 4.8]], matrix_indexing=False)
+    assert isinstance(voxels, darsia.VoxelArray)
+    assert np.allclose(voxels, [[2, 1], [4, 3]])
+
+    # Multiple voxels - make_voxel
+    voxels = darsia.make_voxel([[1, 2], [3.2, 4.8]], matrix_indexing=False)
+    assert isinstance(voxels, darsia.VoxelArray)
+    assert np.allclose(voxels, [[2, 1], [4, 3]])
 
 
 def test_coordinatearray_getitem():
