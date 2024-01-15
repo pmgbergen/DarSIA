@@ -6,7 +6,7 @@ import numpy as np
 
 
 def bounding_box(
-    coords: np.ndarray, padding: int = 0, max_size: Optional[list] = None
+    coords: np.ndarray, padding: int = 0, max_size: Optional[Union[list, tuple]] = None
 ) -> tuple[slice, ...]:
     """
     Determine bounding box for a set of given coordinates.
@@ -16,8 +16,7 @@ def bounding_box(
         padding (int): padding to create a slightly larger bounding box. Might
             be of interest if the area that is prescribed in coords cover slightly less than
             strictly needed. Default is 0.
-        max_size (Optional[list]): max size of bounding box.
-            Provided as list with max size in each dimension.
+        max_size (list or tuple, optional): max size of bounding box in each dimension.
 
     Returns:
         tuple of slices: slices with ranges from min to max value
