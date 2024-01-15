@@ -4,9 +4,9 @@ based on the Classic Color Checker from calibrite / x-rite.
 
 import copy
 import json
+from abc import ABC
 from pathlib import Path
 from typing import Optional, Union
-from warnings import warn
 
 import colour
 import cv2
@@ -17,13 +17,23 @@ import skimage
 import darsia
 
 
-class ColorCheckerAfter2014:
+class ColorChecker(ABC):
+    """Base class for color checkers."""
+
+    _reference_swatches_rgb: np.ndarray
+    """Reference colors in RGB format, column by column"""
+
+    @property
+    def reference_swatches_rgb(self):
+        return self._reference_swatches_rgb
+
+
+class ColorCheckerAfter2014(ColorChecker):
     """Definition of the classic color checker under (hardcoded) default
     illumination conditions.
     """
 
     def __init__(self):
-
         # Store reference colors in Lab format.
         # From: https://www.xrite.com/service-support/...
         # ...new_color_specifications_for_colorchecker_sg_and_classic_charts
@@ -57,32 +67,36 @@ class ColorCheckerAfter2014:
         ).astype(np.float32)
 
         # Convert reference swatch colors to RGB
-        self.reference_swatches_rgb = np.squeeze(
+        self._reference_swatches_rgb = np.squeeze(
             cv2.cvtColor(np.atleast_3d(reference_swatches_lab), cv2.COLOR_LAB2RGB)
         )
+        """Reference colors in RGB format, column by column"""
 
 
-class CustomColorChecker:
+class CustomColorChecker(ColorChecker):
     """Swatch colors determined from user-prescribed input image."""
 
     def __init__(
-        self, path: Optional[Path] = None, reference_colors: Optional[np.ndarray] = None
+        self, reference_colors: Optional[np.ndarray] = None, path: Optional[Path] = None
     ) -> None:
         """
         Either read reference colors from file or from provided array.
         If colors are provided, these will be prioritized and also written to file.
 
         Args:
-            path (Path): path for storing and fetching reference colors
             colors (np.ndarray, optional): reference RGB colors
+            path (Path): path for storing and fetching reference colors
+
         """
 
         # Prioritize colors if provided.
         if reference_colors is None:
-            self.reference_swatches_rgb = np.load(path)
+            assert path is not None, "Provide either colors or path."
+            self._reference_swatches_rgb = np.load(path)
+            """Reference colors in RGB format, column by column."""
 
         else:
-            self.reference_swatches_rgb = reference_colors
+            self._reference_swatches_rgb = reference_colors
             if path is not None:
                 path.parents[0].mkdir(parents=True, exist_ok=True)
                 np.save(path, reference_colors)
@@ -102,62 +116,45 @@ class ColorCorrection(darsia.BaseCorrection):
 
     def __init__(
         self,
-        base: Optional[darsia.Image] = None,
+        base: Optional[Union[darsia.Image, ColorChecker]] = None,
         config: Optional[dict] = None,
-        roi: Optional[Union[tuple, np.ndarray, list]] = None,
-        verbosity: bool = False,
-        whitebalancing: bool = True,
     ):
         """
         Constructor of converter, setting up a priori all data needed for fast conversion.
 
         Args:
-            base (Image, optional): reference image defining a custom color checker.
-            config (dict, str, Path): config file for initialization of images. Can be
-                used instead of roi, but roi is always prefered if it is present.
-            roi (tuple of slices, np.ndarray, or None): ROI containing a colour checker,
-                provided either as intervals, corner points, or nothing. The recommended
-                choice is to provide an array of coordinates. Can also be provided as
-                part of config; roi in config is prioritized.
-            verbosity (bool): flag controlling whether extracted ROIs of the colorchecker
-                as well as the extracted swatch colors are displayed. Useful for debugging.
-            whitebalancing (bool): apply white balancing based on the third bottom left swatch
-                if True, default is True
+            base (Image or ColorChecker, optional): reference defining a color checker; if
+                None provided, use CustomColorChecker.
+            config (dict, str, Path): config file for initialization of images; keys:
+                "roi" (tuple of slices, np.ndarray, or None): ROI containing a colour
+                    checker, provided either as intervals, corner points, or nothing. The
+                    recommended choice is to provide an array of coordinates.
+                "whitebalancing" (bool): apply white balancing based on the third bottom left
+                    swatch if True, default is True
+                "verbosity" (bool): flag controlling whether extracted ROIs of the colorchecker
+                    as well as the extracted swatch colors are displayed. Useful for debugging.
         """
 
         # Define config
-        if config is not None:
-            self.config = copy.deepcopy(config)
-        else:
-            self.config = {}
+        assert config is not None, "provide config at least with 'roi' key"
+        self.config: dict = copy.deepcopy(config)
+        """Config dictionary for initialization of color correction."""
 
-        # Check whether colorchecker active
-        self.active = self.config.get("active", True)
+        self.active: bool = self.config.get("active", True)
+        """Flag controlling whether correction is active"""
 
-        # Define ROI
-        self.roi: Optional[Union[tuple, np.ndarray]] = None
-        if "roi" in self.config:
-            self.roi = np.array(self.config["roi"])
-        elif isinstance(roi, np.ndarray):
-            self.roi = roi
-            self.config["roi"] = self.roi.tolist()
-        elif isinstance(roi, list):
-            self.roi = np.array(roi)
-            self.config["roi"] = roi
-        elif isinstance(roi, tuple):
-            warn(
-                "An array of corner points is preferred.\
-                The tuple will not be stored in the config file."
-            )
-            self.roi = roi
+        self.whitebalancing: bool = self.config.get("whitebalancing", True)
+        """Flag controlling whether whitebalance is applied as part of correction"""
 
-        # Store flags
-        self.verbosity = verbosity
-        self.whitebalancing = whitebalancing
+        self.verbosity: bool = self.config.get("verbosity", False)
+        """Flag controlling whether intermediate output is printed to screen"""
 
-        # Reference of the class color checker - allow for the classic color checker and
-        # a custom one - assist in creating the latter with tools from ColorCorrection.
-        # Use the input image to define a custom color checker if provided.
+        roi = self.config["roi"]
+        assert roi is not None, "Provide ROI for color correction."
+        self.roi: darsia.VoxelArray = darsia.make_voxel(roi)
+        """ROI - anti-clockwise oriented markers starting at the brown swatch"""
+
+        # Construct color checker
         self._setup_colorchecker(base)
 
     def correct_array(
@@ -244,94 +241,41 @@ class ColorCorrection(darsia.BaseCorrection):
 
     # ! ---- Auxiliary files
 
-    def _setup_colorchecker(self, base: Optional[darsia.Image]) -> None:
+    def _setup_colorchecker(
+        self, base: Optional[Union[darsia.Image, ColorChecker]]
+    ) -> None:
         """Auxiliary setup routine for setting up the custom color checker.
 
         Defines self.colorchecker.
 
         Args:
-            base (Image, optional): reference image if provided
+            base (Image or ColorChecker, optional): reference for color checker
 
         """
-        # Fetch type of colorchecker
-        reference = self.config.get(
-            "reference", "classic" if base is None else "custom"
-        )
-        assert reference in ["classic", "custom"]
-
-        # Set up either classic or custom color checker
-        if reference == "classic":
-
+        if base is None:
             # Choose a classic color checker
             self.colorchecker = ColorCheckerAfter2014()
 
-        elif reference == "custom":
+        elif isinstance(base, ColorChecker):
+            self.colorchecker = base
 
-            def extract_swatches(img: np.ndarray, roi: np.ndarray) -> np.ndarray:
-                """Extract part of the image containing a color checker.
-                Use width and height (in cm - irrelevant) as provided by the
-                manufacturer Xrite.
+        elif isinstance(base, darsia.Image):
+            # Extract part of the image containing a color checker. Use width and height (in
+            # cm - irrelevant) as provided by the manufacturer Xrite.
+            assert self.roi.shape == (4, 2)
+            colorchecker_img = darsia.extract_quadrilateral_ROI(
+                base.img, pts_src=self.roi, width=27.3, height=17.8
+            )
 
-                Args:
-                    img (np.ndarray): baseline image
-                    roi (np.ndarray): roi detecting the markers of the colorchecker
+            # Determine swatch colors
+            swatches = self._detect_colour_checkers_segmentation(colorchecker_img)
 
-                Returns:
-                    np.ndarray: swatches
-
-                """
-                assert roi.shape == (4, 2)
-                colorchecker_img = darsia.extract_quadrilateral_ROI(
-                    img, pts_src=roi, width=27.3, height=17.8
-                )
-
-                # Determine swatch colors
-                swatches = self._detect_colour_checkers_segmentation(colorchecker_img)
-
-                # Scale to interval [0,1], to not loose any information, perform the
-                # scaling by hand
-                assert img.dtype in [np.uint8, np.uint16]
-                scaling = 255.0 if img.dtype == np.uint8 else 255.0**2
-                swatches /= scaling
-
-                return swatches
-
-            # Allow to use provided image or some path to color patches. Prioritize image.
-            if base is None:
-
-                # Fetch path and flag on updating
-                colorchecker_path: Path = Path(
-                    self.config.get(
-                        "custom_colorchecker_path", "custom_colorchecker.npy"
-                    )
-                )
-                update_colorchecker: bool = self.config.get(
-                    "custom_colorchecker_update", False
-                )
-
-                # If required, extract swatches from a provided baseline image and use these
-                # as reference colors; otherwise fetch info form file.
-                if update_colorchecker or not colorchecker_path.exists():
-
-                    # Fetch info on baseline image and roi
-                    baseline_path: str = self.config.get("baseline")
-                    baseline = cv2.cvtColor(
-                        cv2.imread(str(Path(baseline_path)), cv2.IMREAD_UNCHANGED),
-                        cv2.COLOR_BGR2RGB,
-                    )
-                    baseline_roi: np.ndarray = np.array(
-                        self.config.get("custom_colorchecker_reference_roi", self.roi)
-                    )
-
-                    swatches = extract_swatches(baseline, baseline_roi)
-                    self.colorchecker = CustomColorChecker(colorchecker_path, swatches)
-
-                else:
-                    self.colorchecker = CustomColorChecker(colorchecker_path)
-
-            else:
-                swatches = extract_swatches(base.img, self.roi)
-                self.colorchecker = CustomColorChecker(reference_colors=swatches)
+            # Scale to interval [0,1], to not loose any information, perform the
+            # scaling by hand
+            assert base.img.dtype in [np.uint8, np.uint16]
+            scaling = 255.0 if base.img.dtype == np.uint8 else 255.0**2
+            swatches /= scaling
+            self.colorchecker = CustomColorChecker(reference_colors=swatches)
 
     def _restrict_to_roi(self, img: np.ndarray) -> np.ndarray:
         """
