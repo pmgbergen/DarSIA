@@ -177,7 +177,7 @@ def make_voxel(
             of points is provided, a VoxelArray is returned.
 
     """
-    pts_array = np.array(pts).astype(int)
+    pts_array = np.array(pts)
     if len(pts_array.shape) == 1:
         return Voxel(pts_array, matrix_indexing=matrix_indexing)
     else:
