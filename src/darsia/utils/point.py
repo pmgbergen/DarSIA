@@ -53,7 +53,7 @@ class VoxelArray(Voxel):
     """Container for collection of Voxel."""
 
     @overload  # type: ignore [override]
-    def __getitem__(self, key: int, /) -> Voxel:
+    def __getitem__(self, key: int) -> Voxel:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
         Args:
@@ -66,7 +66,7 @@ class VoxelArray(Voxel):
         ...
 
     @overload
-    def __getitem__(self, key: np.ndarray, /) -> VoxelArray:
+    def __getitem__(self, key: np.ndarray) -> VoxelArray:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
         Args:
@@ -78,7 +78,7 @@ class VoxelArray(Voxel):
         """
         ...
 
-    def __getitem__(self, key: Any, /) -> Union[Voxel, VoxelArray, np.ndarray]:
+    def __getitem__(self, key: Any) -> Union[Voxel, VoxelArray, np.ndarray]:
         """Specialized item-access, returning objects instead of simple np.ndarray."""
         if isinstance(key, int):
             return Voxel(np.asarray(self)[key])
@@ -92,7 +92,7 @@ class CoordinateArray(Coordinate):
     """Container for collection of Coordinate."""
 
     @overload  # type: ignore [override]
-    def __getitem__(self, key: int, /) -> Coordinate:
+    def __getitem__(self, key: int) -> Coordinate:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
         Args:
@@ -105,7 +105,7 @@ class CoordinateArray(Coordinate):
         ...
 
     @overload
-    def __getitem__(self, key: np.ndarray, /) -> CoordinateArray:
+    def __getitem__(self, key: np.ndarray) -> CoordinateArray:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
         Args:
@@ -117,10 +117,9 @@ class CoordinateArray(Coordinate):
         """
         ...
 
-    def __getitem__(
-        self, key: Any, /
-    ) -> Union[Coordinate, CoordinateArray, np.ndarray]:
+    def __getitem__(self, key: Any) -> Union[Coordinate, CoordinateArray, np.ndarray]:
         """Specialized item-access, returning objects instead of simple np.ndarray."""
+
         if isinstance(key, int):
             return Coordinate(np.asarray(self)[key])
         elif isinstance(key, np.ndarray) and len(key.shape) == 1:
