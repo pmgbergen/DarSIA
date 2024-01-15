@@ -67,7 +67,7 @@ def test_image_registration():
     # Setup drift correction taking care of moving camera in between taking photos.
     # Use the color checker as reference in both images, and make the src image
     # the anker.
-    roi = (slice(0, 600), slice(0, 600))
+    roi = darsia.make_voxel([[0, 0], [600, 600]])
     drift_correction = darsia.DriftCorrection(base=array_src, config={"roi": roi})
 
     # ! ---- Corrected images

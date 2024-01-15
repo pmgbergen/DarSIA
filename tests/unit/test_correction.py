@@ -122,7 +122,7 @@ def test_drift_correction():
     original_image = darsia.Image(img=original_array, **info)
 
     # ! ---- Define drift correction
-    roi = (slice(0, 600), slice(0, 600))
+    roi = darsia.make_voxel([[0, 0], [600, 600]])
     drift_correction = darsia.DriftCorrection(base=original_image, config={"roi": roi})
 
     # ! ---- Apply affine transformation
