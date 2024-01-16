@@ -751,8 +751,11 @@ class CurvatureCorrection(darsia.BaseCorrection):
 
         return np.squeeze(corrected_img)
 
-    def correct_metadata(self) -> dict:
+    def correct_metadata(self, metadata: dict = {}) -> dict:
         """Extract metadata from the config file.
+
+        Args:
+            metadata (dict, optional): metadata dictionary to be updated. Defaults to {}.
 
         Returns:
             dict: metadata
