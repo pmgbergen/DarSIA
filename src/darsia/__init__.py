@@ -34,6 +34,7 @@ from darsia.utils import linalg
 from darsia.utils import quadrature
 from darsia.utils import plotting
 from darsia.corrections.basecorrection import *
+from darsia.corrections.shape.transformation import *
 from darsia.corrections.shape.curvature import *
 from darsia.corrections.shape.affine import *
 from darsia.corrections.shape.translation import *
