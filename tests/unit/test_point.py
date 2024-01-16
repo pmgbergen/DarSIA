@@ -147,15 +147,27 @@ def test_point_to_coordinate():
     assert isinstance(to_coord, darsia.Coordinate)
     assert np.allclose(to_coord, [0.6, 0.2])
 
+    to_coord = coord.to(darsia.Coordinate)
+    assert isinstance(to_coord, darsia.Coordinate)
+    assert np.allclose(to_coord, [0.6, 0.2])
+
     # From Voxel
     voxel = darsia.Voxel([2, 1])
     to_coord = voxel.to_coordinate(image.coordinatesystem)
     assert isinstance(to_coord, darsia.Coordinate)
     assert np.allclose(to_coord, [0.25, 1 / 3])
 
+    to_coord = voxel.to(darsia.Coordinate, image.coordinatesystem)
+    assert isinstance(to_coord, darsia.Coordinate)
+    assert np.allclose(to_coord, [0.25, 1 / 3])
+
     # From VoxelCenter
     voxel_center = darsia.VoxelCenter([2, 1])
     to_coord = voxel_center.to_coordinate(image.coordinatesystem)
+    assert isinstance(to_coord, darsia.Coordinate)
+    assert np.allclose(to_coord, [0.375, 1 / 6])
+
+    to_coord = voxel_center.to(darsia.Coordinate, image.coordinatesystem)
     assert isinstance(to_coord, darsia.Coordinate)
     assert np.allclose(to_coord, [0.375, 1 / 6])
 
@@ -172,15 +184,27 @@ def test_point_to_voxel():
     assert isinstance(to_voxel, darsia.Voxel)
     assert np.allclose(to_voxel, [2, 2])
 
+    to_voxel = coord.to(darsia.Voxel, image.coordinatesystem)
+    assert isinstance(to_voxel, darsia.Voxel)
+    assert np.allclose(to_voxel, [2, 2])
+
     # From Voxel
     voxel = darsia.Voxel([2, 1])
     to_voxel = voxel.to_voxel()
     assert isinstance(to_voxel, darsia.Voxel)
     assert np.allclose(to_voxel, [2, 1])
 
+    to_voxel = voxel.to(darsia.Voxel)
+    assert isinstance(to_voxel, darsia.Voxel)
+    assert np.allclose(to_voxel, [2, 1])
+
     # From VoxelCenter
     voxel_center = darsia.VoxelCenter([2, 1])
     to_voxel = voxel_center.to_voxel()
+    assert isinstance(to_voxel, darsia.Voxel)
+    assert np.allclose(to_voxel, [2, 1])
+
+    to_voxel = voxel_center.to(darsia.Voxel)
     assert isinstance(to_voxel, darsia.Voxel)
     assert np.allclose(to_voxel, [2, 1])
 
@@ -197,15 +221,27 @@ def test_point_to_voxel_center():
     assert isinstance(to_voxel_center, darsia.VoxelCenter)
     assert np.allclose(to_voxel_center, [2.5, 2.5])
 
+    to_voxel_center = coord.to(darsia.VoxelCenter, image.coordinatesystem)
+    assert isinstance(to_voxel_center, darsia.VoxelCenter)
+    assert np.allclose(to_voxel_center, [2.5, 2.5])
+
     # From Voxel
     voxel = darsia.Voxel([2, 1])
     to_voxel_center = voxel.to_voxel_center()
     assert isinstance(to_voxel_center, darsia.VoxelCenter)
     assert np.allclose(to_voxel_center, [2.5, 1.5])
 
+    to_voxel_center = voxel.to(darsia.VoxelCenter)
+    assert isinstance(to_voxel_center, darsia.VoxelCenter)
+    assert np.allclose(to_voxel_center, [2.5, 1.5])
+
     # From VoxelCenter
     voxel_center = darsia.VoxelCenter([2, 1])
     to_voxel_center = voxel_center.to_voxel_center()
+    assert isinstance(to_voxel_center, darsia.VoxelCenter)
+    assert np.allclose(to_voxel_center, [2.5, 1.5])
+
+    to_voxel_center = voxel_center.to(darsia.VoxelCenter)
     assert isinstance(to_voxel_center, darsia.VoxelCenter)
     assert np.allclose(to_voxel_center, [2.5, 1.5])
 
@@ -222,15 +258,27 @@ def test_point_array_to_coordinate():
     assert isinstance(to_coords, darsia.CoordinateArray)
     assert np.allclose(to_coords, [[0.6, 0.2], [0.1, 0.9]])
 
+    to_coords = coords.to(darsia.CoordinateArray)
+    assert isinstance(to_coords, darsia.CoordinateArray)
+    assert np.allclose(to_coords, [[0.6, 0.2], [0.1, 0.9]])
+
     # From VoxelArray
     voxels = darsia.VoxelArray([[2, 1], [1, 3]])
     to_coords = voxels.to_coordinate(image.coordinatesystem)
     assert isinstance(to_coords, darsia.CoordinateArray)
     assert np.allclose(to_coords, [[0.25, 1 / 3], [0.75, 2 / 3]])
 
+    to_coords = voxels.to(darsia.CoordinateArray, image.coordinatesystem)
+    assert isinstance(to_coords, darsia.CoordinateArray)
+    assert np.allclose(to_coords, [[0.25, 1 / 3], [0.75, 2 / 3]])
+
     # From VoxelCenterArray
     voxel_centers = darsia.VoxelCenterArray([[2, 1], [1, 3]])
     to_coords = voxel_centers.to_coordinate(image.coordinatesystem)
+    assert isinstance(to_coords, darsia.CoordinateArray)
+    assert np.allclose(to_coords, [[0.375, 1 / 6], [0.875, 3 / 6]])
+
+    to_coords = voxel_centers.to(darsia.CoordinateArray, image.coordinatesystem)
     assert isinstance(to_coords, darsia.CoordinateArray)
     assert np.allclose(to_coords, [[0.375, 1 / 6], [0.875, 3 / 6]])
 
@@ -247,15 +295,27 @@ def test_point_array_to_voxel():
     assert isinstance(to_voxels, darsia.VoxelArray)
     assert np.allclose(to_voxels, [[2, 2], [0, 0]])
 
+    to_voxels = coords.to(darsia.VoxelArray, image.coordinatesystem)
+    assert isinstance(to_voxels, darsia.VoxelArray)
+    assert np.allclose(to_voxels, [[2, 2], [0, 0]])
+
     # From VoxelArray
     voxels = darsia.VoxelArray([[2, 1], [1, 3]])
     to_voxels = voxels.to_voxel(image.coordinatesystem)
     assert isinstance(to_voxels, darsia.VoxelArray)
     assert np.allclose(to_voxels, [[2, 1], [1, 3]])
 
+    to_voxels = voxels.to(darsia.VoxelArray)
+    assert isinstance(to_voxels, darsia.VoxelArray)
+    assert np.allclose(to_voxels, [[2, 1], [1, 3]])
+
     # From VoxelCenterArray
     voxel_centers = darsia.VoxelCenterArray([[2, 1], [1, 3]])
     to_voxels = voxel_centers.to_voxel(image.coordinatesystem)
+    assert isinstance(to_voxels, darsia.VoxelArray)
+    assert np.allclose(to_voxels, [[2, 1], [1, 3]])
+
+    to_voxels = voxel_centers.to(darsia.VoxelArray)
     assert isinstance(to_voxels, darsia.VoxelArray)
     assert np.allclose(to_voxels, [[2, 1], [1, 3]])
 
@@ -272,14 +332,26 @@ def test_point_array_to_voxel_center():
     assert isinstance(to_voxel_centers, darsia.VoxelCenterArray)
     assert np.allclose(to_voxel_centers, [[2.5, 2.5], [0.5, 0.5]])
 
+    to_voxel_centers = coords.to(darsia.VoxelCenterArray, image.coordinatesystem)
+    assert isinstance(to_voxel_centers, darsia.VoxelCenterArray)
+    assert np.allclose(to_voxel_centers, [[2.5, 2.5], [0.5, 0.5]])
+
     # From VoxelArray
     voxels = darsia.VoxelArray([[2, 1], [1, 3]])
     to_voxel_centers = voxels.to_voxel_center(image.coordinatesystem)
     assert isinstance(to_voxel_centers, darsia.VoxelCenterArray)
     assert np.allclose(to_voxel_centers, [[2.5, 1.5], [1.5, 3.5]])
 
+    to_voxel_centers = voxels.to(darsia.VoxelCenterArray, image.coordinatesystem)
+    assert isinstance(to_voxel_centers, darsia.VoxelCenterArray)
+    assert np.allclose(to_voxel_centers, [[2.5, 1.5], [1.5, 3.5]])
+
     # From VoxelCenterArray
     voxel_centers = darsia.VoxelCenterArray([[2, 1], [1, 3]])
     to_voxel_centers = voxel_centers.to_voxel_center(image.coordinatesystem)
+    assert isinstance(to_voxel_centers, darsia.VoxelCenterArray)
+    assert np.allclose(to_voxel_centers, [[2.5, 1.5], [1.5, 3.5]])
+
+    to_voxel_centers = voxel_centers.to(darsia.VoxelCenterArray, image.coordinatesystem)
     assert isinstance(to_voxel_centers, darsia.VoxelCenterArray)
     assert np.allclose(to_voxel_centers, [[2.5, 1.5], [1.5, 3.5]])
