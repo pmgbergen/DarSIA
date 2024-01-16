@@ -1638,11 +1638,6 @@ class OpticalImage(Image):
         kwargs.pop("indexing", None)
         kwargs.pop("scalar", None)
 
-        # Construct a general image with the specs of an optical image
-        super().__init__(img, transformations, **optical_metadata, **kwargs)
-
-        assert self.range_dim == 1 and self.range_num == 3
-
         # Add info on color space
         self.color_space = kwargs.get("color_space", "RGB").upper()
         """Color space of the trichromatic data space."""
@@ -1652,6 +1647,11 @@ class OpticalImage(Image):
 
         if "color_space" not in kwargs:
             warn("No color space provided. The color space RGB is implicitly assumed.")
+
+        # Construct a general image with the specs of an optical image
+        super().__init__(img, transformations, **optical_metadata, **kwargs)
+
+        assert self.range_dim == 1 and self.range_num == 3
 
     def copy(self) -> OpticalImage:
         """Copy constructor.
