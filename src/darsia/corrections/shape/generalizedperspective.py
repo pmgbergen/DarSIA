@@ -5,7 +5,7 @@ In addition, quick-access is provided for routine-based use of DarSIA.
 
 """
 
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import scipy.optimize as optimize
@@ -13,7 +13,7 @@ import scipy.optimize as optimize
 import darsia
 
 
-class GeneralizedPerspectiveTransformation:
+class GeneralizedPerspectiveTransformation(darsia.BaseTransformation):
     """Combination of perspective map, bulge and stretch for 2d images.
 
     Following the paradigm of phyisical image, generalized perspective transforms
@@ -29,6 +29,8 @@ class GeneralizedPerspectiveTransformation:
         The default parameters are set to the identity transformation.
 
         """
+        super().__init__()
+
         self.A: np.array = np.array([1, 0, 0, 1], dtype=float)
         """Scaling matrix for perspective transformation"""
         self.b: np.array = np.zeros(2, dtype=float)
@@ -43,15 +45,6 @@ class GeneralizedPerspectiveTransformation:
         """Bulge vector for bulge transformation"""
         self.bulge_center_off: np.array = np.zeros(2, dtype=float)
         """Offsett from center for bulge transformation"""
-        self.input_dtype = np.ndarray
-        """Type of input for generalized perspective transformation"""
-        self.output_dtype = np.ndarray
-        """Type of output for generalized perspective transformation"""
-        self.input_array_dtype = np.ndarray
-        """Type of input arrays for generalized perspective transformation"""
-        self.output_array_dtype = np.ndarray
-        """Type of output arrays for generalized perspective transformation"""
-        self.set_array_dtype()
 
         # Collect all input parameters in single vector to define a default state
         self.default_parameters = np.concatenate(
@@ -85,32 +78,10 @@ class GeneralizedPerspectiveTransformation:
             self.bulge_factor = parameters[12:14]
             self.bulge_center_off = parameters[14:16]
 
-    def set_array_dtype(self) -> None:
-        """Set array input and output type for generalized perspective transformation."""
-        if self.input_dtype == darsia.Coordinate:
-            self.input_array_dtype = darsia.CoordinateArray
-        elif self.input_dtype == darsia.Voxel:
-            self.input_array_dtype = darsia.VoxelArray
-        else:
-            self.input_array_dtype = np.ndarray
-
-        if self.output_dtype == darsia.Coordinate:
-            self.output_array_dtype = darsia.CoordinateArray
-        elif self.output_dtype == darsia.Voxel:
-            self.output_array_dtype = darsia.VoxelArray
-        else:
-            self.output_array_dtype = np.ndarray
-
-    def __call__(
+    def call_array(
         self,
-        x: Union[
-            np.ndarray,
-            darsia.Coordinate,
-            darsia.CoordinateArray,
-            darsia.Voxel,
-            darsia.VoxelArray,
-        ],
-    ):
+        x: np.ndarray,
+    ) -> np.ndarray:
         """Application of generalized perspective to coordinate array.
 
         Args:
@@ -121,23 +92,21 @@ class GeneralizedPerspectiveTransformation:
             output_dtype or output_array_dtype: warped point in predefined output type
 
         """
-        # Be strict on input type (implicitly allow for arrays of coordinates or voxels)
-        assert (
-            type(x) is self.input_dtype or type(x[0]) is self.input_dtype
-        ), """
-            Input type must be of type {self.input_dtype} or {self.input_dtype} array
+        raise NotImplementedError("Evaluation not implemented")
+
+    def inverse_array(self, x: np.ndarray) -> np.ndarray:
+        """Evaluation of inverse generalized perspective to coordinate array.
+
+        Args:
+            x (np.ndarray, Coordinate, Voxel or corresponding Array of such):
+                point to be transformed, type must match predefined input type
+
+        Returns:
+            output_dtype or output_array_dtype: warped point in predefined output type
+
         """
-
-        # For now, convert to plain numpy array
-        x_arr = np.asarray(x)
-
-        # For dimensionality reasons, collection of points require different treatment
-        # than single points; the below code is written for arrays with columns as
-        # points
-        x_arr = np.atleast_2d(x_arr)
-        array_input = x_arr.shape == x.shape
-        x_arr = x_arr.T
-        assert x_arr.shape[0] == 2, "Input must be 2d"
+        # Convert to transpose format
+        x_arr = x.T
 
         # Initialize output and apply perspective transform onto x
         out = self.A @ x_arr
@@ -189,70 +158,65 @@ class GeneralizedPerspectiveTransformation:
         )
         out += stretch_correction
 
-        # Convert to right output type
-        if array_input:
-            return self.output_array_dtype(out.T)
-        else:
-            return self.output_dtype(out[0])
+        # Convert back to correct format
+        return out.T
 
     def fit(
         self,
-        pts_src: Union[np.ndarray, darsia.VoxelArray, darsia.CoordinateArray],
-        pts_dst: Union[np.ndarray, darsia.VoxelArray, darsia.CoordinateArray],
-        img_dst: Optional[darsia.Image] = None,
-        maxiter: int = 100,
-        tol: float = 1e-5,
-        strategy: list = ["all"],
+        pts_src: Union[
+            darsia.CoordinateArray, darsia.VoxelArray, darsia.VoxelCenterArray
+        ],
+        pts_dst: Union[
+            darsia.CoordinateArray, darsia.VoxelArray, darsia.VoxelCenterArray
+        ],
+        fit_options: dict = {},
     ):
         """
         Fit inverse generalized perspective transformation to given src and dst points.
 
-        The inverse is in practice more useful for warping of images.
+        NOTE: Currently, the forward evaluation is not implemented.
 
         Also fixes types of input and output. Later evaluation of the transformation
         will require the same type of input and output.
 
         Args:
-            pts_src (array, VoxelArray, or CoordinateArray): source points
-            pts_dst (array, VoxelArray, or CoordinateArray): target points
-            img_dst (darsia.Image): target image, defines coordinate system etc.
-            maxiter (int): maximum number of iterations
-            tol (float): tolerance for optimization
-            strategy (list): list of strategies to use for optimization
+            pts_src (CoordinateArray, VoxelArray, VoxelCenterArray): source points
+            pts_dst (CoordinateArray, VoxelArray, VoxelCenterArray): target points
+            fit_options (dict): options for fitting
+                coordinatesystem_dst (darsia.CoordinateSystem): coordinate system of
+                    target points
+                maxiter (int): maximum number of iterations
+                tol (float): tolerance for optimization
+                strategy (list): list of strategies to use for optimization
 
         Returns:
             scipy.optimize.OptimizeResult: optimization result
 
         """
-        # Assert (implicitly) pts_src and pts_dst are lists of coordinates or voxels.
-        assert pts_src.shape == pts_dst.shape, "source and target points must match"
-        # Update input and output type
-        self.input_dtype = type(pts_src[0])
-        self.output_dtype = type(pts_dst[0])
-        self.set_array_dtype()
+        coordinatesystem_dst = fit_options.get("coordinatesystem_dst")
+        assert coordinatesystem_dst is not None, "Need coordinatesystem_dst"
+        maxiter = fit_options.get("maxiter", 100)
+        tol = fit_options.get("tol", 1e-5)
+        strategy = fit_options.get("strategy", ["all"])
+
+        # Update domain and range of transformation
+        self.set_dtype(pts_src, pts_dst)
 
         # Retrieve some fixed parameters from a reference image
-        assert img_dst is not None
         self.max_coordinate = (
-            np.array(img_dst.num_voxels)
+            np.array(coordinatesystem_dst.shape)
             if self.output_dtype == darsia.Voxel
-            else np.max(np.vstack((img_dst.origin, img_dst.opposite_corner)), axis=0)
+            else coordinatesystem_dst.max_coordinate
         )
         """Maximum coordinate of image for stretch and bulge transformation"""
         self.min_coordinate = (
             np.zeros(2, dtype=float)
             if self.output_dtype == darsia.Voxel
-            else np.min(np.vstack((img_dst.origin, img_dst.opposite_corner)), axis=0)
+            else coordinatesystem_dst.min_coordinate
         )
         """Minimum coordinate of image for stretch and bulge transformation"""
         self.center = 0.5 * (self.max_coordinate + self.min_coordinate)
         """Center of image for stretch and bulge transformation"""
-        self.reference_shape = img_dst.num_voxels
-        """Target shape of image for generalized perspective transformation"""
-        self.reference_metadata = img_dst.metadata()
-        """Reference metadata for generalized perspective transformation"""
-        self.reference_coordinatesystem = img_dst.coordinatesystem
-        """Reference coordinate system"""
 
         # Define initial parameters
         self.initial_parameters = self.default_parameters.copy()
@@ -261,7 +225,7 @@ class GeneralizedPerspectiveTransformation:
         def objective_function(params: np.ndarray):
             """LS objective function for generalized perspective transformation."""
             self.set_parameters_as_vector(params)
-            pts_dst_warped = self.__call__(pts_dst)
+            pts_dst_warped = self.inverse_array(pts_dst)
             regularization = np.sum(
                 (params - self.initial_parameters[: len(params)]) ** 2
             )
@@ -294,54 +258,47 @@ class GeneralizedPerspectiveTransformation:
         # Return optimization result
         return opt_result
 
-    def warp(self, img: darsia.Image):
-        """Warping of image according to generalized perspective.
+
+class GeneralizedPerspectiveCorrection(darsia.TransformationCorrection):
+    """Class for applying generalized perspective transformation to images."""
+
+    def __init__(
+        self,
+        coordinatesystem_src: darsia.CoordinateSystem,
+        coordinatesystem_dst: darsia.CoordinateSystem,
+        pts_src: Union[
+            darsia.CoordinateArray, darsia.VoxelArray, darsia.VoxelCenterArray
+        ],
+        pts_dst: Union[
+            darsia.CoordinateArray, darsia.VoxelArray, darsia.VoxelCenterArray
+        ],
+        fit_options: dict = {},
+    ):
+        # Setup transformation
+        fit_options["coordinatesystem_dst"] = coordinatesystem_dst
+        transformation = GeneralizedPerspectiveTransformation()
+        transformation.fit(
+            pts_src,
+            pts_dst,
+            fit_options,
+        )
+        super().__init__(coordinatesystem_src, coordinatesystem_dst, transformation)
+
+        # Cache reference metadata
+        self.dst_dimensions = coordinatesystem_dst.dimensions
+        self.dst_origin = coordinatesystem_dst._coordinate_of_origin_voxel
+
+    def correct_metadata(self, metadata: dict = {}) -> dict:
+        """Extract metadata from the config file.
 
         Args:
-            img (darsia.Image): image to warp
+            metadata (dict, optional): metadata dictionary to be updated. Defaults to {}.
 
         Returns:
-            darsia.Image: warped image
+            dict: metadata
 
         """
-        assert img.space_dim == 2, "currently only support for 2d images"
-
-        # Define new output image with same resolution as the input image and the same
-        # aspect ratio as the reference image
-        scaling = np.max([img.img.shape[i] / self.reference_shape[i] for i in range(2)])
-        warped_shape = (scaling * np.array(self.reference_shape)).astype(int)
-        warped_metadata = img.metadata()
-        for key in ["dimensions", "origin"]:
-            warped_metadata[key] = self.reference_metadata[key]
-        warped_image = type(img)(
-            np.zeros((*warped_shape, *img.img.shape[2:]), dtype=img.img.dtype),
-            **warped_metadata,
-        )
-
-        # Fetch target
-        warped_voxels = warped_image.coordinatesystem.voxels
-        warped_coordinates = warped_image.coordinatesystem.coordinates
-
-        # Apply map
-        coordinates = self.__call__(warped_coordinates)
-        voxels = img.coordinatesystem.voxel(coordinates)
-
-        # Identify valid coordinates
-        valid_voxels = np.all(
-            np.logical_and(
-                voxels >= np.zeros(2, dtype=int),
-                voxels < img.num_voxels,
-            ),
-            axis=1,
-        )
-
-        # Restrict to valid coordinates
-        voxels = voxels[valid_voxels]
-        warped_voxels = warped_voxels[valid_voxels]
-
-        # Assign output to valid coordinates
-        warped_image.img[warped_voxels[:, 0], warped_voxels[:, 1]] = img.img[
-            voxels[:, 0], voxels[:, 1]
-        ]
-
-        return warped_image
+        return {
+            "dimensions": self.dst_dimensions,
+            "origin": self.dst_origin,
+        }
