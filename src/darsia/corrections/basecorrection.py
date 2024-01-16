@@ -70,9 +70,7 @@ class BaseCorrection(ABC):
                 img = self.correct_array(img)
 
             # Apply corrections to metadata
-            meta_update = (
-                self.correct_metadata() if hasattr(self, "correct_metadata") else {}
-            )
+            meta_update = self.correct_metadata(image.metadata())
 
             if overwrite:
                 # Overwrite original image
@@ -100,3 +98,15 @@ class BaseCorrection(ABC):
 
         """
         pass
+
+    def correct_metadata(self, metadata: dict = {}) -> dict:
+        """Correction routine on metadata level.
+
+        Args:
+            metadata (dict): metadata dictionary.
+
+        Returns:
+            dict: corrected metadata dictionary.
+
+        """
+        return {}
