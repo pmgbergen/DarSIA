@@ -147,6 +147,8 @@ class AffineTransformation(darsia.BaseTransformation):
     ) -> bool:
         """Least-squares parameter fit based on source and target coordinates.
 
+        Fits both forward and inverse map.
+
         Args:
             pts_src (VoxelArray or CoordinateArray): source points
             pts_dst (VoxelArray or CoordinateArray): target points
@@ -214,14 +216,14 @@ class AffineTransformation(darsia.BaseTransformation):
         # Define least squares objective function
         def objective_function(params: np.ndarray):
             self.set_parameters_as_vector(params)
-            pts_mapped = self.__call__(pts_src)
+            pts_mapped = self.call_array(pts_src)
             return np.sum((pts_dst - pts_mapped) ** 2)
 
         # Perform optimization step
         opt_result = optimize.minimize(
             objective_function,
             initial_guess,
-            # method="Powell",
+            method="Powell",
             tol=tol,
             options={"maxiter": maxiter, "disp": True},
         )
@@ -245,10 +247,6 @@ class AffineTransformation(darsia.BaseTransformation):
 
         # Final update of model parameters
         self.set_parameters_as_vector(opt_result.x)
-
-        # print(opt_result.x)
-        # print(pts_src)
-        # print(self.__call__(pts_src))
 
         # Check success
         if opt_result.success:
@@ -297,9 +295,7 @@ class AffineTransformation(darsia.BaseTransformation):
             / self.scaling
             * np.transpose(
                 self.rotation_inv.dot(
-                    np.transpose(
-                        x - np.outer(np.ones(num), self.translation)
-                    )
+                    np.transpose(x - np.outer(np.ones(num), self.translation))
                 )
             )
         )
@@ -360,9 +356,6 @@ class AffineCorrection(darsia.TransformationCorrection):
 
         affine_transformation = AffineTransformation(self.dim)
         affine_transformation.fit(pts_src, pts_dst, fit_options)
-        # print(affine_transformation.translation)
-        # print(affine_transformation.scaling)
-        # print(affine_transformation.rotation)
 
         super().__init__(
             coordinatesystem_src=coordinatesystem_src,
