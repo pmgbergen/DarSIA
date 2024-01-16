@@ -70,6 +70,22 @@ class CoordinateSystem:
             self.domain[axis + "min"] = np.min(corners[:, i])
             self.domain[axis + "max"] = np.max(corners[:, i])
 
+        self.max_coordinate = np.max(
+            np.vstack(
+                (self._coordinate_of_origin_voxel, self._coordinate_of_opposite_voxel)
+            ),
+            axis=0,
+        )
+        """Extremal coordinate (max) of the active coordinate system / the image."""
+
+        self.min_coordinate = np.min(
+            np.vstack(
+                (self._coordinate_of_origin_voxel, self._coordinate_of_opposite_voxel)
+            ),
+            axis=0,
+        )
+        """Extremal coordinate (min) of the active coordinate system / the image."""
+
     @property
     def voxels(self) -> darsia.VoxelArray:
         """Voxel array of image, collecting all voxels.
