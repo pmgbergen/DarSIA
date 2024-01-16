@@ -5,7 +5,7 @@ Implemented are Cartesian coordinates and voxel coordinates allowing for differe
 """
 from __future__ import annotations
 
-from typing import Any, Union, overload
+from typing import Any, Optional, Union, overload
 
 import numpy as np
 
@@ -17,7 +17,7 @@ import darsia
 class BasePoint(np.ndarray):
     """Base class for defining points."""
 
-    def __new__(cls, input_array, info=None):
+    def __new__(cls, input_array):
         obj = np.asarray(input_array).view(cls)
         return obj
 
@@ -51,7 +51,63 @@ class Voxel(BasePoint):
             return
 
 
+class VoxelCenter(BasePoint):
+    """Voxel center coordinate."""
+
+    def __new__(cls, input_array, matrix_indexing=True):
+        obj = np.asarray(input_array).astype(int)
+        obj = obj + 0.5 * np.ones(obj.shape)
+        obj = obj.view(cls)
+        if not matrix_indexing:
+            obj = np.fliplr(np.atleast_2d(obj)).reshape(obj.shape).view(cls)
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+
+
 # ! ---- Implementation for collection of points ----
+
+
+class CoordinateArray(Coordinate):
+    """Container for collection of Coordinate."""
+
+    @overload  # type: ignore [override]
+    def __getitem__(self, key: int) -> Coordinate:
+        """Specialized item-access, returning objects instead of simple np.ndarray.
+
+        Args:
+            key (int): identificator (for row in CoordinateArray)
+
+        Returns:
+            Coordinate: corresponding coordinate
+
+        """
+        ...
+
+    @overload
+    def __getitem__(self, key: np.ndarray) -> CoordinateArray:
+        """Specialized item-access, returning objects instead of simple np.ndarray.
+
+        Args:
+            key (np.ndarray): identificator (for rows in CoordinateArray)
+
+        Returns:
+            CoordinateArray: corresponding coordinates
+
+        """
+        ...
+
+    def __getitem__(self, key: Any) -> Union[Coordinate, CoordinateArray, np.ndarray]:
+        """Specialized item-access, returning objects instead of simple np.ndarray."""
+
+        if isinstance(key, int):
+            return Coordinate(np.asarray(self)[key])
+        elif isinstance(key, np.ndarray) and len(key.shape) == 1:
+            return CoordinateArray(np.asarray(self)[key])
+        else:
+            return np.asarray(self)[key]
 
 
 class VoxelArray(Voxel):
@@ -93,42 +149,41 @@ class VoxelArray(Voxel):
             return np.asarray(self)[key]
 
 
-class CoordinateArray(Coordinate):
-    """Container for collection of Coordinate."""
+class VoxelCenterArray(VoxelCenter):
+    """Container for collection of VoxelCenter."""
 
     @overload  # type: ignore [override]
-    def __getitem__(self, key: int) -> Coordinate:
+    def __getitem__(self, key: int) -> VoxelCenter:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
         Args:
-            key (int): identificator (for row in CoordinateArray)
+            key (int): identificator (for row in VoxelArray)
 
         Returns:
-            Coordinate: corresponding coordinate
+            VoxelCenter: corresponding voxel
 
         """
         ...
 
     @overload
-    def __getitem__(self, key: np.ndarray) -> CoordinateArray:
+    def __getitem__(self, key: np.ndarray) -> VoxelCenterArray:
         """Specialized item-access, returning objects instead of simple np.ndarray.
 
         Args:
-            key (np.ndarray): identificator (for rows in CoordinateArray)
+            key (np.ndarray): identificator (for rows in VoxelArray)
 
         Returns:
-            CoordinateArray: corresponding coordinates
+            VoxelCenterArray: corresponding voxels
 
         """
         ...
 
-    def __getitem__(self, key: Any) -> Union[Coordinate, CoordinateArray, np.ndarray]:
+    def __getitem__(self, key: Any) -> Union[VoxelCenter, VoxelCenterArray, np.ndarray]:
         """Specialized item-access, returning objects instead of simple np.ndarray."""
-
         if isinstance(key, int):
-            return Coordinate(np.asarray(self)[key])
+            return VoxelCenter(np.asarray(self)[key])
         elif isinstance(key, np.ndarray) and len(key.shape) == 1:
-            return CoordinateArray(np.asarray(self)[key])
+            return VoxelCenterArray(np.asarray(self)[key])
         else:
             return np.asarray(self)[key]
 
@@ -189,6 +244,34 @@ def make_voxel(
         return VoxelArray(pts_array, matrix_indexing=matrix_indexing)
 
 
+def make_voxel_center(
+    pts: Union[list, np.ndarray], matrix_indexing: bool = True
+) -> Union[VoxelCenter, VoxelArray]:
+    """Quick-access constructor for VoxelCenter or VoxelCenterArray.
+
+    Args:
+        pts (Union[list, np.ndarray]): list of points or array of points
+        matrix_indexing (bool, optional): whether to use matrix indexing (first index
+            corresponds to row, second to column, third to depth). Defaults to True.
+
+    Returns:
+        Union[VoxelCenter, VoxelCenterArray]: VoxelCenter or VoxelCenterArray variant of point (type depends on
+            input), i.e. if a single point is provided, a VoxelCenter is returned, if a list
+            of points is provided, a VoxelCenterArray is returned.
+
+    """
+    pts_array = np.array(pts)
+    if len(pts_array.shape) == 1:
+        return VoxelCenter(pts_array, matrix_indexing=matrix_indexing)
+    else:
+        assert len(pts_array.shape) == 2 and pts_array.shape[1] in [
+            1,
+            2,
+            3,
+        ], "only support 1d, 2d, 3d"
+        return VoxelCenterArray(pts_array, matrix_indexing=matrix_indexing)
+
+
 # ! ---- Conversion routines
 
 # The routines will eventualy be associated to the base class, but depending on the base
@@ -196,7 +279,7 @@ def make_voxel(
 
 
 def to_coordinate(
-    self, coordinatesystem: darsia.CoordinateSystem
+    self, coordinatesystem: Optional[darsia.CoordinateSystem] = None
 ) -> Union[Coordinate, CoordinateArray]:
     """Conversion of point to Coordinate.
 
@@ -207,16 +290,17 @@ def to_coordinate(
         Coordinate or CoordinateArray: Coordinate variant of point (type depends on input)
 
     """
-    if isinstance(self, Coordinate) or isinstance(self, CoordinateArray):
+    if isinstance(self, Coordinate):
         return self.copy()
-    elif isinstance(self, Voxel):
+    elif isinstance(self, Voxel) or isinstance(self, VoxelCenter):
+        assert coordinatesystem is not None, "coordinatesystem must be provided"
         return make_coordinate(coordinatesystem.coordinate(self))
     else:
         raise NotImplementedError(f"{type(self)} not supported")
 
 
 def to_voxel(
-    self, coordinatesystem: darsia.CoordinateSystem
+    self, coordinatesystem: Optional[darsia.CoordinateSystem] = None
 ) -> Union[Voxel, VoxelArray]:
     """Conversion of point to Voxel.
 
@@ -224,13 +308,39 @@ def to_voxel(
         coordinatesystem (CoordinateSystem): coordinate system used for conversion
 
     Returns:
-        Voxel: Voxel variant of point
+        Voxel or VoxelArray: Voxel variant of point
 
     """
-    if isinstance(self, Voxel) or isinstance(self, VoxelArray):
+    if isinstance(self, Voxel):
         return self.copy()
+    elif isinstance(self, VoxelCenter):
+        return make_voxel(self)
     elif isinstance(self, Coordinate):
+        assert coordinatesystem is not None, "coordinatesystem must be provided"
         return make_voxel(coordinatesystem.voxel(self))
+    else:
+        raise NotImplementedError(f"{type(self)} not supported")
+
+
+def to_voxel_center(
+    self, coordinatesystem: Optional[darsia.CoordinateSystem] = None
+) -> Union[VoxelCenter, VoxelCenterArray]:
+    """Conversion of point to VoxelCenter.
+
+    Args:
+        coordinatesystem (CoordinateSystem): coordinate system used for conversion
+
+    Returns:
+        VoxelCenter or VoxelCenterArray: VoxelCenter variant of point
+
+    """
+    if isinstance(self, VoxelCenter):
+        return self.copy()
+    elif isinstance(self, Voxel):
+        return make_voxel_center(self)
+    elif isinstance(self, Coordinate):
+        assert coordinatesystem is not None, "coordinatesystem must be provided"
+        return make_voxel_center(coordinatesystem.voxel(self))
     else:
         raise NotImplementedError(f"{type(self)} not supported")
 
@@ -238,3 +348,4 @@ def to_voxel(
 # Assign method to base class
 BasePoint.to_coordinate = to_coordinate  # type: ignore [attr-defined]
 BasePoint.to_voxel = to_voxel  # type: ignore [attr-defined]
+BasePoint.to_voxel_center = to_voxel_center  # type: ignore [attr-defined]
