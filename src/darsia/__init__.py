@@ -39,6 +39,7 @@ from darsia.corrections.shape.curvature import *
 from darsia.corrections.shape.affine import *
 from darsia.corrections.shape.translation import *
 from darsia.corrections.shape.piecewiseperspective import *
+from darsia.corrections.shape.generalizedperspective import *
 from darsia.corrections.shape.rotation import *
 from darsia.corrections.shape.drift import *
 from darsia.corrections.shape.deformation import *
