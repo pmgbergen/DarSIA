@@ -255,9 +255,10 @@ def make_voxel_center(
             corresponds to row, second to column, third to depth). Defaults to True.
 
     Returns:
-        Union[VoxelCenter, VoxelCenterArray]: VoxelCenter or VoxelCenterArray variant of point (type depends on
-            input), i.e. if a single point is provided, a VoxelCenter is returned, if a list
-            of points is provided, a VoxelCenterArray is returned.
+        Union[VoxelCenter, VoxelCenterArray]: VoxelCenter or VoxelCenterArray variant
+            of point (type depends on input), i.e. if a single point is provided, a
+            VoxelCenter is returned, if a list of points is provided, a VoxelCenterArray
+            is returned.
 
     """
     pts_array = np.array(pts)
