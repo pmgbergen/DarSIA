@@ -272,15 +272,13 @@ class AffineTransformation(darsia.BaseTransformation):
             np.ndarray: function values of affine map
 
         """
-        num, dim = np.atleast_2d(x).shape
+        num, dim = x.shape
         assert dim == self.dim
         function_values = np.outer(
             np.ones(num), self.translation
-        ) + self.scaling * np.transpose(
-            self.rotation.dot(np.transpose(np.atleast_2d(x)))
-        )
+        ) + self.scaling * np.transpose(self.rotation.dot(np.transpose(x)))
 
-        return function_values.reshape(x.shape)
+        return function_values
 
     def inverse_array(self, x: np.ndarray) -> np.ndarray:
         """Application of inverse of the map to arrays.
@@ -292,7 +290,7 @@ class AffineTransformation(darsia.BaseTransformation):
             np.ndarray: function values of affine inverse map
 
         """
-        num, dim = np.atleast_2d(x).shape
+        num, dim = x.shape
         assert dim == self.dim
         function_values = (
             1.0
@@ -300,13 +298,13 @@ class AffineTransformation(darsia.BaseTransformation):
             * np.transpose(
                 self.rotation_inv.dot(
                     np.transpose(
-                        np.atleast_2d(x) - np.outer(np.ones(num), self.translation)
+                        x - np.outer(np.ones(num), self.translation)
                     )
                 )
             )
         )
 
-        return function_values.reshape(x.shape)
+        return function_values
 
 
 class AffineCorrection(darsia.TransformationCorrection):
