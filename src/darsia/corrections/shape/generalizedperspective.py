@@ -106,12 +106,12 @@ class GeneralizedPerspectiveTransformation(darsia.BaseTransformation):
 
         """
         # Convert to transpose format
-        x_arr = x.T
+        x_arr = x.astype(float).T
 
         # Initialize output and apply perspective transform onto x
         out = self.A @ x_arr
-        out[0] += self.b[0]
-        out[1] += self.b[1]
+        out[0] = out[0] + self.b[0]
+        out[1] = out[1] + self.b[1]
         scaling_factor = (self.c @ x_arr) + 1
         out[0] = np.divide(out[0], scaling_factor)
         out[1] = np.divide(out[1], scaling_factor)
@@ -119,8 +119,8 @@ class GeneralizedPerspectiveTransformation(darsia.BaseTransformation):
         # Apply bulge transform onto out
         bulge_correction = np.zeros_like(out)
         relative_out = out.copy()
-        relative_out[0] -= self.center[0] - self.bulge_center_off[0]
-        relative_out[1] -= self.center[1] - self.bulge_center_off[1]
+        relative_out[0] = relative_out[0] - self.center[0] - self.bulge_center_off[0]
+        relative_out[1] = relative_out[1] - self.center[1] - self.bulge_center_off[1]
         relative_max = self.max_coordinate - self.center - self.bulge_center_off
         relative_min = self.min_coordinate - self.center - self.bulge_center_off
         bulge_correction[0] = (
@@ -140,8 +140,8 @@ class GeneralizedPerspectiveTransformation(darsia.BaseTransformation):
         # Apply stretch transform onto out
         stretch_correction = np.zeros_like(out)
         relative_out = out.copy()
-        relative_out[0] -= self.center[0] * self.stretch_center_off[0]
-        relative_out[1] -= self.center[1] * self.stretch_center_off[1]
+        relative_out[0] = relative_out[0] - self.center[0] * self.stretch_center_off[0]
+        relative_out[1] = relative_out[1] - self.center[1] * self.stretch_center_off[1]
         relative_max = self.max_coordinate - self.center - self.stretch_center_off
         relative_min = self.min_coordinate - self.center - self.stretch_center_off
         stretch_correction[0] = (
