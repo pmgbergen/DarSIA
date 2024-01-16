@@ -285,7 +285,7 @@ def to_coordinate(
     """Conversion of point to Coordinate.
 
     Args:
-        coordinatesystem (CoordinateSystem): coordinate system used for conversion
+        coordinatesystem (CoordinateSystem, optional): coordinate system used for conversion
 
     Returns:
         Coordinate or CoordinateArray: Coordinate variant of point (type depends on input)
@@ -306,7 +306,7 @@ def to_voxel(
     """Conversion of point to Voxel.
 
     Args:
-        coordinatesystem (CoordinateSystem): coordinate system used for conversion
+        coordinatesystem (CoordinateSystem, optional): coordinate system used for conversion
 
     Returns:
         Voxel or VoxelArray: Voxel variant of point
@@ -329,7 +329,7 @@ def to_voxel_center(
     """Conversion of point to VoxelCenter.
 
     Args:
-        coordinatesystem (CoordinateSystem): coordinate system used for conversion
+        coordinatesystem (CoordinateSystem, optional): coordinate system used for conversion
 
     Returns:
         VoxelCenter or VoxelCenterArray: VoxelCenter variant of point
@@ -346,7 +346,29 @@ def to_voxel_center(
         raise NotImplementedError(f"{type(self)} not supported")
 
 
+def to(self, cls, coordinatesystem: Optional[darsia.CoordinateSystem] = None):
+    """Conversion of point to a different point type.
+
+    Args:
+        cls (type): class to convert to
+        coordinatesystem (CoordinateSystem, optional): coordinate system used for conversion
+
+    Returns:
+        cls: cls variant of point
+
+    """
+    if cls in [Coordinate, CoordinateArray]:
+        return self.to_coordinate(coordinatesystem)
+    elif cls in [Voxel, VoxelArray]:
+        return self.to_voxel(coordinatesystem)
+    elif cls in [VoxelCenter, VoxelCenterArray]:
+        return self.to_voxel_center(coordinatesystem)
+    else:
+        raise NotImplementedError(f"{cls} not supported")
+
+
 # Assign method to base class
 BasePoint.to_coordinate = to_coordinate  # type: ignore [attr-defined]
 BasePoint.to_voxel = to_voxel  # type: ignore [attr-defined]
 BasePoint.to_voxel_center = to_voxel_center  # type: ignore [attr-defined]
+BasePoint.to = to  # type: ignore [attr-defined]
