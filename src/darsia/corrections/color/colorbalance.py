@@ -8,19 +8,21 @@ import darsia
 
 
 class BaseBalance(ABC):
-    """Base class for finding and applying a color balance."""
+    """Base class for finding and applying a color/white balance."""
 
     @abstractmethod
     def __init__(self) -> None:
         ...
 
     @abstractmethod
-    def find_balance(self, swatches_src: np.ndarray, swatches_dst) -> np.ndarray:
+    def find_balance(self, swatches_src: np.ndarray, swatches_dst) -> None:
         """Find the color balance of an image.
 
-        Args:
+        This routine defines the color balance of an image by finding a linear transformation.
 
-        Returns:
+        Args:
+            swatches_src (np.ndarray): Source swatches.
+            swatches_dst (np.ndarray): Destination swatches.
 
         """
         ...
@@ -29,8 +31,10 @@ class BaseBalance(ABC):
         """Apply the color balance to an image.
 
         Args:
+            img (np.ndarray): Image to apply the color balance to.
 
         Returns:
+            balanced_img (np.ndarray): Balanced image.
 
         """
         balanced_img = np.dot(img, self.balance)
@@ -41,8 +45,12 @@ class BaseBalance(ABC):
         """Apply the color balance to an image.
 
         Args:
+            img (np.ndarray): Image to apply the color balance to.
+            swatches_src (np.ndarray): Source swatches.
+            swatches_dst (np.ndarray): Destination swatches.
 
         Returns:
+            balanced_img (np.ndarray): Balanced image.
 
         """
         self.find_balance(swatches_src, swatches_dst)
@@ -56,22 +64,25 @@ class ColorBalance(BaseBalance):
 
     def __init__(self) -> None:
         self.balance: np.ndarray = np.eye(3)
+        """Color balance matrix."""
 
-    def find_balance(self, swatches_src: np.ndarray, swatches_dst) -> np.ndarray:
+    def find_balance(self, swatches_src: np.ndarray, swatches_dst) -> None:
         """Find the color balance of an image.
 
         Args:
-
-        Returns:
+            swatches_src (np.ndarray): Source swatches.
+            swatches_dst (np.ndarray): Destination swatches.
 
         """
 
-        def objective_funcion(flat_balance: np.ndarray) -> np.ndarray:
+        def objective_funcion(flat_balance: np.ndarray) -> float:
             """Objective function for the minimization.
 
             Args:
+                flat_balance (np.ndarray): Flat color balance matrix.
 
             Returns:
+                float: Objective function value.
 
             """
             balance = flat_balance.reshape((3, 3))
@@ -82,31 +93,37 @@ class ColorBalance(BaseBalance):
             objective_funcion,
             self.balance.flatten(),
             method="Powell",
-            options={"maxiter": 1000, "tol": 1e-6, "disp": True},
+            tol=1e-6,
+            options={"maxiter": 1000, "disp": False},
         )
 
         self.balance = opt_result.x.reshape((3, 3))
 
 
 class WhiteBalance(BaseBalance):
+    """Class for finding and applying a white balance."""
+
     def __init__(self) -> None:
         self.balance: np.ndarray = np.diag(np.ones(3))
+        """White balance (diagonal) matrix."""
 
-    def find_balance(self, swatches_src: np.ndarray, swatches_dst) -> np.ndarray:
+    def find_balance(self, swatches_src: np.ndarray, swatches_dst) -> None:
         """Find the color balance of an image.
 
         Args:
-
-        Returns:
+            swatches_src (np.ndarray): Source swatches.
+            swatches_dst (np.ndarray): Destination swatches.
 
         """
 
-        def objective_funcion(flat_balance: np.ndarray) -> np.ndarray:
+        def objective_funcion(flat_balance: np.ndarray) -> float:
             """Objective function for the minimization.
 
             Args:
+                flat_balance (np.ndarray): Flat color balance matrix.
 
             Returns:
+                float: Objective function value.
 
             """
             balance = np.diag(flat_balance)
@@ -117,7 +134,8 @@ class WhiteBalance(BaseBalance):
             objective_funcion,
             np.diag(self.balance),
             method="Powell",
-            options={"maxiter": 1000, "tol": 1e-6, "disp": True},
+            tol=1e-6,
+            options={"maxiter": 1000, "disp": False},
         )
 
         self.balance = np.diag(opt_result.x)
