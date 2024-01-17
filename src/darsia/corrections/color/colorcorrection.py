@@ -6,11 +6,10 @@ import copy
 import json
 from abc import ABC
 from pathlib import Path
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 import colour
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 
@@ -24,8 +23,12 @@ class ColorChecker(ABC):
     """Reference colors in RGB format, column by column"""
 
     @property
-    def reference_swatches_rgb(self):
+    def swatches_rgb(self):
         return self._reference_swatches_rgb
+
+    @property
+    def swatches_RGB(self):
+        return (self._reference_swatches_rgb * 255).astype(np.uint8)
 
 
 class ColorCheckerAfter2014(ColorChecker):
@@ -66,9 +69,12 @@ class ColorCheckerAfter2014(ColorChecker):
             ]
         ).astype(np.float32)
 
+        # Resort from column-by-column to a row-by-row format
+        reference_swatches_lab = reference_swatches_lab.reshape((4, 6, 3), order="F")
+
         # Convert reference swatch colors to RGB
-        self._reference_swatches_rgb = np.squeeze(
-            cv2.cvtColor(np.atleast_3d(reference_swatches_lab), cv2.COLOR_LAB2RGB)
+        self._reference_swatches_rgb = cv2.cvtColor(
+            np.atleast_3d(reference_swatches_lab), cv2.COLOR_Lab2RGB
         )
         """Reference colors in RGB format, column by column"""
 
@@ -77,29 +83,109 @@ class CustomColorChecker(ColorChecker):
     """Swatch colors determined from user-prescribed input image."""
 
     def __init__(
-        self, reference_colors: Optional[np.ndarray] = None, path: Optional[Path] = None
+        self,
+        reference_colors: Optional[np.ndarray] = None,
+        image: Optional[np.ndarray] = None,
+        path: Optional[Path] = None,
     ) -> None:
-        """
-        Either read reference colors from file or from provided array.
-        If colors are provided, these will be prioritized and also written to file.
+        """Define custom color checker.
+
+        Three possible sources are available for the reference colors:
+        1. Read from array in (4,6,3) shaped array
+        2. Extract from image
+        3. Read from file
+        The priority is as above.
 
         Args:
             colors (np.ndarray, optional): reference RGB colors
-            path (Path): path for storing and fetching reference colors
+            image (np.ndarray, optional): image restricted to color checker
+            path (Path, optional): path for storing and fetching reference colors
 
         """
+        # Assert only one argument is provided
+        assert (
+            np.count_nonzero(
+                [reference_colors is not None, image is not None, path is not None]
+            )
+            == 1
+        ), "Provide exactly one of the following: colors, image, path."
 
-        # Prioritize colors if provided.
-        if reference_colors is None:
-            assert path is not None, "Provide either colors or path."
+        self._reference_swatches_rgb: np.ndarray
+        """Reference colors in RGB format, column by column."""
+
+        if reference_colors is not None:
+            self._reference_swatches_rgb = reference_colors.copy()
+
+        if image is not None:
+            self._reference_swatches_rgb = self._extract_from_image(image)
+
+        if path is not None:
             self._reference_swatches_rgb = np.load(path)
-            """Reference colors in RGB format, column by column."""
 
-        else:
-            self._reference_swatches_rgb = reference_colors
-            if path is not None:
-                path.parents[0].mkdir(parents=True, exist_ok=True)
-                np.save(path, reference_colors)
+    def _extract_from_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        ML-free variant of detect_colour_checkers_segmentation from colour-science.
+        Exepcts images to be restricted to the ROI such that the landmarks in the
+        corners are also the corners of the image.
+
+        Args:
+            img: image of color checker.
+
+        Returns:
+            np.ndarray: 4 x 6 array with colour checker colors.
+        """
+        # Assert that the image is in uint8 or uint16 format
+        if img.dtype in [np.uint8, np.uint16]:
+            img = skimage.img_as_float(img)
+
+        # Resize to fixed size
+        img = darsia.extract_quadrilateral_ROI(
+            img, pts_src=None, width=27.3, height=17.8
+        )
+        Ny, Nx = img.shape[:2]
+        fixed_width = 500
+        fixed_height = int(Ny / Nx * fixed_width)
+        resized_img = cv2.resize(img, (fixed_width, fixed_height))
+
+        # Upper left corners of swatches
+        swatch_pos_row, swatch_pos_col = np.meshgrid(
+            [12, 93, 175, 255],
+            [12, 95, 177, 260, 344, 427],
+            indexing="ij",
+        )
+        swatch_size = 50
+
+        # Extract colors of all swatches in RGB by taking averages
+        swatches = np.zeros((4, 6, 3), dtype=np.float32)
+        for row in range(4):
+            for col in range(6):
+                pos_row = swatch_pos_row[row, col]
+                pos_col = swatch_pos_col[row, col]
+                roi = (
+                    slice(pos_row, pos_row + swatch_size),
+                    slice(pos_col, pos_col + swatch_size),
+                )
+
+                pixels = np.float32(resized_img[roi].reshape(-1, 3))
+                n_colors = 5
+                criteria = (
+                    cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
+                    200,
+                    0.1,
+                )
+                flags = cv2.KMEANS_RANDOM_CENTERS
+                _, labels, palette = cv2.kmeans(
+                    pixels, n_colors, None, criteria, 10, flags
+                )
+                _, counts = np.unique(labels, return_counts=True)
+                dominant_color = palette[np.argmax(counts)]
+                swatches[row, col] = dominant_color
+
+        return swatches
+
+    def save(self, path: Path) -> None:
+        path.parents[0].mkdir(parents=True, exist_ok=True)
+        np.save(path, self._reference_swatches_rgb)
 
 
 class ColorCorrection(darsia.BaseCorrection):
@@ -154,6 +240,10 @@ class ColorCorrection(darsia.BaseCorrection):
         self.roi: darsia.VoxelArray = darsia.make_voxel(roi)
         """ROI - anti-clockwise oriented markers starting at the brown swatch"""
 
+        self.balancing: Literal["colour-science", "darsia"] = self.config.get(
+            "balancing", "darsia"
+        )
+
         # Construct color checker
         self._setup_colorchecker(base)
 
@@ -189,38 +279,62 @@ class ColorCorrection(darsia.BaseCorrection):
         colorchecker_img: np.ndarray = self._restrict_to_roi(img)
 
         # Determine swatch colors
-        swatches = self._detect_colour_checkers_segmentation(colorchecker_img)
+        swatches = CustomColorChecker(image=colorchecker_img).swatches_rgb
+        reference_swatches = self.colorchecker.swatches_rgb
 
-        # Apply color correction onto full image based on the swatch colors in comparison with
-        # the standard colors
-        corrected_img = colour.colour_correction(
-            skimage.img_as_float(img),
-            swatches,
-            self.colorchecker.reference_swatches_rgb,
-            method="Cheung 2004",
-        )
+        if self.balancing == "colour-science":
+            # Use methods from colour-science for balancing color and white balancing
 
-        # Apply white balancing, such that the third bottom left swatch of the color checker
-        # is exact. As swatch colors are stored column-by-column, this particular swatch is
-        # at position 11.
-        if self.whitebalancing:
-            corrected_colorchecker_img: np.ndarray = self._restrict_to_roi(
-                corrected_img
+            # Flatten column-by-column
+            reference_swatches = np.squeeze(
+                reference_swatches.reshape((24, 1, 3), order="F")
             )
-            swatches = self._detect_colour_checkers_segmentation(
-                corrected_colorchecker_img
-            )
-            pos = 11
-            corrected_img *= (
-                self.colorchecker.reference_swatches_rgb[pos, :] / swatches[pos, :]
+            swatches = np.squeeze(swatches.reshape((24, 1, 3), order="F"))
+
+            # Apply color correction onto full image based on the swatch colors in
+            # comparison with the standard colors
+            corrected_img = colour.colour_correction(
+                skimage.img_as_float(img),
+                swatches,
+                reference_swatches,
+                method="Cheung 2004",
             )
 
-        # For debugging, double-check once more the swatches.
-        if self.verbosity:
-            corrected_colorchecker_img = self._restrict_to_roi(corrected_img)
-            swatches = self._detect_colour_checkers_segmentation(
-                corrected_colorchecker_img
+            # Apply white balancing, such that the third bottom left swatch of the color
+            # checker is exact. As swatch colors are stored column-by-column, this particular
+            # swatch is at position 11.
+            if self.whitebalancing:
+                corrected_colorchecker_img: np.ndarray = self._restrict_to_roi(
+                    corrected_img
+                )
+                swatches = CustomColorChecker(
+                    image=corrected_colorchecker_img
+                ).swatches_rgb
+                swatches = np.squeeze(swatches.reshape((24, 1, 3), order="F"))
+                pos = 11
+                corrected_img *= reference_swatches[pos, :] / swatches[pos, :]
+
+        else:
+            # Use DarSIA native implementation for white-balancing and color-balance
+            img = skimage.img_as_float(img)
+            if self.whitebalancing:
+                white_balance = darsia.WhiteBalance()
+                img_wb = white_balance(img, swatches[-1], reference_swatches[-1])
+                colorchecker_img_wb = self._restrict_to_roi(img_wb)
+                swatches = CustomColorChecker(image=colorchecker_img_wb).swatches_rgb
+            else:
+                img_wb = img
+            color_balance = darsia.ColorBalance()
+            corrected_img = color_balance(
+                img_wb, swatches[:-1], reference_swatches[:-1]
             )
+
+        # Error analysis
+        # colorchecker_img_cb = self._restrict_to_roi(corrected_img)
+        # corrected_swatches = CustomColorChecker(image=colorchecker_img_cb).swatches_rgb
+        # reference_swatches = self.colorchecker.swatches_rgb
+        # print(np.min(corrected_img), np.max(corrected_img))
+        # print(np.mean(np.abs(corrected_swatches - reference_swatches)))
 
         # The correction may result in values outside the feasible range [0., 1.].
         # Thus, simply clip the values for consistency.
@@ -260,22 +374,9 @@ class ColorCorrection(darsia.BaseCorrection):
             self.colorchecker = base
 
         elif isinstance(base, darsia.Image):
-            # Extract part of the image containing a color checker. Use width and height (in
-            # cm - irrelevant) as provided by the manufacturer Xrite.
-            assert self.roi.shape == (4, 2)
-            colorchecker_img = darsia.extract_quadrilateral_ROI(
-                base.img, pts_src=self.roi, width=27.3, height=17.8
-            )
-
-            # Determine swatch colors
-            swatches = self._detect_colour_checkers_segmentation(colorchecker_img)
-
-            # Scale to interval [0,1], to not loose any information, perform the
-            # scaling by hand
-            assert base.img.dtype in [np.uint8, np.uint16]
-            scaling = 255.0 if base.img.dtype == np.uint8 else 255.0**2
-            swatches /= scaling
-            self.colorchecker = CustomColorChecker(reference_colors=swatches)
+            # Extract part of the image containing a color checker.
+            colorchecker_img = self._restrict_to_roi(base.img)
+            self.colorchecker = CustomColorChecker(image=colorchecker_img)
 
     def _restrict_to_roi(self, img: np.ndarray) -> np.ndarray:
         """
@@ -287,81 +388,7 @@ class ColorCorrection(darsia.BaseCorrection):
         Returns:
             np.ndarray: restricted image
         """
-        if self.roi is None:
-            return_img: np.ndarray = img
-        elif isinstance(self.roi, tuple):
-            return_img = img[self.roi]
-        elif isinstance(self.roi, np.ndarray):
-            assert self.roi.shape == (4, 2)
-            # Use width and height (in cm - irrelevant) as provided by the manufacturer Xrite.
-            return_img = darsia.extract_quadrilateral_ROI(
-                img, pts_src=self.roi, width=27.3, height=17.8
-            )
-
-        # For debugging puposes provide the possibility to plot the extracted image.
-        if self.verbosity:
-            plt.figure()
-            plt.imshow(return_img)
-            plt.show()
-
-        return return_img
-
-    def _detect_colour_checkers_segmentation(self, img: np.ndarray) -> np.ndarray:
-        """
-        ML-free variant of detect_colour_checkers_segmentation from colour-science.
-        Exepcts images to be restricted to the ROI such that the landmarks in the
-        corners are also the corners of the image. Does
-
-        Args:
-            img: image of color checker.
-
-        Returns:
-            np.ndarray: 4 x 6 array with colour checker colors.
-        """
-        # Resize to fixed size
-        Ny, Nx = img.shape[:2]
-        fixed_width = 500
-        fixed_height = int(Ny / Nx * fixed_width)
-        resized_img = cv2.resize(img, (fixed_width, fixed_height))
-
-        # Upper left corners of swatches
-        swatch_pos_X, swatch_pos_Y = np.meshgrid(
-            [12, 95, 177, 260, 344, 427],
-            [12, 93, 175, 255],
+        # Use width and height (in cm - irrelevant) as provided by the manufacturer Xrite.
+        return darsia.extract_quadrilateral_ROI(
+            img, pts_src=self.roi, width=27.3, height=17.8, indexing="matrix"
         )
-        swatch_size = 50
-
-        # Extract colors of all swatches in RGB by taking averages
-        swatches = np.zeros((4, 6, 3), dtype=np.float32)
-        for row in range(4):
-            for col in range(6):
-                pos_x = swatch_pos_X[row, col]
-                pos_y = swatch_pos_Y[row, col]
-                roi = (
-                    slice(pos_y, pos_y + swatch_size),
-                    slice(pos_x, pos_x + swatch_size),
-                )
-                swatches[row, col] = (
-                    np.sum(np.sum(resized_img[roi], axis=0), axis=0) / swatch_size**2
-                )
-
-        # For debugging puposes provide the possibility to plot the extracted swatches
-        # compared to the reference swatches.
-        if self.verbosity:
-            # Plot the extracted swatch colors
-            plt.figure("Registered swatches")
-            plt.imshow(swatches)
-
-            # Plot the reference swatches in the order and form of the classic color checker.
-            ref_swatches = self.colorchecker.reference_swatches_rgb[
-                :, np.newaxis, :
-            ].reshape((4, 6, 3), order="F")
-            plt.figure("Reference swatches")
-            plt.imshow(ref_swatches)
-
-            plt.show()
-
-        # Reshape to same format as reference swatches, i.e., (24,3) format, column by column.
-        swatches = np.squeeze(swatches.reshape((24, 1, 3), order="F"))
-
-        return swatches

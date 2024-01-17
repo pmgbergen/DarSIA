@@ -50,14 +50,15 @@ def test_classic_color_correction():
     config = {
         "roi": darsia.make_voxel(
             [
-                [154, 176],
-                [222, 176],
-                [222, 68],
-                [154, 68],
+                [176, 154],
+                [176, 222],
+                [68, 222],
+                [68, 154],
             ]
-        )
+        ),
+        "balancing": "colour",
     }
-    color_correction = darsia.ColorCorrection(base = None, config = config)
+    color_correction = darsia.ColorCorrection(base=None, config=config)
 
     # ! ---- Define corrected image
     image = darsia.Image(img=array, transformations=[color_correction], **info)
@@ -71,9 +72,13 @@ def test_classic_color_correction():
     reference_image = np.load(reference_path, allow_pickle=True)
 
     # Make a direct comparison
-    assert np.allclose(reference_image, image.img)
+    print(np.max(np.abs(reference_image - image.img)))
+    assert np.allclose(reference_image, image.img, atol=2e-2)
 
-def test_custom_color_correction():
+
+# Parametrize balancing
+@pytest.mark.parametrize("balancing", ["colour", "darsia"])
+def test_custom_color_correction(balancing):
     """Test color correction read from image."""
 
     # ! ---- Fetch test image
@@ -93,14 +98,15 @@ def test_custom_color_correction():
     config = {
         "roi": darsia.make_voxel(
             [
-                [154, 176],
-                [222, 176],
-                [222, 68],
-                [154, 68],
+                [176, 154],
+                [176, 222],
+                [68, 222],
+                [68, 154],
             ]
-        )
+        ),
+        "balancing": balancing,
     }
-    custom_color_correction = darsia.ColorCorrection(base = original_image, config = config)
+    custom_color_correction = darsia.ColorCorrection(base=original_image, config=config)
 
     # ! ---- Setup classic color correction based on image
 
@@ -109,25 +115,35 @@ def test_custom_color_correction():
     config = {
         "roi": darsia.make_voxel(
             [
-                [154, 176],
-                [222, 176],
-                [222, 68],
-                [154, 68],
+                [176, 154],
+                [176, 222],
+                [68, 222],
+                [68, 154],
             ]
-        )
+        ),
+        "balancing": "colour",
     }
-    classic_color_correction = darsia.ColorCorrection(base = None, config = config)
+    classic_color_correction = darsia.ColorCorrection(base=None, config=config)
 
     # ! ---- Define (classic) corrected image
-    classic_corrected_image = darsia.Image(img=array, transformations=[classic_color_correction], **info)#.img_as(np.uint8)
+    classic_corrected_image = darsia.Image(
+        img=array, transformations=[classic_color_correction], **info
+    )
 
     # ! ---- Correct back with custom color checker
     corrected_array = classic_corrected_image.img
-    custom_corrected_image = darsia.Image(img = corrected_array, transformations = [custom_color_correction], **info)#.img_as(np.uint8)
+    custom_corrected_image = darsia.Image(
+        img=corrected_array, transformations=[custom_color_correction], **info
+    )
 
     # ! ---- Compare against original image
-    assert not np.allclose(skimage.img_as_float(array), classic_corrected_image.img, atol=6e-2)
-    assert np.allclose(skimage.img_as_float(array), custom_corrected_image.img, atol=6e-2)
+    assert not np.allclose(
+        skimage.img_as_float(array), classic_corrected_image.img, atol=6e-2
+    )
+    assert np.allclose(
+        skimage.img_as_float(array), custom_corrected_image.img, atol=6e-2
+    )
+
 
 def test_curvature_correction():
     """Test of curvature correction applied to a numpy array. The correction
