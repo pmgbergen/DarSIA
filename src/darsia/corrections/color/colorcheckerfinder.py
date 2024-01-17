@@ -3,6 +3,7 @@
 from typing import Literal
 
 import numpy as np
+import colour
 from colour_checker_detection import (
     colour_checkers_coordinates_segmentation,
     detect_colour_checkers_segmentation,
