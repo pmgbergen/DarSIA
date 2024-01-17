@@ -2,17 +2,13 @@
 
 from typing import Literal
 
+import colour_checker_detection
 import numpy as np
-import colour
-from colour_checker_detection import (
-    colour_checkers_coordinates_segmentation,
-    detect_colour_checkers_segmentation,
-)
 
 import darsia
 
 
-def find_colorchecker(img: darsia.Image, strategy=Literal["upper_right"]):
+def find_colorchecker(img: darsia.Image, strategy: Literal["upper_right"]):
     """Detect colorchecker in corner.
 
     Search for position and colors.
@@ -35,11 +31,15 @@ def find_colorchecker(img: darsia.Image, strategy=Literal["upper_right"]):
         """Colour-based routine to detect the location and swatches of a colorchecker."""
 
         # Detect swatches using colour science algorithm
-        swatches = detect_colour_checkers_segmentation(arr)
+        swatches = colour_checker_detection.detect_colour_checkers_segmentation(arr)
         success = len(swatches) > 0
         if success:
             # Also find position
-            detection_data = colour_checkers_coordinates_segmentation(arr, True)
+            detection_data = (
+                colour_checker_detection.colour_checkers_coordinates_segmentation(
+                    arr, True
+                )
+            )
 
             # Reshape to original image size to retrieve the correct position
             detection_shape = detection_data.segmented_image.shape
