@@ -291,8 +291,8 @@ class ColorCorrection(darsia.BaseCorrection):
             )
             swatches = np.squeeze(swatches.reshape((24, 1, 3), order="F"))
 
-            # Apply color correction onto full image based on the swatch colors in comparison with
-            # the standard colors
+            # Apply color correction onto full image based on the swatch colors in
+            # comparison with the standard colors
             corrected_img = colour.colour_correction(
                 skimage.img_as_float(img),
                 swatches,
@@ -300,9 +300,9 @@ class ColorCorrection(darsia.BaseCorrection):
                 method="Cheung 2004",
             )
 
-            # Apply white balancing, such that the third bottom left swatch of the color checker
-            # is exact. As swatch colors are stored column-by-column, this particular swatch is
-            # at position 11.
+            # Apply white balancing, such that the third bottom left swatch of the color
+            # checker is exact. As swatch colors are stored column-by-column, this particular
+            # swatch is at position 11.
             if self.whitebalancing:
                 corrected_colorchecker_img: np.ndarray = self._restrict_to_roi(
                     corrected_img
