@@ -594,14 +594,15 @@ class Image:
 
     def subregion(
         self,
-        voxels: Optional[tuple[slice]] = None,
-        coordinates: Optional[Union[np.ndarray, list[float]]] = None,
+        voxels: Optional[Union[tuple[slice], darsia.VoxelArray]] = None,
+        coordinates: Optional[darsia.CoordinateArray] = None,
     ) -> Image:
         """Extraction of spatial subregion.
 
         Args:
-            voxels (tuple of slices, optional): voxel intervals in all dimensions.
-            coordinates (array or list, optional): points in space, in Cartesian
+            voxels (tuple of slices or VoxelArray, optional): voxel intervals in all
+                dimensions.
+            coordinates (CoordinateArray, optional): points in space, in Cartesian
                 coordinates, uniquely defining a box, i.e., at least space_dim points.
 
         Returns:
@@ -632,7 +633,16 @@ class Image:
                 )
                 for d in range(self.space_dim)
             )
-
+        elif voxels is not None:
+            # Transform a VoxelArray to tuple fo slices
+            if isinstance(voxels, darsia.VoxelArray):
+                voxels: tuple[slice] = tuple(
+                    slice(
+                        max(0, np.min(voxels[:, d])),
+                        min(np.max(voxels[:, d]), self.num_voxels[d]),
+                    )
+                    for d in range(self.space_dim)
+                )
         assert len(voxels) == self.space_dim
 
         # ! ---- Extract dimensions and new origin from voxels
