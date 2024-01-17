@@ -6,11 +6,10 @@ import copy
 import json
 from abc import ABC
 from pathlib import Path
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 import colour
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 
@@ -241,6 +240,10 @@ class ColorCorrection(darsia.BaseCorrection):
         self.roi: darsia.VoxelArray = darsia.make_voxel(roi)
         """ROI - anti-clockwise oriented markers starting at the brown swatch"""
 
+        self.balancing: Literal["colour-science", "darsia"] = self.config.get(
+            "balancing", "darsia"
+        )
+
         # Construct color checker
         self._setup_colorchecker(base)
 
@@ -277,33 +280,61 @@ class ColorCorrection(darsia.BaseCorrection):
 
         # Determine swatch colors
         swatches = CustomColorChecker(image=colorchecker_img).swatches_rgb
+        reference_swatches = self.colorchecker.swatches_rgb
 
-        # Flatten column-by-column
-        reference_swatches = np.squeeze(
-            self.colorchecker.swatches_rgb.reshape((24, 1, 3), order="F")
-        )
-        swatches = np.squeeze(swatches.reshape((24, 1, 3), order="F"))
+        if self.balancing == "colour-science":
+            # Use methods from colour-science for balancing color and white balancing
 
-        # Apply color correction onto full image based on the swatch colors in comparison with
-        # the standard colors
-        corrected_img = colour.colour_correction(
-            skimage.img_as_float(img),
-            swatches,
-            reference_swatches,
-            method="Cheung 2004",
-        )
-
-        # Apply white balancing, such that the third bottom left swatch of the color checker
-        # is exact. As swatch colors are stored column-by-column, this particular swatch is
-        # at position 11.
-        if self.whitebalancing:
-            corrected_colorchecker_img: np.ndarray = self._restrict_to_roi(
-                corrected_img
+            # Flatten column-by-column
+            reference_swatches = np.squeeze(
+                reference_swatches.reshape((24, 1, 3), order="F")
             )
-            swatches = CustomColorChecker(image=corrected_colorchecker_img).swatches_rgb
             swatches = np.squeeze(swatches.reshape((24, 1, 3), order="F"))
-            pos = 11
-            corrected_img *= reference_swatches[pos, :] / swatches[pos, :]
+
+            # Apply color correction onto full image based on the swatch colors in comparison with
+            # the standard colors
+            corrected_img = colour.colour_correction(
+                skimage.img_as_float(img),
+                swatches,
+                reference_swatches,
+                method="Cheung 2004",
+            )
+
+            # Apply white balancing, such that the third bottom left swatch of the color checker
+            # is exact. As swatch colors are stored column-by-column, this particular swatch is
+            # at position 11.
+            if self.whitebalancing:
+                corrected_colorchecker_img: np.ndarray = self._restrict_to_roi(
+                    corrected_img
+                )
+                swatches = CustomColorChecker(
+                    image=corrected_colorchecker_img
+                ).swatches_rgb
+                swatches = np.squeeze(swatches.reshape((24, 1, 3), order="F"))
+                pos = 11
+                corrected_img *= reference_swatches[pos, :] / swatches[pos, :]
+
+        else:
+            # Use DarSIA native implementation for white-balancing and color-balance
+            img = skimage.img_as_float(img)
+            if self.whitebalancing:
+                white_balance = darsia.WhiteBalance()
+                img_wb = white_balance(img, swatches[-1], reference_swatches[-1])
+                colorchecker_img_wb = self._restrict_to_roi(img_wb)
+                swatches = CustomColorChecker(image=colorchecker_img_wb).swatches_rgb
+            else:
+                img_wb = img
+            color_balance = darsia.ColorBalance()
+            corrected_img = color_balance(
+                img_wb, swatches[:-1], reference_swatches[:-1]
+            )
+
+        # Error analysis
+        # colorchecker_img_cb = self._restrict_to_roi(corrected_img)
+        # corrected_swatches = CustomColorChecker(image=colorchecker_img_cb).swatches_rgb
+        # reference_swatches = self.colorchecker.swatches_rgb
+        # print(np.min(corrected_img), np.max(corrected_img))
+        # print(np.mean(np.abs(corrected_swatches - reference_swatches)))
 
         # The correction may result in values outside the feasible range [0., 1.].
         # Thus, simply clip the values for consistency.
