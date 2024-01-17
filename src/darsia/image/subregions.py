@@ -2,7 +2,7 @@
 Module containing auxiliary methods to extract ROIs from darsia Images.
 """
 
-from typing import Literal, Optional
+from typing import Literal, Optional, Union
 
 import cv2
 import numpy as np
@@ -45,7 +45,7 @@ InterpolationOption = Literal["inter_nearest", "inter_linear", "inter_area"]
 
 def extract_quadrilateral_ROI(
     img_src: np.ndarray,
-    pts_src,
+    pts_src: Optional[Union[list, np.ndarray]] = None,
     indexing: IndexingOption = "reverse matrix",
     interpolation: InterpolationOption = "inter_linear",
     **kwargs
@@ -98,8 +98,19 @@ def extract_quadrilateral_ROI(
     # ! ---- Mapping
 
     # Fetch corner points in the provided image
+    if pts_src is None:
+        pts_src = [
+            [0, 0],
+            [original_shape[0], 0],
+            [original_shape[0], original_shape[1]],
+            [0, original_shape[1]],
+        ]
+        if indexing == "reverse matrix":
+            pts_src = np.fliplr(np.array(pts_src))
+
     if isinstance(pts_src, list):
         pts_src = np.array(pts_src)
+
     pts_src = to_reverse_matrix_indexing(pts_src, indexing)
 
     # Assign corner points as destination points if none are provided.
