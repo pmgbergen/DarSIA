@@ -67,8 +67,6 @@ class ConcentrationAnalysis:
                     - 2: intermediate results are displayed
 
         """
-        ########################################################################
-
         self.base: Optional[darsia.Image] = None
         """Baseline image."""
         self._base_collection: list[darsia.Image] = []
@@ -77,6 +75,13 @@ class ConcentrationAnalysis:
             if not isinstance(base, list):
                 base = [base]
             self.base = base[0].copy()
+            assert self.base.img.dtype in [
+                float,
+                np.float32,
+                np.float64,
+            ], """
+                The baseline image needs to be converted to float for substraction.
+            """
             self._base_collection = base
             if self.base.space_dim != 2:
                 raise NotImplementedError
@@ -89,9 +94,6 @@ class ConcentrationAnalysis:
 
         self.model = model
         """Signal to data conversion model."""
-
-        self.apply_restoration = restoration is not None
-        """Flag controlling whether restoration shall be applied."""
 
         self.restoration = restoration
         """Restoration model."""
@@ -132,6 +134,13 @@ class ConcentrationAnalysis:
         """
         if base is not None:
             self.base = base.copy()
+            assert self.base.img.dtype in [
+                float,
+                np.float32,
+                np.float64,
+            ], """
+                The baseline image needs to be converted to float for substraction.
+            """
         if mask is not None:
             self.mask = mask
 
@@ -225,7 +234,15 @@ class ConcentrationAnalysis:
             darsia.Image: concentration
 
         """
+        # Make sure that the image is converted to float for substraction
         probe_img = copy.deepcopy(img)
+        assert probe_img.img.dtype in [
+            float,
+            np.float32,
+            np.float64,
+        ], f"""
+            The image needs to be converted to float for substraction, not {probe_img.dtype}.
+        """
 
         # Remove background image
         diff = self._subtract_background(probe_img)
@@ -400,11 +417,7 @@ class ConcentrationAnalysis:
         Return:
             np.ndarray: smooth signal
         """
-        # Apply restoration
-        if self.apply_restoration:
-            signal = self.restoration(signal)
-
-        return signal
+        return signal if self.restoration is None else self.restoration(signal)
 
     def _convert_signal(self, signal: np.ndarray, diff: np.ndarray) -> np.ndarray:
         """Postprocessing routine, essentially converting a continuous
@@ -420,11 +433,7 @@ class ConcentrationAnalysis:
             np.ndarray: physical data
 
         """
-        # Obtain data from model
-        if self.model is None:
-            return signal
-        else:
-            return self.model(signal)
+        return signal if self.model is None else self.model(signal)
 
 
 class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
