@@ -30,6 +30,7 @@ class StaticThresholdModel(darsia.Model):
             threshold_lower (float or list of float): lower threshold value(s)
             threshold_upper (float or list of float): upper threshold value(s)
             labels (array): labeled domain
+
         """
 
         # The argument label decides whether a homogeneous or heterogeneous
@@ -41,6 +42,7 @@ class StaticThresholdModel(darsia.Model):
             assert isinstance(threshold_upper, float) or threshold_upper is None
             self._threshold_lower = threshold_lower
             self._threshold_upper = threshold_upper
+            self.num_parameters = 2
 
         else:
             # Heterogeneous case
@@ -79,6 +81,8 @@ class StaticThresholdModel(darsia.Model):
                 self._threshold_upper = None
             else:
                 raise ValueError(f"Type {type(threshold_upper)} not supported.")
+
+            self.num_parameters = 2 * num_labels
 
     def __call__(
         self, img: np.ndarray, mask: Optional[np.ndarray] = None
@@ -144,11 +148,10 @@ class StaticThresholdModel(darsia.Model):
             threshold_mask[roi] = True
         return threshold_mask
 
-    def calibrate(self, img: list[np.ndarray]) -> None:
-        """
-        Empty calibration.
-
-        Args:
-            img (list of arrays): images.
-        """
-        pass
+    def update_model_parameters(
+        self,
+        *args: tuple,
+    ) -> None:
+        raise NotImplementedError(
+            "StaticThresholdModel does not support parameter updates."
+        )
