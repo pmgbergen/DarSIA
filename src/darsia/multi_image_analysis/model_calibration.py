@@ -51,16 +51,13 @@ class AbstractModelObjective:
 
         Args:
             parameters (np.ndarray): model parameters,
-            options (dict): further tuning parameters and extra info.
+            options (dict): further tuning parameters and extra info;
+                here, the key "dofs" is used to determine which dofs to
+                update.
 
         """
-        # Check whether the model is part of a combined model,
-        # and possibly determine position of the model
-        if isinstance(self.model, darsia.CombinedModel):
-            pos_model = options.get("model_position")
-            self.model.update_model_parameters(parameters, pos_model)
-        else:
-            self.model.update_model_parameters(parameters)
+        dofs = options.get("dofs", None)
+        self.model.update_model_parameters(parameters, dofs)
 
     def calibrate_model(
         self,
@@ -154,7 +151,9 @@ class AbstractModelObjective:
                 f"Calibration successful with obtained model parameters {opt_result.x}."
             )
         else:
-            print(f"Calibration not successful with obtained model parameters {opt_result.x}.")
+            print(
+                f"Calibration not successful with obtained model parameters {opt_result.x}."
+            )
 
         # Update model (use functionality from calibration)
         self.update_model_for_calibration(opt_result.x, options)
