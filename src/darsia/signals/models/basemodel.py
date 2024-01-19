@@ -4,6 +4,7 @@ Models convert signals to data.
 
 """
 import abc
+from typing import Literal, Optional, Union
 
 import numpy as np
 
@@ -24,7 +25,11 @@ class Model:
         pass
 
     @abc.abstractmethod
-    def update_model_parameters(self, parameters: np.ndarray, pos_model) -> None:
+    def update_model_parameters(
+        self,
+        parameters: np.ndarray,
+        dofs: Optional[Union[list[tuple[int, str]], Literal["all"]]] = None,
+    ) -> None:
         """
         Update routine of model parameters.
         """

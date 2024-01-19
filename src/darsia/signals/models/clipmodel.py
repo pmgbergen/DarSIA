@@ -2,7 +2,7 @@
 Module containing clipping operations.
 
 """
-from typing import Optional
+from typing import Literal, Optional, Union
 
 import numpy as np
 
@@ -29,6 +29,7 @@ class ClipModel(darsia.Model):
         """
         self._min_value = kwargs.get(key + "min value", 0)
         self._max_value = kwargs.get(key + "max value", None)
+        self.num_parameters = 2
 
     def update(
         self,
@@ -49,7 +50,13 @@ class ClipModel(darsia.Model):
         if max_value is not None:
             self._max_value = max_value
 
-    def update_model_parameters(self, parameters: np.ndarray) -> None:
+    def update_model_parameters(
+        self,
+        parameters: np.ndarray,
+        dofs: Optional[
+            Union[list[Literal["min_value", "max_value"]], Literal["all"]]
+        ] = None,
+    ) -> None:
         """
         Short cut to update scaling and offset parameters using a
         general function signature.
@@ -58,7 +65,18 @@ class ClipModel(darsia.Model):
             parameters (np.ndarray): 2-array containing min and max values.
 
         """
-        self.update(min_value=parameters[0], max_value=parameters[1])
+        if (
+            dofs is None
+            or dofs == "all"
+            or set(dofs) == set(["min_value", "max_value"])
+        ):
+            self.update(min_value=parameters[0], max_value=parameters[1])
+        elif set(dofs) == set(["min_value"]):
+            self.update(min_value=parameters[0])
+        elif set(dofs) == set(["max_value"]):
+            self.update(max_value=parameters[0])
+        else:
+            raise ValueError("invalid list of degrees of freedom")
 
     def __call__(self, img: np.ndarray) -> np.ndarray:
         """
