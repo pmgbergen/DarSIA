@@ -26,7 +26,7 @@ the support data on which the interpolation depends has to be defined.
 In the thesis these were predefined samples of the smoothed and preprocessed image and
 corresponding concentrations.
 Now it is possible to select these samples in a GUI using darsia.BoxSelectionAssistant().
-In these samples of the image, the most common colour was identified using a histogram
+In these samples of the image, the most common color was identified using a histogram
 analysis, which is now available through darsia.extract_characteristic_data().
 """
 
@@ -69,18 +69,20 @@ comments:
     to the baseline.
 -   This Kernel interpolation is then used as the model in the darsia.ConcentrationAnalysis
 -   use plain difference to keep all information (no cut off or norm)
-    this is the advantage of the kernel interpolation - it can handle negative colours
+    this is the advantage of the kernel interpolation - it can handle negative colors
 -   finding the right kernel parameters is part of the modeling
 -   also clip the interpolated values at 100%
 """
 smooth_RGB = analysis(image.img_as(float)).img
-colours_RGB = darsia.extract_characteristic_data(
-    signal=smooth_RGB, samples=samples, verbosity=True, surpress_plot=True
+colors_RGB = darsia.extract_characteristic_data(
+    signal=smooth_RGB, samples=samples, show_plot=True
 )
 analysis.model = darsia.CombinedModel(
     [
         darsia.KernelInterpolation(
-            darsia.GaussianKernel(gamma=9.73), colours_RGB, concentrations
+            darsia.GaussianKernel(gamma=9.73),
+            supports=colors_RGB,
+            values=concentrations,
         ),
         darsia.ClipModel(**{"max value": 100.0}),
     ]
