@@ -57,6 +57,14 @@ class ConcentrationAnalysis:
             labels (array, optional): labeled image of domain; the default value (None)
                 denotes the presence of a homogeneous medium.
             kwargs (keyword arguments): interface to all tuning parameters.
+                - 'diff option': option for defining differences of images
+                    (options: 'positive', 'negative', 'absolute', 'plain')
+                - 'restoration -> model': option for defining order of routines;
+                    if True, restoration is applied before model conversion.
+                - 'verbosity':
+                    - 0: no intermediate results are displayed
+                    - 1: only final result is displayed
+                    - 2: intermediate results are displayed
 
         """
         ########################################################################
@@ -147,7 +155,6 @@ class ConcentrationAnalysis:
         """
 
         if baseline_images is None and self.base is not None:
-
             # Use internal baseline images, if available.
             baseline_images = self._base_collection[1:]
             if len(baseline_images) == 0:
@@ -158,14 +165,12 @@ class ConcentrationAnalysis:
 
         # Learn structural noise from collection of images
         if baseline_images is not None:
-
             self.threshold_cleaning_filter = np.zeros(
                 self.base.img.shape[:2], dtype=float
             )
 
             # Combine the results of a series of images
             for img in baseline_images:
-
                 probe_img = img.copy()
 
                 # Take (unsigned) difference
@@ -325,7 +330,6 @@ class ConcentrationAnalysis:
             else:
                 raise ValueError(f"Diff option {self._diff_option} not supported")
         else:
-
             if self._diff_option == "positive":
                 diff = np.clip(img.img - self.base.img, 0, None)
             elif self._diff_option == "negative":
@@ -444,7 +448,6 @@ class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
         labels: Optional[np.ndarray] = None,
         **kwargs,
     ) -> None:
-
         # Cache the posterior model
         self.posterior_model = posterior_model
 
