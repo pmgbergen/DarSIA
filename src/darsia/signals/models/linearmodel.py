@@ -3,7 +3,7 @@
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Literal, Optional, Union
 
 import cv2
 import numpy as np
@@ -19,8 +19,8 @@ class ScalingModel(darsia.Model):
         key: str = "",
         **kwargs,
     ) -> None:
-
         self._scaling = kwargs.get(key + "scaling", 1.0)
+        self.num_parameters = 1
 
         self.volumes = None
 
@@ -39,7 +39,11 @@ class ScalingModel(darsia.Model):
         if scaling is not None:
             self._scaling = scaling
 
-    def update_model_parameters(self, parameters: np.ndarray) -> None:
+    def update_model_parameters(
+        self,
+        parameters: np.ndarray,
+        dofs: Optional[Union[list[Literal["scaling"]], Literal["all"]]] = None,
+    ) -> None:
         """
         Short cut to update scaling and offset parameters using a
         general function signature.
@@ -50,7 +54,10 @@ class ScalingModel(darsia.Model):
             parameters (np.ndarray): 2-array containing scaling and offset values.
 
         """
-        self.update(scaling=parameters[0])
+        if dofs is None or dofs == "all" or set(dofs) == set(["scaling"]):
+            self.update(scaling=parameters[0])
+        else:
+            raise ValueError(f"Unknown dof {dofs}.")
 
     def __call__(self, img: np.ndarray) -> np.ndarray:
         """
@@ -74,9 +81,9 @@ class LinearModel(darsia.Model):
         key: str = "",
         **kwargs,
     ) -> None:
-
         self._scaling = kwargs.get(key + "scaling", 1.0)
         self._offset = kwargs.get(key + "offset", 0.0)
+        self.num_parameters = 2
 
         self.volumes = None
 
@@ -100,7 +107,13 @@ class LinearModel(darsia.Model):
         if offset is not None:
             self._offset = offset
 
-    def update_model_parameters(self, parameters: np.ndarray) -> None:
+    def update_model_parameters(
+        self,
+        parameters: np.ndarray,
+        dofs: Optional[
+            Union[list[Literal["scaling", "offset"]], Literal["all"]]
+        ] = None,
+    ) -> None:
         """
         Short cut to update scaling and offset parameters using a
         general function signature.
@@ -111,7 +124,14 @@ class LinearModel(darsia.Model):
             parameters (np.ndarray): 2-array containing scaling and offset values.
 
         """
-        self.update(scaling=parameters[0], offset=parameters[1])
+        if dofs is None or dofs == ["all"] or set(dofs) == set(["scaling", "offset"]):
+            self.update(scaling=parameters[0], offset=parameters[1])
+        elif set(dofs) == set(["scaling"]):
+            self.update(scaling=parameters[0])
+        elif set(dofs) == set(["offset"]):
+            self.update(offset=parameters[0])
+        else:
+            raise ValueError(f"Unknown dof {dofs}.")
 
     def __call__(self, img: np.ndarray) -> np.ndarray:
         """
@@ -126,11 +146,6 @@ class LinearModel(darsia.Model):
         """
         return self._scaling * img + self._offset
 
-    def calibrate(self, images: list[np.ndarray], option: str = "rate", **kwargs):
-        raise NotImplementedError(
-            "Calibration is not implemented internal to the linear model."
-        )
-
 
 class HeterogeneousLinearModel(darsia.Model):
     """
@@ -144,7 +159,6 @@ class HeterogeneousLinearModel(darsia.Model):
         key: str = "",
         **kwargs,
     ) -> None:
-
         # Organize label info
         self.labels = labels
         self.unique_labels = np.unique(labels)
@@ -158,6 +172,7 @@ class HeterogeneousLinearModel(darsia.Model):
         self._offset = kwargs.get(
             key + "offset", np.zeros(self.num_labels, dtype=float)
         )
+        self.num_parameters = 2 * self.num_labels
 
         # Convert to arrays
         if isinstance(self._scaling, list):
@@ -169,7 +184,6 @@ class HeterogeneousLinearModel(darsia.Model):
         self._compatibility()
 
     def _compatibility(self) -> None:
-
         # Convert from scalar to vectors
         if isinstance(self._scaling, float):
             self._scaling = self._scaling * np.ones(self.num_labels, dtype=float)
@@ -210,7 +224,13 @@ class HeterogeneousLinearModel(darsia.Model):
 
         self._compatibility()
 
-    def update_model_parameters(self, parameters: np.ndarray) -> None:
+    def update_model_parameters(
+        self,
+        parameters: np.ndarray,
+        dofs: Optional[
+            Union[list[Literal["scaling", "offset"]], Literal["all"]]
+        ] = None,
+    ) -> None:
         """
         Short cut to update scaling and offset parameters using a
         general function signature.
@@ -219,9 +239,15 @@ class HeterogeneousLinearModel(darsia.Model):
             parameters (np.ndarray): 2-array containing scaling and offset values.
 
         """
-        self.update(
-            scaling=parameters[: self.num_labels], offset=parameters[self.num_labels :]
-        )
+        if dofs is None or dofs == "all" or set(dofs) == set(["scaling", "offset"]):
+            self.update(
+                scaling=parameters[: self.num_labels],
+                offset=parameters[self.num_labels :],
+            )
+        elif set(dofs) == set(["scaling"]):
+            self.update(scaling=parameters[: self.num_labels])
+        elif set(dofs) == set(["offset"]):
+            self.update(offset=parameters[: self.num_labels])
 
     def __call__(self, img: np.ndarray) -> np.ndarray:
         """
