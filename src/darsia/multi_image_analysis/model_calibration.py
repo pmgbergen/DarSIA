@@ -97,7 +97,7 @@ class AbstractModelObjective:
         images_diff = [self._subtract_background(img) for img in images]
 
         # Extract monochromatic version and take difference wrt the baseline image
-        images_signal = [self._extract_scalar_information(diff) for diff in images_diff]
+        images_signal = [self._reduce_signal(diff) for diff in images_diff]
 
         # Clean signal
         images_clean_signal = [self._clean_signal(signal) for signal in images_signal]
@@ -107,15 +107,18 @@ class AbstractModelObjective:
             self._balance_signal(clean_signal) for clean_signal in images_clean_signal
         ]
 
-        # Smoothen the signals
+        # Smoothen/restore the signals
+        assert (
+            self.first_restoration_then_model
+        ), "calibration only implemented for this"
         images_smooth_signal = [
-            self._prepare_signal(balanced_signal)
+            self._restore_signal(balanced_signal)
             for balanced_signal in images_balanced_signal
         ]
 
         # NOTE: The only step missing from __call__ is the conversion of the signal
         # applying the provided model. This step will be used to tune the
-        # model -> calibration.
+        # model -> calibration. (This is not true when not self.first_restoration_then_model)
 
         # Fetch calibration options - default option chosen if None provided.
         initial_guess = options["initial_guess"]
@@ -151,7 +154,7 @@ class AbstractModelObjective:
                 f"Calibration successful with obtained model parameters {opt_result.x}."
             )
         else:
-            print("Calibration not successful.")
+            print(f"Calibration not successful with obtained model parameters {opt_result.x}.")
 
         # Update model (use functionality from calibration)
         self.update_model_for_calibration(opt_result.x, options)
@@ -243,13 +246,11 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
             # Determine slope in time by linear regression. Allow for different
             # regression types.
             if regression_type == "ransac":
-
                 ransac = RANSACRegressor()
                 ransac.fit(np.array(times).reshape(-1, 1), np.array(volumes))
                 regression = ransac.estimator_
 
             elif regression_type == "linear":
-
                 regression = LinearRegression()
                 regression.fit(np.array(times).reshape(-1, 1), np.array(volumes))
 
