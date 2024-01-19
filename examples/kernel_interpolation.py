@@ -32,7 +32,7 @@ analysis, which is now available through darsia.extract_characteristic_data().
 
 # Predefine concentration analysis for now without any model (to be defined later).
 analysis = darsia.ConcentrationAnalysis(
-    base=baseline.img_as(float),
+    base=baseline,
     restoration=darsia.TVD(
         weight=0.025, eps=1e-4, max_num_iter=100, method="isotropic Bregman"
     ),
@@ -73,7 +73,7 @@ comments:
 -   finding the right kernel parameters is part of the modeling
 -   also clip the interpolated values at 100%
 """
-smooth_RGB = analysis(image.img_as(float)).img
+smooth_RGB = analysis(image).img
 colors_RGB = darsia.extract_characteristic_data(
     signal=smooth_RGB, samples=samples, show_plot=True
 )
@@ -89,7 +89,7 @@ analysis.model = darsia.CombinedModel(
 )
 
 # Finally, apply the (full) concentration analysis to analyze the test image
-concentration_image = analysis(image.img_as(float)).img
+concentration_image = analysis(image).img
 
 # ! ----- VISUALISATION ---- !
 
