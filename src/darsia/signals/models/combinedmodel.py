@@ -80,3 +80,15 @@ class CombinedModel(darsia.Model):
                 model = self.models[pos_model]
                 model.update_model_parameters(parameters_cache, pos_parameter)
                 parameters_cache = parameters_cache[model.num_parameters :]
+
+    def __getitem__(self, pos_model: int) -> darsia.Model:
+        """Access single models.
+
+        Args:
+            pos_model (int): position index addressing a single model.
+
+        Returns:
+            darsia.Model: single model
+
+        """
+        return self.models[pos_model]
