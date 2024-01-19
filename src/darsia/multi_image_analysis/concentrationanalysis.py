@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 from pathlib import Path
 from typing import Optional, Union
+from warnings import warn
 
 import cv2
 import matplotlib.pyplot as plt
@@ -74,14 +75,15 @@ class ConcentrationAnalysis:
         if base is not None:
             if not isinstance(base, list):
                 base = [base]
+            # Make sure that the image is converted to float for substraction
+            if any(
+                [img.img.dtype not in [float, np.float32, np.float64] for img in base]
+            ):
+                base = [img.img_as(float) for img in base]
+                warn(
+                    "The baseline image needed to be converted to float for substraction."
+                )
             self.base = base[0].copy()
-            assert self.base.img.dtype in [
-                float,
-                np.float32,
-                np.float64,
-            ], """
-                The baseline image needs to be converted to float for substraction.
-            """
             self._base_collection = base
             if self.base.space_dim != 2:
                 raise NotImplementedError
@@ -134,13 +136,14 @@ class ConcentrationAnalysis:
         """
         if base is not None:
             self.base = base.copy()
-            assert self.base.img.dtype in [
-                float,
-                np.float32,
-                np.float64,
-            ], """
-                The baseline image needs to be converted to float for substraction.
-            """
+            # Make sure that the image is converted to float for substraction
+            if any(
+                [img.img.dtype not in [float, np.float32, np.float64] for img in base]
+            ):
+                base = [img.img_as(float) for img in base]
+                warn(
+                    "The baseline image needed to be converted to float for substraction."
+                )
         if mask is not None:
             self.mask = mask
 
@@ -235,14 +238,13 @@ class ConcentrationAnalysis:
 
         """
         # Make sure that the image is converted to float for substraction
-        probe_img = copy.deepcopy(img)
-        assert probe_img.img.dtype in [
-            float,
-            np.float32,
-            np.float64,
-        ], f"""
-            The image needs to be converted to float for substraction, not {probe_img.dtype}.
-        """
+        if img.img.dtype not in [float, np.float32, np.float64]:
+            probe_img = copy.deepcopy(img).img_as(float)
+            warn(
+                "The input for concentration analysis needed to be converted to float."
+            )
+        else:
+            probe_img = copy.deepcopy(img)
 
         # Remove background image
         diff = self._subtract_background(probe_img)
