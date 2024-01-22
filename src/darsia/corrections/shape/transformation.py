@@ -1,6 +1,7 @@
 """Module for general shape transformations."""
 
 from abc import ABC, abstractmethod
+from collections import namedtuple
 from typing import Union
 
 import numpy as np
@@ -214,41 +215,49 @@ class TransformationCorrection(darsia.BaseCorrection):
             np.ndarray: array corresponding to some destination image
 
         """
+
         # Strategy: Warp entire array by mapping target voxels to destination voxels by
         # applying the inverse mapping.
+
         dim = self.coordinatesystem_src.dim
         shape = *self.coordinatesystem_dst.shape, *list(array_src.shape)[dim:]
         array_dst = np.zeros(shape, dtype=array_src.dtype)
-
-        # Collect all target voxels in num_voxels_dst x dim format, and shift to centers.
         voxels_dst = self.coordinatesystem_dst.voxels
 
-        # Find corresponding voxels in the original image by applying the inverse map.
-        # This depends on how the transformation is set up. Follow a 3-step strategy:
+        # Re-use cache
+        Cache = namedtuple("Cache", ["voxels_src", "valid_voxels"])
+        if not hasattr(self, "cache"):
+            # Find corresponding voxels in the original image by applying the inverse map.
+            # This depends on how the transformation is set up. Follow a 3-step strategy:
 
-        # 1. Determine input of transformation - via voxel centers.
-        transformation_input = voxels_dst.to_voxel_center().to(
-            self.transformation.input_dtype, self.coordinatesystem_dst
-        )
+            # 1. Determine input of transformation - via voxel centers.
+            transformation_input = voxels_dst.to_voxel_center().to(
+                self.transformation.input_dtype, self.coordinatesystem_dst
+            )
 
-        # 2. Apply inverse transformation
-        transformation_output = self.transformation.inverse(transformation_input)
+            # 2. Apply inverse transformation
+            transformation_output = self.transformation.inverse(transformation_input)
 
-        # 3. Convert output to voxel
-        voxels_src = transformation_output.to_voxel(self.coordinatesystem_src)
+            # 3. Convert output to voxel
+            voxels_src = transformation_output.to_voxel(self.coordinatesystem_src)
 
-        # Determine active voxels - have to lie within active coordinate system
-        valid_voxels = np.all(
-            np.logical_and(
-                voxels_src >= np.zeros(dim, dtype=int),
-                voxels_src < self.coordinatesystem_src.shape,
-            ),
-            axis=1,
-        )
+            # Determine active voxels - have to lie within active coordinate system
+            valid_voxels = np.all(
+                np.logical_and(
+                    voxels_src >= np.zeros(dim, dtype=int),
+                    voxels_src < self.coordinatesystem_src.shape,
+                ),
+                axis=1,
+            )
+
+            # Cache
+            self.cache = Cache(voxels_src=voxels_src, valid_voxels=valid_voxels)
 
         # Warp. Assign voxel values (no interpolation)
-        array_dst[tuple(voxels_dst[valid_voxels, j] for j in range(dim))] = array_src[
-            tuple(voxels_src[valid_voxels, j] for j in range(dim))
+        array_dst[
+            tuple(voxels_dst[self.cache.valid_voxels, j] for j in range(dim))
+        ] = array_src[
+            tuple(self.cache.voxels_src[self.cache.valid_voxels, j] for j in range(dim))
         ]
 
         return array_dst
