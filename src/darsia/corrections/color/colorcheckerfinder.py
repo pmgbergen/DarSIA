@@ -1,6 +1,7 @@
 """Module for finding a colorchecker in an image."""
 
 from typing import Literal
+from warnings import warn
 
 import colour_checker_detection
 import numpy as np
@@ -31,14 +32,17 @@ def find_colorchecker(img: darsia.Image, strategy: Literal["upper_right"]):
         """Colour-based routine to detect the location and swatches of a colorchecker."""
 
         # Detect swatches using colour science algorithm
-        swatches = colour_checker_detection.detect_colour_checkers_segmentation(arr)
-        success = len(swatches) > 0
+        colorcheckers = colour_checker_detection.detect_colour_checkers_segmentation(
+            arr, additional_data=True
+        )
+        success = len(colorcheckers) == 1
+
         if success:
-            # Also find position
-            detection_data = (
-                colour_checker_detection.colour_checkers_coordinates_segmentation(
-                    arr, True
-                )
+            print("Colorchecker detected.")
+            colorchecker = colorcheckers[0]
+            swatches = colorchecker.swatch_colours
+            detection_data = colour_checker_detection.segmenter_default(
+                arr, additional_data=True
             )
 
             # Reshape to original image size to retrieve the correct position
@@ -49,13 +53,15 @@ def find_colorchecker(img: darsia.Image, strategy: Literal["upper_right"]):
             )
             # Colour uses reverse matrix indexing
             coarse_detection_voxels = darsia.make_voxel(
-                detection_data.colour_checkers[0], matrix_indexing=False
+                detection_data.rectangles[0], matrix_indexing=False
             )
             # Determine the voxels of the colorchecker
             voxels = darsia.make_voxel(
                 max_detection_coarsening_rate * coarse_detection_voxels.copy()
             )
         else:
+            warn(f"{len(colorcheckers)} colorcheckers detected.")
+            swatches = None
             voxels = None
 
         return success, swatches, voxels
