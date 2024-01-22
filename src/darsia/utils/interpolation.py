@@ -1,7 +1,4 @@
-"""
-Module containing interpolation functionality.
-
-"""
+"""Module containing interpolation functionality."""
 
 from __future__ import annotations
 
@@ -16,18 +13,21 @@ def interpolate_measurements(
     shape: tuple[int],
     coordinate_system: darsia.CoordinateSystem,
 ) -> np.ndarray:
-    """
-    Determine a voxeled spatial map from measurements through interpolation.
+    """Determine a voxeled spatial map from measurements through interpolation.
 
     Arguments:
          measurements (tuple[np.ndarray, ...]): tuple of x, y, and data measurements,
             providing the input for interpolation.
         shape (tuple of int): target shape of the output map.
+        coordinate_system (darsia.CoordinateSystem): coordinate system of the
+            correspoinding physical image.
 
     Returns:
         np.ndarray: map
 
     """
+    if not len(shape) == 2:
+        raise NotImplementedError("""Only 2d maps are supported.""")
 
     # Create an interpolation object from data.
     interpolator = RBFInterpolator(
@@ -43,7 +43,6 @@ def interpolate_measurements(
     )
 
     # Create a mesh of points at which the interpolator shall be evaluated.
-    assert len(shape) == 2
     Ny, Nx = shape
     x = np.arange(Nx)
     y = np.arange(Ny)
@@ -54,3 +53,30 @@ def interpolate_measurements(
     # Evaluate interpolation
     interpolated_data_vector = interpolator(coords_vector)
     return interpolated_data_vector.reshape((Ny, Nx))
+
+
+def interpolate_to_image(
+    data: tuple[np.ndarray, ...],
+    image: darsia.Image,
+) -> darsia.Image:
+    """Interpolate data to image.
+
+    Args:
+        data (np.ndarray): data to be interpolated.
+        image (darsia.Image): image to which data shall be interpolated.
+
+    Returns:
+        darsia.Image: interpolated image.
+
+    """
+    # Initialize image
+    interpolated_image = image.copy()
+
+    # Define array through RBF interpolation
+    interpolated_image.img = interpolate_measurements(
+        data,
+        interpolated_image.num_voxels,
+        interpolated_image.coordinatesystem,
+    )
+
+    return interpolated_image
