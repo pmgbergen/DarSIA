@@ -2,6 +2,7 @@
 
 import string
 
+import cv2
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,8 +11,7 @@ import numpy as np
 def extract_characteristic_data(
     signal: np.ndarray,
     samples: list[tuple[slice]],
-    verbosity: bool = False,
-    surpress_plot: bool = False,
+    show_plot: bool = False,
 ) -> np.ndarray:
     """Assistant to extract representative colors from input image for given patches.
 
@@ -22,77 +22,74 @@ def extract_characteristic_data(
         show_plot (boolean): flag controlling whether plots are displayed.
 
     Returns:
-        np.ndarray: characteristic colors.
+        np.ndarray: characteristic colors for chosen samples.
 
     """
+    # Init color vector
+    num_samples = len(samples)  # number of patches
+    dominant_colors = np.zeros((num_samples, 3))
 
     # Alphabet useful for labeling in plots
-    letters = list(string.ascii_uppercase)
+    letters = list(string.ascii_uppercase) + list(string.ascii_lowercase)
 
-    # visualise patches
-    _, ax = plt.subplots()
-    ax.imshow(np.abs(signal))  # visualise abs colours, because relative cols are neg
-    ax.set_xlabel("horizontal pixel")
-    ax.set_ylabel("vertical pixel")
+    # Visualise patches
+    if show_plot:
+        _, ax = plt.subplots()
+        ax.imshow(np.abs(signal))  # visualise abs colors, because relative cols are neg
+        ax.set_xlabel("horizontal pixel")
+        ax.set_ylabel("vertical pixel")
 
-    # double check number of patches
-    n = len(samples)  # number of patches
-    if verbosity:
-        print("Number of support patches: " + str(n))
-
-    # init colour vector
-    colours = np.zeros((n, 3))
-    # enumerate through all patches
+    # Analyze patches separately
     for i, p in enumerate(samples):
+        # Control patch dimension
         assert len(p) == 2, "Patch must be 2d"
-        # visualise patches on image
-        rect = patches.Rectangle(
-            (p[1].start, p[0].start),
-            p[1].stop - p[1].start,
-            p[0].stop - p[0].start,
-            linewidth=1,
-            edgecolor="w",
-            facecolor="none",
-        )
-        ax.text(
-            int(p[1].start + 0.05 * (p[1].stop - p[1].start)),
-            int(p[0].start + 0.95 * (p[0].stop - p[0].start)),
-            letters[i],
-            fontsize=12,
-            color="white",
-        )
-        ax.add_patch(rect)
 
-        # histogramm analysis
+        # Histogramm analysis for picking the dominant color
         patch = signal[p]
-        flat_image = np.reshape(patch, (-1, 3))  # all pixels in one dimension
-        # patch visualisation
-        # plt.figure("patch" + letters[i])
-        # plt.imshow(np.abs(patch))
-        H, edges = np.histogramdd(
-            flat_image, bins=100, range=[(-1, 1), (-1, 1), (-1, 1)]
+        flat_image = np.reshape(patch, (-1, 3))
+        pixels = np.float32(flat_image)
+        n_colors = 5
+        criteria = (
+            cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
+            200,
+            0.1,
         )
-        index = np.unravel_index(H.argmax(), H.shape)
-        col = [
-            edges[0][index[0]],
-            edges[1][index[1]],
-            edges[2][index[2]],
-        ]
-        colours[i] = col
+        flags = cv2.KMEANS_RANDOM_CENTERS
+        _, labels, palette = cv2.kmeans(pixels, n_colors, None, criteria, 10, flags)
+        _, counts = np.unique(labels, return_counts=True)
+        dominant_colors[i] = palette[np.argmax(counts)]
 
-    if verbosity:
-        c = np.abs(colours)
-        plt.figure()
+        # Visualise patches on image
+        if show_plot:
+            rect = patches.Rectangle(
+                (p[1].start, p[0].start),
+                p[1].stop - p[1].start,
+                p[0].stop - p[0].start,
+                linewidth=1,
+                edgecolor="w",
+                facecolor="none",
+            )
+            ax.text(
+                int(p[1].start + 0.05 * (p[1].stop - p[1].start)),
+                int(p[0].start + 0.95 * (p[0].stop - p[0].start)),
+                letters[i],
+                fontsize=12,
+                color="white",
+            )
+            ax.add_patch(rect)
+
+    if show_plot:
+        c = np.abs(dominant_colors)
+        plt.figure("Relative dominant colors")
         ax = plt.axes(projection="3d")
-        ax.set_xlabel("R*")
-        ax.set_ylabel("G*")
-        ax.set_zlabel("B*")
-        ax.scatter(colours[:, 0], colours[:, 1], colours[:, 2], c=c)
-        for i, c in enumerate(colours):
+        ax.set_xlabel("R")
+        ax.set_ylabel("G")
+        ax.set_zlabel("B")
+        ax.scatter(
+            dominant_colors[:, 0], dominant_colors[:, 1], dominant_colors[:, 2], c=c
+        )
+        for i, c in enumerate(dominant_colors):
             ax.text(c[0], c[1], c[2], letters[i])
-        if not surpress_plot:
-            plt.show()
+        plt.show()
 
-        print("Characteristic colours: " + str(colours))
-
-    return colours
+    return dominant_colors
