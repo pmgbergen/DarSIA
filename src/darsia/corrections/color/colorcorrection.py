@@ -124,7 +124,7 @@ class CustomColorChecker(ColorChecker):
 
     def _extract_from_image(self, img: np.ndarray) -> np.ndarray:
         """
-        ML-free variant of detect_colour_checkers_segmentation from colour-science.
+        ML-free variant of detect_colour_checkers_segmentation from colour.
         Exepcts images to be restricted to the ROI such that the landmarks in the
         corners are also the corners of the image.
 
@@ -240,7 +240,7 @@ class ColorCorrection(darsia.BaseCorrection):
         self.roi: darsia.VoxelArray = darsia.make_voxel(roi)
         """ROI - anti-clockwise oriented markers starting at the brown swatch"""
 
-        self.balancing: Literal["colour-science", "darsia"] = self.config.get(
+        self.balancing: Literal["colour", "darsia"] = self.config.get(
             "balancing", "darsia"
         )
 
@@ -282,8 +282,8 @@ class ColorCorrection(darsia.BaseCorrection):
         swatches = CustomColorChecker(image=colorchecker_img).swatches_rgb
         reference_swatches = self.colorchecker.swatches_rgb
 
-        if self.balancing == "colour-science":
-            # Use methods from colour-science for balancing color and white balancing
+        if self.balancing == "colour":
+            # Use methods from colour for balancing color and white balancing
 
             # Flatten column-by-column
             reference_swatches = np.squeeze(
@@ -314,7 +314,7 @@ class ColorCorrection(darsia.BaseCorrection):
                 pos = 11
                 corrected_img *= reference_swatches[pos, :] / swatches[pos, :]
 
-        else:
+        elif self.balancing == "darsia":
             # Use DarSIA native implementation for white-balancing and color-balance
             img = skimage.img_as_float(img)
             if self.whitebalancing:
@@ -327,6 +327,11 @@ class ColorCorrection(darsia.BaseCorrection):
             color_balance = darsia.ColorBalance()
             corrected_img = color_balance(
                 img_wb, swatches[:-1], reference_swatches[:-1]
+            )
+
+        else:
+            raise ValueError(
+                f"balancing {self.balancing} not supported, choose 'colour' or 'darsia'"
             )
 
         # Error analysis
