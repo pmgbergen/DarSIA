@@ -2,6 +2,7 @@
 
 import string
 
+import cv2
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,15 +22,15 @@ def extract_characteristic_data(
         show_plot (boolean): flag controlling whether plots are displayed.
 
     Returns:
-        np.ndarray: characteristic colors.
+        np.ndarray: characteristic colors for chosen samples.
 
     """
     # Init color vector
     num_samples = len(samples)  # number of patches
-    colors = np.zeros((num_samples, 3))
+    dominant_colors = np.zeros((num_samples, 3))
 
     # Alphabet useful for labeling in plots
-    letters = list(string.ascii_uppercase)
+    letters = list(string.ascii_uppercase) + list(string.ascii_lowercase)
 
     # Visualise patches
     if show_plot:
@@ -46,16 +47,17 @@ def extract_characteristic_data(
         # Histogramm analysis for picking the dominant color
         patch = signal[p]
         flat_image = np.reshape(patch, (-1, 3))
-        H, edges = np.histogramdd(
-            flat_image, bins=100, range=[(-1, 1), (-1, 1), (-1, 1)]
+        pixels = np.float32(flat_image)
+        n_colors = 5
+        criteria = (
+            cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
+            200,
+            0.1,
         )
-        index = np.unravel_index(H.argmax(), H.shape)
-        col = [
-            edges[0][index[0]],
-            edges[1][index[1]],
-            edges[2][index[2]],
-        ]
-        colors[i] = col
+        flags = cv2.KMEANS_RANDOM_CENTERS
+        _, labels, palette = cv2.kmeans(pixels, n_colors, None, criteria, 10, flags)
+        _, counts = np.unique(labels, return_counts=True)
+        dominant_colors[i] = palette[np.argmax(counts)]
 
         # Visualise patches on image
         if show_plot:
@@ -77,16 +79,17 @@ def extract_characteristic_data(
             ax.add_patch(rect)
 
     if show_plot:
-        # 3d plot?
-        c = np.abs(colors)
-        plt.figure("Relative colors")
+        c = np.abs(dominant_colors)
+        plt.figure("Relative dominant colors")
         ax = plt.axes(projection="3d")
         ax.set_xlabel("R")
         ax.set_ylabel("G")
         ax.set_zlabel("B")
-        ax.scatter(colors[:, 0], colors[:, 1], colors[:, 2], c=c)
-        for i, c in enumerate(colors):
+        ax.scatter(
+            dominant_colors[:, 0], dominant_colors[:, 1], dominant_colors[:, 2], c=c
+        )
+        for i, c in enumerate(dominant_colors):
             ax.text(c[0], c[1], c[2], letters[i])
         plt.show()
 
-    return colors
+    return dominant_colors
