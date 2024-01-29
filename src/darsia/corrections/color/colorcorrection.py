@@ -7,6 +7,7 @@ import json
 from abc import ABC
 from pathlib import Path
 from typing import Literal, Optional, Union
+from warnings import warn
 
 import colour
 import cv2
@@ -232,6 +233,11 @@ class ColorCorrection(darsia.BaseCorrection):
         self.whitebalancing: bool = self.config.get("whitebalancing", True)
         """Flag controlling whether whitebalance is applied as part of correction"""
 
+        self.colorbalancing: Literal["affine", "linear"] = self.config.get(
+            "colorbalancing", "affine"
+        )
+        """Mode for color balancing applied as part of correction"""
+
         self.verbosity: bool = self.config.get("verbosity", False)
         """Flag controlling whether intermediate output is printed to screen"""
 
@@ -291,6 +297,11 @@ class ColorCorrection(darsia.BaseCorrection):
             )
             swatches = np.squeeze(swatches.reshape((24, 1, 3), order="F"))
 
+            if self.colorbalancing == "affine":
+                warn(
+                    "Affine color balancing not implemented for balacong via 'colour'."
+                )
+
             # Apply color correction onto full image based on the swatch colors in
             # comparison with the standard colors
             corrected_img = colour.colour_correction(
@@ -318,16 +329,19 @@ class ColorCorrection(darsia.BaseCorrection):
             # Use DarSIA native implementation for white-balancing and color-balance
             img = skimage.img_as_float(img)
             if self.whitebalancing:
-                white_balance = darsia.WhiteBalance()
-                img_wb = white_balance(img, swatches[-1], reference_swatches[-1])
+                img_wb = darsia.white_balance(img, swatches[-1], reference_swatches[-1])
                 colorchecker_img_wb = self._restrict_to_roi(img_wb)
                 swatches = CustomColorChecker(image=colorchecker_img_wb).swatches_rgb
             else:
                 img_wb = img
-            color_balance = darsia.ColorBalance()
-            corrected_img = color_balance(
-                img_wb, swatches[:-1], reference_swatches[:-1]
-            )
+            if self.colorbalancing == "affine":
+                corrected_img = darsia.affine_balance(
+                    img_wb, swatches[:-1], reference_swatches[:-1]
+                )
+            else:
+                corrected_img = darsia.color_balance(
+                    img_wb, swatches[:-1], reference_swatches[:-1]
+                )
 
         else:
             raise ValueError(
