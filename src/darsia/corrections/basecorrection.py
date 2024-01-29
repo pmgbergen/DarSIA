@@ -23,8 +23,9 @@ class BaseCorrection(ABC):
 
         Args:
             image (array or Image): image
-            overwrite (bool): flag controlling whether the original image is
-                overwritten or the correction is applied to a copy.
+            overwrite (bool): flag controlling whether the original image is overwritten
+                or the correction is applied to a copy. This option has to be used with
+                case.
 
         Returns:
             array or Image: corrected image, data type depends on input.
