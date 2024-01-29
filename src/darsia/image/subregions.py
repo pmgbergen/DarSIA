@@ -90,7 +90,7 @@ def extract_quadrilateral_ROI(
 
     # Fetch corner points in the provided image
     if pts_src is None:
-        pts_src = darsia.make_voxels(
+        pts_src = darsia.make_voxel(
             [
                 [0, 0],
                 [original_shape[0], 0],
