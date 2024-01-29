@@ -2,6 +2,7 @@
 
 from typing import Literal, Union
 
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 import scipy.optimize
@@ -188,6 +189,20 @@ class IlluminationCorrection(darsia.BaseCorrection):
                     method=interpolation,
                 )
             ]
+
+        if show_plot:
+            # Plot the determined scaling
+            fig, ax = plt.subplots()
+            ax.imshow(self.local_scaling[0].img)
+            ax.set_title("Scaling")
+            # Add color bar
+            fig.colorbar(
+                ax.imshow(self.local_scaling[0].img),
+                ax=ax,
+                orientation="vertical",
+                fraction=0.05,
+            )
+            plt.show()
 
     def correct_array(self, img: np.ndarray) -> np.ndarray:
         """Rescale an array using local WB.
