@@ -10,7 +10,7 @@ import copy
 import math
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional, Union, cast
+from typing import Any, Optional, Union
 from warnings import warn
 
 import cv2
