@@ -187,7 +187,7 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
         mapped_voxel_origin = image.coordinatesystem.voxel(origin)
         mapped_voxel_opposite_corner = image.coordinatesystem.voxel(opposite_corner)
 
-        pts_dst = np.array(
+        pts_dst = darsia.make_voxel(
             [
                 [mapped_voxel_origin[0], mapped_voxel_origin[1]],
                 [mapped_voxel_opposite_corner[0], mapped_voxel_origin[1]],
@@ -204,7 +204,7 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
             rows, cols = array.shape
 
             # Use corners as pts_src
-            pts_src = np.array(
+            pts_src = darsia.make_voxel(
                 [
                     [0, 0],
                     [rows, 0],
@@ -218,7 +218,6 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
                 img_src=array,
                 pts_src=pts_src,
                 pts_dst=pts_dst,
-                indexing="matrix",
                 interpolation="inter_area",
                 shape=space_shape,
             )
