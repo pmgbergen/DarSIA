@@ -402,7 +402,6 @@ class Image:
             Image: image with transformed data type
 
         """
-        copy_image = self.copy()
         if data_type in [
             int,
             float,
@@ -413,11 +412,10 @@ class Image:
             np.float64,
             bool,
         ]:
+            copy_image = self.copy()
             copy_image.img = copy_image.img.astype(data_type)
         else:
-            # TODO test
-            copy_image = cast(data_type, copy_image)
-            raise NotImplementedError
+            copy_image = data_type(img=self.img.copy(), metadata=self.metadata())
 
         return copy_image
 
