@@ -77,18 +77,12 @@ class Image:
         self.img = img
         """Data array."""
 
-        self.shape = img.shape  # TODO - not attribute of self.
-        """Shape of the image."""
-
         self.original_dtype = img.dtype
         """Original dtype at construction of the object."""
 
         # ! ---- Spatial meta information
         self.space_dim: int = kwargs.get("space_dim", 2)
         """Dimension of the spatial domain."""
-
-        self.space_num: int = np.prod(self.shape[: self.space_dim])
-        """Spatial resolution, i.e., number of voxels."""
 
         self.indexing = kwargs.get("indexing", "ijk"[: self.space_dim])
         """Indexing of each axis in context of matrix indexing (ijk)
@@ -113,14 +107,6 @@ class Image:
         if "depth" in kwargs:
             self.dimensions[2] = kwargs.get("depth")
 
-        self.num_voxels: tuple[int] = self.img.shape[: self.space_dim]
-        """Number of voxels in each dimension."""
-
-        self.voxel_size: list[float] = [
-            self.dimensions[i] / self.num_voxels[i] for i in range(self.space_dim)
-        ]
-        """Size of each voxel in each direction, ordered as indexing."""
-
         default_origin = self.space_dim * [0]
         for index_counter, index in enumerate(self.indexing):
             axis, reverse_axis = darsia.interpret_indexing(
@@ -131,10 +117,6 @@ class Image:
         self.origin = darsia.Coordinate(np.array(kwargs.pop("origin", default_origin)))
         """Cartesian coordinates associated to the [0,0,0] voxel (after
         applying transformations), using Cartesian indexing."""
-
-        self.coordinatesystem: darsia.CoordinateSystem = darsia.CoordinateSystem(self)
-        """Physical coordinate system with equipped transformation from voxel to
-        Cartesian space."""
 
         # ! ---- Temporal meta information
         self.series = kwargs.get("series", False)
@@ -201,35 +183,111 @@ class Image:
         # ! ---- Apply transformations
 
         # NOTE: Require mapping format: darsia.Image -> darsia.Image
+        # May require redefinition of the coordinate system.
         if transformations is not None:
             for transformation in transformations:
                 if transformation is not None and hasattr(transformation, "__call__"):
                     transformation(self, overwrite=True)
 
-        # ! ---- Update spatial metadata, after shape-altering transformations
-        self.space_num: int = np.prod(self.shape[: self.space_dim])
-        """Spatial resolution, i.e., number of voxels."""
-
-        self.num_voxels: list[int] = list(self.img.shape[: self.space_dim])
-        """Number of voxels in each dimension."""
-
-        self.voxel_size: list[float] = [
-            self.dimensions[i] / self.num_voxels[i] for i in range(self.space_dim)
-        ]
-        """Size of each voxel in each direction, ordered as indexing."""
-
-        self.coordinatesystem: darsia.CoordinateSystem = darsia.CoordinateSystem(self)
-        """Physical coordinate system with equipped transformation from voxel to
-        Cartesian space."""
-
-        self.opposite_corner: darsia.Coordinate = self.coordinatesystem.coordinate(
-            self.shape[: self.space_dim]
-        )
-        """Cartesian coordinate of the corner opposite to origin."""
-
         # ! ---- Safety check on dimensionality and resolution of image.
         assert len(self.shape) == self.space_dim + self.time_dim + self.range_dim
         assert np.prod(self.shape) == self.space_num * self.time_num * self.range_num
+
+    @property
+    def shape(self) -> tuple:
+        """Shape of the image array, incl. time and data dimension.
+
+        Returns:
+            tuple: shape of the image array
+
+        """
+        return self.img.shape
+
+    @property
+    def dtype(self) -> np.dtype:
+        """Data type of the (current) image array.
+
+        Returns:
+            np.dtype: data type of the image array
+
+        """
+        return self.img.dtype
+
+    @property
+    def space_num(self) -> int:
+        """Spatial resolution, i.e., number of voxels.
+
+        Returns:
+            int: spatial resolution
+
+        """
+        return np.prod(self.shape[: self.space_dim])
+
+    @property
+    def num_voxels(self) -> list[int]:
+        """Number of voxels in each dimension.
+
+        Returns:
+            list: number of voxels in each dimension
+
+        """
+        return list(self.shape[: self.space_dim])
+
+    @property
+    def voxel_size(self) -> list[float]:
+        """Size of each voxel in each direction, ordered as indexing.
+
+        Returns:
+            list: size of each voxel in each direction
+
+        """
+        return [self.dimensions[i] / self.num_voxels[i] for i in range(self.space_dim)]
+
+    @property
+    def coordinatesystem(self) -> darsia.CoordinateSystem:
+        """Physical coordinate system with equipped transformation from voxel to
+        Cartesian space.
+
+        NOTE: The definition of CoordinateSystem implicitly requires several attributes
+        to be defined. Therefore, we need to define the CoordinateSystem after
+        defining the spatial attributes, also implicitly defined as properties.
+
+        Returns:
+            CoordinateSystem: physical coordinate system
+
+        """
+        return darsia.CoordinateSystem(self)
+
+    @property
+    def opposite_corner(self) -> darsia.Coordinate:
+        """Cartesian coordinate of the corner opposite to origin.
+
+        Returns:
+            Coordinate: Cartesian coordinate of the corner opposite to origin
+
+        """
+        return self.coordinatesystem.coordinate(self.shape[: self.space_dim])
+
+    @property
+    def domain(self) -> tuple:
+        """Physical domain.
+
+        Returns:
+            tuple: collection of coordinates in matrix indexing defining domain
+
+        """
+        if self.space_dim == 1:
+            return (self.origin[0], self.opposite_corner[0])
+        elif self.space_dim == 2:
+            # 1. Row interval, 2. column interval
+            return (
+                self.origin[0],
+                self.opposite_corner[0],
+                self.opposite_corner[1],
+                self.origin[1],
+            )
+        elif self.space_dim == 3:
+            raise NotImplementedError
 
     def set_time(
         self,
@@ -672,27 +730,6 @@ class Image:
 
         return type(self)(img=img, **metadata)
 
-    @property
-    def domain(self) -> tuple:
-        """Physical domain.
-
-        Returns:
-            tuple: collection of coordinates in matrix indexing defining domain
-
-        """
-        if self.space_dim == 1:
-            return (self.origin[0], self.opposite_corner[0])
-        elif self.space_dim == 2:
-            # 1. Row interval, 2. column interval
-            return (
-                self.origin[0],
-                self.opposite_corner[0],
-                self.opposite_corner[1],
-                self.origin[1],
-            )
-        elif self.space_dim == 3:
-            raise NotImplementedError
-
     # ! ---- Routines on metadata
 
     def reset_coordinatesystem(
@@ -718,7 +755,8 @@ class Image:
             if reverse_axis:
                 origin[axis] = self.dimensions[index_counter]
         self.origin = darsia.Coordinate(origin)
-        self.coordinatesystem: darsia.CoordinateSystem = darsia.CoordinateSystem(self)
+        assert False, "test whether this still works; coordinatesystem is a property"
+        # self.coordinatesystem: darsia.CoordinateSystem = darsia.CoordinateSystem(self)
 
         if return_image:
             return type(self)(img=self.img.copy(), **metadata)
@@ -856,8 +894,7 @@ class Image:
                     plt.imshow(
                         np.flip(np.transpose(array[..., comp]), 0),
                         extent=(
-                            self.origin[0],
-                            self.opposite_corner[0],
+                            *self.domain,
                             self.time[0],
                             self.time[-1],
                         ),
@@ -936,14 +973,7 @@ class Image:
                     fig = plt.figure(_title)
                     cmap = kwargs.get("cmap", "viridis")
                     plt.imshow(
-                        skimage.img_as_float(array),
-                        cmap=cmap,
-                        extent=(
-                            self.origin[0],
-                            self.opposite_corner[0],
-                            self.opposite_corner[1],
-                            self.origin[1],
-                        ),
+                        skimage.img_as_float(array), cmap=cmap, extent=self.domain
                     )
                     use_colorbar = kwargs.get("use_colorbar", False)
                     if use_colorbar:
