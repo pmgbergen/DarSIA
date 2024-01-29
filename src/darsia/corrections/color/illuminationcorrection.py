@@ -19,7 +19,9 @@ class IlluminationCorrection(darsia.BaseCorrection):
         samples: list[tuple[slice, ...]],
         ref_sample: int = -1,
         filter: callable = lambda x: x,
-        colorspace: Literal["rgb", "rgb-scalar", "lab", "hsl", "gray"] = "rgb",
+        colorspace: Literal[
+            "rgb", "rgb-scalar", "lab", "lab-scalar", "hsl", "hsl-scalar", "gray"
+        ] = "hsl-scalar",
         interpolation: Literal["rbf", "quartic", "illumination"] = "quartic",
         show_plot: bool = False,
     ):
@@ -32,6 +34,11 @@ class IlluminationCorrection(darsia.BaseCorrection):
             base (darsia.Image): base image
             samples (list[tuple[slice,...]]): list of samples
             ref_sample (int): index of reference sample
+            filter (callable): function to preprocess the signal before analysis, e.g.,
+                Gaussian filter.
+            colorspace (str): colorspace to use for analysis; defaults to "hsl-scalar".
+            interpolation (str): interpolation method to use for scaling; defaults to
+                "quartic".
             show_plot (bool): flag controlling whether plots of calibration are displayed.
 
         """
@@ -78,9 +85,6 @@ class IlluminationCorrection(darsia.BaseCorrection):
                 "Invalid method. Choose from 'rgb', 'lab', 'hsl(...-scalar)', 'gray'."
             )
 
-        # Apply filter (e.g. Gaussian) to smooth out noise
-        images = [filter(img) for img in images]
-
         # Fetch characteristic colors from samples
         characteristic_colors = []
         reference_colors = []
@@ -88,6 +92,7 @@ class IlluminationCorrection(darsia.BaseCorrection):
             colors = darsia.extract_characteristic_data(
                 signal=image,
                 samples=samples,
+                filter=filter,
                 show_plot=show_plot,
             )
 
