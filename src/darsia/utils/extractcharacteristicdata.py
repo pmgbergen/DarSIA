@@ -1,6 +1,7 @@
 """Module to extract characteristic data from input image for given patches."""
 
 import string
+from warnings import warn
 
 import cv2
 import matplotlib.patches as patches
@@ -25,9 +26,13 @@ def extract_characteristic_data(
         np.ndarray: characteristic colors for chosen samples.
 
     """
-    # Init color vector
+    # Init data vector
+    data_dim = signal.shape[-1]
+    if data_dim not in [1, 3]:
+        data_dim = 1
+        warn("Implicitly assume that the data is scalar.")
     num_samples = len(samples)  # number of patches
-    dominant_colors = np.zeros((num_samples, 3))
+    data_clusters = np.zeros((num_samples, data_dim))
 
     # Alphabet useful for labeling in plots
     letters = list(string.ascii_uppercase) + list(string.ascii_lowercase)
@@ -35,7 +40,7 @@ def extract_characteristic_data(
     # Visualise patches
     if show_plot:
         _, ax = plt.subplots()
-        ax.imshow(np.abs(signal))  # visualise abs colors, because relative cols are neg
+        ax.imshow(np.abs(signal))  # visualise data
         ax.set_xlabel("horizontal pixel")
         ax.set_ylabel("vertical pixel")
 
@@ -44,9 +49,9 @@ def extract_characteristic_data(
         # Control patch dimension
         assert len(p) == 2, "Patch must be 2d"
 
-        # Histogramm analysis for picking the dominant color
+        # Cluster analysis for extractin dominant data/colors
         patch = signal[p]
-        flat_image = np.reshape(patch, (-1, 3))
+        flat_image = np.reshape(patch, (-1, data_dim))
         pixels = np.float32(flat_image)
         n_colors = 5
         criteria = (
@@ -57,7 +62,7 @@ def extract_characteristic_data(
         flags = cv2.KMEANS_RANDOM_CENTERS
         _, labels, palette = cv2.kmeans(pixels, n_colors, None, criteria, 10, flags)
         _, counts = np.unique(labels, return_counts=True)
-        dominant_colors[i] = palette[np.argmax(counts)]
+        data_clusters[i] = palette[np.argmax(counts)]
 
         # Visualise patches on image
         if show_plot:
@@ -79,17 +84,19 @@ def extract_characteristic_data(
             ax.add_patch(rect)
 
     if show_plot:
-        c = np.abs(dominant_colors)
-        plt.figure("Relative dominant colors")
-        ax = plt.axes(projection="3d")
-        ax.set_xlabel("R")
-        ax.set_ylabel("G")
-        ax.set_zlabel("B")
-        ax.scatter(
-            dominant_colors[:, 0], dominant_colors[:, 1], dominant_colors[:, 2], c=c
-        )
-        for i, c in enumerate(dominant_colors):
-            ax.text(c[0], c[1], c[2], letters[i])
+        if data_dim == 3:
+            warn("Assuming data is color data and using RGB as axes.")
+            c = np.abs(data_clusters)
+            plt.figure("Relative dominant colors")
+            ax = plt.axes(projection="3d")
+            ax.set_xlabel("R")
+            ax.set_ylabel("G")
+            ax.set_zlabel("B")
+            ax.scatter(
+                data_clusters[:, 0], data_clusters[:, 1], data_clusters[:, 2], c=c
+            )
+            for i, c in enumerate(data_clusters):
+                ax.text(c[0], c[1], c[2], letters[i])
         plt.show()
 
-    return dominant_colors
+    return data_clusters
