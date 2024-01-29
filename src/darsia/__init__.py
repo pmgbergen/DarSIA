@@ -7,7 +7,6 @@ from darsia.image.coordinatesystem import *
 from darsia.image.image import *
 from darsia.image.indexing import *
 from darsia.image.patches import *
-from darsia.image.subregions import *
 from darsia.image.imread import *
 from darsia.image.arithmetics import *
 from darsia.measure.integration import *
@@ -33,6 +32,7 @@ from darsia.utils.extractcharacteristicdata import *
 from darsia.utils import linalg
 from darsia.utils import quadrature
 from darsia.utils import plotting
+from darsia.image.subregions import *
 from darsia.corrections.basecorrection import *
 from darsia.corrections.shape.transformation import *
 from darsia.corrections.shape.curvature import *
