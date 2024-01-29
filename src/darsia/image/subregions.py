@@ -3,40 +3,25 @@ Module containing auxiliary methods to extract ROIs from darsia Images.
 """
 
 from typing import Literal, Optional, Union
+from warnings import warn
 
 import cv2
 import numpy as np
 
-IndexingOption = Literal["matrix", "reverse matrix"]
-"""Indexing option consi    else:dered in the following conversion."""
+import darsia
 
 
-def to_reverse_matrix_indexing(
-    pixel: np.ndarray, indexing: IndexingOption = "reverse matrix"
-) -> np.ndarray:
-    """Convert pixel coordinates to reverse matrix indexing format.
+def _to_reverse_matrix_indexing(pixel: np.ndarray) -> np.ndarray:
+    """Auxiliary routine: Convert pixel coordinates to reverse matrix indexing format.
 
     Args:
         pixel (np.ndarray): pixel coordinates
-        indexing (IndexingOption): indexing of pixel
 
     Returns:
         pixel converted to 'reverse matrix' indexing
 
-    Raises:
-        NotImplementedError: if dimension not 2
-        NotImplementedError: if indexing not among IndexingOption
-
     """
-    if not len(pixel.shape) == 2:
-        raise NotImplementedError
-
-    if indexing == "reverse matrix":
-        return pixel
-    elif indexing == "matrix":
-        return np.fliplr(np.atleast_2d(pixel))
-    else:
-        raise NotImplementedError
+    return np.fliplr(np.atleast_2d(pixel))
 
 
 InterpolationOption = Literal["inter_nearest", "inter_linear", "inter_area"]
@@ -45,8 +30,8 @@ InterpolationOption = Literal["inter_nearest", "inter_linear", "inter_area"]
 
 def extract_quadrilateral_ROI(
     img_src: np.ndarray,
-    pts_src: Optional[Union[list, np.ndarray]] = None,
-    indexing: IndexingOption = "reverse matrix",
+    pts_src: Optional[Union[list, darsia.VoxelArray, np.ndarray]] = None,
+    indexing: Literal["matrix", "reverse matrix"] = "reverse matrix",
     interpolation: InterpolationOption = "inter_linear",
     **kwargs
 ) -> np.ndarray:
@@ -55,6 +40,12 @@ def extract_quadrilateral_ROI(
     given known corner points of a square (default) object.
 
     Args:
+        img_src (np.ndarray): source image
+        pts_src (array, optional): N points with pixels, can be provided in different
+            indexing formats
+        indexing (IndexingOption): indexing of pixel (only relevant if pts_src is list
+            or np.ndarray)
+        interpolation (InterpolationOption): interpolation method; adopted from cv2.
         kwargs (optional keyword arguments):
             width (int or float): width of the physical object
             height (int or float): height of the physical object
@@ -99,31 +90,42 @@ def extract_quadrilateral_ROI(
 
     # Fetch corner points in the provided image
     if pts_src is None:
-        pts_src = [
-            [0, 0],
-            [original_shape[0], 0],
-            [original_shape[0], original_shape[1]],
-            [0, original_shape[1]],
-        ]
+        pts_src = darsia.make_voxels(
+            [
+                [0, 0],
+                [original_shape[0], 0],
+                [original_shape[0], original_shape[1]],
+                [0, original_shape[1]],
+            ]
+        )
         if indexing == "reverse matrix":
-            pts_src = np.fliplr(np.array(pts_src))
-
-    if isinstance(pts_src, list):
-        pts_src = np.array(pts_src)
-
-    pts_src = to_reverse_matrix_indexing(pts_src, indexing)
+            pts_src = np.fliplr(pts_src)
+    else:
+        if isinstance(pts_src, darsia.VoxelArray):
+            # Voxels use by definition matrix indexing
+            pts_src = _to_reverse_matrix_indexing(pts_src)
+        else:
+            warn("Try using darsia.VoxelArray instead of list or np.ndarray.")
+            if isinstance(pts_src, list):
+                pts_src = np.array(pts_src)
+            if indexing == "matrix":
+                pts_src = _to_reverse_matrix_indexing(pts_src)
 
     # Assign corner points as destination points if none are provided.
     if "pts_dst" in kwargs:
-        pts_dst: np.ndarray = to_reverse_matrix_indexing(
-            np.array(kwargs.get("pts_dst")), indexing
-        )
-
+        pts_dst = kwargs.get("pts_dst")
+        if isinstance(pts_dst, darsia.VoxelArray):
+            # Voxels use by definition matrix indexing
+            pts_dst = _to_reverse_matrix_indexing(pts_dst)
+        else:
+            warn("Try using darsia.VoxelArray instead of list or np.ndarray.")
+            if isinstance(pts_dst, list):
+                pts_dst = np.array(pts_dst)
+            if indexing == "matrix":
+                pts_dst = _to_reverse_matrix_indexing(pts_dst)
     else:
-        # Assume implicitly that corner points have been provided,
-        # and that their orientation is mathematically positive,
-        # starting with the top left corner.
-        # Furthermore, use reverse matrix indexing, i.e., (col,row).
+        # If no destination points are provided, assume implicitly that
+        # the target image is a square with the same size as the source image.
         pts_dst = np.array(
             [
                 [0, 0],
