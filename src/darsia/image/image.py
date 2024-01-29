@@ -732,9 +732,7 @@ class Image:
 
     # ! ---- Routines on metadata
 
-    def reset_coordinatesystem(
-        self, return_image: bool = False
-    ) -> Optional[darsia.Image]:
+    def reset_origin(self, return_image: bool = False) -> Optional[darsia.Image]:
         """Reset origin and coordinatesystem.
 
         Args:
@@ -755,8 +753,6 @@ class Image:
             if reverse_axis:
                 origin[axis] = self.dimensions[index_counter]
         self.origin = darsia.Coordinate(origin)
-        assert False, "test whether this still works; coordinatesystem is a property"
-        # self.coordinatesystem: darsia.CoordinateSystem = darsia.CoordinateSystem(self)
 
         if return_image:
             return type(self)(img=self.img.copy(), **metadata)
