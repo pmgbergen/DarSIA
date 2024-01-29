@@ -12,6 +12,7 @@ import numpy as np
 def extract_characteristic_data(
     signal: np.ndarray,
     samples: list[tuple[slice]],
+    filter: callable = lambda x: x,
     show_plot: bool = False,
 ) -> np.ndarray:
     """Assistant to extract representative colors from input image for given patches.
@@ -20,6 +21,8 @@ def extract_characteristic_data(
         signal (np.ndarray): input signal, assumed to have the structure of a 2d,
             colored image.
         samples (list of slices): list of 2d regions of interest
+        filter (callable): function to preprocess the signal before analysis, e.g.,
+            Gaussian filter.
         show_plot (boolean): flag controlling whether plots are displayed.
 
     Returns:
@@ -43,6 +46,9 @@ def extract_characteristic_data(
         ax.imshow(np.abs(signal))  # visualise data
         ax.set_xlabel("horizontal pixel")
         ax.set_ylabel("vertical pixel")
+
+    # Preprocess signal
+    signal = filter(signal).copy()
 
     # Analyze patches separately
     for i, p in enumerate(samples):
