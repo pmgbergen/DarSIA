@@ -1768,7 +1768,7 @@ class OpticalImage(Image):
 
         """
 
-        if color_space.upper() not in ["RGB", "BGR", "HSV"]:
+        if color_space.upper() not in ["RGB", "BGR", "HSV", "HLS", "LAB"]:
             raise NotImplementedError
 
         if color_space.upper() == self.color_space:
