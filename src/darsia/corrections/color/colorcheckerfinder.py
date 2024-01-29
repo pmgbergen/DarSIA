@@ -5,11 +5,120 @@ from warnings import warn
 
 import colour_checker_detection
 import numpy as np
+import skimage
 
 import darsia
 
 
-def find_colorchecker(img: darsia.Image, strategy: Literal["upper_right"]):
+def _reorient_colorchecker(
+    img: np.ndarray,
+    local_voxels: np.array,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Reorient the colorchecker such that the brown swatch is in the top left corner.
+
+    Args:
+        img (np.ndarray): Image of the colorchecker.
+        local_voxels (np.ndarray): Voxels of the colorchecker.
+
+    Returns:
+        reoriented_img_cc (np.ndarray): Reoriented image of the colorchecker.
+        reoriented_local_voxels (np.ndarray): Reoriented voxels of the colorchecker.
+
+    """
+    # Assert that the image is in uint8 or uint16 format
+    if img.dtype in [np.uint8, np.uint16]:
+        img = skimage.img_as_float(img)
+    else:
+        img = img / np.max(img)
+
+    # Expected colors in the corner swatches in RGB colors
+    brown_swatch = np.array([175, 130, 110]) / 255
+    white_swatch = np.array([250, 250, 250]) / 255
+    black_swatch = np.array([60, 60, 60]) / 255
+    turquoise_swatch = np.array([175, 235, 225]) / 255
+    expected_swatches = [
+        brown_swatch,
+        white_swatch,
+        black_swatch,
+        turquoise_swatch,
+    ]
+
+    # Determine the indices closest to the expected colors
+    expected_swatch_indices = [
+        np.where(
+            np.logical_or(
+                np.linalg.norm(img - swatch, axis=-1)
+                < 1.05 * np.min(np.linalg.norm(img - swatch, axis=-1)),
+                np.isclose(
+                    np.linalg.norm(img - swatch, axis=-1),
+                    1.05 * np.min(np.linalg.norm(img - swatch, axis=-1)),
+                ),
+            )
+        )
+        for swatch in expected_swatches
+    ]
+
+    # Determine the centers of the swatches as median of the indices
+    expected_swatches_centers = [
+        np.median(indices, axis=-1).astype(np.int)
+        for indices in expected_swatch_indices
+    ]
+
+    # Mark corners in anti-clockwise direction starting at the top left corner
+    corners = np.array(
+        [
+            [0, 0],
+            [img.shape[0] - 1, 0],
+            [img.shape[0] - 1, img.shape[1] - 1],
+            [0, img.shape[1] - 1],
+        ]
+    )
+
+    # Determine which swatch is closest to each corner
+    closest_swatches = [
+        np.argmin(np.linalg.norm(corners - center, axis=-1))
+        for center in expected_swatches_centers
+    ]
+
+    # Check whether the indices 0, 1, 2,3 are in the closest swatches
+    success = np.all(np.sort(closest_swatches) == np.arange(4))
+    if not success:
+        warn("Colorchecker orientation not found.")
+        return img, local_voxels
+
+    # Reorient the local voxels in an anti-clockwise direction starting at the top left
+    # corner. First shift them to the top left corner
+    shifted_local_voxels = local_voxels - np.min(local_voxels, axis=0)
+
+    # Then sort them in anti-clockwise direction
+    sorting_local_voxels = [
+        np.argmin(np.linalg.norm(corners - shifted_local_voxel, axis=-1))
+        for shifted_local_voxel in shifted_local_voxels
+    ]
+
+    # Reorient the local voxels by concatenating the two sortings, where closets_swatches
+    # needs to be inverted, such that the map after all maps from voxels to swatches
+    # (via the corners).
+    inverted_closest_swatches = np.zeros(4, dtype=int)
+    inverted_closest_swatches[np.array(closest_swatches)] = np.arange(4, dtype=int)
+    orientation = inverted_closest_swatches[sorting_local_voxels]
+
+    # Reorient the local voxels accordingly
+    reoriented_local_voxels = local_voxels[orientation]
+
+    # Reorient the image. Count how many positions need to be shifted to the left for 0
+    # to be at the first position.
+    shift = np.where(orientation == 0)[0][0]
+
+    # Turn the image shift-many times by 90 degrees
+    reoriented_img_cc = np.rot90(img, k=shift)
+
+    return reoriented_img_cc, reoriented_local_voxels
+
+
+def find_colorchecker(
+    img: darsia.Image, strategy: Literal["upper_right", "upper_left"]
+):
     """Detect colorchecker in corner.
 
     Search for position and colors.
@@ -71,8 +180,12 @@ def find_colorchecker(img: darsia.Image, strategy: Literal["upper_right"]):
         target_corner = np.array([0, shape[1]])
         start_corner = np.array([shape[0], 0])
         update = 0.8
+    elif strategy == "upper_left":
+        target_corner = np.array([0, 0])
+        start_corner = np.array([shape[0], shape[1]])
+        update = 0.8
     else:
-        raise NotImplementedError
+        raise NotImplementedError(f"Strategy {strategy} not implemented.")
 
     # Iterate by decreasing a window for searching the colorchecker
     success = False
@@ -94,15 +207,19 @@ def find_colorchecker(img: darsia.Image, strategy: Literal["upper_right"]):
         if current < update**20:
             assert False, "No color checker found."
 
-    # Extract the color checker directly from the image (more robust than colour)
+    # Extract the color checker directly from the image (more robust than colour).
+    # Yet, need the image to be oriented correctly. Thus, first find the orientation
+    # such that the brown swatch is in the top left corner, and then extract the
+    # colorchecker.
     img_cc = img.subregion(voxels=roi).subregion(voxels=local_voxels)
-    colorchecker = darsia.CustomColorChecker(image=img_cc.img)
+    oriented_img_cc, oriented_local_voxels = _reorient_colorchecker(
+        img_cc.img, local_voxels
+    )
+    colorchecker = darsia.CustomColorChecker(image=oriented_img_cc)
 
     # Map to global voxels - colour_checker_detection uses coarsening
-    # Resort in anti-clockwise direction starting at the brown swatch
-    local_voxels = local_voxels[np.array([1, 0, 3, 2])]
     global_voxels = img.coordinatesystem.voxel(
-        img.subregion(roi).coordinatesystem.coordinate(local_voxels)
+        img.subregion(roi).coordinatesystem.coordinate(oriented_local_voxels)
     )
 
     return colorchecker, global_voxels
