@@ -36,7 +36,6 @@ class ColorChecker(ABC):
         """Plot color checker."""
         # Plot
         _, ax = plt.subplots()
-        print(self._reference_swatches_rgb.shape)
         ax.imshow(self._reference_swatches_rgb)
         ax.set_xlabel("horizontal pixel")
         ax.set_ylabel("vertical pixel")
