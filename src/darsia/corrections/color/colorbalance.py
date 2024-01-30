@@ -37,7 +37,6 @@ class BaseBalance(ABC):
 
         """
         balanced_img = np.dot(img, self.balance)
-        balanced_img = np.clip(balanced_img, 0, 1)
         return balanced_img
 
     def __call__(self, img, swatches_src, swatches_dst) -> np.ndarray:
@@ -197,7 +196,6 @@ class AffineBalance(BaseBalance):
 
         """
         balanced_img = np.dot(img, self.balance_scaling) + self.balance_translation
-        balanced_img = np.clip(balanced_img, 0, 1)
         return balanced_img
 
 
