@@ -34,6 +34,7 @@ from darsia.utils import quadrature
 from darsia.utils import plotting
 from darsia.image.subregions import *
 from darsia.corrections.basecorrection import *
+from darsia.corrections.typecorrection import *
 from darsia.corrections.shape.transformation import *
 from darsia.corrections.shape.curvature import *
 from darsia.corrections.shape.affine import *
