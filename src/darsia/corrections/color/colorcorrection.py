@@ -261,6 +261,9 @@ class ColorCorrection(darsia.BaseCorrection):
             "balancing", "darsia"
         )
 
+        self.clip: bool = self.config.get("clip", True)
+        """Flag controlling whether values outside the feasible range [0., 1.] are clipped"""
+
         # Construct color checker
         self._setup_colorchecker(base)
 
@@ -368,7 +371,8 @@ class ColorCorrection(darsia.BaseCorrection):
 
         # The correction may result in values outside the feasible range [0., 1.].
         # Thus, simply clip the values for consistency.
-        corrected_img = np.clip(corrected_img, 0, 1)
+        if self.clip:
+            corrected_img = np.clip(corrected_img, 0, 1)
 
         # Ensure a data format which can be used by cv2 etc.
         return corrected_img.astype(np.float32)
