@@ -132,9 +132,11 @@ def find_colorchecker(
         global_voxels (np.ndarray): Voxels of the colorchecker.
 
     """
+
     # Preproccess image array (required by the algorthms provided by colour-science)
+    # EOTF requires ubyte input
     eotf = darsia.EOTF()
-    arr = eotf.adjust(img.img)
+    arr = eotf.adjust(img.img_as(np.uint8).img)
     shape = arr.shape
 
     def detect_colorchecker(arr):
