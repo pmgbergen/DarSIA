@@ -261,7 +261,7 @@ class ColorCorrection(darsia.BaseCorrection):
             "balancing", "darsia"
         )
 
-        self.clip: bool = self.config.get("clip", True)
+        self.clip: bool = self.config.get("clip", False)
         """Flag controlling whether values outside the feasible range [0., 1.] are clipped"""
 
         # Construct color checker
