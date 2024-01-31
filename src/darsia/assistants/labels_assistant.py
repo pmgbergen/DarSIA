@@ -167,10 +167,6 @@ class LabelsSegmentAssistant:
             verbosity=self.verbosity,
         )
         points = point_selection_assistant()
-        assert False, """need to check wheter the output still in right format expect the
-            flip to be redundant"""
-        if points is not None and len(points) > 0:
-            points = np.fliplr(points)
 
         new_labels = darsia.segment(
             self.background,
@@ -331,8 +327,6 @@ class LabelsMaskSelectionAssistant:
         mask = np.zeros_like(self.labels.img, dtype=bool)
 
         if points is not None and len(points) > 0:
-            # Points provided in col, row format.
-            points = np.fliplr(points)
 
             # Identify corresponding labels
             labels = np.unique([self.labels.img[p[0], p[1]] for p in points])
