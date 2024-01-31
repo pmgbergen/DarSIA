@@ -473,7 +473,7 @@ class Image:
             copy_image = self.copy()
             copy_image.img = copy_image.img.astype(data_type)
         else:
-            copy_image = data_type(img=self.img.copy(), metadata=self.metadata())
+            copy_image = data_type(img=self.img.copy(), **self.metadata())
 
         return copy_image
 
