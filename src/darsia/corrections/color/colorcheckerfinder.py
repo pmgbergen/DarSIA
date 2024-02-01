@@ -18,7 +18,8 @@ def _reorient_colorchecker(
 
     Args:
         img (np.ndarray): Image of the colorchecker.
-        local_voxels (np.ndarray): Voxels of the colorchecker.
+        local_voxels (np.ndarray): Voxels of the colorchecker (do not need to be sorted
+            in any way).
 
     Returns:
         reoriented_img_cc (np.ndarray): Reoriented image of the colorchecker.
@@ -80,7 +81,10 @@ def _reorient_colorchecker(
         for center in expected_swatches_centers
     ]
 
-    # Check whether the indices 0, 1, 2,3 are in the closest swatches
+    # Arange local voxels such that they follow clock-wise sorting
+    local_voxels = darsia.sort_quad(local_voxels)
+
+    # Check whether the indices 0, 1, 2, 3 are in the closest swatches
     success = np.all(np.sort(closest_swatches) == np.arange(4))
     if not success:
         warn("Colorchecker orientation not found.")
