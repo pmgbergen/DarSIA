@@ -121,7 +121,7 @@ def test_image_registration():
 
     # ! ---- Evaluate deformation in patches
 
-    box = darsia.make_coordinate([[0.05, 0.6], [1.2, 1.1]]  # two coordinate-pairs
+    box = darsia.make_coordinate([[0.05, 0.6], [1.2, 1.1]])  # two coordinate-pairs
     img_box = da_img_src.subregion(box)
     patched_box = darsia.Patches(img_box, [3, 5])
     deformation_patch_centers = image_registration.evaluate(patched_box)
