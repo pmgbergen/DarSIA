@@ -213,7 +213,7 @@ def find_colorchecker(
     # Yet, need the image to be oriented correctly. Thus, first find the orientation
     # such that the brown swatch is in the top left corner, and then extract the
     # colorchecker.
-    img_cc = img.subregion(voxels=roi).subregion(voxels=local_voxels)
+    img_cc = img.subregion(roi).subregion(local_voxels)
     oriented_img_cc, oriented_local_voxels = _reorient_colorchecker(
         img_cc.img, local_voxels
     )
