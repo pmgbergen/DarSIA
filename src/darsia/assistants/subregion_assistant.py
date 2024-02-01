@@ -141,13 +141,13 @@ class SubregionAssistant(darsia.BaseAssistant):
                 ]
 
         # Create by defining two most extreme coordinates in full space
-        self.coordinates = np.array(
+        self.coordinates = darsia.make_coordinate(
             [
                 [intervals[0][0], intervals[1][0], intervals[2][0]],
                 [intervals[0][1], intervals[1][1], intervals[2][1]],
             ]
         )
-        self.img = self.img.subregion(coordinates=self.coordinates)
+        self.img = self.img.subregion(self.coordinates)
         self.finalized = True
 
         # Next round.
