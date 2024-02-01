@@ -92,8 +92,8 @@ def test_image_registration():
 
     # Extract ROI to cut away the color palette. Use pixel ranges to crop the image.
     roi_crop = (slice(470, img_src.img.shape[0]), slice(60, 7940))
-    da_img_src = img_src.subregion(voxels=roi_crop)
-    da_img_dst = img_dst.subregion(voxels=roi_crop)
+    da_img_src = img_src.subregion(roi_crop)
+    da_img_dst = img_dst.subregion(roi_crop)
 
     # ! ---- Setup image registration
     # Define image registration tool
@@ -121,8 +121,8 @@ def test_image_registration():
 
     # ! ---- Evaluate deformation in patches
 
-    box = np.array([[0.05, 0.6], [1.2, 1.1]])  # two coordinate-pairs
-    img_box = da_img_src.subregion(coordinates=box)
+    box = darsia.make_coordinate([[0.05, 0.6], [1.2, 1.1]]  # two coordinate-pairs
+    img_box = da_img_src.subregion(box)
     patched_box = darsia.Patches(img_box, [3, 5])
     deformation_patch_centers = image_registration.evaluate(patched_box)
 
