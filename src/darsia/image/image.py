@@ -649,31 +649,28 @@ class Image:
         return reduced_image
 
     def subregion(
-        self,
-        voxels: Optional[Union[tuple[slice], darsia.VoxelArray]] = None,
-        coordinates: Optional[darsia.CoordinateArray] = None,
+        self, roi: Union[tuple[slice], darsia.VoxelArray, darsia.CoordinateArray]
     ) -> Image:
         """Extraction of spatial subregion.
 
         Args:
-            voxels (tuple of slices or VoxelArray, optional): voxel intervals in all
-                dimensions.
-            coordinates (CoordinateArray, optional): points in space, in Cartesian
-                coordinates, uniquely defining a box, i.e., at least space_dim points.
+            roi (tuple of slices, VoxelArray, or CoordinateArray): voxel intervals in all
+                dimensions, or points in space, in Cartesian coordinates, uniquely defining
+                a box, i.e., at least space_dim points. Type decides interpretation.
 
         Returns:
             Image: image with restricted spatial domain.
 
-        Raises:
-            ValueError: if both voxels and coordinates are not None, or if neither
-                voxels nor coordinates are provide
-
         """
-        # ! ---- Safety checks
-
-        if (voxels is not None) == (coordinates is not None):
-            # Do nothing
-            return self
+        # Manage input
+        if isinstance(roi, tuple) or isinstance(roi, darsia.VoxelArray):
+            voxels = roi
+            coordinates = None
+        elif isinstance(roi, darsia.CoordinateArray):
+            voxels = None
+            coordinates = roi
+        else:
+            raise ValueError
 
         # ! ---- Translate coordinates to voxels
 
