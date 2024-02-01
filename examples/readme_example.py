@@ -1,9 +1,9 @@
 import numpy as np
 
-import darsia as da
+import darsia
 
 # Create a darsia Image: An image that also contains information of physical entities
-image = da.imread("images/baseline.jpg", width=2.8, height=1.5)
+image = darsia.imread("images/baseline.jpg", width=2.8, height=1.5)
 
 # Use the show method to take a look at the imported image.
 image.show()
@@ -12,8 +12,9 @@ image.show()
 grid_image = image.add_grid(dx=0.1, dy=0.1)
 grid_image.show()
 
-# Extract region of interest (ROI) from image (box defined by two corners):
-ROI_image = image.subregion(coordinates=np.array([[1.5, 0], [2.8, 0.7]]))
+# Extract region of interest (ROI) from image (box defined by two corners)
+roi = darsia.make_coordinate([[1.5, 0], [2.8, 0.7]])
+ROI_image = image.subregion(roi)
 ROI_image.show()
 
 # Metadata

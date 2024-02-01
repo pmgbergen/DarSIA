@@ -32,7 +32,7 @@ dicom_image_4d_interval = dicom_image_4d.time_interval(slice(8, 10))
 # Retrict 4d image to ROI in z-direction
 roi_z = slice(90, 120)
 dicom_image_4d_interval_roi: darsia.OpticalImage = dicom_image_4d_interval.subregion(
-    voxels=(roi_z, slice(0, None), slice(0, None))
+    (roi_z, slice(0, None), slice(0, None))
 )
 
 # Extract 3d series, with the z-direction vertically averaged, i.e., 2d in space.
@@ -101,7 +101,7 @@ def tailored_transformation(image_4d: darsia.ScalarImage) -> darsia.Image:
     # 2. Crop. Restrict to relevant ROI in z direction.
     roi_z = slice(90, 120)
     roi_rotated_image_4d: darsia.ScalarImage = rotated_image_4d.subregion(
-        voxels=(roi_z, slice(0, None), slice(0, None))
+        (roi_z, slice(0, None), slice(0, None))
     )
 
     # 3. Flatten image. Apply vertical averaging.
