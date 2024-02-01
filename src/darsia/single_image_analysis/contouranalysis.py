@@ -46,11 +46,7 @@ def contour_length(
             input image.
     """
     # Make copy of image and restrict to region of interest
-    img_roi = (
-        img.copy()
-        if roi is None
-        else cast(darsia.Image, img.subregion(roi))
-    )
+    img_roi = img.copy() if roi is None else cast(darsia.Image, img.subregion(roi))
 
     # Extract boolean mask covering pixels of interest.
     if img_roi.img.dtype == bool:
@@ -137,11 +133,7 @@ class ContourAnalysis:
         """
 
         # Make copy of image and restrict to region of interest
-        img_roi = (
-            img.copy()
-            if roi is None
-            else cast(darsia.Image, img.subregion(roi))
-        )
+        img_roi = img.copy() if roi is None else cast(darsia.Image, img.subregion(roi))
 
         # Extract boolean mask covering values of interest.
         if img_roi.img.dtype == bool:
