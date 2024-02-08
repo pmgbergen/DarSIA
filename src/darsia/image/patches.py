@@ -542,7 +542,7 @@ class Patches:
         da_assembled_img = darsia.Image(
             img=assembled_img,
             origin=self.base.origin,
-            dimensions = self.base.dimensions,
+            dimensions=self.base.dimensions,
             color_space=self.base.color_space,
         )
 
@@ -636,7 +636,7 @@ class Patches:
         da_assembled_img = darsia.Image(
             img=assembled_img,
             origin=self.base.origin,
-            dimensions = self.base.dimensions,
+            dimensions=self.base.dimensions,
             color_space=self.base.color_space,
         )
 
