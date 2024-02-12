@@ -515,18 +515,18 @@ class Patches:
         assembled_img = np.zeros(
             (0, *self.base.img.shape[1:]), dtype=self.base.img.dtype
         )
+        print(assembled_img)
 
         # Create "image-strips" that are assembled by concatenation
-        for j in range(self.num_patches[1]):
+        for j in range(self.num_patches[0]):
 
             # Initialize the row with y coordinate j of the final image
             # with the first patch image.
             rel_roi = self.relative_rois_without_overlap[j][0]
             assembled_y_j = self.patches[j][0].img[rel_roi]
-
             # And assemble the remainder of the row by concatenation
             # over the patches in x-direction with same y coordinate (=j).
-            for i in range(1, self.num_patches[0]):
+            for i in range(1, self.num_patches[1]):
                 rel_roi = self.relative_rois_without_overlap[j][i]
                 assembled_y_j = np.hstack(
                     (assembled_y_j, self.patches[j][i].img[rel_roi])
@@ -541,9 +541,7 @@ class Patches:
         # Define resulting darsia image
         da_assembled_img = darsia.Image(
             img=assembled_img,
-            origin=self.base.origin,
-            dimensions=self.base.dimensions,
-            color_space=self.base.color_space,
+            metadata=self.base.metadata(),
         )
 
         # Update the base image if required
@@ -635,9 +633,7 @@ class Patches:
         # Define resulting darsia image
         da_assembled_img = darsia.Image(
             img=assembled_img,
-            origin=self.base.origin,
-            dimensions=self.base.dimensions,
-            color_space=self.base.color_space,
+            metadata=self.base.metadata(),
         )
 
         # Update the base image if required
