@@ -539,9 +539,9 @@ class Patches:
         assert assembled_img.shape == self.base.img.shape
 
         # Define resulting darsia image
-        da_assembled_img = darsia.Image(
+        da_assembled_img = type(self.base)(
             img=assembled_img,
-            metadata=self.base.metadata(),
+            **self.base.metadata(),
         )
 
         # Update the base image if required
