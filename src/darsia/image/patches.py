@@ -633,7 +633,7 @@ class Patches:
         # Define resulting darsia image
         da_assembled_img = darsia.Image(
             img=assembled_img,
-            metadata=self.base.metadata(),
+            **self.base.metadata(),
         )
 
         # Update the base image if required
