@@ -631,7 +631,7 @@ class Patches:
             assembled_img = skimage.img_as_uint(assembled_img)
 
         # Define resulting darsia image
-        da_assembled_img = darsia.Image(
+        da_assembled_img = type(self.base)(
             img=assembled_img,
             **self.base.metadata(),
         )
