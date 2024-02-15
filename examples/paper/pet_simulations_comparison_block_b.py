@@ -120,7 +120,7 @@ def read_dicom_images() -> darsia.Image:
     image_3d = image_3d.time_slice(9)
     for correction in rotation_corrections:
         image_3d = correction(image_3d)
-    image_3d = image_3d.subregion(coordinates=coordinates)
+    image_3d = image_3d.subregion(coordinates)
 
     # Plot side view to check the result
     if True:
@@ -427,9 +427,9 @@ def align_images(dicom_concentration, vtu_concentration):
     # Restrict to intersecting active canvas
     intersection = coordinate_transformation.find_intersection()
     aligned_dicom_concentration = transformed_dicom_concentration.subregion(
-        voxels=intersection
+        intersection
     )
-    aligned_vtu_concentration = vtu_concentration.subregion(voxels=intersection)
+    aligned_vtu_concentration = vtu_concentration.subregion(intersection)
 
     return aligned_dicom_concentration, aligned_vtu_concentration
 

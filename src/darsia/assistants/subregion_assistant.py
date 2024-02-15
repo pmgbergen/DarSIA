@@ -1,4 +1,4 @@
-"""Module for defining subregions interactively."""
+"""Module for defining subregions in 2d and 3d interactively."""
 
 from typing import Any, Optional
 from warnings import warn
@@ -9,7 +9,19 @@ import darsia
 
 
 class SubregionAssistant(darsia.BaseAssistant):
+    """Graphical assistant to define subregions in 2d and 3d."""
+
     def __init__(self, img: darsia.Image, **kwargs) -> None:
+        """Constructor.
+
+        Args:
+            img (darsia.Image): input image
+
+        """
+        # Set name for titles in plots
+        self.name = "Subregion assistant"
+        """Name of assistant."""
+
         # Make sure to use pixel coordinates - currently not possible to use physical
         # coordinates - FIXME.
         super().__init__(img, use_coordinates=False, **kwargs)
@@ -17,8 +29,6 @@ class SubregionAssistant(darsia.BaseAssistant):
         # Initialize containers
         self._reset()
 
-        # Set name for titles in plots
-        self.name = "Subregion assistant"
         # Prepare output
         self.coordinates = None
         """Coordinates uniquely defining a box."""
@@ -131,13 +141,13 @@ class SubregionAssistant(darsia.BaseAssistant):
                 ]
 
         # Create by defining two most extreme coordinates in full space
-        self.coordinates = np.array(
+        self.coordinates = darsia.make_coordinate(
             [
                 [intervals[0][0], intervals[1][0], intervals[2][0]],
                 [intervals[0][1], intervals[1][1], intervals[2][1]],
             ]
         )
-        self.img = self.img.subregion(coordinates=self.coordinates)
+        self.img = self.img.subregion(self.coordinates)
         self.finalized = True
 
         # Next round.

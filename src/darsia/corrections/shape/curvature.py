@@ -200,7 +200,7 @@ class CurvatureCorrection(darsia.BaseCorrection):
             self.current_image, **self.config["init"]
         )
 
-    def crop(self, corner_points: list) -> None:
+    def crop(self, corner_points: darsia.VoxelArray) -> None:
         """
         Crop the image along the corners of the image.
 
@@ -208,10 +208,13 @@ class CurvatureCorrection(darsia.BaseCorrection):
         will update the config file and modify the current image.
 
         Arguments:
-            corner_points (list): list of the corner points. Preferably the list
+            corner_points (VoxelArray): list of the corner points. Preferably the list
                         should be ordered starting from the upper left corner
                         and going counter clockwise.
         """
+
+        if not isinstance(corner_points, darsia.VoxelArray):
+            corner_points = darsia.make_voxels(corner_points)
 
         self.config["crop"] = {
             "pts_src": corner_points,
@@ -224,7 +227,7 @@ class CurvatureCorrection(darsia.BaseCorrection):
             self.current_image, **self.config["crop"]
         )
 
-    def bulge_corection(
+    def bulge_correction(
         self, left: int = 0, right: int = 0, top: int = 0, bottom: int = 0
     ) -> None:
         """
@@ -751,8 +754,11 @@ class CurvatureCorrection(darsia.BaseCorrection):
 
         return np.squeeze(corrected_img)
 
-    def correct_metadata(self) -> dict:
+    def correct_metadata(self, metadata: dict = {}) -> dict:
         """Extract metadata from the config file.
+
+        Args:
+            metadata (dict, optional): metadata dictionary to be updated. Defaults to {}.
 
         Returns:
             dict: metadata

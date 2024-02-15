@@ -27,10 +27,10 @@ class AndersonAcceleration:
         """
 
         if isinstance(dimension, np.integer):
-            self._dimension = dimension
-            self._tensor = False
+            self._dimension: int = dimension
+            self._tensor: bool = False
         elif isinstance(dimension, tuple):
-            self.tensor_shape = dimension
+            self.tensor_shape: tuple = dimension
             self._dimension = int(np.prod(dimension))
             self._tensor = True
         elif dimension is None:

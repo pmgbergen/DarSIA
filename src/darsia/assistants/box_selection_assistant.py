@@ -34,9 +34,7 @@ class BoxSelectionAssistant(darsia.PointSelectionAssistant):
 
         self.boxes = []
         half_width = self.width / 2
-        # Point selection assistant produces points with cartesian ordering
-        pts_matrix_indexing = [np.flip(pt) for pt in self.pts]
-        for pt in pts_matrix_indexing:
+        for pt in self.pts:
             self.boxes.append(
                 tuple(
                     [

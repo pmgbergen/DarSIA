@@ -1,7 +1,7 @@
 """Module containing the base assistant class."""
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,19 +14,49 @@ class BaseAssistant(ABC):
     """Matplotlib based interactive assistant."""
 
     def __init__(self, img: darsia.Image, **kwargs) -> None:
+        # Image(s)
         self.img = img
         """Image to be analyzed."""
         assert not self.img.series, "Image series not supported."
-        self.kwargs = kwargs
-        """Keyword arguments."""
-        self.verbosity = kwargs.get("verbosity", False)
-        """Flag controlling verbosity."""
-        self.fig = None
+        assert self.img.space_dim in [2, 3], "Only 2d and 3d images supported."
+        self.background: Optional[darsia.Image] = kwargs.get("background")
+        """Background image for plotting."""
+
+        # Figure options - Generate new figure and axes if not provided
+        self.fig = kwargs.get("fig")
         """Figure for analysis."""
-        self.ax = None
+        self.ax = kwargs.get("ax")
         """Axes for analysis."""
+        assert (self.fig is None) == (
+            self.ax is None
+        ), "Both fig and ax must be None or not None."
+        if self.fig is None and self.ax is None:
+            self.fig = plt.figure()  # self.name)
+            if self.img.space_dim == 2:
+                self.ax = self.fig.subplots(1, 1)
+                self.fig.suptitle(self.name)
+            elif self.img.space_dim == 3:
+                self.ax = self.fig.subplots(1, 3)
+                self.fig.suptitle(f"{self.name} -- 2d side views")
+        self.block = kwargs.get("block", True)
+        """Flag controlling whether figure is blocking."""
+
+        if self.img.space_dim == 2:
+            self.plot_grid = kwargs.get("plot_grid", False)
+            """Flag controlling whether grid is plotted (in 2d)."""
+        elif self.img.space_dim == 3:
+            self.threshold = kwargs.get("threshold")
+            """Threshold for active voxels (in 3d)."""
+            self.relative = kwargs.get("relative", False)
+            """Flag controlling whether threshold is relative (in 3d)."""
+            self.scaling = kwargs.get("scaling", 1)
+            """Scaling of points (in 3d)."""
+            self.scatter = kwargs.get("scatter", True)
+            """Flag controlling whether scatter plot is used (in 3d)."""
         self.use_coordinates = kwargs.get("use_coordinates", False)
         """Flag controlling whether plots use physical coordinates."""
+        self.verbosity = kwargs.get("verbosity", False)
+        """Flag controlling verbosity."""
 
     @abstractmethod
     def _print_instructions() -> None:
@@ -35,7 +65,7 @@ class BaseAssistant(ABC):
 
     def _print_event(self, event) -> None:
         if self.verbosity:
-            print(event)
+            print(f"{self.name} - event: {event}")
 
     def _setup_event_handler(self) -> None:
         """Setup event handler."""
@@ -64,65 +94,60 @@ class BaseAssistant(ABC):
             # Quit
             plt.close(self.fig)
 
-    @abstractmethod
     def __call__(self) -> Any:
         """Call the assistant."""
-        if self.fig is not None:
-            plt.close(self.fig)
+        # Setup event handler
+        self._setup_event_handler()
         if self.img.space_dim == 2:
             self._plot_2d()
         elif self.img.space_dim == 3:
             self._plot_3d()
-        else:
-            raise NotImplementedError
 
     def _plot_2d(self) -> None:
         """Plot in 2d with interactive event handler."""
+        if self.img is not None and self.background is None:
+            self._setup_plot_2d(self.img)
+        elif self.img is None and self.background is not None:
+            self._setup_plot_2d(self.background)
+        elif self.img is not None and self.background is not None:
+            self._setup_plot_2d(self.background, alpha=0.7)
+            self._setup_plot_2d(self.img, alpha=0.3)
+        else:
+            raise ValueError("Either img or background must be provided.")
+        plt.show(block=self.block)
 
-        # Setup figure
-        self.fig, self.ax = plt.subplots(1, 1)
-
-        # Setup event handler
-        self._setup_event_handler()
-
-        # Print instructions
-        self._print_instructions()
+    def _setup_plot_2d(self, img: darsia.Image, alpha: float = 1.0) -> None:
+        """Plot in 2d with interactive event handler."""
 
         # Plot the entire 2d image in plain mode. Only works for scalar and optical
         # images.
-        assert self.img.scalar or self.img.range_num in [1, 3]
-        assert not self.img.series
+        assert img.scalar or img.range_num in [1, 3]
+        assert not img.series
 
         # Extract physical coordinates of corners
         if self.use_coordinates:
-            origin = self.img.origin
-            opposite_corner = self.img.opposite_corner
+            origin = img.origin
+            opposite_corner = img.opposite_corner
 
             # Plot
             self.ax.imshow(
-                skimage.img_as_float(self.img.img),
+                skimage.img_as_float(img.img),
                 extent=(origin[0], opposite_corner[0], opposite_corner[1], origin[1]),
+                alpha=alpha,
             )
         else:
-            self.ax.imshow(skimage.img_as_float(self.img.img))
-        plot_grid = self.kwargs.get("plot_grid", False)
+            self.ax.imshow(skimage.img_as_float(img.img), alpha=alpha)
+
+        # Plot grid
+        plot_grid = self.plot_grid
         if plot_grid:
             self.ax.grid()
         self.ax.set_xlabel("x-axis")
         self.ax.set_ylabel("y-axis")
         self.ax.set_aspect("equal")
 
-        plt.show(block=True)
-
     def _plot_3d(self) -> None:
         """Side view with interactive event handler."""
-
-        # Setup figure
-        self.fig, self.ax = plt.subplots(1, 3)
-        self.fig.suptitle("2d side views")
-
-        # Setup event handler
-        self._setup_event_handler()
 
         # Print instructions
         self._print_instructions()
@@ -140,9 +165,12 @@ class BaseAssistant(ABC):
         flat_array = array.reshape((1, -1))[0]
 
         # Restrict to active voxels
-        threshold = self.kwargs.get("threshold", np.min(self.img.img))
-        relative = self.kwargs.get("relative", False)
-        if relative:
+        threshold = (
+            self.threshold if self.threshold is not None else np.min(self.img.img)
+        )
+        # relative = self.relative
+
+        if self.relative:
             threshold = threshold * np.max(self.img.img)
         active = flat_array > threshold
 
@@ -158,15 +186,11 @@ class BaseAssistant(ABC):
             0,
             1,
         )
-        scaling = self.kwargs.get("scaling", 1)
-        s = scaling * alpha
-
-        # Plotting style
-        scatter = self.kwargs.get("scatter", True)
+        s = self.scaling * alpha
 
         # xy-plane
         self.ax[0].set_title(self.name + " - x-y plane")
-        if scatter:
+        if self.scatter:
             self.ax[0].scatter(
                 coordinates[active, 0],
                 coordinates[active, 1],
@@ -203,7 +227,7 @@ class BaseAssistant(ABC):
 
         # xz-plane
         self.ax[1].set_title(self.name + " - x-z plane")
-        if scatter:
+        if self.scatter:
             self.ax[1].scatter(
                 coordinates[active, 0],
                 coordinates[active, 2],
@@ -239,7 +263,7 @@ class BaseAssistant(ABC):
 
         # yz-plane
         self.ax[2].set_title(self.name + " - y-z plane")
-        if scatter:
+        if self.scatter:
             self.ax[2].scatter(
                 coordinates[active, 1],
                 coordinates[active, 2],
@@ -273,4 +297,4 @@ class BaseAssistant(ABC):
         self.ax[2].set_ylabel("z-axis")
         self.ax[2].set_aspect("equal")
 
-        plt.show(block=True)
+        plt.show(block=self.block)

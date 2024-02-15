@@ -7,12 +7,13 @@ from darsia.image.coordinatesystem import *
 from darsia.image.image import *
 from darsia.image.indexing import *
 from darsia.image.patches import *
-from darsia.image.subregions import *
 from darsia.image.imread import *
 from darsia.image.arithmetics import *
 from darsia.measure.integration import *
 from darsia.measure.emd import *
 from darsia.measure.wasserstein import *
+from darsia.utils.point import *
+from darsia.utils.sort import *
 from darsia.utils.box import *
 from darsia.utils.interpolation import *
 from darsia.utils.segmentation import *
@@ -32,14 +33,21 @@ from darsia.utils.extractcharacteristicdata import *
 from darsia.utils import linalg
 from darsia.utils import quadrature
 from darsia.utils import plotting
+from darsia.image.subregions import *
 from darsia.corrections.basecorrection import *
+from darsia.corrections.typecorrection import *
+from darsia.corrections.shape.transformation import *
 from darsia.corrections.shape.curvature import *
 from darsia.corrections.shape.affine import *
 from darsia.corrections.shape.translation import *
 from darsia.corrections.shape.piecewiseperspective import *
+from darsia.corrections.shape.generalizedperspective import *
 from darsia.corrections.shape.rotation import *
 from darsia.corrections.shape.drift import *
 from darsia.corrections.shape.deformation import *
+from darsia.corrections.color.colorbalance import *
+from darsia.corrections.color.colorcheckerfinder import *
+from darsia.corrections.color.illuminationcorrection import *
 from darsia.corrections.color.colorcorrection import *
 from darsia.corrections.color.experimentalcolorcorrection import *
 from darsia.image.coordinatetransformation import *  # Requires affine correction
@@ -78,6 +86,4 @@ from darsia.assistants.box_selection_assistant import *
 from darsia.assistants.rotation_correction_assistant import *
 from darsia.assistants.subregion_assistant import *
 from darsia.assistants.crop_assistant import *
-from darsia.assistants.segmentation_assistant import *
-
-# from darsia.assistants.curvature_correction_assistant import *
+from darsia.assistants.labels_assistant import *

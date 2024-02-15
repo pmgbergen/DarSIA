@@ -1,6 +1,6 @@
 """Module for point selection."""
 
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -11,50 +11,55 @@ import darsia
 
 class PointSelectionAssistant(darsia.BaseAssistant):
     def __init__(self, img: darsia.Image, **kwargs) -> None:
-        super().__init__(img, use_coordinates=False, **kwargs)
+        if img is None:
+            img = kwargs.get("background")
+            assert img is not None, "No image provided."
 
         # Only continue for 2d images
-        assert self.img.space_dim == 2, "Only 2d images are supported."
-
-        # Initialize containers
-        self._reset()
+        assert img.space_dim == 2, "Only 2d images are supported."
 
         # Set name for titles in plots
-        self.name = "Point selection assistant"
-        """Name of assistant."""
+        self.name = kwargs.get("name", "Point selection assistant")
+        """Name of assistant / short version of instructions."""
 
-        # Prepare output
-        self.pts = None
-        """Selected points."""
+        super().__init__(img, use_coordinates=False, **kwargs)
+
+        # Initialize containers
+        self.pts: Optional[darsia.CoordinateArray, darsia.VoxelArray] = None
+        """Selected points in voxel format with matrix indexing."""
+        self._reset()
 
         # Output mode
-        self.array_output = kwargs.get("to_array", True)
+        self.return_coordinates = kwargs.get("coordinates", False)
 
-    def __call__(self) -> Optional[np.ndarray]:
+    def __call__(self) -> Union[darsia.CoordinateArray, darsia.VoxelArray]:
         """Call the assistant."""
 
         if not self.finalized:
+            # Select points
             self._reset()
             super().__call__()
 
-            # Print information about the assistant
-            self._print_info()
+            # Print selected points
+            if self.verbosity:
+                self._print_info()
 
         # Close the figure opened by the base class
         plt.close(self.fig)
 
-        # The segmentation algorithm expects the points as int pixel coordinates
-        if self.array_output:
-            return np.array(self.pts).astype(int)
+        # Convert to right format.
+        voxels = np.array(self.pts)
+        if self.return_coordinates:
+            return self.img.coordinatesystem.coordinate(voxels)
         else:
-            np.array(self.pts).astype(int).tolist()
+            return darsia.make_voxel(voxels)
 
     def _print_info(self) -> None:
         """Print out information about the assistant."""
 
         # Print the determined points to screen so one can hardcode the definition of
         # the subregion if required.
-        print("The selected points:")
+        print("The selected points in matrix indexing format:")
         print(np.array(self.pts).astype(int).tolist())
 
     def _reset(self) -> None:
@@ -105,9 +110,9 @@ class PointSelectionAssistant(darsia.BaseAssistant):
         if state == "":
             # Fetch the physical coordinates in 2d plane and interpret 2d point in
             # three dimensions
-            if event.button == 1:
-                # Add point to subregion (in 2d)
-                self.pts.append([event.xdata, event.ydata])
+            if event.button == 1 and event.inaxes is not None:
+                # Add point to subregion (in 2d) in matrix indexing
+                self.pts.append([event.ydata, event.xdata])
 
                 # Draw a circle around the selected point
                 self.ax.plot(
@@ -153,5 +158,5 @@ class PointSelectionAssistant(darsia.BaseAssistant):
 
         self.finalized = True
 
-        # Next round.
+        # Next round - needed to close the figure
         self.__call__()

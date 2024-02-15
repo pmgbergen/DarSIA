@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 from pathlib import Path
 from typing import Optional, Union
+from warnings import warn
 
 import cv2
 import matplotlib.pyplot as plt
@@ -57,10 +58,16 @@ class ConcentrationAnalysis:
             labels (array, optional): labeled image of domain; the default value (None)
                 denotes the presence of a homogeneous medium.
             kwargs (keyword arguments): interface to all tuning parameters.
+                - 'diff option': option for defining differences of images
+                    (options: 'positive', 'negative', 'absolute', 'plain')
+                - 'restoration -> model': option for defining order of routines;
+                    if True, restoration is applied before model conversion.
+                - 'verbosity':
+                    - 0: no intermediate results are displayed
+                    - 1: only final result is displayed
+                    - 2: intermediate results are displayed
 
         """
-        ########################################################################
-
         self.base: Optional[darsia.Image] = None
         """Baseline image."""
         self._base_collection: list[darsia.Image] = []
@@ -68,6 +75,14 @@ class ConcentrationAnalysis:
         if base is not None:
             if not isinstance(base, list):
                 base = [base]
+            # Make sure that the image is converted to float for substraction
+            if any(
+                [img.img.dtype not in [float, np.float32, np.float64] for img in base]
+            ):
+                base = [img.img_as(float) for img in base]
+                warn(
+                    "The baseline image needed to be converted to float for substraction."
+                )
             self.base = base[0].copy()
             self._base_collection = base
             if self.base.space_dim != 2:
@@ -81,9 +96,6 @@ class ConcentrationAnalysis:
 
         self.model = model
         """Signal to data conversion model."""
-
-        self.apply_restoration = restoration is not None
-        """Flag controlling whether restoration shall be applied."""
 
         self.restoration = restoration
         """Restoration model."""
@@ -124,6 +136,14 @@ class ConcentrationAnalysis:
         """
         if base is not None:
             self.base = base.copy()
+            # Make sure that the image is converted to float for substraction
+            if any(
+                [img.img.dtype not in [float, np.float32, np.float64] for img in base]
+            ):
+                base = [img.img_as(float) for img in base]
+                warn(
+                    "The baseline image needed to be converted to float for substraction."
+                )
         if mask is not None:
             self.mask = mask
 
@@ -147,7 +167,6 @@ class ConcentrationAnalysis:
         """
 
         if baseline_images is None and self.base is not None:
-
             # Use internal baseline images, if available.
             baseline_images = self._base_collection[1:]
             if len(baseline_images) == 0:
@@ -158,14 +177,12 @@ class ConcentrationAnalysis:
 
         # Learn structural noise from collection of images
         if baseline_images is not None:
-
             self.threshold_cleaning_filter = np.zeros(
                 self.base.img.shape[:2], dtype=float
             )
 
             # Combine the results of a series of images
             for img in baseline_images:
-
                 probe_img = img.copy()
 
                 # Take (unsigned) difference
@@ -220,7 +237,14 @@ class ConcentrationAnalysis:
             darsia.Image: concentration
 
         """
-        probe_img = copy.deepcopy(img)
+        # Make sure that the image is converted to float for substraction
+        if img.img.dtype not in [float, np.float32, np.float64]:
+            probe_img = copy.deepcopy(img).img_as(float)
+            warn(
+                "The input for concentration analysis needed to be converted to float."
+            )
+        else:
+            probe_img = copy.deepcopy(img)
 
         # Remove background image
         diff = self._subtract_background(probe_img)
@@ -325,7 +349,6 @@ class ConcentrationAnalysis:
             else:
                 raise ValueError(f"Diff option {self._diff_option} not supported")
         else:
-
             if self._diff_option == "positive":
                 diff = np.clip(img.img - self.base.img, 0, None)
             elif self._diff_option == "negative":
@@ -396,11 +419,7 @@ class ConcentrationAnalysis:
         Return:
             np.ndarray: smooth signal
         """
-        # Apply restoration
-        if self.apply_restoration:
-            signal = self.restoration(signal)
-
-        return signal
+        return signal if self.restoration is None else self.restoration(signal)
 
     def _convert_signal(self, signal: np.ndarray, diff: np.ndarray) -> np.ndarray:
         """Postprocessing routine, essentially converting a continuous
@@ -416,11 +435,7 @@ class ConcentrationAnalysis:
             np.ndarray: physical data
 
         """
-        # Obtain data from model
-        if self.model is None:
-            return signal
-        else:
-            return self.model(signal)
+        return signal if self.model is None else self.model(signal)
 
 
 class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
@@ -444,7 +459,6 @@ class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
         labels: Optional[np.ndarray] = None,
         **kwargs,
     ) -> None:
-
         # Cache the posterior model
         self.posterior_model = posterior_model
 

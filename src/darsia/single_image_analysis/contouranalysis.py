@@ -21,7 +21,7 @@ import darsia
 
 def contour_length(
     img: darsia.Image,
-    roi: Optional[np.ndarray] = None,
+    roi: Optional[darsia.CoordinateArray] = None,
     values_of_interest: Optional[Union[int, list[int]]] = None,
     fill_holes: bool = True,
     verbosity: bool = False,
@@ -46,11 +46,7 @@ def contour_length(
             input image.
     """
     # Make copy of image and restrict to region of interest
-    img_roi = (
-        img.copy()
-        if roi is None
-        else cast(darsia.Image, img.subregion(coordinates=roi))
-    )
+    img_roi = img.copy() if roi is None else cast(darsia.Image, img.subregion(roi))
 
     # Extract boolean mask covering pixels of interest.
     if img_roi.img.dtype == bool:
@@ -122,7 +118,7 @@ class ContourAnalysis:
     def load_labels(
         self,
         img: darsia.Image,
-        roi: Optional[np.ndarray] = None,
+        roi: Optional[darsia.CoordinateArray] = None,
         values_of_interest: Optional[Union[int, list[int]]] = None,
         fill_holes: bool = True,
     ) -> None:
@@ -137,11 +133,7 @@ class ContourAnalysis:
         """
 
         # Make copy of image and restrict to region of interest
-        img_roi = (
-            img.copy()
-            if roi is None
-            else cast(darsia.Image, img.subregion(coordinates=roi))
-        )
+        img_roi = img.copy() if roi is None else cast(darsia.Image, img.subregion(roi))
 
         # Extract boolean mask covering values of interest.
         if img_roi.img.dtype == bool:

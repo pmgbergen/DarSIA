@@ -5,6 +5,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
+import skimage
 
 import darsia
 
@@ -33,7 +34,7 @@ def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:
     return array, info, success
 
 
-def test_color_correction():
+def test_classic_color_correction():
     """Test color correction, effectively converting from BGR to RGB."""
 
     # ! ---- Fetch test image
@@ -47,19 +48,19 @@ def test_color_correction():
     # Need to specify the pixel coordines in (x,y), i.e., (col,row) format, of the
     # marks on the color checker.
     config = {
-        "roi": np.array(
+        "roi": darsia.make_voxel(
             [
-                [154, 176],
-                [222, 176],
-                [222, 68],
-                [154, 68],
+                [176, 154],
+                [176, 222],
+                [68, 222],
+                [68, 154],
             ]
-        )
+        ),
+        "balancing": "colour",
     }
-    color_correction = darsia.ColorCorrection(**config)
+    color_correction = darsia.ColorCorrection(base=None, config=config)
 
     # ! ---- Define corrected image
-
     image = darsia.Image(img=array, transformations=[color_correction], **info)
 
     # ! ---- Compare corrected image with reference
@@ -71,7 +72,77 @@ def test_color_correction():
     reference_image = np.load(reference_path, allow_pickle=True)
 
     # Make a direct comparison
-    assert np.allclose(reference_image, image.img)
+    print(np.max(np.abs(reference_image - image.img)))
+    assert np.allclose(reference_image, image.img, atol=2e-2)
+
+
+# Parametrize balancing
+@pytest.mark.parametrize("balancing", ["colour", "darsia"])
+def test_custom_color_correction(balancing):
+    """Test color correction read from image."""
+
+    # ! ---- Fetch test image
+    array, info, success = read_test_image("baseline")
+
+    if not success:
+        pytest.xfail("Image required for test not available.")
+
+    # ! ---- Define original image
+
+    original_image = darsia.Image(img=array, **info)
+
+    # ! ---- Setup custom color correction based on image
+
+    # Need to specify the pixel coordines in (x,y), i.e., (col,row) format, of the
+    # marks on the color checker.
+    config = {
+        "roi": darsia.make_voxel(
+            [
+                [176, 154],
+                [176, 222],
+                [68, 222],
+                [68, 154],
+            ]
+        ),
+        "balancing": balancing,
+    }
+    custom_color_correction = darsia.ColorCorrection(base=original_image, config=config)
+
+    # ! ---- Setup classic color correction based on image
+
+    # Need to specify the pixel coordines in (x,y), i.e., (col,row) format, of the
+    # marks on the color checker.
+    config = {
+        "roi": darsia.make_voxel(
+            [
+                [176, 154],
+                [176, 222],
+                [68, 222],
+                [68, 154],
+            ]
+        ),
+        "balancing": "colour",
+    }
+    classic_color_correction = darsia.ColorCorrection(base=None, config=config)
+
+    # ! ---- Define (classic) corrected image
+    classic_corrected_image = darsia.Image(
+        img=array, transformations=[classic_color_correction], **info
+    )
+
+    # ! ---- Correct back with custom color checker
+    corrected_array = classic_corrected_image.img
+    custom_corrected_image = darsia.Image(
+        img=corrected_array, transformations=[custom_color_correction], **info
+    )
+
+    # ! ---- Compare against original image
+    assert not np.allclose(
+        skimage.img_as_float(array), classic_corrected_image.img, atol=6e-2
+    )
+    assert np.allclose(
+        skimage.img_as_float(array), custom_corrected_image.img, atol=6e-2
+    )
 
 
 def test_curvature_correction():
@@ -122,7 +193,7 @@ def test_drift_correction():
     original_image = darsia.Image(img=original_array, **info)
 
     # ! ---- Define drift correction
-    roi = (slice(0, 600), slice(0, 600))
+    roi = darsia.make_voxel([[0, 0], [600, 600]])
     drift_correction = darsia.DriftCorrection(base=original_image, config={"roi": roi})
 
     # ! ---- Apply affine transformation

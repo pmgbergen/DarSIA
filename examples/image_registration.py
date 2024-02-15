@@ -41,7 +41,7 @@ curvature_correction = darsia.CurvatureCorrection(config)
 # Setup drift correction taking care of moving camera in between taking photos.
 # Use the color checker as reference in both images, and make the src image
 # the anker.
-roi = (slice(0, 600), slice(0, 600))
+roi = darsia.make_voxel([[0, 0], [600, 600]])
 drift_correction = darsia.DriftCorrection(base=array_src, config={"roi": roi})
 
 # Create darsia images with integrated cropping. Note: the drift correction
@@ -74,8 +74,8 @@ plt.show()
 
 # Extract ROI to cut away the color palette. Use pixel ranges to crop the image.
 roi_crop = (slice(470, img_src.img.shape[0]), slice(0, 7940))
-da_img_src = img_src.subregion(voxels=roi_crop)
-da_img_dst = img_dst.subregion(voxels=roi_crop)
+da_img_src = img_src.subregion(roi_crop)
+da_img_dst = img_dst.subregion(roi_crop)
 
 # ! ----- Actual analysis: Determine the deformation between img_dst and aligned_img_src
 
@@ -159,10 +159,10 @@ print(deformation)
 # For this, we start extracting a roi, here we choose a box, which in the end
 # corresponds to box B from the benchmark analysis. This it is sufficient to
 # define two corner points of the box.
-box_B = np.array([[0.0, 0.6], [1.2, 1.1]])
+box_B = darsia.make_coordinate([[0.0, 0.6], [1.2, 1.1]])
 
 # and extract the corresponding ROI as darsia.Image (based on da_img_src):
-img_box_B = da_img_src.subregion(coordinates=box_B)
+img_box_B = da_img_src.subregion(box_B)
 
 # To double check the box, we plot the resulting box.
 plt.figure("Box B")
