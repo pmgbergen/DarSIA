@@ -26,7 +26,14 @@ class GMRES:
 class KSP:
     def __init__(self, A: sps.csc_matrix, 
                  field_ises=None, 
-                 nullspace=None) -> None:
+                 nullspace=None,
+                 appctx: dict=None
+                 ) -> None:
+        
+        # convert csc to csr (if needed)
+        if not sps.isspmatrix_csr(A):
+            A = A.tocsr()
+
         # store original matrix
         self.A = A
 
@@ -58,6 +65,8 @@ class KSP:
         else:
             self.field_ises = None
 
+        self.appctx = appctx
+        
         
 
     def setup(self, petsc_options: dict) -> None:
@@ -83,6 +92,8 @@ class KSP:
 
         self.ksp = ksp
 
+        
+
         # associate petsc vectors to prefix
         self.A_petsc.setOptionsPrefix(self.prefix)
         self.A_petsc.setFromOptions()
@@ -102,11 +113,22 @@ class KSP:
             pc.setOptionsPrefix(self.prefix)
             pc.setFromOptions()
             pc.setUp()
+            
+            # split subproblems
+            ksps = pc.getFieldSplitSubKSP()
+            for k in ksps:
+                # Without this, the preconditioner is not set up
+                # It works for now, but it is not clear why
+                p = k.getPC()
+                # This is in order to pass the appctx 
+                # to all preconditioner. TODO: find a better way
+                p.setAttr('appctx', self.appctx) 
+                p.setUp()
+
+            # set nullspace
             if self._nullspace is not None:
                 if len(self._petsc_kernels) > 1:
                         raise NotImplementedError("Nullspace currently works with one kernel only")
-                # split subproblems
-                ksps = pc.getFieldSplitSubKSP()
                 # assign nullspace to each subproblem
                 for i, local_ksp in enumerate(ksps):
                     for k in self._petsc_kernels:
@@ -115,6 +137,10 @@ class KSP:
                             local_nullspace = PETSc.NullSpace().create(constant=False, vectors=[sub_vec])
                             A_i, _ = local_ksp.getOperators()
                             A_i.setNullSpace(local_nullspace)
+                
+
+        # attach info to ksp
+        self.ksp.setAttr('appctx', self.appctx)        
 
     def solve(self, b: np.ndarray, **kwargs) -> np.ndarray:
         # convert to petsc vector the rhs
@@ -122,13 +148,8 @@ class KSP:
         self.ksp.solve(self.rhs_petsc, self.sol_petsc)
         sol = self.sol_petsc.getArray()
 
-        # solve using scipy
-        #sol2, _ = gmres(self.A, b)
-        #res = self.A.dot(sol2) - b
-        #print('residual norm: ', np.linalg.norm(res)/np.linalg.norm(b))
-
         # DEBUG CODE: check convergence
-        res = self.A.dot(sol) - b
+        #res = self.A.dot(sol) - b
         #print('residual norm: ', np.linalg.norm(res)/np.linalg.norm(b))
         return sol
 
