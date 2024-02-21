@@ -227,7 +227,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 [L_init * self.mass_matrix_faces, -self.div.T],
                 [self.div, None],
             ],
-            format="csr",
+            format="csc",
         )
         """sps.csc_matrix: initial Darcy operator"""
 
@@ -236,7 +236,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 [None, -self.div.T],
                 [self.div, None],
             ],
-            format="csr",
+            format="csc",
         )
         """sps.csc_matrix: linear part of the Darcy operator with pressure constraint"""
 
@@ -677,7 +677,11 @@ class VariationalWassersteinDistance(darsia.EMD):
             kernel = kernel / np.linalg.norm(kernel)
             self.linear_solver = darsia.linalg.KSP(matrix, 
                                                    field_ises=self.field_ises,
-                                                   nullspace=[kernel])
+                                                   nullspace=[kernel],
+                                                    appctx={
+                                                       "regularized_flat_flux_norm": self.regularized_flat_flux_norm,
+                                                       "div": self.div,
+                                                   })
 
             # Define solver options
             linear_solver_options = self.options.get("linear_solver_options", {})
@@ -694,7 +698,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                         "ksp_type": "gmres",
                         "ksp_rtol": tol,
                         "ksp_maxit": maxiter,
-                        #"ksp_monitor_true_residual": None,
+                        # "ksp_monitor_true_residual": None, #this is for debugging
                         "pc_type": "fieldsplit",
                         "pc_fieldsplit_type":"schur",
                         "pc_fieldsplit_schur_fact_type": "full",
@@ -709,6 +713,9 @@ class VariationalWassersteinDistance(darsia.EMD):
                         "fieldsplit_0_pc_type":"jacobi",
                         "fieldsplit_1_ksp_type":"preonly",
                         "fieldsplit_1_pc_type": "hypre",
+                        # User defined preconditioner
+                        #"fieldsplit_1_pc_type": "python",
+                        #"fieldsplit_1_pc_python_type": __name__+".SchurComplementPC",
                     }
             if self.formulation == "flux_reduced" or self.formulation == "pressure":
                 #raise NotImplementedError("KSP does not work. I beleive is because the Schur complemtent is not defined")
@@ -962,7 +969,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 [None, -self.div.T],
                 [self.div, None,],
             ],
-            format="csr",
+            format="csc",
         )
         """sps.csc_matrix: linear part of the Darcy operator with pressure constraint"""
 
@@ -994,6 +1001,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         regularized_flat_flux_norm = np.clip(
             flat_flux_norm, self.regularization, self.L
         )
+        self.regularized_flat_flux_norm = regularized_flat_flux_norm
         approx_jacobian = sps.bmat(
             [
                 [
@@ -1006,7 +1014,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 ],
                 [self.div, None],
             ],
-            format="csr",
+            format="csc",
         )
         return approx_jacobian
 
@@ -1038,6 +1046,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 self.mass_matrix_cells.dot(flat_mass_diff),
             ]
         )
+        self.regularized_flat_flux_norm = np.ones(self.grid.num_faces, dtype=float)
 
         # Initialize Newton iteration with Darcy solution for unitary mobility
         solution_i = np.zeros_like(rhs, dtype=float)
@@ -1287,7 +1296,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 [weight * self.mass_matrix_faces, -self.div.T],
                 [self.div, None,],
             ],
-            format="csr",
+            format="csc",
         )
 
         return l_scheme_mixed_darcy, weight, shrink_factor
@@ -1319,12 +1328,14 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 self.mass_matrix_cells.dot(flat_mass_diff),
             ]
         )
+        self.regularized_flat_flux_norm = np.ones(self.grid.num_faces, dtype=float)
 
         # Initialize Newton iteration with Darcy solution for unitary mobility
         solution_i = np.zeros_like(rhs, dtype=float)
         solution_i, _ = self.linear_solve(
             self.darcy_init.copy(), rhs.copy(), solution_i
         )
+        
 
         # Initialize distance in case below iteration fails
         new_distance = 0
@@ -1359,7 +1370,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 [weight * self.mass_matrix_faces, -self.div.T],
                 [self.div, None],
             ],
-            format="csr",
+            format="csc",
         )
 
         # Initialize Bregman variables
@@ -1629,3 +1640,22 @@ def wasserstein_distance_to_vtk(
     ]
     darsia.plotting.to_vtk(path, data)
 
+class SchurComplementPC(object):
+    """
+    This is a test for building my own preconditioner,
+    getting the extra info from a dictorionary passed
+    to the linear solver
+    """
+    def setUp(self,pc):
+        # get info from the parent KSP object
+        appctx = pc.getAttr("appctx")
+        flux_norm = appctx["regularized_flat_flux_norm"]
+        div = appctx["div"]
+        S = div * sps.diags(flux_norm, dtype=float) * div.T
+        
+        self.ksp = darsia.linalg.KSP(S)
+        self.ksp.setup({"ksp_type":"preonly","pc_type":"hypre"})
+
+    def apply(self, pc, x, y):
+        self.ksp.ksp.solve(x,y)
+        
