@@ -134,8 +134,9 @@ def imread_from_optical(
             automatically detected from metadata if 'None'.
         transformations (list of callables): transformations for 2d images.
         keyword arguments:
-            series (bool): flag controlling whether a time series of images
-                is created.
+            date (datetime): custom datetime; otherwise read from metadata
+            color_space (str): custom color space; RGB is assumed otherwise
+            any arguments accepted by Image
 
     Returns:
         OpticalImage (or list of such): converted image, list of such, or
