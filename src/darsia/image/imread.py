@@ -145,18 +145,21 @@ def imread_from_optical(
     # TODO check method for grayscale images. shape of array?
 
     if isinstance(path, Path):
-        # Single image
-
+        # Read single image incl. date from metadata of the image
         array, date = _read_single_optical_image(path)
 
-        # Fix metadata
+        # Use the date only if not provided separately
+        if "date" not in kwargs:
+            kwargs["date"] = date
+
+        # Enhance metadata
         kwargs["series"] = False
-        kwargs["color_space"] = "RGB"
+        if "color_space" not in kwargs:
+            kwargs["color_space"] = "RGB"
 
         # Define image
         image = darsia.OpticalImage(
             img=array,
-            date=date,
             time=time,
             transformations=transformations,
             **kwargs,
