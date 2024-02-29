@@ -16,9 +16,8 @@ class Patches:
 
     Attributes:
         base (darsia.Image) = full darsia image
-        num_patches_x (int) = number of patches in the horizondal direction
-        num_patches_y (int) = number of patches in the vertical direction
-        images (np.ndarray)= array of patches of the original image
+        num_patches (list) = list with number of patches in each dimension
+        patches (np.ndarray)= array of patches of the original image
 
     NOTE: A standard matrix indexing is used to refer to specific patches, i.e.,
         The left, upper (front) patch will have the patch coordinate (0,0)
@@ -403,7 +402,7 @@ class Patches:
             + ow
             + off_w
             # all internal patches
-            + (self.num_patches_x - 2) * (pw - 2 * cw + ow + off_w)
+            + (self.num_patches[0] - 2) * (pw - 2 * cw + ow + off_w)
         )
 
         # Corresponding to the most right patches
@@ -445,7 +444,7 @@ class Patches:
             # bottom patch
             (ph - ch + oh + off_h)
             # all internal patches
-            + (self.num_patches_y - 2) * (ph - 2 * ch + oh + off_h)
+            + (self.num_patches[1] - 2) * (ph - 2 * ch + oh + off_h)
         )
 
         # Corresponding to the top patches
@@ -481,7 +480,7 @@ class Patches:
         # Determine horizontal position (x-direction)
         if i == 0:
             horizontal_position: str = "left"
-        elif i == self.num_patches_x - 1:
+        elif i == self.num_patches[0] - 1:
             horizontal_position = "right"
         else:
             horizontal_position = "internal"
@@ -489,7 +488,7 @@ class Patches:
         # Determine vertical position (y-direction)
         if j == 0:
             vertical_position: str = "bottom"
-        elif j == self.num_patches_y - 1:
+        elif j == self.num_patches[1] - 1:
             vertical_position = "top"
         else:
             vertical_position = "internal"
@@ -516,36 +515,33 @@ class Patches:
         assembled_img = np.zeros(
             (0, *self.base.img.shape[1:]), dtype=self.base.img.dtype
         )
+        print(assembled_img)
 
         # Create "image-strips" that are assembled by concatenation
-        for j in range(self.num_patches_y):
+        for j in range(self.num_patches[0]):
 
             # Initialize the row with y coordinate j of the final image
             # with the first patch image.
-            rel_roi = self.relative_rois_without_overlap[0][j]
-            assembled_y_j = self.images[0][j].img[rel_roi]
-
+            rel_roi = self.relative_rois_without_overlap[j][0]
+            assembled_y_j = self.patches[j][0].img[rel_roi]
             # And assemble the remainder of the row by concatenation
             # over the patches in x-direction with same y coordinate (=j).
-            for i in range(1, self.num_patches_x):
-                rel_roi = self.relative_rois_without_overlap[i][j]
+            for i in range(1, self.num_patches[1]):
+                rel_roi = self.relative_rois_without_overlap[j][i]
                 assembled_y_j = np.hstack(
-                    (assembled_y_j, self.images[i][j].img[rel_roi])
+                    (assembled_y_j, self.patches[j][i].img[rel_roi])
                 )
 
             # Concatenate the row and the current image
-            assembled_img = np.vstack((assembled_y_j, assembled_img))
+            assembled_img = np.vstack((assembled_img, assembled_y_j))
 
         # Make sure that the resulting image has the same resolution
         assert assembled_img.shape == self.base.img.shape
 
         # Define resulting darsia image
-        da_assembled_img = darsia.Image(
+        da_assembled_img = type(self.base)(
             img=assembled_img,
-            origin=self.base.origin,
-            width=self.base.width,
-            height=self.base.height,
-            color_space=self.base.colorspace,
+            **self.base.metadata(),
         )
 
         # Update the base image if required
@@ -586,22 +582,22 @@ class Patches:
         assembled_img = np.zeros_like(self.base.img, dtype=float)
 
         # Loop over patches
-        for j in range(self.num_patches_y):
+        for j in range(self.num_patches[1]):
 
             # Allocate memory for row  with y-coordinate j.
-            shape = [self.images[0][j].num_pixels_height, *self.base.img.shape[1:]]
+            shape = [self.patches[0][j].num_pixels_height, *self.base.img.shape[1:]]
             assembled_y_j = np.zeros(tuple(shape), dtype=float)
 
             # Assemble the row with y-coordinate j by a suitable weighted combination
             # of the patches in row j
-            for i in range(self.num_patches_x):
+            for i in range(self.num_patches[0]):
 
                 # Determine the active pixel range
                 roi = self.rois[i][j]
                 roi_x = roi[1]
 
                 # Fetch patch, and convert to float
-                img_i_j = skimage.img_as_float(self.images[i][j].img)
+                img_i_j = skimage.img_as_float(self.patches[i][j].img)
 
                 # Fetch weight and convert to tensor
                 weight_i_j = self.weight_x[self.position(i, j)[0]]
@@ -635,12 +631,9 @@ class Patches:
             assembled_img = skimage.img_as_uint(assembled_img)
 
         # Define resulting darsia image
-        da_assembled_img = darsia.Image(
+        da_assembled_img = type(self.base)(
             img=assembled_img,
-            origin=self.base.origin,
-            width=self.base.width,
-            height=self.base.height,
-            color_space=self.base.colorspace,
+            **self.base.metadata(),
         )
 
         # Update the base image if required
