@@ -13,6 +13,10 @@ def extract_characteristic_data(
     signal: np.ndarray,
     samples: list[tuple[slice]],
     filter: callable = lambda x: x,
+    num_clusters: int = 5,
+    num_attempts: int = 100,
+    num_iterations: int = 200,
+    eps: float = 1e-1,
     show_plot: bool = False,
 ) -> np.ndarray:
     """Assistant to extract representative colors from input image for given patches.
@@ -23,6 +27,10 @@ def extract_characteristic_data(
         samples (list of slices): list of 2d regions of interest
         filter (callable): function to preprocess the signal before analysis, e.g.,
             Gaussian filter.
+        num_clusters (int): number of clusters to be extracted from data.
+        num_attempts (int): number of attempts to be performed to find the best clusters.
+        num_iterations (int): max number of iterations in iterative procedure.
+        eps (float): tolerance for stopping the iterative procedure.
         show_plot (boolean): flag controlling whether plots are displayed.
 
     Returns:
@@ -59,14 +67,15 @@ def extract_characteristic_data(
         patch = signal[p]
         flat_image = np.reshape(patch, (-1, data_dim))
         pixels = np.float32(flat_image)
-        n_colors = 5
         criteria = (
             cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
-            200,
-            0.1,
+            num_iterations,
+            eps,
         )
         flags = cv2.KMEANS_RANDOM_CENTERS
-        _, labels, palette = cv2.kmeans(pixels, n_colors, None, criteria, 10, flags)
+        _, labels, palette = cv2.kmeans(
+            pixels, num_clusters, None, criteria, num_attempts, flags
+        )
         _, counts = np.unique(labels, return_counts=True)
         data_clusters[i] = palette[np.argmax(counts)]
 
