@@ -343,11 +343,17 @@ class ColorCorrection(darsia.BaseCorrection):
         elif self.balancing == "darsia":
 
             # DarSIA implementation fully affine, both for WB and CB
-            balance = darsia.AffineBalance()
+            balance = darsia.AdaptiveBalance()
             img = skimage.img_as_float(img)
             if self.whitebalancing:
-                balance.find_balance(swatches[-1], reference_swatches[-1])
-            balance.find_balance(swatches[:-1], reference_swatches[:-1])
+                balance.find_balance(
+                    swatches[-1], reference_swatches[-1], mode="diagonal"
+                )
+            balance.find_balance(
+                swatches[:-1],
+                reference_swatches[:-1],
+                mode="affine" if self.colorbalancing == "affine" else "linear",
+            )
             corrected_img = balance.apply_balance(img)
 
         else:
