@@ -37,7 +37,7 @@ class BaseBalance(ABC):
             balanced_img (np.ndarray): Balanced image.
 
         """
-        balanced_img = img @ self.balance
+        balanced_img = img @ self.balance_scaling
         return balanced_img
 
     def __call__(self, img, swatches_src, swatches_dst) -> np.ndarray:
@@ -62,7 +62,7 @@ class ColorBalance(BaseBalance):
     """Class for finding and applying a linear color balance."""
 
     def __init__(self) -> None:
-        self.balance: np.ndarray = np.eye(3)
+        self.balance_scaling: np.ndarray = np.eye(3)
         """Color balance matrix."""
 
     def find_balance(self, swatches_src: np.ndarray, swatches_dst) -> None:
@@ -90,20 +90,20 @@ class ColorBalance(BaseBalance):
 
         opt_result = scipy.optimize.minimize(
             objective_function,
-            self.balance.flatten(),
+            self.balance_scaling.flatten(),
             method="Powell",
             tol=1e-6,
             options={"maxiter": 1000, "disp": False},
         )
 
-        self.balance = opt_result.x.reshape((3, 3))
+        self.balance_scaling = opt_result.x.reshape((3, 3))
 
 
 class WhiteBalance(BaseBalance):
     """Class for finding and applying a diagional linear balance."""
 
     def __init__(self) -> None:
-        self.balance: np.ndarray = np.diag(np.ones(3))
+        self.balance_scaling: np.ndarray = np.diag(np.ones(3))
         """White balance (diagonal) matrix."""
 
     def find_balance(self, swatches_src: np.ndarray, swatches_dst) -> None:
@@ -131,13 +131,13 @@ class WhiteBalance(BaseBalance):
 
         opt_result = scipy.optimize.minimize(
             objective_function,
-            np.diag(self.balance),
+            np.diag(self.balance_scaling),
             method="Powell",
             tol=1e-6,
             options={"maxiter": 1000, "disp": False},
         )
 
-        self.balance = np.diag(opt_result.x)
+        self.balance_scaling = np.diag(opt_result.x)
 
 
 class AffineBalance(BaseBalance):
