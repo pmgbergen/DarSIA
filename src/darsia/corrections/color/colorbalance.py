@@ -84,7 +84,7 @@ class ColorBalance(BaseBalance):
 
             """
             balance = flat_balance.reshape((3, 3))
-            swatches_src_balanced = swatches_srci @ balance
+            swatches_src_balanced = swatches_src @ balance
             return np.sum((swatches_src_balanced - swatches_dst) ** 2)
 
         opt_result = scipy.optimize.minimize(
@@ -148,6 +148,11 @@ class AffineBalance(BaseBalance):
         self.balance_translation: np.ndarray = np.zeros(3)
         """Balance translation vector."""
 
+    def reset(self) -> None:
+        """Reset to identity."""
+        self.balance_scaling = np.eye(3)
+        self.balance_translation = np.zeros(3)
+
     def find_balance(self, swatches_src: np.ndarray, swatches_dst) -> None:
         """Find the color balance of an image.
 
@@ -156,6 +161,9 @@ class AffineBalance(BaseBalance):
             swatches_dst (np.ndarray): Destination swatches.
 
         """
+
+        # Precondition swatched with current balance
+        swatches_src_prebalanced = self.apply_balance(swatches_src)
 
         def objective_funcion(flat_balance: np.ndarray) -> float:
             """Objective function for the minimization.
@@ -169,7 +177,9 @@ class AffineBalance(BaseBalance):
             """
             balance_scaling = flat_balance[:9].reshape((3, 3))
             balance_translation = flat_balance[9:12]
-            swatches_src_balanced = swatches_src @ balance_scaling + balance_translation
+            swatches_src_balanced = (
+                swatches_src_prebalanced @ balance_scaling + balance_translation
+            )
             return np.sum((swatches_src_balanced - swatches_dst) ** 2)
 
         opt_result = scipy.optimize.minimize(
@@ -180,8 +190,13 @@ class AffineBalance(BaseBalance):
             options={"maxiter": 1000, "disp": False},
         )
 
-        self.balance_scaling = opt_result.x[:9].reshape((3, 3))
-        self.balance_translation = opt_result.x[9:12]
+        # Update balancing, use formula A_new * (A_prev * x + b_prev) + b_new
+        # = (A_new * A_prev) * x + (A_new * b_prev + b_new)
+        self.balance_scaling = opt_result.x[:9].reshape((3, 3)) @ self.balance_scaling
+        self.balance_translation = (
+            opt_result.x[:9].reshape((3, 3)) @ self.balance_translation
+            + opt_result.x[9:12]
+        )
 
     def apply_balance(self, img: np.ndarray) -> np.ndarray:
         """Apply the color balance to an image.
