@@ -36,7 +36,7 @@ class BaseBalance(ABC):
             balanced_img (np.ndarray): Balanced image.
 
         """
-        balanced_img = np.dot(img, self.balance)
+        balanced_img = img @ self.balance
         return balanced_img
 
     def __call__(self, img, swatches_src, swatches_dst) -> np.ndarray:
@@ -84,7 +84,7 @@ class ColorBalance(BaseBalance):
 
             """
             balance = flat_balance.reshape((3, 3))
-            swatches_src_balanced = np.dot(swatches_src, balance)
+            swatches_src_balanced = swatches_srci @ balance
             return np.sum((swatches_src_balanced - swatches_dst) ** 2)
 
         opt_result = scipy.optimize.minimize(
@@ -125,7 +125,7 @@ class WhiteBalance(BaseBalance):
 
             """
             balance = np.diag(flat_balance)
-            swatches_src_balanced = np.dot(swatches_src, balance)
+            swatches_src_balanced = swatches_src @ balance
             return np.sum((swatches_src_balanced - swatches_dst) ** 2)
 
         opt_result = scipy.optimize.minimize(
@@ -169,9 +169,7 @@ class AffineBalance(BaseBalance):
             """
             balance_scaling = flat_balance[:9].reshape((3, 3))
             balance_translation = flat_balance[9:12]
-            swatches_src_balanced = (
-                np.dot(swatches_src, balance_scaling) + balance_translation
-            )
+            swatches_src_balanced = swatches_src @ balance_scaling + balance_translation
             return np.sum((swatches_src_balanced - swatches_dst) ** 2)
 
         opt_result = scipy.optimize.minimize(
@@ -195,7 +193,7 @@ class AffineBalance(BaseBalance):
             balanced_img (np.ndarray): Balanced image.
 
         """
-        balanced_img = np.dot(img, self.balance_scaling) + self.balance_translation
+        balanced_img = img @ self.balance_scaling + self.balance_translation
         return balanced_img
 
 
