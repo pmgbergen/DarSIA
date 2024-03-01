@@ -56,7 +56,8 @@ def extract_characteristic_data(
         ax.set_ylabel("vertical pixel")
 
     # Preprocess signal
-    signal = filter(signal).copy()
+    if False:
+        signal = filter(signal).copy()
 
     # Analyze patches separately
     for i, p in enumerate(samples):
@@ -64,7 +65,10 @@ def extract_characteristic_data(
         assert len(p) == 2, "Patch must be 2d"
 
         # Cluster analysis for extractin dominant data/colors
-        patch = signal[p]
+        if False:
+            patch = signal[p]
+        else:
+            patch = filter(signal[p])
         flat_image = np.reshape(patch, (-1, data_dim))
         pixels = np.float32(flat_image)
         criteria = (
