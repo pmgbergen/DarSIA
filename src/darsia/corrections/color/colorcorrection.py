@@ -299,7 +299,8 @@ class ColorCorrection(darsia.BaseCorrection):
         colorchecker_img: np.ndarray = self._restrict_to_roi(img)
 
         # Determine swatch colors
-        swatches = CustomColorChecker(image=colorchecker_img).swatches_rgb
+        colorchecker = CustomColorChecker(image=colorchecker_img)
+        swatches = colorchecker.swatches_rgb
         reference_swatches = self.colorchecker.swatches_rgb
 
         if self.balancing == "colour":
@@ -340,22 +341,14 @@ class ColorCorrection(darsia.BaseCorrection):
                 corrected_img *= reference_swatches[pos, :] / swatches[pos, :]
 
         elif self.balancing == "darsia":
-            # Use DarSIA native implementation for white-balancing and color-balance
+
+            # DarSIA implementation fully affine, both for WB and CB
+            balance = darsia.AffineBalance()
             img = skimage.img_as_float(img)
             if self.whitebalancing:
-                img_wb = darsia.white_balance(img, swatches[-1], reference_swatches[-1])
-                colorchecker_img_wb = self._restrict_to_roi(img_wb)
-                swatches = CustomColorChecker(image=colorchecker_img_wb).swatches_rgb
-            else:
-                img_wb = img
-            if self.colorbalancing == "affine":
-                corrected_img = darsia.affine_balance(
-                    img_wb, swatches[:-1], reference_swatches[:-1]
-                )
-            else:
-                corrected_img = darsia.color_balance(
-                    img_wb, swatches[:-1], reference_swatches[:-1]
-                )
+                balance.find_balance(swatches[-1], reference_swatches[-1])
+            balance.find_balance(swatches[:-1], reference_swatches[:-1])
+            corrected_img = balance.apply_balance(img)
 
         else:
             raise ValueError(
