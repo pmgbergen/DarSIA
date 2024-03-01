@@ -198,7 +198,7 @@ class AffineBalance(BaseBalance):
         return balanced_img
 
 
-class AdaptiveBalance(BaseBalance):
+class AdaptiveBalance(AffineBalance):
     def __init__(self) -> None:
         self.balance_scaling: np.ndarray = np.eye(3)
         """Balance scaling matrix."""
@@ -234,7 +234,7 @@ class AdaptiveBalance(BaseBalance):
             balance = ColorBalance()
         elif mode == "affine":
             balance = AffineBalance()
-        balance.find_balance(swatches_src, swatches_dst)
+        balance.find_balance(swatches_src_prebalanced, swatches_dst)
         self.balance_scaling = balance.balance_scaling @ self.balance_scaling
         if mode == "affine":
             self.balance_translation = (
