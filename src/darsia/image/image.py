@@ -1519,7 +1519,7 @@ class Image:
 
     # ! ---- I/O
 
-    def save(self, path: Union[str, Path]) -> None:
+    def save(self, path: Union[str, Path], verbose=True) -> None:
         """Save image to file.
 
         Store array and metadata in single file.
@@ -1531,6 +1531,8 @@ class Image:
 
         """
         np.savez(str(Path(path)), array=self.img, metadata=self.metadata())
+        if verbose:
+            print(f"Image stored under {path}")
 
     def to_vtk(self, path: Union[str, Path], name: Optional[str] = None) -> None:
         """Save image to file in vtk format.
