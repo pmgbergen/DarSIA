@@ -6,6 +6,7 @@ from typing import Optional, Union
 
 import numpy as np
 import skimage
+from numba import njit
 
 import darsia as da
 
@@ -81,12 +82,11 @@ def split_bregman_tvd(
 
     # Define right hand side function
     def _rhs_function(dt: np.ndarray, bt: np.ndarray, ellt) -> np.ndarray:
-        return omega * img + ellt * sum(
-            [
-                da.forward_diff(img=bt[..., i] - dt[..., i], axis=i, dim=dim)
-                for i in range(dim)
-            ]
-        )
+        result = np.multiply(omega, img)
+        for i in range(dim):
+            diff = ellt * (bt[..., i] - dt[..., i])
+            result += da.forward_diff(img=diff, axis=i, dim=dim)
+        return result
 
     # Define initial guess if provided, otherwise start with input image and allovate
     # zero arrays for the split Bregman variables.
@@ -103,10 +103,33 @@ def split_bregman_tvd(
     if verbose if isinstance(verbose, bool) else verbose > 0:
         print(f"The energy functional starts at {_functional(img)}")
 
+    # Numba version of performing shrinkage
+    @njit("void(f8[:,:,:],f8[:,:,:], f8[:,:,:], f8)", fastmath=True)
+    def numba_shrinkage(input_dub, output_d, output_b, quot):
+        """Numba implementation (6 x faster) for:
+
+        s = np.linalg.norm(dub, 2, axis=-1)
+        shrinkage_factor = np.maximum(s - mu / ell, 0) / (s + 1e-18)
+        d = dub * shrinkage_factor[..., None]
+        b = dub - d
+
+        """
+        for i in range(input_dub.shape[0]):
+            for j in range(input_dub.shape[1]):
+                s = 0
+                for k in range(input_dub.shape[2]):
+                    s += input_dub[i, j, k] ** 2
+                s = s**0.5
+                shrinkage = max(s - quot, 0) / (s + 1e-18)
+                for k in range(input_dub.shape[2]):
+                    output_d[i, j, k] = input_dub[i, j, k] * shrinkage
+                    output_b[i, j, k] = input_dub[i, j, k] * (1 - shrinkage)
+
     # Bregman iterations
     for iter in range(max_num_iter):
 
         # First step - solve the stabilized diffusion system.
+        # TODO: Moderate bottleneck - takes ca. 75% CPU time per iteration
         img_new = solver(x0=img_iter, rhs=_rhs_function(d, b, ell))
 
         # Second step - shrinkage.
@@ -114,10 +137,8 @@ def split_bregman_tvd(
             dub = b.copy()
             for j in range(dim):
                 dub[..., j] += da.backward_diff(img=img_new, axis=j, dim=dim)
-            s = np.linalg.norm(dub, 2, axis=-1)
-            shrinkage_factor = np.maximum(s - mu / ell, 0) / (s + 1e-18)
-            d = dub * shrinkage_factor[..., None]
-            b = dub - d
+            numba_shrinkage(dub, d, b, mu / ell)
+
         else:
             for j in range(dim):
                 dub = da.backward_diff(img=img_new, axis=j, dim=dim) + b[..., j]
