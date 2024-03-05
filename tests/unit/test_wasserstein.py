@@ -119,14 +119,36 @@ amg_options = {
     },
 }
 
-ksp_options = {
+ksp_options_amg = {
+    "linear_solver": "ksp",
+    "linear_solver_options": {
+        "tol": 1e-8,
+    "prec_schur": "hypre"
+    },
+}
+
+ksp_options_direct = {
     "linear_solver": "ksp",
     "linear_solver_options": {
         "tol": 1e-8,
     },
+    "prec_schur": "lu"
 }
 
-solvers = [lu_options, amg_options, ksp_options]
+formulations = ["full", "pressure"]
+
+solvers = [ksp_options_amg, ksp_options_direct]
+
+# ! ---- Sinkhorn options ----
+sinkhorn_methods = [
+    "sinkhorn",
+    "sinkhorn_log", 
+    "sinkhorn_stabilized",
+    #"geomloss_sinkhorn"
+]
+sinkhorn_regs = [1e0, 1e-1, 1e-2]
+
+
 
 # General options
 options = {
@@ -139,6 +161,7 @@ options = {
     "tol_increment": 1e-6,
     "tol_distance": 1e-10,
     "return_info": True,
+    "verbose": False,
 }
 
 # ! ---- Tests ----
@@ -152,7 +175,7 @@ def test_newton(a_key, s_key, dim):
     options.update(newton_options)
     options.update(accelerations[a_key])
     options.update(solvers[s_key])
-    options.update({"formulation": "pressure"})
+    options.update({"formulation": formulations[0]})
     distance, info = darsia.wasserstein_distance(
         src_image[dim],
         dst_image[dim],
@@ -171,7 +194,7 @@ def test_std_bregman(a_key, s_key, dim):
     options.update(bregman_std_options)
     options.update(accelerations[a_key])
     options.update(solvers[s_key])
-    options.update({"formulation": "pressure"})
+    options.update({"formulation": formulations[0]})
     distance, info = darsia.wasserstein_distance(
         src_image[dim],
         dst_image[dim],
@@ -190,7 +213,7 @@ def test_adaptive_bregman(a_key, s_key, dim):
     options.update(bregman_adaptive_options)
     options.update(accelerations[a_key])
     options.update(solvers[s_key])
-    options.update({"formulation": "pressure"})
+    options.update({"formulation": formulations[0]})
     distance, info = darsia.wasserstein_distance(
         src_image[dim],
         dst_image[dim],
@@ -199,3 +222,24 @@ def test_adaptive_bregman(a_key, s_key, dim):
     )
     assert np.isclose(distance, true_distance[dim], atol=1e-5)
     assert info["converged"]
+
+@pytest.mark.parametrize("method_key", range(len(sinkhorn_methods)))
+@pytest.mark.parametrize("reg_key", range(len(sinkhorn_regs)))
+@pytest.mark.parametrize("dim", [2, 3])
+def test_sinkhorn(method_key, reg_key, dim):
+    """Test all combinations for Newton."""
+    options.update({"sinkhorn_algorithm": sinkhorn_methods[method_key]})
+    options.update({"sinkhorn_regularization": sinkhorn_regs[reg_key]})
+    options.update({"only_non_zeros": True})
+    options.update({"num_iter": 1000})
+    distance, info = darsia.wasserstein_distance(
+        src_image[dim],
+        dst_image[dim],
+        options=options,
+        method="sinkhorn",
+    )
+    eps = options["sinkhorn_regularization"]
+    relative_err=abs(distance-true_distance[dim])/true_distance[dim]
+    #print(f"{sinkhorn_methods[method_key]} {eps=:.1e} {distance=:.2e} {true_distance[dim]=:.2e} {relative_err=:.1e} {info['niter']=}")
+    assert info["converged"]
+    assert np.isclose(distance, true_distance[dim], atol=sinkhorn_regs[reg_key])
