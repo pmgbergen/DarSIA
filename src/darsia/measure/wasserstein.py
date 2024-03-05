@@ -12,12 +12,15 @@ import pyamg
 import scipy.sparse as sps
 from scipy.stats import hmean
 from petsc4py import PETSc
-
+from ot import dist
+from ot.bregman import sinkhorn2
+from ot.bregman import empirical_sinkhorn2
 import darsia
 
 # General TODO list
 # - improve assembling of operators through partial assembling
 # - allow to reuse setup.
+
 
 
 class VariationalWassersteinDistance(darsia.EMD):
@@ -269,32 +272,6 @@ class VariationalWassersteinDistance(darsia.EMD):
             "pressure",
         ], f"Formulation {self.formulation} not supported."
 
-        # Setup inrastructure for Schur complement reduction
-        #if self.formulation == "flux_reduced":
-        #    self.setup_eliminate_flux()
-
-        #elif self.formulation == "pressure":
-        #    self.setup_eliminate_flux()
-
-    def setup_direct(self) -> None:
-        """Setup the infrastructure for direct solvers."""
-
-        self.solver_options = {}
-        """dict: options for the direct solver"""
-
-    def setup_direct_solver(self, matrix: sps.csc_matrix) -> sps.linalg.splu:
-        """Setup a direct solver for the given matrix.
-
-        Args:
-            matrix (sps.csc_matrix): matrix
-
-        Defines:
-            sps.linalg.splu: direct solver
-            dict: (empty) solver options
-
-        """
-        self.linear_solver = sps.linalg.splu(matrix)
-        self.solver_options = {}
 
     def setup_amg_options(self) -> None:
         """Setup the infrastructure for multilevel solvers.
@@ -357,66 +334,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         }
         """dict: options for the iterative linear solver"""
 
-    def setup_cg_solver(self, matrix: sps.csc_matrix) -> None:
-        """Setup an CG solver with AMG preconditioner for the given matrix.
-
-        Args:
-            matrix (sps.csc_matrix): matrix
-
-        Defines:
-            pyamg.amg_core.solve: AMG solver
-            dict: options for the AMG solver
-
-        """
-        # Define CG solver
-        self.linear_solver = darsia.linalg.CG(matrix)
-
-        # Define AMG preconditioner
-        self.setup_amg_options()
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="Implicit conversion of A to CSR")
-            amg = pyamg.smoothed_aggregation_solver(
-                matrix, **self.amg_options
-            ).aspreconditioner(cycle="V")
-
-        # Define solver options
-        linear_solver_options = self.options.get("linear_solver_options", {})
-        tol = linear_solver_options.get("tol", 1e-6)
-        maxiter = linear_solver_options.get("maxiter", 100)
-        self.solver_options = {
-            "tol": tol,
-            "maxiter": maxiter,
-            "M": amg,
-        }
-        """dict: options for the iterative linear solver"""
-
-    def setup_ksp_solver(self, matrix: sps.csc_matrix) -> None:
-        """Setup an KSP solver from PETSc for the given matrix.
-
-        Args:
-            matrix (sps.csc_matrix): matrix
-
-        Defines:
-            pyamg.amg_core.solve: AMG solver
-            dict: options for the AMG solver
-
-        """
-        # Define CG solver
-        self.linear_solver = darsia.linalg.KSP(matrix, field_ises=self.field_ises)
-
-        # Define solver options
-        linear_solver_options = self.options.get("linear_solver_options", {})
-        tol = linear_solver_options.get("tol", 1e-6)
-        maxiter = linear_solver_options.get("maxiter", 100)
-        self.solver_options = {
-            "ksp_rtol": tol,
-            "ksp_maxit": maxiter,
-            "pc_type": "hypre",
-        }
-        self.linear_solver.setup(self.solver_options)
-        """dict: options for the iterative linear solver"""
-
-
+    
     def _setup_acceleration(self) -> None:
         """Setup of acceleration methods."""
 
@@ -768,71 +686,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         return solution, stats
 
-    def eliminate_flux(self, jacobian: sps.csc_matrix, residual: np.ndarray) -> tuple:
-        """Eliminate the flux block from the jacobian and residual.
-
-        Employ a Schur complement/block Gauss elimination approach.
-
-        Args:
-            jacobian (sps.csc_matrix): jacobian
-            residual (np.ndarray): residual
-
-        Returns:
-            tuple: reduced jacobian, reduced residual, inverse of flux block
-
-        """
-        # Build Schur complement wrt flux-block
-        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
-        schur_complement = self.D.dot(J_inv.dot(self.DT))
-
-        # Gauss eliminiation on matrices
-        reduced_jacobian = self.jacobian_subblock + schur_complement
-
-        # Gauss elimination on vectors
-        reduced_residual = residual[self.reduced_system_slice].copy()
-        reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
-
-        return reduced_jacobian, reduced_residual, J_inv
-
-    def eliminate_lagrange_multiplier(
-        self, reduced_jacobian, reduced_residual
-    ) -> tuple:
-        """Eliminate the lagrange multiplier from the reduced system.
-
-        Employ a Schur complement/block Gauss elimination approach.
-
-        Args:
-            reduced_jacobian (sps.csc_matrix): reduced jacobian
-            reduced_residual (np.ndarray): reduced residual
-
-        Returns:
-            tuple: fully reduced jacobian, fully reduced residual
-
-        """
-        # Make sure the jacobian is a CSC matrix
-        assert isinstance(
-            reduced_jacobian, sps.csc_matrix
-        ), "Jacobian should be a CSC matrix."
-
-        # Effective Gauss-elimination for the particular case of the lagrange multiplier
-        self.fully_reduced_jacobian.data[:] = np.delete(
-            reduced_jacobian.data.copy(), self.rm_indices
-        )
-        # NOTE: The indices have to be restored if the LU factorization is to be used
-        # FIXME omit if not required
-        self.fully_reduced_jacobian.indices = self.fully_reduced_jacobian_indices.copy()
-
-        # Rhs is not affected by Gauss elimination as it is assumed that the residual
-        # is zero in the constrained cell, and the pressure is zero there as well.
-        # If not, we need to do a proper Gauss elimination on the right hand side!
-        if abs(reduced_residual[-1]) > 1e-6:
-            raise NotImplementedError("Implementation requires residual to be zero.")
-        fully_reduced_residual = reduced_residual[
-            self.fully_reduced_system_indices
-        ].copy()
-
-        return self.fully_reduced_jacobian, fully_reduced_residual
-
+    
     def compute_flux_update(self, solution: np.ndarray, rhs: np.ndarray) -> np.ndarray:
         """Compute the flux update from the solution.
 
@@ -1574,6 +1428,258 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         }
 
         return new_distance, solution_i, info
+    
+class SchurComplementPC(object):
+    """
+    This is a test for building my own preconditioner,
+    getting the extra info from the dictionary appctx passed
+    to the linear solver. 
+    We are trying to replate what is done in firedrake.
+    """
+    def setUp(self,pc):
+        # get info from the parent KSP object
+        appctx = pc.getAttr("appctx")
+        flux_norm = appctx["regularized_flat_flux_norm"]
+        div = appctx["div"] # this should be also obtained by the matrix
+        S = div * sps.diags(flux_norm, dtype=float) * div.T
+        
+        self.ksp = darsia.linalg.KSP(S)
+        self.ksp.setup({"ksp_type":"preonly","pc_type":"hypre"})
+
+    def apply(self, pc, x, y):
+        self.ksp.ksp.solve(x,y)
+
+
+class WassersteinDistanceSinkhorn(darsia.EMD):
+    """
+    Class based on the Sinkhorn algorithm to compute the Wasserstein distance
+    """
+    def __init__(self, 
+                grid: darsia.Grid,
+                options: dict = {}):
+        
+        # Cache geometrical infos
+        self.grid = grid
+        """darsia.Grid: grid"""
+
+        self.voxel_size = grid.voxel_size
+        """np.ndarray: voxel size"""
+
+        # Cache solver options
+        self.options = options
+        """dict: options for the solver"""
+
+        self.sinkhorn_regularization = self.options.get("sinkhorn_regularization", 1e-1)
+        """float: regularization parameter"""
+
+        self.sinkhorn_algorithm = options.get("sinkhorn_algorithm", "sinkhorn")
+        """ str: algorithm to use for the Sinkhorn algorithm"""       
+        """ Available algorithms are:
+        sinkhorn,sinkhorn_log, greenkhorn, sinkhorn_stabilized, sinkhorn_epsilon_scaling,
+        """
+
+        self.num_iter = self.options.get("num_iter", 100)
+        """ int: max number of iterations"""
+
+        self.only_non_zeros = options.get("only_non_zeros", True)
+        """ bool: consider only non-zero pixels"""
+        
+        self.verbose = options.get("verbose", True)
+        """ bool: verbosity"""
+
+        self.store_cost_matrix = options.get("store_cost_matrix", False)
+        """ bool: store the cost matrix"""
+        if self.store_cost_matrix:
+            self.M = dist(self.grid.cell_centers, self.grid.cell_centers, metric='euclidean')
+
+        # TODO: rewrite
+        N = self.grid.shape
+        x_i = []
+        for i, N in enumerate(self.grid.shape):
+            x_i.append(np.arange(N)*self.grid.voxel_size[i]+ self.grid.voxel_size[i]/2)
+
+        self.cc_xyz = np.meshgrid(*x_i, indexing="ij")
+        self.cc = np.vstack([c.ravel() for c in self.cc_xyz]).T
+
+
+    def support(self, img: darsia.Image) -> np.ndarray:
+        """
+        Return the indices of the non-zero pixels in the image.
+
+        Args:
+            img (darsia.Image): image
+
+        Returns: 
+            np.ndarray: support
+
+        """
+        # flatten the image
+        img_flat = img.img.ravel()
+
+        # return the indices of the non-zero pixels
+        return np.where(img_flat > 0)
+    
+    def interpolate_kantorovich_potentials(self, 
+                            support_1, img1, pot_1,
+                            support_2, img2, pot_2) -> (np.ndarray, np.ndarray): 
+        """
+        When we work only on the "support" of the images,
+        we need to extend the kantorovich potentials to the whole domain.
+        We can do it using the entropic interpolation 
+        (see Eq 3.7 in https://hal.science/hal-02539799/document).
+        It should given the same result of the Sinkhorn algorithm
+        passing the whole images.
+        """
+
+        coord_support_1 = self.cc[support_1]
+        coord_support_2 = self.cc[support_2]
+
+        pot_1_whole = np.zeros(self.cc.shape[0])
+        for i, coord_center in enumerate(self.cc):
+            M_i = dist(coord_center, coord_support_2, metric='euclidean')
+            pot_1_whole[i] = -self.sinkhorn_regularization * np.log(
+                np.dot(
+                    np.exp(pot_2[i]- M_i )/self.sinkhorn_regularization),
+                    img2)
+            
+        pot_2_whole = np.zeros(self.cc.shape[0])
+        for i, coord_center in enumerate(self.cc):
+            M_i = dist(coord_center, coord_support_1, metric='euclidean')
+            pot_2_whole[i] = -self.sinkhorn_regularization * np.log(
+                np.dot(
+                    np.exp(pot_1 - M_i )/self.sinkhorn_regularization),
+                    img1)
+            
+        return pot_1_whole, pot_2_whole
+
+    def img2pythorch(self, img: darsia.Image) -> torch.Tensor:
+        """
+        Convert a darsia image to a pythorch tensor
+        """
+        dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
+        #img1 = preprocessed_img_1.img.reshape(0,preprocessed_img_1.img.shape) 
+        return torch.from_numpy(img.img).type(dtype).view(1,1,*img.img.shape)
+
+        
+    def __call__(self, img_1: darsia.Image, img_2: darsia.Image) -> float:
+        """
+        Earth mover's distance between images with same total sum.
+
+        Args:
+            img_1 (darsia.Image): image 1
+            img_2 (darsia.Image): image 2
+
+        Returns:
+            float or array: distance between img_1 and img_2.
+
+        """
+        # FIXME investigation required regarding resize preprocessing...
+        # Preprocess images
+        preprocessed_img_1 = img_1
+        preprocessed_img_2 = img_2
+
+        # Compatibilty check
+        self._compatibility_check(preprocessed_img_1, preprocessed_img_2)
+
+        # Only non-zero pixels are considered
+        if self.only_non_zeros:
+            support_1 = np.where(preprocessed_img_1.img.flatten("F")>0)
+            support_2 = np.where(preprocessed_img_2.img.flatten("F")>0)
+
+            non_zero_img1 = preprocessed_img_1.img.flatten("F")[support_1]*np.prod(self.voxel_size)
+            non_zero_img2 = preprocessed_img_2.img.flatten("F")[support_2]*np.prod(self.voxel_size)
+            
+            coord_support_1 = self.cc[support_1]
+            coord_support_2 = self.cc[support_2]
+        else:
+            non_zero_img1 = preprocessed_img_1.img.flatten("F") * np.prod(self.voxel_size)
+            non_zero_img2 = preprocessed_img_2.img.flatten("F") * np.prod(self.voxel_size)
+            coord_support_1 = self.cc
+            coord_support_2 = self.cc
+
+
+        # Compute the distance
+        if "empirical" in self.sinkhorn_algorithm:
+            distance, log = empirical_sinkhorn2(
+                coord_support_1, # coordinate of non-zero pixels in image 1
+                coord_support_2, # coordinate of non-zero pixels in image 2
+                reg=self.sinkhorn_regularization,
+                a=non_zero_img1,
+                b=non_zero_img2, 
+                metric='euclidean', # distance metric 
+                numIterMax=self.num_iter,
+                isLazy=False,  #boolean, 
+                # If True, then only calculate the cost matrix by block and return
+                # the dual potentials only (to save memory). If False, calculate full
+                #cost matrix and return outputs of sinkhorn function.
+                verbose=self.verbose, 
+                log=True, # return ierr and log
+                )
+            self.niter = log['niter']
+            self.kantorovich_potential_source = log['u']
+            self.kantorovich_potential_target = log['v']
+        elif "geomloss_sinkhorn" in self.sinkhorn_algorithm:
+            raise NotImplementedError("geomloss_sinkhorn not implemented")
+            
+            # package to be imported
+            from geomloss.sinkhorn_images import sinkhorn_divergence
+            import torch
+            use_cuda = torch.cuda.is_available()
+            
+            # convert the images to pythorch tensors
+            torch_img1 = self.img2pythorch(preprocessed_img_1)
+            torch_img2 = self.img2pythorch(preprocessed_img_2)
+            
+            distance, log = sinkhorn_divergence(
+                torch_img1,
+                torch_img2,
+                p=1,
+                blur=None,
+                reach=None,
+                axes=self.grid.voxel_size*self.grid.shape,
+                scaling=0.5,
+                cost=None,
+                debias=True,
+                potentials=True,
+                verbose=True,
+                )
+            # sinkhorn and sinkhorn_log work with the potentials    
+            self.niter = log['niter']
+            self.kantorovich_potential_source = log['u']
+            self.kantorovich_potential_target = log['v']
+
+        else:
+            M = dist(coord_support_1, coord_support_2, metric='euclidean')
+            distance, log = sinkhorn2(
+                non_zero_img1, non_zero_img2, M, 
+                self.sinkhorn_regularization,
+                method=self.sinkhorn_algorithm,
+                numItermax=self.options["num_iter"],
+                stopThr=1e-8,#self.options["tol_residual"],
+                verbose=self.verbose,
+                log=True)
+
+            
+            if self.sinkhorn_algorithm == 'sinkhorn_stabilized':
+                self.niter = log['n_iter']
+                self.kantorovich_potential_source = np.exp(log['logu'])
+                self.kantorovich_potential_target = np.exp(log['logv'])
+            else:
+                # sinkhorn and sinkhorn_log work with the potentials    
+                self.niter = log['niter']
+                self.kantorovich_potential_source = log['u']
+                self.kantorovich_potential_target = log['v']
+            
+
+        info = {
+            "converged" : True,
+            "niter": self.niter,
+            "kantorovich_potential_source": self.kantorovich_potential_source,
+            "kantorovich_potential_target": self.kantorovich_potential_target,
+        }
+
+        return distance, info
+
 
 
 # Unified access
@@ -1594,7 +1700,7 @@ def wasserstein_distance(
 
     """
     # Define method for computing 1-Wasserstein distance
-    if method.lower() in ["newton", "bregman"]:
+    if method.lower() in ["newton", "bregman", "sinkhorn"]:
         # Use Finite Volume Iterative Method (Newton or Bregman)
 
         # Extract grid - implicitly assume mass_2 to generate same grid
@@ -1608,6 +1714,8 @@ def wasserstein_distance(
             w1 = WassersteinDistanceNewton(grid, options)
         elif method.lower() == "bregman":
             w1 = WassersteinDistanceBregman(grid, options)
+        elif method.lower() == "sinkhorn":
+            w1 = WassersteinDistanceSinkhorn(grid, options)
 
     elif method.lower() == "cv2.emd":
         # Use Earth Mover's Distance from CV2
@@ -1640,22 +1748,6 @@ def wasserstein_distance_to_vtk(
     ]
     darsia.plotting.to_vtk(path, data)
 
-class SchurComplementPC(object):
-    """
-    This is a test for building my own preconditioner,
-    getting the extra info from a dictorionary passed
-    to the linear solver
-    """
-    def setUp(self,pc):
-        # get info from the parent KSP object
-        appctx = pc.getAttr("appctx")
-        flux_norm = appctx["regularized_flat_flux_norm"]
-        div = appctx["div"]
-        S = div * sps.diags(flux_norm, dtype=float) * div.T
-        
-        self.ksp = darsia.linalg.KSP(S)
-        self.ksp.setup({"ksp_type":"preonly","pc_type":"hypre"})
 
-    def apply(self, pc, x, y):
-        self.ksp.ksp.solve(x,y)
         
+
