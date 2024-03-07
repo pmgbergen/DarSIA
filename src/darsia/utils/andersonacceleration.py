@@ -26,7 +26,7 @@ class AndersonAcceleration:
 
         """
 
-        if isinstance(dimension, np.integer):
+        if isinstance(dimension, int):
             self._dimension: int = dimension
             self._tensor: bool = False
         elif isinstance(dimension, tuple):

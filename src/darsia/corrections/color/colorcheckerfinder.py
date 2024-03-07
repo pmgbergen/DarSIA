@@ -61,7 +61,7 @@ def _reorient_colorchecker(
 
     # Determine the centers of the swatches as median of the indices
     expected_swatches_centers = [
-        np.median(indices, axis=-1).astype(np.int)
+        np.median(indices, axis=-1).astype(int)
         for indices in expected_swatch_indices
     ]
 
