@@ -32,6 +32,7 @@ class Resize:
 
     def __init__(
         self,
+        ref_image: Optional[darsia.Image] = None,
         shape: Optional[tuple[int]] = None,
         fx: Optional[float] = None,
         fy: Optional[float] = None,
@@ -42,6 +43,7 @@ class Resize:
     ) -> None:
         """
         Args:
+            ref_image (Image, optional): image whose shape is desired
             shape (tuple of int, optional): desired shape (in matrix indexing)
             fx (float, optional): resize factor in x-dimension.
             fy (float, optional): resize factor in y-dimension.
@@ -57,6 +59,11 @@ class Resize:
         self.fx = kwargs.get(key + "resize x", general_f) if fx is None else fx
         self.fy = kwargs.get(key + "resize y", general_f) if fy is None else fy
         self.dtype = kwargs.get(key + "resize dtype", None) if dtype is None else dtype
+
+        # Check if reference image is provided
+        if ref_image is not None:
+            assert self.shape is None, "Provide only reference image or shape (not both)."
+            self.shape = ref_image.num_voxels
 
         # Safety checks - double check resize options
         if self.shape is None:
@@ -165,6 +172,7 @@ class Resize:
 
 def resize(
     image: darsia.Image,
+    ref_image: Optional[darsia.Image] = None,
     shape: Optional[tuple[int]] = None,
     fx: Optional[float] = None,
     fy: Optional[float] = None,
@@ -175,6 +183,7 @@ def resize(
 
     Args:
         image (darsia.Image): image to be resized
+        ref_image (Image, optional): reference image whose shape is desired
         shape (tuple of int, optional): desired shape (in matrix indexing)
         fx (float, optional): resize factor in x-dimension.
         fy (float, optional): resize factor in y-dimension.
@@ -185,6 +194,7 @@ def resize(
     """
     # Define Resize object
     resizer = Resize(
+        ref_image = ref_image,
         shape=shape,
         fx=fx,
         fy=fy,
