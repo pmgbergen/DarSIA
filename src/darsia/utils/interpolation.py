@@ -211,6 +211,14 @@ def interpolate_to_image(
     # Initialize image
     interpolated_image = image.copy()
 
+    # Convert data if provided in mesh format
+    if all([len(d.shape) == 2 for d in data]):
+        data = (
+            np.ravel(data[0]),
+            np.ravel(data[1]),
+            np.ravel(data[2]),
+        )
+
     if method.lower() == "rbf":
         # Define array through RBF interpolation
         interpolated_image.img = interpolate_measurements(
