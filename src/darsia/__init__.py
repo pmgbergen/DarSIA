@@ -30,6 +30,7 @@ from darsia.utils.grid import *
 from darsia.utils.fv import *
 from darsia.utils.kernels import *
 from darsia.utils.extractcharacteristicdata import *
+from darsia.utils.masks import *
 from darsia.utils import linalg
 from darsia.utils import quadrature
 from darsia.utils import plotting
