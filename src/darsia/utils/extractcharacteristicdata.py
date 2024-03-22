@@ -44,7 +44,7 @@ def extract_characteristic_data(
     """
     # Define default inputs if not provided
     if samples is None:
-        samples = [(slice(0,None), slice(0, None))]
+        samples = [(slice(0, None), slice(0, None))]
 
     # Init data vector
     data_dim = signal.shape[-1]
@@ -123,7 +123,7 @@ def extract_characteristic_data(
     if show_plot:
 
         if mask is not None:
-            plt.imshow(mask, alpha = 0.2)
+            plt.imshow(mask, alpha=0.2)
 
         if data_dim == 3:
             warn("Assuming data is color data and using RGB as axes.")

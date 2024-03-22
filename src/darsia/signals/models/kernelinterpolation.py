@@ -11,6 +11,7 @@ then used to compute the interpolated image.
 One example use case is the concentration analysis.
 
 """
+
 from typing import Literal, Optional, Union
 from warnings import warn
 
@@ -157,10 +158,8 @@ class KernelInterpolation(darsia.Model):
 
         """
         # NOTE: Shape is not clear at input as it may be used via advenced indexing
-        output = self.interpolation_weights[0] * self.kernel(
-            signal, self.supports[0]
-        )
-        for n in range(1,self.num_supports):
+        output = self.interpolation_weights[0] * self.kernel(signal, self.supports[0])
+        for n in range(1, self.num_supports):
             output += self.interpolation_weights[n] * self.kernel(
                 signal, self.supports[n]
             )
