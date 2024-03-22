@@ -194,7 +194,7 @@ def resize(
     """
     # Define Resize object
     resizer = Resize(
-        ref_image = ref_image,
+        ref_image=ref_image,
         shape=shape,
         fx=fx,
         fy=fy,
