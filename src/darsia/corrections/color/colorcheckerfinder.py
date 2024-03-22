@@ -61,8 +61,7 @@ def _reorient_colorchecker(
 
     # Determine the centers of the swatches as median of the indices
     expected_swatches_centers = [
-        np.median(indices, axis=-1).astype(int)
-        for indices in expected_swatch_indices
+        np.median(indices, axis=-1).astype(int) for indices in expected_swatch_indices
     ]
 
     # Mark corners in anti-clockwise direction starting at the top left corner
