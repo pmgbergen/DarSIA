@@ -55,7 +55,7 @@ def extract_characteristic_data(
     data_clusters = np.zeros((num_samples, data_dim))
 
     # Alphabet useful for labeling in plots
-    letters = list(string.ascii_uppercase) + list(string.ascii_lowercase)
+    # letters = list(string.ascii_uppercase) + list(string.ascii_lowercase)
 
     # Visualise patches
     if show_plot:
