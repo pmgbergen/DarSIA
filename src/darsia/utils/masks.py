@@ -8,11 +8,12 @@ import darsia
 class Masks:
     """Iterable object converting a label imaged to masks."""
 
-    def __init__(self, labels: darsia.Image) -> None:
+    def __init__(self, labels: darsia.Image, return_label: bool = False) -> None:
         """Constructor.
 
         Args:
             labels (Image): labeled image
+            return_label (bool): flag controlling whether iterator also returns labels
 
         """
         self.labels: darsia.Image = labels
@@ -21,6 +22,7 @@ class Masks:
         """Labels."""
         self.num_labels: int = len(self.unique_labels)
         """Number of labels."""
+        self.return_label: bool = return_label
 
     @property
     def size(self) -> int:
@@ -44,8 +46,12 @@ class Masks:
         """
         if self.counter < self.num_labels:
             mask = self[self.counter]
+            label = self.unique_labels[self.counter]
             self.counter += 1
-            return mask
+            if self.return_label:
+                return mask, label
+            else:
+                return mask
         else:
             raise StopIteration
 
