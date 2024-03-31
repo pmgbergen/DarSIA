@@ -1,6 +1,5 @@
 """Module to extract characteristic data from input image for given patches."""
 
-import string
 from typing import Optional
 from warnings import warn
 
