@@ -633,3 +633,8 @@ class LabelsAssistant:
                 verbosity=self.verbosity,
             )
             self.monochromatic_background = monochromatic_assistant()
+            # For internal processes, values are expected to be between -1 and 1
+            if self.monochromatic_background.dtype in [float, np.float32, np.float64]:
+                self.monochromatic_background.img = np.clip(
+                    self.monochromatic_background.img, -1, 1
+                )
