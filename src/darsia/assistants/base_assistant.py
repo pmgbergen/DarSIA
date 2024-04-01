@@ -110,8 +110,8 @@ class BaseAssistant(ABC):
         elif self.img is None and self.background is not None:
             self._setup_plot_2d(self.background)
         elif self.img is not None and self.background is not None:
-            self._setup_plot_2d(self.background, alpha=0.7)
-            self._setup_plot_2d(self.img, alpha=0.3)
+            self._setup_plot_2d(self.background, alpha=0.6)
+            self._setup_plot_2d(self.img, alpha=0.4)
         else:
             raise ValueError("Either img or background must be provided.")
         plt.show(block=self.block)
