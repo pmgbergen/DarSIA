@@ -9,7 +9,7 @@ import darsia
 
 class BoxSelectionAssistant(darsia.PointSelectionAssistant):
     def __init__(self, img: darsia.Image, **kwargs) -> None:
-        super().__init__(img)
+        super().__init__(img, **kwargs)
 
         self.name = "Box selection assistant"
         """Name of assistant."""
