@@ -120,7 +120,9 @@ def _reorient_colorchecker(
 
 
 def find_colorchecker(
-    img: darsia.Image, strategy: Literal["upper_right", "upper_left"]
+    img: darsia.Image,
+    strategy: Literal["upper_right", "upper_left"],
+    update: float = 0.8,
 ):
     """Detect colorchecker in corner.
 
@@ -128,7 +130,8 @@ def find_colorchecker(
 
     Args:
         img (darsia.Image): Image to search in.
-        strategy (str, optional): Strategy to use. Defaults to "upper_right".
+        strategy (str, optional): Strategy to target corner. Defaults to "upper_right".
+        update (float, optional): Update factor for the search window. Defaults to 0.8.
 
     Returns:
         colorchecker (darsia.CustomColorChecker): Colorchecker.
@@ -184,11 +187,15 @@ def find_colorchecker(
     if strategy == "upper_right":
         target_corner = np.array([0, shape[1]])
         start_corner = np.array([shape[0], 0])
-        update = 0.8
     elif strategy == "upper_left":
         target_corner = np.array([0, 0])
         start_corner = np.array([shape[0], shape[1]])
-        update = 0.8
+    elif strategy == "lower_right":
+        target_corner = np.array([shape[0], shape[1]])
+        start_corner = np.array([0, 0])
+    elif strategy == "lower_left":
+        target_corner = np.array([shape[0], 0])
+        start_corner = np.array([0, shape[1]])
     else:
         raise NotImplementedError(f"Strategy {strategy} not implemented.")
 
