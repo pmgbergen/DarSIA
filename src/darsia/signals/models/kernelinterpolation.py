@@ -114,7 +114,9 @@ class KernelInterpolation(darsia.Model):
         )
         # Warn the user that some supports were removed
         if not np.allclose(counts, 1):
-            warn(f"Supports are not unique. {np.sum(counts-1)} supports were removed.")
+            warn(
+                f"Supports are not unique. {np.sum(counts - 1)} supports were removed."
+            )
         # Adapt the remaining values
         self.num_supports = self.supports.shape[0]
         self.values = self.values[indices]
