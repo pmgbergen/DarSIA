@@ -3,6 +3,7 @@
 This includes measuring lengths of contours, weighted sums (generalized mass analysis).
 
 """
+
 from __future__ import annotations
 
 from collections import namedtuple
@@ -647,7 +648,7 @@ class ContourEvolutionAnalysis:
 
             if self.verbosity:
                 print(
-                    f"""final: {time_index} vs. {time_index+1}. Found
+                    f"""final: {time_index} vs. {time_index + 1}. Found
                     {len(prev_next_pairs)} many pairs among {len(peaks_prev)}
                     and {len(peaks_next)} fingers, respectively."""
                 )
