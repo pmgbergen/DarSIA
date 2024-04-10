@@ -7,6 +7,7 @@ CO2 experiments in water, strongly motivated by the International FluidFlower Be
 study.
 
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

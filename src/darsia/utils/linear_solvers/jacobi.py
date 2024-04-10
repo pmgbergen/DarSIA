@@ -1,6 +1,7 @@
 """Jacobi solver for linear systems. To be used either as a solver or as a smoother.
 
 """
+
 from __future__ import annotations
 
 from typing import Union

@@ -3,6 +3,7 @@ Function for efficient array slice along axis.
 Sugestion found in the thread:
         https://stackoverflow.com/questions/24398708/slicing-a-numpy-array-along-a-dynamically-specified-axis
 """
+
 from __future__ import annotations
 
 from typing import Optional

@@ -1,6 +1,7 @@
 """Module containing utils for segmentation of layered media.
 
 """
+
 from __future__ import annotations
 
 from typing import Optional, Union

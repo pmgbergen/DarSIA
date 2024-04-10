@@ -3,7 +3,6 @@ Multigrid solver for linear systems arising from discretizations of the
 minimization problem. Could be used as a preconditioner or a solver in itself.
 """
 
-
 from typing import Optional, Union
 
 import numpy as np

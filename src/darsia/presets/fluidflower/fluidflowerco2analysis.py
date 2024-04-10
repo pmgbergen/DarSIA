@@ -4,6 +4,7 @@ It will require further information for specific rigs to be obtained through mul
 inheritance.
 
 """
+
 from __future__ import annotations
 
 from pathlib import Path

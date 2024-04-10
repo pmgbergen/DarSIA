@@ -4,6 +4,7 @@ NOTE: Combining models is experimental and the responsibility
 lies with the user.
 
 """
+
 from __future__ import annotations
 
 from typing import Literal, Optional, Union

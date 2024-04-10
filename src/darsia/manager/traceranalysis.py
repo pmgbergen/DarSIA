@@ -3,6 +3,7 @@
 The resulting class is abstract and needs to be tailored to the specific situation by
 inheritance.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

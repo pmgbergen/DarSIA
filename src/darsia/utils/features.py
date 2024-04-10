@@ -1,6 +1,7 @@
 """
 Class for feature detection.
 """
+
 from typing import Optional
 
 import cv2

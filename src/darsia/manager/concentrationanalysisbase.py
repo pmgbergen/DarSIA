@@ -4,6 +4,7 @@ This include tracer, co2, multicomponent, etc. analyses. The resulting class is 
 and needs to be tailored to the specific situation by inheritance.
 
 """
+
 from __future__ import annotations
 
 from pathlib import Path

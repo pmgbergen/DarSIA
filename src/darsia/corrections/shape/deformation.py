@@ -4,6 +4,7 @@ is essentially a correction object through wrappping
 darsia.DiffeomorphicImageRegistration.
 
 """
+
 from typing import Optional
 
 import numpy as np

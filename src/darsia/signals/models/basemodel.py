@@ -3,6 +3,7 @@ Module containing abstract Model.
 Models convert signals to data.
 
 """
+
 import abc
 import copy
 from typing import Literal, Optional, Union

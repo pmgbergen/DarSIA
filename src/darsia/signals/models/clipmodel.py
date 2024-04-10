@@ -2,6 +2,7 @@
 Module containing clipping operations.
 
 """
+
 from typing import Literal, Optional, Union
 
 import numpy as np

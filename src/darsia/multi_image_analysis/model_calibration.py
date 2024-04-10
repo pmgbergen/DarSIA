@@ -4,6 +4,7 @@ In particular objective functions for calibration in
 ConcentrationAnalysis.calibrate_model()
 
 """
+
 from __future__ import annotations
 
 import abc

@@ -1,6 +1,7 @@
 """Module containing a diffeomorphic image registration tool.
 
 """
+
 from __future__ import annotations
 
 import time

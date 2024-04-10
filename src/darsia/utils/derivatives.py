@@ -3,6 +3,7 @@
 All functions are based on numpy.diff().
 
 """
+
 from __future__ import annotations
 
 from typing import Optional, Union
