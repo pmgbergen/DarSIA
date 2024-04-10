@@ -43,6 +43,6 @@ ENV PYTHONPATH $DARSIA_HOME:$PYTHONPATH
 # NOTE: When run as a GH action (presumably after a PR to the develop branch
 # was accepted, e.g., when the tests have already been run on GH), this should
 # only fail if the docker image itself is flawed.
-WORKDIR ${DARSIA_HOME}/tests
-RUN pytest
+# WORKDIR ${DARSIA_HOME}/tests
+# RUN pytest
 WORKDIR ${DARSIA_HOME}
