@@ -1,6 +1,7 @@
 """Module containing the general setup for a fluidflower rig with segmented geometry.
 
 """
+
 from __future__ import annotations
 
 from pathlib import Path

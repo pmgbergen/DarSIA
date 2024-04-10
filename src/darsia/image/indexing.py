@@ -19,6 +19,7 @@ to the y-axis, and the third component corresponds to
 the x-axis.
 
 """
+
 from __future__ import annotations
 
 from typing import Union

@@ -1,6 +1,7 @@
 """Module containing a linear (affine) conversion from signals to data.
 
 """
+
 from __future__ import annotations
 
 from typing import Literal, Optional, Union

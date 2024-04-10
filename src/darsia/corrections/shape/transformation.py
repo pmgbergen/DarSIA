@@ -254,10 +254,13 @@ class TransformationCorrection(darsia.BaseCorrection):
             self.cache = Cache(voxels_src=voxels_src, valid_voxels=valid_voxels)
 
         # Warp. Assign voxel values (no interpolation)
-        array_dst[
-            tuple(voxels_dst[self.cache.valid_voxels, j] for j in range(dim))
-        ] = array_src[
-            tuple(self.cache.voxels_src[self.cache.valid_voxels, j] for j in range(dim))
-        ]
+        array_dst[tuple(voxels_dst[self.cache.valid_voxels, j] for j in range(dim))] = (
+            array_src[
+                tuple(
+                    self.cache.voxels_src[self.cache.valid_voxels, j]
+                    for j in range(dim)
+                )
+            ]
+        )
 
         return array_dst

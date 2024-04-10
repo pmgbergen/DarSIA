@@ -3,6 +3,7 @@
 Implemented are Cartesian coordinates and voxel coordinates allowing for different indexing.
 
 """
+
 from __future__ import annotations
 
 from typing import Any, Optional, Union, overload

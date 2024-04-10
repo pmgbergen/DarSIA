@@ -4,6 +4,7 @@ Various versions of the general algorithm are provided, taking into account widt
 height and depth of pixels.
 
 """
+
 from __future__ import annotations
 
 from typing import Optional, Union

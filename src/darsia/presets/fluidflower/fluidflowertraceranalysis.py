@@ -4,6 +4,7 @@ Applicable for the tracer experiments in the FluidFlower (and other similar asse
 allowing for heterogeneous media.
 
 """
+
 from __future__ import annotations
 
 from pathlib import Path

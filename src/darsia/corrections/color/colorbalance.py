@@ -11,8 +11,7 @@ class BaseBalance(ABC):
     """Base class for finding and applying a color/white balance."""
 
     @abstractmethod
-    def __init__(self) -> None:
-        ...
+    def __init__(self) -> None: ...
 
     @abstractmethod
     def find_balance(self, swatches_src: np.ndarray, swatches_dst) -> None:

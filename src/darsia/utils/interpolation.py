@@ -235,11 +235,11 @@ def interpolate_to_image(
         degree = (
             1
             if method.lower() == "linear"
-            else 2
-            if method.lower() == "quadratic"
-            else 3
-            if method.lower() == "cubic"
-            else 4
+            else (
+                2
+                if method.lower() == "quadratic"
+                else 3 if method.lower() == "cubic" else 4
+            )
         )
         interpolated_image.img = polynomial_interpolation(
             data,

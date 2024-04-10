@@ -5,6 +5,7 @@ including automatic determining. In addition, the actual correction object is
 contained.
 
 """
+
 from __future__ import annotations
 
 from typing import Optional, Union

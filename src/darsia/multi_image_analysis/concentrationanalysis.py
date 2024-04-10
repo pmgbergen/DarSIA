@@ -1,6 +1,7 @@
 """Capabilities to analyze concentrations/saturation profiles based on image comparison.
 
 """
+
 from __future__ import annotations
 
 import copy

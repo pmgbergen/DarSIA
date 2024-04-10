@@ -1,4 +1,5 @@
 """Wasserstein distance computed using variational methods."""
+
 from __future__ import annotations
 
 import time

@@ -195,9 +195,9 @@ class Grid:
         # cell.
 
         if self.dim >= 1:
-            self.reverse_connectivity[
-                0, np.ravel(self.cell_index[1:, ...], "F"), 0
-            ] = self.faces[0]
+            self.reverse_connectivity[0, np.ravel(self.cell_index[1:, ...], "F"), 0] = (
+                self.faces[0]
+            )
             self.reverse_connectivity[
                 0, np.ravel(self.cell_index[:-1, ...], "F"), 1
             ] = self.faces[0]
@@ -223,11 +223,15 @@ class Grid:
         self.inner_cells_with_inner_faces = (
             [] + [np.ravel(self.cell_index[1:-1, ...], "F")]
             if self.dim >= 1
-            else [] + [np.ravel(self.cell_index[:, 1:-1, ...], "F")]
-            if self.dim >= 2
-            else [] + [np.ravel(self.cell_index[:, :, 1:-1, ...], "F")]
-            if self.dim >= 3
-            else []
+            else (
+                [] + [np.ravel(self.cell_index[:, 1:-1, ...], "F")]
+                if self.dim >= 2
+                else (
+                    [] + [np.ravel(self.cell_index[:, :, 1:-1, ...], "F")]
+                    if self.dim >= 3
+                    else []
+                )
+            )
         )
         """list: Indices of inner cells with inner faces."""
 

@@ -1,4 +1,5 @@
 """Conversion utilities for data types."""
+
 from warnings import warn
 
 import numpy as np

@@ -1,6 +1,7 @@
 """Utils for non-standard arithmetics of images, as weighted superposition.
 
 """
+
 from __future__ import annotations
 
 from typing import Union
