@@ -31,5 +31,5 @@ jobs:
           file: ./dockerfiles/Dockerfile
           builder: ${{ steps.buildx.outputs.name }}
           push: true
-          tags: darsia/main:latest
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/darsia/main:latest
 
