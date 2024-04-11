@@ -101,11 +101,7 @@ class CurvatureCorrection(darsia.BaseCorrection):
             self.height = kwargs.get("height", 1.0)
 
         else:
-            if config is None:
-                raise Exception(
-                    "Please provide either an image as 'image' \
-                        or a config file as 'config'."
-                )
+            warn("No image provided. Please provide an image or a config file.")
 
         # The internally stored config file is tailored to when resize_factor is equal to 1.
         # For other values, it has to be adapted.
@@ -151,6 +147,40 @@ class CurvatureCorrection(darsia.BaseCorrection):
         """
         with open(str(path), "r") as openfile:
             self.config = json.load(openfile)
+
+    def save(self, path: Path) -> None:
+        """Save the curvature correction to a file.
+
+        Arguments:
+            path (Path): path to the file
+
+        """
+        # Make sure the parent directory exists
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Store color space and local scaling images as npz files
+        np.savez(
+            path,
+            config=self.config,
+        )
+        print(f"Curvature correction saved to {path}.")
+
+    def load(self, path: Path) -> None:
+        """Load the curvature correction from a file.
+
+        Arguments:
+            path (Path): path to the file
+
+        """
+        # Make sure the file exists
+        if not path.is_file():
+            raise FileNotFoundError(f"File {path} not found.")
+
+        # Load color space and local scaling images from npz file
+        data = np.load(path, allow_pickle=True)
+        if "config" not in data:
+            raise ValueError("Invalid file format.")
+        self.config = data["config"].item()
 
     def return_image(self) -> darsia.Image:
         """
