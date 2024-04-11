@@ -5,9 +5,10 @@ Main prupose of the assistant is to produce input arguments for the
 
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 import darsia
+import numpy as np
 
 
 class CropAssistant(darsia.PointSelectionAssistant):
@@ -44,6 +45,8 @@ class CropAssistant(darsia.PointSelectionAssistant):
     def _reset(self) -> None:
         """Reset list of points."""
         super()._reset()
+
+    # ! ---- Interactive mode ---- ! #
 
     def __call__(self) -> dict:
         """Run the assistant.
@@ -88,3 +91,66 @@ class CropAssistant(darsia.PointSelectionAssistant):
     def _print_info(self) -> None:
         """Print out information about the assistant."""
         print(self._define_config())
+
+    # ! ---- Automatic mode ---- ! #
+
+    def from_image(
+        self, color: Union[list[float], np.ndarray], width: float, height: float
+    ) -> dict:
+        """Run the assistant in automatic mode.
+
+        Detect marks and define a box based on them.
+
+        Args:
+            color (Union[list[float], np.ndarray]): color of the marks
+            width (float): width of the box
+            height (float): height of the box
+
+        Returns:
+            dict: configuration for the 'crop' option of CurvatureCorrection
+
+        """
+        if not isinstance(color, np.ndarray):
+            color = np.array(color)
+        color = color.astype(float)
+
+        # Find marks in the image
+        self.pts = self._find_marks(color)
+
+        # Define width and height of the box
+        self.width = width
+        self.height = height
+
+        # Define a dictionary for input of the 'crop' option of CurvatureCorrection
+        config = self._define_config()
+
+        return config
+
+    def _find_marks(self, color: Union[list[float], np.ndarray]) -> darsia.VoxelArray:
+        """Find marks in the image.
+
+        Args:
+            color (Union[list[float], np.ndarray]): color of the marks
+
+        Returns:
+            darsia.VoxelArray: selected corners to define box after cropping (voxels in matrix indexing)
+
+        """
+        # Find all pixels with the specified color
+        marked_voxels = darsia.detect_color(self.img, color, tolerance=5e-2)
+
+        # Find the four corners of the box being the four pixels with smallest
+        # distance to the image corners
+        top_left = darsia.detect_closest_point(marked_voxels, darsia.Voxel([0, 0]))
+        top_right = darsia.detect_closest_point(
+            marked_voxels, darsia.Voxel([0, self.img.shape[1]])
+        )
+        bottom_left = darsia.detect_closest_point(
+            marked_voxels, darsia.Voxel([self.img.shape[0], 0])
+        )
+        bottom_right = darsia.detect_closest_point(
+            marked_voxels, darsia.Voxel([self.img.shape[0], self.img.shape[1]])
+        )
+
+        voxels = darsia.VoxelArray([top_left, bottom_left, bottom_right, top_right])
+        return voxels
