@@ -17,7 +17,7 @@ class DriftCorrection(darsia.BaseCorrection):
 
     def __init__(
         self,
-        base: Union[np.ndarray, darsia.Image],
+        base: Optional[Union[np.ndarray, darsia.Image]],
         config: Optional[dict] = None,
     ) -> None:
         """
@@ -37,6 +37,10 @@ class DriftCorrection(darsia.BaseCorrection):
                     applied or not, default is True.
 
         """
+        # Read baseline from config if not provided
+        if base is None:
+            base = config.get("base")
+            assert base is not None, "Baseline image not provided."
 
         # Read baseline image
         if isinstance(base, darsia.Image):
@@ -55,27 +59,42 @@ class DriftCorrection(darsia.BaseCorrection):
         # Establish config
         if config is None:
             config = {}
+        self._init_from_config(config)
+
+        self.translation_estimator = darsia.TranslationEstimator()
+        """Detection of effective translation based on feature detection."""
+
+    def _init_from_config(self, config: dict) -> None:
 
         self.active = config.get("active", True)
         """Flag controlling whether correction is active."""
 
-        relative_padding: float = config.get("padding", 0.0)
+        self.relative_padding: float = config.get("padding", 0.0)
         """Allow for extra padding around the provided roi (relative sense)."""
 
-        roi: Optional[Union[list, np.ndarray]] = config.get("roi")
+        roi: Optional[Union[list, np.ndarray, tuple[slice]]] = config.get("roi")
         self.roi: Optional[tuple[slice, ...]] = (
             None
             if roi is None
-            else darsia.bounding_box(
-                np.array(roi),
-                padding=round(relative_padding * np.min(self.base.shape[:2])),
-                max_size=self.base.shape[:2],
+            else (
+                roi
+                if isinstance(roi, tuple)
+                else darsia.bounding_box(
+                    np.array(roi),
+                    padding=round(self.relative_padding * np.min(self.base.shape[:2])),
+                    max_size=self.base.shape[:2],
+                )
             )
         )
         """ROI for feature detection."""
 
-        self.translation_estimator = darsia.TranslationEstimator()
-        """Detection of effective translation based on feature detection."""
+    def return_config(self) -> dict:
+        """Return config file for the drift correction."""
+        return {
+            "active": self.active,
+            "padding": self.relative_padding,
+            "roi": self.roi,
+        }
 
     # ! ---- Main correction routines
 
@@ -102,3 +121,14 @@ class DriftCorrection(darsia.BaseCorrection):
             )
         else:
             return img
+
+    # ! ---- I/O ---- ! #
+    def load(self, path) -> None:
+        """Load the drift correction from a file."""
+        config = np.load(path, allow_pickle=True)["config"].item()
+        self._init_from_config(config)
+
+    def save(self, path) -> None:
+        """Save the drift correction to a file."""
+        np.savez(path, config=self.return_config())
+        print(f"Drift correction saved to {path}.")

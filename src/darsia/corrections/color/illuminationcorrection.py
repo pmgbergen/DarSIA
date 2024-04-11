@@ -1,6 +1,7 @@
 """Module containing illumination correction functionality."""
 
 from typing import Literal, Union
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +15,7 @@ import darsia
 class IlluminationCorrection(darsia.BaseCorrection):
     """Class for illumination correction."""
 
-    def __init__(
+    def setup(
         self,
         base: Union[darsia.Image, list[darsia.Image]],
         samples: list[tuple[slice, ...]],
@@ -226,3 +227,41 @@ class IlluminationCorrection(darsia.BaseCorrection):
                     self.local_scaling[i if self.colorspace == "rgb" else 0].img,
                 )
         return img_wb
+
+    def save(self, path: Path) -> None:
+        """Save the illumination correction to a file.
+
+        Args:
+            path (Path): path to the file
+
+        """
+        # Make sure the parent directory exists
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Store color space and local scaling images as npz files
+        np.savez(
+            path,
+            config={
+                "colorspace": self.colorspace,
+                "local_scaling": self.local_scaling,
+            },
+        )
+        print(f"Illumination correction saved to {path}.")
+
+    def load(self, path: Path) -> None:
+        """Load the illumination correction from a file.
+
+        Args:
+            path (Path): path to the file
+
+        """
+        # Make sure the file exists
+        if not path.is_file():
+            raise FileNotFoundError(f"File {path} not found.")
+
+        # Load color space and local scaling images from npz file
+        data = np.load(path, allow_pickle=True)["config"].item()
+        if "colorspace" not in data or "local_scaling" not in data:
+            raise ValueError("Invalid file format.")
+        self.colorspace = data["colorspace"]
+        self.local_scaling = data["local_scaling"]
