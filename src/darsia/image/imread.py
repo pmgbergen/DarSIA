@@ -56,6 +56,12 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
             tmp_path = tmp_path + list(p.glob("*"))
         path = sorted(tmp_path)
 
+    # Check if files exist
+    if isinstance(path, list):
+        assert all([p.exists() for p in path]), "Not all files exist."
+    else:
+        assert path.exists(), f"File {path} does not exist."
+
     # Determine file type of images
     suffix = kwargs.get("suffix", None)
 
@@ -165,7 +171,7 @@ def imread_from_optical(
             time=time,
             transformations=transformations,
             **kwargs,
-        )
+        ).img_as(float)
 
         return image
 
@@ -190,7 +196,7 @@ def imread_from_optical(
             time=time,
             transformations=transformations,
             **kwargs,
-        )
+        ).img_as(float)
         return image
 
     else:
