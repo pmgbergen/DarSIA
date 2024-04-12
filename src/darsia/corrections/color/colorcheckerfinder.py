@@ -9,6 +9,8 @@ import skimage
 
 import darsia
 
+ColorCheckerPosition = Literal["upper_right", "upper_left", "lower_right", "lower_left"]
+
 
 def _reorient_colorchecker(
     img: np.ndarray,
@@ -121,7 +123,7 @@ def _reorient_colorchecker(
 
 def find_colorchecker(
     img: darsia.Image,
-    strategy: Literal["upper_right", "upper_left"],
+    strategy: ColorCheckerPosition,
     update: float = 0.8,
 ):
     """Detect colorchecker in corner.
