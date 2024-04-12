@@ -7,8 +7,9 @@ Main prupose of the assistant is to produce input arguments for the
 
 from typing import Optional, Union
 
-import darsia
 import numpy as np
+
+import darsia
 
 
 class CropAssistant(darsia.PointSelectionAssistant):

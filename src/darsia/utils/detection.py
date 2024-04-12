@@ -1,11 +1,11 @@
 """Module containing utilities for value, color, points detection."""
 
+from typing import Union, overload
+
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 import darsia
-
-from typing import Union, overload
-from scipy.spatial.transform import Rotation
 
 
 def detect_value(
