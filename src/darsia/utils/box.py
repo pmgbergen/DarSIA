@@ -91,3 +91,54 @@ def perimeter(box: Union[tuple, np.ndarray]) -> Union[int, float]:
     perimeter = 2 * (max_x - min_x) + 2 * (max_y - min_y)
 
     return perimeter
+
+
+def random_patches(
+    mask: np.ndarray, width: int, num_patches: int
+) -> list[tuple[slice]]:
+    """Utility to extract random patches from a mask.
+
+    Args:
+        mask (np.ndarray): binary mask to extract patches from.
+        width (int): width of the patches.
+        num_patches (int): number of patches to extract.
+
+    Returns:
+        list of tuples: patches as slices.
+
+    NOTE: The function utilizes randomness. For reproducibility, the seed is fixed.
+
+    """
+    # Fix seed for reproducibility
+    np.random.seed(42)
+
+    # Determine indices of mask
+    larger_mask = np.zeros((mask.shape[0] + width, mask.shape[1] + width), dtype=bool)
+    larger_mask[: mask.shape[0], : mask.shape[1]] = mask
+
+    # Determine indices of mask
+    indices = np.nonzero(mask)
+    moved_indices = tuple([indices[i] + width for i in range(len(indices))])
+    test_moved_indices = larger_mask[moved_indices]
+    restricted_indices = tuple(
+        [indices[i][test_moved_indices] for i in range(len(indices))]
+    )
+
+    # Randomly select patches
+    num_eligible_points = len(restricted_indices[0])
+    random_ids = np.unique(
+        (np.random.rand(num_patches) * num_eligible_points).astype(int)
+    )
+    patch_indices = np.transpose(
+        tuple([restricted_indices[i][random_ids] for i in range(len(indices))])
+    )
+
+    # Create patches
+    patches = [
+        (
+            slice(patch[0], patch[0] + width, None),
+            slice(patch[1], patch[1] + width, None),
+        )
+        for patch in patch_indices
+    ]
+    return patches
