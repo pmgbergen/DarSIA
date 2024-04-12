@@ -48,7 +48,7 @@ class PointSelectionAssistant(darsia.BaseAssistant):
         plt.close(self.fig)
 
         # Convert to right format.
-        voxels = np.array(self.pts)
+        voxels = darsia.VoxelArray(self.pts)
         if self.return_coordinates:
             return self.img.coordinatesystem.coordinate(voxels)
         else:
@@ -60,7 +60,7 @@ class PointSelectionAssistant(darsia.BaseAssistant):
         # Print the determined points to screen so one can hardcode the definition of
         # the subregion if required.
         print("The selected points in matrix indexing format:")
-        print(np.array(self.pts).astype(int).tolist())
+        print(darsia.VoxelArray(self.pts).tolist())
 
     def _reset(self) -> None:
         """Reset list of points."""
@@ -157,6 +157,7 @@ class PointSelectionAssistant(darsia.BaseAssistant):
         """Finalize selection."""
 
         self.finalized = True
+        self.pts = darsia.make_voxel(self.pts)
 
         # Next round - needed to close the figure
         self.__call__()
