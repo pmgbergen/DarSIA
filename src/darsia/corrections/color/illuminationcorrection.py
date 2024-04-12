@@ -1,7 +1,7 @@
 """Module containing illumination correction functionality."""
 
-from typing import Literal, Union
 from pathlib import Path
+from typing import Literal, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
