@@ -468,7 +468,7 @@ class LabelsAssistant:
         self.first_call = True
         """Flag indicating whether the assistant is called for the first time."""
 
-    def __call__(self):
+    def __call__(self) -> darsia.Image:
         """Call assistant.
 
         Always call the menu first. Then call the next module. Repeat until the
