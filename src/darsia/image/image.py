@@ -1797,6 +1797,9 @@ class OpticalImage(Image):
         if color_space.upper() == self.color_space:
             img: np.ndarray = self.img.copy()
         else:
+            # Ensure cv2 compatible format
+            if self.img.dtype == np.float64:
+                self = self.astype(np.float32)
             option = eval("cv2.COLOR_" + self.color_space + "2" + color_space.upper())
             if self.series:
                 slices = []
@@ -1832,15 +1835,19 @@ class OpticalImage(Image):
 
         # Adapt data array
         if key == "gray":
+            # Ensure the image is in cv2 compatible format
+            if self.img.dtype == np.float64:
+                image = image.astype(np.float32)
+
             option = eval("cv2.COLOR_" + self.color_space + "2GRAY")
             if self.series:
                 slices = []
                 for time_index in range(self.time_num):
-                    slices.append(cv2.cvtColor(self.img[..., time_index, :], option))
+                    slices.append(cv2.cvtColor(image.img[..., time_index, :], option))
                 img = np.stack(slices, axis=self.space_dim)
 
             else:
-                img = cv2.cvtColor(self.img, option)
+                img = cv2.cvtColor(image.img, option)
 
         elif key in ["red", "green", "blue"]:
             image.to_trichromatic("rgb")
