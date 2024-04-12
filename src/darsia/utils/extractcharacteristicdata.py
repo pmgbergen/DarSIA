@@ -1,6 +1,6 @@
 """Module to extract characteristic data from input image for given patches."""
 
-from typing import Optional
+from typing import Literal, Optional
 from warnings import warn
 
 import cv2
@@ -18,8 +18,9 @@ def extract_characteristic_data(
     num_attempts: int = 100,
     num_iterations: int = 200,
     eps: float = 1e-1,
+    mode: Literal["most_common", "least_common", "all"] = "most_common",
     show_plot: bool = False,
-) -> np.ndarray:
+) -> np.ndarray | tuple[np.ndarray]:
     """Assistant to extract representative colors from input image for given patches.
 
     Args:
@@ -38,7 +39,9 @@ def extract_characteristic_data(
         show_plot (boolean): flag controlling whether plots are displayed.
 
     Returns:
-        np.ndarray: characteristic colors for chosen samples.
+        np.ndarray: characteristic colors for chosen samples, if mode is "most_common" or
+            "least_common".
+        Tuple[np.ndarray]: labels and palettes for chosen samples, if mode is "all".
 
     """
     # Define default inputs if not provided
@@ -52,6 +55,8 @@ def extract_characteristic_data(
         warn("Implicitly assume that the data is scalar.")
     num_samples = len(samples)  # number of patches
     data_clusters = np.zeros((num_samples, data_dim))
+    labels_collection = []
+    palette_collection = []
 
     # Alphabet useful for labeling in plots
     # letters = list(string.ascii_uppercase) + list(string.ascii_lowercase)
@@ -94,8 +99,18 @@ def extract_characteristic_data(
         _, labels, palette = cv2.kmeans(
             pixels, num_clusters, None, criteria, num_attempts, flags
         )
+        # Store results
         _, counts = np.unique(labels, return_counts=True)
-        data_clusters[i] = palette[np.argmax(counts)]
+        if mode == "most_common":
+            data_clusters[i] = palette[np.argmax(counts)]
+        elif mode == "least_common":
+            data_clusters[i] = palette[np.argmin(counts)]
+        elif mode == "all":
+            data_clusters[i] = None
+            labels_collection.append(labels)
+            palette_collection.append(palette)
+        else:
+            raise ValueError(f"Unknown mode {mode}.")
 
         # Visualise patches on image
         if show_plot:
@@ -104,19 +119,10 @@ def extract_characteristic_data(
                     (p[1].start, p[0].start),
                     p[1].stop - p[1].start,
                     p[0].stop - p[0].start,
-                    # linewidth=1,
-                    # edgecolor="w",
                     linewidth=2,
                     edgecolor=[1, 100.0 / 255.0, 160.0 / 255.0],
                     facecolor="none",
                 )
-                # ax.text(
-                #    int(p[1].start + 0.05 * (p[1].stop - p[1].start)),
-                #    int(p[0].start + 0.95 * (p[0].stop - p[0].start)),
-                #    letters[i],
-                #    fontsize=12,
-                #    color="white",
-                # )
                 ax.add_patch(rect)
 
     if show_plot:
@@ -132,15 +138,12 @@ def extract_characteristic_data(
             ax.set_xlabel("R")
             ax.set_ylabel("G")
             ax.set_zlabel("B")
-            # ax.set_xlim(0.57, 0.88)
-            # ax.set_ylim(0.42, 0.78)
-            # ax.set_zlim(0.17, 0.53)
             ax.scatter(
                 data_clusters[:, 0], data_clusters[:, 1], data_clusters[:, 2], c=c
             )
-            #            for i, c in enumerate(data_clusters):
-            #                ax.text(c[0], c[1], c[2], letters[i])
-            # plt.savefig("rgb_cube.png", dpi=800, transparent=True)
         plt.show()
 
-    return data_clusters
+    if mode == "all":
+        return labels_collection, palette_collection
+    else:
+        return data_clusters
