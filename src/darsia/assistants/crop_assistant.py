@@ -134,7 +134,8 @@ class CropAssistant(darsia.PointSelectionAssistant):
             color (Union[list[float], np.ndarray]): color of the marks
 
         Returns:
-            darsia.VoxelArray: selected corners to define box after cropping (voxels in matrix indexing)
+            darsia.VoxelArray: selected corners to define box after cropping (voxels in matrix
+                indexing)
 
         """
         # Find all pixels with the specified color
