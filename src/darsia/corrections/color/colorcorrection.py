@@ -234,10 +234,23 @@ class ColorCorrection(darsia.BaseCorrection):
         """
 
         # Define config
-        assert config is not None, "provide config at least with 'roi' key"
-        self.config: dict = copy.deepcopy(config)
-        """Config dictionary for initialization of color correction."""
+        if config is not None:
+            self.config: dict = copy.deepcopy(config)
+            """Config dictionary for initialization of color correction."""
+            self._init_from_config(base)
+        else:
+            self.config = {}
 
+    def _init_from_config(
+        self, base: Optional[Union[darsia.Image, ColorChecker]]
+    ) -> None:
+        """Auxiliary function for initialization from config.
+
+        Args:
+            base (Image or ColorChecker, optional): reference defining a color checker; if
+                None provided, use CustomColorChecker.
+
+        """
         self.active: bool = self.config.get("active", True)
         """Flag controlling whether correction is active"""
 
@@ -265,6 +278,8 @@ class ColorCorrection(darsia.BaseCorrection):
         """Flag controlling whether values outside the feasible range [0., 1.] are clipped"""
 
         # Construct color checker
+        if base is None:
+            base = self.config.get("colorchecker", None)
         self._setup_colorchecker(base)
 
     def correct_array(
@@ -385,6 +400,34 @@ class ColorCorrection(darsia.BaseCorrection):
         """
         with open(Path(path), "w") as outfile:
             json.dump(self.config, outfile, indent=4)
+
+    def save(self, path: Path) -> None:
+        """Save the color correction to a file.
+
+        Args:
+            path (Path): path to the file
+
+        """
+        # Make sure that the path exists
+        path.parents[0].mkdir(parents=True, exist_ok=True)
+
+        # Save the color correction
+        np.savez(path, config=self.config)
+        print(f"Color correction saved to {path}.")
+
+    def load(self, path: Path) -> None:
+        """Load the color correction from a file.
+
+        Args:
+            path (Path): path to the file
+
+        """
+        # Make sure the file exists
+        assert path.exists(), f"File {path} does not exist."
+
+        # Load the color correction
+        self.config = np.load(path, allow_pickle=True)["config"].item()
+        self._init_from_config(base=None)
 
     # ! ---- Auxiliary files
 
