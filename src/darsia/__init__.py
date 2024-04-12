@@ -36,6 +36,7 @@ from darsia.utils import linalg
 from darsia.utils import quadrature
 from darsia.utils import plotting
 from darsia.utils.detection import *
+from darsia.utils.standard_images import *
 from darsia.image.subregions import *
 from darsia.corrections.basecorrection import *
 from darsia.corrections.typecorrection import *
