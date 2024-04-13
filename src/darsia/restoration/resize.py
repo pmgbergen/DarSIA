@@ -7,7 +7,7 @@ size lengths.
 
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Optional, Union, overload
 
 import cv2
 import numpy as np
@@ -101,6 +101,12 @@ class Resize:
 
         # Check for conservative rescaling
         self.is_conservative = kwargs.get(key + "resize conservative", False)
+
+    @overload
+    def __call__(self, img: np.ndarray) -> np.ndarray: ...
+
+    @overload
+    def __call__(self, img: darsia.Image) -> darsia.Image: ...
 
     def __call__(
         self, img: Union[np.ndarray, darsia.Image]
