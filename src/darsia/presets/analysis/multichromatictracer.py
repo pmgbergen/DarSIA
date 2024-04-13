@@ -161,6 +161,7 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
     def calibrate_from_image(
         self,
         calibration_image,
+        mask: Optional[darsia.Image] = None,
         width: int = 25,
         num_clusters: int = 5,
         reset: bool = False,
@@ -172,6 +173,7 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
 
         Args:
             calibration_image (Image): calibration image for extracting colors
+            mask (Image): boolean image-mask acting as mask for the calibration image
             width (int): width of sample boxes returned from assistant - irrelevant if
                 boxed defined
             num_clusters (int): number of characteristic clusters extracted
@@ -204,7 +206,8 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
                 calibration_image, background=mask, width=width
             )
             samples = assistant()
-            print("Define associated concentration values - assumed 1 if empty")
+
+            print("Define associated concentration values")
             # Ask for concentration values from user
             concentrations = [
                 float(input(f"Concentration for sample {i}: "))
@@ -216,6 +219,7 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
             pre_concentration = self(calibration_image)
             characteristic_colors = darsia.extract_characteristic_data(
                 signal=pre_concentration.img,
+                mask=mask.img if mask is not None else None,
                 samples=samples,
                 show_plot=self.show_plot,
                 num_clusters=num_clusters,
@@ -232,6 +236,7 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
                 # Fetch characteristic colors from samples
                 characteristic_colors_base = darsia.extract_characteristic_data(
                     signal=pre_concentration_base.img,
+                    mask=mask.img if mask is not None else None,
                     samples=samples,
                     show_plot=self.show_plot,
                     num_clusters=num_clusters,
