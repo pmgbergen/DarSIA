@@ -136,13 +136,6 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
 
         # ! ---- STEP 1: Calibrate the support points (x) based on some images
 
-        # TODO rm setup_samples?
-
-        # Check whether support points are provided or need setup
-        setup_samples = not hasattr(self, "samples_collection") and not hasattr(
-            self, "concentrations_collection"
-        )
-
         # Initialize data collections
         if reset:
             self.characteristic_colors = []
@@ -151,32 +144,17 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
         for i, mask in enumerate(darsia.Masks(self.labels)):
 
             # Define characteristic points and corresponding data values
-            if setup_samples:
-                # Init
-                if i == 0:
-                    samples_collection = []
-                    concentrations_collection = []
-
-                # Setup
-                print("Define samples")
-                assistant = darsia.BoxSelectionAssistant(
-                    calibration_image, background=mask, width=width
-                )
-                samples = assistant()
-                print("Define associated concentration values - assumed 1 if empty")
-                # Ask for concentration values from user
-                concentrations = [
-                    float(input(f"Concentration for sample {i}: "))
-                    for i in range(len(samples))
-                ]
-
-                # Cache
-                # TODO rm?
-                samples_collection.append(samples)
-                concentrations_collection.append(concentrations)
-            else:
-                samples = self.samples_collection[i]
-                concentrations = self.concentrations_collection[i]
+            print("Define samples")
+            assistant = darsia.BoxSelectionAssistant(
+                calibration_image, background=mask, width=width
+            )
+            samples = assistant()
+            print("Define associated concentration values - assumed 1 if empty")
+            # Ask for concentration values from user
+            concentrations = [
+                float(input(f"Concentration for sample {i}: "))
+                for i in range(len(samples))
+            ]
 
             # Fetch characteristic colors from samples
             # Apply concentration analysis modulo the model and the restoration
@@ -228,9 +206,3 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
 
         # Update kernel interpolation
         self.calibrate(self.characteristic_colors, self.concentrations)
-
-        if setup_samples:
-            print("samples collection")
-            print(samples_collection)
-            print("concentrations collection")
-            print(concentrations_collection)
