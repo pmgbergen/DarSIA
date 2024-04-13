@@ -1530,6 +1530,8 @@ class Image:
             path (Path): full path to image. Use ending "npz".
 
         """
+        # Make sure the parent directory exists
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
         np.savez(str(Path(path)), array=self.img, metadata=self.metadata())
         if verbose:
             print(f"Image stored under {path}")
