@@ -87,6 +87,61 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
         # Cache meta information
         self.show_plot = show_plot
 
+    # ! ---- CALL ----
+
+    def expert_knowledge(self, image: darsia.Image) -> None:
+        """Expert knowledge for concentration analysis.
+
+        Args:
+            image (Image): image to be analyzed
+
+        """
+        ...
+
+    def __call__(self, image: darsia.Image) -> darsia.Image:
+        """Perform concentration analysis with additional expert knowledge.
+
+        Args:
+            image (Image): image to be analyzed
+
+        Returns:
+            Image: concentration map
+
+        """
+        concentration = super().__call__(image)
+        self.expert_knowledge(concentration)
+        return concentration
+
+    # ! ---- SAVE AND LOAD ----
+    def save(self, path: darsia.Path) -> None:
+        """Save calibration data to a file.
+
+        Args:
+            path (Path): path to the file
+
+        """
+        np.savez(
+            path,
+            config={
+                "characteristic_colors": self.characteristic_colors,
+                "concentrations": self.concentrations,
+                "info": "MultichromaticTracerAnalysis calibration data.",
+            },
+        )
+        print(f"Calibration data saved to {path}.")
+
+    def load(self, path: darsia.Path) -> None:
+        """Load calibration data from a file.
+
+        Args:
+            path (Path): path to the file
+
+        """
+        data = np.load(path, allow_pickle=True)["config"].item()
+        self.characteristic_colors = data["characteristic_colors"]
+        self.concentrations = data["concentrations"]
+        self.calibrate(self.characteristic_colors, self.concentrations)
+
     # ! ---- CALIBRATION ----
 
     def calibrate(self, colors, concentrations) -> None:
