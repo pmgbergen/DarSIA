@@ -110,19 +110,35 @@ class BaseAssistant(ABC):
         elif self.img is None and self.background is not None:
             self._setup_plot_2d(self.background)
         elif self.img is not None and self.background is not None:
-            self._setup_plot_2d(self.background, alpha=0.6)
-            self._setup_plot_2d(self.img, alpha=0.4)
+            if self.background.dtype == bool:
+                self._setup_plot_2d(
+                    self.img,
+                    alpha=np.clip(self.background.img.astype(float), 0.5, 1),
+                )
+            else:
+                self._setup_plot_2d(self.background, alpha=0.6)
+                self._setup_plot_2d(self.img, alpha=0.4)
         else:
             raise ValueError("Either img or background must be provided.")
         plt.show(block=self.block)
 
-    def _setup_plot_2d(self, img: darsia.Image, alpha: float = 1.0) -> None:
+    def _setup_plot_2d(
+        self, img: darsia.Image, alpha: float | np.ndarray = 1.0
+    ) -> None:
         """Plot in 2d with interactive event handler."""
 
         # Plot the entire 2d image in plain mode. Only works for scalar and optical
         # images.
         assert img.scalar or img.range_num in [1, 3]
         assert not img.series
+
+        # Fetch image and convert to right format
+        if img.range_num == 3 and isinstance(alpha, np.ndarray):
+            # NOTE: matplotlib does not cover imshow for RGB images and array alpha
+            arr = np.dstack((skimage.img_as_float(img.img), alpha))
+            alpha = 1
+        else:
+            arr = skimage.img_as_float(img.img)
 
         # Extract physical coordinates of corners
         if self.use_coordinates:
@@ -131,12 +147,12 @@ class BaseAssistant(ABC):
 
             # Plot
             self.ax.imshow(
-                skimage.img_as_float(img.img),
+                arr,
                 extent=(origin[0], opposite_corner[0], opposite_corner[1], origin[1]),
                 alpha=alpha,
             )
         else:
-            self.ax.imshow(skimage.img_as_float(img.img), alpha=alpha)
+            self.ax.imshow(arr, alpha=alpha)
 
         # Plot grid
         plot_grid = self.plot_grid
