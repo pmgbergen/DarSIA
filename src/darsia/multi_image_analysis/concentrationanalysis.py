@@ -38,7 +38,7 @@ class ConcentrationAnalysis:
         balancing: Optional[darsia.Model] = None,
         restoration: Optional[darsia.TVD] = None,
         model: Optional[darsia.Model] = None,
-        labels: Optional[np.ndarray] = None,
+        labels: Optional[darsia.Image] = None,
         **kwargs,
     ) -> None:
         """Constructor of ConcentrationAnalysis.
@@ -56,7 +56,7 @@ class ConcentrationAnalysis:
                 denotes an identity.
             model (darsia.Model, optional): Conversion of signals to actual physical
                 data; default value (None) denotes an identity operation.
-            labels (array, optional): labeled image of domain; the default value (None)
+            labels (Image, optional): labeled image of domain; the default value (None)
                 denotes the presence of a homogeneous medium.
             kwargs (keyword arguments): interface to all tuning parameters.
                 - 'diff option': option for defining differences of images
@@ -457,7 +457,7 @@ class PriorPosteriorConcentrationAnalysis(ConcentrationAnalysis):
         restoration: darsia.TVD,
         prior_model: darsia.Model,
         posterior_model: darsia.Model,
-        labels: Optional[np.ndarray] = None,
+        labels: Optional[darsia.Image] = None,
         **kwargs,
     ) -> None:
         # Cache the posterior model
