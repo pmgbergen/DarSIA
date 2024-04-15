@@ -243,11 +243,15 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
                     num_clusters=num_clusters,
                 )
 
-                # Collect data
+                # Collect data and add zero vector
                 characteristic_colors = np.vstack(
-                    (characteristic_colors_base, characteristic_colors)
+                    (
+                        np.zeros((1, 3), dtype=characteristic_colors.dtype),
+                        characteristic_colors_base,
+                        characteristic_colors,
+                    )
                 )
-                concentrations = np.array(concentrations_base + concentrations)
+                concentrations = np.array([0] + concentrations_base + concentrations)
 
             # Cache data or append if already existing
             if len(self.characteristic_colors) > i:
