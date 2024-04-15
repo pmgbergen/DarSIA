@@ -152,7 +152,7 @@ class PorosityAnalysis(MultichromaticTracerAnalysis):
                 plt.imshow(labels.img)
                 plt.show()
 
-        self.calibrate_with_colors_and_concentrations(colors, concentrations)
+        self.calibrate(colors, concentrations)
 
     def cut_off_small_values(
         self, porosity: darsia.Image, threshold: float = 0.5
