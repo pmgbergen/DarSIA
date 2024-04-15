@@ -216,7 +216,8 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
 
             # Fetch characteristic colors from samples
             # Apply concentration analysis modulo the model and the restoration
-            pre_concentration = self(calibration_image)
+            pre_concentration = super().__call__(calibration_image)
+
             characteristic_colors = darsia.extract_characteristic_data(
                 signal=pre_concentration.img,
                 mask=mask.img if mask is not None else None,
