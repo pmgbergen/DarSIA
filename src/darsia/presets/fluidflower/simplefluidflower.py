@@ -29,6 +29,12 @@ class SimpleFluidFlower:
     def __init__(
         self,
         baseline: Path,
+        active_corrections: list[Literal["drift", "curvature", "illumination", "color"]] = [
+            "drift",
+            "curvature",
+            "illumination",
+            "color",
+        ],
         debug: bool = False,
     ) -> None:
         """Constructor for SimpleFluidFlower.
@@ -59,6 +65,18 @@ class SimpleFluidFlower:
         self.debug = debug
         """Flag for debugging."""
 
+        self.active_drift_correction = "drift" in active_corrections
+        """Flag for drift correction."""
+
+        self.active_curvature_correction = "curvature" in active_corrections
+        """Flag for curvature correction."""
+
+        self.active_illumination_correction = "illumination" in active_corrections
+        """Flag for illumination correction."""
+
+        self.active_color_correction = "color" in active_corrections
+        """Flag for color correction."""
+
     def setup(
         self,
         roi: Path,
@@ -83,19 +101,26 @@ class SimpleFluidFlower:
         self.depth = specs.get("depth", 0.012)
         self.porosity = specs.get("porosity", 0.44)
 
+        # ! ---- INITIALIZATION ----
+        self.corrections = []
+
         # ! ---- SETUP SHAPE CORRECTION ----
 
-        roi_mode = kwargs.get("roi_mode", "interactive")
-        roi_color = kwargs.get("roi_color")
-        self.drift_correction, self.curvature_correction = self.setup_shape_correction(
-            roi, roi_mode, roi_color, color_checker_position
-        )
-        self.corrections = [self.drift_correction, self.curvature_correction]
+        if self.active_drift_correction or self.active_curvature_correction:
+            roi_mode = kwargs.get("roi_mode", "interactive")
+            roi_color = kwargs.get("roi_color")
+            self.drift_correction, self.curvature_correction = self.setup_shape_correction(
+                roi, roi_mode, roi_color, color_checker_position
+            )
+        if self.active_drift_correction:
+            self.corrections.append(self.drift_correction)
+        if self.active_curvature_correction:
+            self.corrections.append(self.curvature_correction)
 
         # ! ---- SETUP BASELINE ----
 
         self.baseline = self.raw_baseline.copy()
-        for correction in self.corrections[1:]:
+        for correction in self.corrections:
             self.baseline = correction(self.baseline)
 
         # ! ---- SETUP SEGMENTATION ----
@@ -104,16 +129,21 @@ class SimpleFluidFlower:
         )
 
         # ! ---- SETUP COLOR CORRECTION ----
-        self.illumination_correction, self.color_correction = (
-            self.setup_color_correction(color_checker_position)
-        )
-        self.corrections.extend([self.illumination_correction, self.color_correction])
+        if self.active_illumination_correction or self.active_color_correction:
+            self.illumination_correction, self.color_correction = (
+                self.setup_color_correction(color_checker_position)
+            )
+        if self.active_illumination_correction:
+            self.corrections.append(self.illumination_correction)
+        if self.active_color_correction:
+            self.corrections.append(self.color_correction)
 
         # ! ---- BASELINE ----
 
         self.baseline = self.raw_baseline.copy()
         for correction in self.corrections:
             self.baseline = correction(self.baseline)
+        self.expert_knowledge(self.baseline)
 
         # ! ---- GEOMETRY ----
 
@@ -304,14 +334,18 @@ class SimpleFluidFlower:
         # Make sure folder exists
         folder.mkdir(parents=True, exist_ok=True)
 
-        # Save baseline
-        self.baseline.save(folder / Path("baseline.npz"))
+        ## Save baseline
+        #self.baseline.save(folder / Path("baseline.npz"))
 
         # Save corrections
-        self.drift_correction.save(folder / Path("drift.npz"))
-        self.curvature_correction.save(folder / Path("curvature.npz"))
-        self.illumination_correction.save(folder / Path("illumination.npz"))
-        self.color_correction.save(folder / Path("color.npz"))
+        if self.active_drift_correction:
+            self.drift_correction.save(folder / Path("drift.npz"))
+        if self.active_curvature_correction:
+            self.curvature_correction.save(folder / Path("curvature.npz"))
+        if self.active_illumination_correction:
+            self.illumination_correction.save(folder / Path("illumination.npz"))
+        if self.active_color_correction:
+            self.color_correction.save(folder / Path("color.npz"))
 
         # Save segmentation
         self.labels.save(folder / Path("labels.npz"))
@@ -330,10 +364,6 @@ class SimpleFluidFlower:
 
     def load(self, folder: Path) -> None:
 
-        # Load baseline
-        self.baseline = darsia.imread(folder / Path("baseline.npz"))
-        self.reference_date = self.baseline.date
-
         # Load specs
         specs = np.load(folder / Path("specs.npz"), allow_pickle=True)["specs"].item()
         self.width = specs["width"]
@@ -342,27 +372,36 @@ class SimpleFluidFlower:
         self.porosity = specs["porosity"]
 
         # Load corrections
-        self.drift_correction = darsia.DriftCorrection(self.raw_baseline)
-        self.drift_correction.load(folder / Path("drift.npz"))
+        self.corrections = []
+        if self.active_drift_correction:
+            self.drift_correction = darsia.DriftCorrection(self.raw_baseline)
+            self.drift_correction.load(folder / Path("drift.npz"))
+            self.corrections.append(self.drift_correction)
 
-        self.curvature_correction = darsia.CurvatureCorrection()
-        self.curvature_correction.load(folder / Path("curvature.npz"))
+        if self.active_curvature_correction:
+            self.curvature_correction = darsia.CurvatureCorrection()
+            self.curvature_correction.load(folder / Path("curvature.npz"))
+            self.corrections.append(self.curvature_correction)
 
-        self.illumination_correction = darsia.IlluminationCorrection()
-        self.illumination_correction.load(folder / Path("illumination.npz"))
+        if self.active_illumination_correction:
+            self.illumination_correction = darsia.IlluminationCorrection()
+            self.illumination_correction.load(folder / Path("illumination.npz"))
+            self.corrections.append(self.illumination_correction)
 
-        self.color_correction = darsia.ColorCorrection()
-        self.color_correction.load(folder / Path("color.npz"))
-
-        self.corrections = [
-            self.drift_correction,
-            self.curvature_correction,
-            self.illumination_correction,
-            self.color_correction,
-        ]
+        if self.active_color_correction:
+            self.color_correction = darsia.ColorCorrection()
+            self.color_correction.load(folder / Path("color.npz"))
+            self.corrections.append(self.color_correction)
 
         # Load segmentation
         self.labels = darsia.imread(folder / Path("labels.npz"))
+
+        # Load baseline
+        self.reference_date = self.raw_baseline.date
+        self.baseline = self.raw_baseline.copy()
+        for correction in self.corrections:
+            self.baseline = correction(self.baseline)
+        self.expert_knowledge(self.baseline)
 
         # Load geometry
         shape_meta = self.baseline.shape_metadata()
