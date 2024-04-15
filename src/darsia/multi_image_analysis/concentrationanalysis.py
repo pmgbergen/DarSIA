@@ -326,7 +326,7 @@ class ConcentrationAnalysis:
             plt.imshow(img)
 
     # ! ---- Pre- and post-processing methods
-    def _subtract_background(self, img: darsia.Image) -> darsia.Image:
+    def _subtract_background(self, img: darsia.Image) -> np.ndarray:
         """Take difference between input image and baseline image, based
         on cached option.
 
@@ -334,7 +334,7 @@ class ConcentrationAnalysis:
             img (darsia.Image): test image.
 
         Returns:
-            darsia.Image: difference with background image
+            np.ndarray: difference with background image
 
         """
 
