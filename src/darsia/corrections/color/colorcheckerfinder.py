@@ -203,7 +203,8 @@ def find_colorchecker(
 
     # Iterate by decreasing a window for searching the colorchecker
     success = False
-    current = 1
+    refinement_counter: int = 1
+    current = 1.0 - update**refinement_counter
     while not success:
         current_corner = (
             current * start_corner + (1 - current) * target_corner
@@ -217,8 +218,9 @@ def find_colorchecker(
         success, _, local_voxels = detect_colorchecker(arr[roi])
         if success:
             break
-        current *= update
-        if current < update**20:
+        refinement_counter += 1
+        current = 1.0 - update**refinement_counter
+        if current > 1.0 - update**20:
             assert False, "No color checker found."
 
     # Extract the color checker directly from the image (more robust than colour).
