@@ -14,7 +14,18 @@ def zeros_like(
     mode: Literal["shape", "voxels"] = "shape",
     dtype: Optional[StandardDtype] = None,
 ) -> darsia.Image:
-    """Create a new image with the same shape and dtype as the input image, filled with zeros."""
+    """Analogon of np.zeros_like but for darsia.Image objects.
+
+    Args:
+        image (darsia.Image): input image
+        mode (Literal["shape", "voxels"], optional): mode of the output image. Defaults to
+            "shape".
+        dtype (Optional[StandardDtype], optional): dtype of the output image. Defaults to None.
+
+    Returns:
+        darsia.Image: output image
+
+    """
     if dtype is None:
         dtype = image.dtype
     if mode == "shape":
