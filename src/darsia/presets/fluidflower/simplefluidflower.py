@@ -29,7 +29,9 @@ class SimpleFluidFlower:
     def __init__(
         self,
         baseline: Path,
-        active_corrections: list[Literal["drift", "curvature", "illumination", "color"]] = [
+        active_corrections: list[
+            Literal["drift", "curvature", "illumination", "color"]
+        ] = [
             "drift",
             "curvature",
             "illumination",
@@ -109,8 +111,10 @@ class SimpleFluidFlower:
         if self.active_drift_correction or self.active_curvature_correction:
             roi_mode = kwargs.get("roi_mode", "interactive")
             roi_color = kwargs.get("roi_color")
-            self.drift_correction, self.curvature_correction = self.setup_shape_correction(
-                roi, roi_mode, roi_color, color_checker_position
+            self.drift_correction, self.curvature_correction = (
+                self.setup_shape_correction(
+                    roi, roi_mode, roi_color, color_checker_position
+                )
             )
         if self.active_drift_correction:
             self.corrections.append(self.drift_correction)
@@ -124,9 +128,7 @@ class SimpleFluidFlower:
             self.baseline = correction(self.baseline)
 
         # ! ---- SETUP SEGMENTATION ----
-        self.labels = self.setup_segmentation(
-            segmentation
-        )
+        self.labels = self.setup_segmentation(segmentation)
 
         # ! ---- SETUP COLOR CORRECTION ----
         if self.active_illumination_correction or self.active_color_correction:
@@ -236,7 +238,7 @@ class SimpleFluidFlower:
         # Find random patches, restricted to the masked regions
         width = 50
         num_patches = 10
-        samples = darsia.random_patches(mask, width = width, num_patches=num_patches)
+        samples = darsia.random_patches(mask, width=width, num_patches=num_patches)
 
         # Find sample in the center
         # TODO
@@ -334,8 +336,8 @@ class SimpleFluidFlower:
         # Make sure folder exists
         folder.mkdir(parents=True, exist_ok=True)
 
-        ## Save baseline
-        #self.baseline.save(folder / Path("baseline.npz"))
+        # # Save baseline
+        # self.baseline.save(folder / Path("baseline.npz"))
 
         # Save corrections
         if self.active_drift_correction:
@@ -352,13 +354,13 @@ class SimpleFluidFlower:
 
         # Save specs
         specs = {
-           "width": self.width,
-           "height": self.height,
-           "depth": self.depth,
-           "porosity": self.porosity,
+            "width": self.width,
+            "height": self.height,
+            "depth": self.depth,
+            "porosity": self.porosity,
         }
         np.savez(folder / Path("specs.npz"), specs=specs)
-        print(f"Specs saved to {folder / Path("specs.npz")}.")
+        print(f"Specs saved to {folder / Path('specs.npz')}.")
 
         print(f"Tabletop saved to {folder}.")
 
