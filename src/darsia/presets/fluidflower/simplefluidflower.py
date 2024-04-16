@@ -19,6 +19,7 @@ to the image after preprocessing.
 from pathlib import Path
 from typing import Literal, Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 
@@ -197,6 +198,8 @@ class SimpleFluidFlower:
             self.curvature_config = crop_assistant.from_image(
                 color=roi_color, width=self.width, height=self.height
             )
+            # Close current plot (internally opened in the assistant)
+            plt.close()
         else:
             raise ValueError(f"Unknown roi_mode: {roi_mode}")
         curvature_correction = darsia.CurvatureCorrection(config=self.curvature_config)
