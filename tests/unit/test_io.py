@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import cv2
 import numpy as np
 import pytest
 
@@ -22,6 +23,30 @@ def test_imread_from_numpy():
 
     # Compare arrays.
     assert np.allclose(np_image.img, array)
+
+    # Clean up
+    path.unlink()
+
+
+@pytest.mark.parametrize("shape", [(10, 20, 3), (10, 20)])
+def test_imread_from_bytes(shape):
+    """Test imread for bytes images, for RGB and grayscale type images."""
+
+    # Generate array equivalent with 255 values
+    array = 255 * np.ones(shape, dtype=np.uint8)
+
+    # Save array as jpg using cv2
+    path = Path("random_distribution.jpg")
+    cv2.imwrite(str(path), array)
+
+    # Read numpy image
+    with open(path, "rb") as file:
+        byte_str = file.read()
+        file.close()
+        bytes_image = darsia.imread_from_bytes(byte_str, dim=2, width=2, height=1)
+
+    # Compare arrays.
+    assert np.allclose(bytes_image.img, array)
 
     # Clean up
     path.unlink()
