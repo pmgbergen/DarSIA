@@ -159,10 +159,6 @@ class KernelInterpolation(darsia.Model):
             np.ndarray: interpolated signal
 
         """
-        # NOTE: Shape is not clear at input as it may be used via advenced indexing
-        output = self.interpolation_weights[0] * self.kernel(signal, self.supports[0])
-        for n in range(1, self.num_supports):
-            output += self.interpolation_weights[n] * self.kernel(
-                signal, self.supports[n]
-            )
-        return output
+        return self.kernel.linear_combination(
+            signal, self.supports, self.interpolation_weights
+        )
