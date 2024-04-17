@@ -132,9 +132,10 @@ class SimpleFluidFlower:
         self.labels = self.setup_segmentation(segmentation)
 
         # ! ---- SETUP COLOR CORRECTION ----
+        illumination_mode = kwargs.get("illumination_mode", "automatic")
         if self.active_illumination_correction or self.active_color_correction:
             self.illumination_correction, self.color_correction = (
-                self.setup_color_correction(color_checker_position)
+                self.setup_color_correction(color_checker_position, illumination_mode)
             )
         if self.active_illumination_correction:
             self.corrections.append(self.illumination_correction)
@@ -222,6 +223,7 @@ class SimpleFluidFlower:
     def setup_color_correction(
         self,
         color_checker_position: darsia.ColorCheckerPosition,
+        illumination_mode: Literal["automatic", "interactive"] = "automatic",
     ) -> tuple:
         """Setup color correction based on color checker.
 
@@ -240,8 +242,12 @@ class SimpleFluidFlower:
 
         # Find random patches, restricted to the masked regions
         width = 50
-        num_patches = 10
-        samples = darsia.random_patches(mask, width=width, num_patches=num_patches)
+        if illumination_mode == "interactive":
+            sample_assistant = darsia.BoxSelectionAssistant(self.baseline, width=width)
+            samples = sample_assistant()
+        else:
+            num_patches = 10
+            samples = darsia.random_patches(mask, width=width, num_patches=num_patches)
 
         # Find sample in the center
         # TODO
