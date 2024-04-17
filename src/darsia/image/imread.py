@@ -86,6 +86,41 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
         return imread_from_dicom(path, **kwargs)
     elif suffix in [".vtu"]:
         return imread_from_vtu(path, **kwargs)
+    else:
+        raise NotImplementedError(f"Filetype {suffix} not supported.")
+
+
+def imread_from_bytes(
+    data: bytes,
+    transformations: Optional[list] = None,
+    **kwargs,
+) -> darsia.Image:
+    """Initialization of Image by reading from byte string.
+
+    Args:
+        data (bytes): byte string of image.
+        transformations (list of callables): transformations.
+        kwargs: keyword arguments.
+
+    Returns:
+        darsia.Image: image; scalar or optical, depending on the number of channels.
+
+    """
+    # Read image from byte string, convert to RGB
+    array = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_UNCHANGED)
+
+    if len(array.shape) == 3 and array.shape[-1] == 3:
+        # If multichromatic, convert to RGB (Assume BGR format from cv2)
+        array = cv2.cvtColor(array, cv2.COLOR_BGR2RGB)
+        return darsia.OpticalImage(img=array, transformations=transformations, **kwargs)
+    elif len(array.shape) == 2:
+        return darsia.ScalarImage(img=array, transformations=transformations, **kwargs)
+    elif len(array.shape) == 3 and array.shape[-1] == 1:
+        return darsia.ScalarImage(
+            img=array[..., 0], transformations=transformations, **kwargs
+        )
+    else:
+        raise NotImplementedError
 
 
 # ! ---- Numpy arrays
