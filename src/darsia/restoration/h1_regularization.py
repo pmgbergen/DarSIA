@@ -24,7 +24,7 @@ def _H1_regularization_array(
 
     min_u 1/2 ||u - img||_{2,omega}^2 + 1/2 ||nabla u||_{2,mu}^2
 
-    with ||u||_{2,omega}^2 = \int omega |u|^2 dx, and similary for the second term.
+    with ||u||_{2,omega}^2 = int omega |u|^2 dx, and similary for the second term.
 
     Args:
         img (np.ndarray): image to regularize
