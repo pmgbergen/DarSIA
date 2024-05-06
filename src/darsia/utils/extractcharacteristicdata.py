@@ -7,6 +7,7 @@ import cv2
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
+import skimage
 
 
 def extract_characteristic_data(
@@ -61,10 +62,14 @@ def extract_characteristic_data(
     # Alphabet useful for labeling in plots
     # letters = list(string.ascii_uppercase) + list(string.ascii_lowercase)
 
-    # Visualise patches
     if show_plot:
+        # Visualise data
         _, ax = plt.subplots()
-        ax.imshow(np.abs(signal))  # visualise data
+        if mask is None:
+            ax.imshow(np.abs(signal))
+        else:
+            alpha = np.clip(mask.astype(float), 0.5, 1)
+            ax.imshow(np.dstack((skimage.img_as_float(np.abs(signal)), alpha)))
         ax.set_xlabel("horizontal pixel")
         ax.set_ylabel("vertical pixel")
 
@@ -127,20 +132,28 @@ def extract_characteristic_data(
 
     if show_plot:
 
-        if mask is not None:
-            plt.imshow(mask, alpha=0.2)
-
         if data_dim == 3:
-            warn("Assuming data is color data and using RGB as axes.")
-            c = np.clip(np.abs(data_clusters), 0, 1)
+            warn("Assuming data is color data and using RGB as axes.", RuntimeWarning)
             plt.figure("Relative dominant colors")
             ax = plt.axes(projection="3d")
+            if mode is not "all":
+                ax.scatter(
+                    data_clusters[:, 0],
+                    data_clusters[:, 1],
+                    data_clusters[:, 2],
+                    c=np.clip(np.abs(data_clusters), 0, 1),
+                )
+            else:
+                stacked_palette = np.vstack(palette_collection)
+                ax.scatter(
+                    stacked_palette[:, 0],
+                    stacked_palette[:, 1],
+                    stacked_palette[:, 2],
+                    c=np.clip(np.abs(stacked_palette), 0, 1),
+                )
             ax.set_xlabel("R")
             ax.set_ylabel("G")
             ax.set_zlabel("B")
-            ax.scatter(
-                data_clusters[:, 0], data_clusters[:, 1], data_clusters[:, 2], c=c
-            )
         plt.show()
 
     if mode == "all":
