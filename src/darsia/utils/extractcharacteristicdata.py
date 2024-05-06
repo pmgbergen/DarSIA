@@ -136,20 +136,20 @@ def extract_characteristic_data(
             warn("Assuming data is color data and using RGB as axes.", RuntimeWarning)
             plt.figure("Relative dominant colors")
             ax = plt.axes(projection="3d")
-            if mode is not "all":
-                ax.scatter(
-                    data_clusters[:, 0],
-                    data_clusters[:, 1],
-                    data_clusters[:, 2],
-                    c=np.clip(np.abs(data_clusters), 0, 1),
-                )
-            else:
+            if mode == "all":
                 stacked_palette = np.vstack(palette_collection)
                 ax.scatter(
                     stacked_palette[:, 0],
                     stacked_palette[:, 1],
                     stacked_palette[:, 2],
                     c=np.clip(np.abs(stacked_palette), 0, 1),
+                )
+            else:
+                ax.scatter(
+                    data_clusters[:, 0],
+                    data_clusters[:, 1],
+                    data_clusters[:, 2],
+                    c=np.clip(np.abs(data_clusters), 0, 1),
                 )
             ax.set_xlabel("R")
             ax.set_ylabel("G")
