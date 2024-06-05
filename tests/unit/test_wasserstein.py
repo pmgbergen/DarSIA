@@ -144,6 +144,7 @@ sinkhorn_methods = [
     "sinkhorn",
     "sinkhorn_log", 
     "sinkhorn_stabilized",
+    "geomloss_sinkhorn_samples",
     #"geomloss_sinkhorn"
 ]
 sinkhorn_regs = [1e0, 1e-1, 1e-2]
@@ -240,6 +241,14 @@ def test_sinkhorn(method_key, reg_key, dim):
     )
     eps = options["sinkhorn_regularization"]
     relative_err=abs(distance-true_distance[dim])/true_distance[dim]
-    #print(f"{sinkhorn_methods[method_key]} {eps=:.1e} {distance=:.2e} {true_distance[dim]=:.2e} {relative_err=:.1e} {info['niter']=}")
+    print(f"{sinkhorn_methods[method_key]} {eps=:.1e} {distance=:.2e} {true_distance[dim]=:.2e} {relative_err=:.1e} {info['niter']=}")
     assert info["converged"]
     assert np.isclose(distance, true_distance[dim], atol=sinkhorn_regs[reg_key])
+
+if __name__ == "__main__":
+    """Test all combinations for Newton."""
+    dim = 3
+    for i in [3]:
+        print(f"Method: {sinkhorn_methods[i]}")
+        for j in range(len(sinkhorn_regs)):
+            test_sinkhorn(i, j, dim)
