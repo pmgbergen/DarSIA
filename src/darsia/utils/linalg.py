@@ -108,7 +108,8 @@ class KSP:
         if self.field_ises is not None: 
             pc = ksp.getPC()
             pc.setFromOptions()
-            #pc.setFieldSplitIS(('0',self.pot_is),('1',self.tdens_is))
+            # syntax is
+            # pc.setFieldSplitIS(('0',is_0),('1',is_1))
             pc.setFieldSplitIS(*self.field_ises)
             pc.setOptionsPrefix(self.prefix)
             pc.setFromOptions()
