@@ -1492,6 +1492,10 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
         if self.store_cost_matrix:
             self.M = dist(self.grid.cell_centers, self.grid.cell_centers, metric='euclidean')
 
+
+        self.geomloss_scaling = self.options.get("geomloss_scaling", 0.5)
+        """float: scaling factor for eps"""
+
         # TODO: rewrite
         N = self.grid.shape
         x_i = []
@@ -1554,10 +1558,11 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
 
     def img2pythorch(self, img: darsia.Image) -> torch.Tensor:
         """
-        Convert a darsia image to a pythorch tensor
+        Convert a darsia image to a pythorch tensor suitable for geomloss.sinkhorn_image
+        that that takes tensor with (nimages, nchannels, *spatial dimensions)
         """
         dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
-        #img1 = preprocessed_img_1.img.reshape(0,preprocessed_img_1.img.shape) 
+         
         return torch.from_numpy(img.img).type(dtype).view(1,1,*img.img.shape)
 
         
@@ -1618,8 +1623,8 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
             self.niter = log['niter']
             self.kantorovich_potential_source = log['u']
             self.kantorovich_potential_target = log['v']
-        elif "geomloss_sinkhorn" in self.sinkhorn_algorithm:
-            raise NotImplementedError("geomloss_sinkhorn not implemented")
+        elif "geomloss_sinkhorn_images" == self.sinkhorn_algorithm:
+            raise NotImplementedError("geomloss_sinkhorn_images not implemented yet")
             
             # package to be imported
             from geomloss.sinkhorn_images import sinkhorn_divergence
@@ -1647,6 +1652,55 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
             self.niter = log['niter']
             self.kantorovich_potential_source = log['u']
             self.kantorovich_potential_target = log['v']
+        
+        elif "geomloss_sinkhorn_samples" in self.sinkhorn_algorithm:
+            #
+            # Explicit sparsity of images 
+            # 
+            from geomloss.sinkhorn_divergence import epsilon_schedule
+            from geomloss.sinkhorn_samples import sinkhorn_tensorized
+            import torch
+            
+            use_cuda = torch.cuda.is_available()
+            dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
+            
+            # first 1 in view() is for passing the batch size
+            point_img1 = torch.from_numpy(non_zero_img1).type(dtype).view(1,len(non_zero_img1))
+            point_img2 = torch.from_numpy(non_zero_img2).type(dtype).view(1,len(non_zero_img2))
+            x = torch.from_numpy(coord_support_1).type(dtype).view(1,*coord_support_1.shape)
+            y = torch.from_numpy(coord_support_2).type(dtype).view(1,*coord_support_2.shape)
+            
+            diameter = np.linalg.norm(self.grid.voxel_size*self.grid.shape)
+            blur = self.sinkhorn_regularization
+            scaling = self.geomloss_scaling
+            p_exponent = 1
+            f_torch, g_torch = sinkhorn_tensorized(
+                point_img1,#a 
+                x,#x
+                point_img2, #b
+                y,#y
+                p=p_exponent,
+                blur=blur, #blur
+                reach=None,
+                diameter=diameter, #diameter
+                scaling=0.5, # reduction of the regularization
+                cost=None,
+                debias=False,
+                potentials=True,
+            )
+
+            f = f_torch.detach().cpu().numpy().flatten()
+            g = g_torch.detach().cpu().numpy().flatten()
+            distance = np.dot(f, non_zero_img1) + np.dot(g, non_zero_img2) 
+            print(f"distance: {distance=} {f.shape=} {g.shape=}")
+
+
+            # it is not clear to me how to get the number of iterations
+            # what about the residual of the marginals?
+            self.niter = len(epsilon_schedule(p_exponent, diameter, blur, scaling)) 
+            self.kantorovich_potential_source = f
+            self.kantorovich_potential_target = g
+
 
         else:
             M = dist(coord_support_1, coord_support_2, metric='euclidean')
@@ -1679,6 +1733,258 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
         }
 
         return distance, info
+
+
+class WassersteinDistanceGproxPGHD(VariationalWassersteinDistance):
+    """
+    This contains the implementation of the GproxPDHG algorithm
+    described in "SOLVING LARGE-SCALE OPTIMIZATION PROBLEMS WITH
+    A CONVERGENCE RATE INDEPENDENT OF GRID SIZE"
+    """
+
+    def __init__(self, grid, options) -> None:
+        super().__init__(grid, options)
+
+        # allocate space for main and auxiliary variables
+        self.flux = np.zeros(self.grid.num_faces, dtype=float)
+        """np.ndarray: flux"""
+
+        self.poisson_pressure = np.zeros(self.grid.num_cells, dtype=float)
+        """ np.ndarray: pressure of the poisson problem -div(p) = f = img1- img2"""
+
+        self.gradient_poisson = np.zeros(self.grid.num_faces, dtype=float)
+        """ varaible storing the gradient of the poisson problem"""
+
+
+        self.p_bar = np.zeros(self.grid.num_faces, dtype=float)
+        """np.ndarray: $\bar{p}$"""
+
+        self.div_free_flux = np.zeros(self.grid.num_faces, dtype=float)
+        """ np.ndarray: divergence free flux"""
+
+        self.u = np.zeros(self.grid.num_faces, dtype=float)
+        """np.ndarray: u"""
+
+        self.new_p = np.zeros(self.grid.num_faces, dtype=float)
+
+    def _setup_discretization(self) -> None:
+        """Setup of fixed discretization operators.
+
+        Add linear contribution of the optimality conditions of the Newton linearization.
+
+        """
+        super()._setup_discretization()
+
+        self.Laplacian = -self.div * self.mass_matrix_faces * self.div
+
+        self.linear_solve(self.Laplacian, rhs.copy(), self.pot, setup=True)
+
+
+
+    def residual(self, rhs: np.ndarray, solution: np.ndarray) -> np.ndarray:
+        """Compute the residual of the solution.
+
+        Args:
+            rhs (np.ndarray): right hand side
+            solution (np.ndarray): solution
+
+        Returns:
+            np.ndarray: residual
+
+        """
+        return self.optimality_conditions(rhs, solution)
+    
+
+    def leray_projection(self, p: np.ndarray) -> np.ndarray:
+        """Leray projection of a vector fiels
+
+        Args:
+            p (np.ndarray): pressure
+
+        Returns:
+            np.ndarray: divergence free flux
+
+        """
+        return p - self.div.T.dot(self.linear_solve(self.Laplacian, self.div.dot(p), setup=False))
+    
+    def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
+        """Solve the Beckman problem using Newton's method.
+
+        Args:
+            flat_mass_diff (np.ndarray): difference of mass distributions
+
+        Returns:
+            tuple: distance, solution, info
+
+        """
+        # Setup time and memory profiling
+        tic = time.time()
+        tracemalloc.start()
+
+        # Solver parameters. By default tolerances for increment and distance are
+        # set, such that they do not affect the convergence.
+        num_iter = self.options.get("num_iter", 100)
+        tol_residual = self.options.get("tol_residual", np.finfo(float).max)
+        tol_increment = self.options.get("tol_increment", np.finfo(float).max)
+        tol_distance = self.options.get("tol_distance", np.finfo(float).max)
+
+        # Define right hand side
+        rhs = np.concatenate(
+            [
+                np.zeros(self.grid.num_faces, dtype=float),
+                self.mass_matrix_cells.dot(flat_mass_diff),
+            ]
+        )
+        self.regularized_flat_flux_norm = np.ones(self.grid.num_faces, dtype=float)
+
+        # Initialize Newton iteration with Darcy solution for unitary mobility
+        poisson_pressure, _ = self.poisson_solver.solve(flat_mass_diff)
+        gradient_poisson_pressure = self.div.T.dot(poisson_pressure)
+
+        # Initialize distance in case below iteration fails
+        new_distance = 0
+
+        # Initialize container for storing the convergence history
+        convergence_history = {
+            "distance": [],
+            "residual": [],
+            "flux_increment": [],
+            "distance_increment": [],
+            "timing": [],
+            "run_time": [],
+        }
+
+        # Print  header for later printing performance to screen
+        # - distance
+        # - distance increment
+        # - flux increment
+        # - residual
+        if self.verbose:
+            print(
+                "PD iter. \t| W^1 \t\t| Δ W^1 \t| Δ flux \t| residual",
+                "\n",
+                """---------------|---------------|---------------|---------------|"""
+                """---------------""",
+            )
+
+
+        
+
+        # PDHG iterations
+        for iter in range(num_iter):
+            #
+            tau = self.options.get("tau", 1.0)
+            sigma =  self.options.get("sigma", 1.0) 
+            if iter > 0:
+                p = new_p
+
+            # eq 3.14
+            div_free = self.leray_projection(p_bar)
+            u -= tau * div_free
+
+            # new flux
+            flux = u + gradient_poisson_pressure
+            
+            # eq 3.15
+            sigma_vel = p + sigma * (u + gradient_poisson_pressure)
+            new_p = sigma_vel
+            greater_than_1 = np.where(abs(sigma_vel) > 1)
+            new_p[greater_than_1] /= new_p[greater_than_1] # normalize too +1 or -1
+
+            # eq 3.16
+            p_bar = 2 * new_p - p
+
+            # int_ pot f = int_ pot div poisson_pressure = int_ grad pot \cdot \nabla poisson_pressure 
+            dual_value = self.compute_dual(p, gradient_poisson_pressure) 
+            primal_value = self.compute_primal(flux)
+
+            duality_gap = abs(self.dual - self.primal)
+
+            if self.verbose :
+                print(
+                    f"it: {self.iter:03d}" +
+                    f" gap={self.duality_gap:.1e}" +
+                    f" dual={self.dual:.3e} primal={self.primal:.3e}" +
+                    f" cpu={self.iter_cpu:.3f}") 
+
+            convergence_history["distance"].append(new_distance)
+            convergence_history["residual"].append(np.linalg.norm(residual_i, 2))
+            
+            # Compute the error and store as part of the convergence history:
+            # 0 - full residual (Newton interpretation)
+            # 1 - flux increment (fixed-point interpretation)
+            # 2 - distance increment (Minimization interpretation)
+
+            # Update convergence history
+            convergence_history["distance"].append(new_distance)
+            convergence_history["residual"].append(np.linalg.norm(residual_i, 2))
+            convergence_history["flux_increment"].append(
+                np.linalg.norm(increment[self.flux_slice], 2)
+            )
+            convergence_history["distance_increment"].append(
+                abs(new_distance - old_distance)
+            )
+            convergence_history["timing"].append(stats_i)
+
+            # Extract current total run time
+            current_run_time = self._analyze_timings(convergence_history["timing"])[
+                "total"
+            ]
+            convergence_history["run_time"].append(current_run_time)
+
+            # Print performance to screen
+            # - distance
+            # - distance increment
+            # - flux increment
+            # - residual
+            if self.verbose:
+                distance_increment = convergence_history["distance_increment"][-1]
+                flux_increment = (
+                    convergence_history["flux_increment"][-1]
+                    / convergence_history["flux_increment"][0]
+                )
+                residual = (
+                    convergence_history["residual"][-1]
+                    / convergence_history["residual"][0]
+                )
+                print(
+                    f"""Iter. {iter} \t| {new_distance:.6e} \t| """
+                    f"""{distance_increment:.6e} \t| {flux_increment:.6e} \t| """
+                    f"""{residual:.6e}"""
+                )
+
+        # Summarize profiling (time in seconds, memory in GB)
+        total_timings = self._analyze_timings(convergence_history["timing"])
+        peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
+
+        # Define performance metric
+        info = {
+            "converged": iter < num_iter,
+            "number_iterations": iter,
+            "convergence_history": convergence_history,
+            "timings": total_timings,
+            "peak_memory_consumption": peak_memory_consumption,
+        }
+
+        return new_distance, solution, info 
+    
+    def compute_dual(p,gradient_poisson):
+        """
+        Compute the value of the dual functional
+        $\int_{\Domain} pot (f^+ - f^-)$
+        $=\int_{\Domain} pot -div(poisson)$
+        $\int_{\Domain} \nabla pot \cdot \nabla poisson$
+        $\int_{\Domain} p \cdot \nabla poisson$
+        """
+        temp = self.mass_matrix_faces.dot(gradient_poisson)
+        return np.dot(p, temp)
+    
+    def compute_primal(flux):
+        """
+        Compute the value of the primal functional
+        $\int_{\Domain} | flux | $
+        """
+        return np.sum(self.mass_matrix_faces.dot(flux))
 
 
 
