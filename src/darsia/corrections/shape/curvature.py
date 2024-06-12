@@ -807,6 +807,8 @@ class CurvatureCorrection(darsia.BaseCorrection):
                     self.config["crop"]["width"],
                 ]
                 meta["dimensions"] = dimensions
-                meta["origin"] = [0, self.config["crop"]["height"]]
+                meta["origin"] = darsia.CoordinateArray(
+                    [0, self.config["crop"]["height"]]
+                )
 
         return meta
