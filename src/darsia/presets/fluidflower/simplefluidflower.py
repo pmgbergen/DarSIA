@@ -129,7 +129,10 @@ class SimpleFluidFlower:
             self.baseline = correction(self.baseline)
 
         # ! ---- SETUP SEGMENTATION ----
-        self.labels = self.setup_segmentation(segmentation)
+        if segmentation is None:
+            self.labels = darsia.zeros_like(self.baseline, dtype=np.uint8)
+        else:
+            self.labels = self.setup_segmentation(segmentation)
 
         # ! ---- SETUP COLOR CORRECTION ----
         illumination_mode = kwargs.get("illumination_mode", "automatic")
