@@ -34,3 +34,30 @@ def zeros_like(
         return darsia.Image(
             np.zeros(image.num_voxels, dtype=dtype), metadata=image.metadata
         )
+
+
+def ones_like(
+    image: darsia.Image,
+    mode: Literal["shape", "voxels"] = "shape",
+    dtype: Optional[StandardDtype] = None,
+) -> darsia.Image:
+    """Analogon of np.ones_like but for darsia.Image objects.
+
+    Args:
+        image (darsia.Image): input image
+        mode (Literal["shape", "voxels"], optional): mode of the output image. Defaults to
+            "shape".
+        dtype (Optional[StandardDtype], optional): dtype of the output image. Defaults to None.
+
+    Returns:
+        darsia.Image: output image
+
+    """
+    if dtype is None:
+        dtype = image.dtype
+    if mode == "shape":
+        return darsia.Image(np.ones(image.shape, dtype=dtype), metadata=image.metadata)
+    elif mode == "voxels":
+        return darsia.Image(
+            np.ones(image.num_voxels, dtype=dtype), metadata=image.metadata
+        )
