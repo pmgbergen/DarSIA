@@ -1,7 +1,7 @@
 numpy
 opencv-python
 scipy
-matplotlib
+matplotlib=3.8.0
 scikit-image
 future
 colour-science
