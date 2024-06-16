@@ -37,10 +37,10 @@ class CropAssistant(darsia.PointSelectionAssistant):
         self.finalized_prompt_input = False
         """Flag controlling whether the user has entered the width and height."""
 
-        self.width = None
+        self.width = kwargs.get("width", None)
         """Identified width of the box."""
 
-        self.height = None
+        self.height = kwargs.get("height", None)
         """Identified height of the box."""
 
     def _reset(self) -> None:
@@ -65,8 +65,10 @@ class CropAssistant(darsia.PointSelectionAssistant):
 
         # Ask user to enter width and height into prompt
         if not self.finalized_prompt_input:
-            self.width = float(input("Enter width of box: "))
-            self.height = float(input("Enter height of box: "))
+            if self.width is None:
+                self.width = float(input("Enter width of box: "))
+            if self.height is None:
+                self.height = float(input("Enter height of box: "))
             self.finalized_prompt_input = True
 
         # Define a dictionary for input of the 'crop' option of CurvatureCorrection
@@ -96,7 +98,10 @@ class CropAssistant(darsia.PointSelectionAssistant):
     # ! ---- Automatic mode ---- ! #
 
     def from_image(
-        self, color: Union[list[float], np.ndarray], width: float, height: float
+        self,
+        color: Union[list[float], np.ndarray],
+        width: Optional[float],
+        height: Optional[float],
     ) -> dict:
         """Run the assistant in automatic mode.
 
@@ -119,8 +124,12 @@ class CropAssistant(darsia.PointSelectionAssistant):
         self.pts = self._find_marks(color)
 
         # Define width and height of the box
-        self.width = width
-        self.height = height
+        if self.width is None:
+            assert width is not None, "Width not provided"
+            self.width = width
+        if self.height is None:
+            assert height is not None, "Height not provided"
+            self.height = height
 
         # Define a dictionary for input of the 'crop' option of CurvatureCorrection
         config = self._define_config()
