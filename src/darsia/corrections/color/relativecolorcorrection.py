@@ -101,10 +101,10 @@ class RelativeColorCorrection(darsia.BaseCorrection):
 
     def define_correction(self) -> darsia.LinearApproximation:
         """Set the correction method.
-        
+
         Returns:
             darsia.LinearApproximation: Linear approximation for color correction.
-        
+
         """
         ansatz = self.config.get("method", "polynomial")
         if ansatz == "polynomial":
@@ -114,14 +114,15 @@ class RelativeColorCorrection(darsia.BaseCorrection):
             raise ValueError(f"Anstatz '{ansatz}' is not supported.")
         return darsia.LinearApproximation(space, (3, 3))
 
-    def define_similar_colors(self)
+    def define_similar_colors(self):
         """Define similar colors for calibration.
-        
+
         Use an interactive assistant to select similar colors
         for each calibration image.
 
         """
         width = self.config.get("sample_size", 50)
+        debug = self.config.get("debug", False)
         voxels = []
         colors = []
 
@@ -135,30 +136,30 @@ class RelativeColorCorrection(darsia.BaseCorrection):
             voxels.append(np.array(sample_centers))
 
             # Extract one characteristic color per sample
-            filter: callable = lambda x: x
-            show_plot = False
             colors.append(
                 darsia.extract_characteristic_data(
                     signal=img.img,
                     samples=samples,
-                    filter=filter,
-                    show_plot=show_plot,
+                    show_plot=debug,
                 )
             )
 
         # Concatenate the coordinates and colors
-        voxels = darsia.VoxelArray(np.concatenate(voxels, axis=0))
+        coordinates = self.baseline.coordinatesystem.coordinate(
+            darsia.VoxelArray(np.concatenate(voxels, axis=0))
+        )
         colors = np.concatenate(colors, axis=0)
-        self.data.append((voxels, colors))
+        self.data.append((coordinates, colors))
 
     def define_reference_color(self):
         """Define reference color for calibration.
-        
+
         Use an interactive assistant to select a reference color.
         Only the first image is considered for now.
-        
+
         """
         width = self.config.get("sample_size", 50)
+        debug = self.config.get("debug", False)
 
         for img in self.calibration_images[:1]:
             box_selection_assistant = darsia.BoxSelectionAssistant(img, width=width)
@@ -170,13 +171,10 @@ class RelativeColorCorrection(darsia.BaseCorrection):
                 warn("Only a single sample is allowed.")
 
             # Extract one characteristic color per sample
-            filter: callable = lambda x: x
-            show_plot = False
             colors = darsia.extract_characteristic_data(
                 signal=img.img,
                 samples=samples,
-                filter=filter,
-                show_plot=show_plot,
+                show_plot=debug,
             )
         self.reference_data.append(colors)
 
@@ -193,83 +191,103 @@ class RelativeColorCorrection(darsia.BaseCorrection):
 
         # Define samples
         width = self.config.get("sample_size", 50)
-        voxels = []
-        colors = []
-        # assert len(self.calibration_images) == 1, "Need to adapt code"
-        for img_counter, img in enumerate(self.calibration_images):
-            if img_counter == 0:
-                # Keep the same samples for all images
-                box_selection_assistant = darsia.BoxSelectionAssistant(img, width=width)
-                main_samples = box_selection_assistant()
-            box_selection_assistant2 = darsia.BoxSelectionAssistant(img, width=width)
-            pre_top_left_samples = box_selection_assistant2()
-            top_left_samples = [
-                darsia.subtract_slice_pairs(sample, pre_top_left_samples[0])
-                for sample in pre_top_left_samples
-            ]
+        debug = self.config.get("debug", False)
 
-            for sample in main_samples:
+        # First stage of the user-interaction: Select a grid of distinct colors
+        # And define reference colors
+        reference_img = self.calibration_images[0]
+        box_selection_assistant = darsia.BoxSelectionAssistant(
+            reference_img, width=width
+        )
+        reference_samples = box_selection_assistant()
+
+        # Extract one characteristic color per sample
+        reference_colors = darsia.extract_characteristic_data(
+            signal=reference_img.img, samples=reference_samples, show_plot=debug
+        )
+        # Define the relative samples to be used as translations in the tensor approach
+        relative_reference_samples = [
+            darsia.subtract_slice_pairs(sample, reference_samples[0])
+            for sample in reference_samples
+        ]
+
+        # Second stage of the user-interaction: Select a grid of the same colors
+        print(
+            """Select the same color as the first from the first stage to define a """
+            """tensor-grid."""
+        )
+        for img in self.calibration_images:
+
+            # Define outer tensor
+            box_selection_assistant = darsia.BoxSelectionAssistant(img, width=width)
+            top_left_samples = box_selection_assistant()
+
+            # Data collection using a tensor approach
+            for i, sample in enumerate(relative_reference_samples):
+
+                # User a tensorial fill-in to extract all similar colors
                 samples = [
                     darsia.add_slice_pairs(sample, top_left_sample)
                     for top_left_sample in top_left_samples
                 ]
+
                 # Extract the coordinates of all samples
                 mid = lambda x: int(0.5 * (x.start + x.stop))
                 sample_centers = [
                     [mid(sample[0]), mid(sample[1])] for sample in samples
                 ]
-                voxels = np.array(sample_centers)
+                voxels = darsia.VoxelArray(sample_centers)
+                # coordinates = (
+                #     voxels  # self.baseline.coordinatesystem.coordinate(voxels)
+                # )
+                coordinates = self.baseline.coordinatesystem.coordinate(voxels)
 
                 # Extract one characteristic color per sample
-                filter: callable = lambda x: x
-                show_plot = False
                 colors = darsia.extract_characteristic_data(
-                    signal=img.img,
-                    samples=samples,
-                    filter=filter,
-                    show_plot=show_plot,
+                    signal=img.img, samples=samples, show_plot=debug
                 )
-                self.data.append((voxels, colors))
-                if img_counter == 0:
-                    self.reference_data.append(colors[-1])
-            if img_counter > 0:
-                # Copy the reference data while keeping the main samples
-                self.reference_data = (
-                    self.reference_data + self.reference_data[: len(main_samples)]
+
+                # Store the samples and (similar) colors
+                self.data.append((coordinates, colors))
+
+                # Store reference colors taking into account the tensor approach
+                self.reference_data.append(
+                    np.vstack([reference_colors[i] for _ in range(len(samples))])
                 )
 
     def calibrate(self):
         """Calibrate the color correction based on the samples and reference colors.
-        
+
         A least-squares problem is solved to find the optimal coefficients.
 
         """
 
         # Make sure there exists one reference color for each set of similar colors
-        assert len(self.data) == len(self.reference_data)
+        assert len(self.data) == len(
+            self.reference_data
+        ), f"Data mismatch: {len(self.data)} vs. {len(self.reference_data)}"
 
         # Define the number of samples and color components
-        self.stacked_voxels = darsia.VoxelArray(
+        self.stacked_coordinates = darsia.CoordinateArray(
+            # self.stacked_coordinates = darsia.VoxelArray(
             np.vstack([data[0] for data in self.data])
         )
         self.stacked_colors = np.vstack([data[1] for data in self.data])
 
         # Need to repeat the reference colors for each set of similar colors
-        num_samples = [data[0].shape[0] for data in self.data]
-        self.stacked_reference_colors = np.vstack(
-            np.repeat(self.reference_data, num_samples, axis=0)
-        )
+        self.stacked_reference_colors = np.vstack(self.reference_data)
 
         def _reshape_coefficients(coefficients):
+            """Auxiliary function to reshape the coefficients."""
             return np.reshape(coefficients, self.correction.shape)
 
         # Define LS objective function
         def objective_function(scaling):
             """Objective function for least-squares problem."""
             self.correction.coefficients = _reshape_coefficients(scaling)
-            flat_correction = self.correction.evaluate(self.stacked_voxels).reshape(
-                (-1, 3, 3), order="F"
-            )
+            flat_correction = self.correction.evaluate(
+                self.stacked_coordinates
+            ).reshape((-1, 3, 3), order="F")
             flat_corrected_colors = np.einsum(
                 "ikl,il->ik", flat_correction, self.stacked_colors
             )
