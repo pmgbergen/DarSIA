@@ -488,6 +488,8 @@ class Image:
 
         """
         copy_image = self.copy()
+        dtype = copy_image.img.dtype
+        is_float = dtype in [float, np.float16, np.float32, np.float64]
         if data_type in [bool]:
             copy_image.img = skimage.img_as_bool(copy_image.img)
         elif data_type in [float]:
@@ -499,7 +501,9 @@ class Image:
         elif data_type in [int]:
             copy_image.img = skimage.img_as_int(copy_image.img)
         elif data_type in [np.uint8]:
-            copy_image.img = skimage.img_as_ubyte(copy_image.img)
+            copy_image.img = skimage.img_as_ubyte(
+                np.clip(copy_image.img, -1, 1) if is_float else copy_image.img
+            )
         elif data_type in [np.uint16]:
             copy_image.img = skimage.img_as_uint(copy_image.img)
         else:
