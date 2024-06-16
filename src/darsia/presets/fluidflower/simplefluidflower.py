@@ -129,8 +129,9 @@ class SimpleFluidFlower:
             self.baseline = correction(self.baseline)
 
         # ! ---- SETUP SEGMENTATION ----
+
         if segmentation is None:
-            self.labels = darsia.zeros_like(self.baseline, dtype=np.uint8)
+            self.labels = darsia.ones_like(self.baseline, dtype=np.uint8)
         else:
             self.labels = self.setup_segmentation(segmentation)
 
