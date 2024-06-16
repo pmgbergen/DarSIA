@@ -112,7 +112,7 @@ class RelativeColorCorrection(darsia.BaseCorrection):
             space = darsia.PolynomialApproximationSpace(degree)
         else:
             raise ValueError(f"Anstatz '{ansatz}' is not supported.")
-        return darsia.LinearApproximation(space, (3, 3))
+        return darsia.LinearApproximation(space, (3, 3), domain="coordinates")
 
     def define_similar_colors(self):
         """Define similar colors for calibration.
