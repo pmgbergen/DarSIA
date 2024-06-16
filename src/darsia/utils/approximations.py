@@ -1,7 +1,7 @@
 """Module containing approximation spaces and global linear approximations."""
 
 from abc import ABC
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 import numpy as np
 
@@ -164,9 +164,12 @@ class LinearApproximation:
     """
 
     def __init__(
-        self, space: ApproximationSpace, dim: Union[int, tuple[int, int]]
+        self,
+        space: ApproximationSpace,
+        dim: Union[int, tuple[int, int]],
+        domain: Literal["voxels", "coordinates"] = "coordinates",
     ) -> None:
-        """Initialize the linear approximation.
+        """Initialize the linear approximation (with zero coefficients).
 
         Args:
             space (ApproximationSpace): Approximation space.
@@ -176,37 +179,44 @@ class LinearApproximation:
         self.space = space
         self.shape = (space.size, dim) if isinstance(dim, int) else (space.size, *dim)
         self.size = np.prod(self.shape)
-        # Initialize the coefficients
+        self.domain = domain
         self.coefficients = np.zeros(self.shape, dtype=float)
 
-    def _evaluate(self, voxels: darsia.VoxelArray) -> np.ndarray:
+    def _evaluate(
+        self, input: Union[darsia.VoxelArray, darsia.CoordinateArray]
+    ) -> np.ndarray:
         """Evaluate the linear combination on a given coordinate system.
 
         Args:
-            voxels (darsia.VoxelArray): Voxel array.
+            input (Union[darsia.VoxelArray, darsia.CoordinateArray]):
+                foundation for the evaluation.
 
         Returns:
             np.ndarray: Flat result.
 
         """
         # Evaluate the linear combination on a given coordinate system
-        flat_result = np.zeros((len(voxels), 9))
+        flat_result = np.zeros((len(input), 9))
 
         # Evaluate the basis functions
         for i in range(self.space.size):
             flat_result += np.outer(
-                self.space.basis(voxels, i), np.ravel(self.coefficients[i], "F")
+                self.space.basis(input, i), np.ravel(self.coefficients[i], "F")
             )
 
         return flat_result
 
     def evaluate(
-        self, input: Union[darsia.CoordinateSystem, darsia.VoxelArray]
+        self,
+        input: Union[
+            darsia.CoordinateSystem, darsia.CoordinateArray, darsia.VoxelArray
+        ],
     ) -> np.ndarray:
         """Evaluate the linear combination on a given input.
 
         Args:
-            input (Union[darsia.CoordinateSystem, darsia.VoxelArray]): Input.
+            input (Union[darsia.CoordinateSystem, darsia.CoordinateArray, darsia.VoxelArray]):
+                foundation for the evaluation.
 
         Returns:
             np.ndarray: Result.
@@ -215,10 +225,18 @@ class LinearApproximation:
         if isinstance(input, darsia.CoordinateSystem):
             # Consider all accessible voxels, and anticipate that the result
             # shall be reshaped to the shape of the coordinate system
-            flat_result = self._evaluate(input.voxels)
+            if self.domain == "voxels":
+                flat_result = self._evaluate(input.voxels)
+            elif self.domain == "coordinates":
+                flat_result = self._evaluate(input.coordinates)
             return flat_result.reshape((*input.shape, 3, 3), order="F")
 
+        elif isinstance(input, darsia.CoordinateArray):
+            assert self.domain == "coordinates", "Use voxels not coordinates."
+            return self._evaluate(input)
+
         elif isinstance(input, darsia.VoxelArray):
+            assert self.domain == "voxels", "Use coordinates not voxels."
             return self._evaluate(input)
 
         else:
