@@ -237,9 +237,6 @@ class RelativeColorCorrection(darsia.BaseCorrection):
                     [mid(sample[0]), mid(sample[1])] for sample in samples
                 ]
                 voxels = darsia.VoxelArray(sample_centers)
-                # coordinates = (
-                #     voxels  # self.baseline.coordinatesystem.coordinate(voxels)
-                # )
                 coordinates = self.baseline.coordinatesystem.coordinate(voxels)
 
                 # Extract one characteristic color per sample
