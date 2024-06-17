@@ -193,8 +193,7 @@ class AffineBalance(BaseBalance):
             balanced_img (np.ndarray): Balanced image.
 
         """
-        balanced_img = img @ self.balance_scaling + self.balance_translation
-        return balanced_img
+        return img @ self.balance_scaling + self.balance_translation
 
 
 class AdaptiveBalance(AffineBalance):
