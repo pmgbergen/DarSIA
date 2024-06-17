@@ -160,5 +160,5 @@ class KernelInterpolation(darsia.Model):
 
         """
         return self.kernel.linear_combination(
-            signal, self.supports, self.interpolation_weights
+            signal.astype(np.float32), self.supports, self.interpolation_weights
         )
