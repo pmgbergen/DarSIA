@@ -463,8 +463,22 @@ class ColorCorrection(darsia.BaseCorrection):
 
         Returns:
             np.ndarray: restricted image
+
         """
-        # Use width and height (in cm - irrelevant) as provided by the manufacturer Xrite.
-        return darsia.extract_quadrilateral_ROI(
-            img, pts_src=self.roi, width=27.3, height=17.8, indexing="matrix"
-        )
+        row_pixels = np.sort(self.roi[:, 0])
+        col_pixels = np.sort(self.roi[:, 1])
+        row_diff = max(row_pixels[1] - row_pixels[0], row_pixels[3] - row_pixels[2])
+        col_diff = max(col_pixels[1] - col_pixels[0], col_pixels[3] - col_pixels[2])
+        roi_is_box = row_diff < 0.01 * img.shape[0] and col_diff < 0.01 * img.shape[1]
+        if roi_is_box:
+            # self.roi is more or less a box
+            roi_slices = (
+                slice(row_pixels[0], row_pixels[3]),
+                slice(col_pixels[0], col_pixels[3]),
+            )
+            return img[roi_slices]
+        else:
+            # Use width and height (in cm - irrelevant) as provided by the manufacturer Xrite.
+            return darsia.extract_quadrilateral_ROI(
+                img, pts_src=self.roi, width=27.3, height=17.8, indexing="matrix"
+            )
