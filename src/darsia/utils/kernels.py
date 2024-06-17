@@ -34,15 +34,9 @@ class BaseKernel(ABC):
         if num_supports == 0:
             return np.zeros_like(signal)
         # NOTE: Shape is not clear at input as it may be used via advenced indexing
-        from time import time
-
-        tic = time()
         output = interpolation_weights[0] * self.__call__(signal, supports[0])
-        print("interpolation call", time() - tic)
         for n in range(1, num_supports):
-            tic = time()
             output += interpolation_weights[n] * self.__call__(signal, supports[n])
-            print("interpolation call", time() - tic)
 
         return output
 
@@ -76,7 +70,7 @@ class GaussianKernel(BaseKernel):
     """Gaussian kernel."""
 
     def __init__(self, gamma: float = 1.0):
-        self.gamma = gamma
+        self.gamma = np.float32(gamma)
         """Gamma parameter of the kernel."""
 
     def __call__(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
@@ -91,12 +85,38 @@ class GaussianKernel(BaseKernel):
         """
         return np.exp(-self.gamma * np.sum(np.multiply(x - y, x - y), axis=-1))
 
-    def linear_combination(self, signal: np.ndarray, supports, interpolation_weights):
-        # Make numba version from linear_combination for GaussianKernel
-        @numba.jit(nopython=True, parallel=True, fastmath=True, cache=True)
+    def linear_combination(
+        self,
+        signal: np.ndarray,
+        supports: np.ndarray,
+        interpolation_weights: np.ndarray,
+    ) -> np.ndarray:
+        """Linear combination using a numba version of the Gaussian kernel.
+
+        Args:
+            signal (np.ndarray): signal to be interpolated
+            supports (np.ndarray): supports
+            interpolation_weights (np.ndarray): interpolation weights
+
+        Returns:
+            np.ndarray: interpolated signal
+
+        """
+
+        @numba.jit(
+            "float32[:](float32[:,:], float32[:,:], float32[:], float32)",
+            nopython=True,
+            parallel=True,
+            fastmath=True,
+            cache=True,
+        )
         def _linear_combination_numba(
-            signal: np.ndarray, supports, interpolation_weights, gamma
+            signal: np.ndarray,
+            supports: np.ndarray,
+            interpolation_weights: np.ndarray,
+            gamma: float,
         ):
+            """Linear combination of the Gaussian kernel."""
             num_supports = len(supports)
             diff = signal - supports[0]
             output = interpolation_weights[0] * np.exp(

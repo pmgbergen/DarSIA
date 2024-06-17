@@ -77,7 +77,7 @@ class KernelInterpolation(darsia.Model):
         if kernel is not None:
             self.update_kernel(kernel)
         if supports is not None:
-            self.supports = supports
+            self.supports = supports.astype(np.float32)
             self.num_supports = self.supports.shape[0]
         if values is not None:
             self.values = values
@@ -127,7 +127,7 @@ class KernelInterpolation(darsia.Model):
         for i in range(self.num_supports):
             for j in range(self.num_supports):
                 X[i, j] = self.kernel(self.supports[i], self.supports[j])
-        self.interpolation_weights = np.linalg.solve(X, self.values)
+        self.interpolation_weights = np.linalg.solve(X, self.values).astype(np.float32)
 
     def update_model_parameters(
         self,
