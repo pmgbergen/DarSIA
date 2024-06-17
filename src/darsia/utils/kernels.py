@@ -104,7 +104,10 @@ class GaussianKernel(BaseKernel):
         """
 
         @numba.jit(
-            "float32[:](float32[:,:], float32[:,:], float32[:], float32)",
+            [
+                "float32[:](float32[:,:], float32[:,:], float32[:], float32)",
+                "float32[:,:](float32[:,:,:], float32[:,:], float32[:], float32)",
+            ],
             nopython=True,
             parallel=True,
             fastmath=True,
