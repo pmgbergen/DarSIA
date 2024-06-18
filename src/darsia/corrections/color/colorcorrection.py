@@ -476,7 +476,24 @@ class ColorCorrection(darsia.BaseCorrection):
                 slice(row_pixels[0], row_pixels[3]),
                 slice(col_pixels[0], col_pixels[3]),
             )
-            return img[roi_slices]
+            box_img = img[roi_slices]
+            # need to extract a box with the brown sample first - assume the first
+            # voxel in self.roi is the brown sample
+            if np.allclose([row_pixels[0], col_pixels[0]], [self.roi[0]]):
+                # brown sample is in the upper left corner
+                return box_img
+            elif np.allclose([row_pixels[0], col_pixels[3]], [self.roi[0]]):
+                # brown sample is in the upper right corner - rotate 90 degrees clockwise
+                return np.rot90(box_img, 1)
+            elif np.allclose([row_pixels[3], col_pixels[3]], [self.roi[0]]):
+                # brown sample is in the lower right corner - rotate 180 degrees
+                return np.rot90(box_img, -2)
+            elif np.allclose([row_pixels[3], col_pixels[0]], [self.roi[0]]):
+                # brown sample is in the lower left corner - rotate 90 degrees counterclockwise
+                return np.rot90(box_img, -1)
+            else:
+                raise ValueError("The brown sample is not in the corner of the ROI.")
+
         else:
             # Use width and height (in cm - irrelevant) as provided by the manufacturer Xrite.
             return darsia.extract_quadrilateral_ROI(
