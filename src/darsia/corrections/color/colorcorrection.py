@@ -470,6 +470,7 @@ class ColorCorrection(darsia.BaseCorrection):
         row_diff = max(row_pixels[1] - row_pixels[0], row_pixels[3] - row_pixels[2])
         col_diff = max(col_pixels[1] - col_pixels[0], col_pixels[3] - col_pixels[2])
         roi_is_box = row_diff < 0.01 * img.shape[0] and col_diff < 0.01 * img.shape[1]
+        atol = max(0.01 * img.shape[0], 0.01 * img.shape[1])
         if roi_is_box:
             # self.roi is more or less a box
             roi_slices = (
@@ -479,16 +480,16 @@ class ColorCorrection(darsia.BaseCorrection):
             box_img = img[roi_slices]
             # need to extract a box with the brown sample first - assume the first
             # voxel in self.roi is the brown sample
-            if np.allclose([row_pixels[0], col_pixels[0]], [self.roi[0]]):
+            if np.allclose([row_pixels[0], col_pixels[0]], [self.roi[0]], atol=atol):
                 # brown sample is in the upper left corner
                 return box_img
-            elif np.allclose([row_pixels[0], col_pixels[3]], [self.roi[0]]):
+            elif np.allclose([row_pixels[0], col_pixels[3]], [self.roi[0]], atol=atol):
                 # brown sample is in the upper right corner - rotate 90 degrees clockwise
                 return np.rot90(box_img, 1)
-            elif np.allclose([row_pixels[3], col_pixels[3]], [self.roi[0]]):
+            elif np.allclose([row_pixels[3], col_pixels[3]], [self.roi[0]], atol=atol):
                 # brown sample is in the lower right corner - rotate 180 degrees
                 return np.rot90(box_img, -2)
-            elif np.allclose([row_pixels[3], col_pixels[0]], [self.roi[0]]):
+            elif np.allclose([row_pixels[3], col_pixels[0]], [self.roi[0]], atol=atol):
                 # brown sample is in the lower left corner - rotate 90 degrees counterclockwise
                 return np.rot90(box_img, -1)
             else:
