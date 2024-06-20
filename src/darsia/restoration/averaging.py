@@ -95,9 +95,7 @@ class VolumeAveraging:
         return result
 
 
-def volume_average(
-    img: darsia.Image, mask: darsia.Image, rev: Optional[float] = None
-) -> darsia.Image:
+def volume_average(img: darsia.Image, mask: darsia.Image, size: float) -> darsia.Image:
     """Fast-access function for volume averaging.
 
     Note: For repeated calls, it is recommended to create a VolumeAveraging object.
@@ -105,10 +103,10 @@ def volume_average(
     Args:
         img (Image): image
         mask (Image): mask
-        rev (float): size of the REV in length units
+        size (float): size of the REV in length units
 
     Returns:
         Image: volume averaged image
 
     """
-    return VolumeAveraging(rev=REV(size=rev, img=img), mask=mask)(img)
+    return VolumeAveraging(rev=REV(size=size, img=img), mask=mask)(img)
