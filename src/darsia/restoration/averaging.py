@@ -1,6 +1,6 @@
 """Module with tools for volume averaging."""
 
-from typing import Optional, Union, overload
+from typing import Union, overload
 
 import numpy as np
 import scipy.ndimage
@@ -57,8 +57,10 @@ class VolumeAveraging:
 
     @overload  # type: ignore [override]
     def __call__(self, img: np.ndarray) -> np.ndarray: ...
+
     @overload  # type: ignore [override]
     def __call__(self, img: darsia.Image) -> darsia.Image: ...
+
     def __call__(
         self, img: Union[np.ndarray, darsia.Image]
     ) -> Union[np.ndarray, darsia.Image]:
