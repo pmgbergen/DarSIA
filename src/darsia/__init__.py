@@ -76,6 +76,7 @@ from darsia.restoration.resize import *
 from darsia.restoration.binaryinpaint import *
 from darsia.restoration.h1_regularization import *
 from darsia.restoration.split_bregman_tvd import *
+from darsia.restoration.averaging import *
 from darsia.multi_image_analysis.translationanalysis import *
 from darsia.multi_image_analysis.concentrationanalysis import *
 from darsia.multi_image_analysis.model_calibration import *
