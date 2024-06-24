@@ -1627,7 +1627,7 @@ class ScalarImage(Image):
 
         """
         # Write image, using the conventional matrix indexing
-        ubyte_image = skimage.img_as_ubyte(self.img)
+        ubyte_image = self.img_as(np.uint8).img
         suffix = Path(path).suffix.lower()
 
         if suffix in [".jpg", ".jpeg"]:
@@ -1742,7 +1742,7 @@ class OpticalImage(Image):
 
         # Write image, using the conventional matrix indexing
         if self.original_dtype == np.uint8:
-            ubyte_image = skimage.img_as_ubyte(bgr_array)
+            ubyte_image = bgr_image.img_as(np.uint8).img
             suffix = Path(path).suffix.lower()
 
             if suffix in [".jpg", ".jpeg"]:
