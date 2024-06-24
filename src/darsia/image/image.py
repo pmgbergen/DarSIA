@@ -811,6 +811,91 @@ class Image:
 
     __rmul__ = __mul__
 
+    def __lt__(self, other: Image | int | float) -> darsia.Image:
+        """Comparison of two images, identifying voxels where the first image is smaller.
+
+        Args:
+            other (Image, or number): image or number to compare with
+
+        Returns:
+            Image: image with boolean values
+
+        """
+        result = darsia.zeros_like(self, mode="voxels", dtype=bool)
+        if isinstance(other, Image):
+            result.img = self.img < other.img
+        else:
+            result.img = self.img < other
+        return result
+
+    def __gt__(self, other: Image | int | float) -> darsia.Image:
+        """Comparison of two images, identifying voxels where the first image is greater.
+
+        Args:
+            other (Image, or number): image or number to compare with
+
+        Returns:
+            Image: image with boolean values
+
+        """
+        result = darsia.zeros_like(self, mode="voxels", dtype=bool)
+        if isinstance(other, Image):
+            result.img = self.img > other.img
+        else:
+            result.img = self.img > other
+        return result
+
+    def __eq__(self, other: Image | int | float) -> darsia.Image:
+        """Comparison of two images, identifying voxels where the first image is equal.
+
+        Args:
+            other (Image, or number): image or number to compare with
+
+        Returns:
+            Image: image with boolean values
+
+        """
+        result = darsia.zeros_like(self, mode="voxels", dtype=bool)
+        if isinstance(other, Image):
+            result.img = self.img == other.img
+        else:
+            result.img = self.img == other
+        return result
+
+    def __le__(self, other: Image | int | float) -> darsia.Image:
+        """Comparison of two images, identifying voxels where the first image is smaller or equal.
+
+        Args:
+            other (Image, or number): image or number to compare with
+
+        Returns:
+            Image: image with boolean values
+
+        """
+        result = darsia.zeros_like(self, mode="voxels", dtype=bool)
+        if isinstance(other, Image):
+            result.img = self.img <= other.img
+        else:
+            result.img = self.img <= other
+        return result
+
+    def __ge__(self, other: Image | int | float) -> darsia.Image:
+        """Comparison of two images, identifying voxels where the first image is greater or equal.
+
+        Args:
+            other (Image, or number): image or number to compare with
+
+        Returns:
+            Image: image with boolean values
+
+        """
+        result = darsia.zeros_like(self, mode="voxels", dtype=bool)
+        if isinstance(other, Image):
+            result.img = self.img >= other.img
+        else:
+            result.img = self.img >= other
+        return result
+
     # ! ---- Display methods and I/O
 
     def show(
