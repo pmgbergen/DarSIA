@@ -812,7 +812,7 @@ class Image:
     __rmul__ = __mul__
 
     def __lt__(self, other: Image | int | float) -> darsia.Image:
-        """Comparison of two images, identifying voxels where the first image is smaller.
+        """Comparison of two images, identifying where the first image is smaller.
 
         Args:
             other (Image, or number): image or number to compare with
@@ -829,7 +829,7 @@ class Image:
         return result
 
     def __gt__(self, other: Image | int | float) -> darsia.Image:
-        """Comparison of two images, identifying voxels where the first image is greater.
+        """Comparison of two images, identifying where the first image is greater.
 
         Args:
             other (Image, or number): image or number to compare with
@@ -846,7 +846,7 @@ class Image:
         return result
 
     def __eq__(self, other: Image | int | float) -> darsia.Image:
-        """Comparison of two images, identifying voxels where the first image is equal.
+        """Comparison of two images, identifying where the first image is equal.
 
         Args:
             other (Image, or number): image or number to compare with
@@ -863,7 +863,7 @@ class Image:
         return result
 
     def __le__(self, other: Image | int | float) -> darsia.Image:
-        """Comparison of two images, identifying voxels where the first image is smaller or equal.
+        """Comparison of two images, identifying where the first image is smaller or equal.
 
         Args:
             other (Image, or number): image or number to compare with
@@ -880,7 +880,7 @@ class Image:
         return result
 
     def __ge__(self, other: Image | int | float) -> darsia.Image:
-        """Comparison of two images, identifying voxels where the first image is greater or equal.
+        """Comparison of two images, identifying where the first image is greater or equal.
 
         Args:
             other (Image, or number): image or number to compare with
