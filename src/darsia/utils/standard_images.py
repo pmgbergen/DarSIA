@@ -30,10 +30,10 @@ def zeros_like(
         dtype = image.dtype
     if mode == "shape":
         ImageType = type(image)
-        return ImageType(np.zeros(image.shape, dtype=dtype), metadata=image.metadata)
+        return ImageType(np.zeros(image.shape, dtype=dtype), metadata=image.metadata())
     elif mode == "voxels":
         return darsia.ScalarImage(
-            np.zeros(image.num_voxels, dtype=dtype), metadata=image.metadata
+            np.zeros(image.num_voxels, dtype=dtype), metadata=image.metadata()
         )
 
 
@@ -58,8 +58,8 @@ def ones_like(
         dtype = image.dtype
     if mode == "shape":
         ImageType = type(image)
-        return ImageType(np.ones(image.shape, dtype=dtype), metadata=image.metadata)
+        return ImageType(np.ones(image.shape, dtype=dtype), metadata=image.metadata())
     elif mode == "voxels":
         return darsia.ScalarImage(
-            np.ones(image.num_voxels, dtype=dtype), metadata=image.metadata
+            np.ones(image.num_voxels, dtype=dtype), metadata=image.metadata()
         )
