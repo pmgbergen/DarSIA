@@ -4,6 +4,8 @@ from typing import Any, Optional, Union
 from warnings import warn
 
 import matplotlib.pyplot as plt
+import numpy as np
+import skimage
 
 import darsia
 
@@ -30,6 +32,20 @@ class PointSelectionAssistant(darsia.BaseAssistant):
 
         # Output mode
         self.return_coordinates = kwargs.get("coordinates", False)
+        """Flag controlling whether to return coordinates or voxels."""
+
+        # Activate masking if labels are provided
+        self.labels: Optional[darsia.Image] = kwargs.get("labels", None)
+        """Labels for the image."""
+        if self.labels is not None:
+            # Expand image with a (active) mask
+            coarse_img = skimage.img_as_float(
+                darsia.resize(
+                    self.img, fx=0.1, fy=0.1, interpolation="inter_nearest"
+                ).img
+            )
+            mask = np.ones(coarse_img.shape[:2], dtype=np.float32)
+            self.coarse_masked_img = np.dstack((coarse_img, mask))
 
     def __call__(self) -> Union[darsia.CoordinateArray, darsia.VoxelArray]:
         """Call the assistant."""
@@ -120,6 +136,23 @@ class PointSelectionAssistant(darsia.BaseAssistant):
                     "go",
                     markersize=10,
                 )
+
+                # Auxiliary plot: Mark labeled region
+                if self.labels is not None:
+                    label = self.labels.img[int(event.ydata), int(event.xdata)]
+                    mask = (
+                        darsia.resize(
+                            skimage.img_as_float(self.labels.img == label),
+                            shape=self.coarse_masked_img.shape[:2],
+                            interpolation="inter_nearest",
+                        )
+                        > 0.5
+                    )
+                    self.coarse_masked_img[mask, -1] = 0.3
+                    plt.figure("Auxiliary: Masked image")
+                    plt.imshow(self.coarse_masked_img)
+                    plt.show()
+
                 self.fig.canvas.draw()
                 self._print_current_selection()
 
