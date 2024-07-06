@@ -26,7 +26,7 @@ class PointSelectionAssistant(darsia.BaseAssistant):
         super().__init__(img, use_coordinates=False, **kwargs)
 
         # Initialize containers
-        self.pts: Optional[darsia.CoordinateArray, darsia.VoxelArray] = None
+        self.pts: Optional[list[list[float]]] = None
         """Selected points in voxel format with matrix indexing."""
         self._reset()
 
@@ -46,6 +46,7 @@ class PointSelectionAssistant(darsia.BaseAssistant):
             )
             mask = np.ones(coarse_img.shape[:2], dtype=np.float32)
             self.coarse_masked_img = np.dstack((coarse_img, mask))
+            self.zorder = 0
 
     def __call__(self) -> Union[darsia.CoordinateArray, darsia.VoxelArray]:
         """Call the assistant."""
@@ -58,9 +59,6 @@ class PointSelectionAssistant(darsia.BaseAssistant):
             # Print selected points
             if self.verbosity:
                 self._print_info()
-
-        # Close the figure opened by the base class
-        plt.close(self.fig)
 
         # Convert to right format.
         voxels = darsia.VoxelArray(self.pts)
@@ -130,7 +128,7 @@ class PointSelectionAssistant(darsia.BaseAssistant):
                 self.pts.append([event.ydata, event.xdata])
 
                 # Draw a circle around the selected point
-                self.ax.plot(
+                dot = self.ax.plot(
                     event.xdata,
                     event.ydata,
                     "go",
@@ -150,10 +148,13 @@ class PointSelectionAssistant(darsia.BaseAssistant):
                     )
                     self.coarse_masked_img[mask, -1] = 0.3
                     plt.figure("Auxiliary: Masked image")
-                    plt.imshow(self.coarse_masked_img)
+                    plt.imshow(self.coarse_masked_img, zorder=self.zorder)
+                    self.zorder += 1
                     plt.show()
 
-                self.fig.canvas.draw()
+                self.ax.draw_artist(dot[0])
+                self.fig.canvas.blit(self.ax.bbox)
+
                 self._print_current_selection()
 
     def _on_key_press(self, event: Any) -> None:
@@ -163,27 +164,25 @@ class PointSelectionAssistant(darsia.BaseAssistant):
 
         # Key 'd' is pressed
         if event.key == "d":
-            self._remove_last_point(event.xdata, event.ydata)
+            self._remove_last_point()
 
-    def _remove_last_point(self, xdata, ydata) -> None:
-        """Remove last point from selection.
+    def _remove_last_point(self) -> None:
+        """Remove last point from selection."""
 
-        Args:
-            xdata: x-coordinate of point to remove
-            ydata: y-coordinate of point to remove
-
-        """
-
-        self.pts.pop()
+        if len(self.pts) == 0:
+            return
+        rm_pt = self.pts[-1]
+        self.pts = type(self.pts)(self.pts[:-1])
         self._print_current_selection()
         # Draw a red circle around the de-selected point
-        self.ax.plot(
-            xdata,
-            ydata,
+        dot = self.ax.plot(
+            rm_pt[1],
+            rm_pt[0],
             "ro",
             markersize=10,
         )
-        self.fig.canvas.draw()
+        self.ax.draw_artist(dot[0])
+        self.fig.canvas.blit(self.ax.bbox)
 
     def _finalize(self) -> None:
         """Finalize selection."""
