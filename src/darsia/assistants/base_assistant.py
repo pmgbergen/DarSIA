@@ -97,11 +97,12 @@ class BaseAssistant(ABC):
     def __call__(self) -> Any:
         """Call the assistant."""
         # Setup event handler
-        self._setup_event_handler()
         if self.img.space_dim == 2:
             self._plot_2d()
         elif self.img.space_dim == 3:
             self._plot_3d()
+        self._setup_event_handler()
+        plt.show(block=self.block)
 
     def _plot_2d(self) -> None:
         """Plot in 2d with interactive event handler."""
@@ -120,7 +121,6 @@ class BaseAssistant(ABC):
                 self._setup_plot_2d(self.img, alpha=0.4)
         else:
             raise ValueError("Either img or background must be provided.")
-        plt.show(block=self.block)
 
     def _setup_plot_2d(
         self, img: darsia.Image, alpha: float | np.ndarray = 1.0
@@ -312,5 +312,3 @@ class BaseAssistant(ABC):
         self.ax[2].set_xlabel("y-axis")
         self.ax[2].set_ylabel("z-axis")
         self.ax[2].set_aspect("equal")
-
-        plt.show(block=self.block)
