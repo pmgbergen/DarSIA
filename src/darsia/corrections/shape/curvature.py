@@ -161,8 +161,11 @@ class CurvatureCorrection(darsia.BaseCorrection):
         # Store color space and local scaling images as npz files
         np.savez(
             path,
+            class_name=type(self).__name__,
             config=self.config,
+            cache=self.cache if hasattr(self, "cache") else None,
         )
+
         print(f"Curvature correction saved to {path}.")
 
     def load(self, path: Path) -> None:
@@ -181,6 +184,9 @@ class CurvatureCorrection(darsia.BaseCorrection):
         if "config" not in data:
             raise ValueError("Invalid file format.")
         self.config = data["config"].item()
+        pre_cache = data["cache"]
+        if pre_cache is not None:
+            self.cache = pre_cache.item()
 
     def return_image(self) -> darsia.Image:
         """
