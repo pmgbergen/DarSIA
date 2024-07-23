@@ -1,6 +1,7 @@
 """Module containing a base implementation of an abstract correction."""
 
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Union
 
 import numpy as np
@@ -111,3 +112,31 @@ class BaseCorrection(ABC):
 
         """
         return {}
+
+    # ! ---- I/O ----
+
+    @abstractmethod
+    def save(self, path: Path) -> None:
+        """Save the correction to a file.
+
+        The method should store a npz file, continaing the class name and
+        required data for loading the correction from file.
+
+        Args:
+            path (str): path to the file
+
+        """
+        ...
+
+    @abstractmethod
+    def load(self, path: Path) -> None:
+        """Load the correction from a file.
+
+        The method should load a npz file, containing the class name and
+        required data for loading the correction from file.
+
+        Args:
+            path (str): path to the file
+
+        """
+        ...
