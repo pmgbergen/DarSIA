@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import itertools
+from pathlib import Path
 from typing import Union
 
 import numpy as np
@@ -202,3 +203,11 @@ class RotationCorrection(darsia.BaseCorrection):
         ] = q1_interpolation
 
         return rotated_img
+
+    # ! ---- I/O ----
+
+    def save(self, path: Path) -> None:
+        raise NotImplementedError("Not implemented yet.")
+
+    def load(self, path: Path) -> None:
+        raise NotImplementedError("Not implemented yet.")
