@@ -57,6 +57,7 @@ from darsia.corrections.color.illuminationcorrection import *
 from darsia.corrections.color.colorcorrection import *
 from darsia.corrections.color.relativecolorcorrection import *
 from darsia.corrections.color.experimentalcolorcorrection import *
+from darsia.corrections.readcorrection import *
 from darsia.image.coordinatetransformation import *  # Requires affine correction
 from darsia.signals.models.basemodel import *
 from darsia.signals.models.combinedmodel import *
