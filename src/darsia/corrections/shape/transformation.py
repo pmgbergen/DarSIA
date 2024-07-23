@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections import namedtuple
+from pathlib import Path
 from typing import Union
 
 import numpy as np
@@ -264,3 +265,11 @@ class TransformationCorrection(darsia.BaseCorrection):
         )
 
         return array_dst
+
+    # ! ---- I/O ----
+
+    def save(self, path: Path) -> None:
+        raise NotImplementedError("Not implemented yet.")
+
+    def load(self, path: Path) -> None:
+        raise NotImplementedError("Not implemented yet.")

@@ -403,3 +403,11 @@ class TranslationCorrection(darsia.BaseCorrection):
         (h, w) = img.shape[:2]
         translated_img = cv2.warpAffine(img, self.translation, (w, h))
         return translated_img
+
+    # ! ---- I/O ----
+
+    def save(self, path: Path) -> None:
+        raise NotImplementedError("Not implemented yet.")
+
+    def load(self, path: Path) -> None:
+        raise NotImplementedError("Not implemented yet.")
