@@ -26,6 +26,7 @@ class IlluminationCorrection(darsia.BaseCorrection):
         ] = "hsl-scalar",
         interpolation: Literal["rbf", "quartic", "illumination"] = "quartic",
         show_plot: bool = False,
+        rescale: bool = False,
     ):
         """Initialize an illumination correction.
 
@@ -42,6 +43,7 @@ class IlluminationCorrection(darsia.BaseCorrection):
             interpolation (str): interpolation method to use for scaling; defaults to
                 "quartic".
             show_plot (bool): flag controlling whether plots of calibration are displayed.
+            rescale (bool): flag controlling whether scaling ensures max value 1
 
         """
         # Cache input parameters
@@ -129,6 +131,7 @@ class IlluminationCorrection(darsia.BaseCorrection):
             options={"maxiter": 1000, "disp": True},
         )
 
+        # Shape and rescale
         scaling = np.reshape(opt_result.x, (num_samples, color_components))
 
         # Interpolate scaling to the full coordinate system
@@ -191,6 +194,16 @@ class IlluminationCorrection(darsia.BaseCorrection):
                 )
             ]
 
+        if rescale:
+            max_scaling = max(
+                [
+                    np.max(self.local_scaling[i].img)
+                    for i in range(len(self.local_scaling))
+                ]
+            )
+            for i in range(len(self.local_scaling)):
+                self.local_scaling[i].img /= max_scaling
+
         if show_plot:
             # Plot the determined scaling
             fig, ax = plt.subplots()
@@ -241,6 +254,7 @@ class IlluminationCorrection(darsia.BaseCorrection):
         # Store color space and local scaling images as npz files
         np.savez(
             path,
+            class_name=type(self).__name__,
             config={
                 "colorspace": self.colorspace,
                 "local_scaling": self.local_scaling,
