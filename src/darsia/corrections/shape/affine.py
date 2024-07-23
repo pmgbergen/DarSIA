@@ -8,6 +8,7 @@ contained.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional, Union
 from warnings import warn
 
@@ -363,3 +364,22 @@ class AffineCorrection(darsia.TransformationCorrection):
             coordinatesystem_dst=coordinatesystem_dst,
             transformation=affine_transformation,
         )
+
+    # ! ---- I/O ----
+    def save(self, path: Path) -> None:
+        """Save the correction to npz file.
+
+        Args:
+            path (Path): path to the file
+
+        """
+        raise NotImplementedError("Method not implemented yet.")
+
+    def load(self, path: Path) -> None:
+        """Load the correction from npz file.
+
+        Args:
+            path (Path): path to the file
+
+        """
+        raise NotImplementedError("Method not implemented yet.")
