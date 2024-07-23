@@ -12,6 +12,7 @@ routines by setting verbosity to True once.
 
 import copy
 import warnings
+from pathlib import Path
 from typing import Optional, Union, cast
 
 import colour
@@ -322,3 +323,11 @@ class ExperimentalColorCorrection(darsia.BaseCorrection):
             plt.show()
 
         return return_img
+
+    # ! ---- I/O ----
+
+    def save(self, path: Path) -> None:
+        raise NotImplementedError("Not implemented yet.")
+
+    def load(self, path: Path) -> None:
+        raise NotImplementedError("Not implemented yet.")
