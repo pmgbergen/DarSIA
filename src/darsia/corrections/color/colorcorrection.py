@@ -412,7 +412,12 @@ class ColorCorrection(darsia.BaseCorrection):
         path.parents[0].mkdir(parents=True, exist_ok=True)
 
         # Save the color correction
-        np.savez(path, config=self.config)
+        np.savez(
+            path,
+            class_name=type(self).__name__,
+            base=self.colorchecker._reference_swatches_rgb,
+            config=self.config,
+        )
         print(f"Color correction saved to {path}.")
 
     def load(self, path: Path) -> None:
@@ -422,12 +427,11 @@ class ColorCorrection(darsia.BaseCorrection):
             path (Path): path to the file
 
         """
-        # Make sure the file exists
         assert path.exists(), f"File {path} does not exist."
-
-        # Load the color correction
-        self.config = np.load(path, allow_pickle=True)["config"].item()
-        self._init_from_config(base=None)
+        data = np.load(path, allow_pickle=True)
+        base = CustomColorChecker(reference_colors=data["base"])
+        self.config = data["config"].item()
+        self._init_from_config(base=base)
 
     # ! ---- Auxiliary files
 
