@@ -15,9 +15,11 @@ import darsia
 class DriftCorrection(darsia.BaseCorrection):
     """Class for drift correction of images wrt. a baseline image."""
 
+    # ! ---- SETUP ----
+
     def __init__(
         self,
-        base: Optional[Union[np.ndarray, darsia.Image]],
+        base: Optional[Union[np.ndarray, darsia.Image]] = None,
         config: Optional[dict] = None,
     ) -> None:
         """
@@ -37,11 +39,6 @@ class DriftCorrection(darsia.BaseCorrection):
                     applied or not, default is True.
 
         """
-        # Read baseline from config if not provided
-        if base is None:
-            base = config.get("base")
-            assert base is not None, "Baseline image not provided."
-
         # Read baseline image
         if isinstance(base, darsia.Image):
             self.base = np.copy(base.img)
@@ -52,9 +49,6 @@ class DriftCorrection(darsia.BaseCorrection):
 
         elif isinstance(base, np.ndarray):
             self.base = np.copy(base)
-
-        else:
-            raise ValueError("Data type for baseline image not supported.")
 
         # Establish config
         if config is None:
@@ -96,7 +90,7 @@ class DriftCorrection(darsia.BaseCorrection):
             "roi": self.roi,
         }
 
-    # ! ---- Main correction routines
+    # ! ---- Main correction routines ----
 
     def correct_array(
         self, img: np.ndarray, roi: Optional[tuple[slice, ...]] = None
@@ -122,13 +116,20 @@ class DriftCorrection(darsia.BaseCorrection):
         else:
             return img
 
-    # ! ---- I/O ---- ! #
+    # ! ---- I/O ----
+
     def load(self, path) -> None:
         """Load the drift correction from a file."""
+        self.base = np.load(path, allow_pickle=True)["base"]
         config = np.load(path, allow_pickle=True)["config"].item()
         self._init_from_config(config)
 
     def save(self, path) -> None:
         """Save the drift correction to a file."""
-        np.savez(path, config=self.return_config())
+        np.savez(
+            path,
+            class_name=type(self).__name__,
+            base=self.base,
+            config=self.return_config(),
+        )
         print(f"Drift correction saved to {path}.")
