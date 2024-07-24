@@ -23,6 +23,10 @@ class RectangleSelectionAssistant(darsia.BaseAssistant):
         Args:
             img (darsia.Image): Image to select a rectangle in.
             **kwargs: Additional arguments.
+                - background (darsia.Image): Background image to display.
+                - name (str): Name of assistant / short version of instructions.
+                - coordinates (bool): Flag controlling whether to return coordinates or voxels.
+                - labels (darsia.Image): Labels for the image.
 
         """
         if img is None:
