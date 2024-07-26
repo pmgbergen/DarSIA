@@ -1,6 +1,7 @@
 """Collection of unit tests for integration over geometries."""
 
 import numpy as np
+import pytest
 
 import darsia
 
@@ -337,6 +338,113 @@ def test_variable_porous_geometry_3d():
     )
 
 
+def test_variable_extruded_porous_geometry():
+    """Test integration over variable extruded two-dimensional porous geometry and compatible data."""
+    space_dim = 2
+    num_voxels = (2, 4)  # rows x cols
+    dimensions = [0.5, 1.0]  # height x width
+    porosity = np.ones(num_voxels, dtype=float)
+    porosity[0, 2] = 0.2
+    porosity[1, 1] = 0.5
+    porosity[1, 2] = 0.8
+    depth = np.ones(num_voxels, dtype=float)
+    depth[0, 2] = 0.2
+    depth[1, 1] = 0.5
+    depth[1, 2] = 0.8
+    geometry = darsia.ExtrudedPorousGeometry(
+        porosity,
+        depth,
+        space_dim=space_dim,
+        num_voxels=num_voxels,
+        dimensions=dimensions,
+    )
+
+    # Check voxel volume which should have height and width equal to 0.25 weighted
+    # with heterogeneous depth
+    assert np.all(
+        np.isclose(
+            geometry.voxel_volume,
+            0.25**2 * np.array([[1, 1, 0.2, 1], [1, 0.5, 0.8, 1]]) ** 2,
+        )
+    )
+
+    # Hardcoded data of compatible size
+    data = np.zeros(num_voxels, dtype=float)
+    data[0, 2] = 0.5
+    data[0, 3] = 0.75
+    data[1, 0] = -0.2
+    data[1, 1] = 0.6
+    data[1, 2] = 0.1
+
+    # Test integration
+    integral = geometry.integrate(data)
+    assert np.isclose(
+        integral, 0.25**2 * (0.5 * 0.2**2 + 0.75 - 0.2 + 0.6 * 0.5**2 + 0.1 * 0.8**2)
+    )
+
+
+# parametrize different data types for porosity and depth: float, array, image
+@pytest.mark.parametrize("porosity_type", [float, np.ndarray, darsia.Image])
+# ["float", "np.ndarray", "darsia.Image"])
+@pytest.mark.parametrize("depth_type", [float, np.ndarray, darsia.Image])
+# ["float", "np.ndarray", "darsia.Image"])
+def test_variable_extruded_porous_geometry_types(porosity_type, depth_type):
+    """Test integration over variable extruded two-dimensional porous geometry and compatible data."""
+    space_dim = 2
+    num_voxels = (2, 4)  # rows x cols
+    dimensions = [0.5, 1.0]  # height x width
+    if porosity_type == float:
+        porosity = 0.5
+    elif porosity_type == np.ndarray:
+        porosity = 0.5 * np.ones(num_voxels, dtype=float)
+    elif porosity_type == darsia.Image:
+        porosity = darsia.Image(
+            0.5 * np.ones(num_voxels, dtype=float),
+            dimensions=dimensions,
+            series=False,
+            scalar=True,
+        )
+    if depth_type == float:
+        depth = 0.2
+    elif depth_type == np.ndarray:
+        depth = 0.2 * np.ones(num_voxels, dtype=float)
+    elif depth_type == darsia.Image:
+        depth = darsia.Image(
+            0.2 * np.ones(num_voxels, dtype=float),
+            dimensions=dimensions,
+            series=False,
+            scalar=True,
+        )
+    geometry = darsia.ExtrudedPorousGeometry(
+        porosity,
+        depth,
+        space_dim=space_dim,
+        num_voxels=num_voxels,
+        dimensions=dimensions,
+    )
+
+    # Check voxel volume which should have height and width equal to 0.25 weighted
+    # with heterogeneous depth
+    assert np.all(
+        np.isclose(
+            geometry.voxel_volume,
+            0.25**2 * 0.2 * 0.5 * np.ones((2, 4)),
+        )
+    )
+
+    # Hardcoded data of compatible size
+    data = np.zeros(num_voxels, dtype=float)
+    data[0, 2] = 0.5
+    data[0, 3] = 0.75
+    data[1, 0] = -0.2
+    data[1, 1] = 0.6
+    data[1, 2] = 0.1
+
+    # Test integration
+    integral = geometry.integrate(data)
+    assert np.isclose(integral, 0.25**2 * 0.2 * 0.5 * (0.5 + 0.75 - 0.2 + 0.6 + 0.1))
+
+
 def test_integration_vectorial_data():
     """Test integration over simple two-dimensional geometry and compatible data
     provided as Image.
@@ -368,9 +476,7 @@ def test_integration_vectorial_data():
 
     # Test integration
     integral = geometry.integrate(data)
-    assert np.allclose(
-        integral, 0.25**2 * (0.5 + 0.75 - 0.2 + 0.6 + 0.1) * np.ones(2)
-    )
+    assert np.allclose(integral, 0.25**2 * (0.5 + 0.75 - 0.2 + 0.6 + 0.1) * np.ones(2))
 
 
 def test_integration_image_slice():
@@ -436,9 +542,7 @@ def test_integration_image_series():
 
     # Test integration
     integral = geometry.integrate(image)
-    assert np.allclose(
-        integral, 0.25**2 * (0.5 + 0.75 - 0.2 + 0.6 + 0.1) * np.ones(2)
-    )
+    assert np.allclose(integral, 0.25**2 * (0.5 + 0.75 - 0.2 + 0.6 + 0.1) * np.ones(2))
 
 
 def test_geometry_normalization():
