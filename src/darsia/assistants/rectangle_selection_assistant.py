@@ -17,7 +17,7 @@ class RectangleSelectionAssistant(darsia.BaseAssistant):
 
     """
 
-    def __init__(self, img: darsia.Image, **kwargs) -> None:
+    def __init__(self, img: Optional[darsia.Image], **kwargs) -> None:
         """Initialize the assistant.
 
         Args:
