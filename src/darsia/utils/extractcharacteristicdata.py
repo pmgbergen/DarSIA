@@ -94,6 +94,11 @@ def extract_characteristic_data(
             flat_mask = np.ravel(mask[p])
             flat_image = flat_image[flat_mask]
 
+        if len(flat_image) == 0:
+            warn("No data in patch. Reduced to 0.")
+            data_clusters[i] = np.zeros(data_dim)
+            continue
+
         pixels = np.float32(flat_image)
         criteria = (
             cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
@@ -101,9 +106,17 @@ def extract_characteristic_data(
             eps,
         )
         flags = cv2.KMEANS_RANDOM_CENTERS
-        _, labels, palette = cv2.kmeans(
-            pixels, num_clusters, None, criteria, num_attempts, flags
-        )
+        try:
+            _, labels, palette = cv2.kmeans(
+                pixels, num_clusters, None, criteria, num_attempts, flags
+            )
+        except cv2.error:
+            warn("Kmeans clustering failed - not enough clusters found. Reduced to 1.")
+            labels = np.zeros_like(pixels)
+            palette = np.repeat(np.mean(pixels, axis=0), num_clusters).reshape(
+                (num_clusters, -1), order="F"
+            )
+
         # Store results
         _, counts = np.unique(labels, return_counts=True)
         if mode == "most_common":
