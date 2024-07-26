@@ -268,8 +268,8 @@ class ExtrudedPorousGeometry(ExtrudedGeometry):
 
     def __init__(
         self,
-        porosity: Union[float, np.ndarray],
-        depth: Union[float, np.ndarray],
+        porosity: Union[float, np.ndarray, darsia.Image],
+        depth: Union[float, np.ndarray, darsia.Image],
         space_dim: int,
         num_voxels: Union[tuple[int], list[int]],
         dimensions: Optional[list] = None,
@@ -288,7 +288,14 @@ class ExtrudedPorousGeometry(ExtrudedGeometry):
             voxel_size (list): see Geometry.
 
         """
-        integrated_porosity = np.multiply(porosity, depth)
+        if isinstance(porosity, darsia.Image) and isinstance(depth, darsia.Image):
+            integrated_porosity = np.multiply(porosity.img, depth.img)
+        elif isinstance(depth, darsia.Image):
+            integrated_porosity = np.multiply(porosity, depth.img)
+        elif isinstance(porosity, darsia.Image):
+            integrated_porosity = np.multiply(porosity.img, depth)
+        else:
+            integrated_porosity = np.multiply(porosity, depth)
         super().__init__(
             integrated_porosity, space_dim, num_voxels, dimensions, voxel_size
         )
