@@ -45,13 +45,14 @@ class HeterogeneousModel(Model):
 
         self.masks = darsia.Masks(labels)
         self.obj = {}
-        for i in range(self.masks.size):
-            self.obj[i] = copy.copy(obj)
+        for label in self.masks.unique_labels:
+            self.obj[label] = copy.copy(obj)
 
     def __call__(self, signal: np.ndarray) -> np.ndarray:
         output = np.zeros(signal.shape[:2])  # TODO shape?
         for i, mask in enumerate(self.masks):
-            output[mask.img] = self[i](signal[mask.img])
+            label = self.masks.unique_labels[i]
+            output[mask.img] = self[label](signal[mask.img])
         return output
 
     def __getitem__(self, key):
