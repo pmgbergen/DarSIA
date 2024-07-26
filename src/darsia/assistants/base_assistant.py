@@ -102,6 +102,8 @@ class BaseAssistant(ABC):
         elif self.img.space_dim == 3:
             self._plot_3d()
         self._setup_event_handler()
+        manager = plt.get_current_fig_manager()
+        manager.full_screen_toggle()
         plt.show(block=self.block)
 
     def _plot_2d(self) -> None:
