@@ -158,20 +158,20 @@ class PorosityAnalysis(MultichromaticTracerAnalysis):
                     plt.show()
 
                 common_color = palette[np.argmax(counts)]
-                least_common_color = palette[np.argmin(counts)]
+                # least_common_color = palette[np.argmin(counts)]
                 # colors_mask.append(np.vstack((common_color, least_common_color)))
                 # concentrations_mask.append([1, 0])
 
                 # Determine the three most common colors
-                common_colors = []
+                # common_colors = []
 
                 # Determine the most common color using a cluster analysis
 
                 brightest_color = palette[np.argmax(np.linalg.norm(palette, axis=1))]
                 darkest_color = palette[np.argmin(np.linalg.norm(palette, axis=1))]
-                median_dark_color = palette[
-                    np.argsort(np.linalg.norm(palette, axis=1))[len(palette) // 2]
-                ]
+                # median_dark_color = palette[
+                #    np.argsort(np.linalg.norm(palette, axis=1))[len(palette) // 2]
+                # ]
 
                 # colors_mask.append(
                 #    np.vstack((median_dark_color, brightest_color, darkest_color))
@@ -275,12 +275,12 @@ class PorosityAnalysis(MultichromaticTracerAnalysis):
                         palette[:, 2],
                         c=c,
                     )
-                    ax.scatter(
-                        zero_color[0], zero_color[1], zero_color[2], c="r", alpha=0.5
-                    )
-                    ax.scatter(
-                        one_color[0], one_color[1], one_color[2], c="g", alpha=0.5
-                    )
+                    # ax.scatter(
+                    #    zero_color[0], zero_color[1], zero_color[2], c="r", alpha=0.5
+                    # )
+                    # ax.scatter(
+                    #    one_color[0], one_color[1], one_color[2], c="g", alpha=0.5
+                    # )
                     ax.scatter(
                         common_color[0],
                         common_color[1],

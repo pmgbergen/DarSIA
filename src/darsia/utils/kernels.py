@@ -65,6 +65,56 @@ class LinearKernel(BaseKernel):
         """
         return np.sum(np.multiply(x, y), axis=-1) + self.a
 
+    def linear_combination(
+        self,
+        signal: np.ndarray,
+        supports: np.ndarray,
+        interpolation_weights: np.ndarray,
+    ) -> np.ndarray:
+        """Linear combination using a numba version of the Gaussian kernel.
+
+        Args:
+            signal (np.ndarray): signal to be interpolated
+            supports (np.ndarray): supports
+            interpolation_weights (np.ndarray): interpolation weights
+
+        Returns:
+            np.ndarray: interpolated signal
+
+        """
+
+        @numba.jit(
+            [
+                "float32(float32[:], float32[:,:], float32[:], float32)",
+                "float32[:](float32[:,:], float32[:,:], float32[:], float32)",
+                "float32[:,:](float32[:,:,:], float32[:,:], float32[:], float32)",
+            ],
+            nopython=True,
+            parallel=True,
+            fastmath=True,
+            cache=True,
+        )
+        def _linear_combination_numba(
+            signal: np.ndarray,
+            supports: np.ndarray,
+            interpolation_weights: np.ndarray,
+            a: float,
+        ):
+            """Linear combination of the linear kernel."""
+            num_supports = len(supports)
+            output = interpolation_weights[0] * (
+                np.sum(np.multiply(signal, supports[0]), axis=-1) + a
+            )
+            for n in range(1, num_supports):
+                output += interpolation_weights[n] * (
+                    np.sum(np.multiply(signal, supports[n]), axis=-1) + a
+                )
+            return output
+
+        return _linear_combination_numba(
+            signal, supports, interpolation_weights, self.a
+        )
+
 
 class GaussianKernel(BaseKernel):
     """Gaussian kernel."""
@@ -105,6 +155,7 @@ class GaussianKernel(BaseKernel):
 
         @numba.jit(
             [
+                "float32(float32[:], float32[:,:], float32[:], float32)",
                 "float32[:](float32[:,:], float32[:,:], float32[:], float32)",
                 "float32[:,:](float32[:,:,:], float32[:,:], float32[:], float32)",
             ],
