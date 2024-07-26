@@ -1,18 +1,23 @@
 from __future__ import annotations
 
 from typing import Optional, Union
+from warnings import warn
 
 import numpy as np
 
+import darsia
+
 
 def bounding_box(
-    coords: np.ndarray, padding: int = 0, max_size: Optional[Union[list, tuple]] = None
+    voxels: darsia.VoxelArray,
+    padding: int = 0,
+    max_size: Optional[Union[list, tuple]] = None,
 ) -> tuple[slice, ...]:
     """
     Determine bounding box for a set of given coordinates.
 
     Args:
-        coords (np.ndarray): coordinate array of size N x dim, using matrix indexing in 2d.
+        voxels (VoxelArray): voxel array of size N x dim, using matrix indexing in 2d.
         padding (int): padding to create a slightly larger bounding box. Might
             be of interest if the area that is prescribed in coords cover slightly less than
             strictly needed. Default is 0.
@@ -24,15 +29,15 @@ def bounding_box(
     """
     bounding_box: tuple[slice, ...] = ()
 
-    for dim in range(coords.shape[1]):
+    for dim in range(voxels.shape[1]):
         # Padding is added to the bounding box while making sure that it never extends out
         # of the scope of the 0 and max_size (where max size should be externally provided)
         # and should maximally be the maximal size of the image in each dimension.
-        min_value = max(np.min(coords[:, dim]) - padding, 0)
+        min_value = max(np.min(voxels[:, dim]) - padding, 0)
         max_value = (
-            min(np.max(coords[:, dim]) + padding, max_size[dim])
+            min(np.max(voxels[:, dim]) + padding, max_size[dim])
             if max_size is not None
-            else np.max(coords[:, dim]) + padding
+            else np.max(voxels[:, dim]) + padding
         )
 
         bounding_box = *bounding_box, slice(min_value, max_value)
@@ -40,7 +45,7 @@ def bounding_box(
     return bounding_box
 
 
-def bounding_box_inverse(bounding_box: tuple) -> np.ndarray:
+def bounding_box_inverse(bounding_box: tuple) -> darsia.VoxelArray:
     """
     Returns an array that would produce the same bounding box from the bounding_box()
     function above.
@@ -50,10 +55,10 @@ def bounding_box_inverse(bounding_box: tuple) -> np.ndarray:
             per dimension.
 
     Returns:
-        coords (np.ndarray): coordinate array of size N x dim, using matrix indexing in 2d.
+        voxels (VoxelArray): voxel array of size N x dim, using matrix indexing in 2d.
 
     """
-    coords = np.array(
+    voxels = darsia.VoxelArray(
         [
             [bounding_box[0].start, bounding_box[1].start],
             [bounding_box[0].stop, bounding_box[1].start],
@@ -62,7 +67,7 @@ def bounding_box_inverse(bounding_box: tuple) -> np.ndarray:
         ]
     )
 
-    return coords
+    return voxels
 
 
 def perimeter(box: Union[tuple, np.ndarray]) -> Union[int, float]:
@@ -95,7 +100,7 @@ def perimeter(box: Union[tuple, np.ndarray]) -> Union[int, float]:
 
 def random_patches(
     mask: np.ndarray, width: int, num_patches: int
-) -> list[tuple[slice]]:
+) -> Optional[list[tuple[slice]]]:
     """Utility to extract random patches from a mask.
 
     Args:
@@ -105,6 +110,7 @@ def random_patches(
 
     Returns:
         list of tuples: patches as slices.
+        None: if the mask is too small to extract patches.
 
     NOTE: The function utilizes randomness. For reproducibility, the seed is fixed.
 
@@ -120,6 +126,13 @@ def random_patches(
     indices = np.nonzero(mask)
     moved_indices = tuple([indices[i] + width for i in range(len(indices))])
     test_moved_indices = larger_mask[moved_indices]
+
+    # Check if the mask is too small to extract patches
+    if not np.any(test_moved_indices):
+        warn("The mask is too small to extract patches.")
+        return None
+
+    # Continue with feasible indices
     restricted_indices = tuple(
         [indices[i][test_moved_indices] for i in range(len(indices))]
     )
