@@ -6,7 +6,7 @@ Models convert signals to data.
 
 import abc
 import copy
-from typing import Literal, Optional, Union
+from typing import Literal, Optional, Union, overload
 
 import numpy as np
 
@@ -14,8 +14,17 @@ import darsia
 
 
 class Model:
+
     @abc.abstractmethod
-    def __call__(self, img: np.ndarray) -> np.ndarray:
+    @overload
+    def __call__(self, signal: np.ndarray) -> np.ndarray: ...
+
+    @abc.abstractmethod
+    @overload
+    def __call__(self, signal: darsia.Image) -> darsia.Image: ...
+
+    @abc.abstractmethod
+    def __call__(self, img: np.ndarray | darsia.Image) -> np.ndarray | darsia.Image:
         """
         Translation of signal to data.
         """
