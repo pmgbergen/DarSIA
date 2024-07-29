@@ -3,7 +3,7 @@ Module containing clipping operations.
 
 """
 
-from typing import Literal, Optional, Union
+from typing import Literal, Optional
 
 import numpy as np
 
@@ -54,9 +54,7 @@ class ClipModel(darsia.Model):
     def update_model_parameters(
         self,
         parameters: np.ndarray,
-        dofs: Optional[
-            Union[list[Literal["min_value", "max_value"]], Literal["all"]]
-        ] = None,
+        dofs: Optional[list[Literal["min_value", "max_value"]] | Literal["all"]] = None,
     ) -> None:
         """
         Short cut to update scaling and offset parameters using a
@@ -79,16 +77,23 @@ class ClipModel(darsia.Model):
         else:
             raise ValueError("invalid list of degrees of freedom")
 
-    def __call__(self, img: np.ndarray) -> np.ndarray:
+    def __call__(self, img: np.ndarray | darsia.Image) -> np.ndarray | darsia.Image:
         """
         Application of clipping.
 
         Args:
-            img (np.ndarray): image
+            img (np.ndarray | Image): image
 
         Returns:
-            np.ndarray: converted signal
+            np.ndarray | Image: converted signal; output type is the same as input type
 
         """
 
-        return np.clip(img, self._min_value, self._max_value)
+        if isinstance(img, np.ndarray):
+            return np.clip(img, self._min_value, self._max_value)
+        elif isinstance(img, darsia.Image):
+            result = img.copy()
+            result.img = np.clip(result.img, self._min_value, self._max_value)
+            return result
+        else:
+            raise ValueError("invalid input type")
