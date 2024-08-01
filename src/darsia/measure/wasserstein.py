@@ -1731,6 +1731,11 @@ class WassersteinDistanceDMK(darsia.EMD):
 
         self._setup_discretization()
 
+        self.kappa = self.options.get("kappa", np.ones(self.grid.shape,dtype=float))
+        """np.ndarray: kappa"""
+        self.kappa_faces = darsia.cell_to_face_average(self.grid, self.kappa, mode="harmonic")
+        """np.ndarray: kappa on faces"""
+
     def _setup_discretization(self) -> None:
         """Setup of fixed discretization operators.
 
@@ -1775,7 +1780,7 @@ class WassersteinDistanceDMK(darsia.EMD):
                         "ksp_rtol": rtol,
                         "ksp_maxit": 100,
                         "pc_type": "hypre",
-                        "ksp_monitor": None,
+                        #"ksp_monitor": None,
         }
         weighted_Poisson_solver.setup(weighted_Poisson_ksp_ctrl)
         
@@ -1851,7 +1856,7 @@ class WassersteinDistanceDMK(darsia.EMD):
             start = time.time()
 
             # udpate transport density
-            update = self.transport_density * ( np.abs(gradient_pressure)  - kappa_faces)
+            update = self.transport_density * ( np.abs(gradient_pressure)  - self.kappa_faces)
             deltat = min(deltat * 1.05, 0.5)
             self.transport_density += deltat * update
             min_tdens = 1e-10
@@ -2121,7 +2126,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                         "ksp_rtol": 1e-6,
                         "ksp_maxit": 100,
                         "pc_type": "hypre",
-                        "ksp_monitor": None,
+                        #"ksp_monitor": None,
         }
         self.Poisson_solver.setup(self.Poisson_ksp_ctrl)
 
@@ -2177,7 +2182,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                         "ksp_rtol": 1e-6,
                         "ksp_maxit": 100,
                         "pc_type": "hypre",
-                        "ksp_monitor": None,
+                        #"ksp_monitor": None,
         }
         self.weighted_Poisson_solver.setup(self.weighted_Poisson_ksp_ctrl)
         pressure = self.weighted_Poisson_solver.solve(forcing)
