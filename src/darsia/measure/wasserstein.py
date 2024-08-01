@@ -16,6 +16,7 @@ from ot import dist
 from ot.bregman import sinkhorn2
 from ot.bregman import empirical_sinkhorn2
 import darsia
+import copy
 
 # General TODO list
 # - improve assembling of operators through partial assembling
@@ -92,8 +93,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 - linear_solver (str): type of linear solver. Defaults to "direct".
                     Supported solvers are:
                     - "direct": direct solver
-                    - "amg": algebraic multigrid solver
-                    - "cg": conjugate gradient solver preconditioned with AMG
+                    - "ksp": Krylov subspace solver by PETSc
                 - formulation (str): formulation of the linear system. Defaults to
                     "pressure". Supported formulations are:
                     - "full": full system
@@ -102,7 +102,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                         eliminated
                 - linear_solver_options (dict): options for the linear solver. Defaults
                     to {}.
-                - amg_options (dict): options for the AMG solver. Defaults to {}.
+                - ksp_options (dict): options for the KSP solver. Defaults to {}.
                 - aa_depth (int): depth of the Anderson acceleration. Defaults to 0.
                 - aa_restart (int): restart of the Anderson acceleration. Defaults to
                     None.
@@ -134,11 +134,17 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.mobility_mode = self.options.get("mobility_mode", "cell_based")
         """str: mode for computing the mobility"""
 
+        
         # Setup of method
         self._setup_dof_management()
         self._setup_discretization()
         self._setup_linear_solver()
         self._setup_acceleration()
+
+        self.kappa = self.options.get("kappa", np.ones(self.grid.shape,dtype=float))
+        """np.ndarray: kappa"""
+        self.kappa_faces = darsia.cell_to_face_average(self.grid, self.kappa, mode="harmonic")
+        """np.ndarray: kappa on faces"""
 
     def _setup_dof_management(self) -> None:
         """Setup of Raviart-Thomas-type DOF management.
@@ -262,8 +268,6 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Safety checks
         assert self.linear_solver_type in [
             "direct",
-            "amg",
-            "cg",
             "ksp",
         ], f"Linear solver {self.linear_solver_type} not supported."
         assert self.formulation in [
@@ -271,68 +275,6 @@ class VariationalWassersteinDistance(darsia.EMD):
             "flux-reduced",
             "pressure",
         ], f"Formulation {self.formulation} not supported."
-
-
-    def setup_amg_options(self) -> None:
-        """Setup the infrastructure for multilevel solvers.
-
-        Basic default setup based on jacobi and block Gauss-Seidel smoothers.
-        User-defined options can be passed via the options dictionary, using the key
-        "amg_options". The options follow the pyamg interface.
-
-        """
-        self.amg_options = {
-            "strength": "symmetric",  # change the strength of connection
-            "aggregate": "standard",  # use a standard aggregation method
-            "smooth": ("jacobi"),  # prolongation smoother
-            "presmoother": (
-                "block_gauss_seidel",
-                {"sweep": "symmetric", "iterations": 1},
-            ),
-            "postsmoother": (
-                "block_gauss_seidel",
-                {"sweep": "symmetric", "iterations": 1},
-            ),
-            "coarse_solver": "pinv2",  # pseudo inverse via SVD
-            "max_coarse": 100,  # maximum number on a coarse level
-        }
-        """dict: options for the AMG solver"""
-
-        # Allow to overwrite default options - use pyamg interface.
-        user_defined_amg_options = self.options.get("amg_options", {})
-        self.amg_options.update(user_defined_amg_options)
-
-    def setup_amg_solver(self, matrix: sps.csc_matrix) -> None:
-        """Setup an AMG solver for the given matrix.
-
-        Args:
-            matrix (sps.csc_matrix): matrix
-
-        Defines:
-            pyamg.amg_core.solve: AMG solver
-            dict: options for the AMG solver
-
-        """
-        # Define AMG solver
-        self.setup_amg_options()
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="Implicit conversion of A to CSR")
-            self.linear_solver = pyamg.smoothed_aggregation_solver(
-                matrix, **self.amg_options
-            )
-
-        # Define solver options
-        linear_solver_options = self.options.get("linear_solver_options", {})
-        tol = linear_solver_options.get("tol", 1e-6)
-        maxiter = linear_solver_options.get("maxiter", 100)
-        self.amg_residual_history = []
-        """list: history of residuals for the AMG solver"""
-        self.solver_options = {
-            "tol": tol,
-            "maxiter": maxiter,
-            "residuals": self.amg_residual_history,
-        }
-        """dict: options for the iterative linear solver"""
 
     
     def _setup_acceleration(self) -> None:
@@ -520,11 +462,16 @@ class VariationalWassersteinDistance(darsia.EMD):
             # Define natural vector valued flux on faces (taking arithmetic averages
             # of continuous fluxes over cells evaluated at faces)
             full_face_flux = self.face_reconstruction(flat_flux)
+
             # Determine the l2 norm of the fluxes on the faces
             flat_flux_norm = np.linalg.norm(full_face_flux, 2, axis=1)
 
         else:
             raise ValueError(f"Mode {mode} not supported.")
+
+        # Scale by kappa
+        flat_flux_norm /= self.kappa_faces
+
 
         return flat_flux_norm
 
@@ -584,10 +531,12 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         setup_linear_solver = not (reuse_solver) or not (hasattr(self, "linear_solver"))
 
+        # Free memory if solver needs to be re-setup
+        if not (reuse_solver) and hasattr(self, "linear_solver"):
+            self.linear_solver.kill()
         
         tic = time.time() 
         if setup_linear_solver:
-
             # Define CG solver
             kernel = np.zeros(matrix.shape[0], dtype=float)
             kernel[self.pressure_indices] = 1.0
@@ -608,8 +557,10 @@ class VariationalWassersteinDistance(darsia.EMD):
             if self.formulation == "full":
                 if self.linear_solver_type=="direct":
                     self.solver_options = {
-                        "ksp_type": "preonly",
-                        "pc_type": "lu",
+                        "ksp_type": "preonly", # do not apply Krylov iterations
+                        "pc_type": "lu", 
+                        "pc_factor_shift_type": "inblocks", # for the zero entries 
+                        "pc_factor_mat_solver_type" : "mumps"
                     }
                 else:
                     self.solver_options = {
@@ -636,7 +587,26 @@ class VariationalWassersteinDistance(darsia.EMD):
                         #"fieldsplit_1_pc_python_type": __name__+".SchurComplementPC",
                     }
             if self.formulation == "flux_reduced" or self.formulation == "pressure":
-                #raise NotImplementedError("KSP does not work. I beleive is because the Schur complemtent is not defined")
+                # example of nested dictionary
+                # the underscore is used to separate the nested dictionary
+                # see in linals. The flatten_parameters will transform
+                # the nested dictionary into the commented
+                if self.linear_solver_type=="direct":
+                    ksp_schur = {
+                        "ksp": "preonly",
+                        "pc_type": "lu", 
+                        "pc_factor_mat_solver_type" : "mumps",
+                    }
+                else:
+                    ksp_schur = {
+                        "ksp": {
+                            "type": "gmres",
+                            "rtol": tol,
+                            "maxit": maxiter
+                        },
+                        "pc_type": "hypre",
+                    }
+                
                 self.solver_options = {
                     "ksp_type": "preonly", # prec. only and solve at the schur complement
                     "pc_type": "fieldsplit",
@@ -648,23 +618,10 @@ class VariationalWassersteinDistance(darsia.EMD):
                     # which is what we want
                     "fieldsplit_0_ksp_type": "preonly",
                     "fieldsplit_0_pc_type": "jacobi",
-                    # example of nested dictionary
-                    # the underscore is used to separate the nested dictionary
-                    # see in linals. The flatten_parameters will transform
-                    # the nested dictionary into the commented
-                    "fieldsplit_1" : {
-                        "ksp": {
-                            "type": "gmres",
-                            "rtol": tol,
-                            "maxit": maxiter
-                        },
-                        "pc_type": "hypre",
-                    }
-                    #"fieldsplit_1_ksp_type": "gmres",
-                    #"fieldsplit_1_pc_type": "hypre",
-                    #"fieldsplit_1_ksp_rtol": tol,
-                    #"fieldsplit_1_ksp_maxit": maxiter,
+                    # schur solver
+                    "fieldsplit_1" : ksp_schur,
                 }
+            #self.solver_options["ksp_monitor"] = None
             self.linear_solver.setup(self.solver_options)
             #self.linear_solver.ksp.view()
         time_setup = time.time() - tic           
@@ -679,11 +636,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             "time_setup": time_setup,
             "time_solve": time_solve,
         }
-        if self.linear_solver_type in ["amg_flux_reduced", "amg_pressure"]:
-            stats["amg num iterations"] = len(self.res_history_amg)
-            stats["amg residual"] = self.res_history_amg[-1]
-            stats["amg residuals"] = self.res_history_amg
-
+        
         return solution, stats
 
     
@@ -1756,6 +1709,9 @@ class WassersteinDistanceDMK(darsia.EMD):
         self.verbose = self.options.get("verbose", False)
         """bool: verbosity"""
 
+        self.div_contraint_tol = self.options.get("",1e-6)
+
+
         # Allocate space for main and auxiliary variables
         self.transport_density = np.zeros(self.grid.num_faces, dtype=float)
         """np.ndarray: flux"""
@@ -1763,11 +1719,15 @@ class WassersteinDistanceDMK(darsia.EMD):
         self.flux = np.zeros(self.grid.num_faces, dtype=float)
         """np.ndarray: flux"""
 
+
         self.pressure = np.zeros(self.grid.num_cells, dtype=float)
         """ np.ndarray: pressure of the poisson problem -div(p) = f = img1- img2"""
 
-        self.gradient_poisson = np.zeros(self.grid.num_faces, dtype=float)
-        """ varaible storing tprint(self.div.shape)he gradient of the poisson problem"""
+        self.flux_old = copy.deepcopy(self.flux)
+        self.transport_density_old = copy.copy(self.transport_density)
+        self.pressure_old = copy.deepcopy(self.pressure)
+
+
 
         self._setup_discretization()
 
@@ -1788,13 +1748,15 @@ class WassersteinDistanceDMK(darsia.EMD):
         self.div = darsia.FVDivergence(self.grid).mat / self.h
         """sps.csc_matrix: divergence operator: flat fluxes -> flat pressures"""
         
+        self.grad = darsia.FVDivergence(self.grid).mat.T / self.h**2
+
 
         self.mass_matrix_cells = darsia.FVMass(self.grid).mat
         """sps.csc_matrix: mass matrix on cells: flat pressures -> flat pressures"""
 
-        
+                
 
-        self.grad = self.div.T / self.h
+        
 
     def setup_elliptic_solver(self, transport_density, rtol=1e-6):
         """
@@ -1819,7 +1781,9 @@ class WassersteinDistanceDMK(darsia.EMD):
         
         return weighted_Poisson_solver
         
-    def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
+    def _solve(self, 
+               flat_mass_diff: np.ndarray,
+               ) -> tuple[float, np.ndarray, dict]:
         """Solve the Beckman problem using Newton's method.
 
         Args:
@@ -1835,20 +1799,19 @@ class WassersteinDistanceDMK(darsia.EMD):
 
         # Solver parameters. By default tolerances for increment and distance are
         # set, such that they do not affect the convergence.
-        num_iter = self.options.get("num_iter", 100)
+        num_iter = self.options.get("num_iter", 400)
         tol_residual = self.options.get("tol_residual", np.finfo(float).max)
         tol_increment = self.options.get("tol_increment", np.finfo(float).max)
         tol_distance = self.options.get("tol_distance", np.finfo(float).max)
-
+            
         
         # Initialize Newton iteration with Darcy solution for unitary mobility
-        self.transport_density[:] = 1.0
+        self.transport_density[:] = 1.0 / self.kappa_faces
         Poisson_solver = self.setup_elliptic_solver(self.transport_density)
         pressure = Poisson_solver.solve(flat_mass_diff)
         gradient_pressure = self.grad.dot(pressure)
-
-        # Initialize distance in case below iteration fails
-        new_distance = 0
+        distance = self.compute_dual(pressure, flat_mass_diff) 
+        flux = self.transport_density * gradient_pressure
 
         # Initialize container for storing the convergence history
         convergence_history = {
@@ -1875,21 +1838,34 @@ class WassersteinDistanceDMK(darsia.EMD):
 
 
         self.iter = 0
-        # PDHG iterations
+        deltat = 0.01
+        # DMK iterations
+    
         while self.iter <= num_iter:
-            #
-            start = time.time()
-            
-            # udpate transport density
-            update = self.transport_density * ( gradient_pressure ** 2 - 1.0)
-            deltat = 0.25
-            self.transport_density += deltat * update
+            self.flux_old[:] = flux[:]
+            self.pressure_old[:] = pressure[:]
+            self.transport_density_old[:] = self.transport_density[:]
+            distance_old = distance
 
+            # start update 
+            start = time.time()
+
+            # udpate transport density
+            update = self.transport_density * ( np.abs(gradient_pressure)  - kappa_faces)
+            deltat = min(deltat * 1.05, 0.5)
+            self.transport_density += deltat * update
+            min_tdens = 1e-10
+            self.transport_density[self.transport_density < min_tdens] = min_tdens
             # udpate potential
             Poisson_solver = self.setup_elliptic_solver(self.transport_density)
             pressure = Poisson_solver.solve(flat_mass_diff)
             gradient_pressure = self.grad.dot(pressure)
+
+            # update flux
             flux = self.transport_density * gradient_pressure
+
+            self.iter += 1
+            self.iter_cpu = time.time() - start
 
             
             # int_ pot f = int_ pot div poisson_pressure = int_ grad pot \cdot \nabla poisson_pressure 
@@ -1898,12 +1874,22 @@ class WassersteinDistanceDMK(darsia.EMD):
             self.duality_gap = abs(self.dual_value - self.primal_value)
             distance = self.primal_value
 
+            distance_increment = abs( distance - distance_old) / distance
+            if distance_increment < tol_distance:
+                break
 
-            self.iter += 1
 
-            self.iter_cpu = time.time() - start
-            #if self.verbose :
-            print(
+            residual = np.linalg.norm(( gradient_pressure ** 2 - 1.0) * self.transport_density)
+            if residual < tol_residual:
+                break
+
+            flux_increment = np.linalg.norm(flux - self.flux_old) / np.linalg.norm(self.flux_old)  
+            if flux_increment < tol_increment:
+                break
+            
+            
+            if self.verbose :
+                print(
                     f"it: {self.iter:03d}" +
                     f" gap={self.duality_gap:.1e}" +
                     f" dual={self.dual_value:.3e} primal={self.primal_value:.3e}" +
@@ -1912,8 +1898,6 @@ class WassersteinDistanceDMK(darsia.EMD):
                     f" {np.min(self.transport_density):.2e}<=TDENS<={np.max(self.transport_density):.2e}"
                     ) 
 
-            #convergence_history["distance"].append(new_distance)
-            #convergence_history["residual"].append(np.linalg.norm(residual_i, 2))
             
             # Compute the error and store as part of the convergence history:
             # 0 - full residual (Newton interpretation)
@@ -1921,14 +1905,10 @@ class WassersteinDistanceDMK(darsia.EMD):
             # 2 - distance increment (Minimization interpretation)
 
             # Update convergence history
-            #convergence_history["distance"].append(new_distance)
-            #convergence_history["residual"].append(np.linalg.norm(residual_i, 2))
-            #convergence_history["flux_increment"].append(
-            #    np.linalg.norm(increment[self.flux_slice], 2)
-            #)
-            #convergence_history["distance_increment"].append(
-            #    abs(new_distance - old_distance)
-            #)
+            convergence_history["distance"].append(distance)
+            convergence_history["residual"].append(residual)
+            convergence_history["flux_increment"].append(flux_increment)
+            convergence_history["distance_increment"].append(distance_increment)
             #convergence_history["timing"].append(stats_i)
 
             # Extract current total run time
@@ -1942,20 +1922,11 @@ class WassersteinDistanceDMK(darsia.EMD):
             # - distance increment
             # - flux increment
             # - residual
-            if False:#self.verbose:
-                distance_increment = convergence_history["distance_increment"][-1]
-                flux_increment = (
-                    convergence_history["flux_increment"][-1]
-                    / convergence_history["flux_increment"][0]
-                )
-                residual = (
-                    convergence_history["residual"][-1]
-                    / convergence_history["residual"][0]
-                )
+            if self.verbose:
                 print(
-                    f"""Iter. {iter} \t| {new_distance:.6e} \t| """
-                    f"""{distance_increment:.6e} \t| {flux_increment:.6e} \t| """
-                    f"""{residual:.6e}"""
+                    f"""Iter. {self.iter} \t| {distance:.6e} \t| """
+                    + f"""{distance_increment:.6e} \t| {flux_increment:.6e} \t| """
+                    + f"""{residual:.6e}"""
                 )
 
         # Summarize profiling (time in seconds, memory in GB)
@@ -2018,8 +1989,7 @@ class WassersteinDistanceDMK(darsia.EMD):
         # Determine difference of distributions and define corresponding rhs
         mass_diff = img_2.img - img_1.img
         flat_mass_diff = np.ravel(mass_diff, "F")
-
-
+        
         # Main method
         distance, solution, info = self._solve(flat_mass_diff)
 
@@ -2123,18 +2093,22 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         """
 
         # ! ---- Discretization operators ----
+        if self.grid.voxel_size[0] != self.grid.voxel_size[1]:
+            raise ValueError("The grid must be isotropic")
+        self.h = self.grid.voxel_size[0]
+        
 
-        self.div = darsia.FVDivergence(self.grid).mat
+        self.div = darsia.FVDivergence(self.grid).mat #/ self.h**2
         """sps.csc_matrix: divergence operator: flat fluxes -> flat pressures"""
-        print(self.div.shape)
+    
+        self.grad = darsia.FVDivergence(self.grid).mat.T #* self.h**4
+        """sps.csc_matrix: grad operator:  flat pressures -> falt fluxes"""
+
 
         self.mass_matrix_cells = darsia.FVMass(self.grid).mat
         """sps.csc_matrix: mass matrix on cells: flat pressures -> flat pressures"""
 
-        if self.grid.voxel_size[0] != self.grid.voxel_size[1]:
-            raise ValueError("The grid must be isotropic")
-        self.h = self.grid.voxel_size[0]
-        self.Laplacian_matrix = self.div * self.div.T /self.h**2
+        self.Laplacian_matrix = self.div * self.grad  #/ self.h**2
 
         # Define CG solver
         kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(self.grid.num_cells)
@@ -2177,8 +2151,8 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
 
         """
         rhs = self.div.dot(p)
-        poisson_solution = self.Poisson_solver.solve(rhs) / self.h**2
-        return p - self.div.T.dot(poisson_solution) 
+        poisson_solution = self.Poisson_solver.solve(rhs) #/ self.h**2
+        return p - self.grad.dot(poisson_solution) 
     
     def compute_pressure(self, flux: np.ndarray, forcing: np.array) -> np.ndarray:
         """Compute the pressure from the flux.
@@ -2190,7 +2164,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             np.ndarray: pressure
 
         """
-        self.Laplacian_matrix = self.div * sps.diags(np.abs(flux), dtype=float)* self.div.T
+        self.Laplacian_matrix = self.div * sps.diags(np.abs(flux), dtype=float) * self.grad / self.h **4
 
         # Define CG solver
         kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(self.grid.num_cells)
@@ -2207,6 +2181,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         }
         self.weighted_Poisson_solver.setup(self.weighted_Poisson_ksp_ctrl)
         pressure = self.weighted_Poisson_solver.solve(forcing)
+        self.weighted_Poisson_solver.kill()
         return pressure
     
     def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
@@ -2233,7 +2208,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         
         # Initialize Newton iteration with Darcy solution for unitary mobility
         poisson_pressure = self.Poisson_solver.solve(flat_mass_diff)
-        gradient_poisson_pressure = self.div.T.dot(poisson_pressure)
+        gradient_poisson_pressure = self.grad.dot(poisson_pressure)
 
         # Initialize distance in case below iteration fails
         new_distance = 0
@@ -2278,14 +2253,14 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
 
             # eq 3.14
             div_free = self.leray_projection(p_bar)
-            #res_div = self.div.dot(div_free)
-            #print(f"res_div: {np.linalg.norm(res_div)}")
             u -= tau * div_free
 
             # new flux
             self.flux = u + gradient_poisson_pressure
-            #res_div = self.div.dot(flux)
-            #print(f"res_div: {np.linalg.norm(res_div)}")
+
+            flat_pressure = self.compute_pressure(self.flux, flat_mass_diff)
+            grad_pressure = self.grad.dot(flat_pressure)
+            print(f"MAX GRAD {np.max(abs(grad_pressure))}")
             
             # eq 3.15
             sigma_vel = p + sigma * self.flux
@@ -2429,13 +2404,11 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         # Main method
         distance, solution, info = self._solve(flat_mass_diff)
 
-        print(solution.shape)
-
         flux = darsia.face_to_cell(self.grid, solution)
-        print(flux.shape)
         flat_pressure = self.compute_pressure(solution, flat_mass_diff)
+        temp = np.hstack([np.abs(solution),np.abs(solution)])
+        transport_density = darsia.face_to_cell(self.grid, temp)[:,:,0]
         pressure = flat_pressure.reshape(self.grid.shape, order="F")
-        transport_density = np.abs(flux)
         
 
         
@@ -2486,7 +2459,7 @@ def wasserstein_distance(
         grid: darsia.Grid = darsia.generate_grid(mass_1)
 
         # Fetch options and define Wasserstein method
-        options = kwargs.get("options", {})
+        options = kwargs.get("options", {})        
 
         # Define method
         if method.lower() == "newton":
