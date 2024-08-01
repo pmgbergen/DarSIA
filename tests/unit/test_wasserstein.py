@@ -2,23 +2,39 @@
 
 import numpy as np
 import pytest
-
+from scipy.ndimage import zoom
 import darsia
 
+from typing import Union
 # ! ---- 2d version ----
 
+import sys
+method = sys.argv[1]
+try:
+    nref = int(sys.argv[2])
+except:
+    nref = 0
+
 # Coarse src image
-rows = 10
-cols = rows
+rows = 8
+cols = 8
+
+
 src_square_2d = np.zeros((rows, cols), dtype=float)
-src_square_2d[2:5, 2:5] = 1
+src_square_2d[1:3, 2:6] = 1
+src_square_2d = zoom(src_square_2d, 2**nref, order=0)
 meta_2d = {"width": 1, "height": 1, "space_dim": 2, "scalar": True}
 src_image_2d = darsia.Image(src_square_2d, **meta_2d)
+
+
 
 # Coarse dst image
 dst_squares_2d = np.zeros((rows, cols), dtype=float)
 dst_squares_2d[1:3, 1:2] = 1
 dst_squares_2d[4:7, 7:9] = 1
+dst_squares_2d[:] = 0.0
+dst_squares_2d[5:7, 2:6] = 1
+dst_squares_2d = zoom(dst_squares_2d, 2**nref, order=0)
 dst_image_2d = darsia.Image(dst_squares_2d, **meta_2d)
 
 # Rescale
@@ -29,6 +45,19 @@ dst_image_2d.img /= geometry_2d.integrate(dst_image_2d)
 
 # Reference value for comparison
 true_distance_2d = 0.379543951823
+n = src_image_2d.shape[0]
+# optimal potential/pressure is just -x
+opt_pot = -np.outer(np.linspace(1/(2*n), 1-1/(2*n), src_image_2d.shape[0]),np.ones(src_image_2d.shape[1]))
+print(opt_pot.shape)
+print(src_image_2d.img.shape)
+#np.savetxt("opt_pot.npy",opt_pot,fmt='%.2e')
+true_distance_2d=np.tensordot((src_image_2d.img-dst_image_2d.img),opt_pot,axes=((0,1),(0,1)))/(opt_pot.size)
+print(f"{true_distance_2d=}")
+
+kappa_2d = np.ones((rows, cols), dtype=float)
+kappa_2d[4:5, 0:3] = 10
+kappa_2d = zoom(kappa_2d, 2**nref, order=0)
+kappa_image_2d = darsia.Image(kappa_2d, **meta_2d)
 
 # ! ---- 3d version ----
 
@@ -245,10 +274,52 @@ def test_sinkhorn(method_key, reg_key, dim):
     assert info["converged"]
     assert np.isclose(distance, true_distance[dim], atol=sinkhorn_regs[reg_key])
 
+# if __name__ == "__main__":
+#     """Test all combinations for Newton."""
+#     dim = 3
+#     for i in [3]:
+#         print(f"Method: {sinkhorn_methods[i]}")
+#         for j in range(len(sinkhorn_regs)):
+#             test_sinkhorn(i, j, dim)
+
 if __name__ == "__main__":
     """Test all combinations for Newton."""
-    dim = 3
-    for i in [3]:
-        print(f"Method: {sinkhorn_methods[i]}")
-        for j in range(len(sinkhorn_regs)):
-            test_sinkhorn(i, j, dim)
+    dim = 2
+    print()
+    #a=np.asarray([1,0,0], [0,0,0])
+    #options.update(newton_options)
+    #options.update(accelerations[0])
+    #options.update(solvers[0])
+    
+    if method == "bregman":
+        options.update(bregman_std_options)
+        options.update(accelerations[0])
+        options.update(solvers[0])
+        options.update({"formulation": formulations[0]})
+    
+   # options.update({"formulation": "full"})
+    options.update({"verbose": True})
+    options.update({"num_iter": 1000})
+    options.update({"linear_solver": "ksp"})
+    distance, info = darsia.wasserstein_distance(
+        src_image[dim],
+        dst_image[dim],
+        options=options,
+        method=method,
+        kappa=kappa_image_2d
+    )
+    relative_err=abs(distance-true_distance[dim])/true_distance[dim]
+    print(f"{distance=:.2e} {true_distance[dim]=:.2e} {relative_err=:.1e}")
+    #print(src_square_2d.shape)
+    #print(info["src"].img.sum())
+    #print(info["flux"])
+    #np.savetxt(f"{method}_flux_x.npy",info["flux"][:,:,0],fmt='%.2e')
+    #np.savetxt(f"{method}_flux_y.npy",info["flux"][:,:,1],fmt='%.2e')
+    #np.savetxt(f"source.npy",info["src"].img,fmt='%.2e')
+    #np.savetxt(f"sink.npy",info["dst"].img,fmt='%.2e')
+    print(info["transport_density"].shape)
+    print(info["pressure"].shape)
+    print(info["flux"].shape)
+
+    #darsia.wasserstein_distance_to_vtk(f"./{method}/",info)
+    darsia.plotting.plot_2d_wasserstein_distance(info)
