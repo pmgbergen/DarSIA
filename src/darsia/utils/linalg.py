@@ -42,6 +42,17 @@ class KSP:
             size=A.shape, csr=(A.indptr, A.indices, A.data)
         )
 
+        # This step is needed to avoid a petsc error with LU factorization
+        # that explicitly needs a zeros along the diagonal
+        # TODO: use zero_diagonal = PETSc.Mat().createConstantDiagonal(self.A.size,0.0)
+        zero_diagonal = PETSc.Mat().createAIJ(
+            size=A.shape, 
+            csr=(np.arange(A.shape[0]+1,dtype="int32"),
+                np.arange(A.shape[0],dtype="int32"),
+                np.zeros(A.shape[0]))
+        )
+        self.A_petsc += zero_diagonal
+
         # set nullspace
         if nullspace is not None:
             # convert to petsc vectors
@@ -105,7 +116,7 @@ class KSP:
         self.rhs_petsc.setFromOptions()
 
         # TODO: set field split in __init__
-        if self.field_ises is not None: 
+        if (self.field_ises) is not None and ("fieldsplit" in petsc_options["pc_type"]):
             pc = ksp.getPC()
             pc.setFromOptions()
             # syntax is
@@ -114,6 +125,7 @@ class KSP:
             pc.setOptionsPrefix(self.prefix)
             pc.setFromOptions()
             pc.setUp()
+
             
             # split subproblems
             ksps = pc.getFieldSplitSubKSP()
@@ -153,9 +165,28 @@ class KSP:
         #res = self.A.dot(sol) - b
         #print('residual norm: ', np.linalg.norm(res)/np.linalg.norm(b))
         return sol
+    
+    def kill(self):
+        """
+        Free memory
+        """
+        self.ksp.destroy()
+        self.A_petsc.destroy()
+        self.sol_petsc.destroy()
+        self.rhs_petsc.destroy()
+        if self._nullspace is not None:
+            self._nullspace.destroy()
+            for k in self._petsc_kernels:
+                k.destroy()
+        self.A_petsc = None
+        self.sol_petsc = None
+        self.rhs_petsc = None
+        self.ksp = None
+        self._nullspace = None
+        self._petsc_kernels = None
 
 #
-# following code is taken from firedrake
+# Following code is taken from Firedrake
 #           
 def flatten_parameters(parameters, sep="_"):
     """Flatten a nested parameters dict, joining keys with sep.
