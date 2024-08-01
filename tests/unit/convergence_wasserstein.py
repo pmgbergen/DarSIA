@@ -22,20 +22,17 @@ cols = 8
 
 src_square_2d = np.zeros((rows, cols), dtype=float)
 src_square_2d[1:3, 2:6] = 1
-src_square_2d = zoom(src_square_2d, 2**nref, order=0)
 meta_2d = {"width": 1, "height": 1, "space_dim": 2, "scalar": True}
 src_image_2d = darsia.Image(src_square_2d, **meta_2d)
+src_image_2d = darsia.uniform_refinement(src_image_2d, nref)
 
 
 
 # Coarse dst image
 dst_squares_2d = np.zeros((rows, cols), dtype=float)
-dst_squares_2d[1:3, 1:2] = 1
-dst_squares_2d[4:7, 7:9] = 1
-dst_squares_2d[:] = 0.0
 dst_squares_2d[5:7, 2:6] = 1
-dst_squares_2d = zoom(dst_squares_2d, 2**nref, order=0)
 dst_image_2d = darsia.Image(dst_squares_2d, **meta_2d)
+dst_image_2d = darsia.uniform_refinement(dst_image_2d, nref)
 
 # Rescale
 shape_meta_2d = src_image_2d.shape_metadata()
@@ -44,20 +41,14 @@ src_image_2d.img /= geometry_2d.integrate(src_image_2d)
 dst_image_2d.img /= geometry_2d.integrate(dst_image_2d)
 
 # Reference value for comparison
-true_distance_2d = 0.379543951823
+true_distance_2d = np.max(src_image_2d.img) * (2/8)*(1/2)* 1/2
+print(f"{true_distance_2d=}")
+
+
 n = src_image_2d.shape[0]
 # optimal potential/pressure is just -x
 opt_pot = -np.outer(np.linspace(1/(2*n), 1-1/(2*n), src_image_2d.shape[0]),np.ones(src_image_2d.shape[1]))
-print(opt_pot.shape)
-print(src_image_2d.img.shape)
-#np.savetxt("opt_pot.npy",opt_pot,fmt='%.2e')
-true_distance_2d=np.tensordot((src_image_2d.img-dst_image_2d.img),opt_pot,axes=((0,1),(0,1)))/(opt_pot.size)
-print(f"{true_distance_2d=}")
-
-kappa_2d = np.ones((rows, cols), dtype=float)
-kappa_2d[4:5, 0:3] = 10
-kappa_2d = zoom(kappa_2d, 2**nref, order=0)
-kappa_image_2d = darsia.Image(kappa_2d, **meta_2d)
+#true_distance_2d=np.tensordot((src_image_2d.img-dst_image_2d.img),opt_pot,axes=((0,1),(0,1)))/(opt_pot.size)
 
 # ! ---- 3d version ----
 
@@ -299,7 +290,7 @@ if __name__ == "__main__":
     
    # options.update({"formulation": "full"})
     options.update({"verbose": True})
-    options.update({"num_iter": 1000})
+    options.update({"num_iter": 100})
     options.update({"linear_solver": "ksp"})
     distance, info = darsia.wasserstein_distance(
         src_image[dim],
