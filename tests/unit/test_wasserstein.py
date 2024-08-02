@@ -112,13 +112,16 @@ lu_options = {
     # Linear solver
     "linear_solver": "direct",
 }
-amg_options = {
-    "linear_solver": "amg",
+krylov_options = {
+    "linear_solver": "ksp",
     "linear_solver_options": {
         "tol": 1e-8,
+        "maxiter": 200,
     },
 }
-solvers = [lu_options, amg_options]
+solvers = [lu_options, krylov_options]
+
+formulations = ["full", "flux_reduced"]
 
 # General options
 options = {
@@ -139,16 +142,18 @@ options = {
 @pytest.mark.parametrize("a_key", range(len(accelerations)))
 @pytest.mark.parametrize("s_key", range(len(solvers)))
 @pytest.mark.parametrize("dim", [2, 3])
-def test_newton(a_key, s_key, dim):
+@pytest.mark.parametrize("f_key", range(len(formulations)))
+def test_newton(a_key, s_key, dim, f_key):
     """Test all combinations for Newton."""
     options.update(newton_options)
     options.update(accelerations[a_key])
     options.update(solvers[s_key])
+    options.update({"formulation": formulations[f_key]})
     distance, info = darsia.wasserstein_distance(
         src_image[dim],
         dst_image[dim],
         options=options,
-        method="newton",
+        method="newton",        
     )
     assert np.isclose(distance, true_distance[dim], atol=1e-5)
     assert info["converged"]

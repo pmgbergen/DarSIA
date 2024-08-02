@@ -9,15 +9,15 @@ from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
-import pyamg
 import scipy.sparse as sps
 from scipy.stats import hmean
-
+from petsc4py import PETSc
 import darsia
 
 # General TODO list
 # - improve assembling of operators through partial assembling
 # - allow to reuse setup.
+
 
 
 class VariationalWassersteinDistance(darsia.EMD):
@@ -89,17 +89,14 @@ class VariationalWassersteinDistance(darsia.EMD):
                 - linear_solver (str): type of linear solver. Defaults to "direct".
                     Supported solvers are:
                     - "direct": direct solver
-                    - "amg": algebraic multigrid solver
-                    - "cg": conjugate gradient solver preconditioned with AMG
+                    - "ksp": Krylov subspace solver by PETSc
                 - formulation (str): formulation of the linear system. Defaults to
-                    "pressure". Supported formulations are:
+                    "flux_reduced". Supported formulations are:
                     - "full": full system
                     - "flux_reduced": reduced system with fluxes eliminated
-                    - "pressure": reduced system with fluxes and lagrange multiplier
-                        eliminated
                 - linear_solver_options (dict): options for the linear solver. Defaults
                     to {}.
-                - amg_options (dict): options for the AMG solver. Defaults to {}.
+                - ksp_options (dict): options for the KSP solver. Defaults to {}.
                 - aa_depth (int): depth of the Anderson acceleration. Defaults to 0.
                 - aa_restart (int): restart of the Anderson acceleration. Defaults to
                     None.
@@ -130,42 +127,35 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         self.mobility_mode = self.options.get("mobility_mode", "cell_based")
         """str: mode for computing the mobility"""
-
+        
         # Setup of method
         self._setup_dof_management()
         self._setup_discretization()
         self._setup_linear_solver()
         self._setup_acceleration()
 
+        
     def _setup_dof_management(self) -> None:
         """Setup of Raviart-Thomas-type DOF management.
 
         The following degrees of freedom are considered (also in this order):
         - flat fluxes (normal fluxes on the faces)
         - flat pressures (pressures on the cells)
-        - lagrange multiplier (scalar variable) - Idea: Fix the pressure in the
-        center of the domain to zero via a constraint and a Lagrange multiplier.
-
+        
         """
         # ! ---- Number of dofs ----
         num_flux_dofs = self.grid.num_faces
         num_pressure_dofs = self.grid.num_cells
-        num_lagrange_multiplier_dofs = 1
-        num_dofs = num_flux_dofs + num_pressure_dofs + num_lagrange_multiplier_dofs
+        num_dofs = num_flux_dofs + num_pressure_dofs
 
         # ! ---- Indices in global system ----
-        self.flux_indices = np.arange(num_flux_dofs)
+        self.flux_indices = np.arange(num_flux_dofs, dtype='int32')
         """np.ndarray: indices of the fluxes"""
 
         self.pressure_indices = np.arange(
-            num_flux_dofs, num_flux_dofs + num_pressure_dofs
+            num_flux_dofs, num_flux_dofs + num_pressure_dofs, dtype='int32'
         )
         """np.ndarray: indices of the pressures"""
-
-        self.lagrange_multiplier_indices = np.array(
-            [num_flux_dofs + num_pressure_dofs], dtype=int
-        )
-        """np.ndarray: indices of the lagrange multiplier"""
 
         # ! ---- Fast access to components through slices ----
         self.flux_slice = slice(0, num_flux_dofs)
@@ -173,15 +163,6 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         self.pressure_slice = slice(num_flux_dofs, num_flux_dofs + num_pressure_dofs)
         """slice: slice for the pressures"""
-
-        self.lagrange_multiplier_slice = slice(
-            num_flux_dofs + num_pressure_dofs,
-            num_flux_dofs + num_pressure_dofs + num_lagrange_multiplier_dofs,
-        )
-        """slice: slice for the lagrange multiplier"""
-
-        self.reduced_system_slice = slice(num_flux_dofs, None)
-        """slice: slice for the reduced system (pressures and lagrange multiplier)"""
 
         # Embedding operators
         self.flux_embedding = sps.csc_matrix(
@@ -193,6 +174,18 @@ class VariationalWassersteinDistance(darsia.EMD):
         )
         """sps.csc_matrix: embedding operator for fluxes"""
 
+        self.flux_is = PETSc.IS()
+        self.pressure_is = PETSc.IS()
+        # TODO: choose between createGeneral and createStride
+        #self.flux_is.createGeneral(self.flux_indices,comm=PETSc.COMM_WORLD)
+        #self.pressure_is.createGeneral(self.pressure_indices,comm=PETSc.COMM_WORLD)
+        
+        self.flux_is.createStride(size=num_flux_dofs, first=0, step=1, comm=PETSc.COMM_WORLD) 
+        self.pressure_is.createStride(size=num_pressure_dofs, first=num_flux_dofs , step=1, comm=PETSc.COMM_WORLD)
+
+        self.field_ises = [('0',self.flux_is), ('1',self.pressure_is)]
+        """ PETSc IS: index sets for the fields"""
+
     def _setup_discretization(self) -> None:
         """Setup of fixed discretization operators."""
 
@@ -203,17 +196,6 @@ class VariationalWassersteinDistance(darsia.EMD):
             center_cell, self.grid.shape
         )
         """int: flat index of the cell where the pressure is constrained to zero"""
-
-        num_pressure_dofs = self.grid.num_cells
-        self.pressure_constraint = sps.csc_matrix(
-            (
-                np.ones(1, dtype=float),
-                (np.zeros(1, dtype=int), np.array([self.constrained_cell_flat_index])),
-            ),
-            shape=(1, num_pressure_dofs),
-            dtype=float,
-        )
-        """sps.csc_matrix: effective constraint for the pressure"""
 
         # ! ---- Discretization operators ----
 
@@ -230,9 +212,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         L_init = self.options.get("L_init", 1.0)
         self.darcy_init = sps.bmat(
             [
-                [L_init * self.mass_matrix_faces, -self.div.T, None],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
+                [L_init * self.mass_matrix_faces, -self.div.T],
+                [self.div, None],
             ],
             format="csc",
         )
@@ -240,9 +221,8 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         self.broken_darcy = sps.bmat(
             [
-                [None, -self.div.T, None],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
+                [None, -self.div.T],
+                [self.div, None],
             ],
             format="csc",
         )
@@ -258,285 +238,23 @@ class VariationalWassersteinDistance(darsia.EMD):
         """sps.csc_matrix: full face reconstruction: flat fluxes -> vector fluxes"""
 
     def _setup_linear_solver(self) -> None:
-        self.linear_solver_type = self.options.get("linear_solver", "direct")
+        self.linear_solver_type = self.options.get("linear_solver", "ksp")
         """str: type of linear solver"""
 
-        self.formulation: str = self.options.get("formulation", "pressure")
+        self.formulation: str = self.options.get("formulation", "full")
         """str: formulation type"""
 
         # Safety checks
         assert self.linear_solver_type in [
             "direct",
-            "amg",
-            "cg",
+            "ksp",
         ], f"Linear solver {self.linear_solver_type} not supported."
         assert self.formulation in [
             "full",
-            "flux-reduced",
-            "pressure",
+            "flux_reduced",
         ], f"Formulation {self.formulation} not supported."
 
-        # Setup inrastructure for Schur complement reduction
-        if self.formulation == "flux_reduced":
-            self.setup_eliminate_flux()
-
-        elif self.formulation == "pressure":
-            self.setup_eliminate_flux()
-            self.setup_eliminate_lagrange_multiplier()
-
-    def setup_direct(self) -> None:
-        """Setup the infrastructure for direct solvers."""
-
-        self.solver_options = {}
-        """dict: options for the direct solver"""
-
-    def setup_direct_solver(self, matrix: sps.csc_matrix) -> sps.linalg.splu:
-        """Setup a direct solver for the given matrix.
-
-        Args:
-            matrix (sps.csc_matrix): matrix
-
-        Defines:
-            sps.linalg.splu: direct solver
-            dict: (empty) solver options
-
-        """
-        self.linear_solver = sps.linalg.splu(matrix)
-        self.solver_options = {}
-
-    def setup_amg_options(self) -> None:
-        """Setup the infrastructure for multilevel solvers.
-
-        Basic default setup based on jacobi and block Gauss-Seidel smoothers.
-        User-defined options can be passed via the options dictionary, using the key
-        "amg_options". The options follow the pyamg interface.
-
-        """
-        self.amg_options = {
-            "strength": "symmetric",  # change the strength of connection
-            "aggregate": "standard",  # use a standard aggregation method
-            "smooth": ("jacobi"),  # prolongation smoother
-            "presmoother": (
-                "block_gauss_seidel",
-                {"sweep": "symmetric", "iterations": 1},
-            ),
-            "postsmoother": (
-                "block_gauss_seidel",
-                {"sweep": "symmetric", "iterations": 1},
-            ),
-            "coarse_solver": "pinv2",  # pseudo inverse via SVD
-            "max_coarse": 100,  # maximum number on a coarse level
-        }
-        """dict: options for the AMG solver"""
-
-        # Allow to overwrite default options - use pyamg interface.
-        user_defined_amg_options = self.options.get("amg_options", {})
-        self.amg_options.update(user_defined_amg_options)
-
-    def setup_amg_solver(self, matrix: sps.csc_matrix) -> None:
-        """Setup an AMG solver for the given matrix.
-
-        Args:
-            matrix (sps.csc_matrix): matrix
-
-        Defines:
-            pyamg.amg_core.solve: AMG solver
-            dict: options for the AMG solver
-
-        """
-        # Define AMG solver
-        self.setup_amg_options()
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="Implicit conversion of A to CSR")
-            self.linear_solver = pyamg.smoothed_aggregation_solver(
-                matrix, **self.amg_options
-            )
-
-        # Define solver options
-        linear_solver_options = self.options.get("linear_solver_options", {})
-        tol = linear_solver_options.get("tol", 1e-6)
-        maxiter = linear_solver_options.get("maxiter", 100)
-        self.amg_residual_history = []
-        """list: history of residuals for the AMG solver"""
-        self.solver_options = {
-            "tol": tol,
-            "maxiter": maxiter,
-            "residuals": self.amg_residual_history,
-        }
-        """dict: options for the iterative linear solver"""
-
-    def setup_cg_solver(self, matrix: sps.csc_matrix) -> None:
-        """Setup an CG solver with AMG preconditioner for the given matrix.
-
-        Args:
-            matrix (sps.csc_matrix): matrix
-
-        Defines:
-            pyamg.amg_core.solve: AMG solver
-            dict: options for the AMG solver
-
-        """
-        # Define CG solver
-        self.linear_solver = darsia.linalg.CG(matrix)
-
-        # Define AMG preconditioner
-        self.setup_amg_options()
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="Implicit conversion of A to CSR")
-            amg = pyamg.smoothed_aggregation_solver(
-                matrix, **self.amg_options
-            ).aspreconditioner(cycle="V")
-
-        # Define solver options
-        linear_solver_options = self.options.get("linear_solver_options", {})
-        tol = linear_solver_options.get("tol", 1e-6)
-        maxiter = linear_solver_options.get("maxiter", 100)
-        self.solver_options = {
-            "tol": tol,
-            "maxiter": maxiter,
-            "M": amg,
-        }
-        """dict: options for the iterative linear solver"""
-
-    def setup_eliminate_flux(self) -> None:
-        """Setup the infrastructure for reduced systems through Gauss elimination.
-
-        Provide internal data structures for the reduced system, still formulated in
-        terms of pressures and Lagrange multiplier. Merely the flux is eliminated using
-        a Schur complement approach.
-
-        """
-        #   ---- Preliminaries ----
-
-        # Fixate some jacobian for copying the data structure
-        jacobian = self.darcy_init.copy()
-
-        # ! ---- Eliminate flux block ----
-
-        # Build Schur complement wrt. flux-flux block
-        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
-        D = jacobian[self.reduced_system_slice, self.flux_slice].copy()
-        schur_complement = D.dot(J_inv.dot(D.T))
-
-        # Cache divergence matrix together with Lagrange multiplier
-        self.D = D.copy()
-        """sps.csc_matrix: divergence + lagrange multiplier matrix"""
-
-        self.DT = self.D.T.copy()
-        """sps.csc_matrix: transposed divergence + lagrange multiplier  matrix"""
-
-        # Cache (constant) jacobian subblock
-        self.jacobian_subblock = jacobian[
-            self.reduced_system_slice, self.reduced_system_slice
-        ].copy()
-        """sps.csc_matrix: constant jacobian subblock of the reduced system"""
-
-        # Add Schur complement - use this to identify sparsity structure
-        # Cache the reduced jacobian
-        self.reduced_jacobian = self.jacobian_subblock + schur_complement
-        """sps.csc_matrix: reduced jacobian incl. Schur complement"""
-
-    def setup_eliminate_lagrange_multiplier(self) -> None:
-        """Additional setup of infrastructure for fully reduced systems.
-
-        Here, the Lagrange multiplier is eliminated through Gauss elimination. It is
-        implicitly assumed, that the flux block is eliminated already.
-
-        """
-        # Find row entries to be removed
-        rm_row_entries = np.arange(
-            self.reduced_jacobian.indptr[self.constrained_cell_flat_index],
-            self.reduced_jacobian.indptr[self.constrained_cell_flat_index + 1],
-        )
-
-        # Find column entries to be removed
-        rm_col_entries = np.where(
-            self.reduced_jacobian.indices == self.constrained_cell_flat_index
-        )[0]
-
-        # Collect all entries to be removes
-        rm_indices = np.unique(
-            np.concatenate((rm_row_entries, rm_col_entries)).astype(int)
-        )
-        # Cache for later use in eliminate_lagrange_multiplier
-        self.rm_indices = rm_indices
-        """np.ndarray: indices to be removed in the reduced system"""
-
-        # Identify rows to be reduced
-        rm_rows = [
-            np.max(np.where(self.reduced_jacobian.indptr <= index)[0])
-            for index in rm_indices
-        ]
-
-        # Reduce data - simply remove
-        fully_reduced_jacobian_data = np.delete(self.reduced_jacobian.data, rm_indices)
-
-        # Reduce indices - remove and shift
-        fully_reduced_jacobian_indices = np.delete(
-            self.reduced_jacobian.indices, rm_indices
-        )
-        fully_reduced_jacobian_indices[
-            fully_reduced_jacobian_indices > self.constrained_cell_flat_index
-        ] -= 1
-
-        # Reduce indptr - shift and remove
-        # NOTE: As only a few entries should be removed, this is not too expensive
-        # and a for loop is used
-        fully_reduced_jacobian_indptr = self.reduced_jacobian.indptr.copy()
-        for row in rm_rows:
-            fully_reduced_jacobian_indptr[row + 1 :] -= 1
-        fully_reduced_jacobian_indptr = np.unique(fully_reduced_jacobian_indptr)
-
-        # Make sure two rows are removed and deduce shape of reduced jacobian
-        assert (
-            len(fully_reduced_jacobian_indptr) == len(self.reduced_jacobian.indptr) - 2
-        ), "Two rows should be removed."
-        fully_reduced_jacobian_shape = (
-            len(fully_reduced_jacobian_indptr) - 1,
-            len(fully_reduced_jacobian_indptr) - 1,
-        )
-
-        # Cache the fully reduced jacobian
-        self.fully_reduced_jacobian = sps.csc_matrix(
-            (
-                fully_reduced_jacobian_data,
-                fully_reduced_jacobian_indices,
-                fully_reduced_jacobian_indptr,
-            ),
-            shape=fully_reduced_jacobian_shape,
-        )
-        """sps.csc_matrix: fully reduced jacobian"""
-
-        # Cache the indices and indptr
-        self.fully_reduced_jacobian_indices = fully_reduced_jacobian_indices.copy()
-        """np.ndarray: indices of the fully reduced jacobian"""
-
-        self.fully_reduced_jacobian_indptr = fully_reduced_jacobian_indptr.copy()
-        """np.ndarray: indptr of the fully reduced jacobian"""
-
-        self.fully_reduced_jacobian_shape = fully_reduced_jacobian_shape
-        """tuple: shape of the fully reduced jacobian"""
-
-        # ! ---- Identify inclusions (index arrays) ----
-
-        # Define reduced system indices wrt full system
-        reduced_system_indices = np.concatenate(
-            [self.pressure_indices, self.lagrange_multiplier_indices]
-        )
-
-        # Define fully reduced system indices wrt reduced system - need to remove cell
-        # (and implicitly lagrange multiplier)
-        self.fully_reduced_system_indices = np.delete(
-            np.arange(self.grid.num_cells), self.constrained_cell_flat_index
-        )
-        """np.ndarray: indices of the fully reduced system in terms of reduced system"""
-
-        # Define fully reduced system indices wrt full system
-        self.fully_reduced_system_indices_full = reduced_system_indices[
-            self.fully_reduced_system_indices
-        ]
-        """np.ndarray: indices of the fully reduced system in terms of full system"""
-
+    
     def _setup_acceleration(self) -> None:
         """Setup of acceleration methods."""
 
@@ -722,6 +440,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             # Define natural vector valued flux on faces (taking arithmetic averages
             # of continuous fluxes over cells evaluated at faces)
             full_face_flux = self.face_reconstruction(flat_flux)
+
             # Determine the l2 norm of the fluxes on the faces
             flat_flux_norm = np.linalg.norm(full_face_flux, 2, axis=1)
 
@@ -786,229 +505,128 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         setup_linear_solver = not (reuse_solver) or not (hasattr(self, "linear_solver"))
 
-        if self.formulation == "full":
-            assert (
-                self.linear_solver_type == "direct"
-            ), "Only direct solver supported for full formulation."
+        # Free memory if solver needs to be re-setup
+        if not (reuse_solver) and hasattr(self, "linear_solver"):
+            self.linear_solver.kill()
+        
+        tic = time.time() 
+        if setup_linear_solver:
+            if self.linear_solver_type == "direct":
+                # We lift a bit the diagonal to avoid zero entries.
+                # The minus sign is because we solving a saddle point problem
+                diagonal = np.zeros(matrix.shape[0], dtype=float)
+                diagonal[self.pressure_indices] = 1.0
+                matrix4solver = matrix - sps.diags(diagonal) * 1e-15
+                
+                # nullspace is null
+                nullspace = []
+            else:
+                matrix4solver = matrix
+                # Define CG solver
+                kernel = np.zeros(matrix.shape[0], dtype=float)
+                kernel[self.pressure_indices] = 1.0
+                # normalize the kernel
+                kernel = kernel / np.linalg.norm(kernel)
+                nullspace=[kernel]
+            
+            self.linear_solver = darsia.linalg.KSP(matrix4solver, 
+                                                   field_ises=self.field_ises,
+                                                   nullspace=nullspace,
+                                                    appctx={
+                                                       "regularized_flat_flux_norm": self.regularized_flat_flux_norm,
+                                                       "div": self.div,
+                                                   })
 
-            # Setup LU factorization for the full system
-            tic = time.time()
-            if setup_linear_solver:
-                self.setup_direct_solver(matrix)
-            time_setup = time.time() - tic
+            # Define solver options
+            linear_solver_options = self.options.get("linear_solver_options", {})
+            tol = linear_solver_options.get("tol", 1e-6)
+            maxiter = linear_solver_options.get("maxiter", 100)
 
-            # Solve the full system
-            tic = time.time()
-            solution = self.linear_solver.solve(rhs)
-            time_solve = time.time() - tic
-
-        elif self.formulation == "flux_reduced":
-            # Solve flux-reduced / pressure-multiplier problem, following:
-            # 1. Eliminate flux block
-            # 2. Build linear solver for reduced system
-            # 3. Solve reduced system
-            # 4. Compute flux update
-
-            # Start timer to measure setup time
-            tic = time.time()
-
-            # Allocate memory for solution
-            solution = np.zeros_like(rhs)
-
-            # 1. Reduce flux block
-            (
-                self.reduced_matrix,
-                self.reduced_rhs,
-                self.matrix_flux_inv,
-            ) = self.eliminate_flux(matrix, rhs)
-
-            # 2. Build linear solver for reduced system
-            if setup_linear_solver:
-                if self.linear_solver_type == "direct":
-                    self.setup_direct_solver(self.reduced_matrix)
-                elif self.linear_solver_type == "amg":
-                    self.setup_amg_solver(self.reduced_matrix)
-                elif self.linear_solver_type == "cg":
-                    self.setup_cg_solver(self.reduced_matrix)
-
-            # Stop timer to measure setup time
-            time_setup = time.time() - tic
-
-            # 3. Solve for the pressure and lagrange multiplier
-            tic = time.time()
-            solution[self.reduced_system_slice] = self.linear_solver.solve(
-                self.reduced_rhs, **self.solver_options
-            )
-
-            # 4. Compute flux update
-            solution[self.flux_slice] = self.compute_flux_update(solution, rhs)
-            time_solve = time.time() - tic
-
-        elif self.formulation == "pressure":
-            # Solve pure pressure problem ,following:
-            # 1. Eliminate flux block
-            # 2. Eliminate lagrange multiplier
-            # 3. Build linear solver for pure pressure system
-            # 4. Solve pure pressure system
-            # 5. Compute lagrange multiplier - not required, as it is zero
-            # 6. Compute flux update
-
-            # Start timer to measure setup time
-            tic = time.time()
-
-            # Allocate memory for solution
-            solution = np.zeros_like(rhs)
-
-            # NOTE: It is implicitly assumed that the lagrange multiplier is zero
-            # in the constrained cell. This is not checked here. And no update is
-            # performed.
-            if previous_solution is not None and (
-                abs(
-                    previous_solution[
-                        self.grid.num_faces + self.constrained_cell_flat_index
-                    ]
-                )
-                > 1e-6
-            ):
-                raise NotImplementedError(
-                    "Implementation requires solution satisfy the constraint."
-                )
-
-            # 1. Reduce flux block
-            (
-                self.reduced_matrix,
-                self.reduced_rhs,
-                self.matrix_flux_inv,
-            ) = self.eliminate_flux(matrix, rhs)
-
-            # 2. Reduce to pure pressure system
-            (
-                self.fully_reduced_matrix,
-                self.fully_reduced_rhs,
-            ) = self.eliminate_lagrange_multiplier(
-                self.reduced_matrix,
-                self.reduced_rhs,
-            )
-
-            # 3. Build linear solver for pure pressure system
-            if setup_linear_solver:
-                if self.linear_solver_type == "direct":
-                    self.setup_direct_solver(self.fully_reduced_matrix)
-
-                elif self.linear_solver_type == "amg":
-                    self.setup_amg_solver(self.fully_reduced_matrix)
-
-                elif self.linear_solver_type == "cg":
-                    self.setup_cg_solver(self.fully_reduced_matrix)
-
-            # Stop timer to measure setup time
-            time_setup = time.time() - tic
-
-            # 4. Solve the pure pressure system
-            tic = time.time()
-            solution[self.fully_reduced_system_indices_full] = self.linear_solver.solve(
-                self.fully_reduced_rhs, **self.solver_options
-            )
-
-            # 5. Compute lagrange multiplier - not required, as it is zero
-            pass
-
-            # 6. Compute flux update
-            solution[self.flux_slice] = self.compute_flux_update(solution, rhs)
-            time_solve = time.time() - tic
+            # Setup ksp options
+            if self.formulation == "full":
+                if self.linear_solver_type=="direct":
+                    self.solver_options = {
+                        "ksp_type": "preonly", # do not apply Krylov iterations
+                        "pc_type": "lu", 
+                        "pc_factor_shift_type": "inblocks", # for the zero entries 
+                        "pc_factor_mat_solver_type" : "mumps"
+                    }
+                else:
+                    self.solver_options = {
+                        "ksp_type": "gmres",
+                        "ksp_rtol": tol,
+                        "ksp_maxit": maxiter,
+                        #"ksp_monitor_true_residual": None, #this is for debugging
+                        "pc_type": "fieldsplit",
+                        "pc_fieldsplit_type":"schur",
+                        "pc_fieldsplit_schur_fact_type": "full",
+                        # use a full factorization of the Schur complement
+                        # other options are "diag","lower","upper"
+                        "pc_fieldsplit_schur_precondition": "selfp", 
+                        # selfp -> form an approximate Schur complement 
+                        # using S=-B diag(A)^{-1} B^T
+                        # which is what we want
+                        # https://petsc.org/release/manualpages/PC/PCFieldSplitSetSchurPre/
+                        "fieldsplit_0_ksp_type":"preonly",
+                        "fieldsplit_0_pc_type":"jacobi",
+                        "fieldsplit_1_ksp_type":"preonly",
+                        "fieldsplit_1_pc_type": "hypre",
+                        # User defined preconditioner
+                        #"fieldsplit_1_pc_type": "python",
+                        #"fieldsplit_1_pc_python_type": __name__+".SchurComplementPC",
+                    }
+            if self.formulation == "flux_reduced":
+                # example of nested dictionary
+                # the underscore is used to separate the nested dictionary
+                # see in linals. The flatten_parameters will transform
+                # the nested dictionary into the commented
+                if self.linear_solver_type=="direct":
+                    ksp_schur = {
+                        "ksp": "preonly",
+                        "pc_type": "lu", 
+                        "pc_factor_mat_solver_type" : "mumps",
+                    }
+                else:
+                    ksp_schur = {
+                        "ksp": {
+                            "type": "gmres",
+                            "rtol": tol,
+                            "maxit": maxiter
+                        },
+                        "pc_type": "hypre",
+                    }
+                
+                self.solver_options = {
+                    "ksp_type": "preonly", # prec. only and solve at the schur complement
+                    "pc_type": "fieldsplit",
+                    "pc_fieldsplit_type": "schur",
+                    "pc_fieldsplit_schur_fact_type": "full",
+                    "pc_fieldsplit_schur_precondition": "selfp", 
+                    # selfp -> form an approximate Schur complement 
+                    # using S=-B diag(A)^{-1} B^T
+                    # which is what we want
+                    "fieldsplit_0_ksp_type": "preonly",
+                    "fieldsplit_0_pc_type": "jacobi",
+                    # schur solver
+                    "fieldsplit_1" : ksp_schur,
+                }
+            self.solver_options["ksp_monitor_true_residual"] = None
+            self.linear_solver.setup(self.solver_options)
+            #self.linear_solver.ksp.view()
+        time_setup = time.time() - tic           
+        
+        # Solve the full system
+        tic = time.time()
+        solution = self.linear_solver.solve(rhs)
+        time_solve = time.time() - tic
 
         # Define solver statistics
         stats = {
             "time_setup": time_setup,
             "time_solve": time_solve,
         }
-        if self.linear_solver_type in ["amg_flux_reduced", "amg_pressure"]:
-            stats["amg num iterations"] = len(self.res_history_amg)
-            stats["amg residual"] = self.res_history_amg[-1]
-            stats["amg residuals"] = self.res_history_amg
-
+        
         return solution, stats
-
-    def eliminate_flux(self, jacobian: sps.csc_matrix, residual: np.ndarray) -> tuple:
-        """Eliminate the flux block from the jacobian and residual.
-
-        Employ a Schur complement/block Gauss elimination approach.
-
-        Args:
-            jacobian (sps.csc_matrix): jacobian
-            residual (np.ndarray): residual
-
-        Returns:
-            tuple: reduced jacobian, reduced residual, inverse of flux block
-
-        """
-        # Build Schur complement wrt flux-block
-        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
-        schur_complement = self.D.dot(J_inv.dot(self.DT))
-
-        # Gauss eliminiation on matrices
-        reduced_jacobian = self.jacobian_subblock + schur_complement
-
-        # Gauss elimination on vectors
-        reduced_residual = residual[self.reduced_system_slice].copy()
-        reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
-
-        return reduced_jacobian, reduced_residual, J_inv
-
-    def eliminate_lagrange_multiplier(
-        self, reduced_jacobian, reduced_residual
-    ) -> tuple:
-        """Eliminate the lagrange multiplier from the reduced system.
-
-        Employ a Schur complement/block Gauss elimination approach.
-
-        Args:
-            reduced_jacobian (sps.csc_matrix): reduced jacobian
-            reduced_residual (np.ndarray): reduced residual
-
-        Returns:
-            tuple: fully reduced jacobian, fully reduced residual
-
-        """
-        # Make sure the jacobian is a CSC matrix
-        assert isinstance(
-            reduced_jacobian, sps.csc_matrix
-        ), "Jacobian should be a CSC matrix."
-
-        # Effective Gauss-elimination for the particular case of the lagrange multiplier
-        self.fully_reduced_jacobian.data[:] = np.delete(
-            reduced_jacobian.data.copy(), self.rm_indices
-        )
-        # NOTE: The indices have to be restored if the LU factorization is to be used
-        # FIXME omit if not required
-        self.fully_reduced_jacobian.indices = self.fully_reduced_jacobian_indices.copy()
-
-        # Rhs is not affected by Gauss elimination as it is assumed that the residual
-        # is zero in the constrained cell, and the pressure is zero there as well.
-        # If not, we need to do a proper Gauss elimination on the right hand side!
-        if abs(reduced_residual[-1]) > 1e-6:
-            raise NotImplementedError("Implementation requires residual to be zero.")
-        fully_reduced_residual = reduced_residual[
-            self.fully_reduced_system_indices
-        ].copy()
-
-        return self.fully_reduced_jacobian, fully_reduced_residual
-
-    def compute_flux_update(self, solution: np.ndarray, rhs: np.ndarray) -> np.ndarray:
-        """Compute the flux update from the solution.
-
-        Args:
-            solution (np.ndarray): solution
-            rhs (np.ndarray): right hand side
-
-        Returns:
-            np.ndarray: flux update
-
-        """
-        rhs_flux = rhs[self.flux_slice]
-        return self.matrix_flux_inv.dot(
-            rhs_flux + self.DT.dot(solution[self.reduced_system_slice])
-        )
 
     # ! ---- Main methods ----
 
@@ -1127,9 +745,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         self.broken_darcy = sps.bmat(
             [
-                [None, -self.div.T, None],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
+                [None, -self.div.T],
+                [self.div, None,],
             ],
             format="csc",
         )
@@ -1163,6 +780,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         regularized_flat_flux_norm = np.clip(
             flat_flux_norm, self.regularization, self.L
         )
+        self.regularized_flat_flux_norm = regularized_flat_flux_norm
         approx_jacobian = sps.bmat(
             [
                 [
@@ -1172,10 +790,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                     )
                     * self.mass_matrix_faces,
                     -self.div.T,
-                    None,
                 ],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
+                [self.div, None],
             ],
             format="csc",
         )
@@ -1207,9 +823,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             [
                 np.zeros(self.grid.num_faces, dtype=float),
                 self.mass_matrix_cells.dot(flat_mass_diff),
-                np.zeros(1, dtype=float),
             ]
         )
+        self.regularized_flat_flux_norm = np.ones(self.grid.num_faces, dtype=float)
 
         # Initialize Newton iteration with Darcy solution for unitary mobility
         solution_i = np.zeros_like(rhs, dtype=float)
@@ -1456,12 +1072,12 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         # Update the Darcy system
         l_scheme_mixed_darcy = sps.bmat(
             [
-                [weight * self.mass_matrix_faces, -self.div.T, None],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
+                [weight * self.mass_matrix_faces, -self.div.T],
+                [self.div, None,],
             ],
             format="csc",
         )
+        print(f"Shrink factor: {shrink_factor}")
 
         return l_scheme_mixed_darcy, weight, shrink_factor
 
@@ -1490,15 +1106,16 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             [
                 np.zeros(self.grid.num_faces, dtype=float),
                 self.mass_matrix_cells.dot(flat_mass_diff),
-                np.zeros(1, dtype=float),
             ]
         )
+        self.regularized_flat_flux_norm = np.ones(self.grid.num_faces, dtype=float)
 
         # Initialize Newton iteration with Darcy solution for unitary mobility
         solution_i = np.zeros_like(rhs, dtype=float)
         solution_i, _ = self.linear_solve(
             self.darcy_init.copy(), rhs.copy(), solution_i
         )
+        
 
         # Initialize distance in case below iteration fails
         new_distance = 0
@@ -1530,9 +1147,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         # Initialize linear problem corresponding to Bregman regularization
         l_scheme_mixed_darcy = sps.bmat(
             [
-                [weight * self.mass_matrix_faces, -self.div.T, None],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
+                [weight * self.mass_matrix_faces, -self.div.T],
+                [self.div, None],
             ],
             format="csc",
         )
@@ -1738,6 +1354,29 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         }
 
         return new_distance, solution_i, info
+    
+class SchurComplementPC(object):
+    """
+    This is a test for building my own preconditioner,
+    getting the extra info from the dictionary appctx passed
+    to the linear solver. 
+    We are trying to replate what is done in firedrake.
+    """
+    def setUp(self,pc):
+        # get info from the parent KSP object
+        appctx = pc.getAttr("appctx")
+        flux_norm = appctx["regularized_flat_flux_norm"]
+        div = appctx["div"] # this should be also obtained by the matrix
+        S = div * sps.diags(flux_norm, dtype=float) * div.T
+        
+        self.ksp = darsia.linalg.KSP(S)
+        self.ksp.setup({"ksp_type":"preonly","pc_type":"hypre"})
+
+    def apply(self, pc, x, y):
+        self.ksp.ksp.solve(x,y)
+
+
+
 
 
 # Unified access
@@ -1758,7 +1397,6 @@ def wasserstein_distance(
 
     """
     # Define method for computing 1-Wasserstein distance
-
     if method.lower() in ["newton", "bregman"]:
         # Use Finite Volume Iterative Method (Newton or Bregman)
 
@@ -1766,7 +1404,7 @@ def wasserstein_distance(
         grid: darsia.Grid = darsia.generate_grid(mass_1)
 
         # Fetch options and define Wasserstein method
-        options = kwargs.get("options", {})
+        options = kwargs.get("options", {})        
 
         # Define method
         if method.lower() == "newton":

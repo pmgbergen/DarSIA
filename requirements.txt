@@ -13,3 +13,4 @@ pandas
 plotly
 largestinteriorrectangle
 pydicom
+petsc4py
