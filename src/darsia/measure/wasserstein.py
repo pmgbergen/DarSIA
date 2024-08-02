@@ -11,11 +11,7 @@ import numpy as np
 import scipy.sparse as sps
 from scipy.stats import hmean
 from petsc4py import PETSc
-from ot import dist
-from ot.bregman import sinkhorn2
-from ot.bregman import empirical_sinkhorn2
 import darsia
-import copy
 
 # General TODO list
 # - improve assembling of operators through partial assembling
@@ -132,7 +128,6 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         self.mobility_mode = self.options.get("mobility_mode", "cell_based")
         """str: mode for computing the mobility"""
-
         
         # Setup of method
         self._setup_dof_management()
@@ -140,11 +135,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         self._setup_linear_solver()
         self._setup_acceleration()
 
-        self.kappa = self.options.get("kappa", np.ones(self.grid.shape,dtype=float))
-        """np.ndarray: kappa"""
-        self.kappa_faces = darsia.cell_to_face_average(self.grid, self.kappa, mode="harmonic")
-        """np.ndarray: kappa on faces"""
-
+        
     def _setup_dof_management(self) -> None:
         """Setup of Raviart-Thomas-type DOF management.
 
@@ -467,10 +458,6 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         else:
             raise ValueError(f"Mode {mode} not supported.")
-
-        # Scale by kappa
-        flat_flux_norm /= self.kappa_faces
-
 
         return flat_flux_norm
 
@@ -1104,6 +1091,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             ],
             format="csc",
         )
+        print(f"Shrink factor: {shrink_factor}")
 
         return l_scheme_mixed_darcy, weight, shrink_factor
 
