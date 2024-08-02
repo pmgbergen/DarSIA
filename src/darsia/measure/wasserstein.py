@@ -90,11 +90,9 @@ class VariationalWassersteinDistance(darsia.EMD):
                     - "direct": direct solver
                     - "ksp": Krylov subspace solver by PETSc
                 - formulation (str): formulation of the linear system. Defaults to
-                    "pressure". Supported formulations are:
+                    "flux_reduced". Supported formulations are:
                     - "full": full system
                     - "flux_reduced": reduced system with fluxes eliminated
-                    - "pressure": reduced system with fluxes and lagrange multiplier
-                        eliminated
                 - linear_solver_options (dict): options for the linear solver. Defaults
                     to {}.
                 - ksp_options (dict): options for the KSP solver. Defaults to {}.
@@ -142,9 +140,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         The following degrees of freedom are considered (also in this order):
         - flat fluxes (normal fluxes on the faces)
         - flat pressures (pressures on the cells)
-        - lagrange multiplier (scalar variable) - Idea: Fix the pressure in the
-        center of the domain to zero via a constraint and a Lagrange multiplier.
-
+        
         """
         # ! ---- Number of dofs ----
         num_flux_dofs = self.grid.num_faces
@@ -160,20 +156,12 @@ class VariationalWassersteinDistance(darsia.EMD):
         )
         """np.ndarray: indices of the pressures"""
 
-        self.lagrange_multiplier_indices = np.array(
-            [num_flux_dofs + num_pressure_dofs], dtype=int
-        )
-        """np.ndarray: indices of the lagrange multiplier"""
-
         # ! ---- Fast access to components through slices ----
         self.flux_slice = slice(0, num_flux_dofs)
         """slice: slice for the fluxes"""
 
         self.pressure_slice = slice(num_flux_dofs, num_flux_dofs + num_pressure_dofs)
         """slice: slice for the pressures"""
-
-        self.reduced_system_slice = slice(num_flux_dofs, None)
-        """slice: slice for the reduced system (pressures and lagrange multiplier)"""
 
         # Embedding operators
         self.flux_embedding = sps.csc_matrix(
@@ -249,10 +237,10 @@ class VariationalWassersteinDistance(darsia.EMD):
         """sps.csc_matrix: full face reconstruction: flat fluxes -> vector fluxes"""
 
     def _setup_linear_solver(self) -> None:
-        self.linear_solver_type = self.options.get("linear_solver", "direct")
+        self.linear_solver_type = self.options.get("linear_solver", "ksp")
         """str: type of linear solver"""
 
-        self.formulation: str = self.options.get("formulation", "pressure")
+        self.formulation: str = self.options.get("formulation", "full")
         """str: formulation type"""
 
         # Safety checks
@@ -262,8 +250,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         ], f"Linear solver {self.linear_solver_type} not supported."
         assert self.formulation in [
             "full",
-            "flux-reduced",
-            "pressure",
+            "flux_reduced",
         ], f"Formulation {self.formulation} not supported."
 
     
@@ -523,14 +510,27 @@ class VariationalWassersteinDistance(darsia.EMD):
         
         tic = time.time() 
         if setup_linear_solver:
-            # Define CG solver
-            kernel = np.zeros(matrix.shape[0], dtype=float)
-            kernel[self.pressure_indices] = 1.0
-            # normalize the kernel
-            kernel = kernel / np.linalg.norm(kernel)
-            self.linear_solver = darsia.linalg.KSP(matrix, 
+            if self.linear_solver_type == "direct":
+                # We lift a bit the diagonal to avoid zero entries.
+                # The minus sign is because we solving a saddle point problem
+                diagonal = np.zeros(matrix.shape[0], dtype=float)
+                diagonal[self.pressure_indices] = 1.0
+                matrix4solver = matrix - sps.diags(diagonal) * 1e-15
+                
+                # nullspace is null
+                nullspace = []
+            else:
+                matrix4solver = matrix
+                # Define CG solver
+                kernel = np.zeros(matrix.shape[0], dtype=float)
+                kernel[self.pressure_indices] = 1.0
+                # normalize the kernel
+                kernel = kernel / np.linalg.norm(kernel)
+                nullspace=[kernel]
+            
+            self.linear_solver = darsia.linalg.KSP(matrix4solver, 
                                                    field_ises=self.field_ises,
-                                                   nullspace=[kernel],
+                                                   nullspace=nullspace,
                                                     appctx={
                                                        "regularized_flat_flux_norm": self.regularized_flat_flux_norm,
                                                        "div": self.div,
@@ -540,6 +540,8 @@ class VariationalWassersteinDistance(darsia.EMD):
             linear_solver_options = self.options.get("linear_solver_options", {})
             tol = linear_solver_options.get("tol", 1e-6)
             maxiter = linear_solver_options.get("maxiter", 100)
+
+            # Setup ksp options
             if self.formulation == "full":
                 if self.linear_solver_type=="direct":
                     self.solver_options = {
@@ -553,7 +555,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                         "ksp_type": "gmres",
                         "ksp_rtol": tol,
                         "ksp_maxit": maxiter,
-                        # "ksp_monitor_true_residual": None, #this is for debugging
+                        #"ksp_monitor_true_residual": None, #this is for debugging
                         "pc_type": "fieldsplit",
                         "pc_fieldsplit_type":"schur",
                         "pc_fieldsplit_schur_fact_type": "full",
@@ -572,7 +574,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                         #"fieldsplit_1_pc_type": "python",
                         #"fieldsplit_1_pc_python_type": __name__+".SchurComplementPC",
                     }
-            if self.formulation == "flux_reduced" or self.formulation == "pressure":
+            if self.formulation == "flux_reduced":
                 # example of nested dictionary
                 # the underscore is used to separate the nested dictionary
                 # see in linals. The flatten_parameters will transform
@@ -607,7 +609,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                     # schur solver
                     "fieldsplit_1" : ksp_schur,
                 }
-            #self.solver_options["ksp_monitor"] = None
+            self.solver_options["ksp_monitor_true_residual"] = None
             self.linear_solver.setup(self.solver_options)
             #self.linear_solver.ksp.view()
         time_setup = time.time() - tic           
@@ -624,23 +626,6 @@ class VariationalWassersteinDistance(darsia.EMD):
         }
         
         return solution, stats
-
-    
-    def compute_flux_update(self, solution: np.ndarray, rhs: np.ndarray) -> np.ndarray:
-        """Compute the flux update from the solution.
-
-        Args:
-            solution (np.ndarray): solution
-            rhs (np.ndarray): right hand side
-
-        Returns:
-            np.ndarray: flux update
-
-        """
-        rhs_flux = rhs[self.flux_slice]
-        return self.matrix_flux_inv.dot(
-            rhs_flux + self.DT.dot(solution[self.reduced_system_slice])
-        )
 
     # ! ---- Main methods ----
 
