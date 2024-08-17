@@ -31,7 +31,7 @@ options = {
 }
 
 grid = darsia.generate_grid(dst_image_2d)
-w1 = darsia.VariationalWassersteinDistance(grid, options)
+w1 = darsia.VariationalWassersteinDistance(grid, options=options)
 flat_flux = np.zeros(grid.num_faces, dtype=float)
 flat_flux[grid.faces[0]] = 1
 flat_flux[grid.faces[1]] = 2
