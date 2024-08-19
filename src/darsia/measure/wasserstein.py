@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 import tracemalloc
 import warnings
+from abc import abstractmethod
 from pathlib import Path
 from typing import Optional, Union
 
@@ -109,6 +110,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                 - lumping (bool): lump the mass matrix. Defaults to True.
 
         """
+        tic = time.time()
+
         # Cache geometrical infos
         self.grid = grid
         """darsia.Grid: grid"""
@@ -137,10 +140,16 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Setup of method
         self._setup_dof_management()
+        print("[Wasserstein] DOF management time: ", time.time() - tic)
         self._setup_face_weights()
+        print("[Wasserstein] Face weights time: ", time.time() - tic)
         self._setup_discretization()
+        print("[Wasserstein] Discretization time: ", time.time() - tic)
         self._setup_linear_solver()
+        print("[Wasserstein] Linear solver time: ", time.time() - tic)
         self._setup_acceleration()
+
+        print("[Wasserstein] Initialization time: ", time.time() - tic)
 
     def _setup_dof_management(self) -> None:
         """Setup of Raviart-Thomas-type DOF management.
@@ -243,15 +252,15 @@ class VariationalWassersteinDistance(darsia.EMD):
         """sps.csc_matrix: mass matrix on cells: flat pressures -> flat pressures"""
 
         lumping = self.options.get("lumping", True)
-        self.mass_matrix_faces = sps.diags(self.face_weights, format="csc") @ (
-            darsia.FVMass(self.grid, "faces", lumping).mat
-        )
+        self.weighted_mass_matrix_faces = sps.diags(
+            self.face_weights**2, format="csc"
+        ) @ (darsia.FVMass(self.grid, "faces", lumping).mat)
         """sps.csc_matrix: mass matrix on faces: flat fluxes -> flat fluxes"""
 
         L_init = self.options.get("L_init", 1.0)
         self.darcy_init = sps.bmat(
             [
-                [L_init * self.mass_matrix_faces, -self.div.T, None],
+                [L_init * self.weighted_mass_matrix_faces, -self.div.T, None],
                 [self.div, None, -self.pressure_constraint.T],
                 [None, self.pressure_constraint, None],
             ],
@@ -575,6 +584,46 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     # ! ---- Effective quantities ----
 
+    def cell_weighted_flux(self, cell_flux: np.ndarray) -> np.ndarray:
+        """Compute the cell-weighted flux.
+
+        Args:
+            cell_flux (np.ndarray): cell fluxes
+
+        Returns:
+            np.ndarray: cell-weighted flux
+
+        """
+        if self.weight is None:
+            return cell_flux
+        elif len(self.cell_weights.shape) == self.grid.dim:
+            return cell_flux * self.cell_weights[..., np.newaxis]
+
+        elif (
+            len(self.cell_weights.shape) == self.grid.dim + 1
+            and self.cell_weights.shape[-1] == 1
+        ):
+            raise NotImplementedError("Need to reduce the dimension")
+            # Try: return cell_flux * self.cell_weights
+
+        elif (
+            len(self.cell_weights.shape) == self.grid.dim + 1
+            and self.cell_weights.shape[-1] == self.grid.dim
+        ):
+            return cell_flux * self.cell_weights
+
+        elif len(
+            self.cell_weights.shape
+        ) == self.grid.dim + 2 and self.cell_weights.shape[-2:] == (
+            self.grid.dim,
+            self.grid.dim,
+        ):
+            raise NotImplementedError("Need to apply matrix vector product.")
+
+        else:
+
+            raise NotImplementedError("Dimension not supported.")
+
     def transport_density(
         self, flat_flux: np.ndarray, weighted: bool = True, flatten: bool = True
     ) -> np.ndarray:
@@ -631,7 +680,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         for quad_pt, quad_weight in zip(quad_pts, quad_weights):
             cell_flux = darsia.face_to_cell(self.grid, flat_flux, pt=quad_pt)
             if weighted:
-                weighted_cell_flux = cell_flux * self.cell_weights[..., np.newaxis]
+                weighted_cell_flux = self.cell_weighted_flux(cell_flux)
                 cell_flux_norm = np.linalg.norm(weighted_cell_flux, 2, axis=-1)
             else:
                 cell_flux_norm = np.linalg.norm(cell_flux, 2, axis=-1)
@@ -658,13 +707,11 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     # ! ---- Lumping of effective mobility
 
-    def vector_face_flux_norm(self, flat_flux: np.ndarray, mode: str) -> np.ndarray:
-        """Compute the norm of the vector-valued fluxes on the faces.
+    def weighted_vector_face_flux_norm(self, flat_flux: np.ndarray) -> np.ndarray:
+        """Compute the norm of the cell-weighted vector-valued fluxes on the faces.
 
         Args:
             flat_flux (np.ndarray): flat fluxes (normal fluxes on the faces)
-            mode (str): mode of the norm, either "cell_based", "cell_based_harmonic" (same
-                as "cell_based", "cell_based_arithmetic", "face_based", or "subcell_based".
 
         In the cell-based modes, the fluxes are projected to the cells and the norm across
         faces is computed via averaging. Similar for subcell_based definition. In the
@@ -677,27 +724,29 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
 
         # Determine the norm of the fluxes on the faces
-        if mode in ["cell_based", "cell_based_arithmetic", "cell_based_harmonic"]:
+        if self.mobility_mode in [
+            "cell_based",
+            "cell_based_arithmetic",
+            "cell_based_harmonic",
+        ]:
             # Cell-based mode determines the norm of the fluxes on the faces via
             # averaging of neighboring cells.
 
             # Extract average mode from mode
-            if mode == "cell_based":
+            if self.mobility_mode == "cell_based":
                 average_mode = "harmonic"
             else:
-                average_mode = mode.split("_")[2]
+                average_mode = self.mobility_mode.split("_")[2]
 
             # The flux norm is identical to the transport density without weights
-            cell_flux_norm = self.transport_density(
-                flat_flux, weighted=False, flatten=False
-            )
+            cell_flux_norm = self.transport_density(flat_flux, flatten=False)
 
             # Map to faces via averaging of neighboring cells
             flat_flux_norm = darsia.cell_to_face_average(
                 self.grid, cell_flux_norm, mode=average_mode
             )
 
-        elif mode == "subcell_based":
+        elif self.mobility_mode == "subcell_based":
             # Subcell-based mode determines the norm of the fluxes on the faces via
             # averaging of neighboring subcells.
 
@@ -733,19 +782,27 @@ class VariationalWassersteinDistance(darsia.EMD):
                     for j, pt in enumerate(coordinates):
                         # Evaluate the norm of the flux at the coordinates
                         subcell_flux = darsia.face_to_cell(self.grid, flat_flux, pt=pt)
+                        # Apply cell-based weighting
+                        weighted_subcell_flux = self.cell_weighted_flux(subcell_flux)
+
                         # Store the norm of the subcell flux from the cell associated to
                         # the flux
                         id = i * len(coordinates) + j
                         subcell_flux_norm[faces, id] = np.linalg.norm(
-                            subcell_flux, 2, axis=-1
+                            weighted_subcell_flux, 2, axis=-1
                         ).ravel("F")[cells]
 
             # Average over the subcells using harmonic averaging
             flat_flux_norm = hmean(subcell_flux_norm, axis=1)
 
-        elif mode == "face_based":
+        elif self.mobility_mode == "face_based":
             if not hasattr(self, "face_reconstruction"):
                 self._setup_face_reconstruction()
+
+            if self.weight is not None:
+                raise NotImplementedError(
+                    "Face-based mode not implemented for weights."
+                )
 
             # Define natural vector valued flux on faces (taking arithmetic averages
             # of continuous fluxes over cells evaluated at faces)
@@ -754,7 +811,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             flat_flux_norm = np.linalg.norm(full_face_flux, 2, axis=1)
 
         else:
-            raise ValueError(f"Mode {mode} not supported.")
+            raise ValueError(f"Mode {self.mobility_mode} not supported.")
 
         return flat_flux_norm
 
@@ -774,16 +831,19 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         """
         flat_flux = solution[self.flux_slice]
-        flat_flux_norm = np.maximum(
-            self.vector_face_flux_norm(flat_flux, mode=self.mobility_mode),
+        weighted_flat_flux_norm = self.weighted_vector_face_flux_norm(flat_flux)
+        regularized_weighted_flat_flux_norm = np.maximum(
+            weighted_flat_flux_norm,
             self.regularization,
         )
-        flat_flux_normed = flat_flux / flat_flux_norm
+        flat_flux_normed = flat_flux / regularized_weighted_flat_flux_norm
 
         return (
             rhs
             - self.broken_darcy.dot(solution)
-            - self.flux_embedding.dot(self.mass_matrix_faces.dot(flat_flux_normed))
+            - self.flux_embedding.dot(
+                self.weighted_mass_matrix_faces.dot(flat_flux_normed)
+            )
         )
 
     # ! ---- Solver methods ----
@@ -1040,6 +1100,19 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     # ! ---- Main methods ----
 
+    @abstractmethod
+    def _solve(self, rhs: np.ndarray) -> tuple:
+        """Solve for the Wasserstein distance.
+
+        Args:
+            rhs (np.ndarray): right hand side
+
+        Returns:
+            tuple: distance, solution, info
+
+        """
+        pass
+
     def __call__(
         self,
         img_1: darsia.Image,
@@ -1083,7 +1156,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         transport_density = self.transport_density(flat_flux, flatten=False)
 
         # Cell-weighted flux
-        weighted_flux = flux * self.cell_weights[..., np.newaxis]
+        weighted_flux = self.cell_weighted_flux(flux)
 
         # Return solution
         return_info = self.options.get("return_info", False)
@@ -1193,7 +1266,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         """
         flat_flux = solution[self.flux_slice]
-        flat_flux_norm = self.vector_face_flux_norm(flat_flux, mode=self.mobility_mode)
+        flat_flux_norm = self.weighted_vector_face_flux_norm(flat_flux)
         regularized_flat_flux_norm = np.clip(
             flat_flux_norm, self.regularization, self.L
         )
@@ -1204,7 +1277,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                         1.0 / regularized_flat_flux_norm,
                         dtype=float,
                     )
-                    * self.mass_matrix_faces,
+                    * self.weighted_mass_matrix_faces,
                     -self.div.T,
                     None,
                 ],
@@ -1423,6 +1496,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             options (dict, optional): options. Defaults to {}.
 
         """
+
         super().__init__(grid, weight, options)
         self.L = self.options.get("L", 1.0)
         """Penality parameter for the Bregman iteration, associated to face mobility."""
@@ -1438,7 +1512,6 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         self,
         flat_flux: np.ndarray,
         shrink_factor: Union[float, np.ndarray],
-        mode: str = "cell_based",
     ) -> np.ndarray:
         """Shrink operation in the split Bregman method, operating on fluxes.
 
@@ -1449,14 +1522,12 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         Args:
             flat_flux (np.ndarray): flux
             shrink_factor (float or np.ndarray): shrink factor
-            mode (str, optional): mode of the shrink operation. Defaults to
-                "cell_based".
 
         Returns:
             np.ndarray: shrunk fluxes
 
         """
-        vector_face_flux_norm = self.vector_face_flux_norm(flat_flux, mode=mode)
+        vector_face_flux_norm = self.weighted_vector_face_flux_norm(flat_flux)
         flat_scaling = np.maximum(vector_face_flux_norm - shrink_factor, 0) / (
             vector_face_flux_norm + self.regularization
         )
@@ -1478,7 +1549,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         # Add regularization to the norm of the flux
         flux_norm = np.maximum(
-            self.vector_face_flux_norm(flat_flux, self.mobility_mode),
+            self.weighted_vector_face_flux_norm(flat_flux),
             self.regularization,
         )
         # Pick the max value if homogeneous regularization is desired
@@ -1491,7 +1562,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         # Update the Darcy system
         l_scheme_mixed_darcy = sps.bmat(
             [
-                [weight * self.mass_matrix_faces, -self.div.T, None],
+                [weight * self.weighted_mass_matrix_faces, -self.div.T, None],
                 [self.div, None, -self.pressure_constraint.T],
                 [None, self.pressure_constraint, None],
             ],
@@ -1565,7 +1636,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         # Initialize linear problem corresponding to Bregman regularization
         l_scheme_mixed_darcy = sps.bmat(
             [
-                [weight * self.mass_matrix_faces, -self.div.T, None],
+                [weight * self.weighted_mass_matrix_faces, -self.div.T, None],
                 [self.div, None, -self.pressure_constraint.T],
                 [None, self.pressure_constraint, None],
             ],
@@ -1574,7 +1645,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         # Initialize Bregman variables
         old_flux = solution_i[self.flux_slice]
-        old_aux_flux = self._shrink(old_flux, shrink_factor, self.mobility_mode)
+        old_aux_flux = self._shrink(old_flux, shrink_factor)
         old_force = old_flux - old_aux_flux
         old_distance = self.l1_dissipation(old_flux)
 
@@ -1614,9 +1685,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
                     # 2. Shrink step for vectorial fluxes.
                     tic = time.time()
-                    new_aux_flux = self._shrink(
-                        new_flux, shrink_factor, self.mobility_mode
-                    )
+                    new_aux_flux = self._shrink(new_flux, shrink_factor)
                     stats_i["time_shrink"] = time.time() - tic
 
                     # 3. Update force
@@ -1626,8 +1695,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     # 1. Make relaxation step (solve quadratic optimization problem)
                     tic = time.time()
                     rhs_i = rhs.copy()
-                    rhs_i[self.flux_slice] = weight * self.mass_matrix_faces.dot(
-                        old_aux_flux - old_force
+                    rhs_i[self.flux_slice] = (
+                        weight
+                        * self.weighted_mass_matrix_faces.dot(old_aux_flux - old_force)
                     )
                     time_assemble = time.time() - tic
                     # Force to update the internally stored linear solver
@@ -1643,9 +1713,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
                     # 2. Shrink step for vectorial fluxes.
                     tic = time.time()
-                    new_aux_flux = self._shrink(
-                        new_flux + old_force, shrink_factor, self.mobility_mode
-                    )
+                    new_aux_flux = self._shrink(new_flux + old_force, shrink_factor)
                     stats_i["time_shrink"] = time.time() - tic
 
                     # 3. Update force
