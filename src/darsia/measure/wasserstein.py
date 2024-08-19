@@ -7,7 +7,7 @@ import tracemalloc
 import warnings
 from abc import abstractmethod
 from pathlib import Path
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 import numpy as np
 import pyamg
@@ -707,7 +707,11 @@ class VariationalWassersteinDistance(darsia.EMD):
 
     # ! ---- Lumping of effective mobility
 
-    def weighted_vector_face_flux_norm(self, flat_flux: np.ndarray) -> np.ndarray:
+    def weighted_vector_face_flux_norm(
+        self,
+        flat_flux: np.ndarray,
+        mode: Literal["cell_based", "subcell_based", "face_based"],
+    ) -> np.ndarray:
         """Compute the norm of the cell-weighted vector-valued fluxes on the faces.
 
         Args:
@@ -724,7 +728,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
 
         # Determine the norm of the fluxes on the faces
-        if self.mobility_mode in [
+        if mode in [
             "cell_based",
             "cell_based_arithmetic",
             "cell_based_harmonic",
@@ -733,10 +737,10 @@ class VariationalWassersteinDistance(darsia.EMD):
             # averaging of neighboring cells.
 
             # Extract average mode from mode
-            if self.mobility_mode == "cell_based":
+            if mode == "cell_based":
                 average_mode = "harmonic"
             else:
-                average_mode = self.mobility_mode.split("_")[2]
+                average_mode = mode.split("_")[2]
 
             # The flux norm is identical to the transport density without weights
             cell_flux_norm = self.transport_density(flat_flux, flatten=False)
@@ -746,7 +750,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 self.grid, cell_flux_norm, mode=average_mode
             )
 
-        elif self.mobility_mode == "subcell_based":
+        elif mode == "subcell_based":
             # Subcell-based mode determines the norm of the fluxes on the faces via
             # averaging of neighboring subcells.
 
@@ -795,7 +799,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             # Average over the subcells using harmonic averaging
             flat_flux_norm = hmean(subcell_flux_norm, axis=1)
 
-        elif self.mobility_mode == "face_based":
+        elif mode == "face_based":
             if not hasattr(self, "face_reconstruction"):
                 self._setup_face_reconstruction()
 
@@ -811,7 +815,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             flat_flux_norm = np.linalg.norm(full_face_flux, 2, axis=1)
 
         else:
-            raise ValueError(f"Mode {self.mobility_mode} not supported.")
+            raise ValueError(f"Mode {mode} not supported.")
 
         return flat_flux_norm
 
@@ -831,7 +835,9 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         """
         flat_flux = solution[self.flux_slice]
-        weighted_flat_flux_norm = self.weighted_vector_face_flux_norm(flat_flux)
+        weighted_flat_flux_norm = self.weighted_vector_face_flux_norm(
+            flat_flux, self.mobility_mode
+        )
         regularized_weighted_flat_flux_norm = np.maximum(
             weighted_flat_flux_norm,
             self.regularization,
@@ -1266,7 +1272,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
         """
         flat_flux = solution[self.flux_slice]
-        flat_flux_norm = self.weighted_vector_face_flux_norm(flat_flux)
+        flat_flux_norm = self.weighted_vector_face_flux_norm(
+            flat_flux, self.mobility_mode
+        )
         regularized_flat_flux_norm = np.clip(
             flat_flux_norm, self.regularization, self.L
         )
@@ -1527,7 +1535,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             np.ndarray: shrunk fluxes
 
         """
-        vector_face_flux_norm = self.weighted_vector_face_flux_norm(flat_flux)
+        vector_face_flux_norm = self.weighted_vector_face_flux_norm(
+            flat_flux, self.mobility_mode
+        )
         flat_scaling = np.maximum(vector_face_flux_norm - shrink_factor, 0) / (
             vector_face_flux_norm + self.regularization
         )
@@ -1549,7 +1559,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         # Add regularization to the norm of the flux
         flux_norm = np.maximum(
-            self.weighted_vector_face_flux_norm(flat_flux),
+            self.weighted_vector_face_flux_norm(flat_flux, self.mobility_mode),
             self.regularization,
         )
         # Pick the max value if homogeneous regularization is desired

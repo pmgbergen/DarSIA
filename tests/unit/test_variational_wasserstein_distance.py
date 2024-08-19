@@ -41,14 +41,16 @@ def test_vector_face_flux_norm_cell_based():
     """Compare with the manually determined exact cell based face mobility."""
     # NOTE the coarse tolerance due to such large quadrature error
     assert np.allclose(
-        w1.vector_face_flux_norm(flat_flux, "cell_based"), 4 * [1.1865], atol=1e-1
+        w1.weighted_vector_face_flux_norm(flat_flux, "cell_based"),
+        4 * [1.1865],
+        atol=1e-1,
     )
 
 
 def test_vector_face_flux_norm_subcell_based():
     """Compare with the manually determined exact subcell based face mobility."""
     assert np.allclose(
-        w1.vector_face_flux_norm(flat_flux, "subcell_based"),
+        w1.weighted_vector_face_flux_norm(flat_flux, "subcell_based"),
         2 * [4 / (2 / 1 + 2 / 5**0.5)] + 2 * [4 / (2 / 2 + 2 / 5**0.5)],
     )
 
@@ -56,7 +58,7 @@ def test_vector_face_flux_norm_subcell_based():
 def test_vector_face_flux_norm_face_based():
     """Compare with the manually determined exact face based face mobility."""
     assert np.allclose(
-        w1.vector_face_flux_norm(flat_flux, "face_based"),
+        w1.weighted_vector_face_flux_norm(flat_flux, "face_based"),
         2 * [2**0.5] + 2 * [(0.5**2 + 2**2) ** 0.5],
         atol=1e-3,
     )
