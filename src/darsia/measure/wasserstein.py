@@ -102,6 +102,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 - regularization (float): regularization parameter for avoiding division
                     by zero. Defaults to np.finfo(float).eps.
                 - lumping (bool): lump the mass matrix. Defaults to True.
+                - kappa (np.ndarray) : Non-homogeneous kappa. Defaults to ones.
 
         """
         # Cache geometrical infos
@@ -126,12 +127,19 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         self.mobility_mode = self.options.get("mobility_mode", "cell_based")
         """str: mode for computing the mobility"""
+
+        self.kappa_cells = self.options.get("kappa", np.ones(grid.shape))
+        """np.ndarray: non-homogeneous kappa"""
         
         # Setup of method
         self._setup_dof_management()
         self._setup_discretization()
         self._setup_linear_solver()
         self._setup_acceleration()
+
+        self.flat_kappa_faces = darsia.cell_to_face_average(self.grid, self.kappa_cells, mode="harmonic")
+        """np.ndarray: non-homogeneous kappa on faces"""
+        
 
         
     def _setup_dof_management(self) -> None:
@@ -344,8 +352,8 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         """
         # The L1 dissipation corresponds to the integral over the transport density
-        transport_density = self.transport_density(flat_flux)
-        return self.mass_matrix_cells.dot(transport_density).sum()
+        kappa_transport_density = self.transport_density(self.flat_kappa_faces * flat_flux)
+        return self.mass_matrix_cells.dot(kappa_transport_density).sum()
 
     # ! ---- Lumping of effective mobility
 
@@ -469,6 +477,8 @@ class VariationalWassersteinDistance(darsia.EMD):
             self.regularization,
         )
         flat_flux_normed = flat_flux / flat_flux_norm
+
+        flat_flux_normed *= self.flat_kappa_faces
 
         return (
             rhs
@@ -609,7 +619,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                     # schur solver
                     "fieldsplit_1" : ksp_schur,
                 }
-            self.solver_options["ksp_monitor_true_residual"] = None
+            #self.solver_options["ksp_monitor_true_residual"] = None
             self.linear_solver.setup(self.solver_options)
             #self.linear_solver.ksp.view()
         time_setup = time.time() - tic           
@@ -784,7 +794,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             [
                 [
                     sps.diags(
-                        1.0 / regularized_flat_flux_norm,
+                        self.flat_kappa_faces / regularized_flat_flux_norm,
                         dtype=float,
                     )
                     * self.mass_matrix_faces,
@@ -862,7 +872,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         for iter in range(num_iter):
             # It is possible that the linear solver fails. In this case, we simply
             # stop the iteration and return the current solution.
-            try:
+            #try:
+            if True:
                 # Keep track of old flux, and old distance
                 old_solution_i = solution_i.copy()
                 old_flux = solution_i[self.flux_slice]
@@ -968,9 +979,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                         )
                     ):
                         break
-            except Exception:
-                warnings.warn("Newton iteration abruptly stopped due to some error.")
-                break
+            #except Exception:
+            #    warnings.warn("Newton iteration abruptly stopped due to some error.")
+            #    break
 
         # Summarize profiling (time in seconds, memory in GB)
         total_timings = self._analyze_timings(convergence_history["timing"])
@@ -1037,8 +1048,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
 
         """
         vector_face_flux_norm = self.vector_face_flux_norm(flat_flux, mode=mode)
-        flat_scaling = np.maximum(vector_face_flux_norm - shrink_factor, 0) / (
-            vector_face_flux_norm + self.regularization
+        flat_scaling = np.maximum(
+            1.0/self.flat_kappa_faces * vector_face_flux_norm - shrink_factor, 0) / (
+            1.0/self.flat_kappa_faces * vector_face_flux_norm + self.regularization
         )
         return flat_scaling * flat_flux
 
@@ -1065,8 +1077,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         if homogeneous:
             flux_norm[:] = np.max(flux_norm)
         # Assign the weight and shrink factor
-        weight = sps.diags(1.0 / flux_norm)
-        shrink_factor = flux_norm
+        weight = sps.diags(self.flat_kappa_faces / flux_norm)
+        shrink_factor = 1.0 / self.flat_kappa_faces * flux_norm
 
         # Update the Darcy system
         l_scheme_mixed_darcy = sps.bmat(
