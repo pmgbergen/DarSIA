@@ -115,15 +115,15 @@ def plot_2d_wasserstein_distance(
 
 def to_vtk(
     path: Union[str, Path],
-    data: list[tuple[Union[darsia.Image, np.ndarray], str]],
+    data: list[tuple[Union[darsia.Image, np.ndarray, darsia.Format], str]],
 ) -> None:
     """Write data to a VTK file.
 
     Args:
         path (Union[str, Path]): path to the VTK file
-        data (list[tuple[Union[darsia.Image, np.ndarray], str]]): data to write, includes
-            the data and the name of the data. Require at least one data point to be an
-            image.
+        data (list[tuple[Union[darsia.Image, np.ndarray, darsia.Format], str]]): data to
+            write, includes the data and the name of the data. Require at least one data
+            point to be an image.
 
     NOTE: Requires pyevtk to be installed.
 
@@ -134,7 +134,7 @@ def to_vtk(
         # Check whether the data contains at least one image, and pick the first one
         image = None
         for d in data:
-            name, img = d
+            name, img, format = d
             if isinstance(img, darsia.Image):
                 image = img
                 break
@@ -179,7 +179,7 @@ def to_vtk(
         # Convert cell data to right format
         cellData = {}
         for d in data:
-            name, img = d
+            name, img, format = d
             if isinstance(img, darsia.Image):
                 img = img.img.copy()
             assert isinstance(img, np.ndarray), "Data must be of type np.ndarray."
@@ -219,9 +219,19 @@ def to_vtk(
                 if image.space_dim == 1:
                     img = tuple(img)
                 elif image.space_dim == 2:
-                    img = (-img[1], img[0], img[2])
+                    if format == darsia.Format.VECTOR:
+                        img = (-img[1], img[0], img[2])
+                    elif format == darsia.Format.TENSOR:
+                        img = (img[1], img[0], img[2])
+                    else:
+                        raise ValueError("Format not supported.")
                 elif image.space_dim == 3:
-                    img = (-img[1], img[2], img[0])
+                    if format == darsia.Format.VECTOR:
+                        img = (-img[1], img[2], img[0])
+                    elif format == darsia.Format.TENSOR:
+                        img = (img[1], img[2], img[0])
+                    else:
+                        raise ValueError("Format not supported.")
             cellData[name] = img
 
         # Make directory if necessary

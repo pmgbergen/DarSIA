@@ -1637,7 +1637,16 @@ class Image:
             name = self.name
         if name is None:
             name = "data"
-        darsia.plotting.to_vtk(path, [(name, self)])
+        darsia.plotting.to_vtk(
+            path,
+            [
+                (
+                    name,
+                    self,
+                    darsia.Format.SCALAR if self.scalar else darsia.Format.TENSOR,
+                )
+            ],
+        )
 
     # ! ---- Auxiliary routines
 
