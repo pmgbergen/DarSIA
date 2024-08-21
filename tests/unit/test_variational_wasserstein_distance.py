@@ -40,23 +40,33 @@ flat_flux[grid.faces[1]] = 2
 def test_vector_face_flux_norm_cell_based():
     """Compare with the manually determined exact cell based face mobility."""
     # NOTE the coarse tolerance due to such large quadrature error
-    assert np.allclose(
-        w1.vector_face_flux_norm(flat_flux, "cell_based"), 4 * [1.1865], atol=1e-1
-    )
+    options.update({"mobility_mode": "cell_based"})
+    w1 = darsia.VariationalWassersteinDistance(grid, options=options)
+    _, face_weight_inv = w1._compute_face_weight(flat_flux)
+    # Identify flux norm as face weight inv
+    assert np.allclose(face_weight_inv, 4 * [1.1865], atol=1e-1)
 
 
 def test_vector_face_flux_norm_subcell_based():
     """Compare with the manually determined exact subcell based face mobility."""
+    options.update({"mobility_mode": "subcell_based"})
+    w1 = darsia.VariationalWassersteinDistance(grid, options=options)
+    _, face_weight_inv = w1._compute_face_weight(flat_flux)
+    # Identify flux norm as face weight inv
     assert np.allclose(
-        w1.vector_face_flux_norm(flat_flux, "subcell_based"),
+        face_weight_inv,
         2 * [4 / (2 / 1 + 2 / 5**0.5)] + 2 * [4 / (2 / 2 + 2 / 5**0.5)],
     )
 
 
 def test_vector_face_flux_norm_face_based():
     """Compare with the manually determined exact face based face mobility."""
+    options.update({"mobility_mode": "face_based"})
+    w1 = darsia.VariationalWassersteinDistance(grid, options=options)
+    _, face_weight_inv = w1._compute_face_weight(flat_flux)
+    # Identify flux norm as face weight inv
     assert np.allclose(
-        w1.vector_face_flux_norm(flat_flux, "face_based"),
+        face_weight_inv,
         2 * [2**0.5] + 2 * [(0.5**2 + 2**2) ** 0.5],
         atol=1e-3,
     )
