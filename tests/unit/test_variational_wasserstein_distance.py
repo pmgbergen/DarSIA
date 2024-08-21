@@ -27,7 +27,7 @@ dst_image_2d.img /= geometry_2d.integrate(dst_image_2d)
 
 options = {
     # Method definition
-    "l1_mode": "raviart_thomas",
+    "l1_mode": darsia.L1Mode.RAVIART_THOMAS,
 }
 
 grid = darsia.generate_grid(dst_image_2d)
@@ -40,7 +40,7 @@ flat_flux[grid.faces[1]] = 2
 def test_vector_face_flux_norm_cell_based():
     """Compare with the manually determined exact cell based face mobility."""
     # NOTE the coarse tolerance due to such large quadrature error
-    options.update({"mobility_mode": "cell_based"})
+    options.update({"mobility_mode": darsia.MobilityMode.CELL_BASED})
     w1 = darsia.VariationalWassersteinDistance(grid, options=options)
     _, face_weight_inv = w1._compute_face_weight(flat_flux)
     # Identify flux norm as face weight inv
@@ -49,7 +49,7 @@ def test_vector_face_flux_norm_cell_based():
 
 def test_vector_face_flux_norm_subcell_based():
     """Compare with the manually determined exact subcell based face mobility."""
-    options.update({"mobility_mode": "subcell_based"})
+    options.update({"mobility_mode": darsia.MobilityMode.SUBCELL_BASED})
     w1 = darsia.VariationalWassersteinDistance(grid, options=options)
     _, face_weight_inv = w1._compute_face_weight(flat_flux)
     # Identify flux norm as face weight inv
@@ -61,7 +61,7 @@ def test_vector_face_flux_norm_subcell_based():
 
 def test_vector_face_flux_norm_face_based():
     """Compare with the manually determined exact face based face mobility."""
-    options.update({"mobility_mode": "face_based"})
+    options.update({"mobility_mode": darsia.MobilityMode.FACE_BASED})
     w1 = darsia.VariationalWassersteinDistance(grid, options=options)
     _, face_weight_inv = w1._compute_face_weight(flat_flux)
     # Identify flux norm as face weight inv

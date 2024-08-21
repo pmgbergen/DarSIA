@@ -123,8 +123,8 @@ solvers = [lu_options, amg_options]
 # General options
 options = {
     # Method definition
-    "l1_mode": "constant_cell_projection",
-    "mobility_mode": "face_based",
+    "l1_mode": darsia.L1Mode.CONSTANT_CELL_PROJECTION,
+    "mobility_mode": darsia.MobilityMode.FACE_BASED,
     # Performance control
     "num_iter": 400,
     "tol_residual": 1e-10,
