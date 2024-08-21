@@ -207,6 +207,10 @@ class VariationalWassersteinDistance(darsia.EMD):
             """np.ndarray: cell weights"""
             self.face_weights = np.ones(self.grid.num_faces, dtype=float)
             """np.ndarray: face weights"""
+            self.isotropic_cell_weights = self.cell_weights
+            """np.ndarray: isotropic cell weights"""
+            self.isotropic_face_weights = self.face_weights
+            """np.ndarray: isotropic face weights"""
         else:
             self.cell_weights = self.weight.img
             self.face_weights = 1.0 / darsia.cell_to_face_average(
