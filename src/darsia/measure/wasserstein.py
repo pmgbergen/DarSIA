@@ -6,6 +6,7 @@ import time
 import tracemalloc
 import warnings
 from abc import abstractmethod
+from enum import Enum
 from pathlib import Path
 from typing import Optional, Union
 
@@ -19,6 +20,26 @@ import darsia
 # General TODO list
 # - improve assembling of operators through partial assembling
 # - allow to reuse setup.
+# - bregman_update responding to flat_scaling approaching 1.
+# - stopping criteria
+
+
+class L1Mode(Enum):
+    """Mode for computing the l1 dissipation."""
+
+    RAVIART_THOMAS = "raviart_thomas"
+    CONSTANT_SUBCELL_PROJECTION = "constant_subcell_projection"
+    CONSTANT_CELL_PROJECTION = "constant_cell_projection"
+
+
+class MobilityMode(Enum):
+    """Mode for computing the mobility."""
+
+    CELL_BASED = "cell_based"
+    CELL_BASED_ARITHMETIC = "cell_based_arithmetic"
+    CELL_BASED_HARMONIC = "cell_based_harmonic"
+    SUBCELL_BASED = "subcell_based"
+    FACE_BASED = "face_based"
 
 
 class VariationalWassersteinDistance(darsia.EMD):
@@ -53,30 +74,30 @@ class VariationalWassersteinDistance(darsia.EMD):
             grid (darsia.Grid): tensor grid associated with the images
             options (dict): options for the nonlinear and linear solver. The following
                 options are supported:
-                - l1_mode (str): mode for computing the l1 dissipation. Defaults to
-                    "raviart_thomas". Supported modes are:
-                    - "raviart_thomas": Apply exact integration of RT0 extensions into
+                - l1_mode (darsia.L1Mode): mode for computing the l1 dissipation. Defaults to
+                    "RAVIART_THOMAS". Supported modes are:
+                    - "RAVIART_THOMAS": Apply exact integration of RT0 extensions into
                         cells. Underlying functional for mixed finite element method
                         (MFEM).
-                    - "constant_subcell_projection": Apply subcell_based projection onto
+                    - "CONSTANT_SUBCELL_PROJECTION": Apply subcell_based projection onto
                         constant vectors and sum up. Equivalent to a mixed finite volume
                         method (FV).
-                    - "constant_cell_projection": Apply cell-based L2 projection onto
+                    - "CONSTANT_CELL_PROJECTION": Apply cell-based L2 projection onto
                         constant vectors and sum up. Simpler calculation than
                         subcell-projection, but not directly connected to any
                         discretization.
-                - mobility_mode (str): mode for computing the mobility. Defaults to
-                    "face_based". Supported modes are:
-                    - "cell_based": Cell-based mode determines the norm of the fluxes on
+                - mobility_mode (MobilityMode): mode for computing the mobility. Defaults to
+                    MobilityMode.CELL_BASED. Supported modes are:
+                    - CELL_BASED: Cell-based mode determines the norm of the fluxes on
                         the faces via averaging of neighboring cells.
-                    - "cell_based_arithmetic": Cell-based mode determines the norm of
+                    - CELL_BASED_ARITHMETIC: Cell-based mode determines the norm of
                         the fluxes on the faces via arithmetic averaging of neighboring
                         cells.
-                    - "cell_based_harmonic": Cell-based mode determines the norm of the
+                    - CELL_BASED_HARMONIC: Cell-based mode determines the norm of the
                         fluxes on the faces via harmonic averaging of neighboring cells.
-                    - "subcell_based": Subcell-based mode determines the norm of the
+                    - SUBCELL_BASED: Subcell-based mode determines the norm of the
                         fluxes on the faces via averaging of neighboring subcells.
-                    - "face_based": Face-based mode determines the norm of the fluxes on
+                    - FACE_BASED: Face-based mode determines the norm of the fluxes on
                         the faces via direct computation on the faces.
                 - num_iter (int): maximum number of iterations. Defaults to 100.
                 - tol_residual (float): tolerance for the residual. Defaults to
@@ -127,10 +148,12 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.verbose = self.options.get("verbose", False)
         """bool: verbosity"""
 
-        self.l1_mode = self.options.get("l1_mode", "raviart_thomas")
+        self.l1_mode: L1Mode = self.options.get("l1_mode", L1Mode.RAVIART_THOMAS)
         """str: mode for computing the l1 dissipation"""
 
-        self.mobility_mode = self.options.get("mobility_mode", "cell_based")
+        self.mobility_mode: MobilityMode = self.options.get(
+            "mobility_mode", MobilityMode.CELL_BASED
+        )
         """str: mode for computing the mobility"""
 
         self.weight = weight
@@ -643,14 +666,14 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
         # The different modes merely differ in the integration rule.
 
-        if self.l1_mode == "raviart_thomas":
+        if self.l1_mode == L1Mode.RAVIART_THOMAS:
             # Apply numerical integration of RT0 extensions into cells.
             # Underlying functional for mixed finite element method (MFEM).
             quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
                 self.grid.dim, "max"
             )
 
-        elif self.l1_mode == "constant_subcell_projection":
+        elif self.l1_mode == L1Mode.CONSTANT_SUBCELL_PROJECTION:
             # Apply subcell_based projection onto constant vectors and sum up.
             # Equivalent to a mixed finite volume method (FV). Identical to quadrature
             # over corners.
@@ -658,7 +681,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 self.grid.dim
             )
 
-        elif self.l1_mode == "constant_cell_projection":
+        elif self.l1_mode == L1Mode.CONSTANT_CELL_PROJECTION:
             # L2 projection onto constant vectors identical to quadrature of order 0.
             quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
                 self.grid.dim, 0
@@ -748,7 +771,10 @@ class VariationalWassersteinDistance(darsia.EMD):
         inversions are required.
 
         """
-        if self.mobility_mode in ["cell_based", "cell_based_harmonic"]:
+        if self.mobility_mode in [
+            MobilityMode.CELL_BASED,
+            MobilityMode.CELL_BASED_HARMONIC,
+        ]:
             # Idea: Compute first weight ** 2 / |weight * flux| on cells
             # and reduce the values to faces via harmonic averaging.
             # |weight * flux| on cells
@@ -768,7 +794,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 self.grid, cell_weights_inv, mode="harmonic"
             )
             face_weights = 1.0 / face_weights_inv
-        elif self.mobility_mode == "cell_based_arithmetic":
+        elif self.mobility_mode == MobilityMode.CELL_BASED_ARITHMETIC:
             # Idea: Combine two factors: Reduce weight to faces via
             # harmonic averaging and compute weight / |weight * flux| on faces via
             # arithmetic averaging.
@@ -792,7 +818,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             )
             face_weights = harm_avg_face_weights / arithm_avg_weight_ratio_inv
             face_weights_inv = 1.0 / face_weights
-        elif self.mobility_mode == "subcell_based":
+        elif self.mobility_mode == MobilityMode.SUBCELL_BASED:
             # Idea: Aply harmonic averaging of cell weights and weighted sub cell
             # reconstruction to compute |weight * flux| on faces.
 
@@ -851,7 +877,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             face_weights = harm_avg_face_weights**2 / flat_weighted_flux_norm
             face_weights_inv = 1.0 / face_weights
 
-        elif self.mobility_mode == "face_based":
+        elif self.mobility_mode == MobilityMode.FACE_BASED:
             # Idea: Use harmonic averaging of cell weights and face reconstruction
             # to compute |weight * flux| on faces.
 
