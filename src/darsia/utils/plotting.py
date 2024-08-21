@@ -32,6 +32,10 @@ def plot_2d_wasserstein_distance(
     flux = info["flux"]
     pressure = info["pressure"]
     transport_density = info["transport_density"]
+    try:
+        cross = info["xy"]
+    except:
+        cross = None
 
     # Fetch options
     path = kwargs.get("path", None)
@@ -94,6 +98,8 @@ def plot_2d_wasserstein_distance(
     # Plot the transport density
     plt.figure("L1 optimal transport density")
     plt.pcolormesh(X, Y, transport_density, cmap="turbo")
+    if cross is not None:
+        plt.plot([cross[0]],[cross[1]],'rx')
     plt.colorbar(label="flux modulus")
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
