@@ -7,7 +7,7 @@ import tracemalloc
 import warnings
 from abc import abstractmethod
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import pyamg
