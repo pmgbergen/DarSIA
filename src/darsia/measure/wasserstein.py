@@ -1956,17 +1956,17 @@ def wasserstein_distance_to_vtk(
 
     """
     data = [
-        (key, info[key])
-        for key in [
-            "src",
-            "dst",
-            "mass_diff",
-            "flux",
-            "weighted_flux",
-            "pressure",
-            "transport_density",
-            "weight",
-            "weight_inv",
+        (key, info[key], format)
+        for key, format in [
+            ("src", darsia.Format.SCALAR),
+            ("dst", darsia.Format.SCALAR),
+            ("mass_diff", darsia.Format.SCALAR),
+            ("flux", darsia.Format.VECTOR),
+            ("weighted_flux", darsia.Format.VECTOR),
+            ("pressure", darsia.Format.SCALAR),
+            ("transport_density", darsia.Format.SCALAR),
+            ("weight", darsia.Format.TENSOR),
+            ("weight_inv", darsia.Format.TENSOR),
         ]
     ]
     darsia.plotting.to_vtk(path, data)
