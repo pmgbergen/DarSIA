@@ -207,23 +207,9 @@ class VariationalWassersteinDistance(darsia.EMD):
             """np.ndarray: cell weights"""
             self.face_weights = np.ones(self.grid.num_faces, dtype=float)
             """np.ndarray: face weights"""
-            self.isotropic_cell_weights = self.cell_weights
-            """np.ndarray: isotropic cell weights"""
-            self.isotropic_face_weights = self.face_weights
-            """np.ndarray: isotropic face weights"""
         else:
             self.cell_weights = self.weight.img
             self.face_weights = self._harmonic_average(self.cell_weights)
-            if len(self.weight.num_voxels) == self.grid.dim:
-                self.isotropic_cell_weights = self.weight.img
-                self.isotropic_face_weights = self._harmonic_average(
-                    self.isotropic_cell_weights
-                )
-            else:
-                self.isotropic_cell_weights = np.min(self.weight.img, axis=-1)
-                self.isotropic_face_weights = self._harmonic_average(
-                    self.isotropic_cell_weights
-                )
 
     def _setup_discretization(self) -> None:
         """Setup of fixed discretization operators."""
@@ -257,7 +243,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         lumping = self.options.get("lumping", True)
         self.weighted_mass_matrix_faces_init = sps.diags(
-            self.isotropic_face_weights, format="csc"
+            self.face_weights, format="csc"
         ) @ (darsia.FVMass(self.grid, "faces", lumping).mat)
         """sps.csc_matrix: weighted mass matrix on faces: flat fluxes -> flat fluxes"""
         self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
