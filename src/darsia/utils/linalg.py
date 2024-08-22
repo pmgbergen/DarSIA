@@ -21,6 +21,11 @@ class GMRES:
         return gmres(self.A, b, **kwargs)[0]
 
 
+def _make_reasons(reasons):
+    return dict([(getattr(reasons, r), r)
+                 for r in dir(reasons) if not r.startswith("_")])
+KSPreasons = _make_reasons(PETSc.KSP.ConvergedReason())
+
 class KSP:
     def __init__(self, A: sps.csc_matrix, 
                  field_ises=None, 
@@ -52,10 +57,10 @@ class KSP:
         self.A_petsc += zero_diagonal
 
         # set nullspace
+        self._petsc_kernels = []
         if nullspace is not None:
             # convert to petsc vectors
             self._comm = PETSc.COMM_WORLD
-            self._petsc_kernels = []
             for v in nullspace:
                 p_vec = PETSc.Vec().createWithArray(v, comm=self._comm)
                 self._petsc_kernels.append(p_vec)
@@ -156,10 +161,26 @@ class KSP:
     def solve(self, b: np.ndarray, **kwargs) -> np.ndarray:
         # convert to petsc vector the rhs
         self.rhs_petsc.setArray(b)
+
+        # check if the rhs is orthogonal to the nullspace
+        for k in self._petsc_kernels:
+            if abs(self.rhs_petsc.dot(k)) > 1e-10:
+                raise ValueError("RHS not ortogonal to the nullspace")
+        
+        # solve
         self.ksp.solve(self.rhs_petsc, self.sol_petsc)
+
+        # check if the solver worked
+        reason = self.ksp.getConvergedReason()
+        if reason < 0:
+            raise ValueError(f"KSP solver failed {reason=} {KSPreasons[reason]}") 
+        
+        # convert to numpy array
         sol = self.sol_petsc.getArray()
 
-        # DEBUG CODE: check convergence
+
+
+        # DEBUG CODE: check convergence in numpy varaibles  
         #res = self.A.dot(sol) - b
         #print('residual norm: ', np.linalg.norm(res)/np.linalg.norm(b))
         return sol
@@ -172,7 +193,7 @@ class KSP:
         self.A_petsc.destroy()
         self.sol_petsc.destroy()
         self.rhs_petsc.destroy()
-        if self._nullspace is not None:
+        if hasattr(self,'_nullspace'):
             self._nullspace.destroy()
             for k in self._petsc_kernels:
                 k.destroy()
