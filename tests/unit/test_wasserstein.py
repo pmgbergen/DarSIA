@@ -118,7 +118,23 @@ amg_options = {
         "tol": 1e-8,
     },
 }
-solvers = [lu_options, amg_options]
+ksp_direct_options = {
+    "linear_solver": "ksp",
+    "linear_solver_options": {
+        "tol": 1e-8,
+        "approach": "direct",
+    },
+}
+ksp_krylov_options = {
+    "linear_solver": "ksp",
+    "linear_solver_options": {
+        "tol": 1e-8,
+        "approach": "krylov",
+        "prec": "hypre",
+    },
+}
+solvers = [lu_options, amg_options, ksp_direct_options, ksp_krylov_options]
+
 
 # General options
 options = {
@@ -131,6 +147,7 @@ options = {
     "tol_increment": 1e-6,
     "tol_distance": 1e-10,
     "return_info": True,
+    "formulation": "pressure",
 }
 
 # ! ---- Tests ----
