@@ -114,6 +114,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                     - "direct": direct solver
                     - "amg": algebraic multigrid solver
                     - "cg": conjugate gradient solver preconditioned with AMG
+                    - "ksp": PETSc KSP solver
                 - formulation (str): formulation of the linear system. Defaults to
                     "pressure". Supported formulations are:
                     - "full": full system
@@ -462,6 +463,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         kernel = kernel / np.linalg.norm(kernel)
         nullspace=[kernel]
         self.linear_solver = darsia.linalg.KSP(matrix)#, nullspace=nullspace)
+        
 
         # Define solver options
         linear_solver_options = self.options.get("linear_solver_options", {})
@@ -472,7 +474,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         if approach == "direct":
             self.solver_options = {
                 "ksp_type": "preonly",
-                'pc_type': 'lu',   
+                'pc_type': 'lu',
+                "pc_factor_mat_solver_type": "mumps",  
             }
         else:
             self.solver_options = {
