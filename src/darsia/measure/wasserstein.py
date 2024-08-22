@@ -314,12 +314,16 @@ class VariationalWassersteinDistance(darsia.EMD):
             "direct",
             "amg",
             "cg",
+            "ksp",
         ], f"Linear solver {self.linear_solver_type} not supported."
         assert self.formulation in [
             "full",
             "flux-reduced",
             "pressure",
         ], f"Formulation {self.formulation} not supported."
+        
+        if self.linear_solver_type == "ksp" and self.formulation != "pressure":
+            raise ValueError("KSP solver only supports pressure formulation.")
 
         # Setup inrastructure for Schur complement reduction
         if self.formulation == "flux_reduced":
@@ -441,6 +445,46 @@ class VariationalWassersteinDistance(darsia.EMD):
             "maxiter": maxiter,
             "M": amg,
         }
+        """dict: options for the iterative linear solver"""
+
+    def setup_ksp_solver(self, matrix: sps.csc_matrix) -> None:
+        """Setup an KSP solver from PETSc for the given matrix.
+
+        Args:
+            matrix (sps.csc_matrix): matrix
+
+        Defines:
+            PETSc.ksp: KSP solver
+            dict: options for the KSP solver
+        """
+        # Define CG solver
+        kernel = np.ones(matrix.shape[0], dtype=float)
+        kernel = kernel / np.linalg.norm(kernel)
+        nullspace=[kernel]
+        self.linear_solver = darsia.linalg.KSP(matrix)#, nullspace=nullspace)
+
+        # Define solver options
+        linear_solver_options = self.options.get("linear_solver_options", {})
+        tol = linear_solver_options.get("tol", 1e-6)
+        maxiter = linear_solver_options.get("maxiter", 100)
+        approach = linear_solver_options.get("approach", "direct")
+        prec = linear_solver_options.get("prec", "hypre")
+        if approach == "direct":
+            self.solver_options = {
+                "ksp_type": "preonly",
+                'pc_type': 'lu',   
+            }
+        else:
+            self.solver_options = {
+                "ksp_type": "cg",
+                #"ksp_monitor_true_residual": None,
+                'ksp_rtol': tol,
+                'ksp_maxit': maxiter,
+                'pc_type': prec,
+            }
+        
+        
+        self.linear_solver.setup(self.solver_options)
         """dict: options for the iterative linear solver"""
 
     def setup_eliminate_flux(self) -> None:
@@ -954,7 +998,6 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
 
         setup_linear_solver = not (reuse_solver) or not (hasattr(self, "linear_solver"))
-
         if self.formulation == "full":
             assert (
                 self.linear_solver_type == "direct"
@@ -1069,6 +1112,12 @@ class VariationalWassersteinDistance(darsia.EMD):
 
                 elif self.linear_solver_type == "cg":
                     self.setup_cg_solver(self.fully_reduced_matrix)
+                
+                elif self.linear_solver_type == "ksp":
+                    # Free memory if solver needs to be re-setup
+                    if not (reuse_solver) and hasattr(self, "linear_solver"):
+                        self.linear_solver.kill()
+                    self.setup_ksp_solver(self.fully_reduced_matrix)
 
             # Stop timer to measure setup time
             time_setup = time.time() - tic
