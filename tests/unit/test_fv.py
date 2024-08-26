@@ -101,7 +101,7 @@ def test_mass_face_2d():
 
     # Check diagonal values
     assert len(np.unique(np.diag(mass))) == 1
-    assert np.isclose(mass[0, 0], 0.5 * 0.125)
+    assert all([np.isclose(mass[i, i], 0.5 * 0.25) for i in range(20)])
 
 
 def test_mass_face_3d():
@@ -116,7 +116,7 @@ def test_mass_face_3d():
 
     # Check diagonal values
     assert len(np.unique(np.diag(mass))) == 1
-    assert np.isclose(mass[0, 0], 0.5 * 0.25)
+    assert all([np.isclose(mass[i, i], 0.5 * 0.25 * 2) for i in range(60)])
 
 
 def test_tangential_reconstruction_2d_1():
