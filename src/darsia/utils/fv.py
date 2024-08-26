@@ -71,13 +71,9 @@ class FVMass:
                 # After all, this is identical to the arithmetic avg of cell volumes
                 # connected to the face. This requires careful handling of the boundary faces.
                 # NOTE: This assumes equidistant grid spacing.
+                # NOTE: Fluxes on boundary are 0 and excluded.
                 volume_scaling = np.ones(grid.num_faces, dtype=float)
-                volume_scaling[grid.exterior_faces] = 0.5
-                mass_matrix = sps.diags(
-                    np.prod(grid.voxel_size)
-                    * volume_scaling
-                    * np.ones(grid.num_faces, dtype=float)
-                )
+                mass_matrix = sps.diags(np.prod(grid.voxel_size) * volume_scaling)
             else:
                 raise NotImplementedError
 
