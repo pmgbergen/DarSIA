@@ -63,8 +63,20 @@ class FVMass:
             )
         elif mode == "faces":
             if lumping:
-                mass_matrix = 0.5 * sps.diags(
-                    np.prod(grid.voxel_size) * np.ones(grid.num_faces, dtype=float)
+                # For a Cartesian grid, the lumped mass matrix is diagonal and
+                # contains the area half of the cell to left and right of the face on the
+                # diagonal. This origins from integration of RT0 basis functions over the
+                # cells connected to the face. The mass matrix is lumped, i.e. the
+                # diagonal entries are the sum of the off-diagonal entries.
+                # After all, this is identical to the arithmetic avg of cell volumes
+                # connected to the face. This requires careful handling of the boundary faces.
+                # NOTE: This assumes equidistant grid spacing.
+                volume_scaling = np.ones(grid.num_faces, dtype=float)
+                volume_scaling[grid.exterior_faces] = 0.5
+                mass_matrix = sps.diags(
+                    np.prod(grid.voxel_size)
+                    * volume_scaling
+                    * np.ones(grid.num_faces, dtype=float)
                 )
             else:
                 raise NotImplementedError
