@@ -188,8 +188,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         """np.ndarray: indices of the fluxes"""
 
         self.pressure_indices = np.arange(
-            num_flux_dofs, num_flux_dofs + num_pressure_dofs
-            , dtype=np.int32
+            num_flux_dofs, num_flux_dofs + num_pressure_dofs, dtype=np.int32
         )
         """np.ndarray: indices of the pressures"""
 
@@ -323,10 +322,12 @@ class VariationalWassersteinDistance(darsia.EMD):
             "flux-reduced",
             "pressure",
         ], f"Formulation {self.formulation} not supported."
-        
+
         if self.linear_solver_type == "ksp":
             if self.formulation == "flux-reduced":
-                raise ValueError("KSP solver only supports for full and pressure formulation.")
+                raise ValueError(
+                    "KSP solver only supports for full and pressure formulation."
+                )
 
         # Setup inrastructure for Schur complement reduction
         if self.formulation == "flux_reduced":
@@ -450,10 +451,12 @@ class VariationalWassersteinDistance(darsia.EMD):
         }
         """dict: options for the iterative linear solver"""
 
-    def setup_ksp_solver(self, matrix: sps.csc_matrix,
-                         field_ises: Optional[list[tuple[str,np.ndarray]]]=None,
-                         nullspace: Optional[list[np.ndarray]] = None,
-                         ) -> None:
+    def setup_ksp_solver(
+        self,
+        matrix: sps.csc_matrix,
+        field_ises: Optional[list[tuple[str, np.ndarray]]] = None,
+        nullspace: Optional[list[np.ndarray]] = None,
+    ) -> None:
         """Setup an KSP solver from PETSc for the given matrix.
 
         Args:
@@ -465,39 +468,40 @@ class VariationalWassersteinDistance(darsia.EMD):
             dict: options for the KSP solver
         """
         # Define CG solver
-        self.linear_solver = darsia.linalg.KSP(matrix, field_ises=field_ises, nullspace=nullspace)
-        
+        self.linear_solver = darsia.linalg.KSP(
+            matrix, field_ises=field_ises, nullspace=nullspace
+        )
 
         # Define solver options
         linear_solver_options = self.options.get("linear_solver_options", {})
         tol = linear_solver_options.get("tol", 1e-6)
         maxiter = linear_solver_options.get("maxiter", 100)
         approach = linear_solver_options.get("approach", "direct")
-        
+
         if field_ises is None:
             if approach == "direct":
                 self.solver_options = {
                     "ksp_type": "preonly",
-                    'pc_type': 'lu',
-                    "pc_factor_mat_solver_type": "mumps",  
+                    "pc_type": "lu",
+                    "pc_factor_mat_solver_type": "mumps",
                 }
             else:
                 prec = linear_solver_options.get("pc_type", "hypre")
                 self.solver_options = {
                     "ksp_type": approach,
-                    #"ksp_monitor_true_residual": None,
-                    'ksp_rtol': tol,
-                    'ksp_maxit': maxiter,
-                    'pc_type': prec,
+                    # "ksp_monitor_true_residual": None,
+                    "ksp_rtol": tol,
+                    "ksp_maxit": maxiter,
+                    "pc_type": prec,
                 }
         else:
             if approach == "direct":
                 self.solver_options = {
-                        "ksp_type": "preonly", # do not apply Krylov iterations
-                        "pc_type": "lu", 
-                        "pc_factor_shift_type": "inblocks", # for the zero entries 
-                        "pc_factor_mat_solver_type" : "mumps"
-                    }    
+                    "ksp_type": "preonly",  # do not apply Krylov iterations
+                    "pc_type": "lu",
+                    "pc_factor_shift_type": "inblocks",  # for the zero entries
+                    "pc_factor_mat_solver_type": "mumps",
+                }
             else:
                 prec = linear_solver_options.get("pc_type", "hypre")
                 # Block preconditioning approach
@@ -507,27 +511,27 @@ class VariationalWassersteinDistance(darsia.EMD):
                     "ksp_type": approach,
                     "ksp_rtol": tol,
                     "ksp_maxit": maxiter,
-                    #"ksp_monitor_true_residual": None, #this is for debugging
+                    # "ksp_monitor_true_residual": None, #this is for debugging
                     "pc_type": "fieldsplit",
-                    "pc_fieldsplit_type":"schur",
+                    "pc_fieldsplit_type": "schur",
                     "pc_fieldsplit_schur_fact_type": "full",
                     # use a full factorization of the Schur complement
                     # other options are "diag","lower","upper"
-                    "pc_fieldsplit_schur_precondition": "selfp", 
-                    # selfp -> form an approximate Schur complement 
+                    "pc_fieldsplit_schur_precondition": "selfp",
+                    # selfp -> form an approximate Schur complement
                     # using S=-B diag(A)^{-1} B^T
                     # which is the exact Schur complement in our case
                     # https://petsc.org/release/manualpages/PC/PCFieldSplitSetSchurPre/
-                    "fieldsplit_flux_ksp_type":"preonly",
-                    "fieldsplit_flux_pc_type":"jacobi",
+                    "fieldsplit_flux_ksp_type": "preonly",
+                    "fieldsplit_flux_pc_type": "jacobi",
                     # use the diagonal of the flux (it is the inverse)
                     "fieldsplit_pressure": {
-                        "ksp_type":"preonly",
+                        "ksp_type": "preonly",
                         "pc_type": prec,
-                        },
+                    },
                     # an example of the nested dictionary
-                    }
-        
+                }
+
         self.linear_solver.setup(self.solver_options)
         """dict: options for the iterative linear solver"""
 
@@ -724,7 +728,6 @@ class VariationalWassersteinDistance(darsia.EMD):
             raise NotImplementedError("Need to apply matrix vector product.")
 
         else:
-
             raise NotImplementedError("Dimension not supported.")
 
     def transport_density(
@@ -1044,17 +1047,16 @@ class VariationalWassersteinDistance(darsia.EMD):
         setup_linear_solver = not (reuse_solver) or not (hasattr(self, "linear_solver"))
         if self.formulation == "full":
             assert (
-                self.linear_solver_type == "direct"
-                or self.linear_solver_type == "ksp"
+                self.linear_solver_type == "direct" or self.linear_solver_type == "ksp"
             ), "Only direct solver or ksp supported for full formulation."
 
             # Setup LU factorization for the full system
             tic = time.time()
             if setup_linear_solver:
-                if self.linear_solver_type == "direct":                    
+                if self.linear_solver_type == "direct":
                     self.setup_direct_solver(matrix)
                 elif self.linear_solver_type == "ksp":
-                    if hasattr(self, "linear_solver"):                        
+                    if hasattr(self, "linear_solver"):
                         self.linear_solver.kill()
                     # Extract get the flux-pressure matrix
                     # TODO: Avoid all these conversions and memory allocations
@@ -1062,22 +1064,27 @@ class VariationalWassersteinDistance(darsia.EMD):
                     A_00 = sps.diags(diag[self.flux_slice])
                     flux_pressure_matrix = sps.bmat(
                         [
-                        [A_00, -self.div.T],
-                        [self.div, None],
+                            [A_00, -self.div.T],
+                            [self.div, None],
                         ],
-                    format="csc",
+                        format="csc",
                     )
                     kernel = np.zeros(flux_pressure_matrix.shape[0])
                     kernel[self.pressure_slice] = 1.0
-                    kernel /= np.linalg.norm(kernel)                     
-                    self.setup_ksp_solver(flux_pressure_matrix, 
-                                          field_ises=[("flux", self.flux_indices), ("pressure", self.pressure_indices)],
-                                          nullspace=[kernel])
+                    kernel /= np.linalg.norm(kernel)
+                    self.setup_ksp_solver(
+                        flux_pressure_matrix,
+                        field_ises=[
+                            ("flux", self.flux_indices),
+                            ("pressure", self.pressure_indices),
+                        ],
+                        nullspace=[kernel],
+                    )
             time_setup = time.time() - tic
 
             # Solve the full system
             tic = time.time()
-            if self.linear_solver_type == "direct":  
+            if self.linear_solver_type == "direct":
                 solution = self.linear_solver.solve(rhs)
             elif self.linear_solver_type == "ksp":
                 solution_flux_pressure = self.linear_solver.solve(rhs[0:-1])
@@ -1184,15 +1191,14 @@ class VariationalWassersteinDistance(darsia.EMD):
 
                 elif self.linear_solver_type == "cg":
                     self.setup_cg_solver(self.fully_reduced_matrix)
-                
+
                 elif self.linear_solver_type == "ksp":
                     if not hasattr(self, "linear_solver"):
                         self.setup_ksp_solver(self.fully_reduced_matrix)
-                    
+
                     if reuse_solver:
                         self.linear_solver.setup(self.solver_options)
-                    
-                    
+
                     # Free memory if solver needs to be re-setup
                     if hasattr(self, "linear_solver"):
                         if not reuse_solver:
@@ -1200,7 +1206,6 @@ class VariationalWassersteinDistance(darsia.EMD):
                             self.setup_ksp_solver(self.fully_reduced_matrix)
                     else:
                         self.setup_ksp_solver(self.fully_reduced_matrix)
-                    
 
             # Stop timer to measure setup time
             time_setup = time.time() - tic

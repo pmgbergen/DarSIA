@@ -123,7 +123,7 @@ amg_options = {
 ksp_direct_options = {
     "linear_solver": "ksp",
     "linear_solver_options": {
-        "approach": "direct",        
+        "approach": "direct",
     },
     "formulation": "pressure",
 }
@@ -148,7 +148,13 @@ ksp_block_krylov_options = {
 }
 
 
-solvers = [lu_options, amg_options, ksp_direct_options, ksp_krylov_options, ksp_block_krylov_options]
+solvers = [
+    lu_options,
+    amg_options,
+    ksp_direct_options,
+    ksp_krylov_options,
+    ksp_block_krylov_options,
+]
 
 
 # General options
