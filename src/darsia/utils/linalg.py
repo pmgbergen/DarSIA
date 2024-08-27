@@ -4,6 +4,8 @@ import numpy as np
 import scipy.sparse as sps
 from scipy.sparse.linalg import cg, gmres
 from petsc4py import PETSc
+from typing import Optional, Union
+import numpy.typing as npt
 
 class CG:
     def __init__(self, A: sps.csc_matrix) -> None:
@@ -28,16 +30,41 @@ KSPreasons = _make_reasons(PETSc.KSP.ConvergedReason())
 
 class KSP:
     def __init__(self, A: sps.csc_matrix, 
-                 field_ises=None, 
-                 nullspace=None,
-                 appctx: dict=None
+                 field_ises: Optional[list[tuple[str,Union[PETSc.IS,npt.NDArray[np.int32]]]]]=None, 
+                 nullspace: Optional[list[np.ndarray]] = None,
+                 appctx: dict = None
                  ) -> None:
+        """
+        KSP solver for PETSc matrices
+
+        Parameters
+        ----------
+        A : sps.csc_matrix
+            Matrix to solve
+        field_ises : Optional[list[tuple[str,PETSc.IS]]], optional
+            Fields index sets, by default None.
+            This tells how to partition the matrix in blocks for field split
+            (block-based) preconditioners.
+            
+            Example with IS:
+            is_0 = PETSc.IS().createStride(size=3, first=0, step=1)
+            is_1 = PETSc.IS().createStride(size=3, first=3, step=1)     
+            [('0',is_0),('1',is_1)]
+            Example with numpy array:
+            [('flux',np.array([0,1,2],np.int32)),('pressure',np.array([3,4,5],np.int32))]
+        nullspace : Optional[list[np.ndarray]], optional
+            Nullspace vectors, by default None
+        appctx : dict, optional
+            Application context, by default None.
+            It is attached to the KSP object to gather information that can be used 
+            to form the preconditioner.
+        """
         
         # convert csc to csr (if needed)
         if not sps.isspmatrix_csr(A):
             A = A.tocsr()
 
-        # store original matrix
+        # store (a pointer to) the original matrix
         self.A = A
 
         # convert to petsc matrix
@@ -56,7 +83,8 @@ class KSP:
         )
         self.A_petsc += zero_diagonal
 
-        # set nullspace
+        # Convert kernel np array. to petsc nullspace
+        # TODO: ensure orthogonality of the nullspace vectors
         self._petsc_kernels = []
         if nullspace is not None:
             # convert to petsc vectors
@@ -75,7 +103,10 @@ class KSP:
 
         # set field_ises
         if field_ises is not None:
-            self.field_ises = field_ises
+            if isinstance(field_ises[0][1],PETSc.IS):
+                self.field_ises = field_ises
+            if isinstance(field_ises[0][1],np.ndarray):
+                self.field_ises = [(i,PETSc.IS().createGeneral(is_i)) for i,is_i in field_ises]
         else:
             self.field_ises = None
 
@@ -159,12 +190,27 @@ class KSP:
         self.ksp.setAttr('appctx', self.appctx)        
 
     def solve(self, b: np.ndarray, **kwargs) -> np.ndarray:
+        """
+        Solve the linear system
+
+        Parameters
+        ----------
+        b : np.ndarray
+            Right hand side
+        
+        Returns
+        -------
+        np.ndarray
+            Solution of the linear system
+        """        
+
         # convert to petsc vector the rhs
         self.rhs_petsc.setArray(b)
 
         # check if the rhs is orthogonal to the nullspace
         for k in self._petsc_kernels:
-            if abs(self.rhs_petsc.dot(k)) > 1e-10:
+            dot = abs(self.rhs_petsc.dot(k))
+            if dot > 1e-10:
                 raise ValueError("RHS not ortogonal to the nullspace")
         
         # solve
@@ -177,7 +223,6 @@ class KSP:
         
         # convert to numpy array
         sol = self.sol_petsc.getArray()
-
 
 
         # DEBUG CODE: check convergence in numpy varaibles  
