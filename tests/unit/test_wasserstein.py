@@ -111,29 +111,44 @@ accelerations = [off_aa, on_aa]
 lu_options = {
     # Linear solver
     "linear_solver": "direct",
+    "formulation": "full",
 }
 amg_options = {
     "linear_solver": "amg",
     "linear_solver_options": {
         "tol": 1e-8,
     },
+    "formulation": "pressure",
 }
 ksp_direct_options = {
     "linear_solver": "ksp",
     "linear_solver_options": {
-        "tol": 1e-8,
-        "approach": "direct",
+        "approach": "direct",        
     },
+    "formulation": "pressure",
 }
 ksp_krylov_options = {
     "linear_solver": "ksp",
     "linear_solver_options": {
         "tol": 1e-8,
-        "approach": "krylov",
-        "prec": "hypre",
+        "approach": "cg",
+        "pc_type": "hypre",
     },
+    "formulation": "pressure",
 }
-solvers = [lu_options, amg_options, ksp_direct_options, ksp_krylov_options]
+
+ksp_block_krylov_options = {
+    "linear_solver": "ksp",
+    "linear_solver_options": {
+        "tol": 1e-8,
+        "approach": "gmres",
+        "pc_type": "hypre",
+    },
+    "formulation": "full",
+}
+
+
+solvers = [lu_options, amg_options, ksp_direct_options, ksp_krylov_options, ksp_block_krylov_options]
 
 
 # General options
@@ -147,7 +162,6 @@ options = {
     "tol_increment": 1e-6,
     "tol_distance": 1e-10,
     "return_info": True,
-    "formulation": "pressure",
 }
 
 # ! ---- Tests ----
