@@ -228,7 +228,9 @@ class FVTangentialFaceReconstruction:
         self.num_tangential_directions = grid.dim - 1
         self.grid = grid
 
-    def __call__(self, normal_flux: np.ndarray, concatenate: bool = True) -> np.ndarray:
+    def __call__(
+        self, normal_flux: np.ndarray, concatenate: bool = True
+    ) -> list[np.ndarray] | np.ndarray:
         """Apply the operator to the normal fluxes.
 
         Args:
@@ -236,7 +238,7 @@ class FVTangentialFaceReconstruction:
             concatenate (bool, optional): whether to concatenate the tangential fluxes
 
         Returns:
-            np.ndarray: tangential fluxes
+            np.ndarray or list of arrays: tangential fluxes
 
         """
         # Apply the operator to the normal fluxes
@@ -363,15 +365,39 @@ def cell_to_face_average(
         np.ndarray: face-based quantity
 
     """
-    # Collect cell quantities for each face
+
+    # Prepare arrays
     neighbouring_cell_values = np.zeros((grid.num_faces, 2), dtype=float)
     face_qty = np.zeros(grid.num_faces, dtype=float)
 
-    # Flatten cell quantities
-    flat_cell_qty = cell_qty.ravel("F")
+    # Apply normal projection of cell values onto face orientations (axis-aligned)
+    if len(cell_qty.shape) == grid.dim or (
+        len(cell_qty.shape) == grid.dim + 1 and cell_qty.shape[-1] == 1
+    ):
 
-    # Iterate over normal directions
+        # Flatten cell quantities
+        single_flat_cell_qty = cell_qty.ravel("F")
+        flat_cell_qty = [single_flat_cell_qty for _ in range(grid.dim)]
+
+    elif len(cell_qty.shape) == grid.dim + 1 and cell_qty.shape[-1] == grid.dim:
+
+        # Flatten each component of the cell quantities
+        flat_cell_qty = [cell_qty[..., i].ravel("F") for i in range(grid.dim)]
+
+    elif len(cell_qty.shape) == grid.dim + 2 and cell_qty.shape[-2:] == (
+        grid.dim,
+        grid.dim,
+    ):
+        # Flatten each diagonal component of the cell quantities (from normal projection)
+        flat_cell_qty = [cell_qty[..., i, i].ravel("F") for i in range(grid.dim)]
+
+    else:
+
+        raise NotImplementedError("Dimension not supported.")
+
+    # Collect neighbouring cell quantities
     for orientation in range(grid.dim):
+
         # Fetch faces
         faces = grid.faces[orientation]
 
@@ -379,8 +405,12 @@ def cell_to_face_average(
         neighbouring_cells = grid.connectivity[faces]
 
         # Fetch cell quantities
-        neighbouring_cell_values[faces, 0] = flat_cell_qty[neighbouring_cells[:, 0]]
-        neighbouring_cell_values[faces, 1] = flat_cell_qty[neighbouring_cells[:, 1]]
+        neighbouring_cell_values[faces, 0] = flat_cell_qty[orientation][
+            neighbouring_cells[:, 0]
+        ]
+        neighbouring_cell_values[faces, 1] = flat_cell_qty[orientation][
+            neighbouring_cells[:, 1]
+        ]
 
     # Perform averaging
     if mode == "arithmetic":
