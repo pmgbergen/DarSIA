@@ -39,6 +39,9 @@ jobs:
         python-version: ${{ matrix.python-version}}
         architecture: x64
 
+    - name : Install Cython 3.0.0
+      run: pip install Cython --install-option="--no-cython-compile"
+
     - name: Install DarSIA
       run: pip install .[dev]
 
