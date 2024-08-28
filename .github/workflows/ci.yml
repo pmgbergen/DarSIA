@@ -42,9 +42,32 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libhypre-dev
+        sudo apt-get install -y mpich
         pip install numpy mpi4py
         pip install petsc petsc4py
+
+    - name: Set environment variables
+      run: |
+        echo "PETSC_DIR=/usr/local/petsc" >> $GITHUB_ENV
+        echo "PETSC_ARCH=arch-linux-c-opt" >> $GITHUB_ENV
+
+    - name: Install Hypre
+      run: |
+        git clone https://github.com/hypre-space/hypre.git
+        cd hypre/src
+        ./configure --with-MPI
+        make
+        sudo make install
+
+    - name: Install MUMPS
+      run: |
+        git clone https://github.com/scivision/mumps.git
+        cd mumps
+        mkdir build
+        cd build
+        cmake -G "Ninja" -DMUMPS_parallel=on ..
+        cmake --build .
+        sudo make install
 
     - name: Install DarSIA
       run: pip install .[dev]
