@@ -987,7 +987,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
             # Combine weights**2 / |weight * flux| on faces
             face_weights = harm_avg_face_weights**2 / norm_weighted_face_flux
-            face_weights_inv = 1.0 / face_weights
+            face_weights_inv = norm_weighted_face_flux / harm_avg_face_weights**2
         else:
             raise ValueError(f"Mobility mode {self.mobility_mode} not supported.")
 
