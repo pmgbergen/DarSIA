@@ -51,6 +51,12 @@ jobs:
         echo "PETSC_DIR=/usr/local/petsc" >> $GITHUB_ENV
         echo "PETSC_ARCH=arch-linux-c-opt" >> $GITHUB_ENV
 
+    - name: Configure and install Hypre
+      run: |
+        # Run ./configure --download-hypre in petsc folder
+        cd /usr/local/petsc
+        ./configure --download-hypre
+
     # Installation of petsc in parallel
 
     # - name: Install dependencies
