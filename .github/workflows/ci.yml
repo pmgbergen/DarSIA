@@ -44,18 +44,18 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libhypre-dev libmumps-seq-dev
         pip install numpy mpi4py
-        pip install petsc petsc4py
+        pip install petsc-dev petsc4py
 
     - name: Set environment variables
       run: |
         echo "PETSC_DIR=/usr/local/petsc" >> $GITHUB_ENV
         echo "PETSC_ARCH=arch-linux-c-opt" >> $GITHUB_ENV
 
-    - name: Configure and install Hypre
-      run: |
-        # Run ./configure --download-hypre in petsc folder
-        cd /usr/local/petsc
-        ./configure --download-hypre
+    # - name: Configure and install Hypre
+    #   run: |
+    #     # Run ./configure --download-hypre in petsc folder
+    #     cd /usr/local/petsc
+    #     ./configure --download-hypre
 
     # Installation of petsc in parallel
 
