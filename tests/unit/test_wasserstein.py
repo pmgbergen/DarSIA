@@ -5,6 +5,13 @@ import pytest
 
 import darsia
 
+try:
+    import petsc4py
+
+    HAVE_PETSC = True
+except ImportError:
+    HAVE_PETSC = False
+
 # ! ---- 2d version ----
 
 # Coarse src image
@@ -148,13 +155,16 @@ ksp_block_krylov_options = {
 }
 
 
-solvers = [
-    lu_options,
-    amg_options,
-    ksp_direct_options,
-    ksp_krylov_options,
-    ksp_block_krylov_options,
-]
+solvers = (
+    [lu_options, amg_options]
+    + [
+        ksp_direct_options,
+        ksp_krylov_options,
+        ksp_block_krylov_options,
+    ]
+    if HAVE_PETSC
+    else []
+)
 
 
 # General options
