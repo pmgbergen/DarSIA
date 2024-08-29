@@ -113,6 +113,6 @@ jobs:
     #  run: pytest
 
     - name : test_hypre_mumps
-    if: ${{always()}}
-    run: pytest tests/unit/test_wasserstein.py
+      if: ${{always()}}
+      run: pytest tests/unit/test_wasserstein.py
     
