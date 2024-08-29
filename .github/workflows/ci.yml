@@ -108,11 +108,6 @@ jobs:
       if: ${{always()}}
       run: isort --check src
 
-    #- name: pytest
-    #  if: ${{always()}}
-    #  run: pytest
-
-    - name : test_hypre_mumps
+    - name: pytest
       if: ${{always()}}
-      run: pytest tests/unit/test_wasserstein.py
-    
+      run: pytest
