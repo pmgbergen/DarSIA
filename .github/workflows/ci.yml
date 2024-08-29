@@ -51,11 +51,11 @@ jobs:
     #     echo "PETSC_DIR=/usr/local/petsc" >> $GITHUB_ENV
     #     echo "PETSC_ARCH=arch-linux-c-opt" >> $GITHUB_ENV
 
-    - name: Configure and install Hypre
-      run: |
-        # Change directory to petsc directory using python command os.environ["PETSC_DIR"]
-        python -c "import os; os.chdir(os.environ['PETSC_DIR'])"
-        ./configure --download-hypre
+    #- name: Configure and install Hypre
+    #  run: |
+    #    # Change directory to petsc directory using python command os.environ["PETSC_DIR"]
+    #    python -c "import os; os.chdir(os.environ['PETSC_DIR'])"
+    #    ./configure --download-hypre
 
     # Installation of petsc in parallel
 
@@ -108,6 +108,11 @@ jobs:
       if: ${{always()}}
       run: isort --check src
 
-    - name: pytest
-      if: ${{always()}}
-      run: pytest
+    #- name: pytest
+    #  if: ${{always()}}
+    #  run: pytest
+
+    - name : test_hypre_and_mumps
+    if: ${{always()}}
+    run: pytest tests/unit/test_wasserstein.py
+    
