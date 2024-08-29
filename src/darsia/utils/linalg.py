@@ -1,11 +1,12 @@
 """Wrapper to Krylov subspace methods from SciPy."""
 
-import numpy as np
-import scipy.sparse as sps
-from scipy.sparse.linalg import cg, gmres
-from petsc4py import PETSc
 from typing import Optional, Union
+
+import numpy as np
 import numpy.typing as npt
+import scipy.sparse as sps
+from petsc4py import PETSc
+from scipy.sparse.linalg import cg, gmres
 
 
 class CG:
