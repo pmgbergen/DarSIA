@@ -28,12 +28,12 @@ class GMRES:
 try:
     from petsc4py import PETSc
 
-    KSPreasons = _make_reasons(PETSc.KSP.ConvergedReason())
-
     def _make_reasons(reasons):
         return dict(
             [(getattr(reasons, r), r) for r in dir(reasons) if not r.startswith("_")]
         )
+
+    KSPreasons = _make_reasons(PETSc.KSP.ConvergedReason())
 
     class KSP:
         def __init__(
@@ -334,7 +334,7 @@ try:
             new[option] = value
         return new
 
-except:
+except ImportError:
 
     class KSP:
         def __init__(
