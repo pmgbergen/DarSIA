@@ -491,7 +491,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                     "ksp_type": approach,
                     # "ksp_monitor_true_residual": None,
                     "ksp_rtol": tol,
-                    "ksp_maxit": maxiter,
+                    "ksp_max_it": maxiter,
                     "pc_type": prec,
                 }
         else:
@@ -510,7 +510,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 self.solver_options = {
                     "ksp_type": approach,
                     "ksp_rtol": tol,
-                    "ksp_maxit": maxiter,
+                    "ksp_max_it": maxiter,
                     # "ksp_monitor_true_residual": None, #this is for debugging
                     "pc_type": "fieldsplit",
                     "pc_fieldsplit_type": "schur",
