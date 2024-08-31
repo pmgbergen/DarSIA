@@ -28,8 +28,30 @@ RUN apt-get update && \
 # Move to DarSIA sub-directory
 WORKDIR ${DARSIA_HOME}
 
+# Prepare install PETSc
+RUN apt-get update && \
+    apt-get install -y \
+    build-essential \
+    gcc \
+    gfortran \
+    mpich \
+    cmake
+
+# Install PETSc
+RUN pip install --upgrade pip && \
+    apt-get update && \
+    apt-get install -y libhypre-dev libmumps-seq-dev
+
+RUN pip install numpy
+
+RUN pip install mpi4py
+
+RUN pip install --upgrade pip && \
+    PETSC_CONFIGURE_OPTIONS="--download-hypre --download-mumps --download-parmetis --download-ml --download-metis --download-scalapack" pip install petsc petsc4py
+
 # Update pip, install dependencies and freeze pip
 RUN pip install --upgrade pip && \
+    # Install DarSIA dependencies
     pip install -e.[dev] && \
     pip freeze && \
     # Remove git
