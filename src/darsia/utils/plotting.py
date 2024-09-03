@@ -235,7 +235,7 @@ def to_vtk(
             cellData[name] = img
 
         # Make directory if necessary
-        Path(path).mkdir(parents=True, exist_ok=True)
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
 
         # Write to VTK
         gridToVTK(str(Path(path)), x, y, z, cellData=cellData)
