@@ -123,7 +123,7 @@ lu_options = {
 amg_options = {
     "linear_solver": "amg",
     "linear_solver_options": {
-        "tol": 1e-8,
+        "atol": 1e-8,
     },
     "formulation": "pressure",
 }
@@ -137,7 +137,7 @@ ksp_direct_options = {
 ksp_krylov_options = {
     "linear_solver": "ksp",
     "linear_solver_options": {
-        "tol": 1e-8,
+        "rtol": 1e-8,
         "approach": "cg",
         "pc_type": "hypre",
     },
@@ -147,7 +147,7 @@ ksp_krylov_options = {
 ksp_block_krylov_options = {
     "linear_solver": "ksp",
     "linear_solver_options": {
-        "tol": 1e-8,
+        "rtol": 1e-8,
         "approach": "gmres",
         "pc_type": "hypre",
     },
