@@ -1556,7 +1556,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         # - residual
         if self.verbose:
             print(
-                "Newton iter. \t| W^1 \t\t| Δ W^1 \t| Δ flux \t| residual",
+                "Newton iter. \t| W^1 \t\t| Δ W^1 / W^1 \t| Δ flux \t| residual",
                 "\n",
                 """---------------|---------------|---------------|---------------|"""
                 """---------------""",
@@ -1569,8 +1569,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             try:
                 # Keep track of old flux, and old distance
                 old_solution_i = solution_i.copy()
-                old_flux = solution_i[self.flux_slice]
-                old_distance = self.l1_dissipation(old_flux)
+                flux = solution_i[self.flux_slice]
+                old_distance = self.l1_dissipation(flux)
 
                 # Assemble linear problem in Newton step
                 tic = time.time()
@@ -1603,8 +1603,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 stats_i["time_acceleration"] = time.time() - tic
 
                 # Update discrete W1 distance
-                new_flux = solution_i[self.flux_slice]
-                new_distance = self.l1_dissipation(new_flux)
+                flux = solution_i[self.flux_slice]
+                new_distance = self.l1_dissipation(flux)
 
                 # Update increment
                 increment = solution_i - old_solution_i
@@ -1637,7 +1637,9 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 # - flux increment
                 # - residual
                 if self.verbose:
-                    distance_increment = convergence_history["distance_increment"][-1]
+                    distance_increment = (
+                        convergence_history["distance_increment"][-1] / new_distance
+                    )
                     flux_increment = (
                         convergence_history["flux_increment"][-1]
                         / convergence_history["flux_increment"][0]
@@ -1827,7 +1829,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         # Print header
         if self.verbose:
             print(
-                "Bregman iter. \t| W^1 \t\t| Δ W^1 \t| Δ aux/force \t| mass residual",
+                "Bregman iter. \t| W^1 \t\t| Δ W^1/W^1 \t| Δ aux/force \t| mass residual",
                 "\n",
                 """---------------|---------------|---------------|---------------|"""
                 """---------------""",
@@ -1848,12 +1850,11 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         )
 
         # Initialize Bregman variables
-        old_flux = solution_i[self.flux_slice]
-        old_aux_flux = self._shrink(old_flux, shrink_factor)
-        old_force = old_flux - old_aux_flux
-        old_distance = self.l1_dissipation(old_flux)
+        flux = solution_i[self.flux_slice]
+        old_aux_flux = self._shrink(flux, shrink_factor)
+        old_force = flux - old_aux_flux
+        old_distance = self.l1_dissipation(flux)
 
-        new_flux = old_flux.copy()
         iter = 0
 
         # Control the update of the Bregman weight
@@ -1874,7 +1875,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         l_scheme_mixed_darcy,
                         weight,
                         shrink_factor,
-                    ) = self._update_regularization(old_flux, bregman_homogeneous)
+                    ) = self._update_regularization(flux, bregman_homogeneous)
                     # 1. Make relaxation step (solve quadratic optimization problem)
                     # Here, re-initialize the aux flux and force with zero values again.
                     rhs_i = rhs.copy()
@@ -1886,17 +1887,18 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         rhs_i,
                         reuse_solver=False,
                     )
-                    new_flux = solution_i[self.flux_slice]
+                    flux = solution_i[self.flux_slice]
                     stats_i["time_solve"] = time.time() - tic
                     stats_i["time_assemble"] = time_assemble
 
                     # 2. Shrink step for vectorial fluxes.
                     tic = time.time()
-                    new_aux_flux = self._shrink(new_flux, shrink_factor)
+                    new_aux_flux = self._shrink(flux, shrink_factor)
                     stats_i["time_shrink"] = time.time() - tic
 
                     # 3. Update force
-                    new_force = new_flux - new_aux_flux
+                    tic = time.time()
+                    new_force = flux - new_aux_flux
 
                 else:
                     # 1. Make relaxation step (solve quadratic optimization problem)
@@ -1913,17 +1915,18 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         rhs_i,
                         reuse_solver=iter > 0,
                     )
-                    new_flux = solution_i[self.flux_slice]
+                    flux = solution_i[self.flux_slice]
                     stats_i["time_solve"] = time.time() - tic
                     stats_i["time_assemble"] = time_assemble
 
                     # 2. Shrink step for vectorial fluxes.
                     tic = time.time()
-                    new_aux_flux = self._shrink(new_flux + old_force, shrink_factor)
+                    new_aux_flux = self._shrink(flux + old_force, shrink_factor)
                     stats_i["time_shrink"] = time.time() - tic
 
                     # 3. Update force
-                    new_force = old_force + new_flux - new_aux_flux
+                    tic = time.time()
+                    new_force = old_force + flux - new_aux_flux
 
                 # Apply Anderson acceleration to flux contribution (the only nonlinear part).
                 tic = time.time()
@@ -1938,15 +1941,15 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 stats_i["time_acceleration"] = time.time() - tic
 
                 # Update distance
-                new_distance = self.l1_dissipation(new_flux)
+                new_distance = self.l1_dissipation(flux)
 
                 # Determine the error in the mass conservation equation
                 mass_conservation_residual = (
-                    self.div.dot(new_flux) - rhs[self.pressure_slice]
+                    self.div.dot(flux) - rhs[self.pressure_slice]
                 )
 
                 # Reference values
-                flux_ref = np.linalg.norm(new_flux, 2)
+                flux_ref = np.linalg.norm(flux, 2)
                 mass_ref = np.linalg.norm(rhs[self.pressure_slice], 2)
 
                 # Determine increments
@@ -1986,7 +1989,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                     )
                     aux_force_increment = (
                         convergence_history["aux_force_increment"][-1]
-                        # / convergence_history["aux_force_increment"][0]
+                        / convergence_history["aux_force_increment"][0]
                     )
                     mass_conservation_residual = convergence_history[
                         "mass_conservation_residual"
@@ -2013,6 +2016,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                             < tol_increment
                             * convergence_history["aux_force_increment"][0]
                             and convergence_history["distance_increment"][-1]
+                            / new_distance
                             < tol_distance
                             and convergence_history["mass_conservation_residual"][-1]
                             < tol_residual
@@ -2021,7 +2025,6 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         break
 
                 # Update Bregman variables
-                old_flux = new_flux.copy()
                 old_aux_flux = new_aux_flux.copy()
                 old_force = new_force.copy()
                 old_distance = new_distance
@@ -2031,9 +2034,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 break
 
         # Solve for the pressure by solving a single Newton iteration
-        newton_jacobian, _, _ = self._update_regularization(new_flux)
+        newton_jacobian, _, _ = self._update_regularization(flux)
         solution_i = np.zeros_like(rhs)
-        solution_i[self.flux_slice] = new_flux.copy()
+        solution_i[self.flux_slice] = flux.copy()
         newton_residual = self.optimality_conditions(rhs, solution_i)
         newton_update, _ = self.linear_solve(
             newton_jacobian, newton_residual, solution_i
