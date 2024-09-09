@@ -9,6 +9,7 @@ from abc import abstractmethod
 from enum import Enum
 from pathlib import Path
 from typing import Optional, Union
+from warnings import warn
 
 import numpy as np
 import pyamg
@@ -407,12 +408,15 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Define solver options
         linear_solver_options = self.options.get("linear_solver_options", {})
-        tol = linear_solver_options.get("tol", 1e-6)
+        atol = linear_solver_options.get("atol", 1e-6)
+        rtol = linear_solver_options.get("rtol", None)
+        if not rtol:
+            warn("rtol not used for AMG solver.")
         maxiter = linear_solver_options.get("maxiter", 100)
         self.amg_residual_history = []
         """list: history of residuals for the AMG solver"""
         self.solver_options = {
-            "tol": tol,
+            "tol": atol,
             "maxiter": maxiter,
             "residuals": self.amg_residual_history,
         }
@@ -442,10 +446,12 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Define solver options
         linear_solver_options = self.options.get("linear_solver_options", {})
-        tol = linear_solver_options.get("tol", 1e-6)
+        rtol = linear_solver_options.get("rtol", 1e-6)
+        atol = linear_solver_options.get("atol", 0)
         maxiter = linear_solver_options.get("maxiter", 100)
         self.solver_options = {
-            "tol": tol,
+            "rtol": rtol,
+            "atol": atol,
             "maxiter": maxiter,
             "M": amg,
         }
@@ -474,7 +480,8 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Define solver options
         linear_solver_options = self.options.get("linear_solver_options", {})
-        tol = linear_solver_options.get("tol", 1e-6)
+        rtol = linear_solver_options.get("rtol", 1e-6)
+        atol = linear_solver_options.get("atol", 0)
         maxiter = linear_solver_options.get("maxiter", 100)
         approach = linear_solver_options.get("approach", "direct")
 
@@ -490,7 +497,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                 self.solver_options = {
                     "ksp_type": approach,
                     # "ksp_monitor_true_residual": None,
-                    "ksp_rtol": tol,
+                    "ksp_rtol": rtol,
+                    "ksp_atol": atol,
                     "ksp_max_it": maxiter,
                     "pc_type": prec,
                 }
@@ -509,7 +517,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                 # passed to the field_ises
                 self.solver_options = {
                     "ksp_type": approach,
-                    "ksp_rtol": tol,
+                    "ksp_rtol": rtol,
+                    "ksp_atol": atol,
                     "ksp_max_it": maxiter,
                     # "ksp_monitor_true_residual": None, #this is for debugging
                     "pc_type": "fieldsplit",
