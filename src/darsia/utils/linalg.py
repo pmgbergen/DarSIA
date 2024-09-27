@@ -35,15 +35,37 @@ try:
 
     KSPreasons = _make_reasons(PETSc.KSP.ConvergedReason())
 
+    def numpy_to_petsc(A: sps.csc_matrix) -> PETSc.Mat:
+        """Convert a numpy matrix to a PETSc matrix."""
+        if not sps.isspmatrix_csr(A):
+            A = A.tocsr()
+        return PETSc.Mat().createAIJ(
+            size=A.shape, csr=(A.indptr, A.indices, A.data)
+        )
+    
+    def add_diagonal(A: PETSc.Mat, alpha = 0.0) -> None:
+        """
+        Add a zero diagonal to make the matrix the corresponding entries.
+        Operate in place.
+        """
+        diagonal = PETSc.Mat().createAIJ(
+            size=A.size, csr=(np.arange(A.size[0] + 1, dtype="int32"),
+                               np.arange(A.size[0], dtype="int32"),
+                                alpha * np.ones(A.size[0]))
+        )
+        print(alpha)
+        A += diagonal
+
     class KSP:
         def __init__(
             self,
-            A: sps.csc_matrix,
+            A: Union[sps.csc_matrix,PETSc.Mat],
             field_ises: Optional[
                 list[tuple[str, Union[PETSc.IS, npt.NDArray[np.int32]]]]
             ] = None,
             nullspace: Optional[list[np.ndarray]] = None,
             appctx: dict = None,
+            alpha_diagonal: np.float64 = None,
         ) -> None:
             """
             KSP solver for PETSc matrices
@@ -69,32 +91,28 @@ try:
                 Application context, by default None.
                 It is attached to the KSP object to gather information that can be used
                 to form the preconditioner.
+            add_zeros_diagonal : bool, optional
+
             """
 
             # convert csc to csr (if needed)
-            if not sps.isspmatrix_csr(A):
-                A = A.tocsr()
+            if isinstance(A, sps.spmatrix):
+                if not sps.isspmatrix_csr(A):
+                    A = A.tocsr()
+                # store (a pointer to) the original matrix
+                self.A = A
+                # convert to petsc matrix
+                self.A_petsc = numpy_to_petsc(A)
+            elif isinstance(A, PETSc.Mat):  
+                self.A_petsc = A
+            else:
+                raise ValueError("A must be a scipy or PETSc matrix")
 
-            # store (a pointer to) the original matrix
-            self.A = A
-
-            # convert to petsc matrix
-            self.A_petsc = PETSc.Mat().createAIJ(
-                size=A.shape, csr=(A.indptr, A.indices, A.data)
-            )
-
-            # This step is needed to avoid a petsc error with LU factorization
+            # This step is needed to avoid a petsc error with LU factorization for saddle point matrices.
             # that explicitly needs a zeros along the diagonal
             # TODO: use zero_diagonal = PETSc.Mat().createConstantDiagonal(self.A.size,0.0)
-            zero_diagonal = PETSc.Mat().createAIJ(
-                size=A.shape,
-                csr=(
-                    np.arange(A.shape[0] + 1, dtype="int32"),
-                    np.arange(A.shape[0], dtype="int32"),
-                    np.zeros(A.shape[0]),
-                ),
-            )
-            self.A_petsc += zero_diagonal
+            if alpha_diagonal is not None:
+                add_diagonal(self.A_petsc, alpha_diagonal)
 
             # Convert kernel np array. to petsc nullspace
             # TODO: ensure orthogonality of the nullspace vectors
@@ -128,7 +146,7 @@ try:
             self.appctx = appctx
 
         def setup(self, petsc_options: dict) -> None:
-            petsc_options = flatten_parameters(petsc_options)
+            self.petsc_options = flatten_parameters(petsc_options)
 
             self.prefix = "petsc_solver_"
             # TODO: define a unique name in case of multiple problems
@@ -141,7 +159,7 @@ try:
             ksp.setFromOptions()
             opts = PETSc.Options()
             opts.prefixPush(self.prefix)
-            for k, v in petsc_options.items():
+            for k, v in self.petsc_options.items():
                 opts[k] = v
             opts.prefixPop()
             ksp.setConvergenceHistory()
@@ -161,7 +179,7 @@ try:
 
             # TODO: set field split in __init__
             if (self.field_ises) is not None and (
-                "fieldsplit" in petsc_options["pc_type"]
+                "fieldsplit" in self.petsc_options["pc_type"]
             ):
                 pc = ksp.getPC()
                 pc.setFromOptions()
@@ -222,14 +240,17 @@ try:
             self.rhs_petsc.setArray(b)
 
             # check if the rhs is orthogonal to the nullspace
-            for k in self._petsc_kernels:
-                dot = abs(self.rhs_petsc.dot(k))
-                if dot > 1e-10:
-                    raise ValueError("RHS not ortogonal to the nullspace")
+            rhs_norm = self.rhs_petsc.norm()
+            rtol = self.petsc_options.get("ksp_rtol", 1e-6)
+            for i,k in enumerate(self._petsc_kernels):
+                dot = abs(self.rhs_petsc.dot(k))/rhs_norm
+                if min(dot,rhs_norm) > rtol:
+                    raise ValueError(f"RHS not ortogonal. v_{i}^T rhs= {dot=:2e}")
 
             # solve
+            self.sol_petsc.set(0.0)
             self.ksp.solve(self.rhs_petsc, self.sol_petsc)
-
+            
             # check if the solver worked
             reason = self.ksp.getConvergedReason()
             if reason < 0:
@@ -261,6 +282,13 @@ try:
             self.ksp = None
             self._nullspace = None
             self._petsc_kernels = None
+
+        def info(self) -> str:
+            """
+            Print information about the solver
+            """
+            msg = f"KSP reason: {KSPreasons[self.ksp.getConvergedReason()]} Iterations: {self.ksp.getIterationNumber()}"
+            return msg
 
     #
     # Following code is taken from Firedrake
