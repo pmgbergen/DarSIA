@@ -39,19 +39,20 @@ try:
         """Convert a numpy matrix to a PETSc matrix."""
         if not sps.isspmatrix_csr(A):
             A = A.tocsr()
-        return PETSc.Mat().createAIJ(
-            size=A.shape, csr=(A.indptr, A.indices, A.data)
-        )
-    
-    def add_diagonal(A: PETSc.Mat, alpha = 0.0) -> None:
+        return PETSc.Mat().createAIJ(size=A.shape, csr=(A.indptr, A.indices, A.data))
+
+    def add_diagonal(A: PETSc.Mat, alpha=0.0) -> None:
         """
         Add a zero diagonal to make the matrix the corresponding entries.
         Operate in place.
         """
         diagonal = PETSc.Mat().createAIJ(
-            size=A.size, csr=(np.arange(A.size[0] + 1, dtype="int32"),
-                               np.arange(A.size[0], dtype="int32"),
-                                alpha * np.ones(A.size[0]))
+            size=A.size,
+            csr=(
+                np.arange(A.size[0] + 1, dtype="int32"),
+                np.arange(A.size[0], dtype="int32"),
+                alpha * np.ones(A.size[0]),
+            ),
         )
         print(alpha)
         A += diagonal
@@ -59,7 +60,7 @@ try:
     class KSP:
         def __init__(
             self,
-            A: Union[sps.csc_matrix,PETSc.Mat],
+            A: Union[sps.csc_matrix, PETSc.Mat],
             field_ises: Optional[
                 list[tuple[str, Union[PETSc.IS, npt.NDArray[np.int32]]]]
             ] = None,
@@ -103,7 +104,7 @@ try:
                 self.A = A
                 # convert to petsc matrix
                 self.A_petsc = numpy_to_petsc(A)
-            elif isinstance(A, PETSc.Mat):  
+            elif isinstance(A, PETSc.Mat):
                 self.A_petsc = A
             else:
                 raise ValueError("A must be a scipy or PETSc matrix")
@@ -242,15 +243,15 @@ try:
             # check if the rhs is orthogonal to the nullspace
             rhs_norm = self.rhs_petsc.norm()
             rtol = self.petsc_options.get("ksp_rtol", 1e-6)
-            for i,k in enumerate(self._petsc_kernels):
-                dot = abs(self.rhs_petsc.dot(k))/rhs_norm
-                if min(dot,rhs_norm) > rtol:
+            for i, k in enumerate(self._petsc_kernels):
+                dot = abs(self.rhs_petsc.dot(k)) / rhs_norm
+                if min(dot, rhs_norm) > rtol:
                     raise ValueError(f"RHS not ortogonal. v_{i}^T rhs= {dot=:2e}")
 
             # solve
             self.sol_petsc.set(0.0)
             self.ksp.solve(self.rhs_petsc, self.sol_petsc)
-            
+
             # check if the solver worked
             reason = self.ksp.getConvergedReason()
             if reason < 0:

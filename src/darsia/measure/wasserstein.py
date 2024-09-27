@@ -476,7 +476,9 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
         # Define CG solver
         self.linear_solver = darsia.linalg.KSP(
-            matrix, field_ises=field_ises, nullspace=nullspace,
+            matrix,
+            field_ises=field_ises,
+            nullspace=nullspace,
         )
 
         # Define solver options
@@ -503,16 +505,17 @@ class VariationalWassersteinDistance(darsia.EMD):
                     "pc_type": "hypre",
                 }
                 if self.grid.dim == 3:
-                    self.solver_options.update({
-                    # tuning parameters for the multigrid
-                    # https://mooseframework.inl.gov/releases/moose/2021-09-15/application_development/hypre.html
-                    "pc_hypre_type": "boomeramg",
-                    "pc_hypre_boomeramg_strong_threshold": 0.7,
-                    "pc_hypre_boomeramg_max_iter": 1,
-                    "pc_hypre_boomeramg_agg_nl": 2,
-                    "pc_hypre_boomeramg_interp_type": "ext+i", # "classic" or "ext+i"
-                    }
-                )
+                    self.solver_options.update(
+                        {
+                            # tuning parameters for the multigrid
+                            # https://mooseframework.inl.gov/releases/moose/2021-09-15/application_development/hypre.html
+                            "pc_hypre_type": "boomeramg",
+                            "pc_hypre_boomeramg_strong_threshold": 0.7,
+                            "pc_hypre_boomeramg_max_iter": 1,
+                            "pc_hypre_boomeramg_agg_nl": 2,
+                            "pc_hypre_boomeramg_interp_type": "ext+i",  # "classic" or "ext+i"
+                        }
+                    )
                 # Include other PETSc options passed from the user
                 other_petsc_options = linear_solver_options.get("petsc_options", {})
                 self.solver_options.update(other_petsc_options)
@@ -1007,8 +1010,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             # Determine the l2 norm of the fluxes on the faces
             weighted_face_flux = self._product(harm_avg_face_weights, full_face_flux)
             norm_weighted_face_flux = np.maximum(
-                np.linalg.norm(weighted_face_flux, 2, axis=1),
-                self.regularization
+                np.linalg.norm(weighted_face_flux, 2, axis=1), self.regularization
             )
 
             # Combine weights**2 / |weight * flux| on faces
@@ -1057,27 +1059,29 @@ class VariationalWassersteinDistance(darsia.EMD):
             self.weight_laplacian_vec.set(1.0)
         else:
             self.weight_laplacian_vec.setArray(weight)
-        
-        
+
         # THIS DOES NOT WORK in the matrix-matrix multiplication
         # self.weight_laplacian_matrix = PETSc.Mat().createDiagonal(self.inv_weight_laplacian_vec)
         # We need to create a matrix and set the diagonal
         self.weight_laplacian_matrix = PETSc.Mat().createAIJ(
-            size=[n,n], 
-            csr=(np.arange(n + 1, dtype="int32"), 
-                    np.arange(n, dtype="int32"), 
-                    np.zeros(n))
-        )   
+            size=[n, n],
+            csr=(
+                np.arange(n + 1, dtype="int32"),
+                np.arange(n, dtype="int32"),
+                np.zeros(n),
+            ),
+        )
         self.weight_laplacian_matrix.setDiagonal(self.weight_laplacian_vec)
-        
+
         # We store also the grad in order to use the matrix-matrix-matrix multiplication
         self.grad_petsc = self.div_petsc.copy()
         self.grad_petsc.transpose()
-        
-    
+
         # assign
-        self.laplacian_matrix = self.div_petsc.matMatMult(self.weight_laplacian_matrix,self.grad_petsc)
-    
+        self.laplacian_matrix = self.div_petsc.matMatMult(
+            self.weight_laplacian_matrix, self.grad_petsc
+        )
+
     def assemble_schur_complement(self, weights: np.ndarray):
         """
         Assemble the Schur complement matrix = D^T * W * D
@@ -1085,9 +1089,9 @@ class VariationalWassersteinDistance(darsia.EMD):
         """
         self.weight_laplacian_vec.setArray(weights)
         self.weight_laplacian_matrix.setDiagonal(self.weight_laplacian_vec)
-        self.div_petsc.matMatMult(self.weight_laplacian_matrix,self.grad_petsc,result=self.laplacian_matrix)                       
-
-
+        self.div_petsc.matMatMult(
+            self.weight_laplacian_matrix, self.grad_petsc, result=self.laplacian_matrix
+        )
 
     def linear_solve(
         self,
@@ -1175,12 +1179,15 @@ class VariationalWassersteinDistance(darsia.EMD):
             # Allocate memory for solution
             solution = np.zeros_like(rhs)
 
-
-            # 1. Reduce flux block 
+            # 1. Reduce flux block
             if self.linear_solver_type == "ksp":
-                self.matrix_flux_inv = sps.diags(1.0 / matrix.diagonal()[self.flux_slice])
+                self.matrix_flux_inv = sps.diags(
+                    1.0 / matrix.diagonal()[self.flux_slice]
+                )
                 self.reduced_rhs = rhs[self.pressure_slice].copy()
-                self.reduced_rhs -= self.div.dot(self.matrix_flux_inv.dot(rhs[self.flux_slice]))
+                self.reduced_rhs -= self.div.dot(
+                    self.matrix_flux_inv.dot(rhs[self.flux_slice])
+                )
             else:
                 (
                     self.reduced_matrix,
@@ -1188,8 +1195,6 @@ class VariationalWassersteinDistance(darsia.EMD):
                     self.matrix_flux_inv,
                 ) = self.eliminate_flux(matrix, rhs)
 
-            
-            
             # 2. Build linear solver for reduced system
             if setup_linear_solver:
                 if self.linear_solver_type == "direct":
@@ -1202,7 +1207,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                     # Update the Schur complement matrix B^T * A^{-1} * B
                     weight = 1.0 / matrix.diagonal()[self.flux_slice]
                     if not hasattr(self, "div_petsc"):
-                        self.setup_petsc_variables(weight = weight)
+                        self.setup_petsc_variables(weight=weight)
                     else:
                         self.assemble_schur_complement(weights=weight)
 
@@ -1210,8 +1215,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                     if not hasattr(self, "linear_solver"):
                         kernel = np.ones(self.grid.num_cells)
                         kernel /= np.linalg.norm(kernel)
-                        self.setup_ksp_solver(self.laplacian_matrix,
-                                               nullspace=[kernel])
+                        self.setup_ksp_solver(self.laplacian_matrix, nullspace=[kernel])
                     else:
                         # Just update the matrix
                         self.linear_solver.ksp.setOperators(self.laplacian_matrix)
@@ -1222,16 +1226,13 @@ class VariationalWassersteinDistance(darsia.EMD):
             # 3. Solve for the pressure and lagrange multiplier
             tic = time.time()
             if self.linear_solver_type == "ksp":
-                pot = self.linear_solver.solve(
-                    self.reduced_rhs, **self.solver_options
-                )
+                pot = self.linear_solver.solve(self.reduced_rhs, **self.solver_options)
                 solution[self.pressure_slice] = pot
                 solution[self.lagrange_multiplier_slice] = 0.0
             else:
                 solution[self.reduced_system_slice] = self.linear_solver.solve(
                     self.reduced_rhs, **self.solver_options
                 )
-                
 
             # 4. Compute flux update
             solution[self.flux_slice] = self.compute_flux_update(solution, rhs)
@@ -1267,7 +1268,6 @@ class VariationalWassersteinDistance(darsia.EMD):
                     "Implementation requires solution satisfy the constraint."
                 )
 
-
             # 1. Reduce flux block
             (
                 self.reduced_matrix,
@@ -1283,7 +1283,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                 self.reduced_matrix,
                 self.reduced_rhs,
             )
-            
+
             # 3. Build linear solver for pure pressure system
             if setup_linear_solver:
                 if self.linear_solver_type == "direct":
@@ -1302,10 +1302,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                             self.setup_ksp_solver(self.fully_reduced_matrix)
                     else:
                         self.setup_ksp_solver(self.fully_reduced_matrix)
-                    
-                    self.linear_solver.setup(self.solver_options)
-                    
 
+                    self.linear_solver.setup(self.solver_options)
 
             # Stop timer to measure setup time
             time_setup = time.time() - tic
@@ -1354,7 +1352,7 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         # Gauss eliminiation on matrices
         reduced_jacobian = self.jacobian_subblock + schur_complement
-        
+
         # Gauss elimination on vectors
         reduced_residual = residual[self.reduced_system_slice].copy()
         reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
