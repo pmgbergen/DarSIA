@@ -141,8 +141,8 @@ ksp_krylov_options = {
         "atol": 1e-9,
         "approach": "gmres",
         "petsc_options": {
-        #"ksp_view": None,
-            "pc_type": "hypre", 
+            # "ksp_view": None,
+            "pc_type": "hypre",
         },
     },
     "formulation": "flux_reduced",
