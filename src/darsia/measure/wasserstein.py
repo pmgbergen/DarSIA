@@ -1044,8 +1044,6 @@ class VariationalWassersteinDistance(darsia.EMD):
             - self.broken_darcy.dot(solution)
             - self.flux_embedding.dot(weight.dot(self.mass_matrix_faces.dot(flat_flux)))
         )
-    
-
 
     # ! ---- Solver methods ----
     def setup_petsc_variables(self, weight: np.ndarray = None):
@@ -1055,9 +1053,9 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Setup Petsc operators
         self.div_petsc = darsia.linalg.numpy_to_petsc(self.div)
         n = self.grid.num_faces
-        
+
         # THE FOLLOWING DOES NOT WORK in the matrix-matrix multiplication
-        # PETSc.Mat().createDiagonal(self.inv_weight_laplacian_vec)    
+        # PETSc.Mat().createDiagonal(self.inv_weight_laplacian_vec)
         if weight is None:
             ones = np.ones(n)
             scipy_sparse = sps.diags(ones)
@@ -1067,10 +1065,8 @@ class VariationalWassersteinDistance(darsia.EMD):
             self.weight_laplacian_vec = darsia.linalg.numpy_to_petsc(weight)
         self.weight_laplacian_matrix = darsia.linalg.numpy_to_petsc(scipy_sparse)
 
-        
         # We need to create a matrix and set the diagonal
-        
-        
+
         self.weight_laplacian_matrix.setDiagonal(self.weight_laplacian_vec)
 
         # We store also the grad in order to use the matrix-matrix-matrix multiplication
@@ -1195,13 +1191,15 @@ class VariationalWassersteinDistance(darsia.EMD):
                     # Compute the inverse of the flux block
                     self.matrix_flux_inv = self.compute_invA(matrix)
                     # form the schur complement
-                    self.reduced_matrix = self.compute_Schur_complement(self.matrix_flux_inv)
+                    self.reduced_matrix = self.compute_Schur_complement(
+                        self.matrix_flux_inv
+                    )
 
             # create the reduced rhs
             if self.linear_solver_type == "ksp":
                 self.reduced_rhs = rhs[self.pressure_slice].copy()
                 self.reduced_rhs -= self.div.dot(
-                        self.matrix_flux_inv.dot(rhs[self.flux_slice])
+                    self.matrix_flux_inv.dot(rhs[self.flux_slice])
                 )
             else:
                 self.reduced_rhs = self.compute_reduced_rhs(self.matrix_flux_inv, rhs)
@@ -1271,13 +1269,15 @@ class VariationalWassersteinDistance(darsia.EMD):
                 raise NotImplementedError(
                     "Implementation requires solution satisfy the constraint."
                 )
-            
+
             if setup_linear_solver:
                 # 1. Reduce flux block
                 # Compute the inverse of the flux block
                 self.matrix_flux_inv = self.compute_invA(matrix)
                 # form the schur complement
-                self.reduced_matrix = self.compute_Schur_complement(self.matrix_flux_inv)
+                self.reduced_matrix = self.compute_Schur_complement(
+                    self.matrix_flux_inv
+                )
 
             self.reduced_rhs = self.compute_reduced_rhs(self.matrix_flux_inv, rhs)
             self.fully_reduced_rhs = self.eliminate_lagrange_multiplier_rhs(
@@ -1285,7 +1285,6 @@ class VariationalWassersteinDistance(darsia.EMD):
             )
 
             if setup_linear_solver:
-
                 # 2. Reduce to pure pressure system
                 self.fully_reduced_matrix = self.eliminate_lagrange_multiplier_matrix(
                     self.reduced_matrix
@@ -1364,30 +1363,31 @@ class VariationalWassersteinDistance(darsia.EMD):
         reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
 
         return reduced_jacobian, reduced_residual, J_inv
-    
-    def compute_reduced_rhs(self, J_inv: sps.csc_matrix, residual: np.ndarray) -> np.ndarray:
+
+    def compute_reduced_rhs(
+        self, J_inv: sps.csc_matrix, residual: np.ndarray
+    ) -> np.ndarray:
         """
         Compute the reduced right hand side.
         """
         # Gauss elimination on vectors
         reduced_residual = residual[self.reduced_system_slice].copy()
         reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
-        
+
         return reduced_residual
-    
+
     def compute_invA(self, jacobian: sps.csc_matrix) -> sps.csc_matrix:
         """
         Set the inverse of the flux block
         """
         return sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
-    
+
     def compute_Schur_complement(self, invA: sps.csc_matrix) -> sps.csc_matrix:
         """
         Compute the Schur complement, including the lagrange multiplier block
         """
         # Build Schur complement wrt flux-block
-        return  self.jacobian_subblock + self.D.dot(invA.dot(self.DT))
-    
+        return self.jacobian_subblock + self.D.dot(invA.dot(self.DT))
 
     def eliminate_lagrange_multiplier(
         self, reduced_jacobian, reduced_residual
@@ -1427,10 +1427,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         ].copy()
 
         return self.fully_reduced_jacobian, fully_reduced_residual
-    
-    def eliminate_lagrange_multiplier_rhs(
-        self, reduced_residual
-    ) -> tuple:
+
+    def eliminate_lagrange_multiplier_rhs(self, reduced_residual) -> tuple:
         """Eliminate the lagrange multiplier from the reduced system.
 
         Employ a Schur complement/block Gauss elimination approach.
@@ -1452,10 +1450,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         ].copy()
 
         return fully_reduced_residual
-    
-    def eliminate_lagrange_multiplier_matrix(
-        self, reduced_jacobian
-    ) -> tuple:
+
+    def eliminate_lagrange_multiplier_matrix(self, reduced_jacobian) -> tuple:
         """Eliminate the lagrange multiplier from the reduced system.
 
         Employ a Schur complement/block Gauss elimination approach.
