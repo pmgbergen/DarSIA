@@ -35,11 +35,16 @@ try:
 
     KSPreasons = _make_reasons(PETSc.KSP.ConvergedReason())
 
-    def numpy_to_petsc(A: sps.csc_matrix) -> PETSc.Mat:
+    def numpy_to_petsc(A: Union[sps.csc_matrix,np.ndarray]) -> Union[PETSc.Mat, PETSc.Vec]:
         """Convert a numpy matrix to a PETSc matrix."""
-        if not sps.isspmatrix_csr(A):
-            A = A.tocsr()
-        return PETSc.Mat().createAIJ(size=A.shape, csr=(A.indptr, A.indices, A.data))
+        if isinstance(A, np.ndarray):
+            return PETSc.Vec().createWithArray(A)
+        elif isinstance(A, sps.spmatrix):
+            if not sps.isspmatrix_csr(A):
+                A = A.tocsr()
+            return PETSc.Mat().createAIJ(size=A.shape, csr=(A.indptr, A.indices, A.data))
+        else:
+            raise ValueError("A must be a numpy or scipy matrix")
 
     def add_diagonal(A: PETSc.Mat, alpha=0.0) -> None:
         """
@@ -109,7 +114,8 @@ try:
             else:
                 raise ValueError("A must be a scipy or PETSc matrix")
 
-            # This step is needed to avoid a petsc error with LU factorization for saddle point matrices.
+            # This step is needed to avoid a petsc error with LU factorization 
+            # for saddle point matrices.
             # that explicitly needs a zeros along the diagonal
             # TODO: use zero_diagonal = PETSc.Mat().createConstantDiagonal(self.A.size,0.0)
             if alpha_diagonal is not None:
@@ -288,7 +294,8 @@ try:
             """
             Print information about the solver
             """
-            msg = f"KSP reason: {KSPreasons[self.ksp.getConvergedReason()]} Iterations: {self.ksp.getIterationNumber()}"
+            msg = (f"KSP reason: {KSPreasons[self.ksp.getConvergedReason()]}"
+                + f"Iterations: {self.ksp.getIterationNumber()}")
             return msg
 
     #
