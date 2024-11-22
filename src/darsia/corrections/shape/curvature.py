@@ -184,7 +184,7 @@ class CurvatureCorrection(darsia.BaseCorrection):
         if "config" not in data:
             raise ValueError("Invalid file format.")
         self.config = data["config"].item()
-        pre_cache = data["cache"]
+        pre_cache = data.get("cache", None)
         if pre_cache is not None:
             self.cache = pre_cache.item()
 
