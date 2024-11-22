@@ -34,15 +34,16 @@ def _reorient_colorchecker(
     else:
         img = img / np.max(img)
 
-    # Expected colors in the corner swatches in RGB colors
+    # Expected colors in the corner swatches in RGB colors.
+    # Focus only on the brown and turquoise swatches.
     brown_swatch = np.array([175, 130, 110]) / 255
-    white_swatch = np.array([250, 250, 250]) / 255
-    black_swatch = np.array([60, 60, 60]) / 255
+    # white_swatch = np.array([250, 250, 250]) / 255
+    # black_swatch = np.array([60, 60, 60]) / 255
     turquoise_swatch = np.array([175, 235, 225]) / 255
     expected_swatches = [
         brown_swatch,
-        white_swatch,
-        black_swatch,
+        # white_swatch,
+        # black_swatch,
         turquoise_swatch,
     ]
 
@@ -82,13 +83,27 @@ def _reorient_colorchecker(
         for center in expected_swatches_centers
     ]
 
+    # Fill-in values for missing white and black swatches. Assign the missing swatches.
+    if np.allclose(closest_swatches, [1, 0]):
+        closest_swatches = [1, 2, 3, 0]
+    elif np.allclose(closest_swatches, [2, 1]):
+        closest_swatches = [2, 3, 0, 1]
+    elif np.allclose(closest_swatches, [3, 2]):
+        closest_swatches = [3, 0, 1, 2]
+    elif np.allclose(closest_swatches, [0, 3]):
+        closest_swatches = [0, 1, 2, 3]
+    else:
+        raise NotImplementedError(
+            f"Closet swatches {closest_swatches} not implemented."
+        )
+
     # Arange local voxels such that they follow clock-wise sorting
     local_voxels = darsia.sort_quad(local_voxels)
 
     # Check whether the indices 0, 1, 2, 3 are in the closest swatches
     success = np.all(np.sort(closest_swatches) == np.arange(4))
     if not success:
-        warn("Colorchecker orientation not found.")
+        raise NotImplementedError("Colorchecker orientation not found.")
         return img, local_voxels
 
     # Reorient the local voxels in an anti-clockwise direction starting at the top left
@@ -157,7 +172,6 @@ def find_colorchecker(
         success = len(colorcheckers) == 1
 
         if success:
-            print("Colorchecker detected.")
             colorchecker = colorcheckers[0]
             swatches = colorchecker.swatch_colours
             detection_data = colour_checker_detection.segmenter_default(
