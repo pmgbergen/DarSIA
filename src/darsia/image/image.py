@@ -7,9 +7,11 @@ Images contain the image array, and in addition metadata about origin and dimens
 from __future__ import annotations
 
 import copy
+import logging
 import math
 from datetime import datetime, timedelta
 from pathlib import Path
+from time import time as tm
 from typing import Any, Optional, Union
 from warnings import warn
 
@@ -23,6 +25,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from plotly.subplots import make_subplots
 
 import darsia
+
+logger = logging.getLogger(__name__)
 
 
 class Image:
@@ -185,9 +189,14 @@ class Image:
         # NOTE: Require mapping format: darsia.Image -> darsia.Image
         # May require redefinition of the coordinate system.
         if transformations is not None:
+
             for transformation in transformations:
                 if transformation is not None and hasattr(transformation, "__call__"):
+                    tic = tm()
                     transformation(self, overwrite=True)
+                    logger.debug(
+                        f"{type(transformation)} transformation applied in {tm() - tic:.3f} s."
+                    )
 
         # ! ---- Safety check on dimensionality and resolution of image.
         assert len(self.shape) == self.space_dim + self.time_dim + self.range_dim
