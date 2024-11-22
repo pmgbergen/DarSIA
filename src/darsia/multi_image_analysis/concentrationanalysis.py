@@ -5,7 +5,9 @@
 from __future__ import annotations
 
 import copy
+import logging
 from pathlib import Path
+from time import time
 from typing import Optional, Union
 from warnings import warn
 
@@ -15,6 +17,8 @@ import numpy as np
 import skimage
 
 import darsia
+
+logger = logging.getLogger(__name__)
 
 
 class ConcentrationAnalysis:
@@ -248,7 +252,11 @@ class ConcentrationAnalysis:
             probe_img = copy.deepcopy(img)
 
         # Remove background image
+        tic = time()
         diff = self._subtract_background(probe_img)
+        logger.debug(f"subtraction: {time() - tic}")
+
+        tic = time()
 
         # Provide possibility for tuning and inspection of intermediate results
         self._inspect_diff(diff)
@@ -268,14 +276,20 @@ class ConcentrationAnalysis:
         # Balance signal (take into account possible heterogeneous effects)
         balanced_signal = self._balance_signal(clean_signal)
 
+        logger.debug(f"processing: {time() - tic}")
+
         # Regularize/upscale signal to Darcy scale and convert from signal to concentration
         # or other way around.
         if self.first_restoration_then_model:
             smooth_signal = self._restore_signal(balanced_signal)
             concentration = self._convert_signal(smooth_signal, diff)
         else:
+            tic = time()
             nonsmooth_concentration = self._convert_signal(balanced_signal, diff)
+            logger.debug(f"conversion: {time() - tic}")
+            tic = time()
             concentration = self._restore_signal(nonsmooth_concentration)
+            logger.debug(f"restoration: {time() - tic}")
 
         # Invoke plot
         if self.verbosity >= 1:
