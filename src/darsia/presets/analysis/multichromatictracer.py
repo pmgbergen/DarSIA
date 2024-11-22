@@ -3,11 +3,14 @@ color analysis.
 
 """
 
+import logging
 from typing import Optional
 
 import numpy as np
 
 import darsia
+
+logger = logging.getLogger(__name__)
 
 
 class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
@@ -108,8 +111,14 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
             Image: concentration map
 
         """
+        from time import time
+
+        tic = time()
         concentration = super().__call__(image)
+        logger.debug(f"concentration call: {time() - tic}")
+        tic = time()
         self.expert_knowledge(concentration)
+        logger.debug(f"expert knowledge - concentration: {time() - tic}")
         return concentration
 
     # ! ---- SAVE AND LOAD ----
