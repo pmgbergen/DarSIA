@@ -163,9 +163,8 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
             concentrations (list): list of concentrations
 
         """
-        for i, _ in enumerate(darsia.Masks(self.labels)):
-
-            self.model[0][i].update(supports=colors[i], values=concentrations[i])
+        for i, (_, label) in enumerate(darsia.Masks(self.labels, return_label=True)):
+            self.model[0][label].update(supports=colors[i], values=concentrations[i])
 
     def calibrate_from_image(
         self,
