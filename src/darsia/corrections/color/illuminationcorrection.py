@@ -1,7 +1,7 @@
 """Module containing illumination correction functionality."""
 
 from pathlib import Path
-from typing import Literal, Union
+from typing import Literal, Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,6 +19,7 @@ class IlluminationCorrection(darsia.BaseCorrection):
         self,
         base: Union[darsia.Image, list[darsia.Image]],
         samples: list[tuple[slice, ...]],
+        mask: Optional[np.ndarray] = None,
         ref_sample: int = -1,
         filter: callable = lambda x: x,
         colorspace: Literal[
@@ -95,6 +96,7 @@ class IlluminationCorrection(darsia.BaseCorrection):
         for image in images:
             colors = darsia.extract_characteristic_data(
                 signal=image,
+                mask=mask,
                 samples=samples,
                 filter=filter,
                 show_plot=show_plot,

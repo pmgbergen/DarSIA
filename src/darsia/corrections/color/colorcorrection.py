@@ -42,6 +42,11 @@ class ColorChecker(ABC):
         ax.set_title("Color checker")
         plt.show()
 
+    def save(self, path: Path) -> None:
+        path.parents[0].mkdir(parents=True, exist_ok=True)
+        np.save(path, self._reference_swatches_rgb)
+        print(f"Color checker saved to {path}.")
+
 
 class ColorCheckerAfter2014(ColorChecker):
     """Definition of the classic color checker under (hardcoded) default
@@ -194,10 +199,6 @@ class CustomColorChecker(ColorChecker):
                 swatches[row, col] = dominant_color
 
         return swatches
-
-    def save(self, path: Path) -> None:
-        path.parents[0].mkdir(parents=True, exist_ok=True)
-        np.save(path, self._reference_swatches_rgb)
 
 
 class ColorCorrection(darsia.BaseCorrection):
