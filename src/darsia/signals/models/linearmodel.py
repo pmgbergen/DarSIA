@@ -71,7 +71,10 @@ class ScalingModel(darsia.Model):
             np.ndarray: converted signal
 
         """
-        return self._scaling * img
+        if np.isclose(self._scaling, 1.0):
+            return img
+        else:
+            return self._scaling * img
 
 
 class LinearModel(darsia.Model):
