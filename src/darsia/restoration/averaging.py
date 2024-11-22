@@ -62,7 +62,8 @@ class VolumeAveraging:
 
         # User output
         logger.info(
-            f"Number of zero indices in pore volume identification: {len(self.zero_indices[0])}"
+            f"""Number of zero indices in pore volume identification: """
+            f"""{len(self.zero_indices[0])}"""
         )
 
     @overload  # type: ignore [override]
