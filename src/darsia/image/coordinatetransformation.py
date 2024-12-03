@@ -8,9 +8,16 @@ scaling). A coordinate transformation alters the voxel data and the metadata.
 from __future__ import annotations
 
 import copy
+
+# Check if on a windows machine
+import platform
 from typing import Union
 
-import largestinteriorrectangle as lir
+if platform.system() == "Windows":
+    lir = None
+else:
+    import largestinteriorrectangle as lir
+
 import numpy as np
 
 import darsia
@@ -143,12 +150,17 @@ class CoordinateTransformation:
         # Determine the largest interior rectangle - require to transform to format
         # expected by lir
         if self.dim == 2:
-            lir_dst = lir.lir(np.array([active_corner_voxels_dst]).astype(np.int32))
-            rectangle_mask_corners = [lir.pt1(lir_dst), lir.pt2(lir_dst)]
-            return (
-                slice(rectangle_mask_corners[0][0], rectangle_mask_corners[1][0]),
-                slice(rectangle_mask_corners[0][1], rectangle_mask_corners[1][1]),
-            )
+            if lir is None:
+                raise ImportError(
+                    "Python package largestinteriorrectangle not installed."
+                )
+            else:
+                lir_dst = lir.lir(np.array([active_corner_voxels_dst]).astype(np.int32))
+                rectangle_mask_corners = [lir.pt1(lir_dst), lir.pt2(lir_dst)]
+                return (
+                    slice(rectangle_mask_corners[0][0], rectangle_mask_corners[1][0]),
+                    slice(rectangle_mask_corners[0][1], rectangle_mask_corners[1][1]),
+                )
         elif self.dim == 3:
             # NOTE: In 3d, not the largest interior but smallest exterior rectangle is
             # returned, which is not ideal, but is easier to access. The application of
