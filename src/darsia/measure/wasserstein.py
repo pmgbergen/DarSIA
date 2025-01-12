@@ -2072,8 +2072,14 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         total_timings = self._analyze_timings(convergence_history["timing"])
         peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
 
+        # Compute l1 norm of the flux
+        unweighted_transport_density = self.transport_density(flux, weighted=False)
+        flux_l1_norm = self.mass_matrix_cells.dot(unweighted_transport_density).sum()
+
         # Define performance metric
         info = {
+            "distance": new_distance,  # includes weight
+            "flux_l1_norm": flux_l1_norm,  # without weight
             "converged": iter < num_iter - 1,
             "number_iterations": iter,
             "convergence_history": convergence_history,
