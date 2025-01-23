@@ -28,6 +28,7 @@ class IlluminationCorrection(darsia.BaseCorrection):
         interpolation: Literal["rbf", "quartic", "illumination"] = "quartic",
         show_plot: bool = False,
         rescale: bool = False,
+        log: Optional[Path] = None,
     ):
         """Initialize an illumination correction.
 
@@ -219,6 +220,74 @@ class IlluminationCorrection(darsia.BaseCorrection):
                 fraction=0.05,
             )
             plt.show()
+
+        # Logging
+        if log:
+
+            # Create a directory for the log
+            (log / "illumination_correction").mkdir(parents=True, exist_ok=True)
+
+            # Log the original image, with patches and the determined scaling
+            plt.figure("Log samples")
+            # Plot the base image
+            plt.imshow(base[0].img)
+            # Overlay with ~mask
+            if mask is not None:
+                plt.imshow(mask, alpha=0.5)
+            # Plot the patches as red boxes, and fill with the determined scaling
+            for sample in samples:
+                plt.plot(
+                    [
+                        sample[1].start,
+                        sample[1].start,
+                        sample[1].stop,
+                        sample[1].stop,
+                        sample[1].start,
+                    ],
+                    [
+                        sample[0].start,
+                        sample[0].stop,
+                        sample[0].stop,
+                        sample[0].start,
+                        sample[0].start,
+                    ],
+                    "r-",
+                )
+                plt.fill_between(
+                    [sample[1].start, sample[1].stop],
+                    sample[0].start,
+                    sample[0].stop,
+                    color="r",
+                    alpha=0.2,
+                )
+                plt.text(
+                    0.5 * (sample[1].start + sample[1].stop),
+                    0.5 * (sample[0].start + sample[0].stop),
+                    f"{scaling[samples.index(sample)]}",
+                    color="w",
+                    ha="center",
+                    va="center",
+                    fontsize=5,
+                )
+            plt.savefig(log / "illumination_correction" / "samples.png")
+            plt.close()
+
+            # Log the before and after scaling in a side-by-side plot
+            fig, ax = plt.subplots(1, 3)
+            ax[0].imshow(base[0].img)
+            ax[0].set_title("Original")
+            ax[1].imshow(self.correct_array(base[0].img))
+            ax[1].set_title("Corrected")
+            ax[2].imshow(self.local_scaling[0].img, vmin=0, vmax=2)
+            ax[2].set_title("Scaling")
+            fig.colorbar(
+                ax[2].imshow(self.local_scaling[0].img),
+                ax=ax[2],
+                orientation="vertical",
+                fraction=0.05,
+            )
+            plt.savefig(log / "illumination_correction" / "scaling.png")
+            plt.close()
 
     def correct_array(self, img: np.ndarray) -> np.ndarray:
         """Rescale an array using local WB.
