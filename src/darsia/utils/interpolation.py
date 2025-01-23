@@ -232,15 +232,13 @@ def interpolate_to_image(
             interpolated_image.coordinatesystem,
         )
     elif method.lower() in ["linear", "quadratic", "cubic", "quartic"]:
-        degree = (
-            1
-            if method.lower() == "linear"
-            else (
-                2
-                if method.lower() == "quadratic"
-                else 3 if method.lower() == "cubic" else 4
-            )
-        )
+        degrees = {
+            "linear": 1,
+            "quadratic": 2,
+            "cubic": 3,
+            "quartic": 4,
+        }
+        degree = degrees[method.lower()]
         interpolated_image.img = polynomial_interpolation(
             data,
             interpolated_image.coordinatesystem,
