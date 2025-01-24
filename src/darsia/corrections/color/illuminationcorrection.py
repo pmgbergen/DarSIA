@@ -269,7 +269,7 @@ class IlluminationCorrection(darsia.BaseCorrection):
                     va="center",
                     fontsize=5,
                 )
-            plt.savefig(log / "illumination_correction" / "samples.png")
+            plt.savefig(log / "illumination_correction" / "samples.png", dpi=500)
             plt.close()
 
             # Log the before and after scaling in a side-by-side plot
@@ -286,7 +286,7 @@ class IlluminationCorrection(darsia.BaseCorrection):
                 orientation="vertical",
                 fraction=0.05,
             )
-            plt.savefig(log / "illumination_correction" / "scaling.png")
+            plt.savefig(log / "illumination_correction" / "scaling.png", dpi=500)
             plt.close()
 
     def correct_array(self, img: np.ndarray) -> np.ndarray:
