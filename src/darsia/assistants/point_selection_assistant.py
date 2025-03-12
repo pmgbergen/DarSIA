@@ -61,6 +61,8 @@ class PointSelectionAssistant(darsia.BaseAssistant):
                 self._print_info()
 
         # Convert to right format.
+        if hasattr(self, "fig") and self.fig is not None:
+            plt.close(self.fig)
         voxels = darsia.VoxelArray(self.pts)
         if self.return_coordinates:
             return self.img.coordinatesystem.coordinate(voxels)
