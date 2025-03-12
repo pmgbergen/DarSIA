@@ -1,4 +1,4 @@
-""""Labels assistant built from modules."""
+"""Labels assistant built from modules."""
 
 from typing import Optional
 from warnings import warn
@@ -327,7 +327,6 @@ class LabelsMaskSelectionAssistant:
         mask = np.zeros_like(self.labels.img, dtype=bool)
 
         if points is not None and len(points) > 0:
-
             # Identify corresponding labels
             labels = np.unique([self.labels.img[p[0], p[1]] for p in points])
 
@@ -445,9 +444,9 @@ class LabelsAssistant:
         self.cache_background = None
         """Cache for background image."""
         if labels is None:
-            assert (
-                self.background is not None
-            ), "Background image required to initialize empty labels."
+            assert self.background is not None, (
+                "Background image required to initialize empty labels."
+            )
             self.labels = darsia.Image(
                 np.zeros_like(self.background.img, dtype=int),
                 **self.background.metadata(),

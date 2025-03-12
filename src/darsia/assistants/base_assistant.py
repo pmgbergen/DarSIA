@@ -27,9 +27,9 @@ class BaseAssistant(ABC):
         """Figure for analysis."""
         self.ax = kwargs.get("ax")
         """Axes for analysis."""
-        assert (self.fig is None) == (
-            self.ax is None
-        ), "Both fig and ax must be None or not None."
+        assert (self.fig is None) == (self.ax is None), (
+            "Both fig and ax must be None or not None."
+        )
         if self.fig is None and self.ax is None:
             self.fig = plt.figure()  # self.name)
             if self.img.space_dim == 2:
