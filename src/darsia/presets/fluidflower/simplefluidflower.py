@@ -121,6 +121,7 @@ class SimpleFluidFlower:
         # Specs of ROI
         self.width = specs.get("width", 0.92)
         self.height = specs.get("height", 0.55)
+        self.water_height = specs.get("water_height", 0.529)
         self.depth = specs.get("depth", 0.012)
         self.porosity = specs.get("porosity", 0.44)
         self.colorchecker_position = specs.get("colorchecker_position", "upper_right")
@@ -478,6 +479,7 @@ class SimpleFluidFlower:
         specs = {
             "width": self.width,
             "height": self.height,
+            "water_height": self.water_height,
             "depth": self.depth,
             "porosity": self.porosity,
         }
@@ -491,6 +493,8 @@ class SimpleFluidFlower:
         specs = np.load(folder / "specs.npz", allow_pickle=True)["specs"].item()
         self.width = specs["width"]
         self.height = specs["height"]
+        # self.water_height = specs["water_height"]
+        self.water_height = 0.529
         self.depth = specs["depth"]
         self.porosity = specs["porosity"]
 
@@ -550,4 +554,18 @@ class SimpleFluidFlower:
         shape_meta = self.baseline.shape_metadata()
         self.geometry = darsia.ExtrudedPorousGeometry(
             depth=self.depth, porosity=self.porosity, **shape_meta
+        )
+
+    def restrict_to_water_height(self, img: darsia.Image) -> darsia.Image:
+        """Restrict image to water height.
+
+        Args:
+            img (darsia.Image): image
+
+        Returns:
+            darsia.Image: restricted image
+
+        """
+        return img.subregion(
+            roi=darsia.CoordinateArray([[0, 0], [self.width, self.water_height]])
         )
