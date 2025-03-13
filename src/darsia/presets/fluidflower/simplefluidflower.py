@@ -148,7 +148,7 @@ class SimpleFluidFlower:
                 # Read from cache
                 self.curvature_correction = darsia.CurvatureCorrection()
                 self.curvature_correction.load(
-                    curvature_options["cache"] / Path("curvature.npz")
+                    curvature_options["cache"] / "curvature.npz"
                 )
             else:
                 # Build from scratch
@@ -461,18 +461,18 @@ class SimpleFluidFlower:
 
         # Save corrections
         if self.active_drift_correction:
-            self.drift_correction.save(folder / Path("drift.npz"))
+            self.drift_correction.save(folder / "drift.npz")
         if self.active_curvature_correction:
-            self.curvature_correction.save(folder / Path("curvature.npz"))
+            self.curvature_correction.save(folder / "curvature.npz")
         if self.active_relative_color_correction:
-            self.relative_color_correction.save(folder / Path("relative_color.npz"))
+            self.relative_color_correction.save(folder / "relative_color.npz")
         if self.active_illumination_correction:
-            self.illumination_correction.save(folder / Path("illumination.npz"))
+            self.illumination_correction.save(folder / "illumination.npz")
         if self.active_color_correction:
-            self.color_correction.save(folder / Path("color.npz"))
+            self.color_correction.save(folder / "color.npz")
 
         # Save segmentation
-        self.labels.save(folder / Path("labels.npz"))
+        self.labels.save(folder / "labels.npz")
 
         # Save specs
         specs = {
@@ -481,15 +481,14 @@ class SimpleFluidFlower:
             "depth": self.depth,
             "porosity": self.porosity,
         }
-        np.savez(folder / Path("specs.npz"), specs=specs)
-        print(f"Specs saved to {folder / Path('specs.npz')}.")
+        np.savez(folder / "specs.npz", specs=specs)
+        print(f"Specs saved to {folder / 'specs.npz'}.")
 
         print(f"Tabletop saved to {folder}.")
 
     def load(self, folder: Path) -> None:
-
         # Load specs
-        specs = np.load(folder / Path("specs.npz"), allow_pickle=True)["specs"].item()
+        specs = np.load(folder / "specs.npz", allow_pickle=True)["specs"].item()
         self.width = specs["width"]
         self.height = specs["height"]
         self.depth = specs["depth"]
@@ -508,13 +507,13 @@ class SimpleFluidFlower:
 
         if self.active_drift_correction:
             self.drift_correction = darsia.DriftCorrection(self.raw_baseline)
-            self.drift_correction.load(folder / Path("drift.npz"))
+            self.drift_correction.load(folder / "drift.npz")
             self.corrections.append(self.drift_correction)
             self.baseline = self.drift_correction(self.baseline)
 
         if self.active_curvature_correction:
             self.curvature_correction = darsia.CurvatureCorrection()
-            self.curvature_correction.load(folder / Path("curvature.npz"))
+            self.curvature_correction.load(folder / "curvature.npz")
             self.corrections.append(self.curvature_correction)
             self.baseline = self.curvature_correction(self.baseline)
 
@@ -522,25 +521,25 @@ class SimpleFluidFlower:
             self.relative_color_correction = darsia.RelativeColorCorrection(
                 self.baseline
             )
-            self.relative_color_correction.load(folder / Path("relative_color.npz"))
+            self.relative_color_correction.load(folder / "relative_color.npz")
             self.corrections.append(self.relative_color_correction)
             self.baseline = self.relative_color_correction(self.baseline)
 
         if self.active_illumination_correction:
             self.illumination_correction = darsia.IlluminationCorrection()
-            self.illumination_correction.load(folder / Path("illumination.npz"))
+            self.illumination_correction.load(folder / "illumination.npz")
             self.corrections.append(self.illumination_correction)
             self.baseline = self.illumination_correction(self.baseline)
 
         if self.active_color_correction:
             self.color_correction = darsia.ColorCorrection()
-            self.color_correction.load(folder / Path("color.npz"))
+            self.color_correction.load(folder / "color.npz")
             self.corrections.append(self.color_correction)
             self.baseline = self.color_correction(self.baseline)
 
         # Load segmentation
-        if (folder / Path("labels.npz")).exists():
-            self.labels = darsia.imread(folder / Path("labels.npz"))
+        if (folder / "labels.npz").exists():
+            self.labels = darsia.imread(folder / "labels.npz")
         else:
             self.labels = darsia.ones_like(self.baseline, dtype=np.uint8)
 
