@@ -18,7 +18,6 @@ class RelativeColorCorrection(darsia.BaseCorrection):
         images: Optional[Union[darsia.Image, list[darsia.Image]]] = None,
         config: Optional[dict] = None,
     ) -> None:
-
         self.baseline = baseline
         """Baseline image."""
         self.calibration_images = images
@@ -195,6 +194,7 @@ class RelativeColorCorrection(darsia.BaseCorrection):
 
         # First stage of the user-interaction: Select a grid of distinct colors
         # And define reference colors
+        print("""Step 1. Select reference colors within a single color checker.""")
         reference_img = self.calibration_images[0]
         box_selection_assistant = darsia.BoxSelectionAssistant(
             reference_img, width=width
@@ -213,18 +213,16 @@ class RelativeColorCorrection(darsia.BaseCorrection):
 
         # Second stage of the user-interaction: Select a grid of the same colors
         print(
-            """Select the same color as the first from the first stage to define a """
-            """tensor-grid."""
+            """Step 2. Select the same color as the first from the first stage to """
+            """define a tensor-grid."""
         )
         for img in self.calibration_images:
-
             # Define outer tensor
             box_selection_assistant = darsia.BoxSelectionAssistant(img, width=width)
             top_left_samples = box_selection_assistant()
 
             # Data collection using a tensor approach
             for i, sample in enumerate(relative_reference_samples):
-
                 # User a tensorial fill-in to extract all similar colors
                 samples = [
                     darsia.add_slice_pairs(sample, top_left_sample)
@@ -259,10 +257,12 @@ class RelativeColorCorrection(darsia.BaseCorrection):
 
         """
 
+        # logging.info("Calibrating the relative color correction.")
+
         # Make sure there exists one reference color for each set of similar colors
-        assert len(self.data) == len(
-            self.reference_data
-        ), f"Data mismatch: {len(self.data)} vs. {len(self.reference_data)}"
+        assert len(self.data) == len(self.reference_data), (
+            f"Data mismatch: {len(self.data)} vs. {len(self.reference_data)}"
+        )
 
         # Define the number of samples and color components
         self.stacked_coordinates = darsia.CoordinateArray(
