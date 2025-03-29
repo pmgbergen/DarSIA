@@ -138,10 +138,14 @@ ksp_krylov_options = {
     "linear_solver": "ksp",
     "linear_solver_options": {
         "rtol": 1e-8,
-        "approach": "cg",
-        "pc_type": "hypre",
+        "atol": 1e-9,
+        "approach": "gmres",
+        "petsc_options": {
+            # "ksp_view": None,
+            "pc_type": "hypre",
+        },
     },
-    "formulation": "pressure",
+    "formulation": "flux_reduced",
 }
 
 ksp_block_krylov_options = {
@@ -178,6 +182,7 @@ options = {
     "tol_increment": 1e-6,
     "tol_distance": 1e-10,
     "return_info": True,
+    "regularization": 1e-15,
 }
 
 # ! ---- Tests ----
