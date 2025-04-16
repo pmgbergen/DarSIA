@@ -342,3 +342,134 @@ except ImportError:
             **kwargs,
         ) -> None:
             raise ImportError("petsc4py not found. PETSc solver not available.")
+"""
+Module containing a class for solving Poisson problems with FFTs.
+
+"""
+
+import numpy as np
+import numpy.typing as npt
+import scipy.fftpack as fftpack
+
+import darsia
+
+
+class FFTPoissonSolverNeumann:
+    """
+    Class for solving Poisson problems with FFTs, specifically with
+    zero Neumann boundary conditions.
+
+    """
+
+    def __init__(
+        self,
+        grid: darsia.Grid,
+    ) -> None:
+        """
+        Initialize the FFT-based Poisson solver for zero Neumann boundary conditions.
+
+        Args:
+            grid (darsia.Grid): Grid for the domain.
+
+        Raises:
+            ValueError: If the grid has more than 3 spatial dimensions.
+
+        """
+
+        # Store the grid
+        self.grid = grid
+
+        # Cache number of dimensions
+        self.dim = grid.dim
+
+        # Check dimensionality
+        if self.dim > 3:
+            raise ValueError("Only 1D, 2D and 3D grids are supported.")
+
+        # Cache shape of grid
+        self.shape = self.grid.shape
+
+        # Cache dx
+        self.dx = self.grid.voxel_size[0]
+        if self.dim >= 2:
+            self.dy = self.grid.voxel_size[1]
+        if self.dim == 3:
+            self.dz = self.grid.voxel_size[2]
+
+        # Compute Fourier modes
+        self._setup_neumann_fourier_modes()
+
+    def _setup_neumann_fourier_modes(self):
+        """Compute the Fourier modes for the Neumann case."""
+
+        # Compute Fourier modes
+        self.k_x = np.fft.fftfreq(self.shape[0], self.dx) * 2 * np.pi
+        if self.dim >= 2:
+            self.k_y = np.fft.fftfreq(self.shape[1], self.dy) * 2 * np.pi
+        if self.dim == 3:
+            self.k_z = np.fft.fftfreq(self.shape[2], self.dz) * 2 * np.pi
+
+        # Compute the squared wavenumbers
+        if self.dim == 1:
+            self.k_square = self.k_x**2
+        elif self.dim == 2:
+            self.k_square_x, self.k_square_y = np.meshgrid(
+                self.k_x**2, self.k_y**2, indexing="ij"
+            )
+            self.k_square = self.k_square_x + self.k_square_y
+        elif self.dim == 3:
+            self.k_square_x, self.k_square_y, self.k_square_z = np.meshgrid(
+                self.k_x**2, self.k_y**2, self.k_z**2, indexing="ij"
+            )
+            self.k_square = self.k_square_x + self.k_square_y + self.k_square_z
+
+        # avoid division by zero - zero mean mode
+        self.k_square.flat[0] = 1.0
+
+    def _fft_neumann(self, f):
+        """FFT for the Neumann case."""
+        if self.dim == 1:
+            f_hat = fftpack.fft(f)
+        else:
+            f_hat = fftpack.fftn(f)
+        return f_hat
+
+    def _ifft_neumann(self, f_hat):
+        """IFFT for the Neumann case."""
+        if self.dim == 1:
+            f = fftpack.ifft(f_hat)
+        else:
+            f = fftpack.ifftn(f_hat)
+        return np.real(f)
+
+    def solve(self, rhs: np.ndarray) -> np.ndarray:
+        """
+        Solve the Poisson problem with zero Neumann boundary conditions using FFTs.
+
+        Args:
+            rhs (np.ndarray): Right-hand side of the Poisson problem, defined on the grid.
+
+        Returns:
+            np.ndarray: Solution of the Poisson problem, defined on the grid.
+
+        Raises:
+            ValueError: If the right-hand side does not have a zero mean.
+
+        """
+
+        # Check if the right-hand side has a zero mean
+        if np.abs(np.mean(rhs)) > 1e-10:
+            raise ValueError(
+                "The right-hand side for Neumann boundary conditions must have a zero mean."
+            )
+
+        # FFT of the right hand side
+        rhs_hat = self._fft_neumann(rhs)
+
+        # Compute the solution in Fourier space
+        phi_hat = rhs_hat / self.k_square
+
+        # Inverse FFT to get the solution in real space
+        phi = self._ifft_neumann(phi_hat)
+
+        return phi
