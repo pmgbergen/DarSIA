@@ -2,6 +2,7 @@ from ot import dist
 from ot.bregman import sinkhorn2
 from ot.bregman import empirical_sinkhorn2
 
+
 class WassersteinDistanceSinkhorn(darsia.EMD):
     """
     Class based on the Sinkhorn algorithm to compute the Wasserstein distance
@@ -275,7 +276,38 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
                 self.niter = log['niter']
                 self.kantorovich_potential_source = log['u']
                 self.kantorovich_potential_target = log['v']
-            
+
+
+        print("distance: ", distance)
+        exit()
+        import matplotlib.pyplot as pl
+
+        pl.figure(1)
+        pl.plot(coord_support_1, "+b", label="Source samples")
+        pl.plot(coord_support_2, "xr", label="Target samples")
+        pl.legend(loc=0)
+        pl.title("Source and target distributions")
+
+        pl.figure(2)
+        pl.imshow(M, interpolation="nearest")
+        pl.title("Cost matrix M")    
+        pl.show()
+
+
+        if self.only_non_zeros:
+            self.kantorovich_potential_source, self.kantorovich_potential_target = self.interpolate_kantorovich_potentials(
+                support_1, preprocessed_img_1, self.kantorovich_potential_source,
+                support_2, preprocessed_img_2, self.kantorovich_potential_target
+            )
+
+
+
+        self.kantorovich_potential_source = self.kantorovich_potential_source.reshape(img_1.shape, order="F")
+        self.kantorovich_potential_target = self.kantorovich_potential_target.reshape(img_2.shape, order="F")
+
+
+
+
 
         info = {
             "converged" : True,
