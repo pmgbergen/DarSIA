@@ -2328,6 +2328,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             sigma_vel = p + sigma * self.flux
             #print(sigma_vel)
             new_p[:] = sigma_vel[:]
+            # TODO: this is not correct, we need to normalize the velocity
             abs_sigma_vel = np.abs(sigma_vel)
             greater_than_1 = np.where(abs_sigma_vel > 1)
             new_p[greater_than_1] /= abs_sigma_vel[greater_than_1] # normalize too +1 or -1
