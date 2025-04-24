@@ -1268,6 +1268,10 @@ class VariationalWassersteinDistance(darsia.EMD):
         reduced_residual = residual[self.reduced_system_slice].copy()
         reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
 
+        
+
+
+
         return reduced_jacobian, reduced_residual, J_inv
 
     def eliminate_lagrange_multiplier(
@@ -1401,6 +1405,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                     "transport_density": transport_density,
                     "src": img_1,
                     "dst": img_2,
+                    "poisson_pressure": self.poisson_pressure.reshape(self.grid.shape, order="F"),
+                    "gradient_poisson_pressure": darsia.face_to_cell(self.grid, self.gradient_poisson_pressure),
                 }
             )
             return distance, info
@@ -1547,6 +1553,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         solution_i, _ = self.linear_solve(
             self.darcy_init.copy(), rhs.copy(), solution_i
         )
+        
+
 
         # Initialize distance in case below iteration fails
         new_distance = 0
@@ -1824,6 +1832,9 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         solution_i, _ = self.linear_solve(
             self.darcy_init.copy(), rhs.copy(), solution_i
         )
+        self.poisson_pressure = solution_i[self.pressure_slice].copy()
+        self.gradient_poisson_pressure = solution_i[self.flux_slice].copy()
+        
 
         # Initialize distance in case below iteration fails
         new_distance = 0
@@ -2229,8 +2240,6 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
 
         if permeability_faces is None:
             Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad
-            # save matrix to file
-            
         else:
             Laplacian_matrix = self.div * sps.diags(permeability_faces) * self.inverse_mass_matrix_faces * self.grad 
         
@@ -2345,9 +2354,9 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             np.ndarray: divergence free flux
 
         """
-        rhs = self.div.dot(self.inverse_mass_matrix_faces.dot(p))
+        rhs = self.div.dot(p)
         poisson_solution = self.Poisson_solver.solve(rhs)
-        return p - self.grad.dot(poisson_solution) 
+        return p - self.inverse_mass_matrix_faces.dot(self.grad.dot(poisson_solution))
     
     def compute_pressure(self, flux: np.ndarray, forcing: np.array) -> np.ndarray:
         """Compute the pressure from the flux.
@@ -2403,8 +2412,8 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         
         # Initialize Newton iteration with Darcy solution for unitary mobility
         self.integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
-        self.poisson_pressure = self.Poisson_solver.solve(flat_mass_diff)
-        self.gradient_poisson_pressure = self.grad.dot(self.poisson_pressure)
+        self.poisson_pressure = self.Poisson_solver.solve(self.integrated_mass_diff)
+        self.gradient_poisson_pressure = self.inverse_mass_matrix_faces.dot(self.grad.dot(self.poisson_pressure))
 
         # Initialize distance in case below iteration fails
         new_distance = 0
@@ -2562,8 +2571,6 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         #total_timings = self._analyze_timings(convergence_history["timing"])
         #peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
 
-
-
         # Define performance metric
         info = {
             "converged": self.iter < num_iter,
@@ -2649,9 +2656,6 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
 
         flux_cells = darsia.face_to_cell(self.grid, solution)
         transport_density_cells = np.linalg.norm(flux_cells, axis=-1)
-        
-        
-
         
         # Return solution
         return_info = self.options.get("return_info", False)
