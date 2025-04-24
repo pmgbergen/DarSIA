@@ -240,7 +240,7 @@ try:
                 raise ValueError(f"KSP solver failed {reason=} {KSPreasons[reason]}")
 
             # convert to numpy array
-            sol = self.sol_petsc.getArray()
+            sol = self.sol_petsc.getArray().copy()
 
             # DEBUG CODE: check convergence in numpy varaibles
             # res = self.A.dot(sol) - b
