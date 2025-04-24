@@ -2113,6 +2113,9 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         self.verbose = self.options.get("verbose", False)
         """bool: verbosity"""
 
+        self.l1_mode: L1Mode = self.options.get("l1_mode", L1Mode.RAVIART_THOMAS)
+        """str: mode for computing the l1 dissipation"""
+
         # Allocate space for main and auxiliary variables
         self.flux = np.zeros(self.grid.num_faces, dtype=float)
         """np.ndarray: flux"""
@@ -2160,33 +2163,163 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         self.h = self.grid.voxel_size[0]
         
 
-        self.div = darsia.FVDivergence(self.grid).mat #/ self.h**2
+        self.div = darsia.FVDivergence(self.grid).mat
         """sps.csc_matrix: divergence operator: flat fluxes -> flat pressures"""
     
-        self.grad = darsia.FVDivergence(self.grid).mat.T #* self.h**4
+        self.grad = darsia.FVDivergence(self.grid).mat.T
         """sps.csc_matrix: grad operator:  flat pressures -> falt fluxes"""
 
 
         self.mass_matrix_cells = darsia.FVMass(self.grid).mat
         """sps.csc_matrix: mass matrix on cells: flat pressures -> flat pressures"""
 
-        self.Laplacian_matrix = self.div * self.grad  #/ self.h**2
+        lumping = self.options.get("lumping", True)
+        self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
+        
+        """sps.csc_matrix: mass matrix on faces: flat fluxes -> flat fluxes"""
+        self.inverse_mass_matrix_faces = sps.diags(
+            1.0 / self.mass_matrix_faces.diagonal(), format="csc")
 
+
+        # self.Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad  #/ self.h**2
+
+        # # Define CG solver
+        # kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(self.grid.num_cells)
+        # self.Poisson_solver = darsia.linalg.KSP(self.Laplacian_matrix, 
+        #                                         nullspace=[kernel],
+        #                                         appctx={})
+
+        
+        # self.Poisson_ksp_ctrl = {
+        #                 "ksp_type": "cg",
+        #                 "ksp_rtol": 1e-6,
+        #                 "ksp_maxit": 100,
+        #                 "pc_type": "hypre",
+        #                 #"ksp_monitor": None,
+        # }
+        # self.Poisson_solver.setup(self.Poisson_ksp_ctrl)
+
+        self.Poisson_solver = self.setup_poisson_solver("pure_poisson", tol=1e-6)
+
+
+        self.full_flux_reconstructor = darsia.FVFullFaceReconstruction(self.grid)
+
+    def setup_poisson_solver(self, solver_prefix, tol=1e-6, permeability_faces=None) -> darsia.linalg.KSP:
+        """Return the Poisson solver.
+
+        Args:
+            permeability_faces (np.ndarray, optional): permeability faces. Defaults to None.
+
+        Returns:
+            darsia.linalg.KSP: Poisson solver
+
+        """
         # Define CG solver
         kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(self.grid.num_cells)
-        self.Poisson_solver = darsia.linalg.KSP(self.Laplacian_matrix, 
-                                                nullspace=[kernel],
-                                                appctx={})
-        
-        self.Poisson_ksp_ctrl = {
-                        "ksp_type": "cg",
-                        "ksp_rtol": 1e-6,
-                        "ksp_maxit": 100,
-                        "pc_type": "hypre",
-                        #"ksp_monitor": None,
-        }
-        self.Poisson_solver.setup(self.Poisson_ksp_ctrl)
 
+        ksp_ctrl = {
+            "ksp_type": "cg",
+            "ksp_rtol": tol,
+            "ksp_maxit": 100,
+            "pc_type": "hypre",
+            #"ksp_monitor_true_residual": None,
+        }
+
+
+
+        if permeability_faces is None:
+            Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad
+            # save matrix to file
+            
+        else:
+            Laplacian_matrix = self.div * sps.diags(permeability_faces) * self.inverse_mass_matrix_faces * self.grad 
+        
+        Poisson_solver = darsia.linalg.KSP(Laplacian_matrix, 
+                                           nullspace=[kernel],
+                                           appctx={},
+                                            solver_prefix=solver_prefix)
+
+        Poisson_solver.setup(ksp_ctrl)
+
+        return Poisson_solver 
+
+    def transport_density(
+        self, flat_flux: np.ndarray, flatten: bool = True
+    ) -> np.ndarray:
+        """Compute the transport density from the solution.
+
+        Args:
+            flat_flux (np.ndarray): face fluxes
+            weighted (bool): apply weighting. Defaults to True.
+            flatten (bool): flatten the result. Defaults to True.
+
+        Returns:
+            np.ndarray: transport density, flattened if requested
+
+        Notes:
+        Type of integration depends on the selected mode, see self.l1_mode. Supported
+        modes are:
+        - 'raviart_thomas': Apply exact integration of RT0 extensions into cells.
+            Underlying functional for mixed finite element method (MFEM).
+        - 'constant_subcell_projection': Apply subcell_based projection onto constant
+            vectors and sum up. Equivalent to a mixed finite volume method (FV).
+        - 'constant_cell_projection': Apply cell-based L2 projection onto constant
+            vectors and sum up. Simpler calculation than subcell-projection, but not
+            directly connected to any discretization.
+
+        """
+        # The different modes merely differ in the integration rule.
+
+        if self.l1_mode == L1Mode.RAVIART_THOMAS:
+            # Apply numerical integration of RT0 extensions into cells.
+            # Underlying functional for mixed finite element method (MFEM).
+            quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
+                self.grid.dim, "max"
+            )
+
+        elif self.l1_mode == L1Mode.CONSTANT_SUBCELL_PROJECTION:
+            # Apply subcell_based projection onto constant vectors and sum up.
+            # Equivalent to a mixed finite volume method (FV). Identical to quadrature
+            # over corners.
+            quad_pts, quad_weights = darsia.quadrature.reference_cell_corners(
+                self.grid.dim
+            )
+
+        elif self.l1_mode == L1Mode.CONSTANT_CELL_PROJECTION:
+            # L2 projection onto constant vectors identical to quadrature of order 0.
+            quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
+                self.grid.dim, 0
+            )
+
+        else:
+            raise ValueError(f"Mode {self.l1_mode} not supported.")
+
+        # Integrate over reference cell (normalization not required)
+        transport_density = np.zeros(self.grid.shape, dtype=float)
+        for quad_pt, quad_weight in zip(quad_pts, quad_weights):
+            cell_flux = darsia.face_to_cell(self.grid, flat_flux, pt=quad_pt)
+            cell_flux_norm = np.linalg.norm(cell_flux, 2, axis=-1)
+            transport_density += quad_weight * cell_flux_norm
+
+        if flatten:
+            return np.ravel(transport_density, "F")
+        else:
+            return transport_density
+        
+    def l1_dissipation(self, flat_flux: np.ndarray) -> float:
+        """Compute the l1 dissipation of the solution.
+
+        Args:
+            flat_flux (np.ndarray): flat fluxes
+
+        Returns:
+            float: l1 dissipation
+
+        """
+        # The L1 dissipation corresponds to the integral over the transport density
+        transport_density = self.transport_density(flat_flux)
+        return self.mass_matrix_cells.dot(transport_density).sum()
+       
 
     def residual(self, rhs: np.ndarray, solution: np.ndarray) -> np.ndarray:
         """Compute the residual of the solution.
@@ -2212,8 +2345,8 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             np.ndarray: divergence free flux
 
         """
-        rhs = self.div.dot(p)
-        poisson_solution = self.Poisson_solver.solve(rhs) #/ self.h**2
+        rhs = self.div.dot(self.inverse_mass_matrix_faces.dot(p))
+        poisson_solution = self.Poisson_solver.solve(rhs)
         return p - self.grad.dot(poisson_solution) 
     
     def compute_pressure(self, flux: np.ndarray, forcing: np.array) -> np.ndarray:
@@ -2239,7 +2372,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                         "ksp_rtol": 1e-6,
                         "ksp_maxit": 100,
                         "pc_type": "hypre",
-                        #"ksp_monitor": None,
+                        "ksp_monitor": None,
         }
         self.weighted_Poisson_solver.setup(self.weighted_Poisson_ksp_ctrl)
         pressure = self.weighted_Poisson_solver.solve(forcing)
@@ -2269,8 +2402,9 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
 
         
         # Initialize Newton iteration with Darcy solution for unitary mobility
-        poisson_pressure = self.Poisson_solver.solve(flat_mass_diff)
-        gradient_poisson_pressure = self.grad.dot(poisson_pressure)
+        self.integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
+        self.poisson_pressure = self.Poisson_solver.solve(flat_mass_diff)
+        self.gradient_poisson_pressure = self.grad.dot(self.poisson_pressure)
 
         # Initialize distance in case below iteration fails
         new_distance = 0
@@ -2304,6 +2438,9 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         p = self.p
         new_p = self.new_p
         self.iter = 0
+
+        
+
         # PDHG iterations
         while self.iter <= num_iter:
             #
@@ -2318,28 +2455,48 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             u -= tau * div_free
 
             # new flux
-            self.flux = u + gradient_poisson_pressure
+            self.flux = u + self.gradient_poisson_pressure
 
-            flat_pressure = self.compute_pressure(self.flux, flat_mass_diff)
-            grad_pressure = self.grad.dot(flat_pressure)
-            print(f"MAX GRAD {np.max(abs(grad_pressure))}")
+            update_kantorovich_potential = False
+            if update_kantorovich_potential:
+                flat_pressure = self.compute_pressure(self.flux, flat_mass_diff)
+                grad_pressure = self.inverse_mass_matrix_faces.dot(self.grad.dot(flat_pressure))
+                print(f"MAX GRAD {np.max(abs(grad_pressure))}")
             
+            
+            # Second step of the PDHG
+            # new_p = argmax_{|p|\leq 1} (p, u_{n+1})_{L^2} + \frac{1}{2 sigma}|p-p_n|_{L^2}^2
+            # 
+            # where |p| is the Euclidean norm
+            #
+                
             # eq 3.15
             sigma_vel = p + sigma * self.flux
-            #print(sigma_vel)
             new_p[:] = sigma_vel[:]
-            # TODO: this is not correct, we need to normalize the velocity
-            abs_sigma_vel = np.abs(sigma_vel)
-            greater_than_1 = np.where(abs_sigma_vel > 1)
-            new_p[greater_than_1] /= abs_sigma_vel[greater_than_1] # normalize too +1 or -1
-            #print(new_p)
 
+            mode = "normal_and_tangential"
+            if mode == "normal_only":
+                abs_sigma_vel = np.abs(sigma_vel)
+                greater_than_1 = np.where(abs_sigma_vel > 1)
+                new_p[greater_than_1] /= abs_sigma_vel[greater_than_1] # normalize too +1 or -1
+            elif mode == "normal_and_tangential":
+                # recosntruct the full velocity
+                full_sigma_vel = self.full_flux_reconstructor(sigma_vel)
+                # compute Euclidean norm
+                abs_sigma_vel = np.linalg.norm(full_sigma_vel, axis=1)
+                #
+                # where abs_sigma_vel < 1, set to 1
+                # 
+                abs_sigma_vel[abs_sigma_vel < 1] = 1.0 
+                # normalize the normal component
+                new_p /= abs_sigma_vel
+                
 
             # eq 3.16
             p_bar[:] = 2 * new_p[:] - p[:]
 
             # int_ pot f = int_ pot div poisson_pressure = int_ grad pot \cdot \nabla poisson_pressure 
-            self.dual_value = self.compute_dual(p, gradient_poisson_pressure) 
+            self.dual_value = self.compute_dual(p, self.gradient_poisson_pressure) 
             self.primal_value = self.compute_primal(self.flux)
             self.duality_gap = abs(self.dual_value - self.primal_value)
             distance = self.primal_value
@@ -2433,7 +2590,14 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         Compute the value of the primal functional
         $\int_{\Domain} | flux | $
         """
-        return np.sum(np.abs(flux)) * np.prod(self.grid.voxel_size)
+        #full_flux = self.full_flux_reconstructor(flux)
+        #transport_density_faces = np.linalg.norm(full_flux, axis=1)
+        # NOTE the factor dim is considered to get the area of the diamond
+        #w1 = np.sum(transport_density_faces) * np.prod(self.grid.voxel_size) / self.grid.dim
+
+        w1 = self.l1_dissipation(flux)
+
+        return w1 
 
     def __call__(
         self,
@@ -2466,12 +2630,26 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
 
         # Main method
         distance, solution, info = self._solve(flat_mass_diff)
+        
+        # Compute Kantorovich potential solving the Poisson problem
+        full_flux = self.full_flux_reconstructor(solution)
+        transport_density_faces = np.linalg.norm(full_flux, axis=1)
 
-        flux = darsia.face_to_cell(self.grid, solution)
-        flat_pressure = self.compute_pressure(solution, flat_mass_diff)
-        temp = np.hstack([np.abs(solution),np.abs(solution)])
-        transport_density = darsia.face_to_cell(self.grid, temp)[:,:,0]
-        pressure = flat_pressure.reshape(self.grid.shape, order="F")
+        nonhomogeneous_poisson_solver = self.setup_poisson_solver(
+            "nonhomogeneous_poisson", tol=1e-6, permeability_faces=transport_density_faces
+        )
+        integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
+
+        pressure = np.zeros_like(integrated_mass_diff)
+        pressure = nonhomogeneous_poisson_solver.solve(integrated_mass_diff) 
+        nonhomogeneous_poisson_solver.kill()
+        pressure = pressure.reshape(self.grid.shape, order="F")
+       
+
+
+        flux_cells = darsia.face_to_cell(self.grid, solution)
+        transport_density_cells = np.linalg.norm(flux_cells, axis=-1)
+        
         
 
         
@@ -2482,9 +2660,12 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                 {
                     "grid": self.grid,
                     "mass_diff": mass_diff,
-                    "flux": flux,
+                    "poisson_pressure": self.poisson_pressure.reshape(self.grid.shape, order="F"),
+                    "gradient_poisson_pressure": darsia.face_to_cell(self.grid, self.gradient_poisson_pressure),
+                    "flux": flux_cells,
                     "pressure": pressure,
-                    "transport_density": transport_density,
+                    #"pressure": pressure,
+                    "transport_density": transport_density_cells,
                     "src": img_1,
                     "dst": img_2,
                 }
