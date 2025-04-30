@@ -1405,8 +1405,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                     "transport_density": transport_density,
                     "src": img_1,
                     "dst": img_2,
-                    "poisson_pressure": self.poisson_pressure.reshape(self.grid.shape, order="F"),
-                    "gradient_poisson_pressure": darsia.face_to_cell(self.grid, self.gradient_poisson_pressure),
+                    #"poisson_pressure": self.poisson_pressure.reshape(self.grid.shape, order="F"),
+                    #"gradient_poisson_pressure": darsia.face_to_cell(self.grid, self.gradient_poisson_pressure),
                 }
             )
             return distance, info
@@ -1553,8 +1553,6 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         solution_i, _ = self.linear_solve(
             self.darcy_init.copy(), rhs.copy(), solution_i
         )
-        
-
 
         # Initialize distance in case below iteration fails
         new_distance = 0
@@ -1595,6 +1593,10 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 # Assemble linear problem in Newton step
                 tic = time.time()
                 residual_i = self.residual(rhs, solution_i)
+                res_flux = residual_i[self.flux_slice]
+                res_pressure = residual_i[self.pressure_slice]
+                print(f"Residual flux: {np.linalg.norm(res_flux, 2)}")
+                print(f"Residual pressure: {np.linalg.norm(res_pressure, 2)}")
                 approx_jacobian = self.jacobian(solution_i)
                 toc = time.time()
                 time_assemble = toc - tic
@@ -1832,9 +1834,6 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         solution_i, _ = self.linear_solve(
             self.darcy_init.copy(), rhs.copy(), solution_i
         )
-        self.poisson_pressure = solution_i[self.pressure_slice].copy()
-        self.gradient_poisson_pressure = solution_i[self.flux_slice].copy()
-        
 
         # Initialize distance in case below iteration fails
         new_distance = 0
@@ -2127,6 +2126,9 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         self.l1_mode: L1Mode = self.options.get("l1_mode", L1Mode.RAVIART_THOMAS)
         """str: mode for computing the l1 dissipation"""
 
+        self.norm_mode = self.options.get("norm_mode", "l2")
+        """str: mode for computing the norm: l2 or manhattan"""
+
         # Allocate space for main and auxiliary variables
         self.flux = np.zeros(self.grid.num_faces, dtype=float)
         """np.ndarray: flux"""
@@ -2169,16 +2171,11 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         """
 
         # ! ---- Discretization operators ----
-        if self.grid.voxel_size[0] != self.grid.voxel_size[1]:
-            raise ValueError("The grid must be isotropic")
-        self.h = self.grid.voxel_size[0]
-        
-
         self.div = darsia.FVDivergence(self.grid).mat
         """sps.csc_matrix: divergence operator: flat fluxes -> flat pressures"""
     
         self.grad = darsia.FVDivergence(self.grid).mat.T
-        """sps.csc_matrix: grad operator:  flat pressures -> falt fluxes"""
+        """sps.csc_matrix: grad operator:  flat pressures -> flat fluxes"""
 
 
         self.mass_matrix_cells = darsia.FVMass(self.grid).mat
@@ -2186,34 +2183,17 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
 
         lumping = self.options.get("lumping", True)
         self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
-        
         """sps.csc_matrix: mass matrix on faces: flat fluxes -> flat fluxes"""
+        
         self.inverse_mass_matrix_faces = sps.diags(
             1.0 / self.mass_matrix_faces.diagonal(), format="csc")
-
-
-        # self.Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad  #/ self.h**2
-
-        # # Define CG solver
-        # kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(self.grid.num_cells)
-        # self.Poisson_solver = darsia.linalg.KSP(self.Laplacian_matrix, 
-        #                                         nullspace=[kernel],
-        #                                         appctx={})
-
-        
-        # self.Poisson_ksp_ctrl = {
-        #                 "ksp_type": "cg",
-        #                 "ksp_rtol": 1e-6,
-        #                 "ksp_maxit": 100,
-        #                 "pc_type": "hypre",
-        #                 #"ksp_monitor": None,
-        # }
-        # self.Poisson_solver.setup(self.Poisson_ksp_ctrl)
+        """sps.csc_matrix: inverse of the (diagonal) of mass matrix on faces: flat fluxes -> flat fluxes"""
 
         self.Poisson_solver = self.setup_poisson_solver("pure_poisson", tol=1e-6)
-
+        """ sps.linalg.KSP: Poisson solver"""
 
         self.full_flux_reconstructor = darsia.FVFullFaceReconstruction(self.grid)
+        """darsia.FVFullFaceReconstruction: full flux reconstructor"""
 
     def setup_poisson_solver(self, solver_prefix, tol=1e-6, permeability_faces=None) -> darsia.linalg.KSP:
         """Return the Poisson solver.
@@ -2358,38 +2338,29 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         poisson_solution = self.Poisson_solver.solve(rhs)
         return p - self.inverse_mass_matrix_faces.dot(self.grad.dot(poisson_solution))
     
-    def compute_pressure(self, flux: np.ndarray, forcing: np.array) -> np.ndarray:
-        """Compute the pressure from the flux.
+    def compute_kantorovich_potential(self, flat_mass_diff: np.ndarray, flux: np.ndarray, tol = 1e-6) -> np.ndarray:
+        """Compute the kantorovich potential from the normal flux
 
         Args:
-            flux (np.ndarray): flux
+            flat_mass_diff (np.ndarray): difference of mass distributions
+            flux (np.ndarray): flux on the faces
 
         Returns:
-            np.ndarray: pressure
+            np.ndarray: kantorovich potential
 
-        """
-        self.Laplacian_matrix = self.div * sps.diags(np.abs(flux), dtype=float) * self.grad / self.h **4
-
-        # Define CG solver
-        kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(self.grid.num_cells)
-        self.weighted_Poisson_solver = darsia.linalg.KSP(self.Laplacian_matrix, 
-                                                nullspace=[kernel],
-                                                appctx={})
-        
-        self.weighted_Poisson_ksp_ctrl = {
-                        "ksp_type": "cg",
-                        "ksp_rtol": 1e-6,
-                        "ksp_maxit": 100,
-                        "pc_type": "hypre",
-                        "ksp_monitor": None,
-        }
-        self.weighted_Poisson_solver.setup(self.weighted_Poisson_ksp_ctrl)
-        pressure = self.weighted_Poisson_solver.solve(forcing)
+        """        
+        full_flux = self.full_flux_reconstructor(flux)
+        transport_density_faces = np.linalg.norm(full_flux, axis=1)
+        self.weighted_Poisson_solver = self.setup_poisson_solver("transport_density_weighted_poisson", 
+                                                                 tol=tol, 
+                                                                 permeability_faces=transport_density_faces)
+        integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
+        pressure = self.weighted_Poisson_solver.solve(integrated_mass_diff)
         self.weighted_Poisson_solver.kill()
         return pressure
     
     def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
-        """Solve the Beckman problem using Newton's method.
+        """Solve the Beckman problem using GproxPDHG.
 
         Args:
             flat_mass_diff (np.ndarray): difference of mass distributions
@@ -2408,24 +2379,41 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         tol_residual = self.options.get("tol_residual", np.finfo(float).max)
         tol_increment = self.options.get("tol_increment", np.finfo(float).max)
         tol_distance = self.options.get("tol_distance", np.finfo(float).max)
-
+        tol_duality_gap = self.options.get("tol_duality_gap", np.finfo(float).max)
         
-        # Initialize Newton iteration with Darcy solution for unitary mobility
+        # Initialize with the solution of the Poisson problem
         self.integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
+        mass_ref = np.linalg.norm(self.integrated_mass_diff, 1)
+        tic = time.time()
+        # manual setup of the poisson solver
+        self.Poisson_solver.ksp.setTolerances(rtol=tol_residual)
         self.poisson_pressure = self.Poisson_solver.solve(self.integrated_mass_diff)
+        time_poisson = time.time() - tic
+        tic = time.time()
         self.gradient_poisson_pressure = self.inverse_mass_matrix_faces.dot(self.grad.dot(self.poisson_pressure))
+        self.flux[:] = self.gradient_poisson_pressure[:]
 
         # Initialize distance in case below iteration fails
-        new_distance = 0
+        new_distance = self.l1_dissipation(self.flux)
+        mass_conservation_residual = (
+                self.div.dot(self.flux) - self.integrated_mass_diff
+            )
+
+
+        time_extra = time.time() - tic
+        stats_i = {"time_poisson": time_poisson, "time_extra": time_extra}
+
 
         # Initialize container for storing the convergence history
         convergence_history = {
-            "distance": [],
-            "residual": [],
-            "flux_increment": [],
+            "distance": [new_distance],
             "distance_increment": [],
-            "timing": [],
-            "run_time": [],
+            "flux_increment": [],
+            "timing": [stats_i],
+            "primal": [],
+            "dual": [],
+            "run_time": [time_poisson + time_extra],
+            "mass_conservation_residual": [np.linalg.norm(mass_conservation_residual, 2)/ mass_ref],    
         }
 
         # Print  header for later printing performance to screen
@@ -2435,10 +2423,9 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         # - residual
         if self.verbose:
             print(
-                "PD iter. \t| W^1 \t\t| Δ W^1 \t| Δ flux \t| residual",
+                "It.   | W^1        | Δ W^1    | Δ flux   | residual | ",
                 "\n",
-                """---------------|---------------|---------------|---------------|"""
-                """---------------""",
+                "-----|------------|----------|----------|----------|"
             )
 
 
@@ -2451,6 +2438,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         
 
         # PDHG iterations
+        converged = False
         while self.iter <= num_iter:
             #
             start = time.time()
@@ -2458,13 +2446,42 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             sigma =  self.options.get("sigma", 1.0) 
             if self.iter > 0:
                 p[:] = new_p[:]
+            time_extra = time.time() - start
+
 
             # eq 3.14
-            div_free = self.leray_projection(p_bar)
-            u -= tau * div_free
+            tic = time.time()
+            option = "simpler"
+            #option = "as_in_paper"
+            if option == "as_in_paper":
+                div_free = self.leray_projection(p_bar)
+                time_poisson = time.time() - tic
+                tic = time.time()
+                u -= tau * div_free
+                convergence_history["flux_increment"].append(
+                    np.linalg.norm(tau * div_free, 2)
+                )
+
+            elif option == "simpler":
+                # update before the leray projection 
+                # to ensure the u is div-free
+                u -= tau * p_bar
+                old_u = u.copy()
+                rhs = self.div.dot(old_u)
+                poisson_solution = self.Poisson_solver.solve(rhs)
+                update = self.inverse_mass_matrix_faces.dot(self.grad.dot(poisson_solution)) 
+                u -= update
+                convergence_history["flux_increment"].append(
+                    np.linalg.norm(update + tau * p_bar, 2)
+                )
+            
+
+            flux_increment = convergence_history["flux_increment"][-1] / mass_ref
+                
+
 
             # new flux
-            self.flux = u + self.gradient_poisson_pressure
+            self.flux[:] = u[:] + self.gradient_poisson_pressure[:]
 
             update_kantorovich_potential = False
             if update_kantorovich_potential:
@@ -2483,12 +2500,12 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             sigma_vel = p + sigma * self.flux
             new_p[:] = sigma_vel[:]
 
-            mode = "normal_and_tangential"
-            if mode == "normal_only":
+            self.norm_mode = "l2"
+            if self.norm_mode == "manhattan":
                 abs_sigma_vel = np.abs(sigma_vel)
                 greater_than_1 = np.where(abs_sigma_vel > 1)
                 new_p[greater_than_1] /= abs_sigma_vel[greater_than_1] # normalize too +1 or -1
-            elif mode == "normal_and_tangential":
+            elif self.norm_mode == "l2":
                 # recosntruct the full velocity
                 full_sigma_vel = self.full_flux_reconstructor(sigma_vel)
                 # compute Euclidean norm
@@ -2499,74 +2516,76 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                 abs_sigma_vel[abs_sigma_vel < 1] = 1.0 
                 # normalize the normal component
                 new_p /= abs_sigma_vel
-                
+
+
+
+
+
 
             # eq 3.16
             p_bar[:] = 2 * new_p[:] - p[:]
 
-            # int_ pot f = int_ pot div poisson_pressure = int_ grad pot \cdot \nabla poisson_pressure 
+            # compute primal and dual value
             self.dual_value = self.compute_dual(p, self.gradient_poisson_pressure) 
             self.primal_value = self.compute_primal(self.flux)
-            self.duality_gap = abs(self.dual_value - self.primal_value)
-            distance = self.primal_value
-
-
-            self.iter += 1
-
-            self.iter_cpu = time.time() - start
-            #if self.verbose :
-            print(
-                    f"it: {self.iter:03d}" +
-                    f" gap={self.duality_gap:.1e}" +
-                    f" dual={self.dual_value:.3e} primal={self.primal_value:.3e}" +
-                    f" cpu={self.iter_cpu:.3f}") 
-
-            #convergence_history["distance"].append(new_distance)
-            #convergence_history["residual"].append(np.linalg.norm(residual_i, 2))
+            self.duality_gap = abs(self.dual_value - self.primal_value) / self.primal_value
+            time_extra += time.time() - tic
             
-            # Compute the error and store as part of the convergence history:
-            # 0 - full residual (Newton interpretation)
-            # 1 - flux increment (fixed-point interpretation)
-            # 2 - distance increment (Minimization interpretation)
+            convergence_history["primal"].append(self.primal_value)
+            convergence_history["dual"].append(self.dual_value)
+
+            stats_i = {
+                "time_poisson": time_poisson,
+                "time_extra": time_extra,
+            }
+
+            
+            new_distance = self.primal_value
+
+
+            # Update distance
+            mass_conservation_residual = (
+                self.div.dot(self.flux) - self.integrated_mass_diff
+            )
 
             # Update convergence history
-            #convergence_history["distance"].append(new_distance)
-            #convergence_history["residual"].append(np.linalg.norm(residual_i, 2))
-            #convergence_history["flux_increment"].append(
-            #    np.linalg.norm(increment[self.flux_slice], 2)
-            #)
-            #convergence_history["distance_increment"].append(
-            #    abs(new_distance - old_distance)
-            #)
-            #convergence_history["timing"].append(stats_i)
+            old_distance = convergence_history["distance"][-1]
+            convergence_history["distance"].append(new_distance)
+            convergence_history["distance_increment"].append(
+                abs(new_distance - old_distance) / new_distance
+            )
+            convergence_history["mass_conservation_residual"].append(
+                np.linalg.norm(mass_conservation_residual, 2) / mass_ref
+            )
+            convergence_history["timing"].append(stats_i)
 
             # Extract current total run time
-            #current_run_time = self._analyze_timings(convergence_history["timing"])[
-            #    "total"
-            #]
-            #convergence_history["run_time"].append(current_run_time)
+            current_run_time = self._analyze_timings(convergence_history["timing"])[
+                "total"
+            ]
+            convergence_history["run_time"].append(current_run_time)
 
-            # Print performance to screen
-            # - distance
-            # - distance increment
-            # - flux increment
-            # - residual
-            if False:#self.verbose:
+            self.iter += 1
+            self.iter_cpu = time.time() - start
+            
+            if self.verbose:
                 distance_increment = convergence_history["distance_increment"][-1]
-                flux_increment = (
-                    convergence_history["flux_increment"][-1]
-                    / convergence_history["flux_increment"][0]
-                )
-                residual = (
-                    convergence_history["residual"][-1]
-                    / convergence_history["residual"][0]
-                )
-                print(
-                    f"""Iter. {iter} \t| {new_distance:.6e} \t| """
-                    f"""{distance_increment:.6e} \t| {flux_increment:.6e} \t| """
-                    f"""{residual:.6e}"""
-                )
+                flux_increment = convergence_history["flux_increment"][-1]
+                print(f"{self.iter:05d} | {new_distance:.4e} | "
+                    + f'{distance_increment:.2e} | {flux_increment:.2e} | {convergence_history["mass_conservation_residual"][-1]:.2e} |'
+                    + f" gap={self.duality_gap:.2e}"
+                    + f" dual={self.dual_value:.2e} primal={self.primal_value:.2e}"                  
+                    + f" cpu={self.iter_cpu:.3f}") 
 
+            if (self.iter > 1 
+                and self.duality_gap < tol_duality_gap
+                and convergence_history["distance_increment"][-1] < tol_distance
+                and convergence_history["mass_conservation_residual"][-1] < tol_residual
+                and flux_increment < tol_increment):
+                converged = True
+                break
+            
+            
         # Summarize profiling (time in seconds, memory in GB)
         #total_timings = self._analyze_timings(convergence_history["timing"])
         #peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
@@ -2580,7 +2599,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             #"peak_memory_consumption": peak_memory_consumption,
         }
 
-        return distance, self.flux, info 
+        return new_distance, self.flux, info 
     
     def compute_dual(self,p,gradient_poisson):
         """
@@ -2605,6 +2624,28 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         w1 = self.l1_dissipation(flux)
 
         return w1 
+    
+    def _analyze_timings(self, timings: dict) -> dict:
+        """Analyze the timing of the current iteration.
+
+        Utility function for self._solve().
+
+        Args:
+            timings (dict): timings
+
+        Returns:
+            dict: total time
+
+        """
+        total_timings = {
+            "poisson": sum([t["time_poisson"] for t in timings]),
+            "extra": sum([t["time_extra"] for t in timings]),
+        }
+        total_timings["total"] = (
+            total_timings["poisson"] + total_timings["extra"]
+        )
+
+        return total_timings
 
     def __call__(
         self,
@@ -2638,22 +2679,11 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         # Main method
         distance, solution, info = self._solve(flat_mass_diff)
         
-        # Compute Kantorovich potential solving the Poisson problem
-        full_flux = self.full_flux_reconstructor(solution)
-        transport_density_faces = np.linalg.norm(full_flux, axis=1)
-
-        nonhomogeneous_poisson_solver = self.setup_poisson_solver(
-            "nonhomogeneous_poisson", tol=1e-6, permeability_faces=transport_density_faces
-        )
-        integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
-
-        pressure = np.zeros_like(integrated_mass_diff)
-        pressure = nonhomogeneous_poisson_solver.solve(integrated_mass_diff) 
-        nonhomogeneous_poisson_solver.kill()
+        # Compute Kantorovich potential solving the weighed-Poisson problem
+        pressure = self.compute_kantorovich_potential(flat_mass_diff, solution)
         pressure = pressure.reshape(self.grid.shape, order="F")
        
-
-
+        # reshape the solution
         flux_cells = darsia.face_to_cell(self.grid, solution)
         transport_density_cells = np.linalg.norm(flux_cells, axis=-1)
         
