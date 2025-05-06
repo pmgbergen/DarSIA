@@ -805,6 +805,20 @@ class VariationalWassersteinDistance(darsia.EMD):
             return np.ravel(transport_density, "F")
         else:
             return transport_density
+        
+    def transport_density_faces(self, flat_flux: np.ndarray) -> np.ndarray:
+        """Compute the transport density from the solution.
+
+        Args:
+            flat_flux (np.ndarray): face fluxes
+
+        Returns:
+            np.ndarray: transport density
+
+        """
+        # The L1 dissipation corresponds to the integral over the transport density
+        full_flux = self.face_reconstruction(flat_flux)
+        return np.linalg.norm(full_flux, axis=-1)
 
     def l1_dissipation(self, flat_flux: np.ndarray) -> float:
         """Compute the l1 dissipation of the solution.
@@ -1595,8 +1609,13 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 residual_i = self.residual(rhs, solution_i)
                 res_flux = residual_i[self.flux_slice]
                 res_pressure = residual_i[self.pressure_slice]
-                print(f"Residual flux: {np.linalg.norm(res_flux, 2)}")
-                print(f"Residual pressure: {np.linalg.norm(res_pressure, 2)}")
+                transport_density_faces = self.transport_density_faces(flux)
+                res_opt = (self.mass_matrix_faces.dot(solution_i[self.flux_slice]) - 
+                transport_density_faces * self.div.T.dot(solution_i[self.pressure_slice]) )
+
+                residual_opt = np.linalg.norm(res_opt, 2)/old_distance
+                residual_div = np.linalg.norm(res_pressure, 2)
+                res_pde = np.sqrt(residual_opt**2 + residual_div**2)
                 approx_jacobian = self.jacobian(solution_i)
                 toc = time.time()
                 time_assemble = toc - tic
@@ -1638,7 +1657,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
 
                 # Update convergence history
                 convergence_history["distance"].append(new_distance)
-                convergence_history["residual"].append(np.linalg.norm(residual_i, 2))
+                convergence_history["residual"].append(res_pde)#np.linalg.norm(residual_i, 2))
                 convergence_history["flux_increment"].append(
                     np.linalg.norm(increment[self.flux_slice], 2)
                 )
