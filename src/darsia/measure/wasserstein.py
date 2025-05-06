@@ -2623,10 +2623,10 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
     def compute_dual(self,p,gradient_poisson):
         """
         Compute the value of the dual functional
-        $\int_{\Domain} pot (f^+ - f^-)$
-        $=\int_{\Domain} pot -div(poisson)$
-        $\int_{\Domain} \nabla pot \cdot \nabla poisson$
-        $\int_{\Domain} p \cdot \nabla poisson$
+        $ int_{\Domain} pot (f^+ - f^-)$
+        $= int_{\Domain} pot -div(poisson)$
+        $ int_{\Domain} \nabla pot \cdot \nabla poisson$
+        $ int_{\Domain} p \cdot \nabla poisson$
         """
         return np.dot(p, gradient_poisson) *  np.prod(self.grid.voxel_size)
     
