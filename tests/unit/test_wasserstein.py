@@ -239,6 +239,7 @@ def test_adaptive_bregman(a_key, s_key, dim):
     assert np.isclose(distance, true_distance[dim], rtol=1e-2)
     assert info["converged"]
 
+
 @pytest.mark.parametrize("dim", [2, 3])
 def test_gprox(dim):
     """Test all combinations for adaptive Bregman."""
