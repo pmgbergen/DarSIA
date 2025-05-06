@@ -176,7 +176,11 @@ options = {
     "tol_increment": 1e-4,
     "tol_distance": 1e-6,
     "return_info": True,
-    "verbose": True,
+    "verbose": False,
+}
+
+gprox_options = {
+    "l1_mode": darsia.L1Mode.RAVIART_THOMAS,
 }
 
 # ! ---- Tests ----
@@ -233,4 +237,18 @@ def test_adaptive_bregman(a_key, s_key, dim):
         method="bregman",
     )
     assert np.isclose(distance, true_distance[dim], rtol=1e-2)
+    assert info["converged"]
+
+@pytest.mark.parametrize("dim", [2, 3])
+def test_gprox(dim):
+    """Test all combinations for adaptive Bregman."""
+    options.update(gprox_options)
+    distance, info = darsia.wasserstein_distance(
+        src_image[dim],
+        dst_image[dim],
+        options=options,
+        method="gprox",
+    )
+    print(f"distance: {distance} true_distance: {true_distance[dim]}")
+    assert np.isclose(distance, true_distance[dim], rtol=5e-2)
     assert info["converged"]
