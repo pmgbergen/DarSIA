@@ -2204,7 +2204,6 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         )
         """sps.csc_matrix: inverse of the (diagonal) of mass matrix on faces: flat fluxes -> flat fluxes"""
 
-
         linear_solver_options = self.options.get("linear_solver_options", {})
         rtol = linear_solver_options.get("rtol", 1e-6)
         self.Poisson_solver = self.setup_poisson_solver("pure_poisson", rtol=rtol)
@@ -2213,7 +2212,6 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         self.full_flux_reconstructor = darsia.FVFullFaceReconstruction(self.grid)
         """darsia.FVFullFaceReconstruction: full flux reconstructor"""
 
-    
     def setup_amg_options(self) -> None:
         """Setup the infrastructure for multilevel solvers.
 
@@ -2243,9 +2241,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         user_defined_amg_options = self.options.get("amg_options", {})
         self.amg_options.update(user_defined_amg_options)
 
-    def setup_poisson_solver(
-        self, solver_prefix, rtol=1e-6, permeability_faces=None
-    ):
+    def setup_poisson_solver(self, solver_prefix, rtol=1e-6, permeability_faces=None):
         """Return the Poisson solver.
 
         Args:
@@ -2266,7 +2262,6 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         ], f"Linear solver {self.linear_solver_type} not supported."
         linear_solver_options = self.options.get("linear_solver_options", {})
 
-
         # Define CG solver
         kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(
             self.grid.num_cells
@@ -2282,7 +2277,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                 * self.grad
             )
 
-        # 
+        #
         if self.linear_solver_type == "cg":
             # Define CG solver
             Poisson_solver = darsia.linalg.CG(Laplacian_matrix)
@@ -2290,7 +2285,9 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             # Define AMG preconditioner
             self.setup_amg_options()
             with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", message="Implicit conversion of A to CSR")
+                warnings.filterwarnings(
+                    "ignore", message="Implicit conversion of A to CSR"
+                )
                 amg = pyamg.smoothed_aggregation_solver(
                     Laplacian_matrix, **self.amg_options
                 ).aspreconditioner(cycle="V")
@@ -2304,24 +2301,26 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                 "M": amg,
             }
             Poisson_solver.setup(solver_options)
-            
 
         elif self.linear_solver_type == "ksp":
             Poisson_solver = darsia.linalg.KSP(
-                Laplacian_matrix, nullspace=[kernel], appctx={}, solver_prefix=solver_prefix
+                Laplacian_matrix,
+                nullspace=[kernel],
+                appctx={},
+                solver_prefix=solver_prefix,
             )
             maxiter = linear_solver_options.get("maxiter", 100)
             ksp_ctrl = {
-            "ksp_type": "cg",
-            "ksp_rtol": rtol,
-            "ksp_maxit": maxiter,
-            "pc_type": "hypre",
-            # "ksp_monitor_true_residual": None,
-            }   
+                "ksp_type": "cg",
+                "ksp_rtol": rtol,
+                "ksp_maxit": maxiter,
+                "pc_type": "hypre",
+                # "ksp_monitor_true_residual": None,
+            }
             Poisson_solver.setup(ksp_ctrl)
 
         return Poisson_solver
-    
+
     def transport_density(
         self, flat_flux: np.ndarray, flatten: bool = True
     ) -> np.ndarray:
@@ -2481,7 +2480,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         mass_ref = np.linalg.norm(self.integrated_mass_diff, 1)
         tic = time.time()
         # manual setup of the poisson solver
-        #self.Poisson_solver.ksp.setTolerances(rtol=tol_residual)
+        # self.Poisson_solver.ksp.setTolerances(rtol=tol_residual)
         self.poisson_pressure = self.Poisson_solver.solve(self.integrated_mass_diff)
         time_poisson = time.time() - tic
         tic = time.time()
