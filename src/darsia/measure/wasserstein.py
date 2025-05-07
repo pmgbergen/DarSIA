@@ -1415,8 +1415,6 @@ class VariationalWassersteinDistance(darsia.EMD):
                     "transport_density": transport_density,
                     "src": img_1,
                     "dst": img_2,
-                    # "poisson_pressure": self.poisson_pressure.reshape(self.grid.shape, order="F"),
-                    # "gradient_poisson_pressure": darsia.face_to_cell(self.grid, self.gradient_poisson_pressure),
                 }
             )
             return distance, info
@@ -1603,7 +1601,6 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 # Assemble linear problem in Newton step
                 tic = time.time()
                 residual_i = self.residual(rhs, solution_i)
-                res_flux = residual_i[self.flux_slice]
                 res_pressure = residual_i[self.pressure_slice]
                 transport_density_faces = self.transport_density_faces(flux)
                 res_opt = self.mass_matrix_faces.dot(
@@ -2202,7 +2199,8 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         self.inverse_mass_matrix_faces = sps.diags(
             1.0 / self.mass_matrix_faces.diagonal(), format="csc"
         )
-        """sps.csc_matrix: inverse of the (diagonal) of mass matrix on faces: flat fluxes -> flat fluxes"""
+        """sps.csc_matrix: inverse of the (diagonal) of mass matrix on faces:"""
+        """flat fluxes -> flat fluxes"""
 
         linear_solver_options = self.options.get("linear_solver_options", {})
         rtol = linear_solver_options.get("rtol", 1e-6)
@@ -2529,7 +2527,6 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         self.iter = 0
 
         # PDHG iterations
-        converged = False
         while self.iter <= num_iter:
             #
             start = time.time()
@@ -2660,7 +2657,8 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                 flux_increment = convergence_history["flux_increment"][-1]
                 print(
                     f"{self.iter:05d} | {new_distance:.4e} | "
-                    + f'{distance_increment:.2e} | {flux_increment:.2e} | {convergence_history["mass_conservation_residual"][-1]:.2e} |'
+                    + f"{distance_increment:.2e} | {flux_increment:.2e}"
+                    + f" | {convergence_history["mass_conservation_residual"][-1]:.2e} |"
                     + f" gap={self.duality_gap:.2e}"
                     + f" dual={self.dual_value:.2e} primal={self.primal_value:.2e}"
                     + f" cpu={self.iter_cpu:.3f}"
@@ -2673,7 +2671,6 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                 and convergence_history["mass_conservation_residual"][-1] < tol_residual
                 and flux_increment < tol_increment
             ):
-                converged = True
                 break
 
         # Summarize profiling (time in seconds, memory in GB)
@@ -2694,17 +2691,17 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
     def compute_dual(self, p, gradient_poisson):
         """
         Compute the value of the dual functional
-        $ int_{\Domain} pot (f^+ - f^-)$
-        $= int_{\Domain} pot -div(poisson)$
-        $ int_{\Domain} \nabla pot \cdot \nabla poisson$
-        $ int_{\Domain} p \cdot \nabla poisson$
+        $ int_{Domain} pot (f^+ - f^-)$
+        $= int_{Domain} pot -div(poisson)$
+        $ int_{Domain} \nabla pot dot \nabla poisson$
+        $ int_{Domain} p dot \nabla poisson$
         """
         return np.dot(p, gradient_poisson) * np.prod(self.grid.voxel_size)
 
     def compute_primal(self, flux):
         """
         Compute the value of the primal functional
-        $\int_{\Domain} | flux | $
+        $int_{Domain} | flux | $
         """
         # full_flux = self.full_flux_reconstructor(flux)
         # transport_density_faces = np.linalg.norm(full_flux, axis=1)
