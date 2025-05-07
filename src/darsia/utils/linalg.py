@@ -59,7 +59,7 @@ try:
             ] = None,
             nullspace: Optional[list[np.ndarray]] = None,
             appctx: dict = None,
-            solver_prefix: str = "petsc_solver_"
+            solver_prefix: str = "petsc_solver_",
         ) -> None:
             """
             KSP solver for PETSc matrices
@@ -148,8 +148,8 @@ try:
 
         def setup(self, petsc_options: dict) -> None:
             petsc_options = flatten_parameters(petsc_options)
-            
-            #self.prefix = "petsc_solver_"
+
+            # self.prefix = "petsc_solver_"
             # TODO: define a unique name in case of multiple problems
 
             # create ksp solver and assign controls

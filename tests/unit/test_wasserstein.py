@@ -166,22 +166,22 @@ if HAVE_PETSC:
 
 solvers_gprox = [
     {
-    "linear_solver": "cg",
+        "linear_solver": "cg",
         "linear_solver_options": {
             "rtol": 1e-8,
         },
     }
-    ]
+]
 if HAVE_PETSC:
     solvers_gprox += [
         {
-        "linear_solver": "ksp",
-        "linear_solver_options": {
-            "rtol": 1e-8,
-            "approach": "cg",
-            "pc_type": "hypre",
+            "linear_solver": "ksp",
+            "linear_solver_options": {
+                "rtol": 1e-8,
+                "approach": "cg",
+                "pc_type": "hypre",
+            },
         },
-    },
     ]
 
 # General options
