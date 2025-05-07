@@ -2204,15 +2204,48 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         )
         """sps.csc_matrix: inverse of the (diagonal) of mass matrix on faces: flat fluxes -> flat fluxes"""
 
-        self.Poisson_solver = self.setup_poisson_solver("pure_poisson", tol=1e-6)
+
+        linear_solver_options = self.options.get("linear_solver_options", {})
+        rtol = linear_solver_options.get("rtol", 1e-6)
+        self.Poisson_solver = self.setup_poisson_solver("pure_poisson", rtol=rtol)
         """ sps.linalg.KSP: Poisson solver"""
 
         self.full_flux_reconstructor = darsia.FVFullFaceReconstruction(self.grid)
         """darsia.FVFullFaceReconstruction: full flux reconstructor"""
 
+    
+    def setup_amg_options(self) -> None:
+        """Setup the infrastructure for multilevel solvers.
+
+        Basic default setup based on jacobi and block Gauss-Seidel smoothers.
+        User-defined options can be passed via the options dictionary, using the key
+        "amg_options". The options follow the pyamg interface.
+
+        """
+        self.amg_options = {
+            "strength": "symmetric",  # change the strength of connection
+            "aggregate": "standard",  # use a standard aggregation method
+            "smooth": ("jacobi"),  # prolongation smoother
+            "presmoother": (
+                "block_gauss_seidel",
+                {"sweep": "symmetric", "iterations": 1},
+            ),
+            "postsmoother": (
+                "block_gauss_seidel",
+                {"sweep": "symmetric", "iterations": 1},
+            ),
+            "coarse_solver": "pinv2",  # pseudo inverse via SVD
+            "max_coarse": 100,  # maximum number on a coarse level
+        }
+        """dict: options for the AMG solver"""
+
+        # Allow to overwrite default options - use pyamg interface.
+        user_defined_amg_options = self.options.get("amg_options", {})
+        self.amg_options.update(user_defined_amg_options)
+
     def setup_poisson_solver(
-        self, solver_prefix, tol=1e-6, permeability_faces=None
-    ) -> darsia.linalg.KSP:
+        self, solver_prefix, rtol=1e-6, permeability_faces=None
+    ):
         """Return the Poisson solver.
 
         Args:
@@ -2222,18 +2255,22 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             darsia.linalg.KSP: Poisson solver
 
         """
+
+        self.linear_solver_type = self.options.get("linear_solver", "cg")
+        """str: type of linear solver"""
+
+        # Safety checks
+        assert self.linear_solver_type in [
+            "cg",
+            "ksp",
+        ], f"Linear solver {self.linear_solver_type} not supported."
+        linear_solver_options = self.options.get("linear_solver_options", {})
+
+
         # Define CG solver
         kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(
             self.grid.num_cells
         )
-
-        ksp_ctrl = {
-            "ksp_type": "cg",
-            "ksp_rtol": tol,
-            "ksp_maxit": 100,
-            "pc_type": "hypre",
-            # "ksp_monitor_true_residual": None,
-        }
 
         if permeability_faces is None:
             Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad
@@ -2245,14 +2282,46 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                 * self.grad
             )
 
-        Poisson_solver = darsia.linalg.KSP(
-            Laplacian_matrix, nullspace=[kernel], appctx={}, solver_prefix=solver_prefix
-        )
+        # 
+        if self.linear_solver_type == "cg":
+            # Define CG solver
+            Poisson_solver = darsia.linalg.CG(Laplacian_matrix)
 
-        Poisson_solver.setup(ksp_ctrl)
+            # Define AMG preconditioner
+            self.setup_amg_options()
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="Implicit conversion of A to CSR")
+                amg = pyamg.smoothed_aggregation_solver(
+                    Laplacian_matrix, **self.amg_options
+                ).aspreconditioner(cycle="V")
+
+            # Define solver options
+            maxiter = linear_solver_options.get("maxiter", 100)
+            solver_options = {
+                "rtol": rtol,
+                "atol": 1e-15,
+                "maxiter": maxiter,
+                "M": amg,
+            }
+            Poisson_solver.setup(solver_options)
+            
+
+        elif self.linear_solver_type == "ksp":
+            Poisson_solver = darsia.linalg.KSP(
+                Laplacian_matrix, nullspace=[kernel], appctx={}, solver_prefix=solver_prefix
+            )
+            maxiter = linear_solver_options.get("maxiter", 100)
+            ksp_ctrl = {
+            "ksp_type": "cg",
+            "ksp_rtol": rtol,
+            "ksp_maxit": maxiter,
+            "pc_type": "hypre",
+            # "ksp_monitor_true_residual": None,
+            }   
+            Poisson_solver.setup(ksp_ctrl)
 
         return Poisson_solver
-
+    
     def transport_density(
         self, flat_flux: np.ndarray, flatten: bool = True
     ) -> np.ndarray:
@@ -2372,14 +2441,17 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         """
         full_flux = self.full_flux_reconstructor(flux)
         transport_density_faces = np.linalg.norm(full_flux, axis=1)
-        self.weighted_Poisson_solver = self.setup_poisson_solver(
+        weighted_Poisson_solver = self.setup_poisson_solver(
             "transport_density_weighted_poisson",
-            tol=tol,
+            rtol=tol,
             permeability_faces=transport_density_faces,
         )
         integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
-        pressure = self.weighted_Poisson_solver.solve(integrated_mass_diff)
-        self.weighted_Poisson_solver.kill()
+        pressure = weighted_Poisson_solver.solve(integrated_mass_diff)
+        if isinstance(weighted_Poisson_solver, darsia.linalg.KSP):
+            weighted_Poisson_solver.kill()
+        else:
+            weighted_Poisson_solver = []
         return pressure
 
     def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
@@ -2409,7 +2481,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         mass_ref = np.linalg.norm(self.integrated_mass_diff, 1)
         tic = time.time()
         # manual setup of the poisson solver
-        self.Poisson_solver.ksp.setTolerances(rtol=tol_residual)
+        #self.Poisson_solver.ksp.setTolerances(rtol=tol_residual)
         self.poisson_pressure = self.Poisson_solver.solve(self.integrated_mass_diff)
         time_poisson = time.time() - tic
         tic = time.time()
