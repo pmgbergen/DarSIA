@@ -12,8 +12,23 @@ class CG:
     def __init__(self, A: sps.csc_matrix) -> None:
         self.A = A
 
+    def setup(self, scipy_options: dict) -> None:
+        """
+        Setup the solver with the given options.
+
+        Parameters
+        ----------
+        scipy_options : dict
+            Options for the solver.
+        """
+        self.scipy_options = scipy_options
+
     def solve(self, b: np.ndarray, **kwargs) -> np.ndarray:
-        return cg(self.A, b, **kwargs)[0]
+        if len(kwargs) > 0:
+            options = kwargs
+        else:
+            options = self.scipy_options
+        return cg(self.A, b, **options)[0]
 
 
 class GMRES:
@@ -343,6 +358,7 @@ except ImportError:
     class KSP:
         def __init__(
             self,
+            A: sps.csc_matrix,
             **kwargs,
         ) -> None:
             raise ImportError("petsc4py not found. PETSc solver not available.")
