@@ -164,6 +164,25 @@ if HAVE_PETSC:
         ksp_block_krylov_options,
     ]
 
+solvers_gprox = [
+    {
+    "linear_solver": "cg",
+        "linear_solver_options": {
+            "rtol": 1e-8,
+        },
+    }
+    ]
+if HAVE_PETSC:
+    solvers_gprox += [
+        {
+        "linear_solver": "ksp",
+        "linear_solver_options": {
+            "rtol": 1e-8,
+            "approach": "cg",
+            "pc_type": "hypre",
+        },
+    },
+    ]
 
 # General options
 options = {
@@ -241,9 +260,11 @@ def test_adaptive_bregman(a_key, s_key, dim):
 
 
 @pytest.mark.parametrize("dim", [2, 3])
-def test_gprox(dim):
+@pytest.mark.parametrize("s_key", range(len(solvers_gprox)))
+def test_gprox(dim, s_key):
     """Test all combinations for adaptive Bregman."""
     options.update(gprox_options)
+    options.update(solvers_gprox[s_key])
     distance, info = darsia.wasserstein_distance(
         src_image[dim],
         dst_image[dim],
