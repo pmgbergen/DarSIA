@@ -13,6 +13,7 @@ from warnings import warn
 
 import numpy as np
 import pyamg
+import scipy
 import scipy.sparse as sps
 from scipy.stats import hmean
 
@@ -317,15 +318,16 @@ class VariationalWassersteinDistance(darsia.EMD):
             "amg",
             "cg",
             "ksp",
+            "dct",
         ], f"Linear solver {self.linear_solver_type} not supported."
         assert self.formulation in [
             "full",
-            "flux-reduced",
+            "flux_reduced",
             "pressure",
         ], f"Formulation {self.formulation} not supported."
 
         if self.linear_solver_type == "ksp":
-            if self.formulation == "flux-reduced":
+            if self.formulation == "flux_reduced":
                 raise ValueError(
                     "KSP solver only supports for full and pressure formulation."
                 )
@@ -544,7 +546,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.linear_solver.setup(self.solver_options)
         """dict: options for the iterative linear solver"""
 
-    def setup_dct_solver(self, matrix: sps.csc_matrix) -> None:
+    def setup_dct_solver(self, sol=None) -> None:
         # TODO: Olivia, please add a setup of a DCT solver here.
         # E.g. add the kernel construction etc.
         # NOTE: Ignore the matrix. Add whatever you need.
@@ -554,12 +556,36 @@ class VariationalWassersteinDistance(darsia.EMD):
         # solution[self.fully_reduced_system_indices_full] = self.linear_solver.solve(
         #     self.fully_reduced_rhs, **self.solver_options
         # )
+        self.solver_options = {}
         class DCTSolver:
             # TODO: Move later to a different location
-            def __init__(self): ...
-            def solve(self, rhs, **kwargs): ...
+            def __init__(self, grid):
+                lambda_x = 2 * (np.cos(np.pi * np.arange(grid.shape[1]) / (grid.shape[1] - 1)) - 1)
+                lambda_y = 2 * (np.cos(np.pi * np.arange(grid.shape[0]) / (grid.shape[0] - 1)) - 1)
+                kernel_inv = np.outer(lambda_x / (grid.voxel_size[1] ** 2), np.ones(grid.shape[0])) + np.outer(
+                np.ones(grid.shape[1]), lambda_y / (grid.voxel_size[0] ** 2))
+                self.kernel = np.divide(1., kernel_inv)
+                self.kernel[np.isclose(kernel_inv, 0)] = 0
+                self.grid = grid
+            def solve(self, rhs,**kwargs):
+                # take the discrete cosine transform
+                rhs_2d = np.reshape(rhs[:-1], self.grid.shape, order="F") # different self
 
-        self.linear_solver = DCTSolver(matrix, **self.solver_options)
+                dct = scipy.fft.dctn(-rhs_2d, type=2, norm='ortho')
+
+                # multiply by the kernel
+                np.multiply(dct, np.transpose(self.kernel), out=dct)
+
+                # inverse transform
+                sol_2d = scipy.fft.idctn(dct, type=2, norm='ortho')
+
+                sol = np.ravel(sol_2d, order="F")
+                sol = np.append(sol, [0])
+
+                return sol
+
+
+        self.linear_solver = DCTSolver(grid = self.grid)
 
     def setup_eliminate_flux(self) -> None:
         """Setup the infrastructure for reduced systems through Gauss elimination.
@@ -1147,6 +1173,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                     self.setup_amg_solver(self.reduced_matrix)
                 elif self.linear_solver_type == "cg":
                     self.setup_cg_solver(self.reduced_matrix)
+                elif self.linear_solver_type == "dct":
+                    self.setup_dct_solver(self.reduced_matrix)
 
             # Stop timer to measure setup time
             time_setup = time.time() - tic
@@ -1217,6 +1245,9 @@ class VariationalWassersteinDistance(darsia.EMD):
 
                 elif self.linear_solver_type == "cg":
                     self.setup_cg_solver(self.fully_reduced_matrix)
+
+                elif self.linear_solver_type == "dct":
+                    self.setup_dct_solver(self.fully_reduced_matrix)
 
                 elif self.linear_solver_type == "ksp":
                     if not hasattr(self, "linear_solver"):
