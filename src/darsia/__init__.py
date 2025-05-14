@@ -30,6 +30,7 @@ from darsia.utils.dtype import *
 from darsia.utils.formats import *
 from darsia.utils.grid import *
 from darsia.utils.fv import *
+from darsia.utils.linear_solvers.dct import *
 from darsia.utils.kernels import *
 from darsia.utils.extractcharacteristicdata import *
 from darsia.utils.masks import *
