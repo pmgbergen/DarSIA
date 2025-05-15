@@ -236,6 +236,14 @@ try:
             np.ndarray
                 Solution of the linear system
             """
+            # check if x0 is provided as kwargs
+            if "x0" in kwargs:
+                x0 = kwargs["x0"]
+                self.ksp.setInitialGuessNonzero(True)
+                if isinstance(x0, np.ndarray):
+                    self.sol_petsc.setArray(x0)
+                else:
+                    raise ValueError("x0 must be a numpy array")
 
             # convert to petsc vector the rhs
             self.rhs_petsc.setArray(b)
