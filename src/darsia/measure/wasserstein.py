@@ -168,6 +168,11 @@ class VariationalWassersteinDistance(darsia.EMD):
         self._setup_linear_solver()
         self._setup_acceleration()
 
+        # Store list of callbacks passed by user
+        self.callbacks = options.get("callbacks", None)
+        """list: list of callbacks to be called during the optimization"""
+
+
     def _setup_dof_management(self) -> None:
         """Setup of Raviart-Thomas-type DOF management.
 
@@ -520,6 +525,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                     "ksp_rtol": rtol,
                     "ksp_atol": atol,
                     "ksp_max_it": maxiter,
+                    "ksp_monitor": None,
                     # "ksp_monitor_true_residual": None, #this is for debugging
                     "pc_type": "fieldsplit",
                     "pc_fieldsplit_type": "schur",
@@ -1041,8 +1047,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             - self.flux_embedding.dot(weight.dot(self.mass_matrix_faces.dot(flat_flux)))
         )
 
-    # ! ---- Solver methods ----
-
+    
     def linear_solve(
         self,
         matrix: sps.csc_matrix,
@@ -1566,7 +1571,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         new_distance = 0
 
         # Initialize container for storing the convergence history
-        convergence_history = {
+        self.convergence_history = {
             "distance": [],
             "residual": [],
             "flux_increment": [],
@@ -1574,6 +1579,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             "timing": [],
             "run_time": [],
         }
+        convergence_history = self.convergence_history
 
         # Print  header for later printing performance to screen
         # - distance
@@ -1589,6 +1595,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             )
 
         # Newton iteration
+        iter = 0
         for iter in range(num_iter):
             # It is possible that the linear solver fails. In this case, we simply
             # stop the iteration and return the current solution.
@@ -1596,6 +1603,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 # Keep track of old flux, and old distance
                 old_solution_i = solution_i.copy()
                 flux = solution_i[self.flux_slice]
+                self.flux = flux
+                self.pressure = solution_i[self.pressure_slice]
                 old_distance = self.l1_dissipation(flux)
 
                 # Assemble linear problem in Newton step
@@ -1716,6 +1725,10 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
             except Exception:
                 warnings.warn("Newton iteration abruptly stopped due to some error.")
                 break
+
+            if self.callbacks is not None:
+                for callback in self.callbacks:
+                    callback(self)
 
         # Summarize profiling (time in seconds, memory in GB)
         total_timings = self._analyze_timings(convergence_history["timing"])
@@ -1851,12 +1864,14 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         solution_i, _ = self.linear_solve(
             self.darcy_init.copy(), rhs.copy(), solution_i
         )
+        self.flux = np.zeros(self.grid.num_faces, dtype=float)
+        self.pressure = np.zeros(self.grid.num_cells, dtype=float)
 
         # Initialize distance in case below iteration fails
         new_distance = 0
 
         # Initialize container for storing the convergence history
-        convergence_history = {
+        self.convergence_history = {
             "distance": [],
             "mass_conservation_residual": [],
             "aux_force_increment": [],
@@ -1864,6 +1879,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
             "timing": [],
             "run_time": [],
         }
+        convergence_history = self.convergence_history
 
         # Print header
         if self.verbose:
@@ -1903,7 +1919,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         for iter in range(num_iter):
             # It is possible that the linear solver fails. In this case, we simply
             # stop the iteration and return the current solution.
-            try:
+            if True:#try:
                 # (Possibly) update the regularization, based on the current approximation
                 # of the flux - use the inverse of the norm of the flux
                 update_solver = bregman_update(iter)
@@ -1927,6 +1943,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         reuse_solver=False,
                     )
                     flux = solution_i[self.flux_slice]
+                    self.flux[:] = flux[:]
+                    self.pressure = solution_i[self.pressure_slice]
                     stats_i["time_solve"] = time.time() - tic
                     stats_i["time_assemble"] = time_assemble
 
@@ -1955,6 +1973,8 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                         reuse_solver=iter > 0,
                     )
                     flux = solution_i[self.flux_slice]
+                    self.flux[:] = flux[:]
+                    self.pressure[:] = solution_i[self.pressure_slice]
                     stats_i["time_solve"] = time.time() - tic
                     stats_i["time_assemble"] = time_assemble
 
@@ -1997,6 +2017,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 )
 
                 # Reference values
+                self.flux = flux
                 flux_ref = np.linalg.norm(flux, 2)
                 mass_ref = np.linalg.norm(rhs[self.pressure_slice], 2)
 
@@ -2053,6 +2074,10 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                             f"""{mass_conservation_residual:.6e}"""
                         )
 
+                if self.callbacks is not None:
+                    for callback in self.callbacks:
+                        callback(self)
+
                 # Base stopping citeria on the different interpretations of the split Bregman
                 # method:
                 # - fixed-point formulation: aux flux and force increment
@@ -2081,7 +2106,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 old_force = new_force.copy()
                 old_distance = new_distance
 
-            except Exception:
+            else:#except Exception:
                 warnings.warn("Bregman iteration abruptly stopped due to some error.")
                 break
 
@@ -2139,6 +2164,9 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         self.verbose = self.options.get("verbose", False)
         """bool: verbosity"""
 
+        self.callbacks = self.options.get("callbacks", None)
+        """list: list of callbacks to be called at each iteration"""
+
         self.l1_mode: L1Mode = self.options.get("l1_mode", L1Mode.RAVIART_THOMAS)
         """str: mode for computing the l1 dissipation"""
 
@@ -2148,6 +2176,9 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         # Allocate space for main and auxiliary variables
         self.flux = np.zeros(self.grid.num_faces, dtype=float)
         """np.ndarray: flux"""
+
+        self.kantorovich_potential = np.zeros(self.grid.num_cells, dtype=float)
+        """ np.ndarray: Kantorovich potential"""
 
         self.poisson_pressure = np.zeros(self.grid.num_cells, dtype=float)
         """ np.ndarray: pressure of the poisson problem -div(p) = f = img1- img2"""
@@ -2257,23 +2288,34 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         assert self.linear_solver_type in [
             "cg",
             "ksp",
+            "dct",
         ], f"Linear solver {self.linear_solver_type} not supported."
         linear_solver_options = self.options.get("linear_solver_options", {})
+
+        if permeability_faces is not None and self.linear_solver_type == "dct":
+            raise ValueError(
+                "DCT solver does not support permeability faces. Use CG or KSP instead."
+            )
+
 
         # Define CG solver
         kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(
             self.grid.num_cells
         )
 
-        if permeability_faces is None:
-            Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad
+        if self.linear_solver_type == "dct":
+            # dct is matrix-free
+            pass
         else:
-            Laplacian_matrix = (
-                self.div
-                * sps.diags(permeability_faces)
-                * self.inverse_mass_matrix_faces
-                * self.grad
-            )
+            if permeability_faces is None:
+                Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad
+            else:
+                Laplacian_matrix = (
+                    self.div
+                    * sps.diags(permeability_faces)
+                    * self.inverse_mass_matrix_faces
+                    * self.grad
+                )
 
         #
         if self.linear_solver_type == "cg":
@@ -2311,10 +2353,12 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             ksp_ctrl = {
                 "ksp_type": "cg",
                 "ksp_rtol": rtol,
-                "ksp_maxit": maxiter,
+                "ksp_max_it": maxiter,
                 "pc_type": "hypre",
-                # "ksp_monitor_true_residual": None,
+                # "ksp_monitor_true_residual" : None
             }
+            #if permeability_faces is not None:
+            #    ksp_ctrl["ksp_monitor_true_residual"] = None
             Poisson_solver.setup(ksp_ctrl)
 
         return Poisson_solver
@@ -2444,7 +2488,9 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             permeability_faces=transport_density_faces,
         )
         integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
-        pressure = weighted_Poisson_solver.solve(integrated_mass_diff)
+        pressure = weighted_Poisson_solver.solve(integrated_mass_diff, x0=self.kantorovich_potential)
+        # store the kantorovich potential
+        self.kantorovich_potential[:] = pressure[:]
         if isinstance(weighted_Poisson_solver, darsia.linalg.KSP):
             weighted_Poisson_solver.kill()
         else:
@@ -2495,7 +2541,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         stats_i = {"time_poisson": time_poisson, "time_extra": time_extra}
 
         # Initialize container for storing the convergence history
-        convergence_history = {
+        self.convergence_history = {
             "distance": [new_distance],
             "distance_increment": [],
             "flux_increment": [],
@@ -2507,6 +2553,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                 np.linalg.norm(mass_conservation_residual, 2) / mass_ref
             ],
         }
+        convergence_history = self.convergence_history
 
         # Print  header for later printing performance to screen
         # - distance
@@ -2663,6 +2710,10 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                     + f" dual={self.dual_value:.2e} primal={self.primal_value:.2e}"
                     + f" cpu={self.iter_cpu:.3f}"
                 )
+
+            if self.callbacks is not None:
+                for callback in self.callbacks:
+                    callback(self)
 
             if (
                 self.iter > 1
