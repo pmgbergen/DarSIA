@@ -2846,6 +2846,363 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             return distance, info
         else:
             return distance
+        
+
+class WassersteinDistanceSinkhorn(darsia.EMD):
+    """
+    Class based on the Sinkhorn algorithm to compute the Wasserstein distance
+    """
+    def __init__(self, 
+                grid: darsia.Grid,
+                options: dict = {}):
+        
+        # Cache geometrical infos
+        self.grid = grid
+        """darsia.Grid: grid"""
+
+        self.voxel_size = grid.voxel_size
+        """np.ndarray: voxel size"""
+
+        # Cache solver options
+        self.options = options
+        """dict: options for the solver"""
+
+        self.sinkhorn_regularization = self.options.get("sinkhorn_regularization", 1e-1)
+        """float: regularization parameter"""
+
+        self.sinkhorn_algorithm = options.get("sinkhorn_algorithm", "sinkhorn")
+        """ str: algorithm to use for the Sinkhorn algorithm"""       
+        """ Available algorithms are:
+        sinkhorn,sinkhorn_log, greenkhorn, sinkhorn_stabilized, sinkhorn_epsilon_scaling,
+        """
+
+        self.num_iter = self.options.get("num_iter", 100)
+        """ int: max number of iterations"""
+
+        self.only_non_zeros = options.get("only_non_zeros", True)
+        """ bool: consider only non-zero pixels"""
+        
+        self.verbose = options.get("verbose", True)
+        """ bool: verbosity"""
+
+        self.store_cost_matrix = options.get("store_cost_matrix", False)
+        """ bool: store the cost matrix"""
+        if self.store_cost_matrix:
+            self.M = dist(self.grid.cell_centers, self.grid.cell_centers, metric='euclidean')
+
+
+        self.geomloss_scaling = self.options.get("geomloss_scaling", 0.5)
+        """float: scaling factor for eps"""
+
+        # TODO: rewrite
+        N = self.grid.shape
+        x_i = []
+        for i, N in enumerate(self.grid.shape):
+            x_i.append(np.arange(N)*self.grid.voxel_size[i]+ self.grid.voxel_size[i]/2)
+
+        self.cc_xyz = np.meshgrid(*x_i, indexing="ij")
+        self.cc = np.vstack([c.ravel() for c in self.cc_xyz]).T
+
+
+    def support(self, img: darsia.Image) -> np.ndarray:
+        """
+        Return the indices of the non-zero pixels in the image.
+
+        Args:
+            img (darsia.Image): image
+
+        Returns: 
+            np.ndarray: support
+
+        """
+        # flatten the image
+        img_flat = img.img.ravel()
+
+        # return the indices of the non-zero pixels
+        return np.where(img_flat > 0)
+    
+    def interpolate_kantorovich_potentials(self, 
+                            coord_source, img1, pot_1,
+                            coord_target, img2, pot_2) -> (np.ndarray, np.ndarray): 
+        """
+        When we work only on the "support" of the images,
+        we need to extend the kantorovich potentials to the whole domain.
+        We can do it using the entropic interpolation 
+        (see Eq 3.7 in https://hal.science/hal-02539799/document).
+        It should given the same result of the Sinkhorn algorithm
+        passing the whole images.
+        """
+
+        
+        pot_1_whole = np.zeros(self.cc.shape[0])
+        pot_1_whole[self.support_source] = pot_1[:]
+        for j in self.complement_support_source:
+            center = np.array([self.cc[j]])
+            M_j = dist(center, coord_target, metric='euclidean')
+            pot_1_whole[j] = -self.sinkhorn_regularization * np.log(
+                np.dot(
+                    np.exp(pot_2[j] - M_j )/self.sinkhorn_regularization,
+                    img2))
+            
+        pot_2_whole = np.zeros(self.cc.shape[0])
+        pot_2_whole[self.support_target] = pot_2[:]
+        for i in self.complement_support_target:
+            center = np.array([self.cc[i]])
+            M_i = dist(center, coord_source, metric='euclidean')
+            pot_2_whole[i] = -self.sinkhorn_regularization * np.log(
+                np.dot(
+                    np.exp(pot_1[i] - M_i )/self.sinkhorn_regularization,
+                    img1))
+            
+        return pot_1_whole, pot_2_whole
+
+    def img2pythorch(self, img: darsia.Image) -> torch.Tensor:
+        """
+        Convert a darsia image to a pythorch tensor suitable for geomloss.sinkhorn_image
+        that that takes tensor with (nimages, nchannels, *spatial dimensions)
+        """
+        dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
+         
+        return torch.from_numpy(img.img).type(dtype).view(1,1,*img.img.shape)
+
+        
+    def __call__(self, img_1: darsia.Image, img_2: darsia.Image) -> float:
+        """
+        Earth mover's distance between images with same total sum.
+
+        Args:
+            img_1 (darsia.Image): image 1
+            img_2 (darsia.Image): image 2
+
+        Returns:
+            float or array: distance between img_1 and img_2.
+
+        """
+        # FIXME investigation required regarding resize preprocessing...
+        # Preprocess images
+        preprocessed_img_1 = img_1
+        preprocessed_img_2 = img_2
+
+        # Compatibilty check
+        self._compatibility_check(preprocessed_img_1, preprocessed_img_2)
+
+        # Only non-zero pixels are considered
+        print(f"voxel size {np.prod(self.voxel_size):.2e}")
+        if self.only_non_zeros:
+            tol_support = 1e-16
+            self.support_source = np.where(preprocessed_img_1.img.flatten("F")>tol_support)
+            self.support_target = np.where(preprocessed_img_2.img.flatten("F")>tol_support)
+
+            self.complement_support_source = np.where(preprocessed_img_1.img.flatten("F")<=1e-16)
+            self.complement_support_target = np.where(preprocessed_img_2.img.flatten("F")<=1e-16)
+
+
+            non_zero_img1 = preprocessed_img_1.img.flatten("F")[self.support_source]*np.prod(self.voxel_size)
+            non_zero_img2 = preprocessed_img_2.img.flatten("F")[self.support_target]*np.prod(self.voxel_size)
+            self.coord_support_source = self.cc[self.support_source]
+            self.coord_support_target = self.cc[self.support_target]
+        else:
+            
+            non_zero_img1 = preprocessed_img_1.img.flatten("F") * np.prod(self.voxel_size)
+            non_zero_img2 = preprocessed_img_2.img.flatten("F") * np.prod(self.voxel_size)
+            self.coord_support_source = self.cc
+            self.coord_support_target = self.cc
+
+
+        # Compute the distance
+        if "empiricalwefwef" in self.sinkhorn_algorithm:
+            distance, log = empirical_sinkhorn2(
+                coord_support_1, # coordinate of non-zero pixels in image 1
+                coord_support_2, # coordinate of non-zero pixels in image 2
+                reg=self.sinkhorn_regularization,
+                a=non_zero_img1,
+                b=non_zero_img2, 
+                metric='euclidean', # distance metric 
+                numIterMax=self.num_iter,
+                isLazy=False,  #boolean, 
+                # If True, then only calculate the cost matrix by block and return
+                # the dual potentials only (to save memory). If False, calculate full
+                #cost matrix and return outputs of sinkhorn function.
+                verbose=self.verbose, 
+                log=True, # return ierr and log
+                )
+            self.niter = log['niter']
+            self.kantorovich_potential_source = log['u']
+            self.kantorovich_potential_target = log['v']
+
+        elif "empirical_geomloss" == self.sinkhorn_algorithm:
+            print("empirical_geomloss")
+            
+            distance, log = empirical_sinkhorn2_geomloss(
+                self.coord_support_source, # coordinate of non-zero pixels in image 1
+                self.coord_support_target, # coordinate of non-zero pixels in image 2
+                reg=self.sinkhorn_regularization,
+                a=non_zero_img1,
+                b=non_zero_img2,
+                metric="euclidean",
+                scaling=0.95,
+                verbose=self.verbose,
+                debias=True,
+                log=True,
+                backend="auto",
+            )
+            
+            self.niter = 100
+            pot_source = log['f']
+            pot_target = log['g']
+
+        elif "geomloss_sinkhorn_images" == self.sinkhorn_algorithm:
+            raise NotImplementedError("geomloss_sinkhorn_images not implemented yet")
+            
+            # package to be imported
+            from geomloss.sinkhorn_images import sinkhorn_divergence
+            import torch
+            use_cuda = torch.cuda.is_available()
+            
+            # convert the images to pythorch tensors
+            torch_img1 = self.img2pythorch(preprocessed_img_1)
+            torch_img2 = self.img2pythorch(preprocessed_img_2)
+            
+            distance, log = sinkhorn_divergence(
+                torch_img1,
+                torch_img2,
+                p=1,
+                blur=None,
+                reach=None,
+                axes=self.grid.voxel_size*self.grid.shape,
+                scaling=0.5,
+                cost=None,
+                debias=True,
+                potentials=True,
+                verbose=True,
+                )
+            # sinkhorn and sinkhorn_log work with the potentials    
+            self.niter = log['niter']
+            self.kantorovich_potential_source = log['u']
+            self.kantorovich_potential_target = log['v']
+        
+        elif "geomloss_sinkhorn_samples" in self.sinkhorn_algorithm:
+            #
+            # Explicit sparsity of images 
+            # 
+            from geomloss.sinkhorn_divergence import epsilon_schedule
+            from geomloss.sinkhorn_samples import sinkhorn_tensorized
+            import torch
+            
+            use_cuda = torch.cuda.is_available()
+            dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
+            
+            # first 1 in view() is for passing the batch size
+            point_img1 = torch.from_numpy(non_zero_img1).type(dtype).view(1,len(non_zero_img1))
+            point_img2 = torch.from_numpy(non_zero_img2).type(dtype).view(1,len(non_zero_img2))
+            x = torch.from_numpy(coord_support_1).type(dtype).view(1,*coord_support_1.shape)
+            y = torch.from_numpy(coord_support_2).type(dtype).view(1,*coord_support_2.shape)
+            
+            diameter = np.linalg.norm(self.grid.voxel_size*self.grid.shape)
+            blur = self.sinkhorn_regularization
+            scaling = self.geomloss_scaling
+            p_exponent = 1
+            f_torch, g_torch = sinkhorn_tensorized(
+                point_img1,#a 
+                x,#x
+                point_img2, #b
+                y,#y
+                p=p_exponent,
+                blur=blur, #blur
+                reach=None,
+                diameter=diameter, #diameter
+                scaling=0.5, # reduction of the regularization
+                cost=None,
+                debias=False,
+                potentials=True,
+            )
+
+            f = f_torch.detach().cpu().numpy().flatten()
+            g = g_torch.detach().cpu().numpy().flatten()
+            distance = np.dot(f, non_zero_img1) + np.dot(g, non_zero_img2) 
+            print(f"distance: {distance=} {f.shape=} {g.shape=}")
+
+
+            # it is not clear to me how to get the number of iterations
+            # what about the residual of the marginals?
+            self.niter = len(epsilon_schedule(p_exponent, diameter, blur, scaling)) 
+            self.kantorovich_potential_source = f
+            self.kantorovich_potential_target = g
+
+
+        else:
+            M = dist(self.coord_support_source, self.coord_support_target, metric='euclidean')
+            distance, log = sinkhorn2(
+                non_zero_img1, non_zero_img2, M, 
+                self.sinkhorn_regularization,
+                method=self.sinkhorn_algorithm,
+                numItermax=self.options["num_iter"],
+                stopThr=1e-8,#self.options["tol_residual"],
+                verbose=self.verbose,
+                log=True)
+            #distance = np.dot(plan, M).sum()
+            #print("plan m shape", plan.shape)
+            #print(plan.shape)
+            #print(M.shape)
+            
+            if self.sinkhorn_algorithm == 'sinkhorn_stabilized':
+                self.niter = log['n_iter']
+                pot_source = np.exp(log['logu'])
+                pot_target = np.exp(log['logv'])
+            else:
+                # sinkhorn and sinkhorn_log work with the potentials    
+                self.niter = log['niter']
+                pot_source = log['u']
+                pot_target = log['v']
+
+        self.kantorovich_potential_source = np.zeros(np.prod(self.grid.shape))
+        self.kantorovich_potential_target = np.zeros(np.prod(self.grid.shape))
+        self.kantorovich_potential_source[self.support_source] = pot_source
+        self.kantorovich_potential_target[self.support_target] = pot_target
+        
+
+        # print("distance: ", distance)
+        # import matplotlib.pyplot as pl
+
+
+        # print(coord_support_1)
+
+        # pl.figure(1)
+        # pl.plot(coord_support_1[:,0], coord_support_1[:,1], "+b", label="Source samples")
+        # pl.plot(coord_support_2[:,0], coord_support_2[:,1], "xr", label="Target samples")
+        # pl.legend(loc=0)
+        # pl.title("Source and target distributions")
+
+        
+        # pl.figure(2)
+        # ot.plot.plot2D_samples_mat(coord_support_1, coord_support_2, plan, c=[0.5, 0.5, 1])
+        # pl.plot(coord_support_1[:, 0], coord_support_1[:, 1], "+b", label="Source samples")
+        # pl.plot(coord_support_2[:, 0], coord_support_2[:, 1], "xr", label="Target samples")
+        # pl.legend(loc=0)
+        # pl.title("OT matrix with samples")
+        # pl.show()
+
+        # print("Interpolating the kantorovich potentials")
+        # self.kantorovich_potential_source_whole, self.kantorovich_potential_target_whole = self.interpolate_kantorovich_potentials(
+        #          self.cc, non_zero_img1, self.kantorovich_potential_source,
+        #          self.cc, non_zero_img2, self.kantorovich_potential_target
+        #      )
+
+        self.kantorovich_potential_source = self.kantorovich_potential_source.reshape(img_1.shape, order="F")    
+        self.kantorovich_potential_target = self.kantorovich_potential_target.reshape(img_2.shape, order="F")
+
+    
+
+
+        info = {
+            "converged" : True,
+            "niter": self.niter,
+            "kantorovich_potential_source": self.kantorovich_potential_source,
+            "kantorovich_potential_target": self.kantorovich_potential_target,
+        }
+
+        return distance, info
+
 
 
 # Unified access
