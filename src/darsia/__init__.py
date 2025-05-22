@@ -70,6 +70,7 @@ from darsia.signals.models.staticthresholdmodel import *
 from darsia.signals.models.dynamicthresholdmodel import *
 from darsia.signals.models.binarydataselector import *
 from darsia.signals.models.kernelinterpolation import *
+from darsia.signals.models.pwtransformation import *
 from darsia.signals.reduction.signalreduction import *
 from darsia.signals.reduction.monochromatic import *
 from darsia.signals.reduction.dimensionreduction import *
