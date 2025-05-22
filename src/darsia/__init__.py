@@ -99,4 +99,4 @@ from darsia.assistants.subregion_assistant import *
 from darsia.assistants.crop_assistant import *
 from darsia.assistants.labels_assistant import *
 from darsia.multiphase.flash import *
-from darsia.multiphase.co2_mass_analysis import *
+from darsia.multiphase.mass_analysis import *
