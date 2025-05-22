@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Optional
 from warnings import warn
+from dataclasses import dataclass
 
 import darsia
 import matplotlib.pyplot as plt
@@ -346,7 +347,6 @@ class CO2MassAnalysis:
 
 
 class AdvancedCO2MassAnalysis:
-
     def __init__(
         self,
         concentration_analysis_g,
@@ -427,4 +427,63 @@ class AdvancedCO2MassAnalysis:
         self.concentration_analysis_g.update_parameters(params[:ndofs_g])
         self.concentration_analysis_aq.update_parameters(
             params[ndofs_g : ndofs_g + ndofs_aq]
+        )
+
+
+@dataclass
+class MassAnalysisResults:
+    """Summary object."""
+
+    mass: darsia.Image
+    """Total mass of phase."""
+    mass_g: darsia.Image
+    """Mass of gaseous phase."""
+    mass_aq: darsia.Image
+    """Mass of aqueous phase."""
+    chi_g: darsia.Image
+    """Volumetric concentration of gaseous phase."""
+    chi_aq: darsia.Image
+    """Volume concentration of aqueous phase."""
+    saturation_g: darsia.Image
+    """Saturation of gaseous phase."""
+    saturation_aq: darsia.Image
+    """Saturation of aqueous phase."""
+    normalized_signal_g: darsia.Image
+    """Normalized signal of gaseous phase."""
+    normalized_signal_aq: darsia.Image
+    """Normalized signal of aqueous phase."""
+    signal_g: darsia.Image
+    """Signal of gaseous phase."""
+    signal_aq: darsia.Image
+    """Signal of aqueous phase."""
+    concentration_co2_aq: darsia.Image
+    """Concentration of CO2 in aqueous phase."""
+
+    def subregion(self, roi: darsia.CoordinateArray) -> "MassAnalysisResults":
+        return MassAnalysisResults(
+            mass=self.mass.subregion(roi),
+            mass_g=self.mass_g.subregion(roi),
+            mass_aq=self.mass_aq.subregion(roi),
+            chi_g=self.chi_g.subregion(roi),
+            chi_aq=self.chi_aq.subregion(roi),
+            saturation_g=self.saturation_g.subregion(roi),
+            saturation_aq=self.saturation_aq.subregion(roi),
+            normalized_signal_g=self.normalized_signal_g.subregion(roi),
+            normalized_signal_aq=self.normalized_signal_aq.subregion(roi),
+            signal_g=self.signal_g.subregion(roi),
+            signal_aq=self.signal_aq.subregion(roi),
+            concentration_co2_aq=self.concentration_co2_aq.subregion(roi),
+        )
+
+
+@dataclass
+class ThresholdAnalysisResults:
+    co2: darsia.Image
+    """Thresholded image of CO2."""
+    co2_g: darsia.Image
+    """Thresholded image of gaseous phase."""
+
+    def subregion(self, roi: darsia.CoordinateArray) -> "ThresholdAnalysisResults":
+        return ThresholdAnalysisResults(
+            co2=self.co2.subregion(roi), co2_g=self.co2_g.subregion(roi)
         )
