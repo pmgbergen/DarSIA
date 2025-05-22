@@ -35,6 +35,7 @@ from darsia.utils.extractcharacteristicdata import *
 from darsia.utils.masks import *
 from darsia.utils import linalg
 from darsia.utils import quadrature
+from darsia.utils import augmented_plotting
 from darsia.utils import plotting
 from darsia.utils.detection import *
 from darsia.utils.standard_images import *
