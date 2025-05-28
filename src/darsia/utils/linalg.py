@@ -12,8 +12,23 @@ class CG:
     def __init__(self, A: sps.csc_matrix) -> None:
         self.A = A
 
+    def setup(self, scipy_options: dict) -> None:
+        """
+        Setup the solver with the given options.
+
+        Parameters
+        ----------
+        scipy_options : dict
+            Options for the solver.
+        """
+        self.scipy_options = scipy_options
+
     def solve(self, b: np.ndarray, **kwargs) -> np.ndarray:
-        return cg(self.A, b, **kwargs)[0]
+        if len(kwargs) > 0:
+            options = kwargs
+        else:
+            options = self.scipy_options
+        return cg(self.A, b, **options)[0]
 
 
 class GMRES:
@@ -44,6 +59,7 @@ try:
             ] = None,
             nullspace: Optional[list[np.ndarray]] = None,
             appctx: dict = None,
+            solver_prefix: str = "petsc_solver_",
         ) -> None:
             """
             KSP solver for PETSc matrices
@@ -69,6 +85,7 @@ try:
                 Application context, by default None.
                 It is attached to the KSP object to gather information that can be used
                 to form the preconditioner.
+            solver_prefix : str, optional
             """
 
             # convert csc to csr (if needed)
@@ -127,10 +144,12 @@ try:
 
             self.appctx = appctx
 
+            self.prefix = solver_prefix
+
         def setup(self, petsc_options: dict) -> None:
             petsc_options = flatten_parameters(petsc_options)
 
-            self.prefix = "petsc_solver_"
+            # self.prefix = "petsc_solver_"
             # TODO: define a unique name in case of multiple problems
 
             # create ksp solver and assign controls
@@ -236,7 +255,7 @@ try:
                 raise ValueError(f"KSP solver failed {reason=} {KSPreasons[reason]}")
 
             # convert to numpy array
-            sol = self.sol_petsc.getArray()
+            sol = self.sol_petsc.getArray().copy()
 
             # DEBUG CODE: check convergence in numpy varaibles
             # res = self.A.dot(sol) - b
@@ -339,6 +358,7 @@ except ImportError:
     class KSP:
         def __init__(
             self,
+            A: sps.csc_matrix,
             **kwargs,
         ) -> None:
             raise ImportError("petsc4py not found. PETSc solver not available.")
