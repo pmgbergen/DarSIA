@@ -63,9 +63,9 @@ class Resize:
 
         # Check if reference image is provided
         if ref_image is not None:
-            assert (
-                self.shape is None
-            ), "Provide only reference image or shape (not both)."
+            assert self.shape is None, (
+                "Provide only reference image or shape (not both)."
+            )
             self.shape = ref_image.num_voxels
 
         # Safety checks - double check resize options
@@ -103,13 +103,13 @@ class Resize:
         self.is_conservative = kwargs.get(key + "resize conservative", False)
 
     @overload
-    def __call__(self, img: np.ndarray) -> np.ndarray: ...
+    def __call__(self, img: np.ndarray, overwrite: bool = False) -> np.ndarray: ...
 
     @overload
-    def __call__(self, img: darsia.Image) -> darsia.Image: ...
+    def __call__(self, img: darsia.Image, overwrite: bool = False) -> darsia.Image: ...
 
     def __call__(
-        self, img: Union[np.ndarray, darsia.Image]
+        self, img: Union[np.ndarray, darsia.Image], overwrite: bool = False
     ) -> Union[np.ndarray, darsia.Image]:
         """
         Wrapper to cv2.resize.
@@ -174,9 +174,18 @@ class Resize:
         # Return resized image
         if input_is_image:
             meta = img.metadata()
-            return type(img)(resized_img_array, **meta)
+            if overwrite:
+                img = type(img)(resized_img_array, **meta)
+                return img
+            else:
+                return type(img)(resized_img_array, **meta)
         else:
-            return resized_img_array
+            if overwrite:
+                img = resized_img_array
+                return img
+            else:
+                # Return resized array
+                return resized_img_array
 
 
 def resize(
