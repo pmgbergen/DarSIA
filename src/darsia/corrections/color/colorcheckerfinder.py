@@ -93,8 +93,12 @@ def _reorient_colorchecker(
     elif np.allclose(closest_swatches, [0, 3]):
         closest_swatches = [0, 1, 2, 3]
     else:
-        raise NotImplementedError(
-            f"Closet swatches {closest_swatches} not implemented."
+        # Hope for the best: Assume "brown" is in the top left corner and
+        # "turquoise" in the top right corner.
+        closest_swatches = [0, 1, 2, 3]
+        warn(
+            """Colorchecker orientation not found. """
+            """Assuming brown in top left and turquoise in top right corner."""
         )
 
     # Arange local voxels such that they follow clock-wise sorting
