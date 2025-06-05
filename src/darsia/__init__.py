@@ -56,6 +56,7 @@ from darsia.corrections.shape.deformation import *
 from darsia.corrections.color.colorbalance import *
 from darsia.corrections.color.colorcheckerfinder import *
 from darsia.corrections.color.illuminationcorrection import *
+from darsia.corrections.color.dynamicilluminationcorrection import *
 from darsia.corrections.color.colorcorrection import *
 from darsia.corrections.color.relativecolorcorrection import *
 from darsia.corrections.color.experimentalcolorcorrection import *
