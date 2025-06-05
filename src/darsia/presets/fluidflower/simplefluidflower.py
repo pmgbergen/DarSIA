@@ -32,7 +32,13 @@ class SimpleFluidFlower:
         baseline: Path,
         active_corrections: list[
             Literal[
-                "type", "drift", "curvature", "illumination", "relative-color", "color"
+                "type",
+                "drift",
+                "curvature",
+                "illumination",
+                "dynamic-illumination",
+                "relative-color",
+                "color",
             ]
         ] = [
             "type",
@@ -41,6 +47,7 @@ class SimpleFluidFlower:
             "relative-color",
             "color",
         ],
+        extra_active_corrections: list[Literal["color"],] = [],
         debug: bool = False,
     ) -> None:
         """Constructor for SimpleFluidFlower.
@@ -86,8 +93,16 @@ class SimpleFluidFlower:
         self.active_illumination_correction = "illumination" in active_corrections
         """Flag for illumination correction."""
 
+        self.active_dynamic_illumination_correction = (
+            "dynamic-illumination" in active_corrections
+        )
+        """Flag for dynamic illumination correction."""
+
         self.active_color_correction = "color" in active_corrections
         """Flag for color correction."""
+
+        self.extra_active_color_correction = "color" in extra_active_corrections
+        """Flag for extra color correction."""
 
     def setup(
         self,
@@ -96,6 +111,7 @@ class SimpleFluidFlower:
         curvature_options: Optional[dict] = None,
         relative_color_options: Optional[dict] = None,
         illumination_options: Optional[dict] = None,
+        dynamic_illumination_options: Optional[dict] = None,
     ) -> None:
         """Setup Table top based on characteristic input image (preferably the baseline).
 
@@ -115,6 +131,7 @@ class SimpleFluidFlower:
                 - images (list[Path]): list of paths to images
             illumination_options (dict): options for illumination correction, includes:
                 - illumination_mode (str): mode for illumination
+            dynamic_illumination_options (dict): TODO
 
         """
 
@@ -195,10 +212,25 @@ class SimpleFluidFlower:
             )
             self.corrections.append(self.illumination_correction)
 
+        # ! ---- SETUP DYNAMIC ILLUMINATION CORRECTION ----
+        if self.active_dynamic_illumination_correction:
+            assert dynamic_illumination_options is not None
+            self.dynamic_illumination_correction = (
+                self.setup_dynamic_illumination_correction(
+                    self.baseline, **dynamic_illumination_options
+                )
+            )
+            self.corrections.append(self.dynamic_illumination_correction)
+
         # ! ---- SETUP COLOR CORRECTION ----
         if self.active_color_correction:
             self.color_correction = self.setup_color_correction()
             self.corrections.append(self.color_correction)
+
+        # ! ---- SETUP COLOR CORRECTION ----
+        if self.extra_active_color_correction:
+            self.color_correction = self.setup_color_correction()
+            self.extra_corrections.append(self.color_correction)
 
         # ! ---- BASELINE ----
 
@@ -320,6 +352,29 @@ class SimpleFluidFlower:
 
         return illumination_correction
 
+    def setup_dynamic_illumination_correction(
+        self,
+        baseline: darsia.Image,
+        options: dict,
+    ) -> darsia.DynamicIlluminationCorrection:
+        """Setup dynamic illumination correction based on baseline image.
+
+        Args:
+            baseline (darsia.Image): baseline image
+            options (dict): options for dynamic illumination correction
+
+        Returns:
+            DynamicIlluminationCorrection: dynamic_illumination_correction
+
+        """
+        # Define dynamic illumination correction object
+        dynamic_illumination_correction = darsia.DynamicIlluminationCorrection()
+        dynamic_illumination_correction.setup(
+            self.baseline if baseline is None else baseline, **options
+        )
+
+        return dynamic_illumination_correction
+
     def setup_color_correction(
         self,
     ) -> darsia.ColorCorrection:
@@ -384,7 +439,9 @@ class SimpleFluidFlower:
         if self.color_config:
             self.color_correction = darsia.ColorCorrection(config=self.color_config)
 
-    def activate_corrections(self, corrections: list[str]) -> None:
+    def activate_corrections(
+        self, corrections: list[str], extra_corrections: list[str]
+    ) -> None:
         """Activate corrections based on input list and update baseline.
 
         Args:
@@ -394,6 +451,7 @@ class SimpleFluidFlower:
         """
         # Update corrections
         self.corrections = []
+        self.extra_corrections = []
         if "type" in corrections and hasattr(self, "type_conversion"):
             self.corrections.append(self.type_conversion)
         if "drift" in corrections and hasattr(self, "drift_correction"):
@@ -406,8 +464,14 @@ class SimpleFluidFlower:
             self.corrections.append(self.relative_color_correction)
         if "illumination" in corrections and hasattr(self, "illumination_correction"):
             self.corrections.append(self.illumination_correction)
+        if "dynamic-illumination" in corrections and hasattr(
+            self, "dynamic_illumination_correction"
+        ):
+            self.corrections.append(self.dynamic_illumination_correction)
         if "color" in corrections and hasattr(self, "color_correction"):
             self.corrections.append(self.color_correction)
+        if "color" in extra_corrections and hasattr(self, "color_correction"):
+            self.extra_corrections.append(self.color_correction)
 
         # Update baseline
         self.baseline = self.raw_baseline.copy()
@@ -469,7 +533,11 @@ class SimpleFluidFlower:
             self.relative_color_correction.save(folder / "relative_color.npz")
         if self.active_illumination_correction:
             self.illumination_correction.save(folder / "illumination.npz")
-        if self.active_color_correction:
+        if self.active_dynamic_illumination_correction:
+            self.dynamic_illumination_correction.save(
+                folder / "dynamic_illumination.npz"
+            )
+        if self.active_color_correction or self.extra_active_color_correction:
             self.color_correction.save(folder / "color.npz")
 
         # Save segmentation
@@ -504,6 +572,7 @@ class SimpleFluidFlower:
 
         # Load corrections
         self.corrections = []
+        self.extra_corrections = []
 
         if self.active_type_correction:
             self.type_conversion = darsia.TypeCorrection(np.float64)
@@ -535,11 +604,26 @@ class SimpleFluidFlower:
             self.corrections.append(self.illumination_correction)
             self.baseline = self.illumination_correction(self.baseline)
 
+        if self.active_dynamic_illumination_correction:
+            self.dynamic_illumination_correction = (
+                darsia.DynamicIlluminationCorrection()
+            )
+            self.dynamic_illumination_correction.load(
+                folder / "dynamic_illumination.npz"
+            )
+            self.corrections.append(self.dynamic_illumination_correction)
+            self.baseline = self.dynamic_illumination_correction(self.baseline)
+
         if self.active_color_correction:
             self.color_correction = darsia.ColorCorrection()
             self.color_correction.load(folder / "color.npz")
             self.corrections.append(self.color_correction)
             self.baseline = self.color_correction(self.baseline)
+
+        if self.extra_active_color_correction:
+            self.color_correction = darsia.ColorCorrection()
+            self.color_correction.load(folder / "color.npz")
+            self.extra_corrections.append(self.color_correction)
 
         # Load segmentation
         if (folder / "labels.npz").exists():
