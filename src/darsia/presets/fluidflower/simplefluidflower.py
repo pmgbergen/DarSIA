@@ -39,6 +39,7 @@ class SimpleFluidFlower:
                 "dynamic-illumination",
                 "relative-color",
                 "color",
+                "resize",
             ]
         ] = [
             "type",
@@ -80,6 +81,9 @@ class SimpleFluidFlower:
 
         self.active_type_correction = "type" in active_corrections
         """Flag for type correction."""
+
+        self.active_resize_correction = "resize" in active_corrections
+        """Flag for resize correction."""
 
         self.active_drift_correction = "drift" in active_corrections
         """Flag for drift correction."""
@@ -154,6 +158,12 @@ class SimpleFluidFlower:
             self.baseline = self.type_conversion(self.baseline)
 
         # ! ---- SETUP SHAPE CORRECTION ----
+
+        if self.active_resize_correction:
+            baseline_shape = self.baseline.img.shape[:2]
+            self.resize_correction = darsia.Resize(shape=baseline_shape)
+            self.corrections.append(self.resize_correction)
+            # Not required: self.baseline = self.resize_correction(self.baseline)
 
         if self.active_drift_correction:
             self.drift_correction = self.setup_drift_correction()
@@ -454,6 +464,8 @@ class SimpleFluidFlower:
         self.extra_corrections = []
         if "type" in corrections and hasattr(self, "type_conversion"):
             self.corrections.append(self.type_conversion)
+        if "resize" in corrections and hasattr(self, "resize_correction"):
+            self.corrections.append(self.resize_correction)
         if "drift" in corrections and hasattr(self, "drift_correction"):
             self.corrections.append(self.drift_correction)
         if "curvature" in corrections and hasattr(self, "curvature_correction"):
@@ -552,7 +564,7 @@ class SimpleFluidFlower:
             "porosity": self.porosity,
         }
         np.savez(folder / "specs.npz", specs=specs)
-        print(f"Specs saved to {folder / 'specs.npz'}.")
+        print(f"Specs {specs} saved to {folder / 'specs.npz'}.")
 
         print(f"Tabletop saved to {folder}.")
 
@@ -577,6 +589,12 @@ class SimpleFluidFlower:
         if self.active_type_correction:
             self.type_conversion = darsia.TypeCorrection(np.float64)
             self.corrections.append(self.type_conversion)
+
+        if self.active_resize_correction:
+            baseline_shape = self.baseline.img.shape[:2]
+            self.resize_correction = darsia.Resize(shape=baseline_shape)
+            self.corrections.append(self.resize_correction)
+            # Not required: self.baseline = self.resize_correction(self.baseline)
 
         if self.active_drift_correction:
             self.drift_correction = darsia.DriftCorrection(self.raw_baseline)
