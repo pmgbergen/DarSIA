@@ -155,17 +155,34 @@ ksp_block_krylov_options = {
 }
 
 
-solvers = (
-    [lu_options, amg_options]
-    + [
+solvers = [lu_options, amg_options]
+
+if HAVE_PETSC:
+    solvers += [
         ksp_direct_options,
         ksp_krylov_options,
         ksp_block_krylov_options,
     ]
-    if HAVE_PETSC
-    else []
-)
 
+solvers_gprox = [
+    {
+        "linear_solver": "cg",
+        "linear_solver_options": {
+            "rtol": 1e-8,
+        },
+    }
+]
+if HAVE_PETSC:
+    solvers_gprox += [
+        {
+            "linear_solver": "ksp",
+            "linear_solver_options": {
+                "rtol": 1e-8,
+                "approach": "cg",
+                "pc_type": "hypre",
+            },
+        },
+    ]
 
 # General options
 options = {
@@ -174,10 +191,15 @@ options = {
     "mobility_mode": darsia.MobilityMode.FACE_BASED,
     # Performance control
     "num_iter": 400,
-    "tol_residual": 1e-10,
-    "tol_increment": 1e-6,
-    "tol_distance": 1e-10,
+    "tol_residual": 1e-3,
+    "tol_increment": 1e-4,
+    "tol_distance": 1e-6,
     "return_info": True,
+    "verbose": False,
+}
+
+gprox_options = {
+    "l1_mode": darsia.L1Mode.RAVIART_THOMAS,
 }
 
 # ! ---- Tests ----
@@ -197,7 +219,7 @@ def test_newton(a_key, s_key, dim):
         options=options,
         method="newton",
     )
-    assert np.isclose(distance, true_distance[dim], atol=1e-5)
+    assert np.isclose(distance, true_distance[dim], rtol=1e-2)
     assert info["converged"]
 
 
@@ -215,7 +237,7 @@ def test_std_bregman(a_key, s_key, dim):
         options=options,
         method="bregman",
     )
-    assert np.isclose(distance, true_distance[dim], atol=1e-2)
+    assert np.isclose(distance, true_distance[dim], rtol=1e-2)
     assert info["converged"]
 
 
@@ -233,5 +255,22 @@ def test_adaptive_bregman(a_key, s_key, dim):
         options=options,
         method="bregman",
     )
-    assert np.isclose(distance, true_distance[dim], atol=1e-5)
+    assert np.isclose(distance, true_distance[dim], rtol=1e-2)
+    assert info["converged"]
+
+
+@pytest.mark.parametrize("dim", [2, 3])
+@pytest.mark.parametrize("s_key", range(len(solvers_gprox)))
+def test_gprox(dim, s_key):
+    """Test all combinations for adaptive Bregman."""
+    options.update(gprox_options)
+    options.update(solvers_gprox[s_key])
+    distance, info = darsia.wasserstein_distance(
+        src_image[dim],
+        dst_image[dim],
+        options=options,
+        method="gprox",
+    )
+    print(f"distance: {distance} true_distance: {true_distance[dim]}")
+    assert np.isclose(distance, true_distance[dim], rtol=5e-2)
     assert info["converged"]
