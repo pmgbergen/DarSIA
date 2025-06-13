@@ -21,7 +21,8 @@ class DCTSolver(Grid):
         # take the discrete cosine transform
 
 
-        rhs_2d = (np.reshape(rhs[:-1], self.grid.shape, order="F") / self.scale_factor)
+        # NOTE: Need to double check the scaling and volume
+        rhs_2d = (np.reshape(rhs[:-1], self.grid.shape, order="F") / self.scale_factor) / self.volume
 
         dct = scipy.fft.dctn(-rhs_2d, type=2, norm='ortho')
 
