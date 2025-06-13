@@ -6,7 +6,8 @@ from darsia import Grid
 
 class DCTSolver(Grid):
     # TODO: Move later to a different location
-    def __init__(self, grid):
+    def __init__(self, grid, scale_factor):
+        self.scale_factor = scale_factor
         lambda_x = 2 * (np.cos(np.pi * np.arange(grid.shape[1]) / (grid.shape[1] - 1)) - 1)
         lambda_y = 2 * (np.cos(np.pi * np.arange(grid.shape[0]) / (grid.shape[0] - 1)) - 1)
         kernel_inv = np.outer(lambda_x / (grid.voxel_size[1] ** 2), np.ones(grid.shape[0])) + np.outer(
@@ -19,7 +20,8 @@ class DCTSolver(Grid):
     def solve(self, rhs, **kwargs):
         # take the discrete cosine transform
 
-        rhs_2d = np.reshape(rhs[:-1], self.grid.shape, order="F") / self.volume
+
+        rhs_2d = (np.reshape(rhs[:-1], self.grid.shape, order="F") / self.scale_factor)
 
         dct = scipy.fft.dctn(-rhs_2d, type=2, norm='ortho')
 
