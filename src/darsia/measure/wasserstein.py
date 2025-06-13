@@ -556,7 +556,13 @@ class VariationalWassersteinDistance(darsia.EMD):
         # solution[self.fully_reduced_system_indices_full] = self.linear_solver.solve(
         #     self.fully_reduced_rhs, **self.solver_options
         # )
-        self.linear_solver = darsia.DCTSolver(self.grid)
+        L_init = self.options.get("L_init", 1.0)
+        #scale_factor = np.max(np.abs(L_init * self.face_weights))
+        scale_factor = 1. #np.max(np.abs(L_init * self.weighted_mass_matrix_faces_init.diagonal()))
+        #scale_factor = np.min(np.abs(L_init * self.weighted_mass_matrix_faces_init.diagonal()))
+        #scale_factor = np.median((L_init * self.weighted_mass_matrix_faces_init.diagonal()))
+
+        self.linear_solver = darsia.DCTSolver(self.grid, scale_factor=scale_factor)
         self.solver_options = {}
 
     def setup_eliminate_flux(self) -> None:
