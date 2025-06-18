@@ -54,7 +54,7 @@ class CO2MassAnalysis:
             plt.imshow(self.density_gaseous_co2)
             plt.colorbar()
             plt.title(
-                f"density gaseous CO2 - {self.atmospheric_pressure}" 
+                f"density gaseous CO2 - {self.atmospheric_pressure}"
                 + f" bar - {self.temperature} deg Celsius"
             )
             plt.savefig(log / "density_gaseous_co2.png")
@@ -64,8 +64,8 @@ class CO2MassAnalysis:
             plt.imshow(self.solubility_co2)
             plt.colorbar()
             plt.title(
-                f"solubility CO2 - {self.atmospheric_pressure}" + 
-                f" bar - {self.temperature} deg Celsius"
+                f"solubility CO2 - {self.atmospheric_pressure}"
+                + f" bar - {self.temperature} deg Celsius"
             )
             plt.savefig(log / "solubility_co2.png")
             plt.close()
