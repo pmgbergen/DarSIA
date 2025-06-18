@@ -260,9 +260,9 @@ class RelativeColorCorrection(darsia.BaseCorrection):
         # logging.info("Calibrating the relative color correction.")
 
         # Make sure there exists one reference color for each set of similar colors
-        assert len(self.data) == len(self.reference_data), (
-            f"Data mismatch: {len(self.data)} vs. {len(self.reference_data)}"
-        )
+        assert len(self.data) == len(
+            self.reference_data
+        ), f"Data mismatch: {len(self.data)} vs. {len(self.reference_data)}"
 
         # Define the number of samples and color components
         self.stacked_coordinates = darsia.CoordinateArray(
