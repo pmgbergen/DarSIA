@@ -18,6 +18,21 @@ from scipy.stats import hmean
 
 import darsia
 
+import torch
+from torch.autograd import grad
+import ot
+import ot.plot
+if torch.cuda.is_available():
+    use_cuda = True
+
+from ot import dist
+from ot.bregman import sinkhorn, sinkhorn2
+from ot.bregman import empirical_sinkhorn2
+from ot.bregman import empirical_sinkhorn2_geomloss
+
+from geomloss.sinkhorn_images import sinkhorn_divergence
+from geomloss import SamplesLoss
+
 # General TODO list
 # - improve assembling of operators through partial assembling
 # - allow to reuse setup.
@@ -2879,7 +2894,7 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
         self.num_iter = self.options.get("num_iter", 100)
         """ int: max number of iterations"""
 
-        self.only_non_zeros = options.get("only_non_zeros", True)
+        self.only_non_zeros = options.get("only_non_zeros", False)
         """ bool: consider only non-zero pixels"""
         
         self.verbose = options.get("verbose", True)
@@ -2901,7 +2916,7 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
             x_i.append(np.arange(N)*self.grid.voxel_size[i]+ self.grid.voxel_size[i]/2)
 
         self.cc_xyz = np.meshgrid(*x_i, indexing="ij")
-        self.cc = np.vstack([c.ravel() for c in self.cc_xyz]).T
+        self.cc = np.ascontiguousarray(np.vstack([c.ravel() for c in self.cc_xyz]).T)
 
 
     def support(self, img: darsia.Image) -> np.ndarray:
@@ -2923,7 +2938,7 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
     
     def interpolate_kantorovich_potentials(self, 
                             coord_source, img1, pot_1,
-                            coord_target, img2, pot_2) -> (np.ndarray, np.ndarray): 
+                            coord_target, img2, pot_2) -> Tuple(np.ndarray, np.ndarray): 
         """
         When we work only on the "support" of the images,
         we need to extend the kantorovich potentials to the whole domain.
@@ -2956,14 +2971,23 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
             
         return pot_1_whole, pot_2_whole
 
-    def img2pythorch(self, img: darsia.Image) -> torch.Tensor:
+    def image_np2pythorch(self, img: np.ndarray) -> torch.Tensor:
         """
         Convert a darsia image to a pythorch tensor suitable for geomloss.sinkhorn_image
         that that takes tensor with (nimages, nchannels, *spatial dimensions)
         """
+        use_cuda = torch.cuda.is_available()
         dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
          
-        return torch.from_numpy(img.img).type(dtype).view(1,1,*img.img.shape)
+        return torch.from_numpy(img).type(dtype).view(1,1,*img.shape)
+    
+    def pythorch2img(self, img: torch.Tensor) -> darsia.Image:
+        """
+        Convert a pythorch tensor to a darsia image
+        """
+        img = img.cpu().numpy()
+        img = np.reshape(img, (img.shape[2], img.shape[3]))
+        return img
 
         
     def __call__(self, img_1: darsia.Image, img_2: darsia.Image) -> float:
@@ -2988,11 +3012,22 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
 
         # Only non-zero pixels are considered
         print(f"voxel size {np.prod(self.voxel_size):.2e}")
+        print(f"self.only_non_zeros {self.only_non_zeros=}")
         if self.only_non_zeros:
             tol_support = 1e-16
+            
             self.support_source = np.where(preprocessed_img_1.img.flatten("F")>tol_support)
             self.support_target = np.where(preprocessed_img_2.img.flatten("F")>tol_support)
+            print("find ing supports")
 
+            #supp = np.zeros_like(preprocessed_img_2.img)
+            #supp[preprocessed_img_2.img>tol_support] = 1.0
+            #meta_2d = {"width": 1, "height": 1, "space_dim": 2, "scalar": True}
+            #self.support_source_image = darsia.Image(supp, meta_2d)
+            #self.support_source_image.to_vtk("support_source.vtk")
+
+
+        
             self.complement_support_source = np.where(preprocessed_img_1.img.flatten("F")<=1e-16)
             self.complement_support_target = np.where(preprocessed_img_2.img.flatten("F")<=1e-16)
 
@@ -3010,7 +3045,7 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
 
 
         # Compute the distance
-        if "empiricalwefwef" in self.sinkhorn_algorithm:
+        if "empirical" in self.sinkhorn_algorithm:
             distance, log = empirical_sinkhorn2(
                 coord_support_1, # coordinate of non-zero pixels in image 1
                 coord_support_2, # coordinate of non-zero pixels in image 2
@@ -3052,34 +3087,50 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
             pot_target = log['g']
 
         elif "geomloss_sinkhorn_images" == self.sinkhorn_algorithm:
-            raise NotImplementedError("geomloss_sinkhorn_images not implemented yet")
-            
             # package to be imported
-            from geomloss.sinkhorn_images import sinkhorn_divergence
-            import torch
-            use_cuda = torch.cuda.is_available()
+            
             
             # convert the images to pythorch tensors
-            torch_img1 = self.img2pythorch(preprocessed_img_1)
-            torch_img2 = self.img2pythorch(preprocessed_img_2)
-            
-            distance, log = sinkhorn_divergence(
+            torch_img1 = self.image_np2pythorch(img_1.img * np.prod(self.voxel_size))
+            torch_img2 = self.image_np2pythorch(img_2.img * np.prod(self.voxel_size))
+            # defualt blur = 1/preprocessed_img_1.img.shape[0]
+            # eps = blu**p
+            blur = 1e-5
+            #blur = 1/preprocessed_img_1.img.shape[0]
+            f, g = sinkhorn_divergence(
                 torch_img1,
                 torch_img2,
                 p=1,
-                blur=None,
-                reach=None,
+                blur=blur,
+                reach=None, # None means that the marginal constrained are satisfied 
                 axes=self.grid.voxel_size*self.grid.shape,
-                scaling=0.5,
+                scaling=0.9,
                 cost=None,
-                debias=True,
+                debias=False,
                 potentials=True,
-                verbose=True,
+                verbose=False,
                 )
+            from geomloss.utils import scal
+            batch = True
+            af = scal(torch_img1, f, batch=batch)
+            bg = scal(torch_img2, g, batch=batch)
+            distance = (af + bg ).cpu().numpy()[0]
+            print(f"distance: {distance=} {f.shape=} {g.shape=} {af=} {bg=}")
             # sinkhorn and sinkhorn_log work with the potentials    
-            self.niter = log['niter']
-            self.kantorovich_potential_source = log['u']
-            self.kantorovich_potential_target = log['v']
+            self.niter = 10000 #log['niter']
+            # convert the potentials to numpy arrays
+            f = self.pythorch2img(f)
+            g = self.pythorch2img(g)
+            self.kantorovich_potential_source = f
+            self.kantorovich_potential_target = g
+            #distance = (np.sum(f*(preprocessed_img_1.img-preprocessed_img_2.img)) #+ np.sum(g*preprocessed_img_2.img)
+            #            )* np.prod(self.voxel_size)
+            #print(f"distance: {distance=}")
+            
+
+            #self.kantorovich_potential_source = f#log['u']
+            #self.kantorovich_potential_target = g#log['v']
+            #distance = ( np.sum(f * preprocessed_img_1.img) + np.sum(g*preprocessed_img_2.img) ) 
         
         elif "geomloss_sinkhorn_samples" in self.sinkhorn_algorithm:
             #
@@ -3113,7 +3164,7 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
                 diameter=diameter, #diameter
                 scaling=0.5, # reduction of the regularization
                 cost=None,
-                debias=False,
+                debias=True,
                 potentials=True,
             )
 
@@ -3128,6 +3179,68 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
             self.niter = len(epsilon_schedule(p_exponent, diameter, blur, scaling)) 
             self.kantorovich_potential_source = f
             self.kantorovich_potential_target = g
+
+        elif "pot_geomloss" == self.sinkhorn_algorithm:
+            distance, log = ot.bregman.empirical_sinkhorn2_geomloss(
+                        self.coord_support_source,    
+                        self.coord_support_target,
+                        reg=self.sinkhorn_regularization,
+                        a=non_zero_img1,
+                        b=non_zero_img2,
+                        metric="euclidean",
+                        scaling=0.95,
+                        verbose=True,
+                        debias=False,
+                        log=True,
+                        backend="online",
+                    )
+            
+            #distance = log["value"]
+            
+            # what about the residual of the marginals?
+            self.niter = 1000#log['niter']
+            pot_source = log["f"]
+            pot_target = log["g"]
+
+        elif "geomloss_sample" == self.sinkhorn_algorithm:
+            import torch
+            X_s_torch = torch.tensor(self.coord_support_source)
+            X_t_torch = torch.tensor(self.coord_support_target)
+
+            a_torch = torch.tensor(non_zero_img1)
+            b_torch = torch.tensor(non_zero_img2)
+
+            p = 1
+            blur = self.sinkhorn_regularization
+        
+            # force gradients for computing dual
+            a_torch.requires_grad = True
+            b_torch.requires_grad = True
+
+            loss = SamplesLoss(
+                loss="sinkhorn",
+                p=p,
+                blur=blur,
+                backend="online",
+                debias=False,
+                scaling=0.95,
+                verbose=self.verbose,
+            )
+
+            # compute value
+            value = loss(
+                a_torch, X_s_torch, b_torch, X_t_torch
+            )  # linear + entropic/KL reg?
+
+            # get dual potentials
+            f, g = grad(value, [a_torch, b_torch])
+
+            self.niter = 100
+            pot_source = f.cpu().detach().numpy()
+            pot_target = g.cpu().detach().numpy()
+            distance = value.cpu().detach().numpy()
+
+       
 
 
         else:
@@ -3149,47 +3262,33 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
                 self.niter = log['n_iter']
                 pot_source = np.exp(log['logu'])
                 pot_target = np.exp(log['logv'])
+            elif self.sinkhorn_algorithm == 'sinkhorn_log':
+                self.niter = log['niter']
+                pot_source = log['u']
+                pot_target = log['v']
+
             else:
                 # sinkhorn and sinkhorn_log work with the potentials    
                 self.niter = log['niter']
                 pot_source = log['u']
                 pot_target = log['v']
 
-        self.kantorovich_potential_source = np.zeros(np.prod(self.grid.shape))
-        self.kantorovich_potential_target = np.zeros(np.prod(self.grid.shape))
-        self.kantorovich_potential_source[self.support_source] = pot_source
-        self.kantorovich_potential_target[self.support_target] = pot_target
-        
-
-        # print("distance: ", distance)
-        # import matplotlib.pyplot as pl
+            print(f"distance: {distance=} niter {self.niter}")
 
 
-        # print(coord_support_1)
+        if not "geomloss_sinkhorn_images" == self.sinkhorn_algorithm:
+            self.kantorovich_potential_source = np.zeros(np.prod(self.grid.shape))
+            self.kantorovich_potential_target = np.zeros(np.prod(self.grid.shape))
 
-        # pl.figure(1)
-        # pl.plot(coord_support_1[:,0], coord_support_1[:,1], "+b", label="Source samples")
-        # pl.plot(coord_support_2[:,0], coord_support_2[:,1], "xr", label="Target samples")
-        # pl.legend(loc=0)
-        # pl.title("Source and target distributions")
+            if self.only_non_zeros:
+                self.kantorovich_potential_source[self.support_source] = pot_source
+                self.kantorovich_potential_target[self.support_target] = pot_target
+            else:
+                self.kantorovich_potential_source = pot_source
+                self.kantorovich_potential_target = pot_target
 
-        
-        # pl.figure(2)
-        # ot.plot.plot2D_samples_mat(coord_support_1, coord_support_2, plan, c=[0.5, 0.5, 1])
-        # pl.plot(coord_support_1[:, 0], coord_support_1[:, 1], "+b", label="Source samples")
-        # pl.plot(coord_support_2[:, 0], coord_support_2[:, 1], "xr", label="Target samples")
-        # pl.legend(loc=0)
-        # pl.title("OT matrix with samples")
-        # pl.show()
-
-        # print("Interpolating the kantorovich potentials")
-        # self.kantorovich_potential_source_whole, self.kantorovich_potential_target_whole = self.interpolate_kantorovich_potentials(
-        #          self.cc, non_zero_img1, self.kantorovich_potential_source,
-        #          self.cc, non_zero_img2, self.kantorovich_potential_target
-        #      )
-
-        self.kantorovich_potential_source = self.kantorovich_potential_source.reshape(img_1.shape, order="F")    
-        self.kantorovich_potential_target = self.kantorovich_potential_target.reshape(img_2.shape, order="F")
+            self.kantorovich_potential_source = self.kantorovich_potential_source.reshape(img_1.shape, order="F")    
+            self.kantorovich_potential_target = self.kantorovich_potential_target.reshape(img_2.shape, order="F")
 
     
 
@@ -3199,6 +3298,7 @@ class WassersteinDistanceSinkhorn(darsia.EMD):
             "niter": self.niter,
             "kantorovich_potential_source": self.kantorovich_potential_source,
             "kantorovich_potential_target": self.kantorovich_potential_target,
+            "pressure": -self.kantorovich_potential_source,
         }
 
         return distance, info
@@ -3225,7 +3325,7 @@ def wasserstein_distance(
     """
     # Define method for computing 1-Wasserstein distance
 
-    if method.lower() in ["newton", "bregman", "gprox"]:
+    if method.lower() in ["newton", "bregman", "gprox", "sinkhorn"]:
         # Use Finite Volume Iterative Method (Newton or Bregman)
 
         # Extract grid - implicitly assume mass_2 to generate same grid
@@ -3245,6 +3345,12 @@ def wasserstein_distance(
                     "Weighted Gprox not implemented for anisotropic meshes"
                 )
             w1 = WassersteinDistanceGproxPGHD(grid, options)
+        elif method.lower() == "sinkhorn":
+            if weight is not None:
+                raise NotImplementedError(
+                    "Weighted Gprox not implemented for anisotropic meshes"
+                )
+            w1 = WassersteinDistanceSinkhorn(grid, options)
 
     elif method.lower() == "cv2.emd":
         # Use Earth Mover's Distance from CV2
