@@ -1,9 +1,8 @@
 """Module containing dynamic illumination correction functionality."""
 
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Literal
 
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 import scipy.optimize
