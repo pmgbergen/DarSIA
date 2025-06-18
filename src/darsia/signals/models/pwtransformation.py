@@ -2,10 +2,11 @@ from pathlib import Path
 from typing import Optional
 from warnings import warn
 
-import darsia
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
+
+import darsia
 
 
 class PWTransformation:

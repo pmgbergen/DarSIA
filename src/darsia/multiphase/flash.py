@@ -2,8 +2,9 @@
 
 from warnings import warn
 
-import darsia
 import numpy as np
+
+import darsia
 
 
 class Flash:
