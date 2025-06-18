@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import io
 import math
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -1884,6 +1885,66 @@ class OpticalImage(Image):
             raise NotImplementedError
 
         print("Image saved as: " + str(Path(path)))
+
+    def encode(self, suffix: str, **kwargs) -> bytes:
+        """Encode image without writing to file.
+
+        Arguments:
+            suffix (str): file format extension.
+            keyword arguments:
+                quality (int): number between 0 and 100, indicating
+                    the resolution used to store a jpg image
+                compression (int): number between 0 and 9, indicating
+                    the level of compression used for storing in
+                    png format.
+
+        """
+        # To prepare for the use of cv2.imwrite, convert to BGR color space.
+        bgr_image = self.to_trichromatic("BGR", return_image=True)
+        bgr_array = bgr_image.img
+        suffix = suffix.lower()
+
+        # Write image, using the conventional matrix indexing
+        if self.original_dtype == np.uint8:
+            ubyte_image = bgr_image.img_as(np.uint8).img
+
+            if suffix in [".jpg", ".jpeg"]:
+                quality = kwargs.get("quality", 90)
+                _, data = cv2.imencode(
+                    suffix,
+                    ubyte_image,
+                    [int(cv2.IMWRITE_JPEG_QUALITY), quality],
+                )
+            elif suffix == ".png":
+                compression = kwargs.get("compression", 6)
+                _, data = cv2.imencode(
+                    suffix,
+                    ubyte_image,
+                    [cv2.IMWRITE_PNG_COMPRESSION, compression],
+                )
+            else:
+                _, data = cv2.imencode(suffix, ubyte_image)
+
+        elif self.original_dtype == np.uint16:
+            ubyte_image = skimage.img_as_uint(bgr_array)
+            _, data = cv2.imencode(
+                suffix,
+                ubyte_image,
+                [
+                    cv2.IMWRITE_TIFF_COMPRESSION,
+                    1,
+                    cv2.IMWRITE_TIFF_XDPI,
+                    350,
+                    cv2.IMWRITE_TIFF_YDPI,
+                    350,
+                ],
+            )
+
+        else:
+            raise NotImplementedError
+
+        return io.BytesIO(data).read()
+
 
     # ! ---- Color transformations
 

@@ -35,6 +35,7 @@ from darsia.utils.extractcharacteristicdata import *
 from darsia.utils.masks import *
 from darsia.utils import linalg
 from darsia.utils import quadrature
+from darsia.utils import augmented_plotting
 from darsia.utils import plotting
 from darsia.utils.detection import *
 from darsia.utils.standard_images import *
@@ -55,6 +56,7 @@ from darsia.corrections.shape.deformation import *
 from darsia.corrections.color.colorbalance import *
 from darsia.corrections.color.colorcheckerfinder import *
 from darsia.corrections.color.illuminationcorrection import *
+from darsia.corrections.color.dynamicilluminationcorrection import *
 from darsia.corrections.color.colorcorrection import *
 from darsia.corrections.color.relativecolorcorrection import *
 from darsia.corrections.color.experimentalcolorcorrection import *
@@ -69,6 +71,7 @@ from darsia.signals.models.staticthresholdmodel import *
 from darsia.signals.models.dynamicthresholdmodel import *
 from darsia.signals.models.binarydataselector import *
 from darsia.signals.models.kernelinterpolation import *
+from darsia.signals.models.pwtransformation import *
 from darsia.signals.reduction.signalreduction import *
 from darsia.signals.reduction.monochromatic import *
 from darsia.signals.reduction.dimensionreduction import *
@@ -98,3 +101,5 @@ from darsia.assistants.rotation_correction_assistant import *
 from darsia.assistants.subregion_assistant import *
 from darsia.assistants.crop_assistant import *
 from darsia.assistants.labels_assistant import *
+from darsia.multiphase.flash import *
+from darsia.multiphase.mass_analysis import *
