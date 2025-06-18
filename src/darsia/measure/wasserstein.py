@@ -19,7 +19,6 @@ from scipy.stats import hmean
 import darsia
 
 
-
 class L1Mode(Enum):
     """Mode for computing the l1 dissipation."""
 
@@ -166,7 +165,6 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Store list of callbacks passed by user
         self.callbacks = options.get("callbacks", None)
         """list: list of callbacks to be called during the optimization"""
-
 
     def _setup_dof_management(self) -> None:
         """Setup of Raviart-Thomas-type DOF management.
@@ -1042,7 +1040,6 @@ class VariationalWassersteinDistance(darsia.EMD):
             - self.flux_embedding.dot(weight.dot(self.mass_matrix_faces.dot(flat_flux)))
         )
 
-    
     def linear_solve(
         self,
         matrix: sps.csc_matrix,
@@ -1914,7 +1911,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
         for iter in range(num_iter):
             # It is possible that the linear solver fails. In this case, we simply
             # stop the iteration and return the current solution.
-            if True:#try:
+            if True:  # try:
                 # (Possibly) update the regularization, based on the current approximation
                 # of the flux - use the inverse of the norm of the flux
                 update_solver = bregman_update(iter)
@@ -2101,7 +2098,7 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 old_force = new_force.copy()
                 old_distance = new_distance
 
-            else:#except Exception:
+            else:  # except Exception:
                 warnings.warn("Bregman iteration abruptly stopped due to some error.")
                 break
 
@@ -2292,7 +2289,6 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                 "DCT solver does not support permeability faces. Use CG or KSP instead."
             )
 
-
         # Define CG solver
         kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(
             self.grid.num_cells
@@ -2352,7 +2348,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                 "pc_type": "hypre",
                 # "ksp_monitor_true_residual" : None
             }
-            #if permeability_faces is not None:
+            # if permeability_faces is not None:
             #    ksp_ctrl["ksp_monitor_true_residual"] = None
             Poisson_solver.setup(ksp_ctrl)
 
@@ -2483,7 +2479,9 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             permeability_faces=transport_density_faces,
         )
         integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
-        pressure = weighted_Poisson_solver.solve(integrated_mass_diff, x0=self.kantorovich_potential)
+        pressure = weighted_Poisson_solver.solve(
+            integrated_mass_diff, x0=self.kantorovich_potential
+        )
         # store the kantorovich potential
         self.kantorovich_potential[:] = pressure[:]
         if isinstance(weighted_Poisson_solver, darsia.linalg.KSP):
@@ -2841,9 +2839,6 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             return distance, info
         else:
             return distance
-        
-
-
 
 
 # Unified access

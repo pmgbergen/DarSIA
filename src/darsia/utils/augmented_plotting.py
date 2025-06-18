@@ -2,10 +2,11 @@ from pathlib import Path
 from typing import Optional
 
 import cv2
-import darsia
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
+
+import darsia
 
 
 def plot_contour_on_image(

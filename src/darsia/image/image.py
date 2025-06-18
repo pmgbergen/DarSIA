@@ -7,8 +7,8 @@ Images contain the image array, and in addition metadata about origin and dimens
 from __future__ import annotations
 
 import copy
-import logging
 import io
+import logging
 import math
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -1944,7 +1944,6 @@ class OpticalImage(Image):
             raise NotImplementedError
 
         return io.BytesIO(data).read()
-
 
     # ! ---- Color transformations
 

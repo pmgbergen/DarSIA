@@ -1,14 +1,15 @@
 """Module with tools for CO2 mass analysis."""
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 from warnings import warn
-from dataclasses import dataclass
 
-import darsia
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
+
+import darsia
 
 
 class CO2MassAnalysis:
