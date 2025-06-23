@@ -1127,11 +1127,12 @@ class VariationalWassersteinDistance(darsia.EMD):
             solution = np.zeros_like(rhs)
 
             # 1. Reduce flux block
-            (
-                self.reduced_matrix,
-                self.reduced_rhs,
-                self.matrix_flux_inv,
-            ) = self.eliminate_flux(matrix, rhs)
+            if setup_linear_solver:
+                self.matrix_flux_inv, self.reduced_matrix = (
+                    self.set_Jinv_and_reduced_jacobian(matrix)
+                )
+
+            self.reduced_rhs = self.reduced_residual(self.matrix_flux_inv, rhs)
 
             # 2. Build linear solver for reduced system
             if setup_linear_solver:
@@ -1186,11 +1187,12 @@ class VariationalWassersteinDistance(darsia.EMD):
                 )
 
             # 1. Reduce flux block
-            (
-                self.reduced_matrix,
-                self.reduced_rhs,
-                self.matrix_flux_inv,
-            ) = self.eliminate_flux(matrix, rhs)
+            if setup_linear_solver:
+                self.matrix_flux_inv, self.reduced_matrix = (
+                    self.set_Jinv_and_reduced_jacobian(matrix)
+                )
+
+            self.reduced_rhs = self.reduced_residual(self.matrix_flux_inv, rhs)
 
             # 2. Reduce to pure pressure system
             (
@@ -1280,6 +1282,47 @@ class VariationalWassersteinDistance(darsia.EMD):
         reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
 
         return reduced_jacobian, reduced_residual, J_inv
+
+    def set_Jinv_and_reduced_jacobian(self, jacobian: sps.csc_matrix) -> tuple:
+        """Eliminate the flux block from the jacobian and residual.
+
+        Employ a Schur complement/block Gauss elimination approach.
+
+        Args:
+            jacobian (sps.csc_matrix): jacobian
+            residual (np.ndarray): residual
+
+        Returns:
+            tuple: reduced jacobian, reduced residual, inverse of flux block
+
+        """
+        # Build Schur complement wrt flux-block
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
+        schur_complement = self.D.dot(J_inv.dot(self.DT))
+
+        # Gauss eliminiation on matrices
+        reduced_jacobian = self.jacobian_subblock + schur_complement
+
+        return J_inv, reduced_jacobian
+
+    def reduced_residual(self, J_inv: sps.csc_matrix, residual: np.ndarray) -> tuple:
+        """Eliminate the flux block from the jacobian and residual.
+
+        Employ a Schur complement/block Gauss elimination approach.
+
+        Args:
+            jacobian (sps.csc_matrix): jacobian
+            residual (np.ndarray): residual
+
+        Returns:
+            tuple: reduced jacobian, reduced residual, inverse of flux block
+
+        """
+        # Gauss elimination on vectors
+        reduced_residual = residual[self.reduced_system_slice].copy()
+        reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
+
+        return reduced_residual
 
     def eliminate_lagrange_multiplier(
         self, reduced_jacobian, reduced_residual
