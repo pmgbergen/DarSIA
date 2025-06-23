@@ -2225,9 +2225,15 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         """sps.csc_matrix: inverse of the (diagonal) of mass matrix on faces:"""
         """flat fluxes -> flat fluxes"""
 
-        linear_solver_options = self.options.get("linear_solver_options", {})
+        linear_solver_type = self.options.get("poisson_solver", "cg")
+        linear_solver_options = self.options.get("poisson_solver_options", {})
         rtol = linear_solver_options.get("rtol", 1e-6)
-        self.Poisson_solver = self.setup_poisson_solver("pure_poisson", rtol=rtol)
+        maxiter = linear_solver_options.get("maxiter", 100)
+
+        self.Poisson_solver = self.setup_poisson_solver("pure_poisson", 
+                                                        linear_solver_type=linear_solver_type,
+                                                        linear_solver_rtol=rtol,
+                                                        linear_solver_maxiter=maxiter)
         """ sps.linalg.KSP: Poisson solver"""
 
         self.full_flux_reconstructor = darsia.FVFullFaceReconstruction(self.grid)
@@ -2262,7 +2268,11 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         user_defined_amg_options = self.options.get("amg_options", {})
         self.amg_options.update(user_defined_amg_options)
 
-    def setup_poisson_solver(self, solver_prefix, rtol=1e-6, permeability_faces=None):
+    def setup_poisson_solver(self, solver_prefix, 
+                             linear_solver_type : str = "cg", 
+                             linear_solver_rtol : float = 1e-6,
+                             linear_solver_maxiter : int = 100,
+                             permeability_faces=None):
         """Return the Poisson solver.
 
         Args:
@@ -2273,31 +2283,28 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
 
         """
 
-        self.linear_solver_type = self.options.get("linear_solver", "cg")
-        """str: type of linear solver"""
-
         # Safety checks
-        assert self.linear_solver_type in [
+        assert linear_solver_type in [
             "cg",
             "ksp",
             "dct",
-        ], f"Linear solver {self.linear_solver_type} not supported."
-        linear_solver_options = self.options.get("linear_solver_options", {})
-
-        if permeability_faces is not None and self.linear_solver_type == "dct":
+        ], f"Linear solver {linear_solver_type} not supported."
+        
+        if permeability_faces is not None and linear_solver_type == "dct":
             raise ValueError(
                 "DCT solver does not support permeability faces. Use CG or KSP instead."
             )
 
-        # Define CG solver
-        kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(
-            self.grid.num_cells
-        )
 
-        if self.linear_solver_type == "dct":
+        if linear_solver_type == "dct":
             # dct is matrix-free
             pass
         else:
+            # Define CG solver
+            kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(
+                self.grid.num_cells
+            )
+
             if permeability_faces is None:
                 Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad
             else:
@@ -2309,7 +2316,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                 )
 
         #
-        if self.linear_solver_type == "cg":
+        if linear_solver_type == "cg":
             # Define CG solver
             Poisson_solver = darsia.linalg.CG(Laplacian_matrix)
 
@@ -2324,27 +2331,25 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                 ).aspreconditioner(cycle="V")
 
             # Define solver options
-            maxiter = linear_solver_options.get("maxiter", 100)
             solver_options = {
-                "rtol": rtol,
+                "rtol": linear_solver_rtol,
                 "atol": 1e-15,
-                "maxiter": maxiter,
+                "maxiter": linear_solver_maxiter,
                 "M": amg,
             }
             Poisson_solver.setup(solver_options)
 
-        elif self.linear_solver_type == "ksp":
+        elif linear_solver_type == "ksp":
             Poisson_solver = darsia.linalg.KSP(
                 Laplacian_matrix,
                 nullspace=[kernel],
                 appctx={},
                 solver_prefix=solver_prefix,
             )
-            maxiter = linear_solver_options.get("maxiter", 100)
             ksp_ctrl = {
                 "ksp_type": "cg",
-                "ksp_rtol": rtol,
-                "ksp_max_it": maxiter,
+                "ksp_rtol": linear_solver_rtol,
+                "ksp_max_it": linear_solver_maxiter,
                 "pc_type": "hypre",
                 # "ksp_monitor_true_residual" : None
             }
@@ -2352,6 +2357,9 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             #    ksp_ctrl["ksp_monitor_true_residual"] = None
             Poisson_solver.setup(ksp_ctrl)
 
+        elif linear_solver_type == "dct":
+            # Define DCT solver
+            Poisson_solver = darsia.utils.linear_solvers.dct.DCTSolver(self.grid)
         return Poisson_solver
 
     def transport_density(
@@ -2459,7 +2467,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         return p - self.inverse_mass_matrix_faces.dot(self.grad.dot(poisson_solution))
 
     def compute_kantorovich_potential(
-        self, flat_mass_diff: np.ndarray, flux: np.ndarray, tol=1e-6
+        self, flat_mass_diff: np.ndarray, flux: np.ndarray
     ) -> np.ndarray:
         """Compute the kantorovich potential from the normal flux
 
@@ -2473,9 +2481,16 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         """
         full_flux = self.full_flux_reconstructor(flux)
         transport_density_faces = np.linalg.norm(full_flux, axis=1)
+
+        linear_solver_type = self.options.get("tdens_poisson_solver", "cg")
+        linear_solver_options = self.options.get("tdens_poisson_solver_options", {})
+        tol = linear_solver_options.get("rtol", 1e-6)
+        maxiter = linear_solver_options.get("maxiter", 100)
         weighted_Poisson_solver = self.setup_poisson_solver(
             "transport_density_weighted_poisson",
-            rtol=tol,
+            linear_solver_type=linear_solver_type,
+            linear_solver_rtol=tol,
+            linear_solver_maxiter=maxiter,
             permeability_faces=transport_density_faces,
         )
         integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
