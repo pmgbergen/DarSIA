@@ -2230,10 +2230,12 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         rtol = linear_solver_options.get("rtol", 1e-6)
         maxiter = linear_solver_options.get("maxiter", 100)
 
-        self.Poisson_solver = self.setup_poisson_solver("pure_poisson", 
-                                                        linear_solver_type=linear_solver_type,
-                                                        linear_solver_rtol=rtol,
-                                                        linear_solver_maxiter=maxiter)
+        self.Poisson_solver = self.setup_poisson_solver(
+            "pure_poisson",
+            linear_solver_type=linear_solver_type,
+            linear_solver_rtol=rtol,
+            linear_solver_maxiter=maxiter,
+        )
         """ sps.linalg.KSP: Poisson solver"""
 
         self.full_flux_reconstructor = darsia.FVFullFaceReconstruction(self.grid)
@@ -2268,11 +2270,14 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         user_defined_amg_options = self.options.get("amg_options", {})
         self.amg_options.update(user_defined_amg_options)
 
-    def setup_poisson_solver(self, solver_prefix, 
-                             linear_solver_type : str = "cg", 
-                             linear_solver_rtol : float = 1e-6,
-                             linear_solver_maxiter : int = 100,
-                             permeability_faces=None):
+    def setup_poisson_solver(
+        self,
+        solver_prefix,
+        linear_solver_type: str = "cg",
+        linear_solver_rtol: float = 1e-6,
+        linear_solver_maxiter: int = 100,
+        permeability_faces=None,
+    ):
         """Return the Poisson solver.
 
         Args:
@@ -2289,12 +2294,11 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             "ksp",
             "dct",
         ], f"Linear solver {linear_solver_type} not supported."
-        
+
         if permeability_faces is not None and linear_solver_type == "dct":
             raise ValueError(
                 "DCT solver does not support permeability faces. Use CG or KSP instead."
             )
-
 
         if linear_solver_type == "dct":
             # dct is matrix-free
