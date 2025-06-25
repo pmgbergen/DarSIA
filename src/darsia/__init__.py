@@ -16,6 +16,7 @@ from darsia.measure.wasserstein import *
 from darsia.utils.point import *
 from darsia.utils.sort import *
 from darsia.utils.box import *
+from darsia.utils.grid import *
 from darsia.utils.interpolation import *
 from darsia.utils.segmentation import *
 from darsia.utils.coloranalysis import *
@@ -25,10 +26,10 @@ from darsia.utils.linear_solvers.solver import *
 from darsia.utils.linear_solvers.jacobi import *
 from darsia.utils.linear_solvers.cg import *
 from darsia.utils.linear_solvers.mg import *
+from darsia.utils.linear_solvers.dct import *
 from darsia.utils.andersonacceleration import *
 from darsia.utils.dtype import *
 from darsia.utils.formats import *
-from darsia.utils.grid import *
 from darsia.utils.fv import *
 from darsia.utils.kernels import *
 from darsia.utils.extractcharacteristicdata import *

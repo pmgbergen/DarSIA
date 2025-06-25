@@ -166,18 +166,48 @@ if HAVE_PETSC:
 
 solvers_gprox = [
     {
-        "linear_solver": "cg",
-        "linear_solver_options": {
+        "poisson_solver": "dct",
+        "tdens_poisson_solver": "cg",
+        "tdens_poisson_solver_options" : {
+            "rtol" : 1e-8,
+            "max_iter": 100,
+        },
+    },
+    {
+        "poisson_solver": "cg",
+        "poisson_solver_options": {
             "rtol": 1e-8,
+        },
+        "tdens_poisson_solver": "cg",
+        "tdens_poisson_solver_options" : {
+            "rtol" : 1e-8,
+            "max_iter": 100,
         },
     }
 ]
 if HAVE_PETSC:
     solvers_gprox += [
         {
-            "linear_solver": "ksp",
-            "linear_solver_options": {
+            "poisson_solver": "ksp",
+            "poisson_solver_options": {
                 "rtol": 1e-8,
+                "approach": "cg",
+                "pc_type": "hypre",
+            },
+            "tdens_poisson_solver": "ksp",
+            "tdens_poisson_solver_options" : {
+                "rtol" : 1e-8,
+                "max_iter": 100,
+                "approach": "cg",
+                "pc_type": "hypre",
+            },
+        },
+        {
+            "poisson_solver": "dct",
+            "tdens_poisson_solver": "ksp",
+            "tdens_poisson_solver_options" : {
+                "rtol" : 1e-8,
+                "max_iter": 100,
                 "approach": "cg",
                 "pc_type": "hypre",
             },
