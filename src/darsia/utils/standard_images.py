@@ -14,7 +14,7 @@ def zeros_like(
     mode: Literal["shape", "voxels"] = "shape",
     dtype: Optional[StandardDtype] = None,
 ) -> darsia.Image:
-    """Analogon of np.zeros_like but for darsia.Image objects.
+    """Analog of np.zeros_like but for darsia.Image objects.
 
     Args:
         image (darsia.Image): input image
@@ -42,7 +42,7 @@ def ones_like(
     mode: Literal["shape", "voxels"] = "shape",
     dtype: Optional[StandardDtype] = None,
 ) -> darsia.Image:
-    """Analogon of np.ones_like but for darsia.Image objects.
+    """Analog of np.ones_like but for darsia.Image objects.
 
     Args:
         image (darsia.Image): input image
