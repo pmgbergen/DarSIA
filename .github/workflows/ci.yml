@@ -67,4 +67,4 @@ jobs:
 
     - name: pytest
       if: ${{always()}}
-      run: pytest -n auto --dist=loadscope
+      run: pytest -n 2 --dist=loadscope
