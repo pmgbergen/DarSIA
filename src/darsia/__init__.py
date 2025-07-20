@@ -101,9 +101,10 @@ from darsia.assistants.rotation_correction_assistant import *
 from darsia.assistants.subregion_assistant import *
 from darsia.assistants.crop_assistant import *
 from darsia.assistants.labels_assistant import *
-from darsia.multiphase.experiment import *
 from darsia.multiphase.flash import *
 from darsia.multiphase.mass_analysis import *
 from darsia.multiphase.fluidflower_co2_meta import *
 from darsia.multiphase.multiphase_time_series_data import *
 from darsia.multiphase.multiphase_time_series_analysis import *
+from darsia.experiment.experiment import *
+from darsia.experiment.protocols import *
