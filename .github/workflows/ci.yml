@@ -67,4 +67,4 @@ jobs:
 
     - name: pytest
       if: ${{always()}}
-      run: pytest
+      run: pytest -n auto
