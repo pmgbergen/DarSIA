@@ -1,6 +1,7 @@
 """Module with tools for CO2 mass analysis."""
 
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
 from warnings import warn
@@ -8,7 +9,6 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
-from datetime import datetime
 
 import darsia
 
