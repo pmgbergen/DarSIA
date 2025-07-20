@@ -71,7 +71,7 @@ def full_like(
     mode: Literal["shape", "voxels"] = "shape",
     dtype: Optional[StandardDtype] = None,
 ) -> darsia.Image:
-    """Analogon of np.full_like but for darsia.Image objects.
+    """Analog of np.full_like but for darsia.Image objects.
 
     Args:
         image (darsia.Image): input image
