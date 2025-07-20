@@ -2,12 +2,13 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
+from datetime import datetime
 
 import darsia
 
@@ -20,7 +21,7 @@ class CO2MassAnalysis:
         baseline: darsia.Image,
         atmospheric_pressure: float = 1.010,
         temperature: float = 23.0,
-        log: Optional[Path] = None,
+        path: Optional[Path] = None,
     ) -> None:
         """Initialization of mass analysis.
 
@@ -28,8 +29,7 @@ class CO2MassAnalysis:
             baseline (Image): baseline image
             atmospheric_pressure (float): atmospheric pressure in bar
             temperature (float): temperature in Celsius
-            max_solubility_co2 (float): maximum solubility of CO2 in water
-            log (Path): path to log file
+            path (Path): path to log file
 
         """
         self.baseline = baseline
@@ -39,36 +39,38 @@ class CO2MassAnalysis:
         self.temperature = temperature
         """Temperature in Celsius."""
 
+        # Setup water density at 20 and 23 degrees Celsius
         self.setup_20_degrees_celsius()
         self.setup_23_degrees_celsius()
 
         # Setup density of gaseous CO2
         self.setup_density_gaseous_co2()
 
-        self.log(log)
+        # Log results
+        if path:
+            self.log(path)
 
-    def log(self, log: Optional[Path]) -> None:
+    def log(self, path: Optional[Path]) -> None:
         """Plot density, solubility, hydrostatic pressure, tempreature."""
-        if log:
-            plt.figure("density")
-            plt.imshow(self.density_gaseous_co2)
-            plt.colorbar()
-            plt.title(
-                f"density gaseous CO2 - {self.atmospheric_pressure}"
-                + f" bar - {self.temperature} deg Celsius"
-            )
-            plt.savefig(log / "density_gaseous_co2.png")
-            plt.close()
+        plt.figure("density")
+        plt.imshow(self.density_gaseous_co2)
+        plt.colorbar()
+        plt.title(
+            f"density gaseous CO2 - {self.atmospheric_pressure}"
+            + f" bar - {self.temperature} deg Celsius"
+        )
+        plt.savefig(path / "density_gaseous_co2.png")
+        plt.close()
 
-            plt.figure("solubility")
-            plt.imshow(self.solubility_co2)
-            plt.colorbar()
-            plt.title(
-                f"solubility CO2 - {self.atmospheric_pressure}"
-                + f" bar - {self.temperature} deg Celsius"
-            )
-            plt.savefig(log / "solubility_co2.png")
-            plt.close()
+        plt.figure("solubility")
+        plt.imshow(self.solubility_co2)
+        plt.colorbar()
+        plt.title(
+            f"solubility CO2 - {self.atmospheric_pressure}"
+            + f" bar - {self.temperature} deg Celsius"
+        )
+        plt.savefig(path / "solubility_co2.png")
+        plt.close()
 
     def setup_20_degrees_celsius(self) -> None:
         self.water_density_20 = 998.21  # kg/m^3 at 20 deg Celsius
@@ -292,6 +294,18 @@ class CO2MassAnalysis:
             warn("constant solubility?")
 
     def density_co2(self, temperature: float, pressure: float) -> float:
+        """Calculate density of pure CO2 at given temperature and pressure.
+
+        Uses linear interpolation of NIST data between 20 and 23 degrees Celsius.
+
+        Args:
+            temperature (float): temperature in degrees Celsius
+            pressure (float): pressure in bar
+
+        Returns:
+            float: density of CO2 in kg/m^3
+
+        """
         density_co2_20 = self.co2_density_interpolator_20(pressure)
         density_co2_23 = self.co2_density_interpolator_23(pressure)
         return (
@@ -299,51 +313,72 @@ class CO2MassAnalysis:
             + density_co2_23 * (temperature - 20) / 3
         )
 
-    def hydrostatic_pressure(self, depth: float) -> np.ndarray:
-        # Hydrostatic pressure distribution
-        height_map = np.linspace(
-            0, self.baseline.dimensions[0], self.baseline.num_voxels[0]
-        )[:, None]
-        g = 9.81  # m/s^2
-        pa2bar = 1e-5  # Conversion factor from Pascal to bar
+    def hydrostatic_pressure(self, depth: float) -> float:
+        """Calculate hydrostatic pressure at given depth, in bar.
 
+        The formula is: P = P_atm + ρ_water(T) * g * h
+
+        Uses linear interpolation of water density between 20 and 23 degrees Celsius.
+
+        Args:
+            depth (float): depth in meters
+
+        Returns:
+            float: hydrostatic pressure in bar at given depth
+
+        """
         # Interpolate water density depending on temperature
         water_density = self.water_density_20 * (23 - self.temperature) / 3 + (
             self.water_density_23 * (self.temperature - 20) / 3
         )
 
+        # Constants
+        g = 9.81  # m/s^2
+        pa2bar = 1e-5  # Conversion factor from Pascal to bar
+
+        # Height using distribution over image y-axis
+        height_map = np.linspace(
+            0, self.baseline.dimensions[0], self.baseline.num_voxels[0]
+        )[:, None]
+        index = int(depth / self.baseline.dimensions[0] * self.baseline.num_voxels[0])
+        height = height_map[index]
+
         # Determine hydrostatic pressure
         hydrostatic_pressure = (
-            self.atmospheric_pressure + water_density * g * height_map * pa2bar
+            self.atmospheric_pressure + water_density * g * height * pa2bar
         )
 
-        # Convert depth to index
-        index = int(depth / self.baseline.dimensions[0] * self.baseline.num_voxels[0])
+        return hydrostatic_pressure
 
-        return hydrostatic_pressure[index]
+    def __call__(
+        self,
+        chi_g: darsia.Image,
+        chi_aq: darsia.Image,
+    ) -> Tuple[darsia.Image, darsia.Image, darsia.Image]:
+        """Determine mass of CO2, given maps for dissolved and gaseous CO2.
 
-    def __call__(self, chi_g: darsia.Image, chi_aq: darsia.Image) -> darsia.Image:
-        """Analyze mass of CO2, given maps for dissolved and gaseous CO2.
+        Formulas are:
+        - Mass of gaseous CO2: \( m_g = chi_g \cdot \rho_co2_g \)
+        - Mass of dissolved CO2: \( m_aq = chi_aq \cdot solubility_co2 \)
+        - Total mass of CO2: \( m = m_g + m_aq \)
 
         Args:
             chi_g (Image): volumetric concentration in gas phase
             chi_aq (Image): volumetric concentration in aqueous
 
         Returns:
-            mass map of CO2
+            Tuple[Image, Image, Image]: mass map of CO2, mass map of gaseous CO2, mass map of
+                aqueous CO2
 
         """
-        # Allocate mass map
+        # Allocate mass maps
         mass = darsia.zeros_like(chi_aq, mode="voxels", dtype=np.float32)
-        mass_g = darsia.zeros_like(chi_aq, mode="voxels", dtype=np.float32)
-        mass_aq = darsia.zeros_like(chi_aq, mode="voxels", dtype=np.float32)
+        mass_g = mass.copy()
+        mass_aq = mass.copy()
 
-        # Calculate mass of dissolved CO2
-        mass_aq.img = chi_aq.img * self.solubility_co2
-
-        # Calculate mass of gas
+        # Calculate mass of gaseous, dissolved and total CO2
         mass_g.img = chi_g.img * self.density_gaseous_co2
-
+        mass_aq.img = chi_aq.img * self.solubility_co2
         mass.img = mass_g.img + mass_aq.img
 
         return mass, mass_g, mass_aq
@@ -437,6 +472,10 @@ class AdvancedCO2MassAnalysis:
 class MassAnalysisResults:
     """Summary object."""
 
+    name: str
+    """Name for the mass analysis result, e.g., name of raw image."""
+    date: Optional[datetime]
+    """Date of the mass analysis result."""
     mass: darsia.Image
     """Total mass of phase."""
     mass_g: darsia.Image
@@ -464,6 +503,8 @@ class MassAnalysisResults:
 
     def subregion(self, roi: darsia.CoordinateArray) -> "MassAnalysisResults":
         return MassAnalysisResults(
+            name=self.name,
+            date=self.date,
             mass=self.mass.subregion(roi),
             mass_g=self.mass_g.subregion(roi),
             mass_aq=self.mass_aq.subregion(roi),
