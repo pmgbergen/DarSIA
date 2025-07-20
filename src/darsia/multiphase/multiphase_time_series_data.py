@@ -1,9 +1,10 @@
 """Dataclass for managing time series multiphase data."""
 
 from dataclasses import dataclass, field
-from typing import List, Optional
-import matplotlib.pyplot as plt
 from pathlib import Path
+from typing import List, Optional
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -52,7 +53,7 @@ class MultiphaseTimeSeriesData(TimeSeriesData):
             name (str): Name for the data point, e.g. name of raw image.
             mass_g (float): Mass of the gaseous phase at this time point.
             mass_aq (float): Mass of the aqueous phase at this time point.
-            exact_mass_tot (Optional[float]): Exact/expected total mass at this time point, if available.
+            exact_mass_tot (Optional[float]): Exact/expected total mass.
             volume_g (float): Volume of the gaseous phase at this time point.
             volume_aq (float): Volume of the aqueous phase at this time point.
         """
@@ -116,7 +117,8 @@ class MultiphaseTimeSeriesData(TimeSeriesData):
         num_all_indices = len(self.time)
         num_kept_indices = len(keep_indices)
         print(
-            f"Removed {num_all_indices - num_kept_indices} out of {num_all_indices} data points."
+            f"""Removed {num_all_indices - num_kept_indices} out of"""
+            f""" {num_all_indices} data points."""
         )
 
     # ! ----- I/O -----
@@ -158,13 +160,9 @@ class MultiphaseTimeSeriesData(TimeSeriesData):
         """Plot mass of gaseous, aqueous and total phases over time."""
 
         # Determine the index up to which to plot
-        try:
-            ind = (
-                len(self.time)
-                if time_max is None
-                else np.argmax(np.where(np.array(self.time) < time_max)[0]) + 1
-            )
-        except:
+        if time_max:
+            ind = np.argmax(np.where(np.array(self.time) < time_max)[0]) + 1
+        else:
             ind = len(self.time)
 
         # Plot mass over time
@@ -208,13 +206,9 @@ class MultiphaseTimeSeriesData(TimeSeriesData):
         """Plot volume of gaseous, aqueous and total phases over time."""
 
         # Determine the index up to which to plot
-        try:
-            ind = (
-                len(self.time)
-                if time_max is None
-                else np.argmax(np.where(np.array(self.time) < time_max)[0]) + 1
-            )
-        except:
+        if time_max:
+            ind = np.argmax(np.where(np.array(self.time) < time_max)[0]) + 1
+        else:
             ind = len(self.time)
 
         # Plot volume over time
