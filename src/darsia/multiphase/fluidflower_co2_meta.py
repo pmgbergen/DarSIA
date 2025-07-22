@@ -47,19 +47,19 @@ class FluidFlowerCO2Meta:
     @property
     def co2_analysis_data(self):
         """Path to the CO2 analysis data."""
-        return self.fluidflower_folder / "co2_analysis.npz"
+        return self.fluidflower_folder / "co2_analysis.csv"
 
     @property
     def co2_g_analysis_data(self):
         """Path to the CO2 gas analysis data."""
-        return self.fluidflower_folder / "co2_g_analysis.npz"
+        return self.fluidflower_folder / "co2_g_analysis.csv"
 
     @property
     def pw_transformation_g_data(self):
         """Path to the pressure-weighted transformation data for gas."""
-        return self.fluidflower_folder / "pw_transformation_g.npz"
+        return self.fluidflower_folder / "pw_transformation_g.csv"
 
     @property
     def pw_transformation_aq_data(self):
         """Path to the pressure-weighted transformation data for aqueous phase."""
-        return self.fluidflower_folder / "pw_transformation_aq.npz"
+        return self.fluidflower_folder / "pw_transformation_aq.csv"
