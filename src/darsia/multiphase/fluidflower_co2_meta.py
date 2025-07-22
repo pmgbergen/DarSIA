@@ -13,8 +13,19 @@ class FluidFlowerCO2Meta:
         # Data
         data_folder = Path(meta_data["data"]["folder"])
         format = meta_data["data"].get("format", "JPG")
-        self.paths = list(sorted(data_folder.glob(f"*.{format}")))
-        assert len(self.paths) > 0, "No images found in the data folder."
+        self.data = list(sorted(data_folder.glob(f"*.{format}")))
+        assert len(self.data) > 0, "No images found in the data folder."
+
+        # Mass calibration data
+        try:
+            mass_calibration_data_folder = (
+                data_folder / meta_data["data"]["mass_calibration"]
+            )
+        except KeyError:
+            mass_calibration_data_folder = data_folder
+        self.mass_calibration_data = list(
+            sorted(mass_calibration_data_folder.glob(f"*.{format}"))
+        )
 
         # Results
         self.results_folder = Path(meta_data["results"]["folder"])
