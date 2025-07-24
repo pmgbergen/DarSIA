@@ -10,11 +10,53 @@ class FluidFlowerCO2Meta:
         with open(meta, "r") as f:
             meta_data = json.load(f)
 
+        # ! ---- RUN DATA ---- ! #
+
         # Data
         data_folder = Path(meta_data["data"]["folder"])
         format = meta_data["data"].get("format", "JPG")
         self.data = list(sorted(data_folder.glob(f"*.{format}")))
         assert len(self.data) > 0, "No images found in the data folder."
+
+        # Baseline image
+        try:
+            self.baseline = data_folder / meta_data["data"]["baseline"]
+        except KeyError:
+            self.baseline = None
+
+        # ! ---- COMMON DATA ---- ! #
+
+        common_folder = Path(meta_data["common"]["folder"])
+
+        # Labels
+        try:
+            self.labels = common_folder / meta_data["common"]["labels"]
+        except KeyError:
+            self.labels = None
+
+        # Depth map
+        try:
+            self.depth_map = common_folder / meta_data["common"]["depth_map"]
+        except KeyError:
+            self.depth_map = None
+
+        # Reference colorchecker
+        try:
+            self.ref_colorchecker = (
+                common_folder / meta_data["common"]["ref_colorchecker"]
+            )
+        except KeyError:
+            self.ref_colorchecker = None
+
+        # ! ---- CALIBRATION DATA ---- ! #
+
+        # Scaling calibration data
+        try:
+            self.scaling_calibration = (
+                data_folder / meta_data["data"]["scaling_calibration"]
+            )
+        except KeyError:
+            self.scaling_calibration = None
 
         # Mass calibration data
         try:
@@ -27,6 +69,8 @@ class FluidFlowerCO2Meta:
             sorted(mass_calibration_data_folder.glob(f"*.{format}"))
         )
 
+        # ! ---- RESULTS DATA ---- ! #
+
         # Results
         self.results_folder = Path(meta_data["results"]["folder"])
 
@@ -35,7 +79,7 @@ class FluidFlowerCO2Meta:
             self.results_folder / meta_data["results"]["fluidflower"]
         )
 
-    # Results data
+    # More results data
 
     @property
     def log_folder(self):
