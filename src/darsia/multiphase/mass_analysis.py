@@ -21,7 +21,6 @@ class CO2MassAnalysis:
         baseline: darsia.Image,
         atmospheric_pressure: float = 1.010,
         temperature: float = 23.0,
-        path: Optional[Path] = None,
     ) -> None:
         """Initialization of mass analysis.
 
@@ -29,7 +28,6 @@ class CO2MassAnalysis:
             baseline (Image): baseline image
             atmospheric_pressure (float): atmospheric pressure in bar
             temperature (float): temperature in Celsius
-            path (Path): path to log file
 
         """
         self.baseline = baseline
@@ -46,12 +44,13 @@ class CO2MassAnalysis:
         # Setup density of gaseous CO2
         self.setup_density_gaseous_co2()
 
-        # Log results
-        if path:
-            self.log(path)
+    def log(self, path: Path) -> None:
+        """Plot density, solubility, hydrostatic pressure, temperature.
 
-    def log(self, path: Optional[Path]) -> None:
-        """Plot density, solubility, hydrostatic pressure, tempreature."""
+        Args:
+            path (Path): path to save the plots
+
+        """
         plt.figure("density")
         plt.imshow(self.density_gaseous_co2)
         plt.colorbar()
@@ -73,6 +72,8 @@ class CO2MassAnalysis:
         plt.close()
 
     def setup_20_degrees_celsius(self) -> None:
+        """Setup water density at 20 degrees Celsius and NIST data for CO2 density."""
+
         self.water_density_20 = 998.21  # kg/m^3 at 20 deg Celsius
         """Water derisity at 20 degrees Celsius."""
 
@@ -420,6 +421,7 @@ class AdvancedCO2MassAnalysis:
         c_aq = self.concentration_analysis_aq(img)
         # TODO integrate in concentration analysis!?
         # TODO any other expert knowledge somewhere?
+        # TODO add logging that stores to a file?
         c_g.img = np.clip(c_g.img, 0, 1)
         c_aq.img = np.clip(c_aq.img, 0, 1)
         if self.restoration is not None:
