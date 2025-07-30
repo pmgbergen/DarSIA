@@ -75,6 +75,7 @@ from darsia.signals.models.pwtransformation import *
 from darsia.signals.reduction.signalreduction import *
 from darsia.signals.reduction.monochromatic import *
 from darsia.signals.reduction.dimensionreduction import *
+from darsia.signals.reduction.color_path import *
 from darsia.restoration.tvd import *
 from darsia.restoration.median import *
 from darsia.restoration.resize import *
