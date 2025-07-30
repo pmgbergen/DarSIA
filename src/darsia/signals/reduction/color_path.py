@@ -197,7 +197,7 @@ class ColorPath:
 
         return best_fit_interpretation
 
-    def inverse_absolute_color_path(self, image: darsia.Image) -> darsia.Image:
+    def absolute_inverse(self, image: darsia.Image) -> darsia.Image:
         """Inverse the absolute color path to an image defined by the closest color
         representation on the path.
 
@@ -210,7 +210,7 @@ class ColorPath:
         """
         return self._parametrize_colors(image, self.absolute_colors)
 
-    def inverse_relative_color_path(self, image: darsia.Image) -> darsia.Image:
+    def relative_inverse(self, image: darsia.Image) -> darsia.Image:
         """Inverse the relative color path to an image defined by the closest color
         representation on the path.
 
