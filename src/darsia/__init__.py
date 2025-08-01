@@ -62,6 +62,10 @@ from darsia.corrections.color.relativecolorcorrection import *
 from darsia.corrections.color.experimentalcolorcorrection import *
 from darsia.corrections.readcorrection import *
 from darsia.image.coordinatetransformation import *  # Requires affine correction
+from darsia.signals.reduction.signalreduction import *
+from darsia.signals.reduction.monochromatic import *
+from darsia.signals.reduction.dimensionreduction import *
+from darsia.signals.color.color_path import *
 from darsia.signals.models.basemodel import *
 from darsia.signals.models.combinedmodel import *
 from darsia.signals.models.linearmodel import *
@@ -72,10 +76,7 @@ from darsia.signals.models.dynamicthresholdmodel import *
 from darsia.signals.models.binarydataselector import *
 from darsia.signals.models.kernelinterpolation import *
 from darsia.signals.models.pwtransformation import *
-from darsia.signals.reduction.signalreduction import *
-from darsia.signals.reduction.monochromatic import *
-from darsia.signals.reduction.dimensionreduction import *
-from darsia.signals.reduction.color_path import *
+from darsia.signals.models.color_path_interpolation import *
 from darsia.restoration.tvd import *
 from darsia.restoration.median import *
 from darsia.restoration.resize import *
