@@ -3,42 +3,46 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Literal
 
 
 import darsia
 
 
 def wasserstein_distance(
-    mass_1: darsia.Image,
-    mass_2: darsia.Image,
-    method: str,
+    mass_src: darsia.Image,
+    mass_dst: darsia.Image,
+    method: Literal["newton", "bregman", "gprox", "cv2.emd"] = "newton",
     weight: Optional[darsia.Image] = None,
     **kwargs,
-):
+) -> float | tuple[float, dict]:
     """Unified access to Wasserstein distance computation between images with same mass.
 
     Args:
-        mass_1 (darsia.Image): image 1, source distribution
-        mass_2 (darsia.Image): image 2, destination distribution
-        method (str): method to use ("newton", "bregman", or "cv2.emd")
-        **kwargs: additional arguments (only for "newton" and "bregman")
+        mass_src (darsia.Image): source distribution
+        mass_dst (darsia.Image): destination distribution
+        method (Literal["newton", "bregman", "gprox", "cv2.emd"]): method to use
+        **kwargs: additional arguments (only for "newton", "bregman", "gprox")
             - options (dict): options for the method.
+
+    Returns:
+        float | tuple[float, dict: Wasserstein distance or (distance, info)
 
     """
     # Define method for computing 1-Wasserstein distance
+    method_name = method.lower()
 
-    if method.lower() in ["newton", "bregman", "gprox"]:
+    if method_name in ["newton", "bregman", "gprox"]:
         # Use Finite Volume Iterative Method (Newton or Bregman)
 
-        # Extract grid - implicitly assume mass_2 to generate same grid
-        grid: darsia.Grid = darsia.generate_grid(mass_1)
+        # Extract grid - implicitly assume mass_dst to generate same grid
+        grid: darsia.Grid = darsia.generate_grid(mass_dst)
 
         # Fetch options and define Wasserstein method
         options = kwargs.get("options", {})
 
         # Define method
-        match method.lower():
+        match method_name:
             case "newton":
                 w1 = darsia.WassersteinDistanceNewton(grid, weight, options)
             case "bregman":
@@ -49,31 +53,29 @@ def wasserstein_distance(
                         "Weighted Gprox not implemented for anisotropic meshes"
                     )
                 w1 = darsia.WassersteinDistanceGproxPGHD(grid, options)
-            case _:
-                raise NotImplementedError(f"Method {method} not implemented.")
 
-    elif method.lower() == "cv2.emd":
+    elif method_name == "cv2.emd":
         # Use Earth Mover's Distance from CV2
         assert weight is None, "Weighted EMD not supported by cv2."
         preprocess = kwargs.get("preprocess")
         w1 = darsia.EMD(preprocess)
 
     else:
-        raise NotImplementedError(f"Method {method} not implemented.")
+        raise NotImplementedError(f"Method {method_name} not implemented.")
 
     # Compute and return Wasserstein distance
-    return w1(mass_1, mass_2)
+    return w1(mass_src, mass_dst)
 
 
 def wasserstein_distance_to_vtk(
-    path: Union[str, Path],
+    path: Path,
     info: dict,
 ) -> None:
     """Write the output of the Wasserstein distance to a VTK file.
 
     Args:
-        path (Union[str, Path]): path to the VTK file
-        info (dict): information dictionary
+        path (Path): path to the VTK file
+        info (dict): information dictionary output of darsia.wasserstein_distance
 
     NOTE: Requires pyevtk to be installed.
 
@@ -92,4 +94,4 @@ def wasserstein_distance_to_vtk(
             ("weight_inv", darsia.Format.TENSOR),
         ]
     ]
-    darsia.plotting.to_vtk(path, data)
+    darsia.plotting.to_vtk(Path(path), data)
