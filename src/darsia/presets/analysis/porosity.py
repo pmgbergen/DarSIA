@@ -12,7 +12,6 @@ from darsia.presets.analysis.multichromatictracer import MultichromaticTracerAna
 
 
 class PorosityAnalysis(MultichromaticTracerAnalysis):
-
     def __init__(
         self,
         baseline: darsia.Image,
@@ -23,7 +22,7 @@ class PorosityAnalysis(MultichromaticTracerAnalysis):
         num_iterations: int = 100,
         eps: float = 1e-2,
         debug: bool = False,
-        **kwargs
+        **kwargs,
     ):
         """Constructor.
 
@@ -51,7 +50,7 @@ class PorosityAnalysis(MultichromaticTracerAnalysis):
             relative=False,
             show_plot=False,
             use_tvd=False,
-            **kwargs
+            **kwargs,
         )
 
         # Initialize the analysis object and clip values
@@ -354,7 +353,7 @@ def patched_porosity_analysis(
     num_iterations: int = 100,
     eps: float = 1e-2,
     debug: bool = False,
-    **kwargs
+    **kwargs,
 ) -> darsia.Image:
     """Patched approach to porosity analysis.
 
@@ -390,7 +389,7 @@ def patched_porosity_analysis(
                 num_iterations=num_iterations,
                 eps=eps,
                 debug=debug,
-                **kwargs
+                **kwargs,
             )
             porosity.img[subregion] = porosity_analysis(sub_baseline).img
 
