@@ -318,7 +318,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         ], f"Linear solver {self.linear_solver_type} not supported."
         assert self.formulation in [
             "full",
-            "flux-reduced",
+            "flux_reduced",
             "pressure",
         ], f"Formulation {self.formulation} not supported."
 
@@ -816,6 +816,8 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         """
         # The L1 dissipation corresponds to the integral over the transport density
+        if not hasattr(self, "face_reconstruction"):
+            self._setup_face_reconstruction()
         full_flux = self.face_reconstruction(flat_flux)
         return np.linalg.norm(full_flux, axis=-1)
 
@@ -1297,9 +1299,9 @@ class VariationalWassersteinDistance(darsia.EMD):
 
         """
         # Make sure the jacobian is a CSC matrix
-        assert isinstance(
-            reduced_jacobian, sps.csc_matrix
-        ), "Jacobian should be a CSC matrix."
+        assert isinstance(reduced_jacobian, sps.csc_matrix), (
+            "Jacobian should be a CSC matrix."
+        )
 
         # Effective Gauss-elimination for the particular case of the lagrange multiplier
         self.fully_reduced_jacobian.data[:] = np.delete(
@@ -1704,14 +1706,11 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 with warnings.catch_warnings():
                     warnings.filterwarnings("ignore", message="overflow encountered")
                     if iter > 1 and (
-                        (
-                            convergence_history["residual"][-1]
-                            < tol_residual * convergence_history["residual"][0]
-                            and convergence_history["flux_increment"][-1]
-                            < tol_increment * convergence_history["flux_increment"][0]
-                            and convergence_history["distance_increment"][-1]
-                            < tol_distance
-                        )
+                        convergence_history["residual"][-1]
+                        < tol_residual * convergence_history["residual"][0]
+                        and convergence_history["flux_increment"][-1]
+                        < tol_increment * convergence_history["flux_increment"][0]
+                        and convergence_history["distance_increment"][-1] < tol_distance
                     ):
                         break
             except Exception:
@@ -2080,16 +2079,12 @@ class WassersteinDistanceBregman(VariationalWassersteinDistance):
                 with warnings.catch_warnings():
                     warnings.filterwarnings("ignore", message="overflow encountered")
                     if iter > 1 and (
-                        (
-                            convergence_history["aux_force_increment"][-1]
-                            < tol_increment
-                            * convergence_history["aux_force_increment"][0]
-                            and convergence_history["distance_increment"][-1]
-                            / new_distance
-                            < tol_distance
-                            and convergence_history["mass_conservation_residual"][-1]
-                            < tol_residual
-                        )
+                        convergence_history["aux_force_increment"][-1]
+                        < tol_increment * convergence_history["aux_force_increment"][0]
+                        and convergence_history["distance_increment"][-1] / new_distance
+                        < tol_distance
+                        and convergence_history["mass_conservation_residual"][-1]
+                        < tol_residual
                     ):
                         break
 
@@ -2698,7 +2693,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
                 print(
                     f"{self.iter:05d} | {new_distance:.4e} | "
                     + f"{distance_increment:.2e} | {flux_increment:.2e}"
-                    + f" | {convergence_history["mass_conservation_residual"][-1]:.2e} |"
+                    + f" | {convergence_history['mass_conservation_residual'][-1]:.2e} |"
                     + f" gap={self.duality_gap:.2e}"
                     + f" dual={self.dual_value:.2e} primal={self.primal_value:.2e}"
                     + f" cpu={self.iter_cpu:.3f}"
