@@ -14,7 +14,6 @@ import darsia
 
 
 class Model:
-
     @abc.abstractmethod
     @overload
     def __call__(self, signal: np.ndarray) -> np.ndarray: ...
@@ -50,17 +49,27 @@ class Model:
 
 
 class HeterogeneousModel(Model):
-    def __init__(self, obj: Union[Model, list[Model]], labels: darsia.Image):
-
+    def __init__(
+        self,
+        obj: Union[Model, list[Model]],
+        labels: darsia.Image,
+        ignore_labels: list[int] = None,
+    ) -> None:
         self.masks = darsia.Masks(labels)
+        """Masks for each label in the image."""
         self.obj = {}
+        """Dictionary of models for each label."""
         for label in self.masks.unique_labels:
             self.obj[label] = copy.copy(obj)
+        self.ignore_labels = ignore_labels if ignore_labels is not None else []
+        """Labels to ignore for signals."""
 
     def __call__(self, signal: np.ndarray) -> np.ndarray:
         output = np.zeros(signal.shape[:2])  # TODO shape?
         for i, mask in enumerate(self.masks):
             label = self.masks.unique_labels[i]
+            if label in self.ignore_labels:
+                continue
             output[mask.img] = self[label](signal[mask.img])
         return output
 
