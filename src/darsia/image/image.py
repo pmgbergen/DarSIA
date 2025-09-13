@@ -738,6 +738,18 @@ class Image:
 
         return type(self)(img=img, **metadata)
 
+    def roi(self, roi: darsia.ROI) -> Image:
+        """Extraction of spatial subregion using a darsia.ROI object.
+
+        Args:
+            roi (darsia.ROI): region of interest, defining a box in space.
+
+        Returns:
+            Image: image with restricted spatial domain.
+
+        """
+        return roi(self)
+
     # ! ---- Routines on metadata
 
     def reset_origin(self, return_image: bool = False) -> Optional[darsia.Image]:
