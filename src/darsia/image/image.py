@@ -13,7 +13,7 @@ import math
 from datetime import datetime, timedelta
 from pathlib import Path
 from time import time as tm
-from typing import Any, Optional, Union
+from typing import Any, Optional
 from warnings import warn
 
 import cv2
@@ -141,9 +141,7 @@ class Image:
         # ! ---- Add absolute time data in datetime format
 
         default_date = self.time_num * [None] if self.series else None
-        date: Union[Optional[datetime], list[Optional[datetime]]] = kwargs.get(
-            "date", default_date
-        )
+        date: Optional[datetime | list[datetime]] = kwargs.get("date", default_date)
         self.date = date
         """Time in datetime format."""
         default_reference_date = date[0] if isinstance(date, list) else date
@@ -157,7 +155,7 @@ class Image:
 
         self.time = None
         """Relative time in scalar format (in seconds)."""
-        time: Optional[Union[float, int, list]] = kwargs.pop("time", None)
+        time: Optional[float | int | list] = kwargs.pop("time", None)
         self.set_time(time)
 
         # ! ---- Time related safety check
@@ -190,7 +188,6 @@ class Image:
         # NOTE: Require mapping format: darsia.Image -> darsia.Image
         # May require redefinition of the coordinate system.
         if transformations is not None:
-
             for transformation in transformations:
                 if transformation is not None and hasattr(transformation, "__call__"):
                     tic = tm()
@@ -301,7 +298,7 @@ class Image:
 
     def set_time(
         self,
-        time: Optional[Union[float, int, list]] = None,
+        time: Optional[float | int | list] = None,
     ) -> None:
         """Setter for time array.
 
@@ -332,7 +329,7 @@ class Image:
             # From argument
             self.time = time
 
-    def update_reference_time(self, reference: Union[datetime, float]) -> None:
+    def update_reference_time(self, reference: datetime | float) -> None:
         """Update reference time. Modifies the relative time.
 
         reference (datetime or float): reference date or relative reference time (in seconds)
@@ -370,7 +367,7 @@ class Image:
         """
         return copy.deepcopy(self)
 
-    def append(self, image: Image, offset: Optional[Union[float, int]] = None) -> None:
+    def append(self, image: Image, offset: Optional[float | int] = None) -> None:
         """Append other image to current image. Makes in particular
         a non-space-time image to a space-time image.
 
@@ -630,8 +627,8 @@ class Image:
 
     def slice(
         self,
-        cut: Union[float, int],
-        axis: Union[str, int],
+        cut: float | int,
+        axis: str | int,
     ) -> Image:
         """Extract of spatial slice.
 
@@ -663,7 +660,7 @@ class Image:
         return reduced_image
 
     def subregion(
-        self, roi: Union[tuple[slice], darsia.VoxelArray, darsia.CoordinateArray]
+        self, roi: tuple[slice] | darsia.VoxelArray | darsia.CoordinateArray
     ) -> Image:
         """Extraction of spatial subregion.
 
@@ -677,7 +674,7 @@ class Image:
 
         """
         # Manage input
-        if isinstance(roi, tuple) or isinstance(roi, darsia.VoxelArray):
+        if isinstance(roi, (tuple, darsia.VoxelArray)):
             voxels = roi
             coordinates = None
         elif isinstance(roi, darsia.CoordinateArray):
@@ -802,7 +799,7 @@ class Image:
             metadata = self.metadata()
             return type(self)(self.img - other.img, **metadata)
 
-    def __mul__(self, scalar: Union[float, int]) -> Image:
+    def __mul__(self, scalar: float | int) -> Image:
         """Scaling of image.
 
         Arguments:
@@ -812,7 +809,7 @@ class Image:
             Image: scaled image
 
         """
-        if not isinstance(scalar, float) or isinstance(scalar, int):
+        if not isinstance(scalar, (float, int)):
             raise ValueError
 
         result_image = self.copy()
@@ -1618,7 +1615,7 @@ class Image:
 
     # ! ---- I/O
 
-    def save(self, path: Union[str, Path], verbose=True) -> None:
+    def save(self, path: str | Path, verbose=True) -> None:
         """Save image to file.
 
         Store array and metadata in single file.
@@ -1635,7 +1632,7 @@ class Image:
         if verbose:
             print(f"Image stored under {path}")
 
-    def to_vtk(self, path: Union[str, Path], name: Optional[str] = None) -> None:
+    def to_vtk(self, path: str | Path, name: Optional[str] = None) -> None:
         """Save image to file in vtk format.
 
         Args:
@@ -2049,7 +2046,7 @@ class OpticalImage(Image):
 
     def add_grid(
         self,
-        origin: Optional[Union[np.ndarray, list[float]]] = None,
+        origin: Optional[np.ndarray | list[float]] = None,
         dx: float = 1,
         dy: float = 1,
         color: tuple = (0, 0, 125),
