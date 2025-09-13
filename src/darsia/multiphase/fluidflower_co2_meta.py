@@ -27,12 +27,33 @@ class FluidFlowerCO2Meta:
         # ! ---- COMMON DATA ---- ! #
 
         common_folder = Path(meta_data["common"]["folder"])
+        self.common_folder = common_folder
+
+        # Common baseline image
+        try:
+            self.common_baseline = common_folder / meta_data["common"]["baseline"]
+        except KeyError:
+            self.common_baseline = None
+
+        # Common segmented baseline image
+        try:
+            self.segmentation = common_folder / meta_data["common"]["segmentation"]
+        except KeyError:
+            self.segmentation = None
 
         # Labels
         try:
             self.labels = common_folder / meta_data["common"]["labels"]
         except KeyError:
             self.labels = None
+
+        # Depth measurements
+        try:
+            self.depth_measurements = (
+                common_folder / meta_data["common"]["depth_measurements"]
+            )
+        except KeyError:
+            self.depth_measurements = None
 
         # Depth map
         try:
@@ -49,6 +70,20 @@ class FluidFlowerCO2Meta:
             self.ref_colorchecker = None
 
         # ! ---- CALIBRATION DATA ---- ! #
+
+        # CO2 calibration data
+        try:
+            self.co2_calibration = data_folder / meta_data["data"]["co2_calibration"]
+        except KeyError:
+            self.co2_calibration = None
+
+        # CO2(g) calibration data
+        try:
+            self.co2_g_calibration = (
+                data_folder / meta_data["data"]["co2_g_calibration"]
+            )
+        except KeyError:
+            self.co2_g_calibration = None
 
         # Scaling calibration data
         try:
