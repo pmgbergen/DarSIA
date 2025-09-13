@@ -1,12 +1,13 @@
 """Piecewise linear color path in RGB space."""
 
-from typing import Literal, overload
-from pathlib import Path
 import json
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
 import logging
+from pathlib import Path
+from typing import Literal, overload
+
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.colors import LinearSegmentedColormap
 
 import darsia
 

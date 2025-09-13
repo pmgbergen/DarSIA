@@ -2,13 +2,14 @@
 
 import logging
 from pathlib import Path
+from typing import Callable
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from matplotlib.widgets import Button, Slider
 
 import darsia
-import matplotlib.pyplot as plt
-from matplotlib.widgets import Button, Slider
-import numpy as np
-from typing import Callable
-import pandas as pd
 
 logger = logging.getLogger(__name__)
 

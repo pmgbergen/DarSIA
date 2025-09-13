@@ -4,10 +4,10 @@ from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from scipy import interpolate
 
 import darsia
-import pandas as pd
 
 
 class PWTransformation:

@@ -1,9 +1,9 @@
 """Module for organizing data with equi-distant time intervals."""
 
 import json
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from dataclasses import dataclass
 from typing import Optional
 
 

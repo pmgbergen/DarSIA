@@ -1,10 +1,11 @@
+from abc import abstractmethod
 from pathlib import Path
 from typing import Optional
 
+import matplotlib.pyplot as plt
+
 import darsia
 from darsia.utils.augmented_plotting import plot_contour_on_image
-import matplotlib.pyplot as plt
-from abc import abstractmethod
 
 
 class MultiphaseTimeSeriesAnalysis:

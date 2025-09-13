@@ -1,8 +1,10 @@
 """Polygonal regions of interest (ROI) for darsia.Image."""
 
-import numpy as np
 from typing import Tuple
-from shapely.geometry import Polygon, Point
+
+import numpy as np
+from shapely.geometry import Point, Polygon
+
 import darsia
 
 

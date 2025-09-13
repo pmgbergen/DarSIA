@@ -9,8 +9,8 @@ from darsia import (
     CurvatureCorrection,
     DriftCorrection,
     IlluminationCorrection,
-    TypeCorrection,
     Resize,
+    TypeCorrection,
 )
 
 AnyCorrection = (

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
+import pandas as pd
 from scipy.interpolate import RBFInterpolator
 from scipy.optimize import least_squares
-from pathlib import Path
-import pandas as pd
 
 import darsia
 
