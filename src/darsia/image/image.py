@@ -673,6 +673,7 @@ class Image:
             Image: image with restricted spatial domain.
 
         """
+
         # Manage input
         if isinstance(roi, (tuple, darsia.VoxelArray)):
             voxels = roi
@@ -1074,7 +1075,10 @@ class Image:
                     fig = plt.figure(_title)
                     cmap = kwargs.get("cmap", "viridis")
                     plt.imshow(
-                        skimage.img_as_float(array), cmap=cmap, extent=self.domain
+                        array,
+                        # skimage.img_as_float(array),
+                        cmap=cmap,
+                        extent=self.domain,
                     )
                     use_colorbar = kwargs.get("use_colorbar", False)
                     if use_colorbar:
