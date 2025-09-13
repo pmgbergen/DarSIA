@@ -1,12 +1,16 @@
 """Piecewise linear color path in RGB space."""
 
-from typing import Literal, overload, Tuple
-
+from typing import Literal, overload
+from pathlib import Path
+import json
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+import logging
 
 import darsia
+
+logger = logging.getLogger(__name__)
 
 
 class ColorPath:
@@ -26,7 +30,7 @@ class ColorPath:
 
     def __init__(
         self,
-        colors: list[np.ndarray] | None,
+        colors: list[np.ndarray] | None = [np.zeros(3), np.ones(3)],
         base_color: np.ndarray | None = None,
         relative_colors: list[np.ndarray] | None = None,
         values: np.ndarray | list[float] | None = None,
@@ -35,9 +39,11 @@ class ColorPath:
         """Color path.
 
         Args:
-            colors: Absolute colors in RGB space, defining the color path.
+            colors: Absolute colors in RGB space, defining the color path. Defaults
+                to a simple grayscale path from black to white.
             base_color: Base color in RGB space, used as the first color in the path.
-            relative_colors: Relative colors in RGB space, defining the color path
+            relative_colors: Relative colors in RGB space wrt. the base color,
+                defining the color path. If provided, `colors` must be `None`.
             values: Values from 0 to 1 parametrizing/sampling the colors. If `None`,
                 the relative distances between the colors are used as natural values.
             mode: Color space to use for interpolation in between colors.
@@ -321,43 +327,45 @@ class ColorPath:
                 **image.metadata(),
             )
 
+    def to_dict(self) -> dict:
+        """Convert the color path to a dictionary representation.
 
-def define_color_path(image: darsia.Image, mask: darsia.Image) -> "ColorPath":
-    """Interactive setup of a color path based on an image."""
+        Returns:
+            dict: Dictionary representation of the color path.
 
-    # Sanity checks
-    assert mask.img.dtype == bool, "Mask must be a boolean mask."
+        """
+        return {
+            "colors": [c.tolist() for c in self.colors],
+            "base_color": self.base_color.tolist(),
+            "relative_colors": [c.tolist() for c in self.relative_colors],
+            "values": self.values,
+            "mode": self.mode,
+        }
 
-    def _get_mean_color(self, image, mask=None):
-        if mask is not None:
-            return np.mean(image.img[mask.img].reshape(-1, 3), axis=0)
-        else:
-            return np.mean(image.img.reshape(-1, 3), axis=0)
+    def save(self, path: Path) -> None:
+        """Save the color path to a file.
 
-    colors = []
-    while True:
-        assistant = darsia.RectangleSelectionAssistant(image)
+        Args:
+            path (Path): The path to the file where the color path should be saved.
 
-        # Pick a box in the image and convert it to a mask
-        box: Tuple[slice, slice] = assistant()
-        boxed_mask = darsia.zeros_like(mask, dtype=bool)
-        boxed_mask.img[box] = mask.img[box]
+        """
+        with open(path, "w") as f:
+            json.dump(self.to_dict(), f)
 
-        # Determine the mean color in the box
-        mean_color = _get_mean_color(image, mask=boxed_mask)
-        colors.append(mean_color)
+    def load(self, path: Path) -> None:
+        """Load the color path from a file.
 
-        add_more = (
-            input("Do you want to add another color to the path? (y/n) ")
-            .strip()
-            .lower()
-        )
-        if add_more != "y":
-            break
+        Args:
+            path (Path): The path to the file from which the color path should be loaded.
 
-    # Create a global color path
-    return darsia.ColorPath(
-        colors=colors,
-        base_color=colors[0],
-        mode="rgb",
-    )
+        """
+        with open(path, "r") as f:
+            data = json.load(f)
+            self.colors = [np.array(c) for c in data["colors"]]
+            self.base_color = np.array(data["base_color"])
+            self.relative_colors = [np.array(c) for c in data["relative_colors"]]
+            self.values = data["values"]
+            self.mode = data["mode"]
+            self.num_segments = len(self.colors) - 1
+            self.sort()
+            logger.info(f"Loaded color path from {path}.")
