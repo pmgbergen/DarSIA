@@ -41,7 +41,7 @@ class WassersteinDistanceNewton(darsia.VariationalWassersteinDistance):
         return self.optimality_conditions(rhs, solution)
 
     def jacobian(self, solution: np.ndarray) -> sps.linalg.LinearOperator:
-        """Compute the LU factorization of the Jacobian of the solution.
+        """Compute the Jacobian of the optimality conditions.
 
         Args:
             solution (np.ndarray): solution
@@ -50,22 +50,21 @@ class WassersteinDistanceNewton(darsia.VariationalWassersteinDistance):
             sps.linalg.splu: LU factorization of the jacobian
 
         """
+        # Only need to update the flux-flux block
         flat_flux = solution[self.flux_slice]
         face_weights, _ = self._compute_face_weight(flat_flux)
         weight = sps.diags(face_weights)
-        approx_jacobian = sps.bmat(
-            [
-                [
-                    weight @ self.mass_matrix_faces,
-                    -self.div.T,
-                    None,
-                ],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
-            ],
-            format="csc",
-        )
-        return approx_jacobian
+        flux_flux_block = weight @ self.mass_matrix_faces
+
+        # Assemble full jacobian and store for later use
+        # - first iteration: base on linear part of jacobian
+        # - later iterations: update flux-flux block only
+        if not hasattr(self, "full_jacobian"):
+            self.full_jacobian = self.broken_darcy.copy()
+        last_jacobian = self.full_jacobian.tolil()
+        last_jacobian[(self.flux_slice, self.flux_slice)] = flux_flux_block
+        self.full_jacobian = last_jacobian.tocsc()
+        return self.full_jacobian
 
     def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
         """Solve the Beckman problem using Newton's method.
