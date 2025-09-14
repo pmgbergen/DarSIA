@@ -6,11 +6,62 @@ import time
 import tracemalloc
 import warnings
 from typing import override
+from dataclasses import dataclass, field
 
 import numpy as np
 import scipy.sparse as sps
 
 import darsia
+
+
+@dataclass
+class _ConvergenceHistory:
+    """Class to store the convergence history of the Newton iteration.
+
+    Use outside of BeckmannNewtonSolver is not intended.
+
+    """
+
+    distance: list[float] = field(default_factory=list)
+    """History of distance values."""
+    residual: list[float] = field(default_factory=list)
+    """History of residual values."""
+    flux_increment: list[float] = field(default_factory=list)
+    """History of flux increment values."""
+    distance_increment: list[float] = field(default_factory=list)
+    """History of distance increment values."""
+    timings: list[dict] = field(default_factory=list)
+    """History of timings."""
+    total_run_time: list[float] = field(default_factory=list)
+    """History of total run time."""
+
+    def append(
+        self,
+        distance: float,
+        residual: float,
+        flux_increment: float,
+        distance_increment: float,
+        timings: dict,
+        total_run_time: float,
+    ) -> None:
+        """Append a new convergence entry."""
+        self.distance.append(distance)
+        self.residual.append(residual)
+        self.flux_increment.append(flux_increment)
+        self.distance_increment.append(distance_increment)
+        self.timings.append(timings)
+        self.total_run_time.append(total_run_time)
+
+    def as_dict(self) -> dict:
+        """Return a plain-dict view compatible with previous code."""
+        return {
+            "distance": self.distance,
+            "residual": self.residual,
+            "flux_increment": self.flux_increment,
+            "distance_increment": self.distance_increment,
+            "timings": self.timings,
+            "total_run_time": self.total_run_time,
+        }
 
 
 class BeckmannNewtonSolver(darsia.BeckmannProblem):
@@ -109,15 +160,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         new_distance = 0
 
         # Initialize container for storing the convergence history
-        self.convergence_history = {
-            "distance": [],
-            "residual": [],
-            "flux_increment": [],
-            "distance_increment": [],
-            "timing": [],
-            "run_time": [],
-        }
-        convergence_history = self.convergence_history
+        convergence_history = _ConvergenceHistory()
 
         # Print  header for later printing performance to screen
         # - distance
@@ -177,14 +220,16 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
                 # Apply Anderson acceleration to flux contribution (the only nonlinear part).
                 # Application to full solution, or just the pressure, lead to divergence,
                 # while application to the flux, results in improved performance.
-                tic = time.time()
                 if self.anderson is not None:
+                    tic = time.time()
                     solution_i[self.flux_slice] = self.anderson(
                         solution_i[self.flux_slice],
                         update_i[self.flux_slice],
                         iter,
                     )
-                stats_i["time_acceleration"] = time.time() - tic
+                    stats_i["time_acceleration"] = time.time() - tic
+                else:
+                    stats_i["time_acceleration"] = 0.0
 
                 # Update discrete W1 distance
                 flux = solution_i[self.flux_slice]
@@ -198,24 +243,22 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
                 # 1 - flux increment (fixed-point interpretation)
                 # 2 - distance increment (Minimization interpretation)
 
-                # Update convergence history
-                convergence_history["distance"].append(new_distance)
-                convergence_history["residual"].append(
-                    res_pde
-                )  # np.linalg.norm(residual_i, 2))
-                convergence_history["flux_increment"].append(
-                    np.linalg.norm(increment[self.flux_slice], 2)
+                # Update convergence history (timing first so run_time uses latest timings)
+                flux_inc_norm = np.linalg.norm(increment[self.flux_slice], 2)
+                distance_inc_abs = abs(new_distance - old_distance)
+                convergence_history.append(
+                    new_distance,
+                    res_pde,
+                    flux_inc_norm,
+                    distance_inc_abs,
+                    stats_i,
+                    np.nan,  # placeholder for total run time
                 )
-                convergence_history["distance_increment"].append(
-                    abs(new_distance - old_distance)
-                )
-                convergence_history["timing"].append(stats_i)
-
-                # Extract current total run time
-                current_run_time = self._analyze_timings(convergence_history["timing"])[
+                # Update run time based on sum of timings
+                current_total_run_time = self._sum_timings(convergence_history.timings)[
                     "total"
                 ]
-                convergence_history["run_time"].append(current_run_time)
+                convergence_history.total_run_time[-1] = current_total_run_time
 
                 # Print performance to screen
                 # - distance
@@ -223,21 +266,21 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
                 # - flux increment
                 # - residual
                 if self.verbose:
-                    distance_increment = (
-                        convergence_history["distance_increment"][-1] / new_distance
+                    relative_distance_increment = (
+                        convergence_history.distance_increment[-1] / new_distance
                     )
-                    flux_increment = (
-                        convergence_history["flux_increment"][-1]
-                        / convergence_history["flux_increment"][0]
+                    relative_flux_increment = (
+                        convergence_history.flux_increment[-1]
+                        / convergence_history.flux_increment[0]
                     )
-                    residual = (
-                        convergence_history["residual"][-1]
-                        / convergence_history["residual"][0]
+                    relative_residual = (
+                        convergence_history.residual[-1]
+                        / convergence_history.residual[0]
                     )
                     print(
                         f"""Iter. {iter} \t| {new_distance:.6e} \t| """
-                        f"""{distance_increment:.6e} \t| {flux_increment:.6e} \t| """
-                        f"""{residual:.6e}"""
+                        f"""{relative_distance_increment:.6e} \t| {relative_flux_increment:.6e} \t| """
+                        f"""{relative_residual:.6e}"""
                     )
 
                 # Stopping criterion - force one iteration. BAse stopping criterion on
@@ -250,11 +293,11 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
                 with warnings.catch_warnings():
                     warnings.filterwarnings("ignore", message="overflow encountered")
                     if iter > 1 and (
-                        convergence_history["residual"][-1]
-                        < tol_residual * convergence_history["residual"][0]
-                        and convergence_history["flux_increment"][-1]
-                        < tol_increment * convergence_history["flux_increment"][0]
-                        and convergence_history["distance_increment"][-1] < tol_distance
+                        convergence_history.residual[-1]
+                        < tol_residual * convergence_history.residual[0]
+                        and convergence_history.flux_increment[-1]
+                        < tol_increment * convergence_history.flux_increment[0]
+                        and convergence_history.distance_increment[-1] < tol_distance
                     ):
                         break
             except Exception:
@@ -266,14 +309,14 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
                     callback(self)
 
         # Summarize profiling (time in seconds, memory in GB)
-        total_timings = self._analyze_timings(convergence_history["timing"])
+        total_timings = self._sum_timings(convergence_history.timings)
         peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
 
         # Define performance metric
         info = {
             "converged": iter < num_iter - 1,
             "number_iterations": iter,
-            "convergence_history": convergence_history,
+            "convergence_history": convergence_history.as_dict(),
             "timings": total_timings,
             "peak_memory_consumption": peak_memory_consumption,
         }
