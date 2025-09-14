@@ -15,6 +15,12 @@ import darsia
 class WassersteinDistanceNewton(darsia.VariationalWassersteinDistance):
     """Class to determine the L1 EMD/Wasserstein distance solved with Newton's method.
 
+    Solves the Beckmann prbblem in mixed form with a Newton-like method. The linearization
+    of the optimality conditions is relaxed with a cut-off parameter L for the mobility.
+    In addition, to circumvent singular Jacobians, merely a fixed-point type linearization
+    is employed. This results in a method that is in between a pure Newton method and a
+    fixed-point iteration.
+
     Here, self.L has the interpretation of a lower cut-off value in the linearization
     only. With such relaxation, the Beckman problem itself is not regularized, but
     instead the solution trajectory is merely affected.
@@ -25,10 +31,10 @@ class WassersteinDistanceNewton(darsia.VariationalWassersteinDistance):
         super().__init__(grid, weight, options)
 
         self.L = self.options.get("L", np.finfo(float).max)
-        """float: relaxation/cut-off parameter for mobility, deactivated by default"""
+        """float: relaxation/cut-off parameter for mobility, deactivated by default."""
 
     def residual(self, rhs: np.ndarray, solution: np.ndarray) -> np.ndarray:
-        """Compute the residual of the solution.
+        """Compute the residual of the solution - the optimality conditions.
 
         Args:
             rhs (np.ndarray): right hand side
@@ -60,14 +66,16 @@ class WassersteinDistanceNewton(darsia.VariationalWassersteinDistance):
         # - first iteration: base on linear part of jacobian
         # - later iterations: update flux-flux block only
         if not hasattr(self, "full_jacobian"):
-            self.full_jacobian = self.broken_darcy.copy()
+            self.full_jacobian: sps.csc_matrix = self.broken_darcy.copy()
         last_jacobian = self.full_jacobian.tolil()
         last_jacobian[(self.flux_slice, self.flux_slice)] = flux_flux_block
         self.full_jacobian = last_jacobian.tocsc()
         return self.full_jacobian
 
-    def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
-        """Solve the Beckman problem using Newton's method.
+    def solve_beckmann_problem(
+        self, flat_mass_diff: np.ndarray
+    ) -> tuple[float, np.ndarray, dict]:
+        """Solve the Beckmann problem using Newton's method.
 
         Args:
             flat_mass_diff (np.ndarray): difference of mass distributions

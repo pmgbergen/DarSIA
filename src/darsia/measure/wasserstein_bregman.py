@@ -97,8 +97,10 @@ class WassersteinDistanceBregman(darsia.VariationalWassersteinDistance):
 
         return l_scheme_mixed_darcy, weight, shrink_factor
 
-    def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
-        """Solve the Beckman problem using the Bregman method.
+    def solve_beckmann_problem(
+        self, flat_mass_diff: np.ndarray
+    ) -> tuple[float, np.ndarray, dict]:
+        """Solve the Beckmann problem using the Bregman method.
 
         Args:
             flat_mass_diff (np.ndarray): difference of mass distributions

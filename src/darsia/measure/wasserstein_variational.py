@@ -270,17 +270,6 @@ class VariationalWassersteinDistance(darsia.EMD):
         self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
         """sps.csc_matrix: mass matrix on faces: flat fluxes -> flat fluxes"""
 
-        L_init = self.options.get("L_init", 1.0)
-        self.darcy_init = sps.bmat(
-            [
-                [L_init * self.weighted_mass_matrix_faces_init, -self.div.T, None],
-                [self.div, None, -self.pressure_constraint.T],
-                [None, self.pressure_constraint, None],
-            ],
-            format="csc",
-        )
-        """sps.csc_matrix: initial Darcy operator"""
-
         self.broken_darcy = sps.bmat(
             [
                 [None, -self.div.T, None],
@@ -290,6 +279,13 @@ class VariationalWassersteinDistance(darsia.EMD):
             format="csc",
         )
         """sps.csc_matrix: linear part of the Darcy operator with pressure constraint"""
+
+        L_init = self.options.get("L_init", 1.0)
+        darcy_init = self.broken_darcy.tolil()
+        darcy_init[self.flux_slice, self.flux_slice] = (
+            L_init * self.weighted_mass_matrix_faces_init
+        )
+        self.darcy_init = darcy_init.tocsc()
 
     def _setup_face_reconstruction(self) -> None:
         """Setup of face reconstruction via RT0 basis functions and arithmetic avg.
@@ -1339,7 +1335,7 @@ class VariationalWassersteinDistance(darsia.EMD):
     # ! ---- Main methods ----
 
     @abstractmethod
-    def _solve(self, rhs: np.ndarray) -> tuple:
+    def solve_beckmann_problem(self, rhs: np.ndarray) -> tuple:
         """Solve for the Wasserstein distance.
 
         Args:
@@ -1380,7 +1376,7 @@ class VariationalWassersteinDistance(darsia.EMD):
         flat_mass_diff = np.ravel(mass_diff, "F")
 
         # Main method
-        distance, solution, info = self._solve(flat_mass_diff)
+        distance, solution, info = self.solve_beckmann_problem(flat_mass_diff)
 
         # Split the solution
         flat_flux = solution[self.flux_slice]
@@ -1425,7 +1421,7 @@ class VariationalWassersteinDistance(darsia.EMD):
     def _analyze_timings(self, timings: dict) -> dict:
         """Analyze the timing of the current iteration.
 
-        Utility function for self._solve().
+        Utility function for self.solve_beckmann_problem().
 
         Args:
             timings (dict): timings
