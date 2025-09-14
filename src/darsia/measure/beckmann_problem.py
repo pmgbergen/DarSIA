@@ -1418,7 +1418,7 @@ class BeckmannProblem(darsia.EMD):
 
     # ! ---- Utility methods ----
 
-    def _analyze_timings(self, timings: dict) -> dict:
+    def _sum_timings(self, timings: dict) -> dict:
         """Analyze the timing of the current iteration.
 
         Utility function for self.solve_beckmann_problem().

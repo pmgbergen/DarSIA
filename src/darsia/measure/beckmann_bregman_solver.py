@@ -316,7 +316,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                 convergence_history["timing"].append(stats_i)
 
                 # Extract current total run time
-                current_run_time = self._analyze_timings(convergence_history["timing"])[
+                current_run_time = self._sum_timings(convergence_history["timing"])[
                     "total"
                 ]
                 convergence_history["run_time"].append(current_run_time)
@@ -387,7 +387,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         solution_i[self.pressure_slice] = newton_update[self.pressure_slice]
 
         # Summarize profiling (time in seconds, memory in GB)
-        total_timings = self._analyze_timings(convergence_history["timing"])
+        total_timings = self._sum_timings(convergence_history["timing"])
         peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
 
         # Compute l1 norm of the flux

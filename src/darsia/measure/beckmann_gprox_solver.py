@@ -569,9 +569,7 @@ class BeckmannGproxPGHDSolver(darsia.EMD):
             convergence_history["timing"].append(stats_i)
 
             # Extract current total run time
-            current_run_time = self._analyze_timings(convergence_history["timing"])[
-                "total"
-            ]
+            current_run_time = self._sum_timings(convergence_history["timing"])["total"]
             convergence_history["run_time"].append(current_run_time)
 
             self.iter += 1
@@ -603,7 +601,7 @@ class BeckmannGproxPGHDSolver(darsia.EMD):
                 break
 
         # Summarize profiling (time in seconds, memory in GB)
-        # total_timings = self._analyze_timings(convergence_history["timing"])
+        # total_timings = self._sum_timings(convergence_history["timing"])
         # peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
 
         # Define performance metric
@@ -641,8 +639,8 @@ class BeckmannGproxPGHDSolver(darsia.EMD):
 
         return w1
 
-    def _analyze_timings(self, timings: dict) -> dict:
-        """Analyze the timing of the current iteration.
+    def _sum_timings(self, timings: dict) -> dict:
+        """Sum the timing of the current iteration.
 
         Utility function for self.solve_beckmann_problem().
 
