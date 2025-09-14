@@ -1026,15 +1026,35 @@ class BeckmannProblem(darsia.EMD):
             np.ndarray: residual
 
         """
-        flat_flux = solution[self.flux_slice]
-        face_weights, _ = self._compute_face_weight(flat_flux)
+        flux = self.flux_view(solution)
+        face_weights, _ = self._compute_face_weight(flux)
         weight = sps.diags(face_weights)
 
         return (
             rhs
             - self.broken_darcy.dot(solution)
-            - self.flux_embedding.dot(weight.dot(self.mass_matrix_faces.dot(flat_flux)))
+            - self.flux_embedding.dot(weight.dot(self.mass_matrix_faces.dot(flux)))
         )
+
+    def rescaled_flux_optimality_conditions(self, solution: np.ndarray) -> np.ndarray:
+        """Evaluate scaled optimality conditions of the constrained minimization problem.
+
+        Scale the flux equation by the face weights divided by the total distance.
+        This results in no division by zero.
+
+        This is identical to the residual of the Newton system.
+
+        Args:
+            rhs (np.ndarray): right hand side
+        """
+        flux = self.flux_view(solution)
+        pressure = self.pressure_view(solution)
+        transport_density_faces = self.transport_density_faces(flux)
+        distance = self.l1_dissipation(flux)
+        return (
+            self.mass_matrix_faces.dot(flux)
+            - transport_density_faces * self.div.T.dot(pressure)
+        ) / distance
 
     def linear_solve(
         self,
@@ -1418,7 +1438,7 @@ class BeckmannProblem(darsia.EMD):
 
     # ! ---- Utility methods ----
 
-    def _sum_timings(self, timings: dict) -> dict:
+    def _sum_timings(self, timings: list[dict[str, float]]) -> dict[str, float]:
         """Analyze the timing of the current iteration.
 
         Utility function for self.solve_beckmann_problem().
@@ -1444,3 +1464,39 @@ class BeckmannProblem(darsia.EMD):
         )
 
         return total_timings
+
+    def flux_view(self, vector: np.ndarray) -> np.ndarray:
+        """Extract the flux from the vector.
+
+        Args:
+            vector (np.ndarray): vector
+
+        Returns:
+            np.ndarray: flux
+
+        """
+        assert len(vector) in [
+            self.grid.num_faces + self.grid.num_cells,
+            self.grid.num_faces + self.grid.num_cells + 1,
+        ], (
+            f"Vector has wrong length {len(vector)} instead of "
+            f"{self.grid.num_faces + self.grid.num_cells} or "
+            f"{self.grid.num_faces + self.grid.num_cells + 1}."
+        )
+        return vector[self.flux_slice]
+
+    def pressure_view(self, vector: np.ndarray) -> np.ndarray:
+        """Extract the pressure from the vector.
+
+        Args:
+            vector (np.ndarray): vector
+
+        Returns:
+            np.ndarray: pressure
+
+        """
+        assert len(vector) in [
+            self.grid.num_faces + self.grid.num_cells,
+            self.grid.num_faces + self.grid.num_cells + 1,
+        ], "Vector has wrong length."
+        return vector[self.pressure_slice]
