@@ -1,4 +1,4 @@
-"""Wasserstein distance computed using variational methods."""
+"""Beckmann problem definition in variational and mixed form."""
 
 from __future__ import annotations
 
@@ -35,20 +35,20 @@ class MobilityMode(Enum):
     FACE_BASED = "face_based"
 
 
-class VariationalWassersteinDistance(darsia.EMD):
-    """Base class for setting up the variational Wasserstein distance.
+class BeckmannProblem(darsia.EMD):
+    """Base class for setting up the Beckmann problem.
 
-    The variational Wasserstein distance is defined as the solution to the following
-    optimization problem (also called the Beckman problem):
+    The Beckmann problem is defined as the solution to the following
+    optimization problem:
 
         inf ||u||_{L^1} s.t. div u = m_2 - m_1, u in H(div).
 
     u is the flux, m_1 and m_2 are the mass distributions which are transported by u
-    from m_1 to m_2. The problem is solved approximately, eploying an iterative
-    tpfa-type finite volume method. A close connection to the lowest Raviart-Thomas
+    from m_1 to m_2. The problem is solved approximately, employing an iterative
+    TPFA-type finite volume method. A close connection to the lowest Raviart-Thomas
     mixed finite element method is exploited.
 
-    There are two main solution strategies implemented in sepcialized classes:
+    There are two main solution strategies implemented in specialized classes:
     - Finite Volume Quasi-Newton's method (:class:`WassersteinDistanceNewton`)
     - Finite Volume Split Bregman method (:class:`WassersteinDistanceBregman`)
 

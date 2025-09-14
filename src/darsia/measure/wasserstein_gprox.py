@@ -13,7 +13,7 @@ import scipy.sparse as sps
 import darsia
 
 
-class WassersteinDistanceGproxPGHD(darsia.EMD):
+class BeckmannGproxPGHDSolver(darsia.EMD):
     """
     This contains the implementation of the GproxPDHG algorithm
     described in "SOLVING LARGE-SCALE OPTIMIZATION PROBLEMS WITH
