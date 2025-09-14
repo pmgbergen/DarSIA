@@ -57,7 +57,12 @@ class _ConvergenceHistory:
 
 
 class BeckmannBregmanSolver(darsia.BeckmannProblem):
-    """Class to determine the Wasserstein distance solved with the Bregman method."""
+    """Class to determine the Wasserstein distance solved with the Bregman method.
+
+    Implements the :class:`darsia.BeckmannProblem` interface by specifying the method
+    :meth:`darsia.BeckmannProblem.solve_beckmann_problem`.
+
+    """
 
     def __init__(
         self,
@@ -69,6 +74,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
         Args:
             grid (darsia.Grid): grid
+            weight (darsia.Image, optional): weight for the heterogeneous case.
             options (dict, optional): options. Defaults to {}.
 
         """
@@ -84,9 +90,21 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         self.force_slice = slice(self.grid.num_faces, None)
         """slice: slice for the force."""
 
+    def force_view(self, vector: np.ndarray) -> np.ndarray:
+        """View into the force part of the solution vector.
+
+        Args:
+            vector (np.ndarray): solution vector
+
+        Returns:
+            np.ndarray: view into the force part of the solution vector
+
+        """
+        return vector[self.force_slice]
+
     def _shrink(
         self,
-        flat_flux: np.ndarray,
+        flux: np.ndarray,
         shrink_factor: float | np.ndarray,
     ) -> np.ndarray:
         """Shrink operation in the split Bregman method, operating on fluxes.
@@ -96,27 +114,24 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         fluxes.
 
         Args:
-            flat_flux (np.ndarray): flux
+            flux (np.ndarray): flux
             shrink_factor (float or np.ndarray): shrink factor
 
         Returns:
             np.ndarray: shrunk fluxes
 
         """
-        _, face_weights_inv = self._compute_face_weight(flat_flux)
-        flat_scaling = np.maximum(face_weights_inv - shrink_factor, 0) / (
+        _, face_weights_inv = self._compute_face_weight(flux)
+        scaling = np.maximum(face_weights_inv - shrink_factor, 0) / (
             face_weights_inv + self.regularization
         )
-        return flat_scaling * flat_flux
+        return scaling * flux
 
-    def _update_regularization(
-        self, flat_flux: np.ndarray, homogeneous: bool = False
-    ) -> tuple:
+    def _compute_heterogeneous_bregman_regularization(self, flux: np.ndarray) -> tuple:
         """Update the regularization based on the current approximation of the flux.
 
         Args:
-            flat_flux (np.ndarray): flux
-            homogeneous (bool, optional): homogeneous regularization. Defaults to False.
+            flux (np.ndarray): flux
 
         Returns:
             tuple: l_scheme_mixed_darcy, weight, shrink_factor
@@ -124,7 +139,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         """
 
         # Assign the weight and shrink factor
-        face_weights, face_weights_inv = self._compute_face_weight(flat_flux)
+        face_weights, face_weights_inv = self._compute_face_weight(flux)
         weight = sps.diags(face_weights)
         shrink_factor = face_weights_inv
 
@@ -173,15 +188,13 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         )
 
         # Initialize Newton iteration with Darcy solution for unitary mobility
-        solution_i = np.zeros_like(rhs, dtype=float)
-        solution_i, _ = self.linear_solve(
-            self.darcy_init.copy(), rhs.copy(), solution_i
-        )
+        solution = np.zeros_like(rhs, dtype=float)
+        solution, _ = self.linear_solve(self.darcy_init.copy(), rhs.copy(), solution)
         self.flux = np.zeros(self.grid.num_faces, dtype=float)
         self.pressure = np.zeros(self.grid.num_cells, dtype=float)
 
         # Initialize distance in case below iteration fails
-        new_distance = 0
+        distance = 0
 
         # Initialize container for storing the convergence history
         convergence_history = _ConvergenceHistory()
@@ -210,7 +223,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         )
 
         # Initialize Bregman variables
-        flux = solution_i[self.flux_slice]
+        flux = self.flux_view(solution)
         old_aux_flux = self._shrink(flux, shrink_factor)
         old_force = flux - old_aux_flux
         old_distance = self.l1_dissipation(flux)
@@ -219,7 +232,6 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
         # Control the update of the Bregman weight
         bregman_update = self.options.get("bregman_update", lambda iter: False)
-        bregman_homogeneous = self.options.get("bregman_homogeneous", False)
 
         for iter in range(num_iter):
             # It is possible that the linear solver fails. In this case, we simply
@@ -229,34 +241,34 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                 # of the flux - use the inverse of the norm of the flux
                 update_solver = bregman_update(iter)
                 if update_solver:
-                    # 0. Update regularization
+                    # 0. Compute regularization
                     tic = time.time()
                     (
                         l_scheme_mixed_darcy,
                         weight,
                         shrink_factor,
-                    ) = self._update_regularization(flux, bregman_homogeneous)
+                    ) = self._compute_heterogeneous_bregman_regularization(flux)
                     # 1. Make relaxation step (solve quadratic optimization problem)
                     # Here, re-initialize the aux flux and force with zero values again.
-                    rhs_i = rhs.copy()
+                    rhs_copy = rhs.copy()  # may change during direct solve
                     time_assemble = time.time() - tic
                     # Force to update the internally stored linear solver
                     tic = time.time()
-                    solution_i, stats_i = self.linear_solve(
+                    solution, timings = self.linear_solve(
                         l_scheme_mixed_darcy,
-                        rhs_i,
+                        rhs_copy,
                         reuse_solver=False,
                     )
-                    flux = solution_i[self.flux_slice]
+                    flux = self.flux_view(solution)
                     self.flux[:] = flux[:]
-                    self.pressure = solution_i[self.pressure_slice]
-                    stats_i["time_solve"] = time.time() - tic
-                    stats_i["time_assemble"] = time_assemble
+                    self.pressure = self.pressure_view(solution)
+                    timings["time_solve"] = time.time() - tic
+                    timings["time_assemble"] = time_assemble
 
                     # 2. Shrink step for vectorial fluxes.
                     tic = time.time()
                     new_aux_flux = self._shrink(flux, shrink_factor)
-                    stats_i["time_shrink"] = time.time() - tic
+                    timings["time_shrink"] = time.time() - tic
 
                     # 3. Update force
                     tic = time.time()
@@ -265,28 +277,28 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                 else:
                     # 1. Make relaxation step (solve quadratic optimization problem)
                     tic = time.time()
-                    rhs_i = rhs.copy()
-                    rhs_i[self.flux_slice] = weight @ self.mass_matrix_faces.dot(
+                    rhs_copy = rhs.copy()
+                    rhs_copy[self.flux_slice] = weight @ self.mass_matrix_faces.dot(
                         old_aux_flux - old_force
                     )
                     time_assemble = time.time() - tic
                     # Force to update the internally stored linear solver
                     tic = time.time()
-                    solution_i, stats_i = self.linear_solve(
+                    solution, timings = self.linear_solve(
                         l_scheme_mixed_darcy,
-                        rhs_i,
+                        rhs_copy,
                         reuse_solver=iter > 0,
                     )
-                    flux = solution_i[self.flux_slice]
+                    flux = self.flux_view(solution)
                     self.flux[:] = flux[:]
-                    self.pressure[:] = solution_i[self.pressure_slice]
-                    stats_i["time_solve"] = time.time() - tic
-                    stats_i["time_assemble"] = time_assemble
+                    self.pressure[:] = self.pressure_view(solution)
+                    timings["time_solve"] = time.time() - tic
+                    timings["time_assemble"] = time_assemble
 
                     # 2. Shrink step for vectorial fluxes.
                     tic = time.time()
                     new_aux_flux = self._shrink(flux + old_force, shrink_factor)
-                    stats_i["time_shrink"] = time.time() - tic
+                    timings["time_shrink"] = time.time() - tic
 
                     # 3. Update force
                     tic = time.time()
@@ -295,38 +307,41 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                 # Apply Anderson acceleration to flux contribution (the only nonlinear part).
                 if self.anderson is not None:
                     tic = time.time()
+                    # Prepare increments
                     aux_inc = new_aux_flux - old_aux_flux
                     force_inc = new_force - old_force
                     inc = np.concatenate([aux_inc, force_inc])
                     iteration = np.concatenate([new_aux_flux, new_force])
+                    # Apply Anderson acceleration
                     new_iteration = self.anderson(iteration, inc, iter)
-                    new_aux_flux = new_iteration[self.flux_slice]
-                    new_force = new_iteration[self.force_slice]
-                    stats_i["time_acceleration"] = time.time() - tic
+                    # Split into flux and auxiliary variable
+                    new_aux_flux = new_iteration[: self.grid.num_faces]
+                    new_force = new_iteration[self.grid.num_faces :]
+                    timings["time_acceleration"] = time.time() - tic
                 else:
-                    stats_i["time_acceleration"] = 0.0
+                    timings["time_acceleration"] = 0.0
 
                 # Update distance
-                new_distance = self.l1_dissipation(flux)
+                distance = self.l1_dissipation(flux)
 
                 # Catch nan values
-                if np.isnan(new_distance):
+                if np.isnan(distance):
                     info = {
                         "converged": False,
                         "number_iterations": iter,
                         "convergence_history": convergence_history.as_dict(),
                     }
-                    return new_distance, solution_i, info
+                    return distance, solution, info
 
                 # Determine the error in the mass conservation equation
-                mass_conservation_residual = (
-                    self.div.dot(flux) - rhs[self.pressure_slice]
+                mass_conservation_residual = self.div.dot(flux) - self.pressure_view(
+                    rhs
                 )
 
                 # Reference values
                 self.flux = flux
                 flux_ref = np.linalg.norm(flux, 2)
-                mass_ref = np.linalg.norm(rhs[self.pressure_slice], 2)
+                mass_ref = np.linalg.norm(self.pressure_view(rhs), 2)
 
                 # Compute the error and store as part of the convergence history:
                 # 0 - aux/force increments (fixed-point formulation)
@@ -337,7 +352,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                     / flux_ref
                 )
                 # 1 - distance increment (minimization formulation)
-                distance_increment = abs(new_distance - old_distance)
+                distance_increment = abs(distance - old_distance)
                 # 2 - mass conservation residual (constraint in optimization formulation)
                 relative_mass_residual = (
                     np.linalg.norm(mass_conservation_residual, 2) / mass_ref
@@ -345,11 +360,11 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
                 # Update convergence history
                 convergence_history.append(
-                    new_distance,
+                    distance,
                     distance_increment,
                     relative_bregman_increment,
                     relative_mass_residual,
-                    stats_i,
+                    timings,
                     np.nan,  # placeholder for total run time
                 )
                 # Update total run time
@@ -365,7 +380,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                             "ignore", message="overflow encountered"
                         )
                         relative_distance_increment = (
-                            convergence_history.distance_increment[-1] / new_distance
+                            convergence_history.distance_increment[-1] / distance
                         )
                         relative_aux_force_increment = (
                             convergence_history.aux_force_increment[-1]
@@ -376,7 +391,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                         )
                         print(
                             f"Iter. {iter} \t|"
-                            f"{new_distance:.6e} \t| "
+                            f"{distance:.6e} \t| "
                             f"{relative_distance_increment:.6e} \t| "
                             f"{relative_aux_force_increment:.6e} \t| "
                             f"{absolute_mass_conservation_residual_val:.6e}"
@@ -398,7 +413,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                     if iter > 1 and (
                         convergence_history.aux_force_increment[-1]
                         < tol_increment * convergence_history.aux_force_increment[0]
-                        and convergence_history.distance_increment[-1] / new_distance
+                        and convergence_history.distance_increment[-1] / distance
                         < tol_distance
                         and convergence_history.mass_conservation_residual[-1]
                         < tol_residual
@@ -408,21 +423,19 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                 # Update Bregman variables
                 old_aux_flux = new_aux_flux.copy()
                 old_force = new_force.copy()
-                old_distance = new_distance
+                old_distance = distance
 
             else:  # except Exception:
                 warnings.warn("Bregman iteration abruptly stopped due to some error.")
                 break
 
         # Solve for the pressure by solving a single Newton iteration
-        newton_jacobian, _, _ = self._update_regularization(flux)
-        solution_i = np.zeros_like(rhs)
-        solution_i[self.flux_slice] = flux.copy()
-        newton_residual = self.optimality_conditions(rhs, solution_i)
-        newton_update, _ = self.linear_solve(
-            newton_jacobian, newton_residual, solution_i
-        )
-        solution_i[self.pressure_slice] = newton_update[self.pressure_slice]
+        newton_jacobian, _, _ = self._compute_heterogeneous_bregman_regularization(flux)
+        solution = np.zeros_like(rhs)
+        solution[self.flux_slice] = flux.copy()
+        newton_residual = self.optimality_conditions(rhs, solution)
+        newton_update, _ = self.linear_solve(newton_jacobian, newton_residual, solution)
+        solution[self.pressure_slice] = self.pressure_view(newton_update)
 
         # Summarize profiling (time in seconds, memory in GB)
         total_timings = self._sum_timings(convergence_history.timings)
@@ -434,7 +447,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
         # Define performance metric
         info = {
-            "distance": new_distance,  # includes weight
+            "distance": distance,  # includes weight
             "flux_l1_norm": flux_l1_norm,  # without weight
             "converged": iter < num_iter - 1,
             "number_iterations": iter,
@@ -443,4 +456,4 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
             "peak_memory_consumption": peak_memory_consumption,
         }
 
-        return new_distance, solution_i, info
+        return distance, solution, info
