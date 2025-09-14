@@ -17,10 +17,10 @@ from darsia.measure.integration import *
 
 # EMD and Wasserstein distances
 from darsia.measure.emd import *
-from darsia.measure.wasserstein_variational import *
-from darsia.measure.wasserstein_newton import *
-from darsia.measure.wasserstein_bregman import *
-from darsia.measure.wasserstein_gprox import *
+from darsia.measure.beckmann_problem import *
+from darsia.measure.beckmann_newton_solver import *
+from darsia.measure.beckmann_bregman_solver import *
+from darsia.measure.beckmann_gprox_solver import *
 from darsia.measure.wasserstein import *
 
 # Utilities
