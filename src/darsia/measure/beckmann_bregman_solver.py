@@ -190,8 +190,6 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         # Initialize Newton iteration with Darcy solution for unitary mobility
         solution = np.zeros_like(rhs, dtype=float)
         solution, _ = self.linear_solve(self.darcy_init.copy(), rhs.copy(), solution)
-        self.flux = np.zeros(self.grid.num_faces, dtype=float)
-        self.pressure = np.zeros(self.grid.num_cells, dtype=float)
 
         # Initialize distance in case below iteration fails
         distance = 0
@@ -260,8 +258,6 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                         reuse_solver=False,
                     )
                     flux = self.flux_view(solution)
-                    self.flux[:] = flux[:]
-                    self.pressure = self.pressure_view(solution)
                     timings["time_solve"] = time.time() - tic
                     timings["time_assemble"] = time_assemble
 
@@ -290,8 +286,6 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                         reuse_solver=iter > 0,
                     )
                     flux = self.flux_view(solution)
-                    self.flux[:] = flux[:]
-                    self.pressure[:] = self.pressure_view(solution)
                     timings["time_solve"] = time.time() - tic
                     timings["time_assemble"] = time_assemble
 
@@ -339,7 +333,6 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                 )
 
                 # Reference values
-                self.flux = flux
                 flux_ref = np.linalg.norm(flux, 2)
                 mass_ref = np.linalg.norm(self.pressure_view(rhs), 2)
 
