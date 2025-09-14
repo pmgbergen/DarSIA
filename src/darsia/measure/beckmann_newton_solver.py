@@ -18,7 +18,7 @@ import darsia
 class _ConvergenceHistory:
     """Class to store the convergence history of the Newton iteration.
 
-    Use outside of BeckmannNewtonSolver is not intended.
+    Not intended for direct use outside of the BeckmannNewtonSolver.
 
     """
 
@@ -102,7 +102,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
 
         """
         # Only need to update the flux-flux block
-        flat_flux = solution[self.flux_slice]
+        flat_flux = self.flux_view(solution)
         face_weights, _ = self._compute_face_weight(flat_flux)
         weight = sps.diags(face_weights)
         flux_flux_block = weight @ self.mass_matrix_faces
@@ -116,6 +116,29 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         last_jacobian[(self.flux_slice, self.flux_slice)] = flux_flux_block
         self.full_jacobian = last_jacobian.tocsc()
         return self.full_jacobian
+
+    def _compute_residual_norm(self, rhs: np.ndarray, solution: np.ndarray) -> float:
+        """Compute the residual for the stopping criterion.
+
+        Use a rescaled version of the optimality conditions to avoid division by zero.
+
+        Args:
+            residual (np.ndarray): current residual
+            solution (np.ndarray): current solution
+
+        Returns:
+            dict: contributions to the residual
+        """
+        # Split residuals into their contributions. Use a rescaled version of the
+        # optimality conditions to avoid division by zero.
+        residual = self.compute_residual(rhs, solution)
+        residual_vector_pressure = self.pressure_view(residual)
+        residual_vector_optimality = self.rescaled_flux_optimality_conditions(solution)
+
+        # Compute the norms - normalize the flux residual by the distance (see above).
+        residual_opt = np.linalg.norm(residual_vector_optimality, 2)
+        residual_div = np.linalg.norm(residual_vector_pressure, 2)
+        return np.sqrt(residual_opt**2 + residual_div**2)
 
     @override
     def solve_beckmann_problem(
@@ -151,13 +174,11 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         )
 
         # Initialize Newton iteration with Darcy solution for unitary mobility
-        solution_i = np.zeros_like(rhs, dtype=float)
-        solution_i, _ = self.linear_solve(
-            self.darcy_init.copy(), rhs.copy(), solution_i
-        )
+        solution = np.zeros_like(rhs, dtype=float)
+        solution, _ = self.linear_solve(self.darcy_init.copy(), rhs.copy(), solution)
 
         # Initialize distance in case below iteration fails
-        new_distance = 0
+        distance = 0
 
         # Initialize container for storing the convergence history
         convergence_history = _ConvergenceHistory()
@@ -169,7 +190,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         # - residual
         if self.verbose:
             print(
-                "Newton iter. \t| W^1 \t\t| Δ W^1 / W^1 \t| Δ flux \t| residual",
+                "Newton iter. \t| W^1 \t\t| Δ W^1 / W^1 \t| Δ flux / flux \t| residual / residual_0",
                 "\n",
                 """---------------|---------------|---------------|---------------|"""
                 """---------------""",
@@ -178,132 +199,121 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         # Newton iteration
         iter = 0
         for iter in range(num_iter):
-            # It is possible that the linear solver fails. In this case, we simply
-            # stop the iteration and return the current solution.
+            # Keep track of old flux and distance
+            old_solution = solution.copy()
+            old_distance = self.l1_dissipation(self.flux_view(old_solution))
+
+            # Assemble linear problem in Newton step
+            tic = time.time()
+            residual = self.compute_residual(rhs, solution)
+            jacobian = self.compute_jacobian(solution)
+            time_assemble = time.time() - tic
+
+            # Solve linear system for the update. It is possible that the linear
+            # solver fails. In this case, we simply stop the iteration and return
+            # the current solution.
             try:
-                # Keep track of old flux, and old distance
-                old_solution_i = solution_i.copy()
-                flux = solution_i[self.flux_slice]
-                self.flux = flux
-                self.pressure = solution_i[self.pressure_slice]
-                old_distance = self.l1_dissipation(flux)
-
-                # Assemble linear problem in Newton step
-                tic = time.time()
-                residual_i = self.compute_residual(rhs, solution_i)
-                res_pressure = residual_i[self.pressure_slice]
-                transport_density_faces = self.transport_density_faces(flux)
-                res_opt = self.mass_matrix_faces.dot(
-                    solution_i[self.flux_slice]
-                ) - transport_density_faces * self.div.T.dot(
-                    solution_i[self.pressure_slice]
-                )
-
-                residual_opt = np.linalg.norm(res_opt, 2) / old_distance
-                residual_div = np.linalg.norm(res_pressure, 2)
-                res_pde = np.sqrt(residual_opt**2 + residual_div**2)
-                approx_jacobian = self.compute_jacobian(solution_i)
-                toc = time.time()
-                time_assemble = toc - tic
-
-                # Solve linear system for the update
-                update_i, stats_i = self.linear_solve(
-                    approx_jacobian, residual_i, solution_i
-                )
-
-                # Include assembly in statistics
-                stats_i["time_assemble"] = time_assemble
-
-                # Update the solution with the full Netwon step
-                solution_i += update_i
-
-                # Apply Anderson acceleration to flux contribution (the only nonlinear part).
-                # Application to full solution, or just the pressure, lead to divergence,
-                # while application to the flux, results in improved performance.
-                if self.anderson is not None:
-                    tic = time.time()
-                    solution_i[self.flux_slice] = self.anderson(
-                        solution_i[self.flux_slice],
-                        update_i[self.flux_slice],
-                        iter,
-                    )
-                    stats_i["time_acceleration"] = time.time() - tic
-                else:
-                    stats_i["time_acceleration"] = 0.0
-
-                # Update discrete W1 distance
-                flux = solution_i[self.flux_slice]
-                new_distance = self.l1_dissipation(flux)
-
-                # Update increment
-                increment = solution_i - old_solution_i
-
-                # Compute the error and store as part of the convergence history:
-                # 0 - full residual (Newton interpretation)
-                # 1 - flux increment (fixed-point interpretation)
-                # 2 - distance increment (Minimization interpretation)
-
-                # Update convergence history (timing first so run_time uses latest timings)
-                flux_inc_norm = np.linalg.norm(increment[self.flux_slice], 2)
-                distance_inc_abs = abs(new_distance - old_distance)
-                convergence_history.append(
-                    new_distance,
-                    res_pde,
-                    flux_inc_norm,
-                    distance_inc_abs,
-                    stats_i,
-                    np.nan,  # placeholder for total run time
-                )
-                # Update run time based on sum of timings
-                current_total_run_time = self._sum_timings(convergence_history.timings)[
-                    "total"
-                ]
-                convergence_history.total_run_time[-1] = current_total_run_time
-
-                # Print performance to screen
-                # - distance
-                # - distance increment
-                # - flux increment
-                # - residual
-                if self.verbose:
-                    relative_distance_increment = (
-                        convergence_history.distance_increment[-1] / new_distance
-                    )
-                    relative_flux_increment = (
-                        convergence_history.flux_increment[-1]
-                        / convergence_history.flux_increment[0]
-                    )
-                    relative_residual = (
-                        convergence_history.residual[-1]
-                        / convergence_history.residual[0]
-                    )
-                    print(
-                        f"""Iter. {iter} \t| {new_distance:.6e} \t| """
-                        f"""{relative_distance_increment:.6e} \t| {relative_flux_increment:.6e} \t| """
-                        f"""{relative_residual:.6e}"""
-                    )
-
-                # Stopping criterion - force one iteration. BAse stopping criterion on
-                # different interpretations of the Newton method:
-                # - Newton interpretation: full residual
-                # - Fixed-point interpretation: flux increment
-                # - Minimization interpretation: distance increment
-                # For default tolerances, the code is prone to overflow. Surpress the
-                # warnings here.
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", message="overflow encountered")
-                    if iter > 1 and (
-                        convergence_history.residual[-1]
-                        < tol_residual * convergence_history.residual[0]
-                        and convergence_history.flux_increment[-1]
-                        < tol_increment * convergence_history.flux_increment[0]
-                        and convergence_history.distance_increment[-1] < tol_distance
-                    ):
-                        break
+                increment, timings = self.linear_solve(jacobian, residual, solution)
             except Exception:
                 warnings.warn("Newton iteration abruptly stopped due to some error.")
                 break
 
+            # Update the solution with the full Newton step
+            solution += increment
+
+            # Apply Anderson acceleration to flux contribution (the only nonlinear part).
+            # Application to full solution, or just the pressure, lead to divergence,
+            # while application to the flux, results in improved performance.
+            # Update the increment here for later use in the stopping criterion.
+            if self.anderson is not None:
+                tic = time.time()
+                solution[self.flux_slice] = self.anderson(
+                    self.flux_view(solution),
+                    self.flux_view(increment),
+                    iter,
+                )
+                increment = solution - old_solution
+                time_acceleration = time.time() - tic
+            else:
+                time_acceleration = 0.0
+
+            # Update discrete W1 distance
+            flux_view = self.flux_view(solution)
+            distance = self.l1_dissipation(flux_view)
+
+            # Update statistics
+            timings["time_assemble"] = time_assemble
+            timings["time_acceleration"] = time_acceleration
+
+            # Compute the error and store as part of the convergence history:
+
+            # 0 - full residual (Newton interpretation)
+            residual_norm = self._compute_residual_norm(rhs, solution)
+
+            # 1 - flux increment (fixed-point interpretation)
+            flux_inc_norm = float(np.linalg.norm(self.flux_view(increment), 2))
+
+            # 2 - distance increment (Minimization interpretation)
+            distance_inc = abs(distance - old_distance)
+
+            # Update convergence history (timing first so run_time uses latest timings)
+            convergence_history.append(
+                distance=distance,
+                residual=residual_norm,
+                flux_increment=flux_inc_norm,
+                distance_increment=distance_inc,
+                timings=timings,
+                total_run_time=np.nan,  # placeholder for total run time
+            )
+            # Update run time based on sum of timings
+            convergence_history.total_run_time[-1] = self._sum_timings(
+                convergence_history.timings
+            )["total"]
+
+            # Print performance to screen:
+            # - iter
+            # - distance
+            # - relative distance increment
+            # - relative flux increment
+            # - relative residual
+            relative_distance_increment = distance_inc / distance
+            relative_flux_increment = flux_inc_norm / np.linalg.norm(
+                self.flux_view(solution)
+            )
+            relative_residual = residual_norm / convergence_history.residual[0]
+            if self.verbose:
+                print(
+                    f"""Iter. {iter} \t| """
+                    f"""{distance:.6e} \t| """
+                    f"""{relative_distance_increment:.6e} \t| """
+                    f"""{relative_flux_increment:.6e} \t| """
+                    f"""{relative_residual:.6e}"""
+                )
+
+            # Check for convergence.
+            # Base stopping criterion on different interpretations of the Newton method:
+            # - iterative method: number of iterations
+            # - Newton interpretation: full residual
+            # - Fixed-point interpretation: flux increment
+            # - Minimization interpretation: distance increment
+            with warnings.catch_warnings():
+                # For default tolerances, the code is prone to overflow. Surpress the
+                # warnings here.
+                warnings.filterwarnings("ignore", message="overflow encountered")
+                converged = (
+                    # Check whether total number of iterations is not exceeded
+                    iter < num_iter - 1
+                    # Check whether residual is below tolerance
+                    and relative_residual < tol_residual
+                    # Check whether flux increment is below tolerance
+                    and relative_flux_increment < tol_increment
+                    # Check whether distance increment is below tolerance
+                    and relative_distance_increment < tol_distance
+                )
+                if iter > 1 and converged:
+                    break
+
+            # Callbacks
             if self.callbacks is not None:
                 for callback in self.callbacks:
                     callback(self)
@@ -314,11 +324,11 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
 
         # Define performance metric
         info = {
-            "converged": iter < num_iter - 1,
+            "converged": converged,
             "number_iterations": iter,
             "convergence_history": convergence_history.as_dict(),
             "timings": total_timings,
             "peak_memory_consumption": peak_memory_consumption,
         }
 
-        return new_distance, solution_i, info
+        return distance, solution, info
