@@ -13,7 +13,7 @@ import scipy.sparse as sps
 import darsia
 
 
-class WassersteinDistanceBregman(darsia.VariationalWassersteinDistance):
+class BeckmannBregmanSolver(darsia.BeckmannProblem):
     """Class to determine the Wasserstein distance solved with the Bregman method."""
 
     def __init__(

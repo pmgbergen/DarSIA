@@ -44,15 +44,15 @@ def wasserstein_distance(
         # Define method
         match method_name:
             case "newton":
-                w1 = darsia.WassersteinDistanceNewton(grid, weight, options)
+                w1 = darsia.BeckmannNewtonSolver(grid, weight, options)
             case "bregman":
-                w1 = darsia.WassersteinDistanceBregman(grid, weight, options)
+                w1 = darsia.BeckmannBregmanSolver(grid, weight, options)
             case "gprox":
                 if weight is not None:
                     raise NotImplementedError(
                         "Weighted Gprox not implemented for anisotropic meshes"
                     )
-                w1 = darsia.WassersteinDistanceGproxPGHD(grid, options)
+                w1 = darsia.BeckmannGproxPGHDSolver(grid, options)
 
     elif method_name == "cv2.emd":
         # Use Earth Mover's Distance from CV2

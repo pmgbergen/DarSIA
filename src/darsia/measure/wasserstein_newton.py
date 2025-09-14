@@ -12,17 +12,17 @@ import scipy.sparse as sps
 import darsia
 
 
-class WassersteinDistanceNewton(darsia.VariationalWassersteinDistance):
+class BeckmannNewtonSolver(darsia.BeckmannProblem):
     """Class to determine the L1 EMD/Wasserstein distance solved with Newton's method.
 
-    Solves the Beckmann prbblem in mixed form with a Newton-like method. The linearization
+    Solves the Beckmann problem in mixed form with a Newton-like method. The linearization
     of the optimality conditions is relaxed with a cut-off parameter L for the mobility.
     In addition, to circumvent singular Jacobians, merely a fixed-point type linearization
     is employed. This results in a method that is in between a pure Newton method and a
     fixed-point iteration.
 
     Here, self.L has the interpretation of a lower cut-off value in the linearization
-    only. With such relaxation, the Beckman problem itself is not regularized, but
+    only. With such relaxation, the Beckmann problem itself is not regularized, but
     instead the solution trajectory is merely affected.
 
     """
