@@ -102,8 +102,8 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
 
         """
         # Only need to update the flux-flux block
-        flat_flux = self.flux_view(solution)
-        face_weights, _ = self._compute_face_weight(flat_flux)
+        flux = self.flux_view(solution)
+        face_weights, _ = self._compute_face_weight(flux)
         weight = sps.diags(face_weights)
         flux_flux_block = weight @ self.mass_matrix_faces
 
@@ -271,7 +271,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
             )["total"]
 
             # Print performance to screen:
-            # - iter
+            # - iter count
             # - distance
             # - relative distance increment
             # - relative flux increment
