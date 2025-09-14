@@ -9,6 +9,7 @@ import warnings
 import numpy as np
 import pyamg
 import scipy.sparse as sps
+from typing import override
 
 import darsia
 
@@ -371,6 +372,7 @@ class BeckmannGproxPGHDSolver(darsia.EMD):
             weighted_Poisson_solver = []
         return pressure
 
+    @override
     def solve_beckmann_problem(
         self, flat_mass_diff: np.ndarray
     ) -> tuple[float, np.ndarray, dict]:

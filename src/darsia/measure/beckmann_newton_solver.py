@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 import tracemalloc
 import warnings
+from typing import override
 
 import numpy as np
 import scipy.sparse as sps
@@ -15,25 +16,18 @@ import darsia
 class BeckmannNewtonSolver(darsia.BeckmannProblem):
     """Class to determine the L1 EMD/Wasserstein distance solved with Newton's method.
 
+    Implements the :class:`darsia.BeckmannProblem` interface by specifying the method
+    :meth:`darsia.BeckmannProblem.solve_beckmann_problem`.
+
     Solves the Beckmann problem in mixed form with a Newton-like method. The linearization
     of the optimality conditions is relaxed with a cut-off parameter L for the mobility.
     In addition, to circumvent singular Jacobians, merely a fixed-point type linearization
     is employed. This results in a method that is in between a pure Newton method and a
     fixed-point iteration.
 
-    Here, self.L has the interpretation of a lower cut-off value in the linearization
-    only. With such relaxation, the Beckmann problem itself is not regularized, but
-    instead the solution trajectory is merely affected.
-
     """
 
-    def __init__(self, grid, weight, options) -> None:
-        super().__init__(grid, weight, options)
-
-        self.L = self.options.get("L", np.finfo(float).max)
-        """float: relaxation/cut-off parameter for mobility, deactivated by default."""
-
-    def residual(self, rhs: np.ndarray, solution: np.ndarray) -> np.ndarray:
+    def compute_residual(self, rhs: np.ndarray, solution: np.ndarray) -> np.ndarray:
         """Compute the residual of the solution - the optimality conditions.
 
         Args:
@@ -46,7 +40,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         """
         return self.optimality_conditions(rhs, solution)
 
-    def jacobian(self, solution: np.ndarray) -> sps.linalg.LinearOperator:
+    def compute_jacobian(self, solution: np.ndarray) -> sps.linalg.LinearOperator:
         """Compute the Jacobian of the optimality conditions.
 
         Args:
@@ -72,6 +66,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         self.full_jacobian = last_jacobian.tocsc()
         return self.full_jacobian
 
+    @override
     def solve_beckmann_problem(
         self, flat_mass_diff: np.ndarray
     ) -> tuple[float, np.ndarray, dict]:
@@ -152,7 +147,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
 
                 # Assemble linear problem in Newton step
                 tic = time.time()
-                residual_i = self.residual(rhs, solution_i)
+                residual_i = self.compute_residual(rhs, solution_i)
                 res_pressure = residual_i[self.pressure_slice]
                 transport_density_faces = self.transport_density_faces(flux)
                 res_opt = self.mass_matrix_faces.dot(
@@ -164,7 +159,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
                 residual_opt = np.linalg.norm(res_opt, 2) / old_distance
                 residual_div = np.linalg.norm(res_pressure, 2)
                 res_pde = np.sqrt(residual_opt**2 + residual_div**2)
-                approx_jacobian = self.jacobian(solution_i)
+                approx_jacobian = self.compute_jacobian(solution_i)
                 toc = time.time()
                 time_assemble = toc - tic
 

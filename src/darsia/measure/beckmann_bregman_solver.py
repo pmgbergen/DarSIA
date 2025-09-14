@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 import tracemalloc
 import warnings
-from typing import Optional, Union
+from typing import Optional, override
 
 import numpy as np
 import scipy.sparse as sps
@@ -44,7 +44,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
     def _shrink(
         self,
         flat_flux: np.ndarray,
-        shrink_factor: Union[float, np.ndarray],
+        shrink_factor: float | np.ndarray,
     ) -> np.ndarray:
         """Shrink operation in the split Bregman method, operating on fluxes.
 
@@ -97,6 +97,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
         return l_scheme_mixed_darcy, weight, shrink_factor
 
+    @override
     def solve_beckmann_problem(
         self, flat_mass_diff: np.ndarray
     ) -> tuple[float, np.ndarray, dict]:
