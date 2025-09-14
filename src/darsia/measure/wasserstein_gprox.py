@@ -371,8 +371,10 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
             weighted_Poisson_solver = []
         return pressure
 
-    def _solve(self, flat_mass_diff: np.ndarray) -> tuple[float, np.ndarray, dict]:
-        """Solve the Beckman problem using GproxPDHG.
+    def solve_beckmann_problem(
+        self, flat_mass_diff: np.ndarray
+    ) -> tuple[float, np.ndarray, dict]:
+        """Solve the Beckmann problem using GproxPDHG.
 
         Args:
             flat_mass_diff (np.ndarray): difference of mass distributions
@@ -640,7 +642,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
     def _analyze_timings(self, timings: dict) -> dict:
         """Analyze the timing of the current iteration.
 
-        Utility function for self._solve().
+        Utility function for self.solve_beckmann_problem().
 
         Args:
             timings (dict): timings
@@ -686,7 +688,7 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         flat_mass_diff = np.ravel(mass_diff, "F")
 
         # Main method
-        distance, solution, info = self._solve(flat_mass_diff)
+        distance, solution, info = self.solve_beckmann_problem(flat_mass_diff)
 
         # Compute Kantorovich potential solving the weighed-Poisson problem
         pressure = self.compute_kantorovich_potential(flat_mass_diff, solution)
