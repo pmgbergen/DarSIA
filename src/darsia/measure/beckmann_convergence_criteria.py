@@ -1,6 +1,8 @@
 from dataclasses import dataclass
-import darsia
+
 import numpy as np
+
+import darsia
 
 
 @dataclass
