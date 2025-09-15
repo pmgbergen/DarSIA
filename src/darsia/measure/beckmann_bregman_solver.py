@@ -56,6 +56,72 @@ class _ConvergenceHistory:
         }
 
 
+@dataclass
+class _ConvergenceCriteria:
+    """Class to store and check the convergence criteria for the Bregman solver.
+
+    Not intended for use outside of BeckmannBregmanSolver.
+
+    Base stopping citeria on the different interpretations of the split Bregman method:
+    - fixed-point formulation: aux flux and force increment
+    - minimization formulation: distance increment
+    - constrained optimization formulation: mass conservation residual
+    """
+
+    num_iter: int = 100
+    """Maximum number of iterations."""
+    rtol_increment: float = np.finfo(float).max
+    """Relative tolerance for the aux/force increment."""
+    rtol_distance: float = np.finfo(float).max
+    """Relative tolerance for the distance increment."""
+    atol_residual: float = np.finfo(float).max
+    """Absolute tolerance for the mass conservation residual."""
+
+    def check_convergence_status(
+        self,
+        iter: int,
+        aux_force_increment: float,
+        aux_force_reference: float,
+        distance_increment: float,
+        distance_reference: float,
+        mass_conservation_residual: float,
+    ) -> darsia.ConvergenceStatus:
+        """Check if convergence criteria are met."""
+        max_iterations_reached = self._check_iterations(iter)
+        convergence_achieved = self._check_convergence(
+            aux_force_increment,
+            aux_force_reference,
+            distance_increment,
+            distance_reference,
+            mass_conservation_residual,
+        )
+        if convergence_achieved:
+            return darsia.ConvergenceStatus.CONVERGED
+        elif max_iterations_reached:
+            return darsia.ConvergenceStatus.NOT_CONVERGED
+        else:
+            return darsia.ConvergenceStatus.RUNNING
+
+    def _check_iterations(self, iter: int) -> bool:
+        """Check if the maximum number of iterations is reached."""
+        return iter >= self.num_iter
+
+    def _check_convergence(
+        self,
+        aux_force_increment: float,
+        aux_force_reference: float,
+        distance_increment: float,
+        distance_reference: float,
+        mass_conservation_residual: float,
+    ) -> bool:
+        """Check if convergence criteria are met."""
+        return (
+            aux_force_increment < self.rtol_increment * aux_force_reference
+            and distance_increment < self.rtol_distance * distance_reference
+            and mass_conservation_residual < self.atol_residual
+        )
+
+
 class BeckmannBregmanSolver(darsia.BeckmannProblem):
     """Class to determine the Wasserstein distance solved with the Bregman method.
 
@@ -75,13 +141,37 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         Args:
             grid (darsia.Grid): grid
             weight (darsia.Image, optional): weight for the heterogeneous case.
-            options (dict, optional): options. Defaults to {}.
+            options (dict, optional): options for the Bregman solver. Defaults to {}.
+                - L (float): penalty parameter for the Bregman iteration, associated to
+                  face mobility. Defaults to 1.0.
+                - bregman_update (lambda iter: bool): function to determine whether/when
+                    to update the Bregman regularization. Defaults to a function that
+                    never updates.
+                - num_iter (int): maximum number of iterations. Defaults to 100.
+                - tol_residual (float): tolerance for the relative mass conservation residual.
+                    Defaults to np.finfo(float).max.
+                - tol_increment (float): tolerance for the relative aux/force increment.
+                    Defaults to np.finfo(float).max.
+                - tol_distance (float): tolerance for the relative distance increment.
+                    Defaults to np.finfo(float).max.
 
         """
 
         super().__init__(grid, weight, options)
-        self.L = self.options.get("L", 1.0)
-        """Penality parameter for the Bregman iteration, associated to face mobility."""
+
+        self.L = options.get("L", 1.0)
+        """Penalty parameter for the Bregman iteration, associated to face mobility."""
+
+        self.bregman_update = options.get("bregman_update", lambda iter: False)
+        """Function to determine whether/when to update the Bregman regularization."""
+
+        self.convergence_criteria = _ConvergenceCriteria(
+            num_iter=options.get("num_iter", 100),
+            rtol_increment=options.get("tol_increment", np.finfo(float).max),
+            rtol_distance=options.get("tol_distance", np.finfo(float).max),
+            atol_residual=options.get("tol_residual", np.finfo(float).max),
+        )
+        """Convergence criteria for the Bregman solver."""
 
     def _shrink(
         self,
@@ -153,12 +243,6 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         tic = time.time()
         tracemalloc.start()
 
-        # Solver parameters
-        num_iter = self.options.get("num_iter", 100)
-        tol_residual = self.options.get("tol_residual", np.finfo(float).max)
-        tol_increment = self.options.get("tol_increment", np.finfo(float).max)
-        tol_distance = self.options.get("tol_distance", np.finfo(float).max)
-
         # Define right hand side
         rhs = np.concatenate(
             [
@@ -216,16 +300,13 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
         iter = 0
 
-        # Control the update of the Bregman weight
-        bregman_update = self.options.get("bregman_update", lambda iter: False)
-
-        for iter in range(num_iter):
+        for iter in range(self.convergence_criteria.num_iter):
             # It is possible that the linear solver fails. In this case, we simply
             # stop the iteration and return the current solution.
             if True:  # try:
                 # (Possibly) update the regularization, based on the current approximation
                 # of the flux - use the inverse of the norm of the flux
-                update_solver = bregman_update(iter)
+                update_solver = self.bregman_update(iter)
                 if update_solver:
                     # 0. Compute regularization
                     tic = time.time()
@@ -367,39 +448,43 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                             convergence_history.aux_force_increment[-1]
                             / convergence_history.aux_force_increment[0]
                         )
-                        absolute_mass_conservation_residual_val = (
-                            convergence_history.mass_conservation_residual[-1]
-                        )
-                        print(
-                            f"Iter. {iter} \t|"
-                            f"{distance:.6e} \t| "
-                            f"{relative_distance_increment:.6e} \t| "
-                            f"{relative_aux_force_increment:.6e} \t| "
-                            f"{absolute_mass_conservation_residual_val:.6e}"
-                        )
+                    absolute_mass_conservation_residual_val = (
+                        convergence_history.mass_conservation_residual[-1]
+                    )
+                    print(
+                        f"Iter. {iter} \t|"
+                        f"{distance:.6e} \t| "
+                        f"{relative_distance_increment:.6e} \t| "
+                        f"{relative_aux_force_increment:.6e} \t| "
+                        f"{absolute_mass_conservation_residual_val:.6e}"
+                    )
 
                 if self.callbacks is not None:
                     for callback in self.callbacks:
                         callback(self)
 
-                # Base stopping citeria on the different interpretations of the split Bregman
-                # method:
-                # - fixed-point formulation: aux flux and force increment
-                # - minimization formulation: distance increment
-                # - constrained optimization formulation: mass conservation residual
+                # TODO remove warnings suppression?
                 # For default tolerances, the code is prone to overflow. Surpress the
                 # warnings here.
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", message="overflow encountered")
-                    if iter > 1 and (
-                        convergence_history.aux_force_increment[-1]
-                        < tol_increment * convergence_history.aux_force_increment[0]
-                        and convergence_history.distance_increment[-1] / distance
-                        < tol_distance
-                        and convergence_history.mass_conservation_residual[-1]
-                        < tol_residual
-                    ):
-                        break
+                # with warnings.catch_warnings():
+                #    warnings.filterwarnings("ignore", message="overflow encountered")
+
+                # Check convergence and stop if necessary.
+                convergence_status = self.convergence_criteria.check_convergence_status(
+                    iter=iter,
+                    aux_force_increment=convergence_history.aux_force_increment[-1],
+                    aux_force_reference=convergence_history.aux_force_increment[0],
+                    distance_increment=convergence_history.distance_increment[-1],
+                    distance_reference=distance,
+                    mass_conservation_residual=convergence_history.mass_conservation_residual[
+                        -1
+                    ],
+                )
+                if convergence_status in [
+                    darsia.ConvergenceStatus.CONVERGED,
+                    darsia.ConvergenceStatus.NOT_CONVERGED,
+                ]:
+                    break
 
                 # Update Bregman variables
                 old_aux_flux = new_aux_flux.copy()
@@ -430,7 +515,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         info = {
             "distance": distance,  # includes weight
             "flux_l1_norm": flux_l1_norm,  # without weight
-            "converged": iter < num_iter - 1,
+            "converged": convergence_status == darsia.ConvergenceStatus.CONVERGED,
             "number_iterations": iter,
             "convergence_history": convergence_history.as_dict(),
             "timings": total_timings,
