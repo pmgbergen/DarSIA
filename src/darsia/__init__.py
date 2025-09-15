@@ -19,6 +19,8 @@ from darsia.measure.integration import *
 from darsia.utils.convergence_status import *  # Needed by measure
 from darsia.measure.emd import *
 from darsia.measure.beckmann_problem import *
+from darsia.measure.beckmann_convergence_criteria import *
+from darsia.measure.beckmann_convergence_history import *
 from darsia.measure.beckmann_newton_solver import *
 from darsia.measure.beckmann_bregman_solver import *
 from darsia.measure.beckmann_gprox_solver import *
