@@ -292,7 +292,8 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         old_force = flux - old_aux_flux
         old_distance = self.l1_dissipation(flux)
 
-        iter = 0
+        # Cache the reference norm of the mass difference for the residual
+        mass_diff_norm = np.linalg.norm(self.pressure_view(rhs), 2)
 
         for iter in range(self.convergence_criteria.num_iter):
             # Check whether to update the Bregman regularization, or to reuse it from
@@ -386,8 +387,9 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
             else:
                 timings["time_acceleration"] = 0.0
 
-            # Update distance
+            # Update distance and flux norm for reference
             distance = self.l1_dissipation(flux)
+            flux_norm = np.linalg.norm(flux, 2)
 
             # Catch nan values
             if np.isnan(distance):
@@ -397,12 +399,6 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
                     "convergence_history": convergence_history.as_dict(),
                 }
                 return distance, solution, info
-
-            # Determine the error in the mass conservation equation
-
-            # Reference values
-            flux_norm = np.linalg.norm(flux, 2)
-            mass_diff_norm = np.linalg.norm(self.pressure_view(rhs), 2)
 
             # Compute the relative errors - supress overflow warnings.
             with warnings.catch_warnings():
