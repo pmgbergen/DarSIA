@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 import tracemalloc
 import warnings
-from typing import override, Optional
+from typing import Optional, override
 
 import numpy as np
 import scipy.sparse as sps

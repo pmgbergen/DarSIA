@@ -5,11 +5,11 @@ from __future__ import annotations
 import time
 import tracemalloc
 import warnings
+from typing import override
 
 import numpy as np
 import pyamg
 import scipy.sparse as sps
-from typing import override
 
 import darsia
 
