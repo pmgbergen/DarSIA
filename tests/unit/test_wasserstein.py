@@ -192,8 +192,8 @@ options = {
     # Performance control
     "num_iter": 400,
     "tol_residual": 1e-3,
-    "tol_increment": 1e-4,
-    "tol_distance": 1e-6,
+    "tol_increment": 1e-3,
+    "tol_distance": 1e-3,
     "return_info": True,
     "verbose": False,
 }
