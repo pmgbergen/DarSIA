@@ -6,114 +6,11 @@ import time
 import tracemalloc
 import warnings
 from typing import Optional, override
-from dataclasses import dataclass, field
 
 import numpy as np
 import scipy.sparse as sps
 
 import darsia
-
-
-@dataclass
-class _ConvergenceHistory:
-    """Class to store the convergence history of the Bregman iteration.
-
-    Not intended for use outside of BeckmannBregmanSolver.
-
-    """
-
-    distance: list[float] = field(default_factory=list)
-    mass_conservation_residual: list[float] = field(default_factory=list)
-    aux_force_increment: list[float] = field(default_factory=list)
-    distance_increment: list[float] = field(default_factory=list)
-    timings: list[dict] = field(default_factory=list)
-    total_run_time: list[float] = field(default_factory=list)
-
-    def append(
-        self,
-        distance: float,
-        distance_increment: float,
-        aux_force_increment: float,
-        mass_conservation_residual: float,
-        timings: dict,
-        total_run_time: float,
-    ) -> None:
-        self.distance.append(distance)
-        self.distance_increment.append(distance_increment)
-        self.aux_force_increment.append(aux_force_increment)
-        self.mass_conservation_residual.append(mass_conservation_residual)
-        self.timings.append(timings)
-        self.total_run_time.append(total_run_time)
-
-    def as_dict(self) -> dict:
-        return {
-            "distance": self.distance,
-            "distance_increment": self.distance_increment,
-            "aux_force_increment": self.aux_force_increment,
-            "mass_conservation_residual": self.mass_conservation_residual,
-            "timings": self.timings,
-            "total_run_time": self.total_run_time,
-        }
-
-
-@dataclass
-class _ConvergenceCriteria:
-    """Class to store and check the convergence criteria for the Bregman solver.
-
-    Not intended for use outside of BeckmannBregmanSolver.
-
-    Base stopping citeria on the different interpretations of the split Bregman method:
-    - fixed-point formulation: aux flux and force increment
-    - minimization formulation: distance increment
-    - constrained optimization formulation: mass conservation residual
-    """
-
-    num_iter: int = 100
-    """Maximum number of iterations."""
-    tol_increment: float = np.finfo(float).max
-    """Tolerance for the aux/force increment."""
-    tol_distance: float = np.finfo(float).max
-    """Tolerance for the distance increment."""
-    tol_residual: float = np.finfo(float).max
-    """Tolerance for the mass conservation residual."""
-
-    def check_convergence_status(
-        self,
-        iter: int,
-        aux_force_increment: float,
-        distance_increment: float,
-        mass_conservation_residual: float,
-    ) -> darsia.ConvergenceStatus:
-        """Check if convergence criteria are met."""
-        max_iterations_reached = self._check_iterations(iter)
-        convergence_achieved = self._check_convergence(
-            aux_force_increment,
-            distance_increment,
-            mass_conservation_residual,
-        )
-        if convergence_achieved:
-            return darsia.ConvergenceStatus.CONVERGED
-        elif max_iterations_reached:
-            return darsia.ConvergenceStatus.NOT_CONVERGED
-        else:
-            return darsia.ConvergenceStatus.RUNNING
-
-    def _check_iterations(self, iter: int) -> bool:
-        """Check if the maximum number of iterations is reached."""
-        return iter >= self.num_iter
-
-    def _check_convergence(
-        self,
-        aux_force_increment: float,
-        distance_increment: float,
-        mass_conservation_residual: float,
-    ) -> bool:
-        """Check if convergence criteria are met."""
-        return (
-            aux_force_increment < self.tol_increment
-            and distance_increment < self.tol_distance
-            and mass_conservation_residual < self.tol_residual
-        )
 
 
 class BeckmannBregmanSolver(darsia.BeckmannProblem):
@@ -159,7 +56,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         self.bregman_update = options.get("bregman_update", lambda iter: False)
         """Function to determine whether/when to update the Bregman regularization."""
 
-        self.convergence_criteria = _ConvergenceCriteria(
+        self.convergence_criteria = darsia.BeckmannConvergenceCriteria(
             num_iter=options.get("num_iter", 100),
             tol_increment=options.get("tol_increment", np.finfo(float).max),
             tol_distance=options.get("tol_distance", np.finfo(float).max),
@@ -254,7 +151,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         distance = 0
 
         # Initialize container for storing the convergence history
-        convergence_history = _ConvergenceHistory()
+        convergence_history = darsia.BeckmannConvergenceHistory()
 
         # Print header
         if self.verbose:
@@ -425,12 +322,12 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
 
             # Update convergence history
             convergence_history.append(
-                distance,
-                relative_distance_increment,
-                relative_bregman_increment,
-                relative_mass_residual,
-                timings,
-                np.nan,  # placeholder for total run time - update below
+                distance=distance,
+                distance_increment=relative_distance_increment,
+                increment=relative_bregman_increment,
+                residual=relative_mass_residual,
+                timings=timings,
+                total_run_time=np.nan,  # placeholder for total run time - update below
             )
 
             # Update total run time
@@ -456,11 +353,11 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
             # Convergence check.
             convergence_status = self.convergence_criteria.check_convergence_status(
                 iter=iter,
-                aux_force_increment=relative_distance_increment,
+                increment=relative_bregman_increment,
                 distance_increment=relative_distance_increment,
-                mass_conservation_residual=relative_mass_residual,
+                residual=relative_mass_residual,
             )
-            if convergence_status in [
+            if iter > 1 and convergence_status in [
                 darsia.ConvergenceStatus.CONVERGED,
                 darsia.ConvergenceStatus.NOT_CONVERGED,
             ]:

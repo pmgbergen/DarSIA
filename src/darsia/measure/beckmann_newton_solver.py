@@ -5,63 +5,12 @@ from __future__ import annotations
 import time
 import tracemalloc
 import warnings
-from typing import override
-from dataclasses import dataclass, field
+from typing import override, Optional
 
 import numpy as np
 import scipy.sparse as sps
 
 import darsia
-
-
-@dataclass
-class _ConvergenceHistory:
-    """Class to store the convergence history of the Newton iteration.
-
-    Not intended for direct use outside of the BeckmannNewtonSolver.
-
-    """
-
-    distance: list[float] = field(default_factory=list)
-    """History of distance values."""
-    residual: list[float] = field(default_factory=list)
-    """History of residual values."""
-    flux_increment: list[float] = field(default_factory=list)
-    """History of flux increment values."""
-    distance_increment: list[float] = field(default_factory=list)
-    """History of distance increment values."""
-    timings: list[dict] = field(default_factory=list)
-    """History of timings."""
-    total_run_time: list[float] = field(default_factory=list)
-    """History of total run time."""
-
-    def append(
-        self,
-        distance: float,
-        residual: float,
-        flux_increment: float,
-        distance_increment: float,
-        timings: dict,
-        total_run_time: float,
-    ) -> None:
-        """Append a new convergence entry."""
-        self.distance.append(distance)
-        self.residual.append(residual)
-        self.flux_increment.append(flux_increment)
-        self.distance_increment.append(distance_increment)
-        self.timings.append(timings)
-        self.total_run_time.append(total_run_time)
-
-    def as_dict(self) -> dict:
-        """Return a plain-dict view compatible with previous code."""
-        return {
-            "distance": self.distance,
-            "residual": self.residual,
-            "flux_increment": self.flux_increment,
-            "distance_increment": self.distance_increment,
-            "timings": self.timings,
-            "total_run_time": self.total_run_time,
-        }
 
 
 class BeckmannNewtonSolver(darsia.BeckmannProblem):
@@ -77,6 +26,22 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
     fixed-point iteration.
 
     """
+
+    def __init__(
+        self,
+        grid: darsia.Grid,
+        weight: Optional[darsia.Image] = None,
+        options: dict = {},
+    ) -> None:
+        super().__init__(grid, weight, options)
+
+        self.convergence_criteria = darsia.BeckmannConvergenceCriteria(
+            num_iter=options.get("num_iter", 100),
+            tol_increment=options.get("tol_increment", np.finfo(float).max),
+            tol_distance=options.get("tol_distance", np.finfo(float).max),
+            tol_residual=options.get("tol_residual", np.finfo(float).max),
+        )
+        """"Convergence criteria for the Newton iteration."""
 
     def compute_residual(self, rhs: np.ndarray, solution: np.ndarray) -> np.ndarray:
         """Compute the residual of the solution - the optimality conditions.
@@ -157,13 +122,6 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         tic = time.time()
         tracemalloc.start()
 
-        # Solver parameters. By default tolerances for increment and distance are
-        # set, such that they do not affect the convergence.
-        num_iter = self.options.get("num_iter", 100)
-        tol_residual = self.options.get("tol_residual", np.finfo(float).max)
-        tol_increment = self.options.get("tol_increment", np.finfo(float).max)
-        tol_distance = self.options.get("tol_distance", np.finfo(float).max)
-
         # Define right hand side
         rhs = np.concatenate(
             [
@@ -181,7 +139,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         distance = 0
 
         # Initialize container for storing the convergence history
-        convergence_history = _ConvergenceHistory()
+        convergence_history = darsia.BeckmannConvergenceHistory()
 
         # Print  header for later printing performance to screen
         # - distance
@@ -205,7 +163,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
 
         # Newton iteration
         iter = 0
-        for iter in range(num_iter):
+        for iter in range(self.convergence_criteria.num_iter):
             # Keep track of old flux and distance
             old_solution = solution.copy()
             old_distance = self.l1_dissipation(self.flux_view(old_solution))
@@ -266,9 +224,9 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
             # Update convergence history (timing first so run_time uses latest timings)
             convergence_history.append(
                 distance=distance,
-                residual=residual_norm,
-                flux_increment=flux_inc_norm,
                 distance_increment=distance_inc,
+                residual=residual_norm,
+                increment=flux_inc_norm,
                 timings=timings,
                 total_run_time=np.nan,  # placeholder for total run time
             )
@@ -297,22 +255,16 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
                 )
 
             # Check for convergence.
-            # Base stopping criterion on different interpretations of the Newton method:
-            # - iterative method: number of iterations
-            # - Newton interpretation: full residual
-            # - Fixed-point interpretation: flux increment
-            # - Minimization interpretation: distance increment
-            converged = (
-                # Check whether total number of iterations is not exceeded
-                iter < num_iter - 1
-                # Check whether residual is below tolerance
-                and relative_residual < tol_residual
-                # Check whether flux increment is below tolerance
-                and relative_flux_increment < tol_increment
-                # Check whether distance increment is below tolerance
-                and relative_distance_increment < tol_distance
+            convergence_status = self.convergence_criteria.check_convergence_status(
+                iter=iter,
+                increment=relative_flux_increment,
+                distance_increment=relative_distance_increment,
+                residual=relative_residual,
             )
-            if iter > 1 and converged:
+            if iter > 1 and convergence_status in [
+                darsia.ConvergenceStatus.CONVERGED,
+                darsia.ConvergenceStatus.NOT_CONVERGED,
+            ]:
                 break
 
             # Callbacks
@@ -332,7 +284,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         info = {
             "distance": distance,  # includes weight
             "flux_l1_norm": flux_l1_norm,  # without weight
-            "converged": converged,
+            "converged": convergence_status == darsia.ConvergenceStatus.CONVERGED,
             "number_iterations": iter,
             "convergence_history": convergence_history.as_dict(),
             "timings": total_timings,
