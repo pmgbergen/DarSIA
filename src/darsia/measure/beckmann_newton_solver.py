@@ -190,10 +190,17 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         # - residual
         if self.verbose:
             print(
-                "Newton iter. \t| W^1 \t\t| Δ W^1 / W^1 \t| Δ flux / flux \t| residual / residual_0",
-                "\n",
-                """---------------|---------------|---------------|---------------|"""
-                """---------------""",
+                """Newton iter. \t| """
+                """W^1 \t\t| """
+                """Δ W^1 / W^1 \t| """
+                """Δ flux / flux \t| """
+                """residual / residual_0"""
+                """\n"""
+                """---------------|"""
+                """---------------|"""
+                """---------------|"""
+                """---------------|"""
+                """---------------"""
             )
 
         # Newton iteration
@@ -238,8 +245,8 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
                 time_acceleration = 0.0
 
             # Update discrete W1 distance
-            flux_view = self.flux_view(solution)
-            distance = self.l1_dissipation(flux_view)
+            flux = self.flux_view(solution)
+            distance = self.l1_dissipation(flux)
 
             # Update statistics
             timings["time_assemble"] = time_assemble
@@ -270,17 +277,16 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
                 convergence_history.timings
             )["total"]
 
-            # Print performance to screen:
-            # - iter count
-            # - distance
-            # - relative distance increment
-            # - relative flux increment
-            # - relative residual
-            relative_distance_increment = distance_inc / distance
-            relative_flux_increment = flux_inc_norm / np.linalg.norm(
-                self.flux_view(solution)
-            )
-            relative_residual = residual_norm / convergence_history.residual[0]
+            # Compute relative errors for stopping criterion.
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="overflow encountered")
+                relative_distance_increment = distance_inc / distance
+                relative_flux_increment = flux_inc_norm / np.linalg.norm(
+                    self.flux_view(solution)
+                )
+                relative_residual = residual_norm / convergence_history.residual[0]
+
+            # Print performance to screen.
             if self.verbose:
                 print(
                     f"""Iter. {iter} \t| """
@@ -296,22 +302,18 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
             # - Newton interpretation: full residual
             # - Fixed-point interpretation: flux increment
             # - Minimization interpretation: distance increment
-            with warnings.catch_warnings():
-                # For default tolerances, the code is prone to overflow. Surpress the
-                # warnings here.
-                warnings.filterwarnings("ignore", message="overflow encountered")
-                converged = (
-                    # Check whether total number of iterations is not exceeded
-                    iter < num_iter - 1
-                    # Check whether residual is below tolerance
-                    and relative_residual < tol_residual
-                    # Check whether flux increment is below tolerance
-                    and relative_flux_increment < tol_increment
-                    # Check whether distance increment is below tolerance
-                    and relative_distance_increment < tol_distance
-                )
-                if iter > 1 and converged:
-                    break
+            converged = (
+                # Check whether total number of iterations is not exceeded
+                iter < num_iter - 1
+                # Check whether residual is below tolerance
+                and relative_residual < tol_residual
+                # Check whether flux increment is below tolerance
+                and relative_flux_increment < tol_increment
+                # Check whether distance increment is below tolerance
+                and relative_distance_increment < tol_distance
+            )
+            if iter > 1 and converged:
+                break
 
             # Callbacks
             if self.callbacks is not None:
@@ -322,8 +324,14 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         total_timings = self._sum_timings(convergence_history.timings)
         peak_memory_consumption = tracemalloc.get_traced_memory()[1] / 10**9
 
+        # Compute l1 norm of the flux
+        unweighted_transport_density = self.transport_density(flux, weighted=False)
+        flux_l1_norm = self.mass_matrix_cells.dot(unweighted_transport_density).sum()
+
         # Define performance metric
         info = {
+            "distance": distance,  # includes weight
+            "flux_l1_norm": flux_l1_norm,  # without weight
             "converged": converged,
             "number_iterations": iter,
             "convergence_history": convergence_history.as_dict(),
