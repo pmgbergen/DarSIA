@@ -1313,9 +1313,9 @@ class BeckmannProblem(darsia.EMD):
 
         """
         # Make sure the jacobian is a CSC matrix
-        assert isinstance(reduced_jacobian, sps.csc_matrix), (
-            "Jacobian should be a CSC matrix."
-        )
+        assert isinstance(
+            reduced_jacobian, sps.csc_matrix
+        ), "Jacobian should be a CSC matrix."
 
         # Effective Gauss-elimination for the particular case of the lagrange multiplier
         self.fully_reduced_jacobian.data[:] = np.delete(
