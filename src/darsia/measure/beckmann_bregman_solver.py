@@ -295,185 +295,185 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         iter = 0
 
         for iter in range(self.convergence_criteria.num_iter):
-            # It is possible that the linear solver fails. In this case, we simply
-            # stop the iteration and return the current solution.
-            if True:  # try:
-                # (Possibly) update the regularization, based on the current approximation
-                # of the flux - use the inverse of the norm of the flux
-                update_solver = self.bregman_update(iter)
-                if update_solver:
-                    # 0. Compute regularization
-                    tic = time.time()
-                    (
-                        l_scheme_mixed_darcy,
-                        weight,
-                        shrink_factor,
-                    ) = self._compute_heterogeneous_bregman_regularization(flux)
-                    # 1. Make relaxation step (solve quadratic optimization problem)
-                    # Here, re-initialize the aux flux and force with zero values again.
-                    rhs_copy = rhs.copy()  # may change during direct solve
-                    time_assemble = time.time() - tic
-                    # Force to update the internally stored linear solver
-                    tic = time.time()
+            # Check whether to update the Bregman regularization, or to reuse it from
+            # the previous iteration.
+            if self.bregman_update(iter):
+                # 0. Compute regularization
+                tic = time.time()
+                (
+                    l_scheme_mixed_darcy,
+                    weight,
+                    shrink_factor,
+                ) = self._compute_heterogeneous_bregman_regularization(flux)
+                # 1. Make relaxation step (solve quadratic optimization problem)
+                # Here, re-initialize the aux flux and force with zero values again.
+                rhs_copy = rhs.copy()  # may change during direct solve
+                time_assemble = time.time() - tic
+                tic = time.time()
+                try:
                     solution, timings = self.linear_solve(
                         l_scheme_mixed_darcy,
                         rhs_copy,
-                        reuse_solver=False,
+                        reuse_solver=False,  # force to update solver
                     )
-                    flux = self.flux_view(solution)
-                    timings["time_solve"] = time.time() - tic
-                    timings["time_assemble"] = time_assemble
-
-                    # 2. Shrink step for vectorial fluxes.
-                    tic = time.time()
-                    new_aux_flux = self._shrink(flux, shrink_factor)
-                    timings["time_shrink"] = time.time() - tic
-
-                    # 3. Update force
-                    tic = time.time()
-                    new_force = flux - new_aux_flux
-
-                else:
-                    # 1. Make relaxation step (solve quadratic optimization problem)
-                    tic = time.time()
-                    rhs_copy = rhs.copy()
-                    rhs_copy[self.flux_slice] = weight @ self.mass_matrix_faces.dot(
-                        old_aux_flux - old_force
+                except Exception:
+                    warnings.warn(
+                        "Bregman iteration abruptly stopped due to some error."
                     )
-                    time_assemble = time.time() - tic
-                    # Force to update the internally stored linear solver
-                    tic = time.time()
-                    solution, timings = self.linear_solve(
-                        l_scheme_mixed_darcy,
-                        rhs_copy,
-                        reuse_solver=iter > 0,
-                    )
-                    flux = self.flux_view(solution)
-                    timings["time_solve"] = time.time() - tic
-                    timings["time_assemble"] = time_assemble
-
-                    # 2. Shrink step for vectorial fluxes.
-                    tic = time.time()
-                    new_aux_flux = self._shrink(flux + old_force, shrink_factor)
-                    timings["time_shrink"] = time.time() - tic
-
-                    # 3. Update force
-                    tic = time.time()
-                    new_force = old_force + flux - new_aux_flux
-
-                # Apply Anderson acceleration to flux contribution (the only nonlinear part).
-                if self.anderson is not None:
-                    tic = time.time()
-                    # Prepare increments
-                    aux_inc = new_aux_flux - old_aux_flux
-                    force_inc = new_force - old_force
-                    bregman_increment = np.concatenate([aux_inc, force_inc])
-                    bregman_iteration = np.concatenate([new_aux_flux, new_force])
-                    # Apply Anderson acceleration
-                    aa_bregman_iteration = self.anderson(
-                        bregman_iteration, bregman_increment, iter
-                    )
-                    # Split into flux and auxiliary variable
-                    new_aux_flux = aa_bregman_iteration[: self.grid.num_faces]
-                    new_force = aa_bregman_iteration[self.grid.num_faces :]
-                    timings["time_acceleration"] = time.time() - tic
-                else:
-                    timings["time_acceleration"] = 0.0
-
-                # Update distance
-                distance = self.l1_dissipation(flux)
-
-                # Catch nan values
-                if np.isnan(distance):
-                    info = {
-                        "converged": False,
-                        "number_iterations": iter,
-                        "convergence_history": convergence_history.as_dict(),
-                    }
-                    return distance, solution, info
-
-                # Determine the error in the mass conservation equation
-
-                # Reference values
-                flux_norm = np.linalg.norm(flux, 2)
-                mass_diff_norm = np.linalg.norm(self.pressure_view(rhs), 2)
-
-                # Compute the relative errors - supress overflow warnings.
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", message="overflow encountered")
-
-                    # 0 - aux/force increments (fixed-point formulation)
-                    aux_increment = new_aux_flux - old_aux_flux
-                    force_increment = new_force - old_force
-                    absolute_bregman_increment = np.linalg.norm(
-                        np.concatenate([aux_increment, force_increment]), 2
-                    )
-                    relative_bregman_increment = absolute_bregman_increment / flux_norm
-
-                    # 1 - distance increment (minimization formulation)
-                    absolute_distance_increment = abs(distance - old_distance)
-                    relative_distance_increment = absolute_distance_increment / distance
-
-                    # 2 - mass conservation residual (constraint in optimization formulation)
-                    mass_conservation_residual = self.div.dot(
-                        flux
-                    ) - self.pressure_view(rhs)
-                    absolute_mass_residual = np.linalg.norm(
-                        mass_conservation_residual, 2
-                    )
-                    relative_mass_residual = absolute_mass_residual / mass_diff_norm
-
-                # Update convergence history
-                convergence_history.append(
-                    distance,
-                    relative_distance_increment,
-                    relative_bregman_increment,
-                    relative_mass_residual,
-                    timings,
-                    np.nan,  # placeholder for total run time - update below
-                )
-
-                # Update total run time
-                current_total_run_time = self._sum_timings(convergence_history.timings)[
-                    "total"
-                ]
-                convergence_history.total_run_time[-1] = current_total_run_time
-
-                # Print status
-                if self.verbose:
-                    print(
-                        f"Iter. {iter} \t|"
-                        f"{distance:.6e} \t| "
-                        f"{relative_distance_increment:.6e} \t| "
-                        f"{relative_bregman_increment:.6e} \t| "
-                        f"{relative_mass_residual:.6e}"
-                    )
-
-                if self.callbacks is not None:
-                    for callback in self.callbacks:
-                        callback(self)
-
-                # Convergence check.
-                convergence_status = self.convergence_criteria.check_convergence_status(
-                    iter=iter,
-                    aux_force_increment=relative_distance_increment,
-                    distance_increment=relative_distance_increment,
-                    mass_conservation_residual=relative_mass_residual,
-                )
-                if convergence_status in [
-                    darsia.ConvergenceStatus.CONVERGED,
-                    darsia.ConvergenceStatus.NOT_CONVERGED,
-                ]:
                     break
+                flux = self.flux_view(solution)
+                timings["time_solve"] = time.time() - tic
+                timings["time_assemble"] = time_assemble
 
-                # Update Bregman variables for next iteration.
-                old_aux_flux = new_aux_flux.copy()
-                old_force = new_force.copy()
-                old_distance = distance
+                # 2. Shrink step for vectorial fluxes.
+                tic = time.time()
+                new_aux_flux = self._shrink(flux, shrink_factor)
+                timings["time_shrink"] = time.time() - tic
 
-            else:  # except Exception:
-                warnings.warn("Bregman iteration abruptly stopped due to some error.")
+                # 3. Update force
+                tic = time.time()
+                new_force = flux - new_aux_flux
+
+            else:
+                # 1. Make relaxation step (solve quadratic optimization problem)
+                tic = time.time()
+                rhs_copy = rhs.copy()
+                rhs_copy[self.flux_slice] = weight @ self.mass_matrix_faces.dot(
+                    old_aux_flux - old_force
+                )
+                time_assemble = time.time() - tic
+                tic = time.time()
+                try:
+                    solution, timings = self.linear_solve(
+                        l_scheme_mixed_darcy,
+                        rhs_copy,
+                        reuse_solver=iter > 0,  # force to reuse solver
+                    )
+                except Exception:
+                    warnings.warn(
+                        "Bregman iteration abruptly stopped due to some error."
+                    )
+                    break
+                flux = self.flux_view(solution)
+                timings["time_solve"] = time.time() - tic
+                timings["time_assemble"] = time_assemble
+
+                # 2. Shrink step for vectorial fluxes.
+                tic = time.time()
+                new_aux_flux = self._shrink(flux + old_force, shrink_factor)
+                timings["time_shrink"] = time.time() - tic
+
+                # 3. Update force
+                tic = time.time()
+                new_force = old_force + flux - new_aux_flux
+
+            # Apply Anderson acceleration to flux contribution (the only nonlinear part).
+            if self.anderson is not None:
+                tic = time.time()
+                # Prepare increments
+                aux_inc = new_aux_flux - old_aux_flux
+                force_inc = new_force - old_force
+                bregman_increment = np.concatenate([aux_inc, force_inc])
+                bregman_iteration = np.concatenate([new_aux_flux, new_force])
+                # Apply Anderson acceleration
+                aa_bregman_iteration = self.anderson(
+                    bregman_iteration, bregman_increment, iter
+                )
+                # Split into flux and auxiliary variable
+                new_aux_flux = aa_bregman_iteration[: self.grid.num_faces]
+                new_force = aa_bregman_iteration[self.grid.num_faces :]
+                timings["time_acceleration"] = time.time() - tic
+            else:
+                timings["time_acceleration"] = 0.0
+
+            # Update distance
+            distance = self.l1_dissipation(flux)
+
+            # Catch nan values
+            if np.isnan(distance):
+                info = {
+                    "converged": False,
+                    "number_iterations": iter,
+                    "convergence_history": convergence_history.as_dict(),
+                }
+                return distance, solution, info
+
+            # Determine the error in the mass conservation equation
+
+            # Reference values
+            flux_norm = np.linalg.norm(flux, 2)
+            mass_diff_norm = np.linalg.norm(self.pressure_view(rhs), 2)
+
+            # Compute the relative errors - supress overflow warnings.
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="overflow encountered")
+
+                # 0 - aux/force increments (fixed-point formulation)
+                aux_increment = new_aux_flux - old_aux_flux
+                force_increment = new_force - old_force
+                absolute_bregman_increment = np.linalg.norm(
+                    np.concatenate([aux_increment, force_increment]), 2
+                )
+                relative_bregman_increment = absolute_bregman_increment / flux_norm
+
+                # 1 - distance increment (minimization formulation)
+                absolute_distance_increment = abs(distance - old_distance)
+                relative_distance_increment = absolute_distance_increment / distance
+
+                # 2 - mass conservation residual (constraint in optimization formulation)
+                mass_conservation_residual = self.div.dot(flux) - self.pressure_view(
+                    rhs
+                )
+                absolute_mass_residual = np.linalg.norm(mass_conservation_residual, 2)
+                relative_mass_residual = absolute_mass_residual / mass_diff_norm
+
+            # Update convergence history
+            convergence_history.append(
+                distance,
+                relative_distance_increment,
+                relative_bregman_increment,
+                relative_mass_residual,
+                timings,
+                np.nan,  # placeholder for total run time - update below
+            )
+
+            # Update total run time
+            current_total_run_time = self._sum_timings(convergence_history.timings)[
+                "total"
+            ]
+            convergence_history.total_run_time[-1] = current_total_run_time
+
+            # Print status
+            if self.verbose:
+                print(
+                    f"Iter. {iter} \t|"
+                    f"{distance:.6e} \t| "
+                    f"{relative_distance_increment:.6e} \t| "
+                    f"{relative_bregman_increment:.6e} \t| "
+                    f"{relative_mass_residual:.6e}"
+                )
+
+            if self.callbacks is not None:
+                for callback in self.callbacks:
+                    callback(self)
+
+            # Convergence check.
+            convergence_status = self.convergence_criteria.check_convergence_status(
+                iter=iter,
+                aux_force_increment=relative_distance_increment,
+                distance_increment=relative_distance_increment,
+                mass_conservation_residual=relative_mass_residual,
+            )
+            if convergence_status in [
+                darsia.ConvergenceStatus.CONVERGED,
+                darsia.ConvergenceStatus.NOT_CONVERGED,
+            ]:
                 break
+
+            # Update Bregman variables for next iteration.
+            old_aux_flux = new_aux_flux.copy()
+            old_force = new_force.copy()
+            old_distance = distance
 
         # Solve for the pressure by solving a single Newton iteration
         newton_jacobian, _, _ = self._compute_heterogeneous_bregman_regularization(flux)
