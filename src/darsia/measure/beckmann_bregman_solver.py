@@ -83,25 +83,6 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         self.L = self.options.get("L", 1.0)
         """Penality parameter for the Bregman iteration, associated to face mobility."""
 
-    def _setup_dof_management(self) -> None:
-        """Bregman-specific setup of the dof management."""
-        super()._setup_dof_management()
-
-        self.force_slice = slice(self.grid.num_faces, None)
-        """slice: slice for the force."""
-
-    def force_view(self, vector: np.ndarray) -> np.ndarray:
-        """View into the force part of the solution vector.
-
-        Args:
-            vector (np.ndarray): solution vector
-
-        Returns:
-            np.ndarray: view into the force part of the solution vector
-
-        """
-        return vector[self.force_slice]
-
     def _shrink(
         self,
         flux: np.ndarray,
@@ -200,10 +181,17 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         # Print header
         if self.verbose:
             print(
-                "Bregman iter. \t| W^1 \t\t| Δ W^1/W^1 \t| Δ aux/force \t| mass residual",
-                "\n",
-                """---------------|---------------|---------------|---------------|"""
-                """---------------""",
+                """Bregman iter. \t| """
+                """W^1 \t\t| """
+                """Δ W^1/W^1 \t| """
+                """Δ aux/force \t| """
+                """mass residual"""
+                """\n"""
+                """---------------|"""
+                """---------------|"""
+                """---------------|"""
+                """---------------|"""
+                """---------------"""
             )
 
         # Relaxation parameter entering Bregman regularization
