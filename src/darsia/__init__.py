@@ -16,6 +16,7 @@ from darsia.image.arithmetics import *
 from darsia.measure.integration import *
 
 # EMD and Wasserstein distances
+from darsia.utils.convergence_status import *  # Needed by measure
 from darsia.measure.emd import *
 from darsia.measure.beckmann_problem import *
 from darsia.measure.beckmann_newton_solver import *
