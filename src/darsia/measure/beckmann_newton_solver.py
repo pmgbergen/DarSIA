@@ -66,21 +66,11 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
             sps.linalg.splu: LU factorization of the jacobian
 
         """
-        # Only need to update the flux-flux block
         flux = self.flux_view(solution)
         face_weights, _ = self._compute_face_weight(flux)
         weight = sps.diags(face_weights)
         flux_flux_block = weight @ self.mass_matrix_faces
-
-        # Assemble full jacobian and store for later use
-        # - first iteration: base on linear part of jacobian
-        # - later iterations: update flux-flux block only
-        if not hasattr(self, "full_jacobian"):
-            self.full_jacobian: sps.csc_matrix = self.broken_darcy.copy()
-        last_jacobian = self.full_jacobian.tolil()
-        last_jacobian[(self.flux_slice, self.flux_slice)] = flux_flux_block
-        self.full_jacobian = last_jacobian.tocsc()
-        return self.full_jacobian
+        return self.broken_darcy_with_custom_flux_block(flux_flux_block)
 
     def _compute_residual_norm(self, rhs: np.ndarray, solution: np.ndarray) -> float:
         """Compute the residual for the stopping criterion.
