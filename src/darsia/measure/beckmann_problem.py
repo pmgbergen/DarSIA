@@ -281,11 +281,31 @@ class BeckmannProblem(darsia.EMD):
         """sps.csc_matrix: linear part of the Darcy operator with pressure constraint"""
 
         L_init = self.options.get("L_init", 1.0)
-        darcy_init = self.broken_darcy.tolil()
-        darcy_init[self.flux_slice, self.flux_slice] = (
+        self.darcy_init = self.broken_darcy_with_custom_flux_block(
             L_init * self.weighted_mass_matrix_faces_init
         )
-        self.darcy_init = darcy_init.tocsc()
+        """sps.csc_matrix: initial Darcy operator"""
+
+    def broken_darcy_with_custom_flux_block(
+        self, flux_flux_block: sps.csc_matrix
+    ) -> sps.csc_matrix:
+        """Construct the broken Darcy operator with given flux-flux block.
+
+        Args:
+            flux_flux_block (sps.csc_matrix): flux-flux block
+
+        Returns:
+            sps.csc_matrix: broken Darcy operator with given flux-flux block
+
+        """
+        return sps.bmat(
+            [
+                [flux_flux_block, -self.div.T, None],
+                [self.div, None, -self.pressure_constraint.T],
+                [None, self.pressure_constraint, None],
+            ],
+            format="csc",
+        )
 
     def _setup_face_reconstruction(self) -> None:
         """Setup of face reconstruction via RT0 basis functions and arithmetic avg.
