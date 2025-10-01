@@ -409,3 +409,47 @@ class BeckmannKSPFieldSplitSolver(BeckmannKSPSolver):
 
         self.nullspace: list[np.ndarray] = nullspace
         """ list of nullspace vectors of the matrix"""
+
+
+class BeckmannLinearSolverFactory:
+    @staticmethod
+    def create(
+        solver_type: BeckmannLinearSolverType,
+        options: dict,
+    ) -> BeckmannLinearSolver:
+        """Factory method to create a linear solver for Beckmann's problem.
+
+        Args:
+            solver_type (BeckmannLinearSolverType): type of linear solver
+            options (dict): options for the linear solver
+
+        Returns:
+            BeckmannLinearSolver: instance of the linear solver
+
+        """
+
+        if solver_type == darsia.BeckmannLinearSolverType.DIRECT:
+            return darsia.BeckmannDirectSolver({})
+        elif solver_type == darsia.BeckmannLinearSolverType.AMG:
+            return darsia.BeckmannAMGSolver(
+                options.get("amg_options", {}),
+                options.get("linear_solver_options", {}),
+            )
+        elif solver_type == darsia.BeckmannLinearSolverType.CG:
+            return darsia.BeckmannCGSolver(
+                options.get("amg_options", {}),
+                options.get("linear_solver_options", {}),
+            )
+        elif solver_type == darsia.BeckmannLinearSolverType.KSP:
+            return darsia.BeckmannKSPSolver(options.get("linear_solver_options", {}))
+        # TODO: Use FieldSplit when full formulation... Not implemented right now
+        # elif self.linear_solver_type == darsia.BeckmannLinearSolverType.KSP:
+        #    self.linear_solver = darsia.BeckmannKSPSolver(
+        #        self.options.get("linear_solver_options", {}),
+        #        field_ises=[
+        #            ("flux", self.flux_indices),
+        #            ("pressure", self.pressure_indices),
+        #        ],
+        #    )
+        else:
+            raise NotImplementedError("Linear solver not implemented.")
