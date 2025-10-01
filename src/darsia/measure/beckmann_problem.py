@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 import warnings
 from abc import abstractmethod
-from enum import Enum
+from enum import StrEnum
 from typing import Optional
 from warnings import warn
 
@@ -17,7 +17,7 @@ from scipy.stats import hmean
 import darsia
 
 
-class L1Mode(Enum):
+class L1Mode(StrEnum):
     """Mode for computing the l1 dissipation."""
 
     RAVIART_THOMAS = "raviart_thomas"
@@ -25,7 +25,34 @@ class L1Mode(Enum):
     CONSTANT_CELL_PROJECTION = "constant_cell_projection"
 
 
-class MobilityMode(Enum):
+class L1QuadratureFactory:
+    @staticmethod
+    def create(l1_mode: L1Mode, dim: int):
+        match l1_mode:
+            case L1Mode.RAVIART_THOMAS:
+                # Apply numerical integration of RT0 extensions into cells.
+                # Underlying functional for mixed finite element method (MFEM).
+                quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
+                    dim, "max"
+                )
+
+            case L1Mode.CONSTANT_SUBCELL_PROJECTION:
+                # Apply subcell_based projection onto constant vectors and sum up.
+                # Equivalent to a mixed finite volume method (FV). Identical to quadrature
+                # over corners.
+                quad_pts, quad_weights = darsia.quadrature.reference_cell_corners(dim)
+
+            case L1Mode.CONSTANT_CELL_PROJECTION:
+                # L2 projection onto constant vectors identical to quadrature of order 0.
+                quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(dim, 0)
+
+            case _:
+                raise ValueError(f"Mode {l1_mode} not supported.")
+
+        return quad_pts, quad_weights
+
+
+class MobilityMode(StrEnum):
     """Mode for computing the mobility."""
 
     CELL_BASED = "cell_based"
@@ -144,9 +171,6 @@ class BeckmannProblem(darsia.EMD):
         self.verbose = self.options.get("verbose", False)
         """bool: verbosity"""
 
-        self.l1_mode: L1Mode = self.options.get("l1_mode", L1Mode.RAVIART_THOMAS)
-        """str: mode for computing the l1 dissipation"""
-
         self.mobility_mode: MobilityMode = self.options.get(
             "mobility_mode", MobilityMode.CELL_BASED
         )
@@ -157,6 +181,7 @@ class BeckmannProblem(darsia.EMD):
 
         # Setup of method
         self._setup_dof_management()
+        self._setup_l1_quadrature()
         self._setup_face_weights()
         self._setup_discretization()
         self._setup_linear_solver()
@@ -222,6 +247,26 @@ class BeckmannProblem(darsia.EMD):
             shape=(num_dofs, num_flux_dofs),
         )
         """sps.csc_matrix: embedding operator for fluxes"""
+
+    def _setup_l1_quadrature(self) -> None:
+        """Setup of quadrature for the l1 dissipation.
+
+        Type of integration depends on the selected mode, see self.l1_mode. Supported
+        modes are:
+        - 'raviart_thomas': Apply exact integration of RT0 extensions into cells.
+            Underlying functional for mixed finite element method (MFEM).
+        - 'constant_subcell_projection': Apply subcell_based projection onto constant
+            vectors and sum up. Equivalent to a mixed finite volume method (FV).
+        - 'constant_cell_projection': Apply cell-based L2 projection onto constant
+            vectors and sum up. Simpler calculation than subcell-projection, but not
+            directly connected to any discretization.
+
+        """
+        l1_mode: L1Mode = self.options.get("l1_mode", L1Mode.RAVIART_THOMAS)
+        """str: mode for computing the l1 dissipation"""
+        self.quad_pts, self.quad_weights = L1QuadratureFactory.create(
+            l1_mode, self.grid.dim
+        )
 
     def _setup_face_weights(self) -> None:
         """Convert cell weights to face weights by harmonic averaging."""
@@ -488,53 +533,13 @@ class BeckmannProblem(darsia.EMD):
         Returns:
             np.ndarray: transport density, flattened if requested
 
-        Notes:
-        Type of integration depends on the selected mode, see self.l1_mode. Supported
-        modes are:
-        - 'raviart_thomas': Apply exact integration of RT0 extensions into cells.
-            Underlying functional for mixed finite element method (MFEM).
-        - 'constant_subcell_projection': Apply subcell_based projection onto constant
-            vectors and sum up. Equivalent to a mixed finite volume method (FV).
-        - 'constant_cell_projection': Apply cell-based L2 projection onto constant
-            vectors and sum up. Simpler calculation than subcell-projection, but not
-            directly connected to any discretization.
-
         """
-        # The different modes merely differ in the integration rule.
-
-        if self.l1_mode == L1Mode.RAVIART_THOMAS:
-            # Apply numerical integration of RT0 extensions into cells.
-            # Underlying functional for mixed finite element method (MFEM).
-            quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
-                self.grid.dim, "max"
-            )
-
-        elif self.l1_mode == L1Mode.CONSTANT_SUBCELL_PROJECTION:
-            # Apply subcell_based projection onto constant vectors and sum up.
-            # Equivalent to a mixed finite volume method (FV). Identical to quadrature
-            # over corners.
-            quad_pts, quad_weights = darsia.quadrature.reference_cell_corners(
-                self.grid.dim
-            )
-
-        elif self.l1_mode == L1Mode.CONSTANT_CELL_PROJECTION:
-            # L2 projection onto constant vectors identical to quadrature of order 0.
-            quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
-                self.grid.dim, 0
-            )
-
-        else:
-            raise ValueError(f"Mode {self.l1_mode} not supported.")
-
         # Integrate over reference cell (normalization not required)
         transport_density = np.zeros(self.grid.shape, dtype=float)
-        for quad_pt, quad_weight in zip(quad_pts, quad_weights):
+        for quad_pt, quad_weight in zip(self.quad_pts, self.quad_weights):
             cell_flux = darsia.face_to_cell(self.grid, flat_flux, pt=quad_pt)
-            if weighted:
-                weighted_cell_flux = self.cell_weighted_flux(cell_flux)
-                cell_flux_norm = np.linalg.norm(weighted_cell_flux, 2, axis=-1)
-            else:
-                cell_flux_norm = np.linalg.norm(cell_flux, 2, axis=-1)
+            weighted_cell_flux = self.cell_weighted_flux(cell_flux)
+            cell_flux_norm = np.linalg.norm(weighted_cell_flux, 2, axis=-1)
             transport_density += quad_weight * cell_flux_norm
 
         if flatten:
@@ -1034,9 +1039,9 @@ class BeckmannProblem(darsia.EMD):
             assert hasattr(self, "fully_reduced_jacobian")
 
         # Make sure the jacobian is a CSC matrix
-        assert isinstance(reduced_jacobian, sps.csc_matrix), (
-            "Jacobian should be a CSC matrix."
-        )
+        assert isinstance(
+            reduced_jacobian, sps.csc_matrix
+        ), "Jacobian should be a CSC matrix."
 
         # Effective Gauss-elimination for the particular case of the lagrange multiplier
         self.fully_reduced_jacobian.data[:] = np.delete(
@@ -1065,9 +1070,9 @@ class BeckmannProblem(darsia.EMD):
 
         """
         # Make sure the setup routine has been called
-        assert hasattr(self, "reduced_jacobian"), (
-            "Need to call setup_eliminate_flux() first."
-        )
+        assert hasattr(
+            self, "reduced_jacobian"
+        ), "Need to call setup_eliminate_flux() first."
 
         # Find row entries to be removed
         rm_row_entries = np.arange(
