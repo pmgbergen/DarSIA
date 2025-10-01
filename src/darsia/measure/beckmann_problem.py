@@ -486,26 +486,6 @@ class BeckmannProblem(darsia.EMD):
 
     # ! ---- Lumping of effective mobility
 
-    def _product(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
-        """Compute the product of two arrays.
-
-        Args:
-            a (np.ndarray): array a
-            b (np.ndarray): array b
-
-        Returns:
-            np.ndarray: product
-
-        """
-        if len(a.shape) == len(b.shape) + 1 and a.shape[:-1] == b.shape:
-            return a * b[..., np.newaxis]
-        elif len(a.shape) == len(b.shape) - 1 and a.shape == b.shape[:-1]:
-            return a[..., np.newaxis] * b
-        elif len(a.shape) == len(b.shape) and a.shape == b.shape:
-            return a * b
-        else:
-            raise ValueError("Shapes not compatible.")
-
     def _harmonic_average(self, cell_values: np.ndarray) -> np.ndarray:
         """Compute the harmonic average of cell values on faces.
 
@@ -551,7 +531,7 @@ class BeckmannProblem(darsia.EMD):
             )
             # weight  * (weight / |weight * flux|): cell -> face via harmonic averaging
             # TODO use _harmonic_average
-            cell_weights_inv = self._product(
+            cell_weights_inv = darsia.array_product(
                 1.0 / self.cell_weights**2, regularized_weighted_cell_flux_norm
             )
             face_weights_inv = darsia.cell_to_face_average(
@@ -574,7 +554,7 @@ class BeckmannProblem(darsia.EMD):
             )
             # |weight| / |weight * flux|: cell -> face via arithmetic averaging
             # of the inverse
-            weight_ratio_inv = self._product(
+            weight_ratio_inv = darsia.array_product(
                 1.0 / self.cell_weights, regularized_weighted_cell_flux_norm
             )
             arithm_avg_weight_ratio_inv = darsia.cell_to_face_average(
@@ -655,7 +635,9 @@ class BeckmannProblem(darsia.EMD):
             full_face_flux = self.face_reconstruction(flat_flux)
 
             # Determine the l2 norm of the fluxes on the faces
-            weighted_face_flux = self._product(harm_avg_face_weights, full_face_flux)
+            weighted_face_flux = darsia.array_product(
+                harm_avg_face_weights, full_face_flux
+            )
             norm_weighted_face_flux = np.linalg.norm(weighted_face_flux, 2, axis=1)
 
             # Combine weights**2 / |weight * flux| on faces
