@@ -220,15 +220,6 @@ class BeckmannProblem(darsia.EMD):
         )
         """sps.csc_matrix: embedding operator for fluxes"""
 
-    def ndofs(self) -> int:
-        """Return the total number of degrees of freedom.
-
-        Returns:
-            int: total number of degrees of freedom
-
-        """
-        return self.grid.num_faces + self.grid.num_cells + 1
-
     def _setup_face_weights(self) -> None:
         """Convert cell weights to face weights by harmonic averaging."""
 
@@ -326,9 +317,39 @@ class BeckmannProblem(darsia.EMD):
         """sps.csc_matrix: full face reconstruction: flat fluxes -> vector fluxes"""
 
     def _setup_linear_solver(self) -> None:
-        self.linear_solver_type = self.options.get("linear_solver", "direct")
+        linear_solver_type = self.options.get("linear_solver", "direct")
+        self.linear_solver_type = linear_solver_type
         """str: type of linear solver"""
 
+        if self.linear_solver_type == darsia.BeckmannLinearSolverType.DIRECT:
+            self.linear_solver = darsia.BeckmannDirectSolver({})
+        elif self.linear_solver_type == darsia.BeckmannLinearSolverType.AMG:
+            self.linear_solver = darsia.BeckmannAMGSolver(
+                self.options.get("amg_options", {}),
+                self.options.get("linear_solver_options", {}),
+            )
+        elif self.linear_solver_type == darsia.BeckmannLinearSolverType.CG:
+            self.linear_solver = darsia.BeckmannCGSolver(
+                self.options.get("amg_options", {}),
+                self.options.get("linear_solver_options", {}),
+            )
+        elif self.linear_solver_type == darsia.BeckmannLinearSolverType.KSP:
+            self.linear_solver = darsia.BeckmannKSPSolver(
+                self.options.get("linear_solver_options", {})
+            )
+        # TODO: Use FieldSplit when full formulation... Not implemented right now
+        # elif self.linear_solver_type == darsia.BeckmannLinearSolverType.KSP:
+        #    self.linear_solver = darsia.BeckmannKSPSolver(
+        #        self.options.get("linear_solver_options", {}),
+        #        field_ises=[
+        #            ("flux", self.flux_indices),
+        #            ("pressure", self.pressure_indices),
+        #        ],
+        #    )
+        else:
+            raise NotImplementedError("Linear solver not implemented.")
+
+        # TODO: Move to setup_schur_complement_reduction()
         self.formulation: str = self.options.get("formulation", "pressure")
         """str: formulation type"""
 
@@ -358,207 +379,6 @@ class BeckmannProblem(darsia.EMD):
         elif self.formulation == "pressure":
             self.setup_eliminate_flux()
             self.setup_eliminate_lagrange_multiplier()
-
-    def setup_direct_solver(self, matrix: sps.csc_matrix) -> sps.linalg.splu:
-        """Setup a direct solver for the given matrix.
-
-        Args:
-            matrix (sps.csc_matrix): matrix
-
-        Defines:
-            sps.linalg.splu: direct solver
-            dict: (empty) solver options
-
-        """
-        self.linear_solver = sps.linalg.splu(matrix)
-        self.solver_options = {}
-
-    def setup_amg_options(self) -> None:
-        """Setup the infrastructure for multilevel solvers.
-
-        Basic default setup based on jacobi and block Gauss-Seidel smoothers.
-        User-defined options can be passed via the options dictionary, using the key
-        "amg_options". The options follow the pyamg interface.
-
-        """
-        self.amg_options = {
-            "strength": "symmetric",  # change the strength of connection
-            "aggregate": "standard",  # use a standard aggregation method
-            "smooth": ("jacobi"),  # prolongation smoother
-            "presmoother": (
-                "block_gauss_seidel",
-                {"sweep": "symmetric", "iterations": 1},
-            ),
-            "postsmoother": (
-                "block_gauss_seidel",
-                {"sweep": "symmetric", "iterations": 1},
-            ),
-            "coarse_solver": "pinv2",  # pseudo inverse via SVD
-            "max_coarse": 100,  # maximum number on a coarse level
-        }
-        """dict: options for the AMG solver"""
-
-        # Allow to overwrite default options - use pyamg interface.
-        user_defined_amg_options = self.options.get("amg_options", {})
-        self.amg_options.update(user_defined_amg_options)
-
-    def setup_amg_solver(self, matrix: sps.csc_matrix) -> None:
-        """Setup an AMG solver for the given matrix.
-
-        Args:
-            matrix (sps.csc_matrix): matrix
-
-        Defines:
-            pyamg.amg_core.solve: AMG solver
-            dict: options for the AMG solver
-
-        """
-        # Define AMG solver
-        self.setup_amg_options()
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="Implicit conversion of A to CSR")
-            self.linear_solver = pyamg.smoothed_aggregation_solver(
-                matrix, **self.amg_options
-            )
-
-        # Define solver options
-        linear_solver_options = self.options.get("linear_solver_options", {})
-        atol = linear_solver_options.get("atol", 1e-6)
-        rtol = linear_solver_options.get("rtol", None)
-        if not rtol:
-            warn("rtol not used for AMG solver.")
-        maxiter = linear_solver_options.get("maxiter", 100)
-        self.amg_residual_history: list[float] = []
-        """list: history of residuals for the AMG solver"""
-        self.solver_options = {
-            "tol": atol,
-            "maxiter": maxiter,
-            "residuals": self.amg_residual_history,
-        }
-        """dict: options for the iterative linear solver"""
-
-    def setup_cg_solver(self, matrix: sps.csc_matrix) -> None:
-        """Setup an CG solver with AMG preconditioner for the given matrix.
-
-        Args:
-            matrix (sps.csc_matrix): matrix
-
-        Defines:
-            pyamg.amg_core.solve: AMG solver
-            dict: options for the AMG solver
-
-        """
-        # Define CG solver
-        self.linear_solver = darsia.linalg.CG(matrix)
-
-        # Define AMG preconditioner
-        self.setup_amg_options()
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="Implicit conversion of A to CSR")
-            amg = pyamg.smoothed_aggregation_solver(
-                matrix, **self.amg_options
-            ).aspreconditioner(cycle="V")
-
-        # Define solver options
-        linear_solver_options = self.options.get("linear_solver_options", {})
-        rtol = linear_solver_options.get("rtol", 1e-6)
-        atol = linear_solver_options.get("atol", 0)
-        maxiter = linear_solver_options.get("maxiter", 100)
-        self.solver_options = {
-            "rtol": rtol,
-            "atol": atol,
-            "maxiter": maxiter,
-            "M": amg,
-        }
-        """dict: options for the iterative linear solver"""
-
-    def setup_ksp_solver(
-        self,
-        matrix: sps.csc_matrix,
-        field_ises: Optional[list[tuple[str, np.ndarray]]] = None,
-        nullspace: Optional[list[np.ndarray]] = None,
-    ) -> None:
-        """Setup an KSP solver from PETSc for the given matrix.
-
-        Args:
-            matrix (sps.csc_matrix): matrix
-            nullspace (list[np.ndarray]): list of nullspace vectors of the matrix
-
-        Defines:
-            PETSc.ksp: KSP solver
-            dict: options for the KSP solver
-        """
-        # Define CG solver
-        self.linear_solver = darsia.linalg.KSP(
-            matrix, field_ises=field_ises, nullspace=nullspace
-        )
-
-        # Define solver options
-        linear_solver_options = self.options.get("linear_solver_options", {})
-        rtol = linear_solver_options.get("rtol", 1e-6)
-        atol = linear_solver_options.get("atol", 0)
-        maxiter = linear_solver_options.get("maxiter", 100)
-        approach = linear_solver_options.get("approach", "direct")
-
-        if field_ises is None:
-            if approach == "direct":
-                self.solver_options = {
-                    "ksp_type": "preonly",
-                    "pc_type": "lu",
-                    "pc_factor_mat_solver_type": "mumps",
-                }
-            else:
-                prec = linear_solver_options.get("pc_type", "hypre")
-                self.solver_options = {
-                    "ksp_type": approach,
-                    # "ksp_monitor_true_residual": None,
-                    "ksp_rtol": rtol,
-                    "ksp_atol": atol,
-                    "ksp_max_it": maxiter,
-                    "pc_type": prec,
-                }
-        else:
-            if approach == "direct":
-                self.solver_options = {
-                    "ksp_type": "preonly",  # do not apply Krylov iterations
-                    "pc_type": "lu",
-                    "pc_factor_shift_type": "inblocks",  # for the zero entries
-                    "pc_factor_mat_solver_type": "mumps",
-                }
-            else:
-                prec = linear_solver_options.get("pc_type", "hypre")
-                # Block preconditioning approach
-                # the the 0 and 1 in fieldsplit_0 and fieldsplit_1 are the strings
-                # passed to the field_ises
-                self.solver_options = {
-                    "ksp_type": approach,
-                    "ksp_rtol": rtol,
-                    "ksp_atol": atol,
-                    "ksp_max_it": maxiter,
-                    "ksp_monitor": None,
-                    # "ksp_monitor_true_residual": None, #this is for debugging
-                    "pc_type": "fieldsplit",
-                    "pc_fieldsplit_type": "schur",
-                    "pc_fieldsplit_schur_fact_type": "full",
-                    # use a full factorization of the Schur complement
-                    # other options are "diag","lower","upper"
-                    "pc_fieldsplit_schur_precondition": "selfp",
-                    # selfp -> form an approximate Schur complement
-                    # using S=-B diag(A)^{-1} B^T
-                    # which is the exact Schur complement in our case
-                    # https://petsc.org/release/manualpages/PC/PCFieldSplitSetSchurPre/
-                    "fieldsplit_flux_ksp_type": "preonly",
-                    "fieldsplit_flux_pc_type": "jacobi",
-                    # use the diagonal of the flux (it is the inverse)
-                    "fieldsplit_pressure": {
-                        "ksp_type": "preonly",
-                        "pc_type": prec,
-                    },
-                    # an example of the nested dictionary
-                }
-
-        self.linear_solver.setup(self.solver_options)
-        """dict: options for the iterative linear solver"""
 
     def setup_eliminate_flux(self) -> None:
         """Setup the infrastructure for reduced systems through Gauss elimination.
@@ -1109,51 +929,20 @@ class BeckmannProblem(darsia.EMD):
 
         setup_linear_solver = not (reuse_solver) or not (hasattr(self, "linear_solver"))
         if self.formulation == "full":
-            assert (
-                self.linear_solver_type == "direct" or self.linear_solver_type == "ksp"
+            assert isinstance(
+                self.linear_solver,
+                darsia.BeckmannDirectSolver | darsia.BeckmannKSPFieldSplitSolver,
             ), "Only direct solver or ksp supported for full formulation."
 
             # Setup LU factorization for the full system
             tic = time.time()
             if setup_linear_solver:
-                if self.linear_solver_type == "direct":
-                    self.setup_direct_solver(matrix)
-                elif self.linear_solver_type == "ksp":
-                    if hasattr(self, "linear_solver"):
-                        self.linear_solver.kill()
-                    # Extract get the flux-pressure matrix
-                    # TODO: Avoid all these conversions and memory allocations
-                    diag = matrix.diagonal()
-                    A_00 = sps.diags(diag[self.flux_slice])
-                    flux_pressure_matrix = sps.bmat(
-                        [
-                            [A_00, -self.div.T],
-                            [self.div, None],
-                        ],
-                        format="csc",
-                    )
-                    kernel = np.zeros(flux_pressure_matrix.shape[0])
-                    kernel[self.pressure_slice] = 1.0
-                    kernel /= np.linalg.norm(kernel)
-                    self.setup_ksp_solver(
-                        flux_pressure_matrix,
-                        field_ises=[
-                            ("flux", self.flux_indices),
-                            ("pressure", self.pressure_indices),
-                        ],
-                        nullspace=[kernel],
-                    )
+                self.linear_solver.setup(matrix)
             time_setup = time.time() - tic
 
             # Solve the full system
             tic = time.time()
-            if self.linear_solver_type == "direct":
-                solution = self.linear_solver.solve(rhs)
-            elif self.linear_solver_type == "ksp":
-                solution_flux_pressure = self.linear_solver.solve(rhs[0:-1])
-                solution = np.zeros_like(rhs)
-                solution[0:-1] = solution_flux_pressure
-                solution[-1] = 0.0
+            solution = self.linear_solver(rhs)
             time_solve = time.time() - tic
 
         elif self.formulation == "flux_reduced":
@@ -1178,21 +967,14 @@ class BeckmannProblem(darsia.EMD):
 
             # 2. Build linear solver for reduced system
             if setup_linear_solver:
-                if self.linear_solver_type == "direct":
-                    self.setup_direct_solver(self.reduced_matrix)
-                elif self.linear_solver_type == "amg":
-                    self.setup_amg_solver(self.reduced_matrix)
-                elif self.linear_solver_type == "cg":
-                    self.setup_cg_solver(self.reduced_matrix)
+                self.linear_solver.setup(self.reduced_matrix)
 
             # Stop timer to measure setup time
             time_setup = time.time() - tic
 
             # 3. Solve for the pressure and lagrange multiplier
             tic = time.time()
-            solution[self.reduced_system_slice] = self.linear_solver.solve(
-                self.reduced_rhs, **self.solver_options
-            )
+            solution[self.reduced_system_slice] = self.linear_solver(self.reduced_rhs)
 
             # 4. Compute flux update
             solution[self.flux_slice] = self.compute_flux_update(solution, rhs)
@@ -1246,37 +1028,15 @@ class BeckmannProblem(darsia.EMD):
 
             # 3. Build linear solver for pure pressure system
             if setup_linear_solver:
-                if self.linear_solver_type == "direct":
-                    self.setup_direct_solver(self.fully_reduced_matrix)
-
-                elif self.linear_solver_type == "amg":
-                    self.setup_amg_solver(self.fully_reduced_matrix)
-
-                elif self.linear_solver_type == "cg":
-                    self.setup_cg_solver(self.fully_reduced_matrix)
-
-                elif self.linear_solver_type == "ksp":
-                    if not hasattr(self, "linear_solver"):
-                        self.setup_ksp_solver(self.fully_reduced_matrix)
-
-                    if reuse_solver:
-                        self.linear_solver.setup(self.solver_options)
-
-                    # Free memory if solver needs to be re-setup
-                    if hasattr(self, "linear_solver"):
-                        if not reuse_solver:
-                            self.linear_solver.kill()
-                            self.setup_ksp_solver(self.fully_reduced_matrix)
-                    else:
-                        self.setup_ksp_solver(self.fully_reduced_matrix)
+                self.linear_solver.setup(self.fully_reduced_matrix)
 
             # Stop timer to measure setup time
             time_setup = time.time() - tic
 
             # 4. Solve the pure pressure system
             tic = time.time()
-            solution[self.fully_reduced_system_indices_full] = self.linear_solver.solve(
-                self.fully_reduced_rhs, **self.solver_options
+            solution[self.fully_reduced_system_indices_full] = self.linear_solver(
+                self.fully_reduced_rhs
             )
 
             # 5. Compute lagrange multiplier - not required, as it is zero
@@ -1491,6 +1251,15 @@ class BeckmannProblem(darsia.EMD):
         )
 
         return total_timings
+
+    def ndofs(self) -> int:
+        """Return the total number of degrees of freedom.
+
+        Returns:
+            int: total number of degrees of freedom
+
+        """
+        return self.grid.num_faces + self.grid.num_cells + 1
 
     def flat_view(self, img: np.ndarray) -> np.ndarray:
         """Flatten the image to a vector.
