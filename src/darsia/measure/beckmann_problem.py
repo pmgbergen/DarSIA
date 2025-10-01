@@ -54,6 +54,8 @@ class BeckmannProblem(darsia.EMD):
 
     """
 
+    # ! ---- Setup routines ----
+
     def __init__(
         self,
         grid: darsia.Grid,
@@ -346,6 +348,90 @@ class BeckmannProblem(darsia.EMD):
         )
         """darsia.AndersonAcceleration: Anderson acceleration"""
 
+    # ! ---- Main methods ----
+
+    @abstractmethod
+    def solve_beckmann_problem(self, mass_diff: np.ndarray) -> tuple:
+        """Solve for the Wasserstein distance.
+
+        Args:
+            mass_diff (np.ndarray): difference of the two distributions
+
+        Returns:
+            tuple: distance, solution, info
+
+        """
+        pass
+
+    def __call__(
+        self,
+        img_1: darsia.Image,
+        img_2: darsia.Image,
+    ) -> float:
+        """L1 Wasserstein distance for two images with same mass.
+
+        NOTE: Images need to comply with the setup of the object.
+
+        Args:
+            img_1 (darsia.Image): image 1, source distribution
+            img_2 (darsia.Image): image 2, destination distribution
+
+        Returns:
+            float: distance between img_1 and img_2.
+            dict (optional): solution
+            dict (optional): info
+
+        """
+
+        # Compatibilty check
+        assert img_1.scalar and img_2.scalar
+        self._compatibility_check(img_1, img_2)
+
+        # Determine difference of distributions and define corresponding rhs
+        mass_diff_img = img_2.img - img_1.img
+        mass_diff = self.flat_view(mass_diff_img)
+
+        # Main method
+        distance, solution, info = self.solve_beckmann_problem(mass_diff)
+
+        # Split the solution
+        flux = solution[self.flux_slice]
+        pressure = solution[self.pressure_slice]
+
+        # Reshape the fluxes and pressure to grid format
+        flux_img = darsia.face_to_cell(self.grid, flux)
+        pressure_img = pressure.reshape(self.grid.shape, order="F")
+
+        # Determine transport density
+        transport_density = self.transport_density(flux, flatten=False)
+
+        # Cell-weighted flux
+        weighted_flux_img = self.cell_weighted_flux(flux_img)
+
+        # Return solution
+        return_info = self.options.get("return_info", False)
+        return_status = self.options.get("return_status", False)
+        if return_info:
+            info.update(
+                {
+                    "grid": self.grid,
+                    "mass_diff": mass_diff_img,
+                    "flux": flux_img,
+                    "weight": self.cell_weights,
+                    "weight_inv": 1.0 / self.cell_weights,
+                    "weighted_flux": weighted_flux_img,
+                    "pressure": pressure_img,
+                    "transport_density": transport_density,
+                    "src": img_1,
+                    "dst": img_2,
+                }
+            )
+            return distance, info
+        elif return_status:
+            return distance, info["converged"]
+        else:
+            return distance
+
     # ! ---- Effective quantities ----
 
     def cell_weighted_flux(self, cell_flux: np.ndarray) -> np.ndarray:
@@ -358,32 +444,34 @@ class BeckmannProblem(darsia.EMD):
             np.ndarray: cell-weighted flux
 
         """
+        # Apply cell weights - depending on the dimensionality of the weight
         if self.weight is None:
+            # No weighting
             return cell_flux
         elif len(self.cell_weights.shape) == self.grid.dim:
+            # Isotropic, vector weight
             return cell_flux * self.cell_weights[..., np.newaxis]
-
         elif (
             len(self.cell_weights.shape) == self.grid.dim + 1
             and self.cell_weights.shape[-1] == 1
         ):
+            # Isotropic, scalar weight
             raise NotImplementedError("Need to reduce the dimension")
             # Try: return cell_flux * self.cell_weights
-
         elif (
             len(self.cell_weights.shape) == self.grid.dim + 1
             and self.cell_weights.shape[-1] == self.grid.dim
         ):
+            # Anisotropic, diagonal weight tensor
             return cell_flux * self.cell_weights
-
         elif len(
             self.cell_weights.shape
         ) == self.grid.dim + 2 and self.cell_weights.shape[-2:] == (
             self.grid.dim,
             self.grid.dim,
         ):
+            # Fully anisotropic weight tensor
             raise NotImplementedError("Need to apply matrix vector product.")
-
         else:
             raise NotImplementedError("Dimension not supported.")
 
@@ -1090,90 +1178,6 @@ class BeckmannProblem(darsia.EMD):
         return self.matrix_flux_inv.dot(
             rhs_flux + self.DT.dot(solution[self.reduced_system_slice])
         )
-
-    # ! ---- Main methods ----
-
-    @abstractmethod
-    def solve_beckmann_problem(self, mass_diff: np.ndarray) -> tuple:
-        """Solve for the Wasserstein distance.
-
-        Args:
-            mass_diff (np.ndarray): difference of the two distributions
-
-        Returns:
-            tuple: distance, solution, info
-
-        """
-        pass
-
-    def __call__(
-        self,
-        img_1: darsia.Image,
-        img_2: darsia.Image,
-    ) -> float:
-        """L1 Wasserstein distance for two images with same mass.
-
-        NOTE: Images need to comply with the setup of the object.
-
-        Args:
-            img_1 (darsia.Image): image 1, source distribution
-            img_2 (darsia.Image): image 2, destination distribution
-
-        Returns:
-            float: distance between img_1 and img_2.
-            dict (optional): solution
-            dict (optional): info
-
-        """
-
-        # Compatibilty check
-        assert img_1.scalar and img_2.scalar
-        self._compatibility_check(img_1, img_2)
-
-        # Determine difference of distributions and define corresponding rhs
-        mass_diff_img = img_2.img - img_1.img
-        mass_diff = self.flat_view(mass_diff_img)
-
-        # Main method
-        distance, solution, info = self.solve_beckmann_problem(mass_diff)
-
-        # Split the solution
-        flux = solution[self.flux_slice]
-        pressure = solution[self.pressure_slice]
-
-        # Reshape the fluxes and pressure to grid format
-        flux_img = darsia.face_to_cell(self.grid, flux)
-        pressure_img = pressure.reshape(self.grid.shape, order="F")
-
-        # Determine transport density
-        transport_density = self.transport_density(flux, flatten=False)
-
-        # Cell-weighted flux
-        weighted_flux_img = self.cell_weighted_flux(flux_img)
-
-        # Return solution
-        return_info = self.options.get("return_info", False)
-        return_status = self.options.get("return_status", False)
-        if return_info:
-            info.update(
-                {
-                    "grid": self.grid,
-                    "mass_diff": mass_diff_img,
-                    "flux": flux_img,
-                    "weight": self.cell_weights,
-                    "weight_inv": 1.0 / self.cell_weights,
-                    "weighted_flux": weighted_flux_img,
-                    "pressure": pressure_img,
-                    "transport_density": transport_density,
-                    "src": img_1,
-                    "dst": img_2,
-                }
-            )
-            return distance, info
-        elif return_status:
-            return distance, info["converged"]
-        else:
-            return distance
 
     # ! ---- Utility methods ----
 
