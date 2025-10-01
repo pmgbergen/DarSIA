@@ -372,7 +372,7 @@ class BeckmannBregmanSolver(darsia.BeckmannProblem):
         newton_jacobian, _, _ = self._compute_heterogeneous_bregman_regularization(flux)
         solution = np.zeros_like(rhs)
         solution[self.flux_slice] = flux.copy()
-        newton_residual = self.optimality_conditions(rhs, solution)
+        newton_residual = self.optimality_conditions(solution, rhs)
         newton_update, _ = self.linear_solve(newton_jacobian, newton_residual, solution)
         solution[self.pressure_slice] = self.pressure_view(newton_update)
 
