@@ -220,6 +220,15 @@ class BeckmannProblem(darsia.EMD):
         )
         """sps.csc_matrix: embedding operator for fluxes"""
 
+    def ndofs(self) -> int:
+        """Return the total number of degrees of freedom.
+
+        Returns:
+            int: total number of degrees of freedom
+
+        """
+        return self.grid.num_faces + self.grid.num_cells + 1
+
     def _setup_face_weights(self) -> None:
         """Convert cell weights to face weights by harmonic averaging."""
 
@@ -815,7 +824,7 @@ class BeckmannProblem(darsia.EMD):
             transport_density += quad_weight * cell_flux_norm
 
         if flatten:
-            return np.ravel(transport_density, "F")
+            return self.flat_view(transport_density)
         else:
             return transport_density
 
@@ -1031,30 +1040,38 @@ class BeckmannProblem(darsia.EMD):
 
         return face_weights, face_weights_inv
 
-    def optimality_conditions(
-        self, rhs: np.ndarray, solution: np.ndarray
-    ) -> np.ndarray:
-        """Evaluate optimality conditions of the constrained minimization problem.
-
-        This is identical to the residual of the Newton system.
+    def exact_linearization(self, solution: np.ndarray) -> sps.csc_matrix:
+        """Compute the exact linearization of the constrained minimization problem.
 
         Args:
-            rhs (np.ndarray): right hand side
             solution (np.ndarray): solution
 
         Returns:
-            np.ndarray: residual
+            sps.csc_matrix: exact linearization
 
         """
         flux = self.flux_view(solution)
-        face_weights, _ = self._compute_face_weight(flux)
+        face_weights, face_weights_inv = self._compute_face_weight(flux)
         weight = sps.diags(face_weights)
+        return self.broken_darcy_with_custom_flux_block(weight * self.mass_matrix_faces)
 
-        return (
-            rhs
-            - self.broken_darcy.dot(solution)
-            - self.flux_embedding.dot(weight.dot(self.mass_matrix_faces.dot(flux)))
-        )
+    def optimality_conditions(
+        self,
+        solution: np.ndarray,
+        beckmann_problem_rhs: np.ndarray,
+    ) -> np.ndarray:
+        """Evaluate optimality conditions of the constrained minimization problem.
+
+        Args:
+            beckmann_problem_rhs (np.ndarray): right hand side of the Beckmann problem
+            solution (np.ndarray): solution
+
+        Returns:
+
+            np.ndarray: residual
+
+        """
+        return self.exact_linearization(solution).dot(solution) - beckmann_problem_rhs
 
     def rescaled_flux_optimality_conditions(self, solution: np.ndarray) -> np.ndarray:
         """Evaluate scaled optimality conditions of the constrained minimization problem.
@@ -1062,10 +1079,6 @@ class BeckmannProblem(darsia.EMD):
         Scale the flux equation by the face weights divided by the total distance.
         This results in no division by zero.
 
-        This is identical to the residual of the Newton system.
-
-        Args:
-            rhs (np.ndarray): right hand side
         """
         flux = self.flux_view(solution)
         pressure = self.pressure_view(solution)
@@ -1333,9 +1346,9 @@ class BeckmannProblem(darsia.EMD):
 
         """
         # Make sure the jacobian is a CSC matrix
-        assert isinstance(
-            reduced_jacobian, sps.csc_matrix
-        ), "Jacobian should be a CSC matrix."
+        assert isinstance(reduced_jacobian, sps.csc_matrix), (
+            "Jacobian should be a CSC matrix."
+        )
 
         # Effective Gauss-elimination for the particular case of the lagrange multiplier
         self.fully_reduced_jacobian.data[:] = np.delete(
@@ -1375,11 +1388,11 @@ class BeckmannProblem(darsia.EMD):
     # ! ---- Main methods ----
 
     @abstractmethod
-    def solve_beckmann_problem(self, rhs: np.ndarray) -> tuple:
+    def solve_beckmann_problem(self, mass_diff: np.ndarray) -> tuple:
         """Solve for the Wasserstein distance.
 
         Args:
-            rhs (np.ndarray): right hand side
+            mass_diff (np.ndarray): difference of the two distributions
 
         Returns:
             tuple: distance, solution, info
@@ -1412,25 +1425,25 @@ class BeckmannProblem(darsia.EMD):
         self._compatibility_check(img_1, img_2)
 
         # Determine difference of distributions and define corresponding rhs
-        mass_diff = img_2.img - img_1.img
-        flat_mass_diff = np.ravel(mass_diff, "F")
+        mass_diff_img = img_2.img - img_1.img
+        mass_diff = self.flat_view(mass_diff_img)
 
         # Main method
-        distance, solution, info = self.solve_beckmann_problem(flat_mass_diff)
+        distance, solution, info = self.solve_beckmann_problem(mass_diff)
 
         # Split the solution
-        flat_flux = solution[self.flux_slice]
-        flat_pressure = solution[self.pressure_slice]
+        flux = solution[self.flux_slice]
+        pressure = solution[self.pressure_slice]
 
         # Reshape the fluxes and pressure to grid format
-        flux = darsia.face_to_cell(self.grid, flat_flux)
-        pressure = flat_pressure.reshape(self.grid.shape, order="F")
+        flux_img = darsia.face_to_cell(self.grid, flux)
+        pressure_img = pressure.reshape(self.grid.shape, order="F")
 
         # Determine transport density
-        transport_density = self.transport_density(flat_flux, flatten=False)
+        transport_density = self.transport_density(flux, flatten=False)
 
         # Cell-weighted flux
-        weighted_flux = self.cell_weighted_flux(flux)
+        weighted_flux_img = self.cell_weighted_flux(flux_img)
 
         # Return solution
         return_info = self.options.get("return_info", False)
@@ -1439,12 +1452,12 @@ class BeckmannProblem(darsia.EMD):
             info.update(
                 {
                     "grid": self.grid,
-                    "mass_diff": mass_diff,
-                    "flux": flux,
+                    "mass_diff": mass_diff_img,
+                    "flux": flux_img,
                     "weight": self.cell_weights,
                     "weight_inv": 1.0 / self.cell_weights,
-                    "weighted_flux": weighted_flux,
-                    "pressure": pressure,
+                    "weighted_flux": weighted_flux_img,
+                    "pressure": pressure_img,
                     "transport_density": transport_density,
                     "src": img_1,
                     "dst": img_2,
@@ -1484,6 +1497,18 @@ class BeckmannProblem(darsia.EMD):
         )
 
         return total_timings
+
+    def flat_view(self, img: np.ndarray) -> np.ndarray:
+        """Flatten the image to a vector.
+
+        Args:
+            img (np.ndarray): image
+
+        Returns:
+            np.ndarray: flattened image
+
+        """
+        return np.ravel(img, "F")
 
     def flux_view(self, vector: np.ndarray) -> np.ndarray:
         """Extract the flux from the vector.
