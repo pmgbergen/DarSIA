@@ -792,6 +792,8 @@ class BeckmannProblem(darsia.EMD):
 
         return face_weights, face_weights_inv
 
+    # ! ---- Linear solver and Schur complement reduction ----
+
     def linear_solve(
         self,
         matrix: sps.csc_matrix,
@@ -866,7 +868,7 @@ class BeckmannProblem(darsia.EMD):
             solution[self.reduced_system_slice] = self.linear_solver(self.reduced_rhs)
 
             # 4. Compute flux update
-            solution[self.flux_slice] = self.compute_flux_update(solution, rhs)
+            solution[self.flux_slice] = self._compute_flux_update(solution, rhs)
             time_solve = time.time() - tic
 
         elif self.formulation == "pressure":
@@ -932,7 +934,7 @@ class BeckmannProblem(darsia.EMD):
             pass
 
             # 6. Compute flux update
-            solution[self.flux_slice] = self.compute_flux_update(solution, rhs)
+            solution[self.flux_slice] = self._compute_flux_update(solution, rhs)
             time_solve = time.time() - tic
 
         # Define solver statistics
@@ -1170,7 +1172,7 @@ class BeckmannProblem(darsia.EMD):
         ]
         """np.ndarray: indices of the fully reduced system in terms of full system"""
 
-    def compute_flux_update(self, solution: np.ndarray, rhs: np.ndarray) -> np.ndarray:
+    def _compute_flux_update(self, solution: np.ndarray, rhs: np.ndarray) -> np.ndarray:
         """Compute the flux update from the solution.
 
         Args:
@@ -1214,6 +1216,8 @@ class BeckmannProblem(darsia.EMD):
         )
 
         return total_timings
+
+    # ! ---- Views and indexing ----
 
     def ndofs(self) -> int:
         """Return the total number of degrees of freedom.
