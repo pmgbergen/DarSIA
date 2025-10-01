@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 import time
-import warnings
 from abc import abstractmethod
 from enum import StrEnum
 from typing import Optional
-from warnings import warn
 
 import numpy as np
-import pyamg
 import scipy.sparse as sps
 from scipy.stats import hmean
 
