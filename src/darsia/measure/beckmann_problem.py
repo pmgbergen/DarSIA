@@ -158,6 +158,7 @@ class BeckmannProblem(darsia.EMD):
         self._setup_face_weights()
         self._setup_discretization()
         self._setup_linear_solver()
+        self._setup_schur_complement_reduction()
         self._setup_acceleration()
 
         # Store list of callbacks passed by user
@@ -321,86 +322,34 @@ class BeckmannProblem(darsia.EMD):
         self.linear_solver_type = linear_solver_type
         """str: type of linear solver"""
 
-        if self.linear_solver_type == darsia.BeckmannLinearSolverType.DIRECT:
-            self.linear_solver = darsia.BeckmannDirectSolver({})
-        elif self.linear_solver_type == darsia.BeckmannLinearSolverType.AMG:
-            self.linear_solver = darsia.BeckmannAMGSolver(
-                self.options.get("amg_options", {}),
-                self.options.get("linear_solver_options", {}),
-            )
-        elif self.linear_solver_type == darsia.BeckmannLinearSolverType.CG:
-            self.linear_solver = darsia.BeckmannCGSolver(
-                self.options.get("amg_options", {}),
-                self.options.get("linear_solver_options", {}),
-            )
-        elif self.linear_solver_type == darsia.BeckmannLinearSolverType.KSP:
-            self.linear_solver = darsia.BeckmannKSPSolver(
-                self.options.get("linear_solver_options", {})
-            )
-        # TODO: Use FieldSplit when full formulation... Not implemented right now
-        # elif self.linear_solver_type == darsia.BeckmannLinearSolverType.KSP:
-        #    self.linear_solver = darsia.BeckmannKSPSolver(
-        #        self.options.get("linear_solver_options", {}),
-        #        field_ises=[
-        #            ("flux", self.flux_indices),
-        #            ("pressure", self.pressure_indices),
-        #        ],
-        #    )
-        else:
-            raise NotImplementedError("Linear solver not implemented.")
+        self.linear_solver = darsia.BeckmannLinearSolverFactory.create(
+            linear_solver_type, self.options
+        )
 
+    def _setup_schur_complement_reduction(self) -> None:
         # TODO: Move to setup_schur_complement_reduction()
         self.formulation: str = self.options.get("formulation", "pressure")
         """str: formulation type"""
 
-        # Safety checks
-        assert self.linear_solver_type in [
-            "direct",
-            "amg",
-            "cg",
-            "ksp",
-        ], f"Linear solver {self.linear_solver_type} not supported."
-        assert self.formulation in [
-            "full",
-            "flux_reduced",
-            "pressure",
-        ], f"Formulation {self.formulation} not supported."
-
-        if self.linear_solver_type == "ksp":
-            if self.formulation == "flux-reduced":
-                raise ValueError(
-                    "KSP solver only supports for full and pressure formulation."
-                )
-
-        # Setup inrastructure for Schur complement reduction
-        if self.formulation == "flux_reduced":
-            self.setup_eliminate_flux()
-
-        elif self.formulation == "pressure":
-            self.setup_eliminate_flux()
-            self.setup_eliminate_lagrange_multiplier()
-
-    def setup_eliminate_flux(self) -> None:
+    def setup_eliminate_flux(self, matrix: sps.csc_matrix) -> None:
         """Setup the infrastructure for reduced systems through Gauss elimination.
 
         Provide internal data structures for the reduced system, still formulated in
         terms of pressures and Lagrange multiplier. Merely the flux is eliminated using
         a Schur complement approach.
 
+        Args:
+            matrix (sps.csc_matrix): system matrix with flux-flux block to be
+                eliminated - assume to have the same structure as self.darcy_init
+
         """
         #   ---- Preliminaries ----
 
         # Fixate some jacobian for copying the data structure
-        jacobian = self.darcy_init.copy()
-
-        # ! ---- Eliminate flux block ----
-
-        # Build Schur complement wrt. flux-flux block
-        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
-        D = jacobian[self.reduced_system_slice, self.flux_slice].copy()
-        schur_complement = D.dot(J_inv.dot(D.T))
+        jacobian = matrix.copy()
 
         # Cache divergence matrix together with Lagrange multiplier
+        D = jacobian[self.reduced_system_slice, self.flux_slice].copy()
         self.D = D.copy()
         """sps.csc_matrix: divergence + lagrange multiplier matrix"""
 
@@ -412,6 +361,12 @@ class BeckmannProblem(darsia.EMD):
             self.reduced_system_slice, self.reduced_system_slice
         ].copy()
         """sps.csc_matrix: constant jacobian subblock of the reduced system"""
+
+        # ! ---- Eliminate flux block ----
+
+        # Build Schur complement wrt. flux-flux block
+        J_inv = sps.diags(self.flux_view(1.0 / jacobian.diagonal()))
+        schur_complement = D.dot(J_inv.dot(D.T))
 
         # Add Schur complement - use this to identify sparsity structure
         # Cache the reduced jacobian
@@ -425,6 +380,11 @@ class BeckmannProblem(darsia.EMD):
         implicitly assumed, that the flux block is eliminated already.
 
         """
+        # Make sure the setup routine has been called
+        assert hasattr(self, "reduced_jacobian"), (
+            "Need to call setup_eliminate_flux() first."
+        )
+
         # Find row entries to be removed
         rm_row_entries = np.arange(
             self.reduced_jacobian.indptr[self.constrained_cell_flat_index],
@@ -1071,6 +1031,11 @@ class BeckmannProblem(darsia.EMD):
             tuple: reduced jacobian, reduced residual, inverse of flux block
 
         """
+        # Make sure the setup routine has been called
+        if not hasattr(self, "jacobian_subblock"):
+            self.setup_eliminate_flux(jacobian)
+            assert hasattr(self, "jacobian_subblock")
+
         # Build Schur complement wrt flux-block
         J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
         schur_complement = self.D.dot(J_inv.dot(self.DT))
@@ -1099,6 +1064,11 @@ class BeckmannProblem(darsia.EMD):
             tuple: fully reduced jacobian, fully reduced residual
 
         """
+        # Make sure the setup routine has been called
+        if not hasattr(self, "fully_reduced_jacobian"):
+            self.setup_eliminate_lagrange_multiplier()
+            assert hasattr(self, "fully_reduced_jacobian")
+
         # Make sure the jacobian is a CSC matrix
         assert isinstance(reduced_jacobian, sps.csc_matrix), (
             "Jacobian should be a CSC matrix."
