@@ -477,6 +477,57 @@ class BeckmannProblem(darsia.EMD):
         else:
             return distance
 
+    # ! ---- Problem definition ----
+
+    def exact_linearization(self, solution: np.ndarray) -> sps.csc_matrix:
+        """Compute the exact linearization of the constrained minimization problem.
+
+        Args:
+            solution (np.ndarray): solution
+
+        Returns:
+            sps.csc_matrix: exact linearization
+
+        """
+        flux = self.flux_view(solution)
+        face_weights, face_weights_inv = self._compute_face_weight(flux)
+        weight = sps.diags(face_weights)
+        return self.broken_darcy_with_custom_flux_block(weight * self.mass_matrix_faces)
+
+    def optimality_conditions(
+        self,
+        solution: np.ndarray,
+        beckmann_problem_rhs: np.ndarray,
+    ) -> np.ndarray:
+        """Evaluate optimality conditions of the constrained minimization problem.
+
+        Args:
+            beckmann_problem_rhs (np.ndarray): right hand side of the Beckmann problem
+            solution (np.ndarray): solution
+
+        Returns:
+
+            np.ndarray: residual
+
+        """
+        return self.exact_linearization(solution).dot(solution) - beckmann_problem_rhs
+
+    def rescaled_flux_optimality_conditions(self, solution: np.ndarray) -> np.ndarray:
+        """Evaluate scaled optimality conditions of the constrained minimization problem.
+
+        Scale the flux equation by the face weights divided by the total distance.
+        This results in no division by zero.
+
+        """
+        flux = self.flux_view(solution)
+        pressure = self.pressure_view(solution)
+        transport_density_faces = self.transport_density_faces(flux)
+        distance = self.l1_dissipation(flux)
+        return (
+            self.mass_matrix_faces.dot(flux)
+            - transport_density_faces * self.div.T.dot(pressure)
+        ) / distance
+
     # ! ---- Effective quantities ----
 
     def cell_weighted_flux(self, cell_flux: np.ndarray) -> np.ndarray:
@@ -741,55 +792,6 @@ class BeckmannProblem(darsia.EMD):
 
         return face_weights, face_weights_inv
 
-    def exact_linearization(self, solution: np.ndarray) -> sps.csc_matrix:
-        """Compute the exact linearization of the constrained minimization problem.
-
-        Args:
-            solution (np.ndarray): solution
-
-        Returns:
-            sps.csc_matrix: exact linearization
-
-        """
-        flux = self.flux_view(solution)
-        face_weights, face_weights_inv = self._compute_face_weight(flux)
-        weight = sps.diags(face_weights)
-        return self.broken_darcy_with_custom_flux_block(weight * self.mass_matrix_faces)
-
-    def optimality_conditions(
-        self,
-        solution: np.ndarray,
-        beckmann_problem_rhs: np.ndarray,
-    ) -> np.ndarray:
-        """Evaluate optimality conditions of the constrained minimization problem.
-
-        Args:
-            beckmann_problem_rhs (np.ndarray): right hand side of the Beckmann problem
-            solution (np.ndarray): solution
-
-        Returns:
-
-            np.ndarray: residual
-
-        """
-        return self.exact_linearization(solution).dot(solution) - beckmann_problem_rhs
-
-    def rescaled_flux_optimality_conditions(self, solution: np.ndarray) -> np.ndarray:
-        """Evaluate scaled optimality conditions of the constrained minimization problem.
-
-        Scale the flux equation by the face weights divided by the total distance.
-        This results in no division by zero.
-
-        """
-        flux = self.flux_view(solution)
-        pressure = self.pressure_view(solution)
-        transport_density_faces = self.transport_density_faces(flux)
-        distance = self.l1_dissipation(flux)
-        return (
-            self.mass_matrix_faces.dot(flux)
-            - transport_density_faces * self.div.T.dot(pressure)
-        ) / distance
-
     def linear_solve(
         self,
         matrix: sps.csc_matrix,
@@ -1039,9 +1041,9 @@ class BeckmannProblem(darsia.EMD):
             assert hasattr(self, "fully_reduced_jacobian")
 
         # Make sure the jacobian is a CSC matrix
-        assert isinstance(
-            reduced_jacobian, sps.csc_matrix
-        ), "Jacobian should be a CSC matrix."
+        assert isinstance(reduced_jacobian, sps.csc_matrix), (
+            "Jacobian should be a CSC matrix."
+        )
 
         # Effective Gauss-elimination for the particular case of the lagrange multiplier
         self.fully_reduced_jacobian.data[:] = np.delete(
@@ -1070,9 +1072,9 @@ class BeckmannProblem(darsia.EMD):
 
         """
         # Make sure the setup routine has been called
-        assert hasattr(
-            self, "reduced_jacobian"
-        ), "Need to call setup_eliminate_flux() first."
+        assert hasattr(self, "reduced_jacobian"), (
+            "Need to call setup_eliminate_flux() first."
+        )
 
         # Find row entries to be removed
         rm_row_entries = np.arange(
