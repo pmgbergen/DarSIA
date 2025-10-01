@@ -359,12 +359,6 @@ class BeckmannProblem(darsia.EMD):
             self.setup_eliminate_flux()
             self.setup_eliminate_lagrange_multiplier()
 
-    def setup_direct(self) -> None:
-        """Setup the infrastructure for direct solvers."""
-
-        self.solver_options = {}
-        """dict: options for the direct solver"""
-
     def setup_direct_solver(self, matrix: sps.csc_matrix) -> sps.linalg.splu:
         """Setup a direct solver for the given matrix.
 
