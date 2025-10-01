@@ -1036,9 +1036,9 @@ class BeckmannProblem(darsia.EMD):
             assert hasattr(self, "fully_reduced_jacobian")
 
         # Make sure the jacobian is a CSC matrix
-        assert isinstance(reduced_jacobian, sps.csc_matrix), (
-            "Jacobian should be a CSC matrix."
-        )
+        assert isinstance(
+            reduced_jacobian, sps.csc_matrix
+        ), "Jacobian should be a CSC matrix."
 
         # Effective Gauss-elimination for the particular case of the lagrange multiplier
         self.fully_reduced_jacobian.data[:] = np.delete(
@@ -1067,9 +1067,9 @@ class BeckmannProblem(darsia.EMD):
 
         """
         # Make sure the setup routine has been called
-        assert hasattr(self, "reduced_jacobian"), (
-            "Need to call setup_eliminate_flux() first."
-        )
+        assert hasattr(
+            self, "reduced_jacobian"
+        ), "Need to call setup_eliminate_flux() first."
 
         # Find row entries to be removed
         rm_row_entries = np.arange(
