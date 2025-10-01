@@ -1,19 +1,16 @@
-"""Module containing all linear solver options to solve the mixed form of Beckmann's problem."""
+"""Module containing linear solvers for the mixed form of Beckmann's problem."""
 
 from __future__ import annotations
-from enum import StrEnum
 
-import time
 import warnings
 from abc import abstractmethod
-from enum import Enum
+from enum import StrEnum
 from typing import Optional
 from warnings import warn
 
 import numpy as np
 import pyamg
 import scipy.sparse as sps
-from scipy.stats import hmean
 
 import darsia
 
