@@ -18,6 +18,7 @@ from darsia.measure.integration import *
 # EMD and Wasserstein distances
 from darsia.utils.convergence_status import *  # Needed by measure
 from darsia.measure.emd import *
+from darsia.measure.beckmann_linalg import *
 from darsia.measure.beckmann_problem import *
 from darsia.measure.beckmann_convergence_criteria import *
 from darsia.measure.beckmann_convergence_history import *
@@ -27,6 +28,7 @@ from darsia.measure.beckmann_gprox_solver import *
 from darsia.measure.wasserstein import *
 
 # Utilities
+from darsia.utils.arithmetics import *
 from darsia.utils.point import *
 from darsia.utils.sort import *
 from darsia.utils.box import *
