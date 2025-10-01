@@ -43,18 +43,19 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         )
         """"Convergence criteria for the Newton iteration."""
 
-    def compute_residual(self, rhs: np.ndarray, solution: np.ndarray) -> np.ndarray:
+    def compute_residual(
+        self, solution: np.ndarray, beckmann_problem_rhs: np.ndarray
+    ) -> np.ndarray:
         """Compute the residual of the solution - the optimality conditions.
 
         Args:
-            rhs (np.ndarray): right hand side
             solution (np.ndarray): solution
 
         Returns:
             np.ndarray: residual
 
         """
-        return self.optimality_conditions(rhs, solution)
+        return self.optimality_conditions(solution, beckmann_problem_rhs)
 
     def compute_jacobian(self, solution: np.ndarray) -> sps.linalg.LinearOperator:
         """Compute the Jacobian of the optimality conditions.
@@ -66,27 +67,25 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
             sps.linalg.splu: LU factorization of the jacobian
 
         """
-        flux = self.flux_view(solution)
-        face_weights, _ = self._compute_face_weight(flux)
-        weight = sps.diags(face_weights)
-        flux_flux_block = weight @ self.mass_matrix_faces
-        return self.broken_darcy_with_custom_flux_block(flux_flux_block)
+        return self.exact_linearization(solution)
 
-    def _compute_residual_norm(self, rhs: np.ndarray, solution: np.ndarray) -> float:
+    def _compute_residual_norm(
+        self, solution: np.ndarray, beckmann_problem_rhs: np.ndarray
+    ) -> float:
         """Compute the residual for the stopping criterion.
 
         Use a rescaled version of the optimality conditions to avoid division by zero.
 
         Args:
-            residual (np.ndarray): current residual
             solution (np.ndarray): current solution
+            beckmann_problem_rhs (np.ndarray): rhs
 
         Returns:
             dict: contributions to the residual
         """
         # Split residuals into their contributions. Use a rescaled version of the
         # optimality conditions to avoid division by zero.
-        residual = self.compute_residual(rhs, solution)
+        residual = self.compute_residual(solution, beckmann_problem_rhs)
         residual_vector_pressure = self.pressure_view(residual)
         residual_vector_optimality = self.rescaled_flux_optimality_conditions(solution)
 
@@ -97,12 +96,12 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
 
     @override
     def solve_beckmann_problem(
-        self, flat_mass_diff: np.ndarray
+        self, mass_diff: np.ndarray
     ) -> tuple[float, np.ndarray, dict]:
         """Solve the Beckmann problem using Newton's method.
 
         Args:
-            flat_mass_diff (np.ndarray): difference of mass distributions
+            mass_diff (np.ndarray): difference of mass distributions
 
         Returns:
             tuple: distance, solution, info
@@ -112,18 +111,20 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         tic = time.time()
         tracemalloc.start()
 
-        # Define right hand side
-        rhs = np.concatenate(
+        # Convert mass diff to full right hand side
+        beckmann_problem_rhs = np.concatenate(
             [
                 np.zeros(self.grid.num_faces, dtype=float),
-                self.mass_matrix_cells.dot(flat_mass_diff),
+                self.mass_matrix_cells.dot(mass_diff),
                 np.zeros(1, dtype=float),
             ]
         )
 
         # Initialize Newton iteration with Darcy solution for unitary mobility
-        solution = np.zeros_like(rhs, dtype=float)
-        solution, _ = self.linear_solve(self.darcy_init.copy(), rhs.copy(), solution)
+        solution = np.zeros(self.ndofs(), dtype=float)
+        solution, _ = self.linear_solve(
+            self.darcy_init.copy(), beckmann_problem_rhs.copy(), solution
+        )
 
         # Initialize distance in case below iteration fails
         distance = 0
@@ -160,7 +161,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
 
             # Assemble linear problem in Newton step
             tic = time.time()
-            residual = self.compute_residual(rhs, solution)
+            residual = self.compute_residual(solution, beckmann_problem_rhs)
             jacobian = self.compute_jacobian(solution)
             time_assemble = time.time() - tic
 
@@ -168,7 +169,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
             # solver fails. In this case, we simply stop the iteration and return
             # the current solution.
             try:
-                increment, timings = self.linear_solve(jacobian, residual, solution)
+                increment, timings = self.linear_solve(jacobian, -residual, solution)
             except Exception:
                 warnings.warn("Newton iteration abruptly stopped due to some error.")
                 break
@@ -203,7 +204,7 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
             # Compute the error and store as part of the convergence history:
 
             # 0 - full residual (Newton interpretation)
-            residual_norm = self._compute_residual_norm(rhs, solution)
+            residual_norm = self._compute_residual_norm(solution, beckmann_problem_rhs)
 
             # 1 - flux increment (fixed-point interpretation)
             flux_inc_norm = float(np.linalg.norm(self.flux_view(increment), 2))
