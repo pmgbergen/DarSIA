@@ -12,22 +12,37 @@ import pyamg
 import scipy.sparse as sps
 
 import darsia
+from typing import Optional
 
 
-class BeckmannGproxPGHDSolver(darsia.EMD):
+class BeckmannGproxPGHDSolver(darsia.BeckmannProblem):
     """
     This contains the implementation of the GproxPDHG algorithm
     described in "SOLVING LARGE-SCALE OPTIMIZATION PROBLEMS WITH
     A CONVERGENCE RATE INDEPENDENT OF GRID SIZE"
     """
 
-    def __init__(self, grid, options) -> None:
+    # ! ---- Setup routines ----
+
+    def __init__(
+        self,
+        grid: darsia.Grid,
+        weight: Optional[darsia.Image] = None,
+        options: dict = {},
+    ) -> None:
         # Cache geometrical infos
         self.grid = grid
         """darsia.Grid: grid"""
 
         self.voxel_size = grid.voxel_size
         """np.ndarray: voxel size"""
+
+        self.weight = weight
+        """Optional[darsia.Image]: weight"""
+        if weight is not None:
+            raise NotImplementedError(
+                "Weighted Gprox not implemented for anisotropic meshes"
+            )
 
         # Cache solver options
         self.options = options
@@ -39,14 +54,14 @@ class BeckmannGproxPGHDSolver(darsia.EMD):
         self.callbacks = self.options.get("callbacks", None)
         """list: list of callbacks to be called at each iteration"""
 
-        self.l1_mode: darsia.L1Mode = self.options.get(
-            "l1_mode", darsia.L1Mode.RAVIART_THOMAS
-        )
-        """str: mode for computing the l1 dissipation"""
-
         self.norm_mode = self.options.get("norm_mode", "l2")
         """str: mode for computing the norm: l2 or manhattan"""
 
+        self._setup_variables()
+        self._setup_l1_quadrature()
+        self._setup_discretization()
+
+    def _setup_variables(self) -> None:
         # Allocate space for main and auxiliary variables
         self.flux = np.zeros(self.grid.num_faces, dtype=float)
         """np.ndarray: flux"""
@@ -77,8 +92,6 @@ class BeckmannGproxPGHDSolver(darsia.EMD):
 
         self.new_p = np.zeros(self.grid.num_faces, dtype=float)
         """np.ndarray: $p^{n+1}$"""
-
-        self._setup_discretization()
 
     def _setup_discretization(self) -> None:
         """Setup of fixed discretization operators.
@@ -115,262 +128,7 @@ class BeckmannGproxPGHDSolver(darsia.EMD):
         self.full_flux_reconstructor = darsia.FVFullFaceReconstruction(self.grid)
         """darsia.FVFullFaceReconstruction: full flux reconstructor"""
 
-    def setup_amg_options(self) -> None:
-        """Setup the infrastructure for multilevel solvers.
-
-        Basic default setup based on jacobi and block Gauss-Seidel smoothers.
-        User-defined options can be passed via the options dictionary, using the key
-        "amg_options". The options follow the pyamg interface.
-
-        """
-        self.amg_options = {
-            "strength": "symmetric",  # change the strength of connection
-            "aggregate": "standard",  # use a standard aggregation method
-            "smooth": ("jacobi"),  # prolongation smoother
-            "presmoother": (
-                "block_gauss_seidel",
-                {"sweep": "symmetric", "iterations": 1},
-            ),
-            "postsmoother": (
-                "block_gauss_seidel",
-                {"sweep": "symmetric", "iterations": 1},
-            ),
-            "coarse_solver": "pinv2",  # pseudo inverse via SVD
-            "max_coarse": 100,  # maximum number on a coarse level
-        }
-        """dict: options for the AMG solver"""
-
-        # Allow to overwrite default options - use pyamg interface.
-        user_defined_amg_options = self.options.get("amg_options", {})
-        self.amg_options.update(user_defined_amg_options)
-
-    def setup_poisson_solver(self, solver_prefix, rtol=1e-6, permeability_faces=None):
-        """Return the Poisson solver.
-
-        Args:
-            permeability_faces (np.ndarray, optional): permeability faces. Defaults to None.
-
-        Returns:
-            darsia.linalg.KSP: Poisson solver
-
-        """
-
-        self.linear_solver_type = self.options.get("linear_solver", "cg")
-        """str: type of linear solver"""
-
-        # Safety checks
-        assert self.linear_solver_type in [
-            "cg",
-            "ksp",
-            "dct",
-        ], f"Linear solver {self.linear_solver_type} not supported."
-        linear_solver_options = self.options.get("linear_solver_options", {})
-
-        if permeability_faces is not None and self.linear_solver_type == "dct":
-            raise ValueError(
-                "DCT solver does not support permeability faces. Use CG or KSP instead."
-            )
-
-        # Define CG solver
-        kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(
-            self.grid.num_cells
-        )
-
-        if self.linear_solver_type == "dct":
-            # dct is matrix-free
-            pass
-        else:
-            if permeability_faces is None:
-                Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad
-            else:
-                Laplacian_matrix = (
-                    self.div
-                    * sps.diags(permeability_faces)
-                    * self.inverse_mass_matrix_faces
-                    * self.grad
-                )
-
-        #
-        if self.linear_solver_type == "cg":
-            # Define CG solver
-            Poisson_solver = darsia.linalg.CG(Laplacian_matrix)
-
-            # Define AMG preconditioner
-            self.setup_amg_options()
-            with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    "ignore", message="Implicit conversion of A to CSR"
-                )
-                amg = pyamg.smoothed_aggregation_solver(
-                    Laplacian_matrix, **self.amg_options
-                ).aspreconditioner(cycle="V")
-
-            # Define solver options
-            maxiter = linear_solver_options.get("maxiter", 100)
-            solver_options = {
-                "rtol": rtol,
-                "atol": 1e-15,
-                "maxiter": maxiter,
-                "M": amg,
-            }
-            Poisson_solver.setup(solver_options)
-
-        elif self.linear_solver_type == "ksp":
-            Poisson_solver = darsia.linalg.KSP(
-                Laplacian_matrix,
-                nullspace=[kernel],
-                appctx={},
-                solver_prefix=solver_prefix,
-            )
-            maxiter = linear_solver_options.get("maxiter", 100)
-            ksp_ctrl = {
-                "ksp_type": "cg",
-                "ksp_rtol": rtol,
-                "ksp_max_it": maxiter,
-                "pc_type": "hypre",
-                # "ksp_monitor_true_residual" : None
-            }
-            # if permeability_faces is not None:
-            #    ksp_ctrl["ksp_monitor_true_residual"] = None
-            Poisson_solver.setup(ksp_ctrl)
-
-        return Poisson_solver
-
-    def transport_density(
-        self, flat_flux: np.ndarray, flatten: bool = True
-    ) -> np.ndarray:
-        """Compute the transport density from the solution.
-
-        Args:
-            flat_flux (np.ndarray): face fluxes
-            weighted (bool): apply weighting. Defaults to True.
-            flatten (bool): flatten the result. Defaults to True.
-
-        Returns:
-            np.ndarray: transport density, flattened if requested
-
-        Notes:
-        Type of integration depends on the selected mode, see self.l1_mode. Supported
-        modes are:
-        - 'raviart_thomas': Apply exact integration of RT0 extensions into cells.
-            Underlying functional for mixed finite element method (MFEM).
-        - 'constant_subcell_projection': Apply subcell_based projection onto constant
-            vectors and sum up. Equivalent to a mixed finite volume method (FV).
-        - 'constant_cell_projection': Apply cell-based L2 projection onto constant
-            vectors and sum up. Simpler calculation than subcell-projection, but not
-            directly connected to any discretization.
-
-        """
-        # The different modes merely differ in the integration rule.
-
-        if self.l1_mode == darsia.L1Mode.RAVIART_THOMAS:
-            # Apply numerical integration of RT0 extensions into cells.
-            # Underlying functional for mixed finite element method (MFEM).
-            quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
-                self.grid.dim, "max"
-            )
-
-        elif self.l1_mode == darsia.L1Mode.CONSTANT_SUBCELL_PROJECTION:
-            # Apply subcell_based projection onto constant vectors and sum up.
-            # Equivalent to a mixed finite volume method (FV). Identical to quadrature
-            # over corners.
-            quad_pts, quad_weights = darsia.quadrature.reference_cell_corners(
-                self.grid.dim
-            )
-
-        elif self.l1_mode == darsia.L1Mode.CONSTANT_CELL_PROJECTION:
-            # L2 projection onto constant vectors identical to quadrature of order 0.
-            quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
-                self.grid.dim, 0
-            )
-
-        else:
-            raise ValueError(f"Mode {self.l1_mode} not supported.")
-
-        # Integrate over reference cell (normalization not required)
-        transport_density = np.zeros(self.grid.shape, dtype=float)
-        for quad_pt, quad_weight in zip(quad_pts, quad_weights):
-            cell_flux = darsia.face_to_cell(self.grid, flat_flux, pt=quad_pt)
-            cell_flux_norm = np.linalg.norm(cell_flux, 2, axis=-1)
-            transport_density += quad_weight * cell_flux_norm
-
-        if flatten:
-            return np.ravel(transport_density, "F")
-        else:
-            return transport_density
-
-    def l1_dissipation(self, flat_flux: np.ndarray) -> float:
-        """Compute the l1 dissipation of the solution.
-
-        Args:
-            flat_flux (np.ndarray): flat fluxes
-
-        Returns:
-            float: l1 dissipation
-
-        """
-        # The L1 dissipation corresponds to the integral over the transport density
-        transport_density = self.transport_density(flat_flux)
-        return self.mass_matrix_cells.dot(transport_density).sum()
-
-    def residual(self, rhs: np.ndarray, solution: np.ndarray) -> np.ndarray:
-        """Compute the residual of the solution.
-
-        Args:
-            rhs (np.ndarray): right hand side
-            solution (np.ndarray): solution
-
-        Returns:
-            np.ndarray: residual
-
-        """
-        return self.optimality_conditions(rhs, solution)
-
-    def leray_projection(self, p: np.ndarray) -> np.ndarray:
-        """Leray projection of a vector fiels
-
-        Args:
-            p (np.ndarray): pressure
-
-        Returns:
-            np.ndarray: divergence free flux
-
-        """
-        rhs = self.div.dot(p)
-        poisson_solution = self.Poisson_solver.solve(rhs)
-        return p - self.inverse_mass_matrix_faces.dot(self.grad.dot(poisson_solution))
-
-    def compute_kantorovich_potential(
-        self, flat_mass_diff: np.ndarray, flux: np.ndarray, tol=1e-6
-    ) -> np.ndarray:
-        """Compute the kantorovich potential from the normal flux
-
-        Args:
-            flat_mass_diff (np.ndarray): difference of mass distributions
-            flux (np.ndarray): flux on the faces
-
-        Returns:
-            np.ndarray: kantorovich potential
-
-        """
-        full_flux = self.full_flux_reconstructor(flux)
-        transport_density_faces = np.linalg.norm(full_flux, axis=1)
-        weighted_Poisson_solver = self.setup_poisson_solver(
-            "transport_density_weighted_poisson",
-            rtol=tol,
-            permeability_faces=transport_density_faces,
-        )
-        integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
-        pressure = weighted_Poisson_solver.solve(
-            integrated_mass_diff, x0=self.kantorovich_potential
-        )
-        # store the kantorovich potential
-        self.kantorovich_potential[:] = pressure[:]
-        if isinstance(weighted_Poisson_solver, darsia.linalg.KSP):
-            weighted_Poisson_solver.kill()
-        else:
-            weighted_Poisson_solver = []
-        return pressure
+    # ! ---- Main methods ----
 
     @override
     def solve_beckmann_problem(
@@ -615,50 +373,7 @@ class BeckmannGproxPGHDSolver(darsia.EMD):
 
         return new_distance, self.flux, info
 
-    def compute_dual(self, p, gradient_poisson):
-        """
-        Compute the value of the dual functional
-        $ int_{Domain} pot (f^+ - f^-)$
-        $= int_{Domain} pot -div(poisson)$
-        $ int_{Domain} \nabla pot dot \nabla poisson$
-        $ int_{Domain} p dot \nabla poisson$
-        """
-        return np.dot(p, gradient_poisson) * np.prod(self.grid.voxel_size)
-
-    def compute_primal(self, flux):
-        """
-        Compute the value of the primal functional
-        $int_{Domain} | flux | $
-        """
-        # full_flux = self.full_flux_reconstructor(flux)
-        # transport_density_faces = np.linalg.norm(full_flux, axis=1)
-        # NOTE the factor dim is considered to get the area of the diamond
-        # w1 = np.sum(transport_density_faces) * np.prod(self.grid.voxel_size) / self.grid.dim
-
-        w1 = self.l1_dissipation(flux)
-
-        return w1
-
-    def _sum_timings(self, timings: dict) -> dict:
-        """Sum the timing of the current iteration.
-
-        Utility function for self.solve_beckmann_problem().
-
-        Args:
-            timings (dict): timings
-
-        Returns:
-            dict: total time
-
-        """
-        total_timings = {
-            "poisson": sum([t["time_poisson"] for t in timings]),
-            "extra": sum([t["time_extra"] for t in timings]),
-        }
-        total_timings["total"] = total_timings["poisson"] + total_timings["extra"]
-
-        return total_timings
-
+    @override
     def __call__(
         self,
         img_1: darsia.Image,
@@ -722,3 +437,220 @@ class BeckmannGproxPGHDSolver(darsia.EMD):
             return distance, info
         else:
             return distance
+
+    # ! ---- Effective quantities ----
+
+    def compute_kantorovich_potential(
+        self, flat_mass_diff: np.ndarray, flux: np.ndarray, tol=1e-6
+    ) -> np.ndarray:
+        """Compute the kantorovich potential from the normal flux
+
+        Args:
+            flat_mass_diff (np.ndarray): difference of mass distributions
+            flux (np.ndarray): flux on the faces
+
+        Returns:
+            np.ndarray: kantorovich potential
+
+        """
+        full_flux = self.full_flux_reconstructor(flux)
+        transport_density_faces = np.linalg.norm(full_flux, axis=1)
+        weighted_Poisson_solver = self.setup_poisson_solver(
+            "transport_density_weighted_poisson",
+            rtol=tol,
+            permeability_faces=transport_density_faces,
+        )
+        integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
+        pressure = weighted_Poisson_solver.solve(
+            integrated_mass_diff, x0=self.kantorovich_potential
+        )
+        # store the kantorovich potential
+        self.kantorovich_potential[:] = pressure[:]
+        if isinstance(weighted_Poisson_solver, darsia.linalg.KSP):
+            weighted_Poisson_solver.kill()
+        else:
+            weighted_Poisson_solver = []
+        return pressure
+
+    def compute_dual(self, p, gradient_poisson):
+        """
+        Compute the value of the dual functional
+        $ int_{Domain} pot (f^+ - f^-)$
+        $= int_{Domain} pot -div(poisson)$
+        $ int_{Domain} \nabla pot dot \nabla poisson$
+        $ int_{Domain} p dot \nabla poisson$
+        """
+        return np.dot(p, gradient_poisson) * np.prod(self.grid.voxel_size)
+
+    def compute_primal(self, flux):
+        """
+        Compute the value of the primal functional
+        $int_{Domain} | flux | $
+        """
+        # full_flux = self.full_flux_reconstructor(flux)
+        # transport_density_faces = np.linalg.norm(full_flux, axis=1)
+        # NOTE the factor dim is considered to get the area of the diamond
+        # w1 = np.sum(transport_density_faces) * np.prod(self.grid.voxel_size) / self.grid.dim
+
+        w1 = self.l1_dissipation(flux)
+
+        return w1
+
+    # ! ---- Linear solver ----
+
+    def setup_amg_options(self) -> None:
+        """Setup the infrastructure for multilevel solvers.
+
+        Basic default setup based on jacobi and block Gauss-Seidel smoothers.
+        User-defined options can be passed via the options dictionary, using the key
+        "amg_options". The options follow the pyamg interface.
+
+        """
+        self.amg_options = {
+            "strength": "symmetric",  # change the strength of connection
+            "aggregate": "standard",  # use a standard aggregation method
+            "smooth": ("jacobi"),  # prolongation smoother
+            "presmoother": (
+                "block_gauss_seidel",
+                {"sweep": "symmetric", "iterations": 1},
+            ),
+            "postsmoother": (
+                "block_gauss_seidel",
+                {"sweep": "symmetric", "iterations": 1},
+            ),
+            "coarse_solver": "pinv2",  # pseudo inverse via SVD
+            "max_coarse": 100,  # maximum number on a coarse level
+        }
+        """dict: options for the AMG solver"""
+
+        # Allow to overwrite default options - use pyamg interface.
+        user_defined_amg_options = self.options.get("amg_options", {})
+        self.amg_options.update(user_defined_amg_options)
+
+    def setup_poisson_solver(self, solver_prefix, rtol=1e-6, permeability_faces=None):
+        """Return the Poisson solver.
+
+        Args:
+            permeability_faces (np.ndarray, optional): permeability faces. Defaults to None.
+
+        Returns:
+            darsia.linalg.KSP: Poisson solver
+
+        """
+
+        self.linear_solver_type = self.options.get("linear_solver", "cg")
+        """str: type of linear solver"""
+
+        # Safety checks
+        assert self.linear_solver_type in [
+            "cg",
+            "ksp",
+            "dct",
+        ], f"Linear solver {self.linear_solver_type} not supported."
+        linear_solver_options = self.options.get("linear_solver_options", {})
+
+        if permeability_faces is not None and self.linear_solver_type == "dct":
+            raise ValueError(
+                "DCT solver does not support permeability faces. Use CG or KSP instead."
+            )
+
+        # Define CG solver
+        kernel = np.ones(self.grid.num_cells, dtype=float) / np.sqrt(
+            self.grid.num_cells
+        )
+
+        if self.linear_solver_type == "dct":
+            # dct is matrix-free
+            pass
+        else:
+            if permeability_faces is None:
+                Laplacian_matrix = self.div * self.inverse_mass_matrix_faces * self.grad
+            else:
+                Laplacian_matrix = (
+                    self.div
+                    * sps.diags(permeability_faces)
+                    * self.inverse_mass_matrix_faces
+                    * self.grad
+                )
+
+        #
+        if self.linear_solver_type == "cg":
+            # Define CG solver
+            Poisson_solver = darsia.linalg.CG(Laplacian_matrix)
+
+            # Define AMG preconditioner
+            self.setup_amg_options()
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore", message="Implicit conversion of A to CSR"
+                )
+                amg = pyamg.smoothed_aggregation_solver(
+                    Laplacian_matrix, **self.amg_options
+                ).aspreconditioner(cycle="V")
+
+            # Define solver options
+            maxiter = linear_solver_options.get("maxiter", 100)
+            solver_options = {
+                "rtol": rtol,
+                "atol": 1e-15,
+                "maxiter": maxiter,
+                "M": amg,
+            }
+            Poisson_solver.setup(solver_options)
+
+        elif self.linear_solver_type == "ksp":
+            Poisson_solver = darsia.linalg.KSP(
+                Laplacian_matrix,
+                nullspace=[kernel],
+                appctx={},
+                solver_prefix=solver_prefix,
+            )
+            maxiter = linear_solver_options.get("maxiter", 100)
+            ksp_ctrl = {
+                "ksp_type": "cg",
+                "ksp_rtol": rtol,
+                "ksp_max_it": maxiter,
+                "pc_type": "hypre",
+                # "ksp_monitor_true_residual" : None
+            }
+            # if permeability_faces is not None:
+            #    ksp_ctrl["ksp_monitor_true_residual"] = None
+            Poisson_solver.setup(ksp_ctrl)
+
+        return Poisson_solver
+
+    def leray_projection(self, p: np.ndarray) -> np.ndarray:
+        """Leray projection of a vector fiels
+
+        Args:
+            p (np.ndarray): pressure
+
+        Returns:
+            np.ndarray: divergence free flux
+
+        """
+        rhs = self.div.dot(p)
+        poisson_solution = self.Poisson_solver.solve(rhs)
+        return p - self.inverse_mass_matrix_faces.dot(self.grad.dot(poisson_solution))
+
+    # ! ---- Utility methods ----
+
+    def _sum_timings(self, timings: dict) -> dict:
+        """Sum the timing of the current iteration.
+
+        Utility function for self.solve_beckmann_problem().
+
+        Args:
+            timings (dict): timings
+
+        Returns:
+            dict: total time
+
+        """
+        total_timings = {
+            "poisson": sum([t["time_poisson"] for t in timings]),
+            "extra": sum([t["time_extra"] for t in timings]),
+        }
+        total_timings["total"] = total_timings["poisson"] + total_timings["extra"]
+
+        return total_timings
