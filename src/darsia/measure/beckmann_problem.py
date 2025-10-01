@@ -25,33 +25,6 @@ class L1Mode(StrEnum):
     CONSTANT_CELL_PROJECTION = "constant_cell_projection"
 
 
-class L1QuadratureFactory:
-    @staticmethod
-    def create(l1_mode: L1Mode, dim: int):
-        match l1_mode:
-            case L1Mode.RAVIART_THOMAS:
-                # Apply numerical integration of RT0 extensions into cells.
-                # Underlying functional for mixed finite element method (MFEM).
-                quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
-                    dim, "max"
-                )
-
-            case L1Mode.CONSTANT_SUBCELL_PROJECTION:
-                # Apply subcell_based projection onto constant vectors and sum up.
-                # Equivalent to a mixed finite volume method (FV). Identical to quadrature
-                # over corners.
-                quad_pts, quad_weights = darsia.quadrature.reference_cell_corners(dim)
-
-            case L1Mode.CONSTANT_CELL_PROJECTION:
-                # L2 projection onto constant vectors identical to quadrature of order 0.
-                quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(dim, 0)
-
-            case _:
-                raise ValueError(f"Mode {l1_mode} not supported.")
-
-        return quad_pts, quad_weights
-
-
 class MobilityMode(StrEnum):
     """Mode for computing the mobility."""
 
@@ -263,10 +236,33 @@ class BeckmannProblem(darsia.EMD):
 
         """
         l1_mode: L1Mode = self.options.get("l1_mode", L1Mode.RAVIART_THOMAS)
-        """str: mode for computing the l1 dissipation"""
-        self.quad_pts, self.quad_weights = L1QuadratureFactory.create(
-            l1_mode, self.grid.dim
-        )
+        dim = self.grid.dim
+        match l1_mode:
+            case L1Mode.RAVIART_THOMAS:
+                # Apply numerical integration of RT0 extensions into cells.
+                # Underlying functional for mixed finite element method (MFEM).
+                quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(
+                    dim, "max"
+                )
+
+            case L1Mode.CONSTANT_SUBCELL_PROJECTION:
+                # Apply subcell_based projection onto constant vectors and sum up.
+                # Equivalent to a mixed finite volume method (FV). Identical to quadrature
+                # over corners.
+                quad_pts, quad_weights = darsia.quadrature.reference_cell_corners(dim)
+
+            case L1Mode.CONSTANT_CELL_PROJECTION:
+                # L2 projection onto constant vectors identical to quadrature of order 0.
+                quad_pts, quad_weights = darsia.quadrature.gauss_reference_cell(dim, 0)
+
+            case _:
+                raise ValueError(f"Mode {l1_mode} not supported.")
+
+        self.quad_pts = quad_pts
+        """np.ndarray: quadrature points in reference cell"""
+
+        self.quad_weights = quad_weights
+        """np.ndarray: quadrature weights in reference cell"""
 
     def _setup_face_weights(self) -> None:
         """Convert cell weights to face weights by harmonic averaging."""
