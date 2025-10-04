@@ -451,6 +451,51 @@ class ColorPathRegression:
             expanded_color_spectrum[label]["histogram"] = expanded_hist
             expanded_color_spectrum[label]["significant"] = expanded_significant_voxels
 
+            # Add same verbose plotting as for get_color_spectrum
+            if verbose:
+                # Prepare reusable data
+                _, edges = np.histogramdd(
+                    np.zeros((1, 3)),
+                    bins=significant_voxels.shape,
+                    range=(
+                        (-self.range, self.range),
+                        (-self.range, self.range),
+                        (-self.range, self.range),
+                    ),
+                )
+                # Define the respective meshgrid for the histogram
+                x_edges = edges[0][:-1] + 0.5 * (edges[0][1] - edges[0][0])
+                y_edges = edges[1][:-1] + 0.5 * (edges[1][1] - edges[1][0])
+                z_edges = edges[2][:-1] + 0.5 * (edges[2][1] - edges[2][0])
+                x_mesh, y_mesh, z_mesh = np.meshgrid(
+                    x_edges, y_edges, z_edges, indexing="ij"
+                )
+
+                ax = plt.figure().add_subplot(projection="3d")
+                ax.set_title(f"Expanded Color Spectrum for Label {label}")
+
+                # Add colors to each mesh point
+                c_mesh = np.clip(
+                    color_spectrum[label]["base_color"]
+                    + np.vstack(
+                        (x_mesh.flatten(), y_mesh.flatten(), z_mesh.flatten())
+                    ).T,
+                    0.0,
+                    1.0,
+                ).reshape(significant_voxels.shape + (3,))
+
+                # Plot the significant boxes
+                ax.voxels(expanded_significant_voxels, facecolors=c_mesh)
+                # Highlight the origin
+                origin = np.zeros_like(expanded_significant_voxels, dtype=bool)
+                origin[
+                    origin.shape[0] // 2,
+                    origin.shape[1] // 2,
+                    origin.shape[2] // 2,
+                ] = True
+                ax.voxels(origin, facecolors="red")
+                plt.show()
+
         return expanded_color_spectrum
 
     def find_relative_color_path(
