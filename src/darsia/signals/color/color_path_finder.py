@@ -371,8 +371,20 @@ class ColorPathRegression:
             sorted_embedding = embedding[sorted_indices]
             sorted_relative_colors = relative_colors[sorted_indices]
 
+            # Prepare weights for linear regression. Use the norm of the relative colors
+            # to give more weight to colors further away from the base color.
+            weights = np.linalg.norm(relative_colors, axis=1)
+            weights /= np.sum(weights)
+            sorted_weights = weights[sorted_indices]
+            sorted_weights *= num_points  # Scale weights to number of points
+            sorted_weights = np.clip(
+                sorted_weights, 0.1, None
+            )  # Avoid too small weights
+
             # Step 4: Fit line segment
-            model = LinearRegression().fit(sorted_embedding, sorted_relative_colors)
+            model = LinearRegression().fit(
+                sorted_embedding, sorted_relative_colors, sorted_weights
+            )
 
             resolution = 10 * significant_voxels.shape[0]
             coef = 1.5 / np.mean(model.coef_) / resolution * model.coef_
