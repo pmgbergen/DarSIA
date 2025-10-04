@@ -142,10 +142,26 @@ class ColorPathRegression:
         return base_colors
 
     def get_mean_base_color(self, image: darsia.Image) -> np.ndarray:
+        """Get the mean base color across all labels in the image.
+
+        Args:
+            image (darsia.Image): The image from which to extract base colors.
+
+        Returns:
+            np.ndarray: The mean base color across all labels.
+        """
         base_colors = self.get_base_colors(image)
         return np.mean(np.array(list(base_colors.values())), axis=0)
 
     def base_color_image(self, image: darsia.Image) -> darsia.Image:
+        """Create an image where each label is colored by its base color.
+
+        Args:
+            image (darsia.Image): The image from which to extract base colors.
+
+        Returns:
+            darsia.Image: An image where each label is colored by its base color.
+        """
         base_color_image = image.copy()
         base_colors = self.get_base_colors(image)
         for mask, label in darsia.Masks(self.labels, return_label=True):
@@ -162,6 +178,25 @@ class ColorPathRegression:
         threshold_significant: float = 0.0,
         verbose: bool = False,
     ) -> dict[int, Tuple[np.ndarray, np.ndarray]]:
+        """Get the color spectrum for each label in the image.
+
+        The color spectrum is calculated by analyzing the distribution of
+        colors within each label across the provided images. This involves
+        creating a 3D histogram of color occurrences, which is then normalized
+        to identify significant colors.
+
+        Args:
+            images (list[darsia.Image]): The images to analyze.
+            baseline (darsia.Image | None): The baseline image for comparison.
+            resolution (Tuple[int, int, int]): The resolution of the color histogram.
+            ignore_color_spectrum (dict[int, Tuple[np.ndarray, np.ndarray]] | None): Colors to ignore in the spectrum.
+            threshold_zero (float): The threshold for zeroing out insignificant colors.
+            threshold_significant (float): The threshold for significant colors.
+            verbose (bool): Whether to print verbose output.
+
+        Returns:
+            dict[int, Tuple[np.ndarray, np.ndarray]]: The color spectrum for each label.
+        """
         # TODO introduce a mask, and remove labels.
 
         # Get base colors for each label
@@ -177,6 +212,7 @@ class ColorPathRegression:
             color_spectrum[label]["histogram"] = np.zeros(resolution, dtype=float)
             color_spectrum[label]["significant"] = np.zeros(resolution, dtype=bool)
 
+        # Loop over all images
         for image in images:
             # Get relative image
             relative_image = image.copy()
