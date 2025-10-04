@@ -104,13 +104,41 @@ class ColorPathRegression:
         self.ignore_labels = ignore_labels
         self.range = 1.5
 
-    def get_base_colors(self, image: darsia.Image) -> dict[int, np.ndarray]:
+    def get_base_colors(
+        self, image: darsia.Image, verbose: bool = False
+    ) -> dict[int, np.ndarray]:
+        """Get the base colors for each label in the image.
+
+        Args:
+            image (darsia.Image): The image from which to extract base colors.
+            verbose (bool): Whether to print additional information.
+
+        Returns:
+            dict[int, np.ndarray]: A dictionary mapping each label to its base color.
+
+        """
         base_colors = {}
         for mask, label in darsia.Masks(self.labels, return_label=True):
             if label in self.ignore_labels:
                 base_colors[label] = np.zeros(3)
                 continue
             base_colors[label] = _get_mean_color(image, mask=(self.mask.img & mask.img))
+
+        if verbose:
+            fig = plt.figure(figsize=(8, 4))
+            ax = fig.add_subplot(111, projection="3d")
+            for label in np.unique(self.labels.img):
+                if label in self.ignore_labels:
+                    continue
+                color = base_colors[label]
+                print(f"Label {label}: {color}")
+                ax.scatter(color[0], color[1], color[2], c=color)
+            ax.set_xlabel("R")
+            ax.set_ylabel("G")
+            ax.set_zlabel("B")
+            ax.set_title("Base colors in RGB space")
+            plt.show()
+
         return base_colors
 
     def get_mean_base_color(self, image: darsia.Image) -> np.ndarray:
