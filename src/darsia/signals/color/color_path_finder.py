@@ -2,16 +2,34 @@
 
 import copy
 import logging
-from typing import Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.manifold import LocallyLinearEmbedding
+from dataclasses import dataclass
+from time import time
+from functools import wraps
 
 import darsia
 
 logger = logging.getLogger(__name__)
+
+
+def timing_decorator(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time()
+        result = func(*args, **kwargs)
+        end = time()
+        # Do not only use the name of the function, but also the class it belongs to
+        logger.info(
+            f"{func.__module__}.{func.__name__} executed in {end - start:.3f} seconds"
+        )
+        return result
+
+    return wrapper
+
 
 # ! ---- AUXILIARY FUNCTIONS ----
 
@@ -61,7 +79,7 @@ def define_color_path(image: darsia.Image, mask: darsia.Image) -> darsia.ColorPa
         assistant = darsia.RectangleSelectionAssistant(image)
 
         # Pick a box in the image and convert it to a mask
-        box: Tuple[slice, slice] = assistant()
+        box: tuple[slice, slice] = assistant()
         boxed_mask = darsia.zeros_like(mask, dtype=bool)
         boxed_mask.img[box] = mask.img[box]
 
@@ -87,7 +105,18 @@ def define_color_path(image: darsia.Image, mask: darsia.Image) -> darsia.ColorPa
 
 # ! ---- ALGORITHMIC COLOR PATH DEFINITION ----
 
+
 # TODO ColorSpectrumRegression? ColorSpectrumAnalysis?
+@dataclass
+class ColorSpectrum:
+    """Data structure to hold a color spectrum."""
+
+    base_color: np.ndarray
+    """Reference color for the spectrum."""
+    spectrum: np.ndarray
+    """Distribution of colors in the spectrum."""
+    histogram: np.ndarray
+    """Histogram of color occurrences."""
 
 
 class ColorPathRegression:
@@ -104,6 +133,7 @@ class ColorPathRegression:
         self.ignore_labels = ignore_labels
         self.range = 1.5
 
+    @timing_decorator
     def get_base_colors(
         self, image: darsia.Image, verbose: bool = False
     ) -> dict[int, np.ndarray]:
@@ -141,6 +171,7 @@ class ColorPathRegression:
 
         return base_colors
 
+    @timing_decorator
     def get_mean_base_color(self, image: darsia.Image) -> np.ndarray:
         """Get the mean base color across all labels in the image.
 
@@ -153,6 +184,7 @@ class ColorPathRegression:
         base_colors = self.get_base_colors(image)
         return np.mean(np.array(list(base_colors.values())), axis=0)
 
+    @timing_decorator
     def base_color_image(self, image: darsia.Image) -> darsia.Image:
         """Create an image where each label is colored by its base color.
 
@@ -168,16 +200,17 @@ class ColorPathRegression:
             base_color_image.img[mask.img, :] = base_colors[label]
         return base_color_image
 
+    @timing_decorator
     def get_color_spectrum(
         self,
         images: list[darsia.Image],
         baseline: darsia.Image | None = None,
-        resolution: Tuple[int, int, int] = (11, 11, 11),
-        ignore_color_spectrum: dict[int, Tuple[np.ndarray, np.ndarray]] | None = None,
+        resolution: tuple[int, int, int] = (11, 11, 11),
+        ignore_color_spectrum: dict[int, ColorSpectrum] | None = None,
         threshold_zero: float = 0.0,
         threshold_significant: float = 0.0,
         verbose: bool = False,
-    ) -> dict[int, Tuple[np.ndarray, np.ndarray]]:
+    ) -> dict[int, ColorSpectrum]:
         """Get the color spectrum for each label in the image.
 
         The color spectrum is calculated by analyzing the distribution of
@@ -188,14 +221,15 @@ class ColorPathRegression:
         Args:
             images (list[darsia.Image]): The images to analyze.
             baseline (darsia.Image | None): The baseline image for comparison.
-            resolution (Tuple[int, int, int]): The resolution of the color histogram.
-            ignore_color_spectrum (dict[int, Tuple[np.ndarray, np.ndarray]] | None): Colors to ignore in the spectrum.
+            resolution (tuple[int, int, int]): The resolution of the color histogram.
+            ignore_color_spectrum (dict[int, tuple[np.ndarray, np.ndarray]] | None): Colors to ignore in the spectrum.
             threshold_zero (float): The threshold for zeroing out insignificant colors.
             threshold_significant (float): The threshold for significant colors.
             verbose (bool): Whether to print verbose output.
 
         Returns:
-            dict[int, Tuple[np.ndarray, np.ndarray]]: The color spectrum for each label.
+            dict[int, ColorSpectrum]: The color spectrum for each label.
+
         """
         # TODO introduce a mask, and remove labels.
 
@@ -206,11 +240,17 @@ class ColorPathRegression:
             base_colors = self.get_base_colors(baseline)
 
         # Prepare analysis and result
-        color_spectrum = dict((label, {}) for label in np.unique(self.labels.img))
-        for label, color in base_colors.items():
-            color_spectrum[label]["base_color"] = color
-            color_spectrum[label]["histogram"] = np.zeros(resolution, dtype=float)
-            color_spectrum[label]["significant"] = np.zeros(resolution, dtype=bool)
+        color_spectrum = dict(
+            (
+                label,
+                ColorSpectrum(
+                    base_color=base_color,
+                    histogram=np.zeros(resolution, dtype=float),
+                    spectrum=np.zeros(resolution, dtype=bool),
+                ),
+            )
+            for label, base_color in base_colors.items()
+        )
 
         # Loop over all images
         for image in images:
@@ -218,7 +258,7 @@ class ColorPathRegression:
             relative_image = image.copy()
             if baseline is not None:
                 relative_image.img -= baseline.img
-            relative_image.img[self.mask.img] = 0.0
+            relative_image.img[~self.mask.img] = 0.0
 
             for label in np.unique(self.labels.img):
                 # Fetch relative colors in the label
@@ -245,23 +285,21 @@ class ColorPathRegression:
 
                 # Ignore colors
                 if ignore_color_spectrum is not None:
-                    ignore = ignore_color_spectrum[label]["significant"]
+                    ignore = ignore_color_spectrum[label].spectrum
                     assert ignore.shape == resolution
                     assert ignore.dtype == bool
                     single_hist[ignore] = 0.0
 
-                color_spectrum[label]["histogram"] += single_hist
+                color_spectrum[label].histogram += single_hist
 
         # Normalize the histogram, and identify the significant colors
         for label in color_spectrum.keys():
-            color_spectrum[label]["histogram"] = color_spectrum[label][
-                "histogram"
-            ] / np.sum(color_spectrum[label]["histogram"])
-            color_spectrum[label]["significant"] = (
-                color_spectrum[label]["histogram"] > threshold_significant
+            color_spectrum[label].histogram = color_spectrum[label].histogram / np.sum(
+                color_spectrum[label].histogram
             )
-
-        logger.info("Finalized color spectrum analysis.")
+            color_spectrum[label].spectrum = (
+                color_spectrum[label].histogram > threshold_significant
+            )
 
         # Plot the histogram as a 3D voxel plot
         if verbose:
@@ -284,7 +322,7 @@ class ColorPathRegression:
             )
 
             for label in np.unique(self.labels.img):
-                if not np.any(color_spectrum[label]["significant"]):
+                if not np.any(color_spectrum[label].spectrum):
                     logger.info(f"Skip plotting color spectrum for label {label}.")
                     continue
                 ax = plt.figure().add_subplot(projection="3d")
@@ -292,7 +330,7 @@ class ColorPathRegression:
 
                 # Add colors to each mesh point
                 c_mesh = np.clip(
-                    color_spectrum[label]["base_color"]
+                    color_spectrum[label].base_color
                     + np.vstack(
                         (x_mesh.flatten(), y_mesh.flatten(), z_mesh.flatten())
                     ).T,
@@ -301,86 +339,90 @@ class ColorPathRegression:
                 ).reshape(resolution + (3,))
 
                 # Plot the significant boxes
-                ax.voxels(color_spectrum[label]["significant"], facecolors=c_mesh)
+                ax.voxels(color_spectrum[label].spectrum, facecolors=c_mesh)
                 # Mark the ignored colors
                 if ignore_color_spectrum is not None:
                     ax.voxels(
-                        ignore_color_spectrum[label]["significant"],
+                        ignore_color_spectrum[label].spectrum,
                         facecolors="red",
                         alpha=0.1,
                     )
                 # Highlight the origin
-                origin = np.zeros_like(color_spectrum[label]["significant"], dtype=bool)
+                origin = np.zeros_like(color_spectrum[label].spectrum, dtype=bool)
                 origin[
                     origin.shape[0] // 2, origin.shape[1] // 2, origin.shape[2] // 2
                 ] = True
                 ax.voxels(origin, facecolors="red")
                 plt.show()
 
+        logger.info("Done. Color spectrum analysis.")
         return color_spectrum
 
+    @timing_decorator
     def expand_color_spectrum(
         self,
-        color_spectrum: dict[int, Tuple[np.ndarray, np.ndarray]],
+        color_spectrum: dict[int, ColorSpectrum],
+        min_points: int = 6,
         verbose: bool = False,
-    ) -> dict[int, Tuple[np.ndarray, np.ndarray]]:
+    ) -> dict[int, ColorSpectrum]:
         """Expand the color spectrum through linear regression.
 
         Args:
-            color_spectrum (dict[int, Tuple[np.ndarray, np.ndarray]]): The color spectrum to expand.
+            color_spectrum (dict[int, ColorSpectrum]): The color spectrum to expand.
             verbose (bool): Whether to print additional information.
+            min_points (int): Minimum number of significant points to perform regression.
 
         Returns:
-            dict[int, Tuple[np.ndarray, np.ndarray]]: The expanded color spectrum.
+            dict[int, ColorSpectrum]: The expanded color spectrum.
 
         """
         # Prepare the result
         expanded_color_spectrum = copy.deepcopy(color_spectrum)
 
         for label, data in color_spectrum.items():
-            significant_voxels = data["significant"]
-            x_points, y_points, z_points = np.where(significant_voxels)
+            spectrum = data.spectrum
+            x_points, y_points, z_points = np.where(spectrum)
 
             # Step 0: Add 8 neighbors to significant voxels
-            significant_voxels[1:-1, 1:-1, 1:-1] |= (
-                significant_voxels[:-2, 1:-1, 1:-1]
-                | significant_voxels[2:, 1:-1, 1:-1]
-                | significant_voxels[1:-1, :-2, 1:-1]
-                | significant_voxels[1:-1, 2:, 1:-1]
-                | significant_voxels[1:-1, 1:-1, :-2]
-                | significant_voxels[1:-1, 1:-1, 2:]
-                | significant_voxels[:-2, :-2, 1:-1]
-                | significant_voxels[2:, 2:, 1:-1]
-                | significant_voxels[:-2, 1:-1, :-2]
-                | significant_voxels[2:, 1:-1, 2:]
-                | significant_voxels[1:-1, :-2, :-2]
-                | significant_voxels[1:-1, 2:, 2:]
-                | significant_voxels[:-2, :-2, :-2]
-                | significant_voxels[2:, 2:, 2:]
-                | significant_voxels[:-2, 2:, :-2]
-                | significant_voxels[2:, :-2, 2:]
-                | significant_voxels[1:-1, :-2, 2:]
-                | significant_voxels[1:-1, 2:, :-2]
-                | significant_voxels[:-2, 1:-1, 2:]
-                | significant_voxels[2:, 1:-1, :-2]
-                | significant_voxels[:-2, 2:, 1:-1]
-                | significant_voxels[2:, :-2, 1:-1]
-                | significant_voxels[1:-1, :-2, 1:-1]
-                | significant_voxels[1:-1, 2:, 1:-1]
-                | significant_voxels[:-2, 1:-1, 2:]
-                | significant_voxels[2:, 1:-1, :-2]
-                | significant_voxels[:-2, :-2, 2:]
-                | significant_voxels[2:, 2:, :-2]
-                | significant_voxels[:-2, 2:, 2:]
-                | significant_voxels[2:, :-2, 2:]
-                | significant_voxels[1:-1, :-2, :-2]
-                | significant_voxels[1:-1, 2:, 2:]
-                | significant_voxels[:-2, 1:-1, :-2]
-                | significant_voxels[2:, 1:-1, 2:]
-                | significant_voxels[:-2, :-2, 1:-1]
-                | significant_voxels[2:, 2:, 1:-1]
-                | significant_voxels[:-2, 2:, 1:-1]
-                | significant_voxels[2:, :-2, 1:-1]
+            spectrum[1:-1, 1:-1, 1:-1] |= (
+                spectrum[:-2, 1:-1, 1:-1]
+                | spectrum[2:, 1:-1, 1:-1]
+                | spectrum[1:-1, :-2, 1:-1]
+                | spectrum[1:-1, 2:, 1:-1]
+                | spectrum[1:-1, 1:-1, :-2]
+                | spectrum[1:-1, 1:-1, 2:]
+                | spectrum[:-2, :-2, 1:-1]
+                | spectrum[2:, 2:, 1:-1]
+                | spectrum[:-2, 1:-1, :-2]
+                | spectrum[2:, 1:-1, 2:]
+                | spectrum[1:-1, :-2, :-2]
+                | spectrum[1:-1, 2:, 2:]
+                | spectrum[:-2, :-2, :-2]
+                | spectrum[2:, 2:, 2:]
+                | spectrum[:-2, 2:, :-2]
+                | spectrum[2:, :-2, 2:]
+                | spectrum[1:-1, :-2, 2:]
+                | spectrum[1:-1, 2:, :-2]
+                | spectrum[:-2, 1:-1, 2:]
+                | spectrum[2:, 1:-1, :-2]
+                | spectrum[:-2, 2:, 1:-1]
+                | spectrum[2:, :-2, 1:-1]
+                | spectrum[1:-1, :-2, 1:-1]
+                | spectrum[1:-1, 2:, 1:-1]
+                | spectrum[:-2, 1:-1, 2:]
+                | spectrum[2:, 1:-1, :-2]
+                | spectrum[:-2, :-2, 2:]
+                | spectrum[2:, 2:, :-2]
+                | spectrum[:-2, 2:, 2:]
+                | spectrum[2:, :-2, 2:]
+                | spectrum[1:-1, :-2, :-2]
+                | spectrum[1:-1, 2:, 2:]
+                | spectrum[:-2, 1:-1, :-2]
+                | spectrum[2:, 1:-1, 2:]
+                | spectrum[:-2, :-2, 1:-1]
+                | spectrum[2:, 2:, 1:-1]
+                | spectrum[:-2, 2:, 1:-1]
+                | spectrum[2:, :-2, 1:-1]
             )
 
             # Step 1: Extract significant points and convert to relative colors in the range [-1.5, 1.5]
@@ -388,12 +430,11 @@ class ColorPathRegression:
                 np.vstack((x_points, y_points, z_points)).T
                 * 2
                 * self.range
-                / significant_voxels.shape[0]
+                / spectrum.shape[0]
                 - self.range
             )
             num_points = relative_colors.shape[0]
-            if num_points <= 6:
-                # TODO lower than 6?
+            if num_points <= min_points:
                 continue
 
             # Step 2: Reduce to 1D using Locally Linear Embedding
@@ -413,16 +454,13 @@ class ColorPathRegression:
             weights /= np.sum(weights)
             sorted_weights = weights[sorted_indices]
             sorted_weights *= num_points  # Scale weights to number of points
-            sorted_weights = np.clip(
-                sorted_weights, 0.1, None
-            )  # Avoid too small weights
 
             # Step 4: Fit line segment
             model = LinearRegression().fit(
                 sorted_embedding, sorted_relative_colors, sorted_weights
             )
 
-            resolution = 10 * significant_voxels.shape[0]
+            resolution = 10 * spectrum.shape[0]
             coef = 1.5 / np.mean(model.coef_) / resolution * model.coef_
             expanded_relative_colors = np.empty((0, 3))
             for i in range(-2 * resolution, 2 * resolution + 1):
@@ -432,31 +470,27 @@ class ColorPathRegression:
                 )
 
             # Same histogram as before
-            expanded_hist, _ = np.histogramdd(
+            expanded_histogram, _ = np.histogramdd(
                 expanded_relative_colors,
-                bins=significant_voxels.shape,
+                bins=spectrum.shape,
                 range=(
                     (-self.range, self.range),
                     (-self.range, self.range),
                     (-self.range, self.range),
                 ),
             )
-            expanded_hist = expanded_hist / np.sum(expanded_hist)
-            expanded_significant_voxels = expanded_hist > 0.0
-            print(
-                np.count_nonzero(expanded_significant_voxels),
-                np.count_nonzero(significant_voxels),
-            )
+            expanded_histogram = expanded_histogram / np.sum(expanded_histogram)
+            expanded_spectrum = expanded_histogram > 0.0
 
-            expanded_color_spectrum[label]["histogram"] = expanded_hist
-            expanded_color_spectrum[label]["significant"] = expanded_significant_voxels
+            expanded_color_spectrum[label].histogram = expanded_histogram
+            expanded_color_spectrum[label].spectrum = expanded_spectrum
 
             # Add same verbose plotting as for get_color_spectrum
             if verbose:
                 # Prepare reusable data
                 _, edges = np.histogramdd(
                     np.zeros((1, 3)),
-                    bins=significant_voxels.shape,
+                    bins=spectrum.shape,
                     range=(
                         (-self.range, self.range),
                         (-self.range, self.range),
@@ -476,18 +510,18 @@ class ColorPathRegression:
 
                 # Add colors to each mesh point
                 c_mesh = np.clip(
-                    color_spectrum[label]["base_color"]
+                    color_spectrum[label].base_color
                     + np.vstack(
                         (x_mesh.flatten(), y_mesh.flatten(), z_mesh.flatten())
                     ).T,
                     0.0,
                     1.0,
-                ).reshape(significant_voxels.shape + (3,))
+                ).reshape(spectrum.shape + (3,))
 
                 # Plot the significant boxes
-                ax.voxels(expanded_significant_voxels, facecolors=c_mesh)
+                ax.voxels(expanded_spectrum, facecolors=c_mesh)
                 # Highlight the origin
-                origin = np.zeros_like(expanded_significant_voxels, dtype=bool)
+                origin = np.zeros_like(expanded_spectrum, dtype=bool)
                 origin[
                     origin.shape[0] // 2,
                     origin.shape[1] // 2,
@@ -496,56 +530,87 @@ class ColorPathRegression:
                 ax.voxels(origin, facecolors="red")
                 plt.show()
 
+        logger.info("Done. Expanded color spectrum analysis.")
+
         return expanded_color_spectrum
 
+    @timing_decorator
     def find_relative_color_path(
         self,
-        hist: np.ndarray | None,
-        significant_voxels: np.ndarray,
-        base_color: np.ndarray,
+        spectrum: ColorSpectrum,
+        base_color_spectrum: ColorSpectrum | None = None,
         verbose: bool = False,
+        **kwargs,
     ) -> darsia.ColorPath:
         """Find a relative color path through the significant boxes.
 
         Args:
             significant_voxels (np.ndarray): A boolean array indicating significant boxes.
             base_color (np.ndarray): The base color to use for the color path.
-            n_colors (int): The number of relative colors to include in the path.
 
         Returns:
             darsia.ColorPath: The relative color path through the significant boxes.
 
         """
-        # Step 1: Extract significant points and convert to relative colors in the range [-1.5, 1.5]
-        x_points, y_points, z_points = np.where(significant_voxels)
+        # Step 1: Extract spectrum and convert to relative colors in the range [-1.5, 1.5]
+        x_points, y_points, z_points = np.where(spectrum.spectrum)
         relative_colors = (
             np.vstack((x_points, y_points, z_points)).T
             * 2
             * self.range
-            / significant_voxels.shape[0]
+            / spectrum.spectrum.shape[0]
             - self.range
         )
-        absolute_colors = base_color + relative_colors
+        absolute_colors = spectrum.base_color + relative_colors
         num_points = relative_colors.shape[0]
+
+        # Check for empty color path
         if num_points == 0:
-            logger.info("Empty coloror path found. Returning default color path.")
+            logger.info(
+                """Empty color or path found. """
+                """Returning default color path."""
+            )
             return darsia.ColorPath(
                 colors=None,
                 relative_colors=[np.zeros(3), np.zeros(3)],
-                base_color=base_color,
+                base_color=spectrum.base_color,
                 values=[0.0, 1.0],
                 mode="rgb",
             )
 
-        # Convert the histogram to weights
-        # If no histogram is provided, use uniform weights
-        if hist is None:
-            weights = np.ones(relative_colors.shape[0])
+        # Choose weights based on distance to base_color_spectrum.spectrum
+        if base_color_spectrum is not None:
+            x_points_base, y_points_base, z_points_base = np.where(
+                base_color_spectrum.spectrum
+            )
+            # Define distance for each active relative color to the baseline spectrum
+            distances = np.array(
+                [
+                    np.min(
+                        np.linalg.norm(
+                            np.vstack((x_points_base, y_points_base, z_points_base)).T
+                            - np.array((x, y, z), dtype=int)[np.newaxis, :],
+                            ord=2,
+                            axis=1,
+                        ),
+                    )
+                    ** 2
+                    for x, y, z in zip(x_points, y_points, z_points)
+                ]
+            )
+            # Define weights as distance and divide by max distance
+            weights = distances / np.max(distances)
         else:
-            weights = hist[significant_voxels]
+            weights = np.ones(relative_colors.shape[0])
+
+        # Add origin to relative colors and use high weight 1.
+        relative_colors = np.vstack((relative_colors, np.zeros(3)))
+        absolute_colors = np.vstack((absolute_colors, spectrum.base_color))
+        weights = np.hstack((weights, 1.0))
 
         # Step 2: Reduce to 1D using Locally Linear Embedding
-        lle = LocallyLinearEmbedding(n_neighbors=10, n_components=1)
+        n_neighbors = min(10, num_points - 1)
+        lle = LocallyLinearEmbedding(n_neighbors=n_neighbors, n_components=1)
         embedding = lle.fit_transform(relative_colors)
 
         # Step 3: Sort embedding and colors
@@ -554,18 +619,19 @@ class ColorPathRegression:
         sorted_relative_colors = relative_colors[sorted_indices]
         sorted_weights = weights[sorted_indices]
 
-        # Step 4: Fit two line segments and find best split through weighted LS (brute-force search)
-        # Step 5: Extract three key colors
+        # Step 4a: Fit two line segments and find best split through weighted LS (brute-force search)
+        # Step 4b: Extract three representative key colors
         min_error = float("inf")
         best_split = None
         key_relative_colors = []
-        for i in range(10, len(sorted_embedding) - 10):
+        min_length_segment = 10  # Avoid too short segments
+        for i in range(min_length_segment, len(sorted_embedding) - min_length_segment):
             x1, y1 = sorted_embedding[:i], sorted_relative_colors[:i]
             x2, y2 = sorted_embedding[i - 1 :], sorted_relative_colors[i - 1 :]
-            model1 = LinearRegression().fit(x1, y1)
-            model2 = LinearRegression().fit(x2, y2)
             weight1 = sorted_weights[:i]
             weight2 = sorted_weights[i - 1 :]
+            model1 = LinearRegression().fit(x1, y1, weight1)
+            model2 = LinearRegression().fit(x2, y2, weight2)
             l2_error = (
                 np.sum(weight1 * np.linalg.norm(model1.predict(x1) - y1, axis=1) ** 2)
                 + np.sum(weight2 * np.linalg.norm(model2.predict(x2) - y2, axis=1) ** 2)
@@ -597,12 +663,25 @@ class ColorPathRegression:
             return darsia.ColorPath(
                 colors=None,
                 relative_colors=[np.zeros(3), np.zeros(3)],
-                base_color=base_color,
+                base_color=spectrum.base_color,
                 values=[0.0, 1.0],
                 mode="rgb",
             )
 
-        key_absolute_colors = [base_color + c for c in key_relative_colors]
+        # Step 5: Make relative colors unique
+        # Sort key colors by their distance to the origin
+        if np.linalg.norm(key_relative_colors[0]) > np.linalg.norm(
+            key_relative_colors[-1]
+        ):
+            key_relative_colors.reverse()
+
+        # Replace first key color by the origin
+        key_relative_colors[0] = np.zeros(3)
+
+        # Define the corresponding absolute colors
+        key_absolute_colors = [spectrum.base_color + c for c in key_relative_colors]
+
+        # Step 6: Verbose output
         if verbose:
             # Print key colors
             for i, (color, rel) in enumerate(
@@ -628,31 +707,41 @@ class ColorPathRegression:
                     c=np.clip(key_absolute_colors, 0, 1),
                     s=100,
                 )
-            ax.set_title("Result of Color Path Analysis")
+            if base_color_spectrum is not None:
+                base_x, base_y, base_z = np.where(base_color_spectrum.spectrum)
+                base_relative_colors = (
+                    np.vstack((base_x, base_y, base_z)).T
+                    * 2
+                    * self.range
+                    / base_color_spectrum.spectrum.shape[0]
+                    - self.range
+                )
+                ax.scatter(
+                    base_relative_colors[:, 0],
+                    base_relative_colors[:, 1],
+                    base_relative_colors[:, 2],
+                    c="r",
+                    s=10,
+                    alpha=0.1,
+                )
+            plot_title = kwargs.get("plot_title", "Color Path Analysis")
+            ax.set_title(plot_title)
             ax.set_xlabel("R")
             ax.set_ylabel("G")
             ax.set_zlabel("B")
 
             plt.tight_layout()
+            if kwargs.get("plot_save", False):
+                plot_save_path = kwargs.get("plot_save_path", "color_path_analysis.png")
+                dpi = kwargs.get("plot_save_dpi", 300)
+                plt.savefig(plot_save_path, dpi=dpi)
             plt.show()
 
-        # Step 7: Reverse colors if necessary (such that the first color is
-        # closest to the origin)
-        reverse_colors = np.linalg.norm(key_relative_colors[-1]) < np.linalg.norm(
-            key_relative_colors[0]
-        )
-        if reverse_colors:
-            key_relative_colors.reverse()
-            key_absolute_colors.reverse()
-
-        # TODO replace the first key relative color with origin?
-        # key_relative_colors[0] = np.zeros(3)
-
-        # Construct relative color path
+        # Step 7: Construct relative color path
         relative_color_path = darsia.ColorPath(
             colors=None,
             relative_colors=key_relative_colors,
-            base_color=base_color,
+            base_color=spectrum.base_color,
             values=None,
             mode="rgb",
         )
@@ -682,3 +771,11 @@ class ColorPathRegression:
         #     clusters[label].append(path)
 
         # return clusters
+
+    def _color_to_index(
+        self, color: np.ndarray, resolution: tuple[int, int, int]
+    ) -> tuple[int, int, int]:
+        """Identify the voxel index of the base color in the [0,1]^3 color space given the resolution"""
+        return tuple(
+            int(np.clip(c * (r - 1), 0, r - 1)) for c, r in zip(color, resolution)
+        )
