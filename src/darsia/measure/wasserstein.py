@@ -1366,6 +1366,7 @@ class VariationalWassersteinDistance(darsia.EMD):
             reduced_jacobian, sps.csc_matrix
         ), "Jacobian should be a CSC matrix."
 
+        start = time.time()
         # Effective Gauss-elimination for the particular case of the lagrange multiplier
         self.fully_reduced_jacobian.data[:] = np.delete(
             reduced_jacobian.data.copy(), self.rm_indices
@@ -1383,6 +1384,8 @@ class VariationalWassersteinDistance(darsia.EMD):
             self.fully_reduced_system_indices
         ].copy()
 
+        end = time.time()
+        print("Time for lagrange multiplier elimination:", end - start)
         return self.fully_reduced_jacobian, fully_reduced_residual
 
     def compute_flux_update(self, solution: np.ndarray, rhs: np.ndarray) -> np.ndarray:
@@ -1690,6 +1693,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 approx_jacobian = self.jacobian(solution_i)
                 toc = time.time()
                 time_assemble = toc - tic
+                
 
                 # Solve linear system for the update
                 update_i, stats_i = self.linear_solve(
@@ -1699,6 +1703,8 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                 # Include assembly in statistics
                 stats_i["time_assemble"] = time_assemble
 
+
+                
                 # Update the solution with the full Netwon step
                 solution_i += update_i
 
