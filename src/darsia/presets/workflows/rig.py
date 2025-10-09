@@ -361,6 +361,10 @@ class Rig:
             self.labels, self.image_porosity, self.baseline
         )
 
+        # Cache
+        self.restoration = restoration
+        """Restoration model based on porosity-based averaging."""
+
         clipping = darsia.ClipModel()
         self.upscaling = darsia.CombinedModel([clipping] + 2 * [restoration])
         logger.info("Upscaling setup completed.")
@@ -531,6 +535,7 @@ class Rig:
         self.injection_protocol = experiment.injection_protocol
         self.pressure_temperature_protocol = experiment.pressure_temperature_protocol
         self.reference_date = experiment.experiment_start
+        logger.info("Experiment and protocols loaded.")
 
     def update(self, path: Path) -> None:
         """Update the state of the museum rig based on the image path.
@@ -553,3 +558,4 @@ class Rig:
             atmospheric_pressure=self.current_pressure,
             temperature=self.current_temperature,
         )
+        logger.info(f"State updated to {self.current_date}.")
