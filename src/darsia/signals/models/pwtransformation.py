@@ -9,6 +9,10 @@ from scipy import interpolate
 
 import darsia
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class PWTransformation:
     """Transformation which cuts off values below 0 and ensures monotonicity."""
@@ -99,6 +103,7 @@ class PWTransformation:
         """
         df = pd.DataFrame({"supports": self.supports, "values": self.values})
         df.to_csv(path.with_suffix(".csv"), index=False)
+        logger.info(f"Saved transformation to {path.with_suffix('.csv')}.")
 
     def load(self, path: Path) -> None:
         """Load the transformation from file in csv format.
