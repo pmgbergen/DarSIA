@@ -20,12 +20,13 @@ logging.basicConfig(level=logging.INFO)
 
 
 # TODO use class Rig here.
-def setup_rig(cls, path: Path) -> None:
+def setup_rig(cls, path: Path, show: bool = False) -> None:
     """Setup and store fluidflower object.
 
     Args:
         cls: Class of the rig to be setup, e.g. ffum.MuseumRig
         path (Path): Path to the config file.
+        show (bool): Whether to show intermediate results.
 
     """
     # Monitoring time of execution
@@ -61,4 +62,5 @@ def setup_rig(cls, path: Path) -> None:
     # Monitoring time of execution
     logger.info(f"Fluidflower setup in {time.time() - tic:.2f} s.")
 
-    fluidflower.baseline.show()
+    if show:
+        fluidflower.baseline.show()
