@@ -205,13 +205,63 @@ class FluidFlowerProtocolConfig:
 
 
 @dataclass
+class ColorAnalysisConfig:
+    ignore_labels: list[int] = field(default_factory=list)
+    """List of labels to ignore in color analysis."""
+    resolution: tuple[int, int, int] = (51, 51, 51)
+    """Resolution for the color spectrum."""
+    threshold_baseline: float = 0.0
+    """Threshold for baseline images."""
+    threshold_calibration: float = 0.0
+    """Threshold for calibration images."""
+    baseline_images: list[Path] = field(default_factory=list[Path])
+    """List of image paths used for baseline."""
+    calibration_images: list[Path] = field(default_factory=list[Path])
+    """List of image paths used for calibration."""
+    calibration_file: Path = field(default_factory=Path)
+    """Path to the calibration file."""
+
+    def load(self, path: Path, section: str) -> "ColorAnalysisConfig":
+        """Load color analysis config from a toml file from [section]."""
+        data = tomllib.loads(path.read_text())
+        sec = _get_section(data, section)
+        self.ignore_labels = _get_key(sec, "ignore_labels", required=False, type_=list)
+        self.resolution = _get_key(
+            sec, "resolution", default=(51,) * 3, required=False, type_=tuple
+        )
+        self.threshold_baseline = _get_key(
+            sec, "threshold_baseline", default=0.0, required=False, type_=float
+        )
+        self.threshold_calibration = _get_key(
+            sec, "threshold_calibration", default=0.0, required=False, type_=float
+        )
+        self.baseline_images = sorted(
+            [
+                Path(p)
+                for p in _get_key(
+                    sec, "baseline_images", required=False, type_=list[Path]
+                )
+            ]
+        )
+        self.calibration_images = sorted(
+            [
+                Path(p)
+                for p in _get_key(
+                    sec, "calibration_images", required=False, type_=list[Path]
+                )
+            ]
+        )
+        self.calibration_file = _get_key(
+            sec, "calibration_file", required=True, type_=Path
+        )
+        return self
+
+
+@dataclass
 class FluidFlowerConfig:
     """Meta data for FluidFlower CO2 analysis."""
 
     def __init__(self, path: Path):
-        # s# ! ---- LOAD META DATA ---- ! #
-        # smeta_data = self.load_meta(path)
-
         # ! ---- SPECS ---- ! #
         try:
             self.specs = FluidFlowerSpecs()
@@ -246,6 +296,14 @@ class FluidFlowerConfig:
             self.protocol.load(path, "protocols")
         except KeyError:
             raise ValueError(f"Section protocols not found in {path}.")
+
+        # ! ---- COLOR ANALYSIS ---- ! #
+        try:
+            self.color_analysis = ColorAnalysisConfig()
+            self.color_analysis.load(path, "color_analysis")
+        except KeyError:
+            self.color_analysis = None
+            raise UserWarning(f"Section color_analysis not found in {path}.")
 
         ## ! ---- COMMON DATA ---- ! #
         # common_folder = Path(meta_data["common"]["folder"])
