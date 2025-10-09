@@ -1649,8 +1649,7 @@ class Image:
             array=self.img,
             metadata=self.metadata(),
         )
-        if verbose:
-            print(f"Image stored under {path}")
+        logger.info(f"Image stored under {path}")
 
     def to_vtk(self, path: str | Path, name: Optional[str] = None) -> None:
         """Save image to file in vtk format.
@@ -1745,11 +1744,18 @@ class ScalarImage(Image):
                 compression (int): number between 0 and 9, indicating
                     the level of compression used for storing in
                     png format.
+                cmap (str): color map used for storing the image.
 
         """
         # Write image, using the conventional matrix indexing
         ubyte_image = self.img_as(np.uint8).img
         suffix = Path(path).suffix.lower()
+
+        if "cmap" in kwargs:
+            cmap = kwargs.get("cmap")
+            colored_image = cmap(self.img_as(np.float32).img)
+            ubyte_image = skimage.img_as_ubyte(colored_image[..., :3])
+            ubyte_image = ubyte_image[..., ::-1]
 
         if suffix in [".jpg", ".jpeg"]:
             quality = kwargs.get("quality", 90)
