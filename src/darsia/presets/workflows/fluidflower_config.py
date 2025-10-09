@@ -209,8 +209,8 @@ class FluidFlowerConfig:
     """Meta data for FluidFlower CO2 analysis."""
 
     def __init__(self, path: Path):
-        # ! ---- LOAD META DATA ---- ! #
-        meta_data = self.load_meta(path)
+        # s# ! ---- LOAD META DATA ---- ! #
+        # smeta_data = self.load_meta(path)
 
         # ! ---- SPECS ---- ! #
         try:
@@ -247,51 +247,51 @@ class FluidFlowerConfig:
         except KeyError:
             raise ValueError(f"Section protocols not found in {path}.")
 
-        # ! ---- COMMON DATA ---- ! #
-        common_folder = Path(meta_data["common"]["folder"])
+        ## ! ---- COMMON DATA ---- ! #
+        # common_folder = Path(meta_data["common"]["folder"])
 
-        # Labels
-        try:
-            self.labels = common_folder / meta_data["common"]["labels"]
-        except KeyError:
-            self.labels = None
+        ## Labels
+        # try:
+        #    self.labels = common_folder / meta_data["common"]["labels"]
+        # except KeyError:
+        #    self.labels = None
 
-        # Reference colorchecker
-        try:
-            self.ref_colorchecker = (
-                common_folder / meta_data["common"]["ref_colorchecker"]
-            )
-        except KeyError:
-            self.ref_colorchecker = None
+        ## Reference colorchecker
+        # try:
+        #    self.ref_colorchecker = (
+        #        common_folder / meta_data["common"]["ref_colorchecker"]
+        #    )
+        # except KeyError:
+        #    self.ref_colorchecker = None
 
-        # ! ---- COLOR ANALYSIS DATA ---- ! #
-        self.color_analysis = {
-            "format": None,
-            "baseline_images": None,
-            "calibration_images": None,
-        }
-        self.color_analysis["format"] = meta_data["color_analysis"].get("format", "JPG")
-        try:
-            self.color_analysis["baseline_images"] = (
-                common_folder / meta_data["color_analysis"]["baseline_images"]
-            )
-        except KeyError:
-            self.color_analysis["baseline_images"] = None
+        ## ! ---- COLOR ANALYSIS DATA ---- ! #
+        # self.color_analysis = {
+        #    "format": None,
+        #    "baseline_images": None,
+        #    "calibration_images": None,
+        # }
+        # self.color_analysis["format"] = meta_data["color_analysis"].get("format", "JPG")
+        # try:
+        #    self.color_analysis["baseline_images"] = (
+        #        common_folder / meta_data["color_analysis"]["baseline_images"]
+        #    )
+        # except KeyError:
+        #    self.color_analysis["baseline_images"] = None
 
-        try:
-            self.color_analysis["calibration_images"] = (
-                common_folder / meta_data["color_analysis"]["calibration_images"]
-            )
-        except KeyError:
-            self.color_analysis["calibration_images"] = None
+        # try:
+        #    self.color_analysis["calibration_images"] = (
+        #        common_folder / meta_data["color_analysis"]["calibration_images"]
+        #    )
+        # except KeyError:
+        #    self.color_analysis["calibration_images"] = None
 
-        # ! ---- CALIBRATION DATA ---- ! #
-        self.calibration = {
-            "format": None,
-            "scaling_image": None,
-            "mass_images": None,
-        }
-        self.calibration["format"] = meta_data["calibration"].get("format", "JPG")
+        ## ! ---- CALIBRATION DATA ---- ! #
+        # self.calibration = {
+        #    "format": None,
+        #    "scaling_image": None,
+        #    "mass_images": None,
+        # }
+        # self.calibration["format"] = meta_data["calibration"].get("format", "JPG")
 
         ## CO2 calibration data
         # try:
@@ -307,104 +307,31 @@ class FluidFlowerConfig:
         # except KeyError:
         #    self.co2_g_calibration = None
 
-        # Scaling calibration data
-        try:
-            self.calibration["scaling_image"] = meta_data["calibration"][
-                "scaling_image"
-            ]
-        except KeyError:
-            self.calibration["scaling_image"] = None
+        ## Scaling calibration data
+        # try:
+        #    self.calibration["scaling_image"] = meta_data["calibration"][
+        #        "scaling_image"
+        #    ]
+        # except KeyError:
+        #    self.calibration["scaling_image"] = None
 
-        # Mass calibration data
-        try:
-            self.calibration["mass_images"] = sorted(
-                Path(meta_data["calibration"]["mass_images"]).glob(
-                    f"*.{self.calibration['format']}"
-                )
-            )
-        except KeyError:
-            self.calibration["mass_images"] = None
+        ## Mass calibration data
+        # try:
+        #    self.calibration["mass_images"] = sorted(
+        #        Path(meta_data["calibration"]["mass_images"]).glob(
+        #            f"*.{self.calibration['format']}"
+        #        )
+        #    )
+        # except KeyError:
+        #    self.calibration["mass_images"] = None
 
-        # ! ---- PROTOCOLS ---- ! #
-        try:
-            imaging_protocol = meta_data["protocols"]["imaging"]
-            if isinstance(imaging_protocol, list):
-                self.imaging_protocol = (
-                    Path(imaging_protocol[0]),
-                    imaging_protocol[1],
-                )
-            elif isinstance(imaging_protocol, str):
-                self.imaging_protocol = Path(imaging_protocol)
-            else:
-                raise ValueError(
-                    "Imaging protocol must be a string or a list of [path, sheet]."
-                )
-
-        except KeyError:
-            self.imaging_protocol = None
-
-        try:
-            injection_protocol = meta_data["protocols"]["injection"]
-            if isinstance(injection_protocol, list):
-                self.injection_protocol = (
-                    Path(injection_protocol[0]),
-                    injection_protocol[1],
-                )
-            elif isinstance(injection_protocol, str):
-                self.injection_protocol = Path(injection_protocol)
-            else:
-                raise ValueError(
-                    "Injection protocol must be a string or a list of [path, sheet]."
-                )
-        except KeyError:
-            self.injection_protocol = None
-
-        try:
-            blacklist_protocol = meta_data["protocols"]["blacklist"]
-            if isinstance(blacklist_protocol, list):
-                self.blacklist_protocol = (
-                    Path(blacklist_protocol[0]),
-                    blacklist_protocol[1],
-                )
-            elif isinstance(blacklist_protocol, str):
-                self.blacklist_protocol = Path(blacklist_protocol)
-            else:
-                raise ValueError(
-                    "Blacklist protocol must be a string or a list of [path, sheet]."
-                )
-        except KeyError:
-            self.blacklist_protocol = None
-
-        try:
-            pressure_temperature_protocol = meta_data["protocols"][
-                "pressure_temperature"
-            ]
-            if isinstance(pressure_temperature_protocol, list):
-                self.pressure_temperature_protocol = (
-                    Path(pressure_temperature_protocol[0]),
-                    pressure_temperature_protocol[1],
-                )
-            elif isinstance(pressure_temperature_protocol, str):
-                self.pressure_temperature_protocol = Path(pressure_temperature_protocol)
-            else:
-                raise ValueError(
-                    "Pressure temperature protocol must be a string or a list of [path, sheet]."
-                )
-        except KeyError:
-            self.pressure_temperature_protocol = None
-
-        # ! ---- RESULTS DATA ---- ! #
-
-        # Results
-        self.results_folder = Path(meta_data["results"]["folder"])
-
-        # FluidFlower
-        try:
-            self.fluidflower_folder = (
-                self.results_folder / meta_data["results"]["fluidflower"]
-            )
-        except KeyError:
-            self.fluidflower_folder = None
+        ## FluidFlower
+        # try:
+        #    self.fluidflower_folder = (
+        #        self.results_folder / meta_data["results"]["fluidflower"]
+        #    )
+        # except KeyError:
+        #    self.fluidflower_folder = None
 
     # Loading
     def load_meta(self, meta: Path) -> dict:
@@ -427,41 +354,41 @@ class FluidFlowerConfig:
 
     # Calibration data
 
-    @property
-    def co2_analysis_data(self):
-        """Path to the CO2 analysis data."""
-        return self.fluidflower_folder / "co2_analysis.csv"
+    # @property
+    # def co2_analysis_data(self):
+    #    """Path to the CO2 analysis data."""
+    #    return self.fluidflower_folder / "co2_analysis.csv"
 
-    @property
-    def co2_g_analysis_data(self):
-        """Path to the CO2 gas analysis data."""
-        return self.fluidflower_folder / "co2_g_analysis.csv"
+    # @property
+    # def co2_g_analysis_data(self):
+    #    """Path to the CO2 gas analysis data."""
+    #    return self.fluidflower_folder / "co2_g_analysis.csv"
 
-    @property
-    def pw_transformation_g_data(self):
-        """Path to the pressure-weighted transformation data for gas."""
-        return self.fluidflower_folder / "pw_transformation_g.csv"
+    # @property
+    # def pw_transformation_g_data(self):
+    #    """Path to the pressure-weighted transformation data for gas."""
+    #    return self.fluidflower_folder / "pw_transformation_g.csv"
 
-    @property
-    def pw_transformation_aq_data(self):
-        """Path to the pressure-weighted transformation data for aqueous phase."""
-        return self.fluidflower_folder / "pw_transformation_aq.csv"
+    # @property
+    # def pw_transformation_aq_data(self):
+    #    """Path to the pressure-weighted transformation data for aqueous phase."""
+    #    return self.fluidflower_folder / "pw_transformation_aq.csv"
 
-    def update(self, key: str, path: Path) -> None:
-        """Update the folder path for a given key in the meta data.
+    # def update(self, key: str, path: Path) -> None:
+    #    """Update the folder path for a given key in the meta data.
 
-        Args:
-            key (str): Key to update. Currently only "fluidflower" is supported.
-            folder (Path): New folder path.
+    #    Args:
+    #        key (str): Key to update. Currently only "fluidflower" is supported.
+    #        folder (Path): New folder path.
 
-        """
-        # Update the folder path
-        if key == "fluidflower":
-            self.fluidflower_folder = path
-        elif key == "labels":
-            self.labels = path
-        else:
-            raise ValueError(f"Key {key} not recognized.")
+    #    """
+    #    # Update the folder path
+    #    if key == "fluidflower":
+    #        self.fluidflower_folder = path
+    #    elif key == "labels":
+    #        self.labels = path
+    #    else:
+    #        raise ValueError(f"Key {key} not recognized.")
 
     # def save(self, meta: Path) -> None:
     #    """Save the updated meta data to a file.
