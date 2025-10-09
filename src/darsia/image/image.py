@@ -1644,7 +1644,11 @@ class Image:
         """
         # Make sure the parent directory exists
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        np.savez(str(Path(path)), array=self.img, metadata=self.metadata())
+        np.savez(
+            str(Path(path).with_suffix(".npz")),
+            array=self.img,
+            metadata=self.metadata(),
+        )
         if verbose:
             print(f"Image stored under {path}")
 
