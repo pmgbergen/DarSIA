@@ -104,10 +104,17 @@ class Rig:
         """Resize for int data."""
 
         # Define translation correction object based on color checker
-        _, cc_voxels = darsia.find_colorchecker(pre_baseline, "upper_left")
-        self.drift_correction = darsia.DriftCorrection(
-            pre_baseline, config={"roi": cc_voxels}
-        )
+        try:
+            _, cc_voxels = darsia.find_colorchecker(pre_baseline, "upper_left")
+            self.drift_correction = darsia.DriftCorrection(
+                pre_baseline, config={"roi": cc_voxels}
+            )
+        except Exception as e:
+            warn(
+                f"Color checker not found. Drift correction not setup. Error: {e}",
+                UserWarning,
+            )
+            self.drift_correction = darsia.DriftCorrection(pre_baseline)
         """Drift correction based on color checker alignment."""
 
         # Define curvature correction as derived from analysis of laser grid images
@@ -247,49 +254,10 @@ class Rig:
                 - tol_color_gradient: Tolerance for color gradient (default is 0.02).
 
         """
-        if path:
-            # Load porosity image from the specified path
-            pre_porosity = darsia.imread(path)
-            self.image_porosity = darsia.resize(
-                pre_porosity, ref_image=self.baseline, interpolation="inter_nearest"
-            )
-        else:
-            # Construct image porosity from the baseline and labels
-            assert hasattr(self, "baseline")
-            assert hasattr(self, "labels")
-
-            # Setup from scratch
-            patch = kwargs.get("patch", (32, 64))
-            gamma = kwargs.get("gamma", 10)
-            sample_width = kwargs.get("sample_width", 50)
-            num_clusters = kwargs.get("num_clusters", 5)
-            tol_color_distance = kwargs.get("tol_color_distance", 0.1)
-            tol_color_gradient = kwargs.get("tol_color_gradient", 0.02)
-            self.image_porosity = patched_porosity_analysis(
-                baseline=self.baseline,
-                patches=patch,
-                labels=self.labels,
-                mode="full",
-                sample_width=sample_width,
-                kernel=darsia.GaussianKernel(gamma=gamma),
-                debug=False,
-                num_clusters=num_clusters,
-                tol_color_distance=tol_color_distance,
-                tol_color_gradient=tol_color_gradient,
-            )
-
-        if log:
-            # Create folder for porosity images
-            (Path(log) / "porosity").mkdir(parents=True, exist_ok=True)
-
-            # Plot porosity
-            plt.figure()
-            plt.imshow(self.image_porosity.img)
-            plt.colorbar()
-            plt.title("Porosity")
-            plt.savefig(Path(log) / "porosity" / "porosity.png")
-            plt.close()
-
+        self.image_porosity = darsia.ones_like(
+            self.baseline, mode="voxels", dtype=np.float32
+        )
+        """Image porosity for the museum rig object."""
         logger.info("Porosity setup completed.")
 
     def setup_boolean_image_porosity(
@@ -374,6 +342,8 @@ class Rig:
         self.setup_boolean_image_porosity(log=log)
 
         # TODO Setup concentration analysis and transformations?
+        # self.co2_analysis = ...
+        # self.co2_g_analysis = ...
 
         # Setup co2 mass analysis.
         # TODO Add?
@@ -397,12 +367,12 @@ class Rig:
 
         # ! ---- COMBINED MODELS ----
 
-        self.concentration_analysis_aq = darsia.CombinedModel(
-            [self.co2_analysis, self.upscaling]
-        )
-        self.concentration_analysis_g = darsia.CombinedModel(
-            [self.co2_g_analysis, self.upscaling]
-        )
+        # self.concentration_analysis_aq = darsia.CombinedModel(
+        #    [self.co2_analysis, self.upscaling]
+        # )
+        # self.concentration_analysis_g = darsia.CombinedModel(
+        #    [self.co2_g_analysis, self.upscaling]
+        # )
         logger.info("Concentration analysis setup completed.")
 
     def setup_mass_analysis(
