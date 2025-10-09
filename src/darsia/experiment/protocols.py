@@ -210,14 +210,17 @@ class ImagingProtocol:
         df.columns = [col.lower() for col in df.columns]
 
         # Associate image id and time
-        assert "path" in df.columns, "Column 'Path' not found in the protocol file."
+        # assert "path" in df.columns, "Column 'Path' not found in the protocol file."
         assert "image_id" in df.columns, (
-            "Column 'Image' not found in the protocol file."
+            "Column 'Image_id' not found in the protocol file."
         )
         assert "datetime" in df.columns, (
             "Column 'Datetime' not found in the protocol file."
         )
-        paths = df["path"]
+        if "path" in df.columns:
+            paths = df["path"]
+        else:
+            paths = [None] * len(df)
         images = df["image_id"]
         datetimes = df["datetime"]
 
