@@ -8,7 +8,7 @@ import numpy as np
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 
 
-def setup_depth_map(path: Path, key="mean") -> None:
+def setup_depth_map(path: Path, key="mean", show: bool = False) -> None:
     """Set up depth map from measurements.
 
     NOTE: This function stores the depth map in npz format according to the
@@ -17,6 +17,7 @@ def setup_depth_map(path: Path, key="mean") -> None:
     Args:
         path: Path to configuration file (needs to comply with FluidFlowerConfig).
         key: Column identifier in the csv file to use for interpolation (default: "mean").
+        show: Whether to show the resulting depth map.
 
     """
     print("Setting up depth map...")
@@ -39,3 +40,6 @@ def setup_depth_map(path: Path, key="mean") -> None:
         method="rbf",
     )
     depth_map.save(config.depth.depth_map.with_suffix(".npz"))
+
+    if show:
+        depth_map.show(title="Depth map")
