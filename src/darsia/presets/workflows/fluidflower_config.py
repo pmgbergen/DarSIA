@@ -205,7 +205,7 @@ class FluidFlowerProtocolConfig:
 
 
 @dataclass
-class ColorAnalysisConfig:
+class ColorPathsConfig:
     ignore_labels: list[int] = field(default_factory=list)
     """List of labels to ignore in color analysis."""
     resolution: tuple[int, int, int] = (51, 51, 51)
@@ -220,9 +220,11 @@ class ColorAnalysisConfig:
     """List of image paths used for calibration."""
     calibration_file: Path = field(default_factory=Path)
     """Path to the calibration file."""
+    reference_label: int = 0
+    """Label to use as reference for visualization."""
 
-    def load(self, path: Path, section: str) -> "ColorAnalysisConfig":
-        """Load color analysis config from a toml file from [section]."""
+    def load(self, path: Path, section: str) -> "ColorPathsConfig":
+        """Load color paths config from a toml file from [section]."""
         data = tomllib.loads(path.read_text())
         sec = _get_section(data, section)
         self.ignore_labels = _get_key(sec, "ignore_labels", required=False, type_=list)
@@ -242,6 +244,38 @@ class ColorAnalysisConfig:
                     sec, "baseline_images", required=False, type_=list[Path]
                 )
             ]
+        )
+        self.calibration_images = sorted(
+            [
+                Path(p)
+                for p in _get_key(
+                    sec, "calibration_images", required=False, type_=list[Path]
+                )
+            ]
+        )
+        self.calibration_file = _get_key(
+            sec, "calibration_file", required=True, type_=Path
+        )
+        self.reference_label = _get_key(
+            sec, "reference_label", default=0, required=False, type_=int
+        )
+        return self
+
+
+@dataclass
+class ColorSignalConfig:
+    num_clusters: int = 5
+    """Number of clusters to identify background colors."""
+    calibration_images: list[Path] = field(default_factory=list[Path])
+    """List of image paths used for calibration."""
+    calibration_file: Path = field(default_factory=Path)
+    """Path to the calibration file."""
+
+    def load(self, path: Path, section: str) -> "ColorSignalConfig":
+        data = tomllib.loads(path.read_text())
+        sec = _get_section(data, section)
+        self.num_clusters = _get_key(
+            sec, "num_clusters", default=5, required=False, type_=int
         )
         self.calibration_images = sorted(
             [
@@ -299,11 +333,18 @@ class FluidFlowerConfig:
 
         # ! ---- COLOR ANALYSIS ---- ! #
         try:
-            self.color_analysis = ColorAnalysisConfig()
-            self.color_analysis.load(path, "color_analysis")
+            self.color_paths = ColorPathsConfig()
+            self.color_paths.load(path, "color_paths")
         except KeyError:
-            self.color_analysis = None
-            raise UserWarning(f"Section color_analysis not found in {path}.")
+            self.color_paths = None
+            raise UserWarning(f"Section color_paths not found in {path}.")
+
+        try:
+            self.color_signal = ColorSignalConfig()
+            self.color_signal.load(path, "color_signal")
+        except KeyError:
+            self.color_signal = None
+            raise UserWarning(f"Section color_signal not found in {path}.")
 
         ## ! ---- COMMON DATA ---- ! #
         # common_folder = Path(meta_data["common"]["folder"])
