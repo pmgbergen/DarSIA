@@ -292,6 +292,30 @@ class ColorSignalConfig:
 
 
 @dataclass
+class MassAnalysisConfig:
+    calibration_image_times: list[float] = field(default_factory=list[float])
+    """List of image times used for mass calibration."""
+    calibration_file: Path = field(default_factory=Path)
+    """Path to the mass calibration file."""
+
+    def load(self, path: Path, section: str) -> "MassAnalysisConfig":
+        data = tomllib.loads(path.read_text())
+        sec = _get_section(data, section)
+        self.calibration_image_times = sorted(
+            [
+                float(t)
+                for t in _get_key(
+                    sec, "calibration_image_times", required=False, type_=list[float]
+                )
+            ]
+        )
+        self.calibration_file = _get_key(
+            sec, "calibration_file", required=True, type_=Path
+        )
+        return self
+
+
+@dataclass
 class FluidFlowerConfig:
     """Meta data for FluidFlower CO2 analysis."""
 
@@ -345,6 +369,15 @@ class FluidFlowerConfig:
         except KeyError:
             self.color_signal = None
             raise UserWarning(f"Section color_signal not found in {path}.")
+
+        # ! ---- MASS ANALYSIS ---- ! #
+
+        try:
+            self.mass = MassAnalysisConfig()
+            self.mass.load(path, "mass")
+        except KeyError:
+            self.mass = None
+            raise UserWarning(f"Section mass not found in {path}.")
 
         ## ! ---- COMMON DATA ---- ! #
         # common_folder = Path(meta_data["common"]["folder"])
