@@ -36,13 +36,13 @@ def setup_color_paths(cls, path: Path, show: bool = False) -> None:
     # ! ---- COLOR PATH TOOL ----
     color_path_regression = darsia.ColorPathRegression(
         labels=fluidflower.labels,
-        ignore_labels=config.color_analysis.ignore_labels,
+        ignore_labels=config.color_paths.ignore_labels,
         mask=fluidflower.boolean_porosity,
     )
 
     # ! ---- ANALYZE FLUCTUATIONS IN 10 BASELINE IMAGES ----
     baseline_images = []
-    for path in config.color_analysis.baseline_images:
+    for path in config.color_paths.baseline_images:
         logger.info("Reading baseline image: %s", path)
         baseline_image = fluidflower.read_image(path)
         baseline_images.append(baseline_image)
@@ -50,8 +50,8 @@ def setup_color_paths(cls, path: Path, show: bool = False) -> None:
     baseline_color_spectrum = color_path_regression.get_color_spectrum(
         images=baseline_images,
         baseline=fluidflower.baseline,
-        resolution=config.color_analysis.resolution,
-        threshold_significant=config.color_analysis.threshold_baseline,
+        resolution=config.color_paths.resolution,
+        threshold_significant=config.color_paths.threshold_baseline,
         verbose=show,
     )
 
@@ -63,7 +63,7 @@ def setup_color_paths(cls, path: Path, show: bool = False) -> None:
     # ! ---- EXTRACT COLOR SPECTRUM OF TRACERS ---- ! #
 
     calibration_images = []
-    for path in config.color_analysis.calibration_images:
+    for path in config.color_paths.calibration_images:
         logger.info("Reading calibration image: %s", path)
         calibration_image = fluidflower.read_image(path)
         calibration_images.append(calibration_image)
@@ -71,9 +71,9 @@ def setup_color_paths(cls, path: Path, show: bool = False) -> None:
     tracer_color_spectrum = color_path_regression.get_color_spectrum(
         images=calibration_images,
         baseline=fluidflower.baseline,
-        resolution=config.color_analysis.resolution,
+        resolution=config.color_paths.resolution,
         ignore_color_spectrum=baseline_color_spectrum,
-        threshold_significant=config.color_analysis.threshold_calibration,
+        threshold_significant=config.color_paths.threshold_calibration,
         verbose=show,
     )
 
@@ -87,7 +87,7 @@ def setup_color_paths(cls, path: Path, show: bool = False) -> None:
             plot_title=f"Color Path Analysis - Label {label}",
         )
 
-    config.color_analysis.calibration_file.mkdir(parents=True, exist_ok=True)
+    config.color_paths.calibration_file.mkdir(parents=True, exist_ok=True)
     for label, path in color_path.items():
         print(f"Label {label}:")
         print(f"  Base color: {path.base_color}")
@@ -95,4 +95,4 @@ def setup_color_paths(cls, path: Path, show: bool = False) -> None:
         print(f"  Values: {path.values}")
         if show:
             path.show()
-        path.save(config.color_analysis.calibration_file / f"color_path_{label}.json")
+        path.save(config.color_paths.calibration_file / f"color_path_{label}.json")
