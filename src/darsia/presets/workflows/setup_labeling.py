@@ -32,12 +32,13 @@ def segment_colored_image(config_path: Path, show: bool = False):
     # Step 2: Unite same labels based on TOML file
     if show:
         labels.show(title="Labeled image")
-    unite_labels = [tuple(group) for group in config.labeling.unite_labels]
-    labels = darsia.group_labels(labels, unite_labels)
-    labels = darsia.make_consecutive(labels)
+    if config.labeling.unite_labels is not None:
+        unite_labels = [tuple(group) for group in config.labeling.unite_labels]
+        labels = darsia.group_labels(labels, unite_labels)
+        labels = darsia.make_consecutive(labels)
+        logger.info("Number unique labels: %d", len(np.unique(labels.img)))
+        if show:
+            labels.show()
 
     # Step 3: Save labels
-    logger.info("Number unique labels: %d", len(np.unique(labels.img)))
-    if show:
-        labels.show()
     labels.save(config.labeling.labels)
