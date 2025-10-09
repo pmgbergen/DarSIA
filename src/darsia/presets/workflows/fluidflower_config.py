@@ -72,8 +72,6 @@ class FluidFlowerData:
     """Pad for image names."""
     results: Path = field(default_factory=Path)
     """Path to the results folder."""
-    log: Path = field(default_factory=Path)
-    """Path to the log folder."""
 
     def load(self, path: Path, section: str) -> "FluidFlowerData":
         data = tomllib.loads(path.read_text())
@@ -86,7 +84,6 @@ class FluidFlowerData:
         )
         self.pad = _get_key(sec, "pad", required=True, type_=int)
         self.results = _get_key(sec, "results", required=True, type_=Path)
-        self.log = _get_key(sec, "log", required=True, type_=Path)
         return self
 
 
@@ -316,6 +313,37 @@ class MassAnalysisConfig:
 
 
 @dataclass
+class _AnalysisData:
+    image_times: list[float] = field(default_factory=list)
+    """List of image times in hours since experiment start."""
+
+    def load(self, sec: dict, section: str) -> "_AnalysisData":
+        sub_sec = _get_section(sec, section)
+        self.image_times = sorted(
+            [
+                float(t)
+                for t in _get_key(sub_sec, "image_times", required=False, type_=list)
+            ]
+        )
+        return self
+
+
+@dataclass
+class AnalysisData:
+    cropping: _AnalysisData = field(default_factory=_AnalysisData)
+    color_signal: _AnalysisData = field(default_factory=_AnalysisData)
+    mass: _AnalysisData = field(default_factory=_AnalysisData)
+
+    def load(self, path: Path) -> "AnalysisData":
+        data = tomllib.loads(path.read_text())
+        sec = _get_section(data, "analysis")
+        self.cropping = _AnalysisData().load(sec, "cropping")
+        self.color_signal = _AnalysisData().load(sec, "color_signal")
+        self.mass = _AnalysisData().load(sec, "mass")
+        return self
+
+
+@dataclass
 class FluidFlowerConfig:
     """Meta data for FluidFlower CO2 analysis."""
 
@@ -378,6 +406,15 @@ class FluidFlowerConfig:
         except KeyError:
             self.mass = None
             raise UserWarning(f"Section mass not found in {path}.")
+
+        # ! ---- ANALYSIS DATA ---- ! #
+
+        try:
+            self.analysis = AnalysisData()
+            self.analysis.load(path)
+        except KeyError:
+            self.analysis = None
+            raise UserWarning(f"Section analysis not found in {path}.")
 
         ## ! ---- COMMON DATA ---- ! #
         # common_folder = Path(meta_data["common"]["folder"])
