@@ -5,6 +5,7 @@ from typing import Optional, Union, overload
 
 import numpy as np
 import scipy.ndimage
+import skimage
 
 import darsia
 
@@ -34,7 +35,6 @@ class REV:
 
 
 class VolumeAveraging:
-
     def __init__(
         self, rev: REV, mask: darsia.Image, labels: Optional[darsia.Image] = None
     ) -> None:
@@ -160,3 +160,45 @@ def volume_average(img: darsia.Image, mask: darsia.Image, size: float) -> darsia
 
     """
     return VolumeAveraging(rev=REV(size=size, img=img), mask=mask)(img)
+
+
+def porosity_based_averaging(
+    labels, porosity, ref_image, threshold=0.3, disk_size=5, rev_size=0.005
+):
+    """Custom (FFUM) averaging function that uses porosity in averaging.
+
+    Porosity values below 0.3 are not considered in the averaging process.
+    Layer boundaries in the labels image are deactivated in the porosity image.
+
+    Args:
+        labels (darsia.Image): Labels image containing the segmentation of the geometry.
+        porosity (darsia.Image): Image containing porosity values.
+        ref_image (darsia.Image): Reference image for the REV.
+
+    Returns:
+        darsia.VolumeAveraging: Volume averaging object that uses the porosity image.
+
+    """
+    # Identify layer boundaries in the labels image
+    collective_residual_mask = darsia.zeros_like(labels, mode="voxels", dtype=bool)
+    for mask_img in darsia.Masks(labels):
+        mask = mask_img.img
+        negative_mask = ~mask
+        negative_dilated_mask = skimage.morphology.binary_dilation(
+            negative_mask, footprint=skimage.morphology.disk(disk_size)
+        )
+        dilated_mask = ~negative_dilated_mask
+        residual_mask = np.logical_and(mask, ~dilated_mask)
+        collective_residual_mask.img = np.logical_or(
+            collective_residual_mask.img, residual_mask
+        )
+
+    # Deactivate grains and layer boundaries in the porosity image
+    porosity.img[porosity.img < threshold] = 0.0
+    porosity.img[collective_residual_mask.img] = 0.0
+
+    # Porosity-based volume averaging object
+    return darsia.VolumeAveraging(
+        rev=darsia.REV(rev_size, ref_image),
+        mask=porosity,
+    )
