@@ -1,10 +1,11 @@
 """Template for cropping/reading images."""
 
+import logging
 from pathlib import Path
 
-import darsia
-import logging
 import numpy as np
+
+import darsia
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 
 logger = logging.getLogger(__name__)

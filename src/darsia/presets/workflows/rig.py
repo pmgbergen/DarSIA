@@ -6,9 +6,10 @@ import logging
 from pathlib import Path
 from warnings import warn
 
-import darsia
 import matplotlib.pyplot as plt
 import numpy as np
+
+import darsia
 from darsia.presets.analysis.porosity import patched_porosity_analysis
 
 logger = logging.getLogger(__name__)
@@ -502,9 +503,9 @@ class Rig:
             darsia.Image: Image object with applied corrections.
 
         """
-        assert hasattr(self, "imaging_protocol"), (
-            "Imaging protocol not defined. Run load_experiment() first."
-        )
+        assert hasattr(
+            self, "imaging_protocol"
+        ), "Imaging protocol not defined. Run load_experiment() first."
         # Convert date from path
         date = self.imaging_protocol.get_datetime(path)
 

@@ -1,13 +1,13 @@
 """Template for color signal analysis."""
 
-from pathlib import Path
-import darsia
 import logging
+from pathlib import Path
 
+import darsia
+from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_analysis import (
     HeterogeneousColorAnalysis,
 )
-from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 
 logger = logging.getLogger(__name__)
 

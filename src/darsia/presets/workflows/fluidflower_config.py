@@ -1,10 +1,10 @@
 """Standardized configuration for FluidFlower analysis with parsing from TOML."""
 
 import json
-from pathlib import Path
 import logging
 import tomllib
 from dataclasses import dataclass, field
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 

@@ -1,13 +1,14 @@
+import copy
+import json
+import logging
 from pathlib import Path
+from typing import Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import Tuple
-import json
-import copy
-import darsia
-import logging
-
 from matplotlib.widgets import Button, Slider
+
+import darsia
 
 logger = logging.getLogger(__name__)
 

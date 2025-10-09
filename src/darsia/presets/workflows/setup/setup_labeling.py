@@ -1,10 +1,12 @@
 """Standardized workflow to setup geometric labels for FluidFlower data."""
 
+import logging
 from pathlib import Path
+
+import numpy as np
+
 import darsia
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
-import numpy as np
-import logging
 
 logger = logging.getLogger(__name__)
 

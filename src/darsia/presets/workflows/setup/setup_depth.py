@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-import darsia
 import numpy as np
 
+import darsia
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 
 

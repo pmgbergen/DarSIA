@@ -9,9 +9,10 @@ adapted to the corrected baseline image etc.
 import logging
 import time
 from pathlib import Path
-import darsia
 
+import darsia
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
+
 # from darsia.presets.workflows.rig import Rig
 
 # Set logging level

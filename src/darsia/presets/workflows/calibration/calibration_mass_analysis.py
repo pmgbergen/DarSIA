@@ -1,13 +1,15 @@
-from pathlib import Path
-import numpy as np
-import darsia
 import logging
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+import darsia
+from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_analysis import (
     HeterogeneousColorAnalysis,
 )
 from darsia.presets.workflows.mass_computation import MassCalibration, MassComputation
-from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
-import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 

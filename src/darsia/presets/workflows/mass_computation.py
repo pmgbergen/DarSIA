@@ -1,18 +1,18 @@
+import json
+import logging
 from pathlib import Path
+
+import ffum
 import matplotlib.pyplot as plt
 import numpy as np
-import json
-import ffum
+import pandas as pd
+from matplotlib.widgets import Button, Slider
+
 import darsia
-import logging
 from darsia.presets.workflows.heterogeneous_color_analysis import (
     HeterogeneousColorAnalysis,
 )
 from darsia.presets.workflows.rig import Rig
-
-import pandas as pd
-
-from matplotlib.widgets import Button, Slider
 
 logger = logging.getLogger(__name__)
 
