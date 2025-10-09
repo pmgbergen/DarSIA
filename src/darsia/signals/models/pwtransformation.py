@@ -20,6 +20,8 @@ class PWTransformation:
     ) -> None:
         self.supports = supports
         self.values = values
+        if supports is not None and values is not None:
+            self.update(supports, values)
 
     def update(
         self,
@@ -48,7 +50,7 @@ class PWTransformation:
                 f"wrong size: {len(values)} vs. {len(self.supports)}"
             )
             values_diff = np.diff(values)
-            assert np.all(values_diff > -1e-12), "monotonicity broken"
+            assert np.all(values_diff > -1e-12), f"monotonicity broken {values_diff}"
 
             # Interpolator
             self.interpolator = interpolate.interp1d(
@@ -63,6 +65,8 @@ class PWTransformation:
 
     def __call__(self, img: np.ndarray | darsia.Image) -> np.ndarray | darsia.Image:
         """Apply the transformation to the image."""
+
+        assert hasattr(self, "interpolator"), "Interpolator not set."
 
         if isinstance(img, np.ndarray):
             return self.interpolator(img)
