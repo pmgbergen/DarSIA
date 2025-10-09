@@ -9,6 +9,25 @@ from dataclasses import dataclass, field
 logger = logging.getLogger(__name__)
 
 
+def _get_section(data: dict, section: str) -> dict:
+    """Utility to get a section from a toml-loaded dictionary."""
+    try:
+        return data[section]
+    except KeyError:
+        raise ValueError(f"Section {section} not found.")
+
+
+def _get_key(section: dict, key: str, default=None, required=True, type_=None):
+    """Utility to get a key from a section with type conversion and default value."""
+    if key in section and section[key] is not None:
+        value = section[key]
+        return type_(value) if type_ else value
+    elif required:
+        raise ValueError(f"Missing key '{key}' in section {section}.")
+    else:
+        return default
+
+
 @dataclass
 class FluidFlowerSpecs:
     """Specifications for the FluidFlower setup."""
@@ -24,20 +43,17 @@ class FluidFlowerSpecs:
     resolution: tuple[int, int] = (500, 1000)
     """Default resolution for images (height, width)."""
 
-    def load(self, path: Path, section: str) -> dict:
-        """Load specifications from a toml file from [section]."""
+    def load(self, path: Path, section: str) -> "FluidFlowerSpecs":
         data = tomllib.loads(path.read_text())
-        try:
-            specs_section = data[section]
-        except KeyError:
-            raise ValueError(f"Section {section} not found in {path}.")
-        try:
-            self.width = specs_section["width"]
-            self.height = specs_section["height"]
-            self.dim = specs_section["dim"]
-            self.porosity = specs_section["porosity"]
-        except KeyError as e:
-            raise ValueError(f"Missing key {e} in section {section} of {path}.")
+        sec = _get_section(data, section)
+        self.width = _get_key(sec, "width", required=True, type_=float)
+        self.height = _get_key(sec, "height", required=True, type_=float)
+        self.dim = _get_key(sec, "dim", required=True, type_=int)
+        self.porosity = _get_key(sec, "porosity", required=True, type_=float)
+        self.resolution = _get_key(
+            sec, "resolution", default=(500, 1000), required=False, type_=tuple
+        )
+        return self
 
 
 @dataclass
@@ -46,30 +62,32 @@ class FluidFlowerData:
 
     folder: Path = field(default_factory=Path)
     """Path to the folder containing the image data."""
+    format: str = "JPG"
+    """Format of the image data (e.g., 'JPG', 'PNG')."""
     data: list[Path] = field(default_factory=list)
     """List of paths to the image data."""
     baseline: Path = field(default_factory=Path)
     """Path to the baseline image."""
     pad: int = 0
     """Pad for image names."""
+    results: Path = field(default_factory=Path)
+    """Path to the results folder."""
+    log: Path = field(default_factory=Path)
+    """Path to the log folder."""
 
-    def load(self, path: Path, section: str) -> dict:
-        """Load data from a toml file from [section]."""
+    def load(self, path: Path, section: str) -> "FluidFlowerData":
         data = tomllib.loads(path.read_text())
-        try:
-            data_section = data[section]
-        except KeyError:
-            raise ValueError(f"Section {section} not found in {path}.")
-        try:
-            self.folder = Path(data_section["folder"])
-            format = data_section.get("format", "JPG")
-            self.data = list(sorted(self.folder.glob(f"*.{format}")))
-            if len(self.data) == 0:
-                raise ValueError(f"No images found in the data folder {self.folder}.")
-            self.baseline = self.folder / data_section["baseline"]
-            self.pad = int(data_section["pad"])
-        except KeyError as e:
-            raise ValueError(f"Missing key {e} in section {section} of {path}.")
+        sec = _get_section(data, section)
+        self.format = sec.get("format", "JPG")
+        self.folder = _get_key(sec, "folder", required=True, type_=Path)
+        self.data = list(sorted(self.folder.glob(f"*.{self.format}")))
+        self.baseline = self.folder / _get_key(
+            sec, "baseline", required=True, type_=Path
+        )
+        self.pad = _get_key(sec, "pad", required=True, type_=int)
+        self.results = _get_key(sec, "results", required=True, type_=Path)
+        self.log = _get_key(sec, "log", required=True, type_=Path)
+        return self
 
 
 @dataclass
@@ -85,33 +103,18 @@ class FluidFlowerLabelingConfig:
     labels: Path = field(default_factory=Path)
     """Path to the labels file."""
 
-    def load(self, path: Path, section: str) -> dict:
+    def load(self, path: Path, section: str) -> "FluidFlowerLabelingConfig":
         """Load labeling config from a toml file from [section]."""
         data = tomllib.loads(path.read_text())
-        try:
-            label_section = data[section]
-        except KeyError:
-            raise ValueError(f"Section {section} not found in {path}.")
-        try:
-            self.colored_image = Path(label_section["colored_image"])
-        except KeyError as e:
-            raise ValueError(f"Missing key {e} in section {section} of {path}.")
-        try:
-            self.unite_labels = label_section.get("unite_labels", [])
-        except KeyError as e:
-            raise UserWarning(f"Missing key {e} in section {section} of {path}.")
-        try:
-            self.water_label = label_section.get("water_label", None)
-        except KeyError as e:
-            raise UserWarning(f"Missing key {e} in section {section} of {path}.")
-        try:
-            self.colorchecker_label = label_section.get("colorchecker_label", None)
-        except KeyError as e:
-            raise UserWarning(f"Missing key {e} in section {section} of {path}.")
-        try:
-            self.labels = Path(label_section["labels"])
-        except KeyError as e:
-            raise UserWarning(f"Missing key {e} in section {section} of {path}.")
+        sec = _get_section(data, section)
+        self.colored_image = _get_key(sec, "colored_image", required=True, type_=Path)
+        self.unite_labels = _get_key(sec, "unite_labels", required=False, type_=list)
+        self.water_label = _get_key(sec, "water_label", required=False, type_=int)
+        self.colorchecker_label = _get_key(
+            sec, "colorchecker_label", required=False, type_=int
+        )
+        self.labels = _get_key(sec, "labels", required=True, type_=Path)
+        return self
 
 
 @dataclass
@@ -121,21 +124,84 @@ class FluidFlowerDepthConfig:
     depth_map: Path = field(default_factory=Path)
     """Path to the depth map file."""
 
-    def load(self, path: Path, section: str) -> dict:
+    def load(self, path: Path, section: str) -> "FluidFlowerDepthConfig":
         """Load depth config from a toml file from [section]."""
         data = tomllib.loads(path.read_text())
+        sec = _get_section(data, section)
+        self.measurements = _get_key(sec, "measurements", required=True, type_=Path)
+        self.depth_map = _get_key(sec, "depth_map", required=True, type_=Path)
+        return self
+
+
+@dataclass
+class FluidFlowerProtocolConfig:
+    imaging: str | tuple[Path, str] | None = None
+    """Path to the imaging protocol file or (file, sheet)."""
+    injection: str | tuple[Path, str] | None = None
+    """Path to the injection protocol file or (file, sheet)."""
+    blacklist: str | tuple[Path, str] | None = None
+    """Path to the blacklist protocol file or (file, sheet)."""
+    pressure_temperature: str | tuple[Path, str] | None = None
+    """Path to the pressure-temperature protocol file or (file, sheet)."""
+
+    def load(self, path: Path, section: str) -> "FluidFlowerProtocolConfig":
+        data = tomllib.loads(path.read_text())
+        sec = _get_section(data, section)
         try:
-            depth_section = data[section]
+            imaging_protocol = sec["imaging"]
+            if isinstance(imaging_protocol, list):
+                self.imaging = (Path(imaging_protocol[0]), imaging_protocol[1])
+            elif isinstance(imaging_protocol, str):
+                self.imaging = Path(imaging_protocol)
+            else:
+                raise ValueError(
+                    "Imaging protocol must be a string or a list of [path, sheet]."
+                )
+
         except KeyError:
-            raise ValueError(f"Section {section} not found in {path}.")
+            self.imaging = None
+
         try:
-            self.measurements = Path(depth_section["measurements"])
-        except KeyError as e:
-            raise ValueError(f"Missing key {e} in section {section} of {path}.")
+            injection_protocol = sec["injection"]
+            if isinstance(injection_protocol, list):
+                self.injection = (Path(injection_protocol[0]), injection_protocol[1])
+            elif isinstance(injection_protocol, str):
+                self.injection = Path(injection_protocol)
+            else:
+                raise ValueError(
+                    "Injection protocol must be a string or a list of [path, sheet]."
+                )
+        except KeyError:
+            self.injection = None
+
         try:
-            self.depth_map = Path(depth_section["depth_map"])
-        except KeyError as e:
-            raise UserWarning(f"Missing key {e} in section {section} of {path}.")
+            blacklist_protocol = sec["blacklist"]
+            if isinstance(blacklist_protocol, list):
+                self.blacklist = (Path(blacklist_protocol[0]), blacklist_protocol[1])
+            elif isinstance(blacklist_protocol, str):
+                self.blacklist = Path(blacklist_protocol)
+            else:
+                raise ValueError(
+                    "Blacklist protocol must be a string or a list of [path, sheet]."
+                )
+        except KeyError:
+            self.blacklist = None
+
+        try:
+            pressure_temperature_protocol = sec["pressure_temperature"]
+            if isinstance(pressure_temperature_protocol, list):
+                self.pressure_temperature = (
+                    Path(pressure_temperature_protocol[0]),
+                    pressure_temperature_protocol[1],
+                )
+            elif isinstance(pressure_temperature_protocol, str):
+                self.pressure_temperature = Path(pressure_temperature_protocol)
+            else:
+                raise ValueError(
+                    "Pressure-temperature protocol must be a string or a list of [path, sheet]."
+                )
+        except KeyError:
+            self.pressure_temperature = None
 
 
 @dataclass
@@ -154,7 +220,6 @@ class FluidFlowerConfig:
             raise ValueError(f"Section specs not found in {path}.")
 
         # ! ---- DATA ---- ! #
-
         try:
             self.data = FluidFlowerData()
             self.data.load(path, "data")
@@ -162,7 +227,6 @@ class FluidFlowerConfig:
             raise ValueError(f"Section data not found in {path}.")
 
         # ! ---- LABELING ---- ! #
-
         try:
             self.labeling = FluidFlowerLabelingConfig()
             self.labeling.load(path, "labeling")
@@ -170,42 +234,27 @@ class FluidFlowerConfig:
             raise ValueError(f"Section labeling not found in {path}.")
 
         # ! ---- DEPTH ---- ! #
-
         try:
             self.depth = FluidFlowerDepthConfig()
             self.depth.load(path, "depth")
         except KeyError:
             raise ValueError(f"Section depth not found in {path}.")
 
+        # ! ---- PROTOCOLS ---- ! #
+        try:
+            self.protocol = FluidFlowerProtocolConfig()
+            self.protocol.load(path, "protocols")
+        except KeyError:
+            raise ValueError(f"Section protocols not found in {path}.")
+
         # ! ---- COMMON DATA ---- ! #
-
         common_folder = Path(meta_data["common"]["folder"])
-        self.common_folder = common_folder
-
-        # TODO: Rm?
-        ## Common baseline image
-        # try:
-        #    self.common_baseline = common_folder / meta_data["common"]["baseline"]
-        # except KeyError:
-        #    self.common_baseline = None
 
         # Labels
         try:
             self.labels = common_folder / meta_data["common"]["labels"]
         except KeyError:
             self.labels = None
-
-        # Depth measurements
-        try:
-            self.depth_measurements = common_folder / "depth" / "depth_measurements.csv"
-        except KeyError:
-            self.depth_measurements = None
-
-        # Depth map
-        try:
-            self.depth_map = common_folder / "depth" / "depth_map.npz"
-        except KeyError:
-            self.depth_map = None
 
         # Reference colorchecker
         try:
