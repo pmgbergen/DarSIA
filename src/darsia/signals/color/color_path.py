@@ -36,6 +36,7 @@ class ColorPath:
         relative_colors: list[np.ndarray] | None = None,
         values: np.ndarray | list[float] | None = None,
         mode: Literal["rgb", "lab", "hcl"] = "rgb",
+        name: str = "ColorPath",
     ) -> None:
         """Color path.
 
@@ -49,12 +50,14 @@ class ColorPath:
                 the relative distances between the colors are used as natural values.
             mode: Color space to use for interpolation in between colors.
                 Defaults to "rgb".
+            name: Name of the color path.
 
         """
         # Sanity checks
         assert colors is not None or relative_colors is not None
         assert not (colors is not None and relative_colors is not None)
         assert not (relative_colors is not None and base_color is None)
+        assert not np.any(np.isnan(values)) if values is not None else True
 
         if colors is not None:
             self.colors: list[np.ndarray] = colors
@@ -94,6 +97,20 @@ class ColorPath:
 
         self.mode = mode
         """Color space to use for interpolation in between colors."""
+
+        self.name = name
+        """Name of the color path."""
+
+    def __str__(self) -> str:
+        """String representation of the color path."""
+        return (
+            f"ColorPath with {self.num_segments} segments, "
+            f"base color {self.base_color}, "
+            f"mode {self.mode}, "
+            f"colors {self.colors}, "
+            f"values {self.values}."
+            f"name {self.name}."
+        )
 
     def sort(self) -> None:
         """Sort values such that they are in ascending order."""
@@ -271,6 +288,13 @@ class ColorPath:
         for segment in range(self.num_segments):
             mask = closest_segment == segment
             best_fit_interpretation[mask] = interpretations[segment][mask]
+
+        # Deal with nan values...
+        if np.any(np.isnan(best_fit_interpretation)):
+            logger.info(
+                f"Some pixels could not be interpreted by the color path '{self.name}'. Setting their values to 0."
+            )
+            best_fit_interpretation[np.isnan(best_fit_interpretation)] = 0.0
 
         return best_fit_interpretation
 
