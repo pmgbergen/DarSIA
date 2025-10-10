@@ -1,6 +1,4 @@
-"""Capabilities to analyze concentrations/saturation profiles based on image comparison.
-
-"""
+"""Capabilities to analyze concentrations/saturation profiles based on image comparison."""
 
 from __future__ import annotations
 
@@ -23,12 +21,11 @@ logger = logging.getLogger(__name__)
 
 class ConcentrationAnalysis:
     """Class providing the capabilities to determine concentration/saturation
-    profiles based on image comparison, and tuning of concentration-intensity
-    maps.
+    profiles based on image comparison, and interpretation of intensity maps.
 
     """
 
-    # ! ---- Setter methods
+    # ! ---- Setter methods ---- ! #
 
     def __init__(
         self,
@@ -38,11 +35,11 @@ class ConcentrationAnalysis:
                 list[darsia.Image],
             ]
         ] = None,
-        signal_reduction: darsia.SignalReduction = None,
+        signal_reduction: Optional[darsia.SignalReduction] = None,
         balancing: Optional[darsia.Model] = None,
         restoration: Optional[darsia.TVD] = None,
         model: Optional[darsia.Model] = None,
-        labels: Optional[darsia.Image] = None,
+        labels: Optional[darsia.Image] = None,  # TODO rm. not used?
         **kwargs,
     ) -> None:
         """Constructor of ConcentrationAnalysis.
@@ -152,12 +149,11 @@ class ConcentrationAnalysis:
         if mask is not None:
             self.mask = mask
 
-    # ! ---- Cleaning filter methods
+    # ! ---- Cleaning filter methods ---- ! #
 
     def find_cleaning_filter(
         self,
         baseline_images: Optional[list[darsia.Image]] = None,
-        reset: bool = False,
     ) -> None:
         """Determine structural noise by studying a series of baseline images.
         The resulting cleaning filter will be used prior to the conversion
@@ -167,7 +163,6 @@ class ConcentrationAnalysis:
         Args:
             baseline_images (list of images): series of baseline_images; default: use
                 internally available baseline images.
-            reset (bool): flag whether the cleaning filter shall be reset.
 
         """
 
@@ -230,7 +225,7 @@ class ConcentrationAnalysis:
         path_to_filter.parents[0].mkdir(parents=True, exist_ok=True)
         np.save(path_to_filter, self.threshold_cleaning_filter)
 
-    # ! ---- Main method
+    # ! ---- Main method ---- ! #
 
     def __call__(self, img: darsia.Image) -> darsia.Image:
         """Extract concentration based on a reference image and rescaling.
@@ -281,8 +276,12 @@ class ConcentrationAnalysis:
         # Regularize/upscale signal to Darcy scale and convert from signal to concentration
         # or other way around.
         if self.first_restoration_then_model:
+            tic = time()
             smooth_signal = self._restore_signal(balanced_signal)
+            logger.debug(f"restoration: {time() - tic}")
+            tic = time()
             concentration = self._convert_signal(smooth_signal, diff)
+            logger.debug(f"conversion: {time() - tic}")
         else:
             tic = time()
             nonsmooth_concentration = self._convert_signal(balanced_signal, diff)
@@ -302,7 +301,8 @@ class ConcentrationAnalysis:
         else:
             return type(img)(concentration, **metadata)
 
-    # ! ---- Inspection routines
+    # ! ---- Inspection routines for debugging ---- ! #
+
     def _inspect_diff(self, img: np.ndarray) -> None:
         """Routine allowing for plotting of intermediate results.
         Requires overwrite.
@@ -339,10 +339,10 @@ class ConcentrationAnalysis:
             plt.figure("Clean signal")
             plt.imshow(img)
 
-    # ! ---- Pre- and post-processing methods
+    # ! ---- Pre- and post-processing methods ---- ! #
+
     def _subtract_background(self, img: darsia.Image) -> np.ndarray:
-        """Take difference between input image and baseline image, based
-        on cached option.
+        """Take difference between input image and cached baseline image.
 
         Args:
             img (darsia.Image): test image.

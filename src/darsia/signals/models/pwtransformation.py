@@ -4,9 +4,14 @@ from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from scipy import interpolate
 
 import darsia
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PWTransformation:
@@ -19,13 +24,14 @@ class PWTransformation:
     ) -> None:
         self.supports = supports
         self.values = values
-        self.update(supports=self.supports, values=self.values)
+        if supports is not None and values is not None:
+            self.update(supports, values)
 
     def update(
         self,
-        supports: list | np.ndarray = None,
-        values: list | np.ndarray = None,
-        dofs: list | np.ndarray = None,
+        supports: Optional[list | np.ndarray] = None,
+        values: Optional[list | np.ndarray] = None,
+        dofs: Optional[list | np.ndarray] = None,
     ) -> None:
         # Update supports and values
         if supports is not None:
@@ -44,11 +50,11 @@ class PWTransformation:
             warn("No supports or values provided. Interpolator not updated.")
         else:
             # Sanity checks
-            assert len(self.values) == len(
-                self.supports
-            ), f"wrong size: {len(values)} vs. {len(self.supports)}"
+            assert len(self.values) == len(self.supports), (
+                f"wrong size: {len(values)} vs. {len(self.supports)}"
+            )
             values_diff = np.diff(values)
-            assert np.all(values_diff > -1e-12), "monotonicity broken"
+            assert np.all(values_diff > -1e-12), f"monotonicity broken {values_diff}"
 
             # Interpolator
             self.interpolator = interpolate.interp1d(
@@ -64,11 +70,13 @@ class PWTransformation:
     def __call__(self, img: np.ndarray | darsia.Image) -> np.ndarray | darsia.Image:
         """Apply the transformation to the image."""
 
+        assert hasattr(self, "interpolator"), "Interpolator not set."
+
         if isinstance(img, np.ndarray):
             return self.interpolator(img)
         elif isinstance(img, darsia.Image):
             result = img.copy()
-            result.img = self.interpolator(img)
+            result.img = self.interpolator(img.img)
             return result
         else:
             raise ValueError
@@ -87,22 +95,24 @@ class PWTransformation:
             plt.close()
 
     def save(self, path: Path) -> None:
-        """Save the transformation to file in npz and csv format."""
+        """Save the transformation to file in csv format.
 
-        # Save as npz file
-        np.savez(path, supports=self.supports, values=self.values)
+        Args:
+            path (Path): Path to the file where the transformation should be saved.
 
-        # Save as csv file
-        # TODO: Implement saving as csv file
+        """
+        df = pd.DataFrame({"supports": self.supports, "values": self.values})
+        df.to_csv(path.with_suffix(".csv"), index=False)
+        logger.info(f"Saved transformation to {path.with_suffix('.csv')}.")
 
     def load(self, path: Path) -> None:
-        """Load the transformation from file in npz format."""
+        """Load the transformation from file in csv format.
 
-        # Load from npz file
-        with np.load(path) as data:
-            self.supports = data["supports"]
-            self.values = data["values"]
-            self.update(supports=self.supports, values=self.values)
+        Args:
+            path (Path): Path to the file from which the transformation should be loaded.
 
-        # Load from csv file
-        # TODO: Implement loading from csv file
+        """
+        df = pd.read_csv(path)
+        self.supports = df["supports"].to_numpy()
+        self.values = df["values"].to_numpy()
+        self.update(supports=self.supports, values=self.values)

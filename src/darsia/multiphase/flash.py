@@ -108,3 +108,27 @@ class AdvancedFlash(Flash):
             s_aq = self.restoration(s_aq)
 
         return chi_g, chi_aq, s_g, s_aq
+
+
+class SimpleFlash:
+    def __init__(self, restoration=None) -> None:
+        """Constructor."""
+        self.restoration = restoration
+
+    def __call__(self, signal: darsia.Image) -> tuple[darsia.Image, darsia.Image]:
+        """Simple flash calculation.
+
+        Args:
+            signal (Image): numerical signal
+
+        Returns:
+            tuple: volumetric concentration in aqueous phase, saturation in gas phase
+
+        """
+        c_aq = darsia.full_like(signal, np.clip(signal.img, 0, 1))
+        s_g = darsia.full_like(signal, np.clip(signal.img - 1, 0, 1))
+        if self.restoration is not None:
+            c_aq = self.restoration(c_aq)
+            s_g = self.restoration(s_g)
+
+        return c_aq, s_g
