@@ -54,7 +54,7 @@ def setup_rig(cls, path: Path, show: bool = False) -> None:
         depth_map_path=config.depth.depth_map,
         labels_path=config.labeling.labels,
         correction_config_path=path,  # TODO replace with actual config file read from toml
-        log=config.data.log,
+        log=config.data.results,
     )
 
     # Save fluidflower
