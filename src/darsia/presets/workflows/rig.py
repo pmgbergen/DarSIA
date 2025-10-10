@@ -14,6 +14,8 @@ from darsia.presets.analysis.porosity import patched_porosity_analysis
 
 logger = logging.getLogger(__name__)
 
+# TODO keep log? or use results?
+
 
 class Rig:
     """Rig object for CO2 analysis."""
@@ -46,13 +48,16 @@ class Rig:
         # Log corrected baseline image
         if log:
             # Create folder
-            (Path(log) / "corrections").mkdir(parents=True, exist_ok=True)
+            (Path(log) / "rig" / "corrections").mkdir(parents=True, exist_ok=True)
 
             # Plot corrected baseline
             plt.figure()
             plt.imshow(self.baseline.img)
             plt.title("Corrected baseline")
-            plt.savefig(Path(log) / "corrections" / "corrected_baseline.png", dpi=500)
+            plt.savefig(
+                Path(log) / "rig" / "corrections" / "corrected_baseline.png",
+                dpi=500,
+            )
             plt.close()
 
         logger.info("Reading setup completed.")
@@ -157,7 +162,7 @@ class Rig:
         # Log results
         if log:
             # Create folder for geometry
-            geometry_folder = Path(log) / "geometry"
+            geometry_folder = Path(log) / "rig" / "geometry"
             geometry_folder.mkdir(parents=True, exist_ok=True)
 
             # Plot depth map
@@ -214,14 +219,14 @@ class Rig:
 
         if log:
             # Create folder for label images
-            (Path(log) / "labels").mkdir(parents=True, exist_ok=True)
+            (Path(log) / "rig" / "labels").mkdir(parents=True, exist_ok=True)
 
             # Plot labels
             plt.figure()
             plt.imshow(self.labels.img)
             plt.colorbar()
             plt.title("Labels")
-            plt.savefig(Path(log) / "labels" / "labels.png", dpi=500)
+            plt.savefig(Path(log) / "rig" / "labels" / "labels.png", dpi=500)
             plt.close()
 
         logger.info("Labels setup completed.")
@@ -277,14 +282,14 @@ class Rig:
 
         if log:
             # Create folder for porosity images
-            (Path(log) / "porosity").mkdir(parents=True, exist_ok=True)
+            (Path(log) / "rig" / "porosity").mkdir(parents=True, exist_ok=True)
 
             # Plot boolean porosity
             plt.figure()
             plt.imshow(self.boolean_porosity.img)
             plt.colorbar()
             plt.title("Boolean porosity")
-            plt.savefig(Path(log) / "porosity" / "boolean_porosity.png")
+            plt.savefig(Path(log) / "rig" / "porosity" / "boolean_porosity.png")
             plt.close()
 
         logger.info("Porosity setup completed.")
@@ -503,9 +508,9 @@ class Rig:
             darsia.Image: Image object with applied corrections.
 
         """
-        assert hasattr(
-            self, "imaging_protocol"
-        ), "Imaging protocol not defined. Run load_experiment() first."
+        assert hasattr(self, "imaging_protocol"), (
+            "Imaging protocol not defined. Run load_experiment() first."
+        )
         # Convert date from path
         date = self.imaging_protocol.get_datetime(path)
 
