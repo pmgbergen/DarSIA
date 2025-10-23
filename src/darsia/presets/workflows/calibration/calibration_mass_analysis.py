@@ -9,7 +9,7 @@ from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_analysis import (
     HeterogeneousColorAnalysis,
 )
-from darsia.presets.workflows.mass_computation import MassCalibration, MassComputation
+from darsia.presets.workflows.mass_computation import MassComputation  # MassCalibration
 
 logger = logging.getLogger(__name__)
 
@@ -90,11 +90,11 @@ def calibration_mass_analysis(cls, path: Path, show: bool = False) -> None:
     if config.mass.calibration_file.exists():
         mass_computation.transformation.load(config.mass.calibration_file)
 
-    mass_calibration = MassCalibration(
-        mass_computation=mass_computation,
-        concentration_analysis=concentration_analysis,
-        fluidflower=fluidflower,
-    )
+    # mass_calibration = MassCalibration(
+    #    mass_computation=mass_computation,
+    #    concentration_analysis=concentration_analysis,
+    #    fluidflower=fluidflower,
+    # )
 
     # ! ---- CALIBRATION ----
 
