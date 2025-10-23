@@ -79,14 +79,17 @@ def analysis_mass(
 
     # ! ---- ANALYSIS ----
 
-    image_times = config.analysis.mass.image_times
-    image_datetimes = [
-        experiment.experiment_start + darsia.timedelta(hours=t) for t in image_times
-    ]
-    image_paths = experiment.imaging_protocol.find_images_for_datetimes(
-        paths=config.data.data,
-        datetimes=image_datetimes,
-    )
+    if len(config.analysis.image_paths) > 0:
+        image_paths = [config.data.folder / p for p in config.analysis.image_paths]
+    else:
+        image_times = config.analysis.image_times
+        image_datetimes = [
+            experiment.experiment_start + darsia.timedelta(hours=t) for t in image_times
+        ]
+        image_paths = experiment.imaging_protocol.find_images_for_datetimes(
+            paths=config.data.data,
+            datetimes=image_datetimes,
+        )
 
     # Loop over images and analyze
     for path in image_paths:

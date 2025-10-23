@@ -56,12 +56,10 @@ def analysis_color_signal(
 
     # ! ---- ANALYSIS ----
 
-    if len(config.analysis.color_signal.image_paths) > 0:
-        image_paths = [
-            config.data.folder / p for p in config.analysis.color_signal.image_paths
-        ]
+    if len(config.analysis.image_paths) > 0:
+        image_paths = [config.data.folder / p for p in config.analysis.image_paths]
     else:
-        image_times = config.analysis.color_signal.image_times
+        image_times = config.analysis.image_times
         image_datetimes = [
             experiment.experiment_start + darsia.timedelta(hours=t) for t in image_times
         ]
