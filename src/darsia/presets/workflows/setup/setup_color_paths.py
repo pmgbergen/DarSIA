@@ -17,6 +17,7 @@ def setup_color_paths(cls, path: Path, show: bool = False) -> None:
 
     """
     config = FluidFlowerConfig(path)
+    config.check("data", "protocol", "color_paths")
 
     # ! ---- LOAD RUN AND RIG ----
 
