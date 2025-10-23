@@ -386,6 +386,10 @@ class AnalysisData:
     cropping: _AnalysisData = field(default_factory=_AnalysisData)
     color_signal: _AnalysisData = field(default_factory=_AnalysisData)
     mass: _AnalysisData = field(default_factory=_AnalysisData)
+    image_times: list[float] = field(default_factory=list)
+    """List of image times in hours since experiment start."""
+    image_paths: list[Path] = field(default_factory=list)
+    """List of image paths corresponding to the image times."""
 
     def load(self, path: Path) -> "AnalysisData":
         data = tomllib.loads(path.read_text())
@@ -393,7 +397,28 @@ class AnalysisData:
         self.cropping = _AnalysisData().load(sec, "cropping")
         self.color_signal = _AnalysisData().load(sec, "color_signal")
         self.mass = _AnalysisData().load(sec, "mass")
+        self.image_times = sorted(
+            [
+                float(t)
+                for t in _get_key(
+                    sec, "image_times", default=[], required=False, type_=list
+                )
+            ]
+        )
+        self.image_paths = sorted(
+            [
+                Path(p)
+                for p in _get_key(
+                    sec, "image_paths", default=[], required=False, type_=list[Path]
+                )
+            ]
+        )
+        if len(self.image_times) > 0 and len(self.image_paths) > 0:
+            raise ValueError("Provide either image_times or image_paths, not both.")
         return self
+
+    def error(self):
+        raise ValueError(f"Use [analysis] in the config file to load analysis data.")
 
 
 @dataclass
