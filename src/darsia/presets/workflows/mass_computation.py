@@ -2,31 +2,42 @@ import json
 import logging
 from pathlib import Path
 
-import ffum
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.widgets import Button, Slider
 
 import darsia
-from darsia.presets.workflows.heterogeneous_color_analysis import (
-    HeterogeneousColorAnalysis,
+from darsia.presets.workflows.simple_run_analysis import (
+    SimpleMassAnalysisResults,
+    SimpleRunAnalysis,
 )
-from darsia.presets.workflows.rig import Rig
+# from darsia.presets.workflows.heterogeneous_color_analysis import (
+#    HeterogeneousColorAnalysis,
+# )
+# from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
 
-
-class MassCalibration:
-    def __init__(
-        self,
-        mass_computation: "MassComputation",
-        concentration_analysis: HeterogeneousColorAnalysis,
-        fluidflower: Rig,
-    ):
-        self.mass_computation = mass_computation
-        self.concentration_analysis = concentration_analysis
-        self.fluidflower = fluidflower
+#
+#  class MassCalibration:
+#
+#     def __init__(
+#
+#         self,
+#
+#         mass_computation: "MassComputation",
+#
+#         concentration_analysis: HeterogeneousColorAnalysis,
+#
+#         fluidflower: Rig,
+#
+#     ):
+#
+#         self.mass_computation = mass_computation
+#
+#         self.concentration_analysis = concentration_analysis
+#        self.fluidflower = fluidflower
 
 
 class MassComputation:
@@ -62,7 +73,7 @@ class MassComputation:
         num_values = len(self.transformation.values)
 
         # Step 1: pre-mass analysis (nothing to do as images already converted to signals)
-        analysis = ffum.SimpleRunAnalysis(self.geometry)
+        analysis = SimpleRunAnalysis(self.geometry)
         folder = Path("calibration_mass")
         # Remove everything in the folder
         if folder.exists():
@@ -90,7 +101,7 @@ class MassComputation:
                 untransformed_images, expected_mass, times
             ):
                 # Mass analysis
-                mass_analysis_result: ffum.SimpleMassAnalysisResults = self(img)
+                mass_analysis_result: SimpleMassAnalysisResults = self(img)
 
                 # Track result
                 analysis.track(mass_analysis_result, exact_mass=exact_mass, time=time)
@@ -381,9 +392,7 @@ class MassComputation:
         update_analysis()
         log_iteration()
 
-    def __call__(
-        self, untransformed_img: darsia.Image
-    ) -> ffum.SimpleMassAnalysisResults:
+    def __call__(self, untransformed_img: darsia.Image) -> SimpleMassAnalysisResults:
         """Compute mass based on concentration image.
 
         Args:
@@ -397,7 +406,7 @@ class MassComputation:
         solubility_array = self.co2_mass_analysis.solubility_co2
         mass_g_array = gas_density_array * s_g.img
         mass_aq_array = solubility_array * c_aq.img * (1 - s_g.img)
-        return ffum.SimpleMassAnalysisResults(
+        return SimpleMassAnalysisResults(
             name=img.name,
             date=img.date,
             mass=darsia.full_like(img, mass_g_array + mass_aq_array),
