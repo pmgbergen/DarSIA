@@ -337,12 +337,32 @@ class MassComputation:
             hovercolor="0.975",
         )
 
+        # Add a 'Finish' button to the left of the Update button that closes the
+        # figure and lets the code after plt.show() run (which stores the
+        # calibration files). This emulates closing the window with the mouse.
+        finish_button_ax = fig.add_axes([0.74, 0.95, 0.1, 0.04])
+        finish_button = Button(
+            finish_button_ax,
+            "Finish",
+            color="lightgrey",
+            hovercolor="0.9",
+        )
+
+        def finish_button_on_clicked(mouse_event):
+            """Close the figure window to finish calibration and trigger saving."""
+            # Close the figure; plt.show() will return and the following
+            # update_analysis()/log_iteration() calls after plt.show() will run
+            # and store the calibration files as usual.
+            plt.close(fig)
+
+        finish_button.on_clicked(finish_button_on_clicked)
+
         def update_button_on_clicked(mouse_event):
             """Update the mass plots based on the current transformations."""
             nonlocal log_calibration_iteration
             log_calibration_iteration += 1
 
-            # Deactivate the mass plots by plotting additional text 'Loading...' in the center of the plot
+            # Show 'Loading...' on mass plot
             loading_txt = ax[1].text(
                 np.max(times) // 2,
                 0.008,
