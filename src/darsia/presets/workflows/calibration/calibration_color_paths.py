@@ -7,8 +7,8 @@ from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 logger = logging.getLogger(__name__)
 
 
-def setup_color_paths(cls, path: Path, show: bool = False) -> None:
-    """Setup color paths for a given fluidflower class and configuration.
+def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
+    """Calibration of color paths for a given fluidflower class and configuration.
 
     Args:
         cls: The fluidflower class to use (e.g., ffum.MuseumRig).
