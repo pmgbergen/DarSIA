@@ -5,6 +5,7 @@ import logging
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
+from warnings import warn
 
 logger = logging.getLogger(__name__)
 
@@ -14,16 +15,17 @@ def _get_section(data: dict, section: str) -> dict:
     try:
         return data[section]
     except KeyError:
-        raise ValueError(f"Section {section} not found.")
+        raise KeyError(f"Section {section} not found.")
 
 
 def _get_key(section: dict, key: str, default=None, required=True, type_=None):
     """Utility to get a key from a section with type conversion and default value."""
-    if key in section and section[key] is not None:
+    if required and key not in section:
+        raise ValueError(f"Missing key '{key}' in section {section}.")
+
+    if key in section:
         value = section[key]
         return type_(value) if type_ else value
-    elif required:
-        raise ValueError(f"Missing key '{key}' in section {section}.")
     else:
         return default
 
@@ -55,10 +57,23 @@ class FluidFlowerSpecs:
         )
         return self
 
+    def error(self):
+        raise ValueError("Use [specs] in the config file to load specs.")
+
 
 @dataclass
 class FluidFlowerData:
-    """Data for the FluidFlower setup."""
+    """Data for the FluidFlower setup.
+
+    Example for TOML section:
+        [data]
+        folder = "path/to/images"
+        format = "JPG"
+        baseline = "path/to/baseline.jpg"
+        pad = 0
+        results = "path/to/results"
+
+    """
 
     folder: Path = field(default_factory=Path)
     """Path to the folder containing the image data."""
@@ -73,9 +88,9 @@ class FluidFlowerData:
     results: Path = field(default_factory=Path)
     """Path to the results folder."""
 
-    def load(self, path: Path, section: str) -> "FluidFlowerData":
+    def load(self, path: Path) -> "FluidFlowerData":
         data = tomllib.loads(path.read_text())
-        sec = _get_section(data, section)
+        sec = _get_section(data, "data")
         self.format = sec.get("format", "JPG")
         self.folder = _get_key(sec, "folder", required=True, type_=Path)
         self.data = list(sorted(self.folder.glob(f"*.{self.format}")))
@@ -85,6 +100,9 @@ class FluidFlowerData:
         self.pad = _get_key(sec, "pad", required=True, type_=int)
         self.results = _get_key(sec, "results", required=True, type_=Path)
         return self
+
+    def error(self):
+        raise ValueError("Use [data] in the config file to load data.")
 
 
 @dataclass
@@ -113,6 +131,9 @@ class FluidFlowerLabelingConfig:
         self.labels = _get_key(sec, "labels", required=True, type_=Path)
         return self
 
+    def error(self):
+        raise ValueError("Use [labeling] in the config file to load labeling.")
+
 
 @dataclass
 class FluidFlowerDepthConfig:
@@ -128,6 +149,9 @@ class FluidFlowerDepthConfig:
         self.measurements = _get_key(sec, "measurements", required=True, type_=Path)
         self.depth_map = _get_key(sec, "depth_map", required=True, type_=Path)
         return self
+
+    def error(self):
+        raise ValueError("Use [depth] in the config file to load depth.")
 
 
 @dataclass
@@ -200,6 +224,11 @@ class FluidFlowerProtocolConfig:
         except KeyError:
             self.pressure_temperature = None
 
+        return self
+
+    def error(self):
+        raise ValueError(f"Use [protocols] in the config file to load protocols.")
+
 
 @dataclass
 class ColorPathsConfig:
@@ -258,6 +287,9 @@ class ColorPathsConfig:
         )
         return self
 
+    def error(self):
+        raise ValueError(f"Use [color_paths] in the config file to load color paths.")
+
 
 @dataclass
 class ColorSignalConfig:
@@ -287,6 +319,9 @@ class ColorSignalConfig:
         )
         return self
 
+    def error(self):
+        raise ValueError(f"Use [color_signal] in the config file to load color signal.")
+
 
 @dataclass
 class MassAnalysisConfig:
@@ -311,20 +346,38 @@ class MassAnalysisConfig:
         )
         return self
 
+    def error(self):
+        raise ValueError(f"Use [mass] in the config file to load mass analysis.")
+
 
 @dataclass
 class _AnalysisData:
     image_times: list[float] = field(default_factory=list)
     """List of image times in hours since experiment start."""
+    image_paths: list[Path] = field(default_factory=list)
+    """List of image paths corresponding to the image times."""
 
     def load(self, sec: dict, section: str) -> "_AnalysisData":
         sub_sec = _get_section(sec, section)
         self.image_times = sorted(
             [
                 float(t)
-                for t in _get_key(sub_sec, "image_times", required=False, type_=list)
+                for t in _get_key(
+                    sub_sec, "image_times", default=[], required=False, type_=list
+                )
             ]
         )
+        self.image_paths = sorted(
+            [
+                Path(p)
+                for p in _get_key(
+                    sub_sec, "image_paths", default=[], required=False, type_=list[Path]
+                )
+            ]
+        )
+        if len(self.image_times) > 0 and len(self.image_paths) > 0:
+            raise ValueError("Provide either image_times or image_paths, not both.")
+
         return self
 
 
@@ -350,71 +403,80 @@ class FluidFlowerConfig:
     def __init__(self, path: Path):
         # ! ---- SPECS ---- ! #
         try:
-            self.specs = FluidFlowerSpecs()
+            self.specs: FluidFlowerSpecs | None = FluidFlowerSpecs()
             self.specs.load(path, "specs")
         except KeyError:
-            raise ValueError(f"Section specs not found in {path}.")
+            self.specs = None
+            warn(f"Section specs not found in {path}, use [specs].")
 
         # ! ---- DATA ---- ! #
         try:
-            self.data = FluidFlowerData()
-            self.data.load(path, "data")
+            self.data: FluidFlowerData | None = FluidFlowerData()
+            self.data.load(path)
         except KeyError:
-            raise ValueError(f"Section data not found in {path}.")
+            self.data = None
+            warn(f"Section data not found in {path}, use [data].")
 
         # ! ---- LABELING ---- ! #
         try:
-            self.labeling = FluidFlowerLabelingConfig()
+            self.labeling: FluidFlowerLabelingConfig | None = (
+                FluidFlowerLabelingConfig()
+            )
             self.labeling.load(path, "labeling")
         except KeyError:
-            raise ValueError(f"Section labeling not found in {path}.")
+            self.labeling = None
+            warn(f"Section labeling not found in {path}, use [labeling].")
 
         # ! ---- DEPTH ---- ! #
         try:
-            self.depth = FluidFlowerDepthConfig()
+            self.depth: FluidFlowerDepthConfig | None = FluidFlowerDepthConfig()
             self.depth.load(path, "depth")
         except KeyError:
-            raise ValueError(f"Section depth not found in {path}.")
+            self.depth = None
+            warn(f"Section depth not found in {path}, use [depth].")
 
         # ! ---- PROTOCOLS ---- ! #
         try:
-            self.protocol = FluidFlowerProtocolConfig()
+            self.protocol: FluidFlowerProtocolConfig | None = (
+                FluidFlowerProtocolConfig()
+            )
             self.protocol.load(path, "protocols")
         except KeyError:
-            raise ValueError(f"Section protocols not found in {path}.")
+            self.protocol = None
+            warn(f"Section protocols not found in {path}, use [protocols].")
 
         # ! ---- COLOR ANALYSIS ---- ! #
         try:
-            self.color_paths = ColorPathsConfig()
+            self.color_paths: ColorPathsConfig | None = ColorPathsConfig()
             self.color_paths.load(path, "color_paths")
         except KeyError:
             self.color_paths = None
-            raise UserWarning(f"Section color_paths not found in {path}.")
+            warn(f"Section color_paths not found in {path}.")
 
         try:
-            self.color_signal = ColorSignalConfig()
+            self.color_signal: ColorSignalConfig | None = ColorSignalConfig()
             self.color_signal.load(path, "color_signal")
         except KeyError:
             self.color_signal = None
-            raise UserWarning(f"Section color_signal not found in {path}.")
+            warn(f"Section color_signal not found in {path}.")
 
         # ! ---- MASS ANALYSIS ---- ! #
 
         try:
-            self.mass = MassAnalysisConfig()
+            self.mass: MassAnalysisConfig | None = MassAnalysisConfig()
             self.mass.load(path, "mass")
         except KeyError:
             self.mass = None
-            raise UserWarning(f"Section mass not found in {path}.")
+            warn(f"Section mass not found in {path}.")
 
         # ! ---- ANALYSIS DATA ---- ! #
 
         try:
-            self.analysis = AnalysisData()
+            self.analysis: AnalysisData | None = AnalysisData()
             self.analysis.load(path)
         except KeyError:
             self.analysis = None
-            raise UserWarning(f"Section analysis not found in {path}.")
+            warn(f"Section analysis not found in {path}.")
 
         ## ! ---- COMMON DATA ---- ! #
         # common_folder = Path(meta_data["common"]["folder"])
@@ -501,6 +563,86 @@ class FluidFlowerConfig:
         #    )
         # except KeyError:
         #    self.fluidflower_folder = None
+
+    def _check(self, key: str):
+        if key == "data" and not self.data:
+            raise ValueError(
+                "No data loaded. Use [data] in the config file and `folder` to load data."
+            )
+        elif key == "labeling" and not self.labeling:
+            raise ValueError(
+                "No labeling loaded. Use [labeling] in the config file to load labeling."
+            )
+        elif key == "depth" and not self.depth:
+            raise ValueError(
+                "No depth loaded. Use [depth] in the config file to load depth."
+            )
+        elif key == "specs" and not self.specs:
+            raise ValueError(
+                "No specs loaded. Use [specs] in the config file to load specs."
+            )
+        elif key == "protocol" and not self.protocol:
+            raise ValueError(
+                "No protocols loaded. Use [protocols] in the config file to load protocols."
+            )
+        elif key == "color_paths" and not self.color_paths:
+            raise ValueError(
+                "No color paths loaded. Use [color_paths] in the config file to load color paths."
+            )
+        elif key == "color_signal" and not self.color_signal:
+            raise ValueError(
+                "No color signal loaded. Use [color_signal] in the config file to load color signal."
+            )
+        elif key == "mass" and not self.mass:
+            raise ValueError(
+                "No mass analysis loaded. Use [mass] in the config file to load mass analysis."
+            )
+        elif key == "analysis" and not self.analysis:
+            raise ValueError(
+                "No analysis data loaded. Use [analysis] in the config file to load analysis data."
+            )
+        elif key == "analysis.segmentation" and (
+            not self.analysis or not self.analysis.segmentation
+        ):
+            raise ValueError(
+                "No segmentation data loaded. Use [analysis.segmentation] in the config file to load segmentation data."
+            )
+        elif key == "analysis.color_signal" and (
+            not self.analysis or not self.analysis.color_signal
+        ):
+            raise ValueError(
+                "No color signal loaded. Use [analysis.color_signal] in the config file to load color signal."
+            )
+        elif key == "analysis.mass" and (not self.analysis or not self.analysis.mass):
+            raise ValueError(
+                "No mass analysis loaded. Use [analysis.mass] in the config file to load mass analysis."
+            )
+
+    def check(self, *args: str) -> None:
+        """Check that required components are loaded.
+
+        Args:
+            keys (list[str]): List of keys to check. Possible keys are:
+                "specs", "data", "labeling", "depth", "protocol", "color_paths",
+                "color_signal", "mass", "analysis".
+
+        Raises:
+            ValueError: If a required component is not loaded.
+
+        """
+        for key in args:
+            assert key in [
+                "specs",
+                "data",
+                "labeling",
+                "depth",
+                "protocol",
+                "color_paths",
+                "color_signal",
+                "mass",
+                "analysis",
+            ]
+            self._check(key)
 
     # Loading
     def load_meta(self, meta: Path) -> dict:
