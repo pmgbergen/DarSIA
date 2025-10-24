@@ -7,7 +7,7 @@ height and depth of pixels.
 
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -32,7 +32,7 @@ class Geometry:
     def __init__(
         self,
         space_dim: int,
-        num_voxels: Union[tuple[int], list[int]],
+        num_voxels: tuple[int] | list[int],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
         **kwargs,
@@ -75,9 +75,7 @@ class Geometry:
         self.cached_voxel_volume = self.voxel_volume.copy()
         """Internal copy of the voxel volume for efficient integration."""
 
-    def integrate(
-        self, data: Union[darsia.Image, np.ndarray]
-    ) -> Union[float, np.ndarray]:
+    def integrate(self, data: darsia.Image | np.ndarray) -> float | np.ndarray:
         """
         Integrate data over the entire geometry.
 
@@ -102,10 +100,8 @@ class Geometry:
 
         # Resize the voxel volumes using conservative resizing.
         if isinstance(self.voxel_volume, np.ndarray):
-
             cached_shape = list(self.cached_voxel_volume.shape)
             if not all([i == j for i, j in zip(fetched_shape, cached_shape)]):
-
                 if not self.space_dim == 2:
                     raise ValueError("Incompatible data format only supported in 2d.")
 
@@ -143,7 +139,7 @@ class Geometry:
 
     def normalize(
         self, img: darsia.Image, img_ref: darsia.Image, return_ratio: bool = False
-    ) -> Union[darsia.Image, tuple[darsia.Image, np.ndarray]]:
+    ) -> darsia.Image | tuple[darsia.Image, np.ndarray]:
         """Normalize image with respect to another one, such that both have the same
         integral.
 
@@ -174,9 +170,9 @@ class WeightedGeometry(Geometry):
 
     def __init__(
         self,
-        weight: Union[float, np.ndarray],
+        weight: float | np.ndarray,
         space_dim: int,
-        num_voxels: Union[tuple[int], list[int]],
+        num_voxels: tuple[int] | list[int],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
         **kwargs,
@@ -199,9 +195,13 @@ class WeightedGeometry(Geometry):
 
         # Sanity check
         if isinstance(weight, np.ndarray) and len(weight.shape) != self.space_dim:
-            raise ValueError
+            raise ValueError(
+                "Weight must have the same number of dimensions as the geometry."
+            )
 
         # Add weight
+        self.weight = weight.copy() if isinstance(weight, np.ndarray) else weight
+        """Weight of the geometry, can be a scalar or an array."""
         self.voxel_volume = np.multiply(self.voxel_volume, weight)
         """Effective voxel volume in 3d."""
         self.cached_voxel_volume = self.voxel_volume.copy()
@@ -213,9 +213,9 @@ class ExtrudedGeometry(WeightedGeometry):
 
     def __init__(
         self,
-        expansion: Union[float, np.ndarray],
+        expansion: float | np.ndarray,
         space_dim: int,
-        num_voxels: Union[tuple[int], list[int]],
+        num_voxels: tuple[int] | list[int],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
         **kwargs,
@@ -242,9 +242,9 @@ class PorousGeometry(WeightedGeometry):
 
     def __init__(
         self,
-        porosity: Union[float, np.ndarray],
+        porosity: float | np.ndarray | darsia.Image,
         space_dim: int,
-        num_voxels: Union[tuple[int], list[int]],
+        num_voxels: tuple[int] | list[int],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
         **kwargs,
@@ -268,10 +268,10 @@ class ExtrudedPorousGeometry(ExtrudedGeometry):
 
     def __init__(
         self,
-        porosity: Union[float, np.ndarray, darsia.Image],
-        depth: Union[float, np.ndarray, darsia.Image],
+        porosity: float | np.ndarray | darsia.Image,
+        depth: float | np.ndarray | darsia.Image,
         space_dim: int,
-        num_voxels: Union[tuple[int], list[int]],
+        num_voxels: tuple[int] | list[int],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
         **kwargs,
