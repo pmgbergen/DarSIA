@@ -14,6 +14,8 @@ def wasserstein_test(factor, method="newton", case=1, plotting=False):
         mass1_array[factor * 3 : factor * 5, factor * 1 : factor * 3] = 1
         mass2_array[factor * 3 : factor * 5, factor * 5 : factor * 7] = 1
     elif case == 1:
+        block1 = [5, 2, 1]
+        block2 = [3, 6, 1]
         mass1_array[factor * 4 : factor * 6, factor * 1 : factor * 3] = 1
         mass2_array[factor * 2 : factor * 4, factor * 5 : factor * 7] = 1
     elif case == 2:
@@ -90,12 +92,14 @@ def wasserstein_test(factor, method="newton", case=1, plotting=False):
     flux = -info["flux"]
 
     if plotting:
-        darsia.plotting.plot_2d_wasserstein_distance(info, resolution=2, save=False, name='squares', dpi=100)
+        #darsia.plotting.plot_2d_wasserstein_distance(info, resolution=2, save=False, name='squares', dpi=100)
+        pass
 
     # make 2D grid
     xs, ys = np.mgrid[4/(shape[1]):8:8/shape[1], 4/(shape[0]):8:8/shape[0]]
-    real_flux = analytic_solutions[case](xs, ys)
-
+    #real_flux = analytic_solutions[case](xs, ys)
+    from analytic_block import analytic_solution
+    analytic_solution(block1, block2, xs, ys)
 
     real_dist = distances[case]
     flux_error = L_dist(real_flux-flux)
@@ -238,6 +242,6 @@ distances = [16, 8*np.sqrt(5), 8*np.sqrt(2)]
 
 
 if __name__ == "__main__":
-    wasserstein_test(4, "newton", case=1, plotting=True)
+    wasserstein_test(1, "newton", case=1, plotting=True)
     #convergence_test([1, 2, 4, 8, 16], "newton", case=2)
 
