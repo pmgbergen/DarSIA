@@ -21,6 +21,7 @@ def analysis_cropping(
 ):
     # Read data from meta
     config = FluidFlowerConfig(path)
+    config.check("analysis")
 
     # Plotting
     plot_folder = config.data.results / "cropped_images"

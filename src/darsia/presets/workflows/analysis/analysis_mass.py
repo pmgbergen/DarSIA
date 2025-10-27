@@ -22,6 +22,10 @@ def analysis_mass(
 ):
     # ! ---- LOAD RUN AND RIG ----
     config = FluidFlowerConfig(path)
+    config.check("analysis")
+
+    # ! ---- LOAD RIG AND RUN ----
+
     fluidflower = cls()
     fluidflower.load(config.data.results / "fluidflower")
 

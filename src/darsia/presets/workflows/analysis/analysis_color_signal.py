@@ -21,6 +21,7 @@ def analysis_color_signal(
 ):
     # ! ---- LOAD RUN AND RIG ----
     config = FluidFlowerConfig(path)
+    config.check("analysis")
     fluidflower = cls()
     fluidflower.load(config.data.results / "fluidflower")
 
