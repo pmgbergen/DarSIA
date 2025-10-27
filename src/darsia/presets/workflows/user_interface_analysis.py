@@ -15,7 +15,6 @@ from darsia.presets.workflows.analysis.analysis_segmentation import (
 from darsia.presets.workflows.analysis.analysis_mass import (
     analysis_mass,
 )
-from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
