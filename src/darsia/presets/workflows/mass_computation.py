@@ -461,13 +461,10 @@ class MassComputation:
             self.transformations[label] = lambda x, s=scale: x * s
 
     def load(self, path: Path):
-        with open(path, "r") as f:
-            self.transformations = json.load(f)
+        self.transformation.load(path)
 
     def save(self, path: Path):
-        with open(path, "w") as f:
-            json.dump(self.transformations, f)
-            f.close()
+        self.transformation.save(path)
 
     def show(self):
         # Visualize the transformations
