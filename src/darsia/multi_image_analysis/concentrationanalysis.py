@@ -296,8 +296,11 @@ class ConcentrationAnalysis:
 
         metadata = img.metadata()
         is_scalar = len(concentration.shape) == len(img.shape) - 1
+        is_effectively_scalar = concentration.shape[-1] == 1
         if is_scalar:
             return darsia.ScalarImage(concentration, **metadata)
+        elif is_effectively_scalar:
+            return darsia.ScalarImage(concentration[..., 0], **metadata)
         else:
             return type(img)(concentration, **metadata)
 
