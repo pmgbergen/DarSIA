@@ -14,9 +14,9 @@ def wasserstein_test(factor, method="newton", case=1, plotting=False):
         mass1_array[factor * 3 : factor * 5, factor * 1 : factor * 3] = 1
         mass2_array[factor * 3 : factor * 5, factor * 5 : factor * 7] = 1
     elif case == 1:
-        block1 = [5, 2, 1]
-        block2 = [3, 6, 1]
-        mass1_array[factor * 4 : factor * 6, factor * 1 : factor * 3] = 1
+        block1 = [4, 4, 1]
+        block2 = [2, 3, 1]
+        mass1_array[factor * 3 : factor * 5, factor * 3 : factor * 5] = 1
         mass2_array[factor * 2 : factor * 4, factor * 5 : factor * 7] = 1
     elif case == 2:
         mass1_array[factor * 3 : factor * 5, factor * 3 : factor * 5] = 1
@@ -89,31 +89,42 @@ def wasserstein_test(factor, method="newton", case=1, plotting=False):
         f"The DarSIA EMD distance ({method}) between the two mass distributions is: ",
         distance,
     )
-    flux = -info["flux"]
+    flux = info["flux"]
 
     if plotting:
-        #darsia.plotting.plot_2d_wasserstein_distance(info, resolution=2, save=False, name='squares', dpi=100)
+        #darsia.plotting.plot_2d_wasserstein_distance(info, resolution=1, save=False, name='squares', dpi=100)
         pass
 
+    flux[:, :, 1] = -flux[:, :, 1]  # reverse x-component to match coordinate system
     # make 2D grid
-    xs, ys = np.mgrid[4/(shape[1]):8:8/shape[1], 4/(shape[0]):8:8/shape[0]]
+    #xs, ys = np.mgrid[4/(shape[1]):8:8/shape[1], 4/(shape[0]):8:8/shape[0]]
+    xs = np.array([[voxel_size[1]*(i+0.5) for i in range(shape[0])] for _ in range(shape[1])])[:, ::-1]
+    ys = np.array([[voxel_size[0]*(i+0.5) for _ in range(shape[0])] for i in range(shape[1])])
     #real_flux = analytic_solutions[case](xs, ys)
     from analytic_block import analytic_solution
-    analytic_solution(block1, block2, xs, ys)
+    real_flux = analytic_solution(block2, block1, xs, ys)
 
     real_dist = distances[case]
-    flux_error = L_dist(real_flux-flux)
+    flux_diff = np.copy(real_flux)
+    flux_diff[:, :, 0] -= flux[:, :, 1]
+    flux_diff[:, :, 1] -= flux[:, :, 0]
+    flux_error = L_dist(flux_diff)
     dist_error = abs(real_dist - distance)
     print(f"Distance error: {dist_error}, Flux error: {flux_error}")
 
     if plotting:
-        fig, axs = plt.subplots(1, 3)
+        fig, axs = plt.subplots(1, 3, dpi=500)
         # plot a vector field
+        for ax in axs:
+            # reverse the y-axis
+            #ax.invert_yaxis()
+            #ax.invert_xaxis()
+            pass
         axs[0].quiver(
             xs,
             ys,
-            flux[:, :, 0],
             flux[:, :, 1],
+            flux[:, :, 0],
             scale=50,
             color="blue",
             label="Computed Flux",
@@ -132,14 +143,16 @@ def wasserstein_test(factor, method="newton", case=1, plotting=False):
         axs[2].quiver(
             xs,
             ys,
-            flux[:, :, 0] - real_flux[:, :, 0],
-            flux[:, :, 1] - real_flux[:, :, 1],
+            flux_diff[:, :, 0],
+            flux_diff[:, :, 1],
             scale=50,
             color="green",
             label="Flux Error",
         )
         axs[2].set_title("Flux Error")
+
         plt.show()
+
 
     return dist_error, flux_error
 
@@ -241,7 +254,189 @@ analytic_solutions = [analytic_solution_1, analytic_solution_2, analytic_solutio
 distances = [16, 8*np.sqrt(5), 8*np.sqrt(2)]
 
 
+def block_test(block1, block2, factor=4, method="newton", plotting=False):
+    dim = 2
+    shape = (factor * 8, factor * 8)
+    voxel_size = [1 / factor, 1 / factor]
+
+    mass1_array = np.zeros(shape, dtype=float)
+    mass2_array = np.zeros(shape, dtype=float)
+
+    mass1_array[factor * (8-block1[1]-block1[2]) : factor * (8-block1[1]+block1[2]), factor * (block1[0]-block1[2]) : factor * (block1[0]+block1[2])] = 1
+    mass2_array[factor * (8-block2[1]-block2[2]) : factor * (8-block2[1]+block2[2]), factor * (block2[0]-block2[2]) : factor * (block2[0]+block2[2])] = 1
+
+    L_Bregman = 1e2
+    L_Newton = 1e-2
+    if method == "newton":
+        L = L_Newton
+    elif method == "bregman":
+        L = L_Bregman
+    else:
+        raise ValueError("method must be either newton or bregman")
+
+    scaling = 3e1
+    regularization = 1e-16
+    num_iter = int(1e4)
+    tol = 1e-16
+
+
+    width = shape[1] * voxel_size[1]
+    height = shape[0] * voxel_size[0]
+    mass1 = darsia.Image(
+        mass1_array,
+        width=width,
+        height=height,
+        scalar=True,
+        dim=dim,
+        series=False,
+    )
+
+    mass2 = darsia.Image(
+        mass2_array,
+        width=width,
+        height=height,
+        scalar=True,
+        dim=dim,
+        series=False,
+    )
+
+
+    options = {
+        "L": L,
+        "num_iter": num_iter,
+        "tol": tol,
+        "tol_distance": 1e-5,
+        "regularization": regularization,
+        "scaling": scaling,
+        "depth": 0,
+        "verbose": False,
+        "return_info": True
+    }
+
+
+    distance, info = darsia.wasserstein_distance(
+        mass1,
+        mass2,
+        method=method,
+        options=options,
+        plot_solution=True,
+        return_solution=True,
+    )
+    print(
+        f"The DarSIA EMD distance ({method}) between the two mass distributions is: ",
+        distance,
+    )
+    flux = info["flux"]
+
+    if plotting:
+        darsia.plotting.plot_2d_wasserstein_distance(info, resolution=1, save=False, name='squares', dpi=100)
+        pass
+
+    flux[:, :, 1] = -flux[:, :, 1]  # reverse x-component to match coordinate system
+    # make 2D grid
+
+    ys, xs = np.meshgrid(
+        voxel_size[0] * (0.5 + np.arange(shape[0] - 1, -1, -1)),
+        voxel_size[1] * (0.5 + np.arange(shape[1])),
+        indexing="ij",
+    )
+    #real_flux = analytic_solutions[case](xs, ys)
+    from analytic_block import analytic_solution
+    real_flux = analytic_solution(block1, block2, xs, ys)
+
+    real_dist = np.sqrt((block1[0]-block2[0])**2 + (block1[1]-block2[1])**2)*(block1[2]*2)**2
+    flux_diff = np.copy(real_flux)
+    flux_diff[:, :, 0] -= flux[:, :, 1]
+    flux_diff[:, :, 1] -= flux[:, :, 0]
+    flux_error = L_dist(flux_diff)
+    dist_error = abs(real_dist - distance)
+    print(f"Distance error: {dist_error}, Flux error: {flux_error}")
+
+    if plotting:
+        fig, axs = plt.subplots(1, 3, dpi=500)
+        # plot a vector field
+        for ax in axs:
+            # reverse the y-axis
+            #ax.invert_yaxis()
+            #ax.invert_xaxis()
+            pass
+        axs[0].quiver(
+            xs,
+            ys,
+            flux[:, :, 1],
+            flux[:, :, 0],
+            scale=50,
+            color="blue",
+            label="Computed Flux",
+        )
+        axs[0].set_title("Computed Flux")
+        axs[1].quiver(
+            xs,
+            ys,
+            real_flux[:, :, 0],
+            real_flux[:, :, 1],
+            scale=50,
+            color="red",
+            label="Analytic Flux",
+        )
+        axs[1].set_title("Analytic Flux")
+        axs[2].quiver(
+            xs,
+            ys,
+            flux_diff[:, :, 0],
+            flux_diff[:, :, 1],
+            scale=50,
+            color="green",
+            label="Flux Error",
+        )
+        axs[2].set_title("Flux Error")
+
+        plt.show()
+
+
+    return dist_error, flux_error
+
+def circular_testing(factor, n_datapoints, method="newton"):
+    angles = np.linspace(0, 2*np.pi, n_datapoints)
+
+    cos = (np.round(2*np.cos(angles)*factor)/factor).astype(int)
+    sin = (np.round(2*np.sin(angles)*factor)/factor).astype(int)
+
+
+    dist_error_array = np.zeros(n_datapoints)
+    flux_error_array = np.zeros(n_datapoints)
+
+    for i, angle in enumerate(angles):
+        block1 = [4 - cos[i], 4 - sin[i], 1]
+        block2 = [4 + cos[i], 4 + sin[i], 1]
+        dist = np.sqrt((block1[0]-block2[0])**2 + (block1[1]-block2[1])**2)
+        dist_error, flux_error = block_test(block1, block2, factor=factor, method=method)
+
+        dist_error_array[i] = dist_error/dist
+        flux_error_array[i] = flux_error/dist
+    for i, angle in enumerate(angles):
+        if flux_error_array[i] > 0.1:
+            print(f"angle : {angle}, flux : {flux_error_array[i]}")
+    fig, axs = plt.subplots(2, 1, dpi=500, constrained_layout=True)
+    axs[0].plot(angles, dist_error_array)
+    axs[0].set_title("Distance Error (relative)")
+    axs[0].set_xlabel("Angle")
+    axs[1].plot(angles, flux_error_array)
+    axs[1].set_title("Flux Error (relative)")
+    axs[1].set_xlabel("Angle")
+    fig.suptitle(f"Method : {method}")
+    plt.show()
+
+
 if __name__ == "__main__":
-    wasserstein_test(1, "newton", case=1, plotting=True)
+    factor = 5
+    angle = 5.385587406153931
+    cos = int(np.round(2 * np.cos(angle) * factor) / factor)
+    sin = int(np.round(2 * np.sin(angle) * factor) / factor)
+    block1 = [4 - cos, 4 - sin, 1]
+    block2 = [4 + cos, 4 + sin, 1]
+    #block_test(block1, block2, factor=factor, plotting=True)
+    #wasserstein_test(4, "newton", case=1, plotting=True)
     #convergence_test([1, 2, 4, 8, 16], "newton", case=2)
+    circular_testing(10, 30, method="newton")
 
