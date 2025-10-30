@@ -412,16 +412,18 @@ class MassComputation:
         update_analysis()
         log_iteration()
 
-    def __call__(self, untransformed_img: darsia.Image) -> SimpleMassAnalysisResults:
+    def __call__(self, img: darsia.Image) -> SimpleMassAnalysisResults:
         """Compute mass based on concentration image.
 
         Args:
             img (darsia.Image): Untransformed signal [0, 2].
 
         """
-        img = self.transformation(untransformed_img)
-        c_aq, s_g = self.flash(img)
+        # Flash segmentation
+        transformed_img = self.transformation(img)
+        c_aq, s_g = self.flash(transformed_img)
 
+        # Compute mass components
         gas_density_array = self.co2_mass_analysis.density_gaseous_co2
         solubility_array = self.co2_mass_analysis.solubility_co2
         mass_g_array = gas_density_array * s_g.img
