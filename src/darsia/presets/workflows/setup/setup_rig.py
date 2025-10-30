@@ -13,14 +13,11 @@ from pathlib import Path
 import darsia
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 
-# from darsia.presets.workflows.rig import Rig
-
 # Set logging level
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-# TODO use class Rig here.
 def setup_rig(cls, path: Path, show: bool = False) -> None:
     """Setup and store fluidflower object.
 
@@ -35,6 +32,16 @@ def setup_rig(cls, path: Path, show: bool = False) -> None:
 
     # ! ---- LOAD RUN AND RIG ----
     config = FluidFlowerConfig(path)
+    config.check("data", "depth", "labeling", "protocol")
+
+    # Mypy type checking
+    for c in [
+        config.data,
+        config.depth,
+        config.labeling,
+        config.protocol,
+    ]:
+        assert c is not None
 
     # Load imaging protocol
     experiment = darsia.ProtocolledExperiment(
@@ -45,10 +52,9 @@ def setup_rig(cls, path: Path, show: bool = False) -> None:
         pad=config.data.pad,
     )
 
-    # Setup fluidflower
-    fluidflower = cls()
-    # ffum.MuseumRig()
-    fluidflower.setup(
+    # Setup and save rig
+    rig = cls()
+    rig.setup(
         experiment=experiment,
         baseline_path=config.data.baseline,
         depth_map_path=config.depth.depth_map,
@@ -56,12 +62,10 @@ def setup_rig(cls, path: Path, show: bool = False) -> None:
         correction_config_path=path,  # TODO replace with actual config file read from toml
         log=config.data.results,
     )
-
-    # Save fluidflower
-    fluidflower.save(config.data.results / "fluidflower")
+    rig.save(config.data.results / "setup" / "rig")
 
     # Monitoring time of execution
-    logger.info(f"Fluidflower setup in {time.time() - tic:.2f} s.")
+    logger.info(f"Rig setup in {time.time() - tic:.2f} s.")
 
     if show:
-        fluidflower.baseline.show()
+        rig.baseline.show()

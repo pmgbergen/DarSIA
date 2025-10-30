@@ -15,13 +15,21 @@ def segment_colored_image(config_path: Path, show: bool = False):
     """Segment colored image based on config file."""
 
     config = FluidFlowerConfig(Path(config_path))
+    config.check("labeling", "rig")
+
+    # Mypy type checking
+    for c in [
+        config.rig,
+        config.labeling,
+    ]:
+        assert c is not None
 
     # Step 1: Unsupervised labeling of manually colored image
     manually_colored_image = darsia.imread(
         config.labeling.colored_image,
-        dim=config.specs.dim,
-        width=config.specs.width,
-        height=config.specs.height,
+        dim=config.rig.dim,
+        width=config.rig.width,
+        height=config.rig.height,
     )
 
     labels = darsia.label_image(

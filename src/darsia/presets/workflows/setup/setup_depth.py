@@ -24,14 +24,22 @@ def setup_depth_map(path: Path, key="mean", show: bool = False) -> None:
 
     # ! ---- READ CONFIG ---- ! #
     config = FluidFlowerConfig(path)
+    config.check("depth", "rig")
+
+    # Mypy type checking
+    for c in [
+        config.depth,
+        config.rig,
+    ]:
+        assert c is not None
 
     # Convert to depth map by interpolation
     proxy_image = darsia.Image(
-        img=np.zeros(config.specs.resolution),
-        width=config.specs.width,
-        height=config.specs.height,
+        img=np.zeros(config.rig.resolution),
+        width=config.rig.width,
+        height=config.rig.height,
         scalar=True,
-        space_dim=config.specs.dim,
+        space_dim=config.rig.dim,
     )
     depth_map = darsia.interpolate_to_image_from_csv(
         csv_file=config.depth.measurements,
