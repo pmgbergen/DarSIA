@@ -38,7 +38,7 @@ def build_parser_for_calibration():
         "--all", action="store_true", help="Activate all calibration steps."
     )
     parser.add_argument(
-        "--color-path", action="store_true", help="Calibrate color paths."
+        "--color-paths", action="store_true", help="Calibrate color paths."
     )
     parser.add_argument(
         "--color-signal", action="store_true", help="Calibrate color signal."
@@ -82,7 +82,7 @@ def preset_calibration(rig=Rig):
 
     print_help_for_flags(args, parser)
 
-    if args.all or args.color_path:
+    if args.all or args.color_paths:
         calibration_color_paths(rig, Path(args.config), args.show)
 
     if args.all or args.color_signal:
