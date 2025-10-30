@@ -65,8 +65,12 @@ def calibration_color_signal(cls, path: Path, show: bool = False):
         if label not in config.color_paths.ignore_labels
     }
 
-    # Apply KMeans clustering to group into 4 clusters
-    kmeans = KMeans(n_clusters=config.color_signal.num_clusters, random_state=42)
+    # Apply KMeans clustering to group into clusters
+    n_clusters = config.color_signal.num_clusters
+    if n_clusters is None:
+        # Use all labels as clusters if num_clusters is not set
+        n_clusters = len(active_background_colors)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
     cluster_labels = kmeans.fit_predict(
         np.array(list(active_background_colors.values()))
     )
