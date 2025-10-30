@@ -22,12 +22,26 @@ def analysis_mass(
 ):
     # ! ---- LOAD RUN AND RIG ----
     config = FluidFlowerConfig(path)
-    config.check("analysis")
+    config.check(
+        "analysis", "protocol", "data", "color_paths", "color_signal", "mass", "rig"
+    )
+
+    # Mypy type checking
+    for c in [
+        config.color_signal,
+        config.color_paths,
+        config.data,
+        config.protocol,
+        config.analysis,
+        config.mass,
+        config.rig,
+    ]:
+        assert c is not None
 
     # ! ---- LOAD RIG AND RUN ----
 
     fluidflower = cls()
-    fluidflower.load(config.data.results / "fluidflower")
+    fluidflower.load(config.rig.path)
 
     # Load experiment
     experiment = darsia.ProtocolledExperiment(
@@ -38,6 +52,10 @@ def analysis_mass(
         pad=config.data.pad,
     )
     fluidflower.load_experiment(experiment)
+
+    # Plotting
+    plot_folder = config.data.results / "mass"
+    plot_folder.mkdir(parents=True, exist_ok=True)
 
     # ! ---- CONCENTRATION ANALYSIS ---- ! #
 
@@ -69,7 +87,7 @@ def analysis_mass(
         flash=flash,
         co2_mass_analysis=fluidflower.co2_mass_analysis,
     )
-    mass_computation.transformation.load(config.mass.calibration_file)
+    mass_computation.load(config.mass.calibration_file)
 
     # ! ---- VISUALIZATION ----
 
@@ -100,17 +118,17 @@ def analysis_mass(
         # Extract color signal and assign mass
         img = fluidflower.read_image(path)
         color_signal = color_signal_analysis(img)
-        mass = mass_computation(color_signal)
+        mass_analysis_result = mass_computation(color_signal)
+        mass = mass_analysis_result.mass
 
         if show:
             img.show(title=f"Image at {path.stem}", delay=True)
             mass.show(title=f"Mass at {path.stem}", cmap=custom_cmap, delay=False)
 
         if save_npz:
-            path = config.data.results / "mass_analysis" / f"{path.stem}.npz"
+            path = plot_folder / f"{path.stem}.npz"
             mass.save(path)
 
         if save_jpg:
-            path = config.data.results / "mass_analysis" / f"{path.stem}.jpg"
-            path.parent.mkdir(parents=True, exist_ok=True)
+            path = plot_folder / f"{path.stem}.jpg"
             mass.write(path, cmap=custom_cmap, quality=80)

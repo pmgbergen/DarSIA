@@ -21,9 +21,21 @@ def analysis_color_signal(
 ):
     # ! ---- LOAD RUN AND RIG ----
     config = FluidFlowerConfig(path)
-    config.check("analysis")
+    config.check("analysis", "protocol", "data", "color_paths", "color_signal", "rig")
+
+    # Mypy type checking
+    for c in [
+        config.color_signal,
+        config.color_paths,
+        config.data,
+        config.protocol,
+        config.analysis,
+        config.rig,
+    ]:
+        assert c is not None
+
     fluidflower = cls()
-    fluidflower.load(config.data.results / "fluidflower")
+    fluidflower.load(config.rig.path)
 
     # Load experiment
     experiment = darsia.ProtocolledExperiment(

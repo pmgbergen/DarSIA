@@ -21,16 +21,21 @@ def analysis_cropping(
 ):
     # Read data from meta
     config = FluidFlowerConfig(path)
-    config.check("analysis")
+    config.check("analysis", "protocol", "data", "rig")
 
-    # Plotting
-    plot_folder = config.data.results / "cropped_images"
-    plot_folder.mkdir(parents=True, exist_ok=True)
+    # Mypy type checking
+    for c in [
+        config.rig,
+        config.data,
+        config.protocol,
+        config.analysis,
+    ]:
+        assert c is not None
 
     # ! ---- LOAD RIG AND RUN ----
 
     fluidflower = cls()
-    fluidflower.load(config.data.results / "fluidflower")
+    fluidflower.load(config.rig.path)
 
     # Load run
     experiment = darsia.ProtocolledExperiment(
@@ -41,6 +46,10 @@ def analysis_cropping(
         pad=config.data.pad,
     )
     fluidflower.load_experiment(experiment)
+
+    # Plotting
+    plot_folder = config.data.results / "cropped_images"
+    plot_folder.mkdir(parents=True, exist_ok=True)
 
     # Make selection of images to analyze
     if len(config.analysis.image_paths) > 0:

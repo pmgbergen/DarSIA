@@ -80,16 +80,33 @@ def analysis_segmentation(
 ):
     # ! ---- LOAD RUN AND RIG ----
     config = FluidFlowerConfig(path)
-    config.check("analysis", "analysis.segmentation")
+    config.check(
+        "analysis",
+        "analysis.segmentation",
+        "protocol",
+        "data",
+        "color_paths",
+        "color_signal",
+        "mass",
+        "rig",
+    )
 
-    # Plotting
-    plot_folder = config.data.results / "segmentation"
-    plot_folder.mkdir(parents=True, exist_ok=True)
+    # Mypy type checking
+    for c in [
+        config.color_signal,
+        config.color_paths,
+        config.data,
+        config.protocol,
+        config.analysis,
+        config.mass,
+        config.rig,
+    ]:
+        assert c is not None
 
     # ! ---- LOAD RIG AND RUN ----
 
     fluidflower = cls()
-    fluidflower.load(config.data.results / "fluidflower")
+    fluidflower.load(config.rig.path)
 
     # Load experiment
     experiment = darsia.ProtocolledExperiment(
@@ -100,6 +117,10 @@ def analysis_segmentation(
         pad=config.data.pad,
     )
     fluidflower.load_experiment(experiment)
+
+    # Plotting
+    plot_folder = config.data.results / "segmentation"
+    plot_folder.mkdir(parents=True, exist_ok=True)
 
     # ! ---- CONCENTRATION ANALYSIS ---- ! #
 
