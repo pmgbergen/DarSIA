@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def build_parser_for_calibration():
-    parser = argparse.ArgumentParser(description="Setup run.")
+    parser = argparse.ArgumentParser(description="Calibration run.")
     parser.add_argument(
         "--config",
         type=str,
@@ -38,12 +38,12 @@ def build_parser_for_calibration():
         "--all", action="store_true", help="Activate all calibration steps."
     )
     parser.add_argument(
-        "--color-paths", action="store_true", help="Calibrate color paths."
+        "--color-paths", action="store_true", help="Calibrate color paths (step 1)."
     )
     parser.add_argument(
-        "--color-signal", action="store_true", help="Calibrate color signal."
+        "--color-signal", action="store_true", help="Calibrate color signal (step 2)."
     )
-    parser.add_argument("--mass", action="store_true", help="Calibrate mass.")
+    parser.add_argument("--mass", action="store_true", help="Calibrate mass (step 3).")
     parser.add_argument(
         "--show", action="store_true", help="Show the labels after each step."
     )

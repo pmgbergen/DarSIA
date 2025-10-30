@@ -1,4 +1,4 @@
-"""Batch analysis for cropping images."""
+"""User interface to standardized analysis workflows."""
 
 import argparse
 from pathlib import Path
