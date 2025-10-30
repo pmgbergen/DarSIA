@@ -17,3 +17,4 @@ pydicom
 #petsc4py==3.19.0 # from 3.20. there is requirement for Cython>=3.0.0
 pyamg
 shapely
+openlyx
