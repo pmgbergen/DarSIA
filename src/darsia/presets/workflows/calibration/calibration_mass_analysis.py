@@ -61,8 +61,6 @@ def calibration_mass_analysis(cls, path: Path, show: bool = False) -> None:
     reference_label = config.color_paths.reference_label
     ref_color_path = color_paths[reference_label]
     custom_cmap = ref_color_path.get_color_map()
-    # if show:
-    #     ref_color_path.show()
 
     # ! ---- CONCENTRATION ANALYSIS ---- ! #
 
@@ -75,12 +73,6 @@ def calibration_mass_analysis(cls, path: Path, show: bool = False) -> None:
     concentration_analysis.load(config.color_signal.calibration_file)
 
     # ! ---- MASS ----
-
-    ## ! ---- ANALYSIS ----
-    # single_run_analysis = ffum.SingleRunAnalysis(
-    #    run=experiment,
-    #    geometry=fluidflower.geometry,
-    # )
 
     experiment_start = experiment.experiment_start
     flash = darsia.SimpleFlash()  # TODO add restoration?
@@ -102,12 +94,6 @@ def calibration_mass_analysis(cls, path: Path, show: bool = False) -> None:
     )
     if config.mass.calibration_file.exists():
         mass_computation.transformation.load(config.mass.calibration_file)
-
-    # mass_calibration = MassCalibration(
-    #    mass_computation=mass_computation,
-    #    concentration_analysis=concentration_analysis,
-    #    fluidflower=fluidflower,
-    # )
 
     # ! ---- CALIBRATION ----
 
@@ -151,12 +137,9 @@ def calibration_mass_analysis(cls, path: Path, show: bool = False) -> None:
     # Test run
     mass_images = [mass_computation(img) for img in concentration_images]
 
-    for i in range(len(calibration_images), 3):
+    for i in range(len(calibration_images)):
         calibration_images[i].show(title=f"Calibration image {i}", delay=True)
-        concentration_images[i].show(
-            title=f"Concentration image {i}", cmap=custom_cmap, delay=True
-        )
-        mass_images[i].mass.show(title=f"Mass image {i}", delay=True)
+        mass_images[i].mass.show(title=f"Mass image {i}", cmap=custom_cmap, delay=True)
     plt.show()
 
     print("Done. Analysis.")
