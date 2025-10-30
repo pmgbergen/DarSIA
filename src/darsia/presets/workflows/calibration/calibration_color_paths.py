@@ -17,12 +17,18 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
 
     """
     config = FluidFlowerConfig(path)
-    config.check("data", "protocol", "color_paths")
+    config.check("rig", "data", "protocol", "color_paths")
+
+    # Mypy type checking
+    for c in [
+        config.color_paths,
+    ]:
+        assert c is not None
 
     # ! ---- LOAD RUN AND RIG ----
 
     fluidflower = cls()
-    fluidflower.load(config.data.results / "fluidflower")
+    fluidflower.load(config.rig.path)
 
     # Load experiment
     experiment = darsia.ProtocolledExperiment(

@@ -18,9 +18,20 @@ def calibration_color_signal(cls, path: Path, show: bool = False):
     # ! ---- LOAD RUN AND RIG ----
 
     config = FluidFlowerConfig(path)
+    config.check("color_signal", "color_paths", "rig", "data", "protocol")
+
+    # Mypy type checking
+    for c in [
+        config.color_signal,
+        config.color_paths,
+        config.rig,
+        config.data,
+        config.protocol,
+    ]:
+        assert c is not None
 
     fluidflower = cls()
-    fluidflower.load(config.data.results / "fluidflower")
+    fluidflower.load(config.rig.path)
 
     # Load experiment
     experiment = darsia.ProtocolledExperiment(

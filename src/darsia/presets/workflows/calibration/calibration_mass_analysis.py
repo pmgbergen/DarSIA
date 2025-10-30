@@ -9,7 +9,7 @@ from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_analysis import (
     HeterogeneousColorAnalysis,
 )
-from darsia.presets.workflows.mass_computation import MassComputation  # MassCalibration
+from darsia.presets.workflows.mass_computation import MassComputation
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +18,21 @@ def calibration_mass_analysis(cls, path: Path, show: bool = False) -> None:
     # ! ---- LOAD RUN AND RIG ----
 
     config = FluidFlowerConfig(path)
+    config.check("rig", "data", "protocol", "color_paths", "color_signal", "mass")
+
+    # Mypy type checking
+    for c in [
+        config.mass,
+        config.color_signal,
+        config.color_paths,
+        config.data,
+        config.protocol,
+        config.rig,
+    ]:
+        assert c is not None
+
     fluidflower = cls()
-    fluidflower.load(config.data.results / "fluidflower")
+    fluidflower.load(config.rig.path)
 
     # Load experiment
     experiment = darsia.ProtocolledExperiment(
