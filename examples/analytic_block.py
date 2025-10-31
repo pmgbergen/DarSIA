@@ -1,6 +1,13 @@
 import numpy as np
 
-def analytic_solution(block1, block2, x, y):
+def analytic_solution(block1, block2, factor):
+    shape = (factor * 8, factor * 8)
+    voxel_size = [1 / factor, 1 / factor]
+    y, x = np.meshgrid(
+        voxel_size[0] * (0.5 + np.arange(shape[0] - 1, -1, -1)),
+        voxel_size[1] * (0.5 + np.arange(shape[1])),
+        indexing="ij",
+    )
     x_res = np.zeros_like(x, dtype=float)
     y_res = np.zeros_like(y, dtype=float)
     ones_x = np.ones_like(x, dtype=float)
@@ -8,6 +15,7 @@ def analytic_solution(block1, block2, x, y):
 
     dx = block2[0] - block1[0]
     dy = block2[1] - block1[1]
+    analytic_distance = np.sqrt(dx ** 2 + dy ** 2)*(2*block1[2])**2
 
     # Check that the blocks are the same size
     assert block1[2] == block2[2]
@@ -52,5 +60,5 @@ def analytic_solution(block1, block2, x, y):
     scaling3b = scaling3a * 1/e
     x_res[mask3b], y_res[mask3b] = cos * scaling3b * (d+e - dist[mask3b]), sin * scaling3b * (d+e - dist[mask3b])
 
-    return np.stack([x_res, y_res], axis=2)
+    return analytic_distance, np.stack([x_res, y_res], axis=2)
 
