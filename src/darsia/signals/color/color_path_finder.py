@@ -612,21 +612,50 @@ class ColorPathRegression:
 
         # Find the two representative key colors representing the start and end of the path
         # Hardcode the origin to be the first key color.
-        segment_range = range(0, len(sorted_embedding))
-        segment_embedding = sorted_embedding[segment_range]
-        segment_relative_colors = sorted_relative_colors[segment_range]
-        segment_interpolator = LinearRegression().fit(
-            [segment_embedding[0], segment_embedding[-1]],
-            [segment_relative_colors[0], segment_relative_colors[-1]],
-        )
-        segment_error = np.sum(
-            np.linalg.norm(
-                segment_interpolator.predict(segment_embedding)
-                - segment_relative_colors,
-                axis=1,
-                ord=1,
+
+        def fitting_error(segment_range):
+            segment_embedding = sorted_embedding[segment_range]
+            segment_relative_colors = sorted_relative_colors[segment_range]
+            segment_interpolator = LinearRegression().fit(
+                [segment_embedding[0], segment_embedding[-1]],
+                [segment_relative_colors[0], segment_relative_colors[-1]],
             )
-        )
+            segment_error = np.sum(
+                np.linalg.norm(
+                    segment_interpolator.predict(segment_embedding)
+                    - segment_relative_colors,
+                    axis=1,
+                    ord=1,
+                )
+            )
+            return segment_error
+
+        def split_segment(segment_range):
+            # Find the best split point for the selected segment
+            min_error = float("inf")
+            for split_point in range(1, len(segment_range) - 1):
+                left_segment_range = segment_range[:split_point]
+                right_segment_range = segment_range[split_point:]
+                left_error = fitting_error(left_segment_range)
+                right_error = fitting_error(right_segment_range)
+                total_error = max(left_error, right_error)
+
+                # Update the best split if this one is better
+                if total_error < min_error:
+                    min_error = total_error
+
+                    left_segment = {
+                        "range": left_segment_range,
+                        "error": left_error,
+                    }
+                    right_segment = {
+                        "range": right_segment_range,
+                        "error": right_error,
+                    }
+            return left_segment, right_segment
+
+        segment_range = range(0, len(sorted_embedding))
+        segment_error = fitting_error(segment_range)
         segment = {
             "range": segment_range,
             "error": segment_error,
@@ -650,75 +679,39 @@ class ColorPathRegression:
             )
             segment_to_split = eligible_segments[segment_to_split_index]
 
-            # Find the best split point for the selected segment
-            min_error = float("inf")
+            # Split the segment
+            left_segment, right_segment = split_segment(segment_to_split["range"])
 
-            for split_point in range(1, len(segment_to_split["range"]) - 1):
-                left_segment_range = segment_to_split["range"][:split_point]
-                right_segment_range = segment_to_split["range"][split_point:]
-                left_segment_embedding = sorted_embedding[left_segment_range]
-                right_segment_embedding = sorted_embedding[right_segment_range]
-                left_segment_relative_colors = sorted_relative_colors[
-                    left_segment_range
-                ]
-                right_segment_relative_colors = sorted_relative_colors[
-                    right_segment_range
-                ]
-
-                # Fit models to both sides
-                left_segment_interpolator = LinearRegression().fit(
-                    [left_segment_embedding[0], left_segment_embedding[-1]],
-                    [left_segment_relative_colors[0], left_segment_relative_colors[-1]],
-                )
-                right_segment_interpolator = LinearRegression().fit(
-                    [right_segment_embedding[0], right_segment_embedding[-1]],
-                    [
-                        right_segment_relative_colors[0],
-                        right_segment_relative_colors[-1],
-                    ],
-                )
-
-                # Compute the error for this split
-                left_error = np.sum(
-                    np.linalg.norm(
-                        left_segment_interpolator.predict(left_segment_embedding)
-                        - left_segment_relative_colors,
-                        axis=1,
-                        ord=1,
-                    )
-                )
-                right_error = np.sum(
-                    np.linalg.norm(
-                        right_segment_interpolator.predict(right_segment_embedding)
-                        - right_segment_relative_colors,
-                        axis=1,
-                        ord=1,
-                    )
-                )
-                total_error = max(left_error, right_error)
-
-                # Update the best split if this one is better
-                if total_error < min_error:
-                    min_error = total_error
-
-                    left_segment = {
-                        "range": left_segment_range,
-                        "error": left_error,
-                    }
-                    right_segment = {
-                        "range": right_segment_range,
-                        "error": right_error,
-                    }
             # Replace the selected segment with the two new segments
             global_segment_to_split_index = segments.index(segment_to_split)
             segments[global_segment_to_split_index] = left_segment
             segments.insert(global_segment_to_split_index + 1, right_segment)
+
+        # Improve segments by re-evaluating their error
+        # Hard-code 10 smoothing steps (these are not expensive)
+        for _ in range(10):
+            for i, segment in enumerate(segments):
+                if i == len(segments) - 1:
+                    continue  # Last segment, nothing to do
+                # Combine segment with neighbor segments
+                combined_range = range(
+                    segment["range"].start, segments[i + 1]["range"].stop
+                )
+                if len(combined_range) < 3:
+                    # Not enough points to split
+                    continue
+                # Find the best split point again
+                left_segment, right_segment = split_segment(combined_range)
+                # Replace segments
+                segments[i] = left_segment
+                segments[i + 1] = right_segment
 
         # Extract the key relative colors from the segments
         key_relative_colors: list[np.ndarray] = [
             sorted_relative_colors[segment["range"].start] for segment in segments
         ] + [sorted_relative_colors[segments[-1]["range"].stop - 1]]
 
+        # Determine the maximum error for information
         max_error = max(seg["error"] for seg in segments)
 
         if key_relative_colors == []:
