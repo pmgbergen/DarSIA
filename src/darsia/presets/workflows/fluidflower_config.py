@@ -232,6 +232,8 @@ class FluidFlowerProtocolConfig:
 
 @dataclass
 class ColorPathsConfig:
+    num_segments: int = 1
+    """Number of segments for the color path."""
     ignore_labels: list[int] = field(default_factory=list)
     """List of labels to ignore in color analysis."""
     resolution: tuple[int, int, int] = (51, 51, 51)
@@ -251,8 +253,10 @@ class ColorPathsConfig:
 
     def load(self, path: Path, section: str) -> "ColorPathsConfig":
         """Load color paths config from a toml file from [section]."""
-        data = tomllib.loads(path.read_text())
-        sec = _get_section(data, section)
+        sec = _get_section_from_toml(path, "color_paths")
+        self.num_segments = _get_key(
+            sec, "num_segments", default=1, required=False, type_=int
+        )
         self.ignore_labels = _get_key(sec, "ignore_labels", required=False, type_=list)
         self.resolution = _get_key(
             sec, "resolution", default=(51,) * 3, required=False, type_=tuple

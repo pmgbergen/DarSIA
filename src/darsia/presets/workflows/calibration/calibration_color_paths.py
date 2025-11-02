@@ -90,6 +90,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
         color_path[label] = color_path_regression.find_relative_color_path(
             spectrum=spectrum,
             base_color_spectrum=baseline_color_spectrum.get(label, None),
+            num_segments=config.color_paths.num_segments,
             verbose=show,
             plot_title=f"Color Path Analysis - Label {label}",
         )

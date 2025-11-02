@@ -539,7 +539,7 @@ class ColorPathRegression:
         self,
         spectrum: ColorSpectrum,
         base_color_spectrum: ColorSpectrum | None = None,
-        num_dofs: int = 3,
+        num_segments: int = 1,
         verbose: bool = False,
         **kwargs,
     ) -> darsia.ColorPath:
@@ -548,13 +548,16 @@ class ColorPathRegression:
         Args:
             spectrum (ColorSpectrum): The color spectrum to analyze.
             base_color_spectrum (ColorSpectrum | None): The baseline color spectrum to ignore.
-            num_dofs (int): The number of degrees of freedom for the color path.
+            num_segments (int): The number of segments for the color path.
             verbose (bool): Whether to print additional information.
 
         Returns:
             darsia.ColorPath: The relative color path through the significant boxes.
 
         """
+        # Step 0: Prepare
+        num_dofs = num_segments + 1
+
         # Step 1: Extract spectrum and convert to relative colors in the range [-1.5, 1.5]
         x_points, y_points, z_points = np.where(spectrum.spectrum)
         relative_colors = (
