@@ -539,14 +539,17 @@ class ColorPathRegression:
         self,
         spectrum: ColorSpectrum,
         base_color_spectrum: ColorSpectrum | None = None,
+        num_dofs: int = 3,
         verbose: bool = False,
         **kwargs,
     ) -> darsia.ColorPath:
         """Find a relative color path through the significant boxes.
 
         Args:
-            significant_voxels (np.ndarray): A boolean array indicating significant boxes.
-            base_color (np.ndarray): The base color to use for the color path.
+            spectrum (ColorSpectrum): The color spectrum to analyze.
+            base_color_spectrum (ColorSpectrum | None): The baseline color spectrum to ignore.
+            num_dofs (int): The number of degrees of freedom for the color path.
+            verbose (bool): Whether to print additional information.
 
         Returns:
             darsia.ColorPath: The relative color path through the significant boxes.
@@ -564,17 +567,14 @@ class ColorPathRegression:
         absolute_colors = spectrum.base_color + relative_colors
         num_points = relative_colors.shape[0]
 
-        # Check for empty color path
-        if num_points == 0:
-            logger.info(
-                """Empty color or path found. """
-                """Returning default color path."""
-            )
+        # Check for empty color path - need at least two points to define a path
+        if num_points <= 1:
+            logger.info("""Empty color or path found. Returning default color path.""")
             return darsia.ColorPath(
                 colors=None,
-                relative_colors=[np.zeros(3), np.zeros(3)],
+                relative_colors=num_dofs * [np.zeros(3)],
                 base_color=spectrum.base_color,
-                values=[0.0, 1.0],
+                values=np.linspace(0.0, 1.0, num_dofs).tolist(),
                 mode="rgb",
             )
 
@@ -619,52 +619,72 @@ class ColorPathRegression:
         sorted_relative_colors = relative_colors[sorted_indices]
         sorted_weights = weights[sorted_indices]
 
-        # Step 4a: Fit two line segments and find best split through weighted LS (brute-force search)
-        # Step 4b: Extract three representative key colors
+        # Step 4a: Fit num_dofs-1 line segments and find best split through weighted LS (brute-force search)
+        # Step 4b: Extract num_dofs representative key colors
         min_error = float("inf")
-        best_split = None
-        key_relative_colors = []
+        # best_split = None
+        key_relative_colors: list[np.ndarray] = []
         min_length_segment = 10  # Avoid too short segments
-        for i in range(min_length_segment, len(sorted_embedding) - min_length_segment):
-            x1, y1 = sorted_embedding[:i], sorted_relative_colors[:i]
-            x2, y2 = sorted_embedding[i - 1 :], sorted_relative_colors[i - 1 :]
-            weight1 = sorted_weights[:i]
-            weight2 = sorted_weights[i - 1 :]
-            model1 = LinearRegression().fit(x1, y1, weight1)
-            model2 = LinearRegression().fit(x2, y2, weight2)
-            l2_error = (
-                np.sum(weight1 * np.linalg.norm(model1.predict(x1) - y1, axis=1) ** 2)
-                + np.sum(weight2 * np.linalg.norm(model2.predict(x2) - y2, axis=1) ** 2)
-            ) / np.sum(np.concatenate((weight1, weight2)))
-            l_inf_error = (
-                np.max(weight1 * np.linalg.norm(model1.predict(x1) - y1, axis=1) ** 2)
-                + np.max(weight2 * np.linalg.norm(model2.predict(x2) - y2, axis=1) ** 2)
-            ) / 2
+        for i in range(
+            min_length_segment, len(sorted_embedding) - min_length_segment, 3
+        ):
+            indices = [range(0, i), range(i - 1, len(sorted_embedding))]
+            x = [sorted_embedding[inds] for inds in indices]
+            y = [sorted_relative_colors[inds] for inds in indices]
+            weight = [sorted_weights[inds] for inds in indices]
+            model = [
+                LinearRegression().fit(x[j], y[j], weight[j])
+                for j in range(num_dofs - 1)
+            ]
+            l2_error = 0.0
+            l_inf_error = 0.0
+            for j in range(num_dofs - 1):
+                l2_error += np.sum(
+                    weight[j]
+                    * np.linalg.norm(model[j].predict(x[j]) - y[j], axis=1) ** 2
+                )
+                l_inf_error += np.max(
+                    weight[j]
+                    * np.linalg.norm(model[j].predict(x[j]) - y[j], axis=1) ** 2
+                )
+            l2_error /= np.sum(np.concatenate((weight[0], weight[1])))
+            l_inf_error /= num_dofs - 1
             error = l_inf_error + l2_error
 
             # Check if the error is smaller than the minimum error found so far
             # and update the best split and identified colors if so
             if error < min_error:
                 min_error = error
-                best_split = i
-                inter_embedding = sorted_embedding[best_split]
-                inter_prediction = 0.5 * (
-                    model1.predict(np.array([inter_embedding]))[0]
-                    + model2.predict(np.array([inter_embedding]))[0]
+                key_relative_colors = []
+                # Add the start color
+                key_relative_colors.append(
+                    model[0].predict(sorted_embedding[0].reshape(1, -1))[0]
                 )
-                key_relative_colors = [
-                    model1.predict(np.array([sorted_embedding[0]]))[0],
-                    inter_prediction,
-                    model2.predict(np.array([sorted_embedding[-1]]))[0],
-                ]
+
+                # Add intermediate colors
+                for j in range(1, num_dofs - 1):
+                    best_split_j = indices[j - 1].stop
+                    inter_embedding = sorted_embedding[best_split_j].reshape(1, -1)
+                    inter_prediction = np.mean(
+                        [
+                            model[j - 1].predict(inter_embedding)[0],
+                            model[j].predict(inter_embedding)[0],
+                        ],
+                        axis=0,
+                    )
+                    key_relative_colors.append(inter_prediction)
+                # Add the end color
+                key_relative_colors.append(
+                    model[-1].predict(sorted_embedding[-1].reshape(1, -1))[0]
+                )
 
         if key_relative_colors == []:
             logger.info("No key colors found. Returning default color path.")
             return darsia.ColorPath(
                 colors=None,
-                relative_colors=[np.zeros(3), np.zeros(3)],
+                relative_colors=num_dofs * [np.zeros(3)],
                 base_color=spectrum.base_color,
-                values=[0.0, 1.0],
+                values=np.linspace(0.0, 1.0, num_dofs).tolist(),
                 mode="rgb",
             )
 
@@ -700,7 +720,7 @@ class ColorPathRegression:
                 s=10,
                 alpha=0.5,
             )
-            if np.array(key_relative_colors).shape[0] == 3:
+            if np.array(key_relative_colors).shape[0] == num_dofs:
                 ax.plot(*np.array(key_relative_colors).T, c="black", linewidth=2)
                 ax.scatter(
                     *np.array(key_relative_colors).T,
