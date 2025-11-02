@@ -582,38 +582,10 @@ class ColorPathRegression:
                 mode="rgb",
             )
 
-        # Choose weights based on distance to base_color_spectrum.spectrum
-        if base_color_spectrum is not None:
-            x_points_base, y_points_base, z_points_base = np.where(
-                base_color_spectrum.spectrum
-            )
-            # Define distance for each active relative color to the baseline spectrum
-            distances = np.array(
-                [
-                    np.min(
-                        np.linalg.norm(
-                            np.vstack((x_points_base, y_points_base, z_points_base)).T
-                            - np.array((x, y, z), dtype=int)[np.newaxis, :],
-                            ord=2,
-                            axis=1,
-                        ),
-                    )
-                    ** 2
-                    for x, y, z in zip(x_points, y_points, z_points)
-                ]
-            )
-            # Define weights as distance and divide by max distance
-            weights = distances / np.max(distances)
-        else:
-            weights = np.ones(relative_colors.shape[0])
-
         # Add origin to relative colors and use high weight 1.
         origin = np.zeros(3)
         relative_colors = np.vstack((relative_colors, origin))
         absolute_colors = np.vstack((absolute_colors, spectrum.base_color))
-        weights = np.hstack((weights, np.max(weights)))
-        weights[:] = 1.0
-        # TODO: consider removing weights altogether
 
         # Step 2: Reduce to 1D using Locally Linear Embedding
         n_neighbors = min(10, num_points - 1)
@@ -624,7 +596,6 @@ class ColorPathRegression:
         sorted_indices = np.argsort(embedding[:, 0])
         sorted_embedding = embedding[sorted_indices]
         sorted_relative_colors = relative_colors[sorted_indices]
-        sorted_weights = weights[sorted_indices]
 
         # Step 3.2: Identify "left" part from origin and remove it
         origin_index = np.where(np.all(sorted_relative_colors == origin, axis=1))[0][0]
@@ -633,10 +604,8 @@ class ColorPathRegression:
             origin_index = len(sorted_relative_colors) - origin_index - 1
             sorted_embedding = np.flip(sorted_embedding, axis=0)
             sorted_relative_colors = np.flip(sorted_relative_colors, axis=0)
-            sorted_weights = np.flip(sorted_weights, axis=0)
         sorted_embedding = sorted_embedding[origin_index:, :]
         sorted_relative_colors = sorted_relative_colors[origin_index:, :]
-        sorted_weights = sorted_weights[origin_index:]
 
         # Initialize segments
         segments = []
@@ -646,22 +615,17 @@ class ColorPathRegression:
         segment_range = range(0, len(sorted_embedding))
         segment_embedding = sorted_embedding[segment_range]
         segment_relative_colors = sorted_relative_colors[segment_range]
-        segment_weights = sorted_weights[segment_range]
         segment_interpolator = LinearRegression().fit(
             [segment_embedding[0], segment_embedding[-1]],
             [segment_relative_colors[0], segment_relative_colors[-1]],
         )
-        segment_error = np.sqrt(
-            np.sum(
-                segment_weights
-                * np.linalg.norm(
-                    segment_interpolator.predict(segment_embedding)
-                    - segment_relative_colors,
-                    axis=1,
-                )
-                ** 2
+        segment_error = np.sum(
+            np.linalg.norm(
+                segment_interpolator.predict(segment_embedding)
+                - segment_relative_colors,
+                axis=1,
+                ord=1,
             )
-            / np.sum(segment_weights)
         )
         segment = {
             "range": segment_range,
@@ -700,8 +664,6 @@ class ColorPathRegression:
                 right_segment_relative_colors = sorted_relative_colors[
                     right_segment_range
                 ]
-                left_segment_weights = sorted_weights[left_segment_range]
-                right_segment_weights = sorted_weights[right_segment_range]
 
                 # Fit models to both sides
                 left_segment_interpolator = LinearRegression().fit(
@@ -717,29 +679,21 @@ class ColorPathRegression:
                 )
 
                 # Compute the error for this split
-                left_error = np.sqrt(
-                    np.sum(
-                        left_segment_weights
-                        * np.linalg.norm(
-                            left_segment_interpolator.predict(left_segment_embedding)
-                            - left_segment_relative_colors,
-                            axis=1,
-                        )
-                        ** 2
+                left_error = np.sum(
+                    np.linalg.norm(
+                        left_segment_interpolator.predict(left_segment_embedding)
+                        - left_segment_relative_colors,
+                        axis=1,
+                        ord=1,
                     )
-                    / np.sum(left_segment_weights)
                 )
-                right_error = np.sqrt(
-                    np.sum(
-                        right_segment_weights
-                        * np.linalg.norm(
-                            right_segment_interpolator.predict(right_segment_embedding)
-                            - right_segment_relative_colors,
-                            axis=1,
-                        )
-                        ** 2
+                right_error = np.sum(
+                    np.linalg.norm(
+                        right_segment_interpolator.predict(right_segment_embedding)
+                        - right_segment_relative_colors,
+                        axis=1,
+                        ord=1,
                     )
-                    / np.sum(right_segment_weights)
                 )
                 total_error = max(left_error, right_error)
 
