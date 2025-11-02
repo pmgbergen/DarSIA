@@ -346,10 +346,15 @@ class ColorPath:
         """
         if isinstance(image, np.ndarray):
             return self._parametrize_colors(image, self.relative_colors)
-        if isinstance(image, darsia.Image):
+        elif isinstance(image, darsia.Image):
             return darsia.ScalarImage(
                 self._parametrize_colors(image.img, self.relative_colors),
                 **image.metadata(),
+            )
+        else:
+            raise TypeError(
+                """"Input image must be of type np.ndarray or darsia.Image, """
+                f"""got {type(image)}."""
             )
 
     def to_dict(self) -> dict:
