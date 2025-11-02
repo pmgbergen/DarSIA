@@ -10,6 +10,7 @@ from sklearn.manifold import LocallyLinearEmbedding
 from dataclasses import dataclass
 from time import time
 from functools import wraps
+from warnings import warn
 
 import darsia
 
@@ -607,9 +608,12 @@ class ColorPathRegression:
             weights = np.ones(relative_colors.shape[0])
 
         # Add origin to relative colors and use high weight 1.
-        relative_colors = np.vstack((relative_colors, np.zeros(3)))
+        origin = np.zeros(3)
+        relative_colors = np.vstack((relative_colors, origin))
         absolute_colors = np.vstack((absolute_colors, spectrum.base_color))
-        weights = np.hstack((weights, 1.0))
+        weights = np.hstack((weights, np.max(weights)))
+        weights[:] = 1.0
+        # TODO: consider removing weights altogether
 
         # Step 2: Reduce to 1D using Locally Linear Embedding
         n_neighbors = min(10, num_points - 1)
@@ -622,64 +626,146 @@ class ColorPathRegression:
         sorted_relative_colors = relative_colors[sorted_indices]
         sorted_weights = weights[sorted_indices]
 
-        # Step 4a: Fit num_dofs-1 line segments and find best split through weighted LS (brute-force search)
-        # Step 4b: Extract num_dofs representative key colors
-        min_error = float("inf")
-        # best_split = None
-        key_relative_colors: list[np.ndarray] = []
-        min_length_segment = 10  # Avoid too short segments
-        for i in range(
-            min_length_segment, len(sorted_embedding) - min_length_segment, 3
-        ):
-            indices = [range(0, i), range(i - 1, len(sorted_embedding))]
-            x = [sorted_embedding[inds] for inds in indices]
-            y = [sorted_relative_colors[inds] for inds in indices]
-            weight = [sorted_weights[inds] for inds in indices]
-            model = [
-                LinearRegression().fit(x[j], y[j], weight[j])
-                for j in range(num_dofs - 1)
-            ]
-            l2_error = 0.0
-            l_inf_error = 0.0
-            for j in range(num_dofs - 1):
-                l2_error += np.sum(
-                    weight[j]
-                    * np.linalg.norm(model[j].predict(x[j]) - y[j], axis=1) ** 2
-                )
-                l_inf_error += np.max(
-                    weight[j]
-                    * np.linalg.norm(model[j].predict(x[j]) - y[j], axis=1) ** 2
-                )
-            l2_error /= np.sum(np.concatenate((weight[0], weight[1])))
-            l_inf_error /= num_dofs - 1
-            error = l_inf_error + l2_error
+        # Step 3.2: Identify "left" part from origin and remove it
+        origin_index = np.where(np.all(sorted_relative_colors == origin, axis=1))[0][0]
+        # Assume origin to be close to the extreme left, if exreme right, flip everything
+        if origin_index > len(sorted_relative_colors) // 2:
+            origin_index = len(sorted_relative_colors) - origin_index - 1
+            sorted_embedding = np.flip(sorted_embedding, axis=0)
+            sorted_relative_colors = np.flip(sorted_relative_colors, axis=0)
+            sorted_weights = np.flip(sorted_weights, axis=0)
+        sorted_embedding = sorted_embedding[origin_index:, :]
+        sorted_relative_colors = sorted_relative_colors[origin_index:, :]
+        sorted_weights = sorted_weights[origin_index:]
 
-            # Check if the error is smaller than the minimum error found so far
-            # and update the best split and identified colors if so
-            if error < min_error:
-                min_error = error
-                key_relative_colors = []
-                # Add the start color
-                key_relative_colors.append(
-                    model[0].predict(sorted_embedding[0].reshape(1, -1))[0]
+        # Initialize segments
+        segments = []
+
+        # Find the two representative key colors representing the start and end of the path
+        # Hardcode the origin to be the first key color.
+        segment_range = range(0, len(sorted_embedding))
+        segment_embedding = sorted_embedding[segment_range]
+        segment_relative_colors = sorted_relative_colors[segment_range]
+        segment_weights = sorted_weights[segment_range]
+        segment_interpolator = LinearRegression().fit(
+            [segment_embedding[0], segment_embedding[-1]],
+            [segment_relative_colors[0], segment_relative_colors[-1]],
+        )
+        segment_error = np.sqrt(
+            np.sum(
+                segment_weights
+                * np.linalg.norm(
+                    segment_interpolator.predict(segment_embedding)
+                    - segment_relative_colors,
+                    axis=1,
+                )
+                ** 2
+            )
+            / np.sum(segment_weights)
+        )
+        segment = {
+            "range": segment_range,
+            "error": segment_error,
+        }
+        segments.append(segment)
+
+        # Perform a Ramer-Douglas-Peucker-like segmentation based on weighted least squares
+        # error reduction
+        while len(segments) < num_segments:
+            # Eligible segments are those with at least 3 points
+            eligible_segments = [seg for seg in segments if len(seg["range"]) > 2]
+
+            # Stop if no segment can be split further
+            if len(eligible_segments) == 0:
+                warn("Cannot split segments further. Stopping early.")
+                break
+
+            # Identify the segment with the highest error, it needs to have at least 3 points
+            segment_to_split_index = np.argmax(
+                [seg["error"] for seg in eligible_segments]
+            )
+            segment_to_split = eligible_segments[segment_to_split_index]
+
+            # Find the best split point for the selected segment
+            min_error = float("inf")
+
+            for split_point in range(1, len(segment_to_split["range"]) - 1):
+                left_segment_range = segment_to_split["range"][:split_point]
+                right_segment_range = segment_to_split["range"][split_point:]
+                left_segment_embedding = sorted_embedding[left_segment_range]
+                right_segment_embedding = sorted_embedding[right_segment_range]
+                left_segment_relative_colors = sorted_relative_colors[
+                    left_segment_range
+                ]
+                right_segment_relative_colors = sorted_relative_colors[
+                    right_segment_range
+                ]
+                left_segment_weights = sorted_weights[left_segment_range]
+                right_segment_weights = sorted_weights[right_segment_range]
+
+                # Fit models to both sides
+                left_segment_interpolator = LinearRegression().fit(
+                    [left_segment_embedding[0], left_segment_embedding[-1]],
+                    [left_segment_relative_colors[0], left_segment_relative_colors[-1]],
+                )
+                right_segment_interpolator = LinearRegression().fit(
+                    [right_segment_embedding[0], right_segment_embedding[-1]],
+                    [
+                        right_segment_relative_colors[0],
+                        right_segment_relative_colors[-1],
+                    ],
                 )
 
-                # Add intermediate colors
-                for j in range(1, num_dofs - 1):
-                    best_split_j = indices[j - 1].stop
-                    inter_embedding = sorted_embedding[best_split_j].reshape(1, -1)
-                    inter_prediction = np.mean(
-                        [
-                            model[j - 1].predict(inter_embedding)[0],
-                            model[j].predict(inter_embedding)[0],
-                        ],
-                        axis=0,
+                # Compute the error for this split
+                left_error = np.sqrt(
+                    np.sum(
+                        left_segment_weights
+                        * np.linalg.norm(
+                            left_segment_interpolator.predict(left_segment_embedding)
+                            - left_segment_relative_colors,
+                            axis=1,
+                        )
+                        ** 2
                     )
-                    key_relative_colors.append(inter_prediction)
-                # Add the end color
-                key_relative_colors.append(
-                    model[-1].predict(sorted_embedding[-1].reshape(1, -1))[0]
+                    / np.sum(left_segment_weights)
                 )
+                right_error = np.sqrt(
+                    np.sum(
+                        right_segment_weights
+                        * np.linalg.norm(
+                            right_segment_interpolator.predict(right_segment_embedding)
+                            - right_segment_relative_colors,
+                            axis=1,
+                        )
+                        ** 2
+                    )
+                    / np.sum(right_segment_weights)
+                )
+                total_error = max(left_error, right_error)
+
+                # Update the best split if this one is better
+                if total_error < min_error:
+                    min_error = total_error
+
+                    left_segment = {
+                        "range": left_segment_range,
+                        "error": left_error,
+                    }
+                    right_segment = {
+                        "range": right_segment_range,
+                        "error": right_error,
+                    }
+            # Replace the selected segment with the two new segments
+            global_segment_to_split_index = segments.index(segment_to_split)
+            segments[global_segment_to_split_index] = left_segment
+            segments.insert(global_segment_to_split_index + 1, right_segment)
+
+        # Extract the key relative colors from the segments
+        key_relative_colors: list[np.ndarray] = [
+            sorted_relative_colors[segment["range"].start] for segment in segments
+        ] + [sorted_relative_colors[segments[-1]["range"].stop - 1]]
+
+        max_error = max(seg["error"] for seg in segments)
 
         if key_relative_colors == []:
             logger.info("No key colors found. Returning default color path.")
@@ -691,17 +777,7 @@ class ColorPathRegression:
                 mode="rgb",
             )
 
-        # Step 5: Make relative colors unique
-        # Sort key colors by their distance to the origin
-        if np.linalg.norm(key_relative_colors[0]) > np.linalg.norm(
-            key_relative_colors[-1]
-        ):
-            key_relative_colors.reverse()
-
-        # Replace first key color by the origin
-        key_relative_colors[0] = np.zeros(3)
-
-        # Define the corresponding absolute colors
+        # Step 5: Define the corresponding absolute colors
         key_absolute_colors = [spectrum.base_color + c for c in key_relative_colors]
 
         # Step 6: Verbose output
