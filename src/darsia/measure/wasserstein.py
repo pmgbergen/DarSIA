@@ -1196,19 +1196,20 @@ class VariationalWassersteinDistance(darsia.EMD):
             # NOTE: It is implicitly assumed that the lagrange multiplier is zero
             # in the constrained cell. This is not checked here. And no update is
             # performed.
-            if previous_solution is not None and (
-                abs(
-                    previous_solution[
-                        self.grid.num_faces + self.constrained_cell_flat_index
-                    ]
-                )
-                > 1e-6
-            ):
-                raise NotImplementedError(
-                    "Implementation requires solution satisfy the constraint."
-                )
+            # if previous_solution is not None and (
+            #     abs(
+            #         previous_solution[
+            #             self.grid.num_faces + self.constrained_cell_flat_index
+            #         ]
+            #     )
+            #     > 1e-6
+            # ):
+            #     raise NotImplementedError(
+            #         "Implementation requires solution satisfy the constraint."
+            #     )
 
             # 1. Reduce flux block
+            start = time.time()
             if setup_linear_solver:
                 self.matrix_flux_inv, self.reduced_matrix = (
                     self.set_Jinv_and_reduced_jacobian(matrix)
@@ -1224,6 +1225,8 @@ class VariationalWassersteinDistance(darsia.EMD):
                 self.reduced_matrix,
                 self.reduced_rhs,
             )
+            end = time.time()
+            print("Time to reduce to pure pressure system:", end - start)
 
             # 3. Build linear solver for pure pressure system
             if setup_linear_solver:
@@ -1378,8 +1381,8 @@ class VariationalWassersteinDistance(darsia.EMD):
         # Rhs is not affected by Gauss elimination as it is assumed that the residual
         # is zero in the constrained cell, and the pressure is zero there as well.
         # If not, we need to do a proper Gauss elimination on the right hand side!
-        if abs(reduced_residual[-1]) > 1e-6:
-            raise NotImplementedError("Implementation requires residual to be zero.")
+        #if abs(reduced_residual[-1]) > 1e-6:
+        #    raise NotImplementedError("Implementation requires residual to be zero.")
         fully_reduced_residual = reduced_residual[
             self.fully_reduced_system_indices
         ].copy()
@@ -1668,7 +1671,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
         for iter in range(num_iter):
             # It is possible that the linear solver fails. In this case, we simply
             # stop the iteration and return the current solution.
-            try:
+            if True:#try:
                 # Keep track of old flux, and old distance
                 old_solution_i = solution_i.copy()
                 flux = solution_i[self.flux_slice]
@@ -1797,7 +1800,7 @@ class WassersteinDistanceNewton(VariationalWassersteinDistance):
                         )
                     ):
                         break
-            except Exception:
+            else:#except Exception:
                 warnings.warn("Newton iteration abruptly stopped due to some error.")
                 break
 
