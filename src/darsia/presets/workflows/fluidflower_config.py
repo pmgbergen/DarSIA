@@ -43,23 +43,24 @@ def _convert_none(v):
 
 
 @dataclass
-class FluidFlowerSpecs:
-    """Specifications for the FluidFlower setup."""
+class FluidFlowerRigConfig:
+    """Specifications for the FluidFlower rig."""
 
     width: float = 0  # in meters
-    """Width of the FluidFlower setup in meters."""
+    """Width of the FluidFlower rig in meters."""
     height: float = 0  # in meters
-    """Height of the FluidFlower setup in meters."""
+    """Height of the FluidFlower rig in meters."""
     dim: int = 2  # spatial dimension (2 or 3)
     """Spatial dimension (2 or 3)."""
     porosity: float = 0  # porosity of the medium
     """Porosity of the medium."""
     resolution: tuple[int, int] = (500, 1000)
     """Default resolution for images (height, width)."""
+    path: Path = field(default_factory=Path)
+    """Path to the rig cache file."""
 
-    def load(self, path: Path, section: str) -> "FluidFlowerSpecs":
-        data = tomllib.loads(path.read_text())
-        sec = _get_section(data, section)
+    def load(self, path: Path, results: Path | None = None) -> "FluidFlowerRigConfig":
+        sec = _get_section_from_toml(path, "rig")
         self.width = _get_key(sec, "width", required=True, type_=float)
         self.height = _get_key(sec, "height", required=True, type_=float)
         self.dim = _get_key(sec, "dim", required=True, type_=int)
@@ -67,6 +68,11 @@ class FluidFlowerSpecs:
         self.resolution = _get_key(
             sec, "resolution", default=(500, 1000), required=False, type_=tuple
         )
+        self.path = _get_key(sec, "path", required=False, type_=Path)
+        if not self.path:
+            assert results is not None
+            self.path = results / "setup" / "rig"
+
         return self
 
     def error(self):
@@ -74,7 +80,7 @@ class FluidFlowerSpecs:
 
 
 @dataclass
-class FluidFlowerData:
+class FluidFlowerDataConfig:
     """Data for the FluidFlower setup.
 
     Example for TOML section:
@@ -100,17 +106,16 @@ class FluidFlowerData:
     results: Path = field(default_factory=Path)
     """Path to the results folder."""
 
-    def load(self, path: Path) -> "FluidFlowerData":
-        data = tomllib.loads(path.read_text())
-        sec = _get_section(data, "data")
-        self.format = sec.get("format", "JPG")
+    def load(self, path: Path) -> "FluidFlowerDataConfig":
+        sec = _get_section_from_toml(path, "data")
         self.folder = _get_key(sec, "folder", required=True, type_=Path)
-        self.data = list(sorted(self.folder.glob(f"*.{self.format}")))
         self.baseline = self.folder / _get_key(
             sec, "baseline", required=True, type_=Path
         )
-        self.pad = _get_key(sec, "pad", required=True, type_=int)
+        self.data = list(sorted(self.folder.glob(f"*{self.baseline.suffix}")))
         self.results = _get_key(sec, "results", required=True, type_=Path)
+        numeric_part = "".join(filter(str.isdigit, self.baseline.stem))
+        self.pad = len(numeric_part) if numeric_part else 0
         return self
 
     def error(self):
@@ -130,17 +135,21 @@ class FluidFlowerLabelingConfig:
     labels: Path = field(default_factory=Path)
     """Path to the labels file."""
 
-    def load(self, path: Path, section: str) -> "FluidFlowerLabelingConfig":
+    def load(
+        self, path: Path, results: Path | None = None
+    ) -> "FluidFlowerLabelingConfig":
         """Load labeling config from a toml file from [section]."""
-        data = tomllib.loads(path.read_text())
-        sec = _get_section(data, section)
+        sec = _get_section_from_toml(path, "labeling")
         self.colored_image = _get_key(sec, "colored_image", required=True, type_=Path)
         self.unite_labels = _get_key(sec, "unite_labels", required=False, type_=list)
         self.water_label = _get_key(sec, "water_label", required=False, type_=int)
         self.colorchecker_label = _get_key(
             sec, "colorchecker_label", required=False, type_=int
         )
-        self.labels = _get_key(sec, "labels", required=True, type_=Path)
+        self.labels = _get_key(sec, "labels", required=False, type_=Path)
+        if not self.labels:
+            assert results is not None
+            self.labels = results / "setup" / "labels.npz"
         return self
 
     def error(self):
@@ -154,12 +163,14 @@ class FluidFlowerDepthConfig:
     depth_map: Path = field(default_factory=Path)
     """Path to the depth map file."""
 
-    def load(self, path: Path, section: str) -> "FluidFlowerDepthConfig":
+    def load(self, path: Path, results: Path | None = None) -> "FluidFlowerDepthConfig":
         """Load depth config from a toml file from [section]."""
-        data = tomllib.loads(path.read_text())
-        sec = _get_section(data, section)
+        sec = _get_section_from_toml(path, "depth")
         self.measurements = _get_key(sec, "measurements", required=True, type_=Path)
-        self.depth_map = _get_key(sec, "depth_map", required=True, type_=Path)
+        self.depth_map = _get_key(sec, "depth_map", required=False, type_=Path)
+        if not self.depth_map:
+            assert results is not None
+            self.depth_map = results / "setup" / "depth_map.npz"
         return self
 
     def error(self):
@@ -177,9 +188,8 @@ class FluidFlowerProtocolConfig:
     pressure_temperature: str | tuple[Path, str] | None = None
     """Path to the pressure-temperature protocol file or (file, sheet)."""
 
-    def load(self, path: Path, section: str) -> "FluidFlowerProtocolConfig":
-        data = tomllib.loads(path.read_text())
-        sec = _get_section(data, section)
+    def load(self, path: Path) -> "FluidFlowerProtocolConfig":
+        sec = _get_section_from_toml(path, "protocols")
         try:
             imaging_protocol = sec["imaging"]
             if isinstance(imaging_protocol, list):
@@ -254,16 +264,22 @@ class ColorPathsConfig:
     """Threshold for baseline images."""
     threshold_calibration: float = 0.0
     """Threshold for calibration images."""
-    baseline_images: list[Path] = field(default_factory=list[Path])
+    baseline_image_paths: list[Path] = field(default_factory=list[Path])
     """List of image paths used for baseline."""
-    calibration_images: list[Path] = field(default_factory=list[Path])
+    baseline_image_times: list[float] = field(default_factory=list[float])
+    """List of image times used for baseline."""
+    calibration_image_paths: list[Path] = field(default_factory=list[Path])
     """List of image paths used for calibration."""
+    calibration_image_times: list[float] = field(default_factory=list[float])
+    """List of image times used for calibration."""
     calibration_file: Path = field(default_factory=Path)
     """Path to the calibration file."""
     reference_label: int = 0
     """Label to use as reference for visualization."""
 
-    def load(self, path: Path, section: str) -> "ColorPathsConfig":
+    def load(
+        self, path: Path, data: Path | None, results: Path | None = None
+    ) -> "ColorPathsConfig":
         """Load color paths config from a toml file from [section]."""
         sec = _get_section_from_toml(path, "color_paths")
         self.num_segments = _get_key(
@@ -279,76 +295,192 @@ class ColorPathsConfig:
         self.threshold_calibration = _get_key(
             sec, "threshold_calibration", default=0.0, required=False, type_=float
         )
-        self.baseline_images = sorted(
+        self.baseline_image_paths = sorted(
             [
-                Path(p)
+                Path(p) if data is None else data / p
                 for p in _get_key(
-                    sec, "baseline_images", required=False, type_=list[Path]
+                    sec,
+                    "baseline_image_paths",
+                    default=[],
+                    required=False,
+                    type_=list[Path],
                 )
             ]
         )
-        self.calibration_images = sorted(
+        self.baseline_image_times = sorted(
             [
-                Path(p)
-                for p in _get_key(
-                    sec, "calibration_images", required=False, type_=list[Path]
+                float(t)
+                for t in _get_key(
+                    sec,
+                    "baseline_image_times",
+                    default=[],
+                    required=False,
+                    type_=list[float],
                 )
             ]
         )
-        self.calibration_file = _get_key(
-            sec, "calibration_file", required=True, type_=Path
+        self.calibration_image_paths = sorted(
+            [
+                Path(p) if data is None else data / p
+                for p in _get_key(
+                    sec,
+                    "calibration_image_paths",
+                    default=[],
+                    required=False,
+                    type_=list[Path],
+                )
+            ]
         )
+        self.calibration_image_times = sorted(
+            [
+                float(t)
+                for t in _get_key(
+                    sec,
+                    "calibration_image_times",
+                    default=[],
+                    required=False,
+                    type_=list[float],
+                )
+            ]
+        )
+        if (
+            len(self.calibration_image_paths) > 0
+            and len(self.calibration_image_times) > 0
+        ):
+            raise ValueError(
+                "Provide either calibration_image_times or calibration_image_paths, not both."
+            )
         self.reference_label = _get_key(
             sec, "reference_label", default=0, required=False, type_=int
         )
+        self.calibration_file = _get_key(
+            sec, "calibration_file", required=False, type_=Path
+        )
+        if not self.calibration_file:
+            assert results is not None
+            self.calibration_file = results / "calibration" / "color_paths"
         return self
 
     def error(self):
-        raise ValueError(f"Use [color_paths] in the config file to load color paths.")
+        raise ValueError(
+            """Use [color_paths] in the config file to load color paths.
+            
+            Example:
+            [color_paths]
+            ignore_labels = [0, 1]
+            resolution = [51, 51, 51]
+            threshold_baseline = 0.0
+            threshold_calibration = 0.0
+            baseline_images = [
+               "relative/path/to/baseline/image1",
+               "relative/path/to/baseline/image2"
+            ]
+            calibration_images = [
+               "relative/path/to/calibration/image1",
+               "relative/path/to/calibration/image2"
+            ]
+            reference_label = 0
+            calibration_file = "path/to/calibration/file"
+            
+            """
+        )
 
 
 @dataclass
 class ColorSignalConfig:
-    num_clusters: int = 5
+    num_clusters: int = field(default=0)
     """Number of clusters to identify background colors."""
-    calibration_images: list[Path] = field(default_factory=list[Path])
+    calibration_image_paths: list[Path] = field(default_factory=list[Path])
     """List of image paths used for calibration."""
+    calibration_image_times: list[float] = field(default_factory=list[float])
+    """List of image times used for calibration."""
     calibration_file: Path = field(default_factory=Path)
     """Path to the calibration file."""
 
-    def load(self, path: Path, section: str) -> "ColorSignalConfig":
-        data = tomllib.loads(path.read_text())
-        sec = _get_section(data, section)
-        self.num_clusters = _get_key(
-            sec, "num_clusters", default=5, required=False, type_=int
-        )
-        self.calibration_images = sorted(
+    def load(
+        self, path: Path, data: Path | None, results: Path | None = None
+    ) -> "ColorSignalConfig":
+        sec = _get_section_from_toml(path, "color_signal")
+        self.num_clusters = _get_key(sec, "num_clusters", required=False, type_=int)
+        self.calibration_image_paths = sorted(
             [
-                Path(p)
+                Path(p) if data is None else data / p
                 for p in _get_key(
-                    sec, "calibration_images", required=False, type_=list[Path]
+                    sec,
+                    "calibration_image_paths",
+                    default=[],
+                    required=False,
+                    type_=list[Path],
                 )
             ]
         )
-        self.calibration_file = _get_key(
-            sec, "calibration_file", required=True, type_=Path
+        self.calibration_image_times = sorted(
+            [
+                float(t)
+                for t in _get_key(
+                    sec,
+                    "calibration_image_times",
+                    default=[],
+                    required=False,
+                    type_=list[float],
+                )
+            ]
         )
+        if (
+            len(self.calibration_image_paths) > 0
+            and len(self.calibration_image_times) > 0
+        ):
+            raise ValueError(
+                "Provide either calibration_image_times or calibration_image_paths, not both."
+            )
+        self.calibration_file = _get_key(
+            sec, "calibration_file", required=False, type_=Path
+        )
+        if not self.calibration_file:
+            assert results is not None
+            self.calibration_file = results / "calibration" / "color_signal"
+        self.calibration_file = self.calibration_file.with_suffix(".json")
         return self
 
     def error(self):
-        raise ValueError(f"Use [color_signal] in the config file to load color signal.")
+        raise ValueError(
+            """Use [color_signal] in the config file to load color signal.
+
+            Example:
+            [color_signal]
+            num_clusters = 5
+            calibration_images = ["path/to/calibration/image1", "path/to/calibration/image2"]
+            calibration_file = "path/to/calibration/file"
+
+            """
+        )
 
 
 @dataclass
 class MassAnalysisConfig:
+    calibration_image_paths: list[Path] = field(default_factory=list[Path])
+    """List of image paths used for mass calibration."""
     calibration_image_times: list[float] = field(default_factory=list[float])
     """List of image times used for mass calibration."""
     calibration_file: Path = field(default_factory=Path)
     """Path to the mass calibration file."""
 
-    def load(self, path: Path, section: str) -> "MassAnalysisConfig":
-        data = tomllib.loads(path.read_text())
-        sec = _get_section(data, section)
+    def load(
+        self, path: Path, data: Path | None = None, results: Path | None = None
+    ) -> "MassAnalysisConfig":
+        sec = _get_section_from_toml(path, "mass")
+        self.calibration_image_paths = sorted(
+            [
+                Path(p) if data is None else data / p
+                for p in _get_key(
+                    sec,
+                    "calibration_image_paths",
+                    default=[],
+                    required=False,
+                    type_=list[Path],
+                )
+            ]
+        )
         self.calibration_image_times = sorted(
             [
                 float(t)
@@ -357,9 +489,20 @@ class MassAnalysisConfig:
                 )
             ]
         )
+        if (
+            len(self.calibration_image_paths) > 0
+            and len(self.calibration_image_times) > 0
+        ):
+            raise ValueError(
+                "Provide either calibration_image_times or calibration_image_paths, not both."
+            )
         self.calibration_file = _get_key(
-            sec, "calibration_file", required=True, type_=Path
+            sec, "calibration_file", required=False, type_=Path
         )
+        if not self.calibration_file:
+            assert results is not None
+            self.calibration_file = results / "calibration" / "mass"
+        self.calibration_file = self.calibration_file.with_suffix(".csv")
         return self
 
     def error(self):
@@ -373,7 +516,9 @@ class _AnalysisData:
     image_paths: list[Path] = field(default_factory=list)
     """List of image paths corresponding to the image times."""
 
-    def load(self, sec: dict, section: str) -> "_AnalysisData":
+    def load(
+        self, sec: dict, section: str, data: Path | None = None
+    ) -> "_AnalysisData":
         sub_sec = _get_section(sec, section)
         self.image_times = sorted(
             [
@@ -385,7 +530,7 @@ class _AnalysisData:
         )
         self.image_paths = sorted(
             [
-                Path(p)
+                Path(p) if data is None else data / p
                 for p in _get_key(
                     sub_sec, "image_paths", default=[], required=False, type_=list[Path]
                 )
@@ -398,21 +543,62 @@ class _AnalysisData:
 
 
 @dataclass
+class SegmentationConfig(_AnalysisData):
+    # labels: list[str] = field(default_factory=list)
+    # """List of labels for segmentation."""
+    thresholds: dict[str, list[float, float]] = field(default_factory=dict)
+    """List of (min, max) tuples for thresholding."""
+    colors: dict[str, list[int, int, int]] = field(default_factory=dict)
+    """List of RGB colors for contours."""
+
+    def load(
+        self, sec: dict, section: str, data: Path | None = None
+    ) -> "SegmentationConfig":
+        super().load(sec, section, data=data)
+        sub_sec = _get_section(sec, section)
+        _labels = _get_key(sub_sec, "labels", required=True, type_=list)
+        _thresholds = _get_key(sub_sec, "thresholds", required=True, type_=list)
+        _thresholds = [[_convert_none(t0), _convert_none(t1)] for t0, t1 in _thresholds]
+        _colors = _get_key(sub_sec, "colors", required=True, type_=list)
+        self.thresholds = dict(zip(_labels, _thresholds))
+        self.colors = dict(zip(_labels, _colors))
+        return self
+
+    def error(self):
+        raise ValueError(
+            f"Use [analysis.segmentation] in the config file to load segmentation."
+        )
+
+
+@dataclass
 class AnalysisData:
     cropping: _AnalysisData = field(default_factory=_AnalysisData)
     color_signal: _AnalysisData = field(default_factory=_AnalysisData)
     mass: _AnalysisData = field(default_factory=_AnalysisData)
+    segmentation: SegmentationConfig = field(default_factory=SegmentationConfig)
     image_times: list[float] = field(default_factory=list)
     """List of image times in hours since experiment start."""
     image_paths: list[Path] = field(default_factory=list)
     """List of image paths corresponding to the image times."""
 
-    def load(self, path: Path) -> "AnalysisData":
-        data = tomllib.loads(path.read_text())
-        sec = _get_section(data, "analysis")
-        self.cropping = _AnalysisData().load(sec, "cropping")
-        self.color_signal = _AnalysisData().load(sec, "color_signal")
-        self.mass = _AnalysisData().load(sec, "mass")
+    def load(self, path: Path, data: Path | None = None) -> "AnalysisData":
+        sec = _get_section_from_toml(path, "analysis")
+        try:
+            self.cropping = _AnalysisData().load(sec, "cropping", data)
+        except KeyError:
+            self.cropping = _AnalysisData()
+        try:
+            self.color_signal = _AnalysisData().load(sec, "color_signal", data)
+        except KeyError:
+            self.color_signal = _AnalysisData()
+        try:
+            self.mass = _AnalysisData().load(sec, "mass", data)
+        except KeyError:
+            self.mass = _AnalysisData()
+        try:
+            self.segmentation = SegmentationConfig().load(sec, "segmentation", data)
+        except KeyError:
+            self.segmentation = SegmentationConfig()
         self.image_times = sorted(
             [
                 float(t)
@@ -423,7 +609,7 @@ class AnalysisData:
         )
         self.image_paths = sorted(
             [
-                Path(p)
+                Path(p) if data is None else data / p
                 for p in _get_key(
                     sec, "image_paths", default=[], required=False, type_=list[Path]
                 )
@@ -442,28 +628,36 @@ class FluidFlowerConfig:
     """Meta data for FluidFlower CO2 analysis."""
 
     def __init__(self, path: Path):
-        # ! ---- SPECS ---- ! #
-        try:
-            self.specs: FluidFlowerSpecs | None = FluidFlowerSpecs()
-            self.specs.load(path, "specs")
-        except KeyError:
-            self.specs = None
-            warn(f"Section specs not found in {path}, use [specs].")
-
         # ! ---- DATA ---- ! #
         try:
-            self.data: FluidFlowerData | None = FluidFlowerData()
+            self.data: FluidFlowerDataConfig | None = FluidFlowerDataConfig()
             self.data.load(path)
         except KeyError:
             self.data = None
             warn(f"Section data not found in {path}, use [data].")
+
+        # TODO assume that data is
+
+        # ! ---- RIG ---- ! #
+        try:
+            self.rig: FluidFlowerRigConfig | None = FluidFlowerRigConfig()
+            self.rig.load(
+                path=path,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.rig = None
+            warn(f"Section rig not found in {path}, use [rig].")
 
         # ! ---- LABELING ---- ! #
         try:
             self.labeling: FluidFlowerLabelingConfig | None = (
                 FluidFlowerLabelingConfig()
             )
-            self.labeling.load(path, "labeling")
+            self.labeling.load(
+                path=path,
+                results=self.data.results if self.data else None,
+            )
         except KeyError:
             self.labeling = None
             warn(f"Section labeling not found in {path}, use [labeling].")
@@ -471,7 +665,10 @@ class FluidFlowerConfig:
         # ! ---- DEPTH ---- ! #
         try:
             self.depth: FluidFlowerDepthConfig | None = FluidFlowerDepthConfig()
-            self.depth.load(path, "depth")
+            self.depth.load(
+                path=path,
+                results=self.data.results if self.data else None,
+            )
         except KeyError:
             self.depth = None
             warn(f"Section depth not found in {path}, use [depth].")
@@ -481,22 +678,31 @@ class FluidFlowerConfig:
             self.protocol: FluidFlowerProtocolConfig | None = (
                 FluidFlowerProtocolConfig()
             )
-            self.protocol.load(path, "protocols")
+            self.protocol.load(path)
         except KeyError:
             self.protocol = None
             warn(f"Section protocols not found in {path}, use [protocols].")
 
-        # ! ---- COLOR ANALYSIS ---- ! #
+        # ! ---- COLOR PATHS ---- ! #
         try:
             self.color_paths: ColorPathsConfig | None = ColorPathsConfig()
-            self.color_paths.load(path, "color_paths")
+            self.color_paths.load(
+                path=path,
+                data=self.data.folder if self.data else None,
+                results=self.data.results if self.data else None,
+            )
         except KeyError:
             self.color_paths = None
             warn(f"Section color_paths not found in {path}.")
 
+        # ! ---- COLOR SIGNAL ---- ! #
         try:
             self.color_signal: ColorSignalConfig | None = ColorSignalConfig()
-            self.color_signal.load(path, "color_signal")
+            self.color_signal.load(
+                path=path,
+                data=self.data.folder if self.data else None,
+                results=self.data.results if self.data else None,
+            )
         except KeyError:
             self.color_signal = None
             warn(f"Section color_signal not found in {path}.")
@@ -505,7 +711,11 @@ class FluidFlowerConfig:
 
         try:
             self.mass: MassAnalysisConfig | None = MassAnalysisConfig()
-            self.mass.load(path, "mass")
+            self.mass.load(
+                path=path,
+                data=self.data.folder if self.data else None,
+                results=self.data.results if self.data else None,
+            )
         except KeyError:
             self.mass = None
             warn(f"Section mass not found in {path}.")
@@ -514,19 +724,10 @@ class FluidFlowerConfig:
 
         try:
             self.analysis: AnalysisData | None = AnalysisData()
-            self.analysis.load(path)
+            self.analysis.load(path, data=self.data.folder if self.data else None)
         except KeyError:
             self.analysis = None
             warn(f"Section analysis not found in {path}.")
-
-        ## ! ---- COMMON DATA ---- ! #
-        # common_folder = Path(meta_data["common"]["folder"])
-
-        ## Labels
-        # try:
-        #    self.labels = common_folder / meta_data["common"]["labels"]
-        # except KeyError:
-        #    self.labels = None
 
         ## Reference colorchecker
         # try:
@@ -597,63 +798,29 @@ class FluidFlowerConfig:
         # except KeyError:
         #    self.calibration["mass_images"] = None
 
-        ## FluidFlower
-        # try:
-        #    self.fluidflower_folder = (
-        #        self.results_folder / meta_data["results"]["fluidflower"]
-        #    )
-        # except KeyError:
-        #    self.fluidflower_folder = None
-
     def _check(self, key: str):
         if key == "data" and not self.data:
-            raise ValueError(
-                "No data loaded. Use [data] in the config file and `folder` to load data."
-            )
+            FluidFlowerDataConfig().error()
         elif key == "labeling" and not self.labeling:
-            raise ValueError(
-                "No labeling loaded. Use [labeling] in the config file to load labeling."
-            )
+            FluidFlowerLabelingConfig().error()
         elif key == "depth" and not self.depth:
-            raise ValueError(
-                "No depth loaded. Use [depth] in the config file to load depth."
-            )
-        elif key == "specs" and not self.specs:
-            raise ValueError(
-                "No specs loaded. Use [specs] in the config file to load specs."
-            )
+            FluidFlowerDepthConfig().error()
+        elif key == "rig" and not self.rig:
+            FluidFlowerRigConfig().error()
         elif key == "protocol" and not self.protocol:
-            raise ValueError(
-                "No protocols loaded. Use [protocols] in the config file to load protocols."
-            )
+            FluidFlowerProtocolConfig().error()
         elif key == "color_paths" and not self.color_paths:
-            raise ValueError(
-                "No color paths loaded. Use [color_paths] in the config file to load color paths."
-            )
+            ColorPathsConfig().error()
         elif key == "color_signal" and not self.color_signal:
-            raise ValueError(
-                "No color signal loaded. Use [color_signal] in the config file to load color signal."
-            )
+            ColorSignalConfig().error()
         elif key == "mass" and not self.mass:
-            raise ValueError(
-                "No mass analysis loaded. Use [mass] in the config file to load mass analysis."
-            )
+            MassAnalysisConfig().error()
         elif key == "analysis" and not self.analysis:
-            raise ValueError(
-                "No analysis data loaded. Use [analysis] in the config file to load analysis data."
-            )
+            AnalysisData().error()
         elif key == "analysis.segmentation" and (
             not self.analysis or not self.analysis.segmentation
         ):
-            raise ValueError(
-                "No segmentation data loaded. Use [analysis.segmentation] in the config file to load segmentation data."
-            )
-        elif key == "analysis.color_signal" and (
-            not self.analysis or not self.analysis.color_signal
-        ):
-            raise ValueError(
-                "No color signal loaded. Use [analysis.color_signal] in the config file to load color signal."
-            )
+            SegmentationConfig().error()
         elif key == "analysis.mass" and (not self.analysis or not self.analysis.mass):
             raise ValueError(
                 "No mass analysis loaded. Use [analysis.mass] in the config file to load mass analysis."
@@ -673,8 +840,8 @@ class FluidFlowerConfig:
         """
         for key in args:
             assert key in [
-                "specs",
                 "data",
+                "rig",
                 "labeling",
                 "depth",
                 "protocol",
@@ -682,7 +849,8 @@ class FluidFlowerConfig:
                 "color_signal",
                 "mass",
                 "analysis",
-            ]
+                "analysis.segmentation",
+            ], f"Key {key} not recognized for checking."
             self._check(key)
 
     # Loading
