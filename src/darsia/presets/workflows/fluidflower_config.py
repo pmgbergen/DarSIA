@@ -6,10 +6,12 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from warnings import warn
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
+# Utility functions for TOML parsing
 def _get_section(data: dict, section: str) -> dict:
     """Utility to get a section from a toml-loaded dictionary."""
     try:
@@ -18,16 +20,26 @@ def _get_section(data: dict, section: str) -> dict:
         raise KeyError(f"Section {section} not found.")
 
 
-def _get_key(section: dict, key: str, default=None, required=True, type_=None):
+def _get_section_from_toml(path: Path, section: str) -> dict:
+    data = tomllib.loads(path.read_text())
+    sec = _get_section(data, section)
+    return sec
+
+
+def _get_key(section: dict, key: str, default=None, required=True, type_=None) -> Any:
     """Utility to get a key from a section with type conversion and default value."""
     if required and key not in section:
-        raise ValueError(f"Missing key '{key}' in section {section}.")
+        raise KeyError(f"Missing key '{key}' in section {section}.")
 
     if key in section:
         value = section[key]
         return type_(value) if type_ else value
     else:
         return default
+
+
+def _convert_none(v):
+    return None if ((isinstance(v, str) and v.lower() == "none") or v is None) else v
 
 
 @dataclass
