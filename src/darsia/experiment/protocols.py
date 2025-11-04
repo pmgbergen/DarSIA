@@ -271,27 +271,30 @@ class ImagingProtocol:
         """
         # Restrict df from imagign_interval to available image ids
         if isinstance(paths, list):
-            available_paths = paths
+            all_paths = paths
         else:
-            available_paths = list(paths.glob("*"))
+            all_paths = list(paths.glob("*"))
+
+        # Remove blacklisted paths
+        available_paths = [p for p in all_paths if not self.is_blacklisted(p)]
+
+        # Convert to ID.
         available_image_ids = {self.image_id(p): p for p in available_paths}
         df = self.df[self.df["image_id"].isin(available_image_ids.keys())]
 
         # Collect the closest images
-        closest_image_paths = []
-
+        closest_available_image_paths = []
         for dt in datetimes:
             closest_available_time = min(
                 df["datetime"], key=lambda t: abs((t - dt).total_seconds())
             )
-            image_path = available_image_ids[
+            closest_available_image_path = available_image_ids[
                 df[df["datetime"] == closest_available_time]["image_id"].values[0]
             ]
-            if not self.is_blacklisted(image_path):
-                closest_image_paths.append(image_path)
+            closest_available_image_paths.append(closest_available_image_path)
 
         # Return unique paths only but keep order
-        return list(dict.fromkeys(closest_image_paths))
+        return list(dict.fromkeys(closest_available_image_paths))
 
     def find_ideal_images_for_datetimes(
         self,
