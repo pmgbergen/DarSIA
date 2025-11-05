@@ -107,9 +107,6 @@ def define_color_path(image: darsia.Image, mask: darsia.Image) -> darsia.ColorPa
 # ! ---- ALGORITHMIC COLOR PATH DEFINITION ----
 
 
-# TODO ColorSpectrumRegression? ColorSpectrumAnalysis?
-
-
 class ColorPathRegression:
     """Algorithmic definition of relative color paths through regression."""
 
