@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.manifold import LocallyLinearEmbedding
-from dataclasses import dataclass
 from time import time
 from functools import wraps
 from warnings import warn
+from sklearn.decomposition import PCA
 
 import darsia
 
@@ -108,16 +108,6 @@ def define_color_path(image: darsia.Image, mask: darsia.Image) -> darsia.ColorPa
 
 
 # TODO ColorSpectrumRegression? ColorSpectrumAnalysis?
-@dataclass
-class ColorSpectrum:
-    """Data structure to hold a color spectrum."""
-
-    base_color: np.ndarray
-    """Reference color for the spectrum."""
-    spectrum: np.ndarray
-    """Distribution of colors in the spectrum."""
-    histogram: np.ndarray
-    """Histogram of color occurrences."""
 
 
 class ColorPathRegression:
@@ -126,18 +116,24 @@ class ColorPathRegression:
     def __init__(
         self,
         labels: darsia.Image,
-        mask: darsia.Image,
+        mask: darsia.Image,  # TODO extend to allow for None
+        color_range: darsia.ColorRange,
+        resolution: int = 11,
         ignore_labels: list[int] = [],
     ) -> None:
         self.labels = labels
         self.mask = mask
+        self.color_range = color_range
+        self.resolution = resolution
+        self.discrete_color_range = darsia.DiscreteColorRange(
+            color_range=color_range, resolution=resolution
+        )
         self.ignore_labels = ignore_labels
-        self.range = 1.5
 
     @timing_decorator
     def get_base_colors(
         self, image: darsia.Image, verbose: bool = False
-    ) -> dict[int, np.ndarray]:
+    ) -> darsia.LabelColorMap:
         """Get the base colors for each label in the image.
 
         Args:
@@ -145,7 +141,7 @@ class ColorPathRegression:
             verbose (bool): Whether to print additional information.
 
         Returns:
-            dict[int, np.ndarray]: A dictionary mapping each label to its base color.
+            LabelColorMap: An object containing the base colors for each label.
 
         """
         base_colors = {}
@@ -170,7 +166,7 @@ class ColorPathRegression:
             ax.set_title("Base colors in RGB space")
             plt.show()
 
-        return base_colors
+        return darsia.LabelColorMap(base_colors)
 
     @timing_decorator
     def get_mean_base_color(self, image: darsia.Image) -> np.ndarray:
@@ -183,7 +179,7 @@ class ColorPathRegression:
             np.ndarray: The mean base color across all labels.
         """
         base_colors = self.get_base_colors(image)
-        return np.mean(np.array(list(base_colors.values())), axis=0)
+        return base_colors.mean()
 
     @timing_decorator
     def base_color_image(self, image: darsia.Image) -> darsia.Image:
@@ -206,12 +202,11 @@ class ColorPathRegression:
         self,
         images: list[darsia.Image],
         baseline: darsia.Image | None = None,
-        resolution: tuple[int, int, int] = (11, 11, 11),
-        ignore_color_spectrum: dict[int, ColorSpectrum] | None = None,
+        ignore_color_spectrum: dict[int, darsia.ColorSpectrum] | None = None,
         threshold_zero: float = 0.0,
         threshold_significant: float = 0.0,
         verbose: bool = False,
-    ) -> dict[int, ColorSpectrum]:
+    ) -> dict[int, darsia.ColorSpectrum]:
         """Get the color spectrum for each label in the image.
 
         The color spectrum is calculated by analyzing the distribution of
@@ -229,14 +224,16 @@ class ColorPathRegression:
             verbose (bool): Whether to print verbose output.
 
         Returns:
-            dict[int, ColorSpectrum]: The color spectrum for each label.
+            dict[int, darsia.ColorSpectrum]: The color spectrum for each label.
 
         """
         # TODO introduce a mask, and remove labels.
 
         # Get base colors for each label
         if baseline is None:
-            base_colors = {label: np.zeros(3) for label in np.unique(self.labels.img)}
+            base_colors = darsia.LabelColorMap(
+                {label: np.zeros(3) for label in np.unique(self.labels.img)}
+            )
         else:
             base_colors = self.get_base_colors(baseline)
 
@@ -244,13 +241,14 @@ class ColorPathRegression:
         color_spectrum = dict(
             (
                 label,
-                ColorSpectrum(
+                darsia.ColorSpectrum(
                     base_color=base_color,
-                    histogram=np.zeros(resolution, dtype=float),
-                    spectrum=np.zeros(resolution, dtype=bool),
+                    histogram=np.zeros(self.discrete_color_range.shape, dtype=float),
+                    spectrum=np.zeros(self.discrete_color_range.shape, dtype=bool),
+                    color_range=self.color_range,
                 ),
             )
-            for label, base_color in base_colors.items()
+            for label, base_color in base_colors.colors.items()
         )
 
         # Loop over all images
@@ -276,18 +274,14 @@ class ColorPathRegression:
                 # Put the data into a 3D histogram
                 single_hist, _ = np.histogramdd(
                     relative_colors,
-                    bins=resolution,
-                    range=(
-                        (-self.range, self.range),
-                        (-self.range, self.range),
-                        (-self.range, self.range),
-                    ),
+                    bins=self.discrete_color_range.shape,
+                    range=self.color_range.range,
                 )
 
                 # Ignore colors
                 if ignore_color_spectrum is not None:
                     ignore = ignore_color_spectrum[label].spectrum
-                    assert ignore.shape == resolution
+                    assert ignore.shape == self.discrete_color_range.shape
                     assert ignore.dtype == bool
                     single_hist[ignore] = 0.0
 
@@ -307,12 +301,8 @@ class ColorPathRegression:
             # Prepare reusable data
             _, edges = np.histogramdd(
                 np.zeros((1, 3)),
-                bins=resolution,
-                range=(
-                    (-self.range, self.range),
-                    (-self.range, self.range),
-                    (-self.range, self.range),
-                ),
+                bins=self.discrete_color_range.shape,
+                range=self.color_range.range,
             )
             # Define the respective meshgrid for the histogram
             x_edges = edges[0][:-1] + 0.5 * (edges[0][1] - edges[0][0])
@@ -337,7 +327,7 @@ class ColorPathRegression:
                     ).T,
                     0.0,
                     1.0,
-                ).reshape(resolution + (3,))
+                ).reshape(self.discrete_color_range.shape + (3,))
 
                 # Plot the significant boxes
                 ax.voxels(color_spectrum[label].spectrum, facecolors=c_mesh)
@@ -350,9 +340,7 @@ class ColorPathRegression:
                     )
                 # Highlight the origin
                 origin = np.zeros_like(color_spectrum[label].spectrum, dtype=bool)
-                origin[
-                    origin.shape[0] // 2, origin.shape[1] // 2, origin.shape[2] // 2
-                ] = True
+                origin[tuple(self.discrete_color_range.origin)] = True
                 ax.voxels(origin, facecolors="red")
                 plt.show()
 
@@ -362,16 +350,17 @@ class ColorPathRegression:
     @timing_decorator
     def expand_color_spectrum(
         self,
-        color_spectrum: dict[int, ColorSpectrum],
+        color_spectrum: dict[int, darsia.ColorSpectrum],
         min_points: int = 6,
         verbose: bool = False,
-    ) -> dict[int, ColorSpectrum]:
+    ) -> dict[int, darsia.ColorSpectrum]:
         """Expand the color spectrum through linear regression.
 
         Args:
             color_spectrum (dict[int, ColorSpectrum]): The color spectrum to expand.
             verbose (bool): Whether to print additional information.
             min_points (int): Minimum number of significant points to perform regression.
+            # min_weight (float): Minimum weight for the regression.
 
         Returns:
             dict[int, ColorSpectrum]: The expanded color spectrum.
@@ -380,12 +369,11 @@ class ColorPathRegression:
         # Prepare the result
         expanded_color_spectrum = copy.deepcopy(color_spectrum)
 
-        for label, data in color_spectrum.items():
-            spectrum = data.spectrum
-            x_points, y_points, z_points = np.where(spectrum)
-
-            # Step 0: Add 8 neighbors to significant voxels
-            spectrum[1:-1, 1:-1, 1:-1] |= (
+        for label, _single_color_spectrum in color_spectrum.items():
+            # Step 0: Add 8 neighbors to significant voxels to densen the spectrum
+            single_color_spectrum = copy.deepcopy(_single_color_spectrum)
+            spectrum = single_color_spectrum.spectrum
+            single_color_spectrum.spectrum[1:-1, 1:-1, 1:-1] |= (
                 spectrum[:-2, 1:-1, 1:-1]
                 | spectrum[2:, 1:-1, 1:-1]
                 | spectrum[1:-1, :-2, 1:-1]
@@ -426,59 +414,38 @@ class ColorPathRegression:
                 | spectrum[2:, :-2, 1:-1]
             )
 
-            # Step 1: Extract significant points and convert to relative colors in the range [-1.5, 1.5]
-            relative_colors = (
-                np.vstack((x_points, y_points, z_points)).T
-                * 2
-                * self.range
-                / spectrum.shape[0]
-                - self.range
-            )
+            # Step 1: Extract significant points and transfer to relative colors in the range
+            relative_colors = single_color_spectrum.relative_colors
             num_points = relative_colors.shape[0]
             if num_points <= min_points:
                 continue
 
-            # Step 2: Reduce to 1D using Locally Linear Embedding
-            lle = LocallyLinearEmbedding(
-                n_neighbors=min(10, num_points - 1), n_components=1
-            )
-            embedding = lle.fit_transform(relative_colors)
+            # Step 2: PCA
+            pca = PCA(n_components=1)
+            pca.fit(relative_colors)
+            coef = pca.components_.flatten()
 
-            # Step 3: Sort embedding and colors
-            sorted_indices = np.argsort(embedding[:, 0])
-            sorted_embedding = embedding[sorted_indices]
-            sorted_relative_colors = relative_colors[sorted_indices]
-
-            # Prepare weights for linear regression. Use the norm of the relative colors
-            # to give more weight to colors further away from the base color.
-            weights = np.linalg.norm(relative_colors, axis=1)
-            weights /= np.sum(weights)
-            sorted_weights = weights[sorted_indices]
-            sorted_weights *= num_points  # Scale weights to number of points
-
-            # Step 4: Fit line segment
-            model = LinearRegression().fit(
-                sorted_embedding, sorted_relative_colors, sorted_weights
-            )
-
-            resolution = 10 * spectrum.shape[0]
-            coef = 1.5 / np.mean(model.coef_) / resolution * model.coef_
+            # Step 3: Expand along the line segment - first continuously.
+            # Make sure to use high-resolution and to cover enough length.
             expanded_relative_colors = np.empty((0, 3))
-            for i in range(-2 * resolution, 2 * resolution + 1):
-                shifted_colors = relative_colors + i * coef.flatten()
+            high_resolution = 10 * self.discrete_color_range.shape[0]
+            rescaled_coef = (
+                np.max(single_color_spectrum.color_range.range)
+                / np.mean(coef)
+                / high_resolution
+                * coef
+            ).flatten()
+            for i in range(-2 * high_resolution, 2 * high_resolution + 1):
+                shifted_colors = relative_colors + i * rescaled_coef
                 expanded_relative_colors = np.vstack(
                     (expanded_relative_colors, shifted_colors)
                 )
 
-            # Same histogram as before
+            # Convert to discrete histogram
             expanded_histogram, _ = np.histogramdd(
                 expanded_relative_colors,
-                bins=spectrum.shape,
-                range=(
-                    (-self.range, self.range),
-                    (-self.range, self.range),
-                    (-self.range, self.range),
-                ),
+                bins=self.discrete_color_range.shape,
+                range=self.color_range.range,
             )
             expanded_histogram = expanded_histogram / np.sum(expanded_histogram)
             expanded_spectrum = expanded_histogram > 0.0
@@ -491,13 +458,10 @@ class ColorPathRegression:
                 # Prepare reusable data
                 _, edges = np.histogramdd(
                     np.zeros((1, 3)),
-                    bins=spectrum.shape,
-                    range=(
-                        (-self.range, self.range),
-                        (-self.range, self.range),
-                        (-self.range, self.range),
-                    ),
+                    bins=self.discrete_color_range.shape,
+                    range=self.color_range.range,
                 )
+
                 # Define the respective meshgrid for the histogram
                 x_edges = edges[0][:-1] + 0.5 * (edges[0][1] - edges[0][0])
                 y_edges = edges[1][:-1] + 0.5 * (edges[1][1] - edges[1][0])
@@ -517,17 +481,14 @@ class ColorPathRegression:
                     ).T,
                     0.0,
                     1.0,
-                ).reshape(spectrum.shape + (3,))
+                ).reshape(self.discrete_color_range.shape + (3,))
 
                 # Plot the significant boxes
-                ax.voxels(expanded_spectrum, facecolors=c_mesh)
+                ax.voxels(spectrum, facecolors=c_mesh, alpha=0.8)
+                ax.voxels(expanded_spectrum, facecolors=c_mesh, alpha=0.1)
                 # Highlight the origin
                 origin = np.zeros_like(expanded_spectrum, dtype=bool)
-                origin[
-                    origin.shape[0] // 2,
-                    origin.shape[1] // 2,
-                    origin.shape[2] // 2,
-                ] = True
+                origin[tuple(self.discrete_color_range.origin)] = True
                 ax.voxels(origin, facecolors="red")
                 plt.show()
 
@@ -538,8 +499,8 @@ class ColorPathRegression:
     @timing_decorator
     def find_relative_color_path(
         self,
-        spectrum: ColorSpectrum,
-        base_color_spectrum: ColorSpectrum | None = None,
+        spectrum: darsia.ColorSpectrum,
+        ignore_spectrum: darsia.ColorSpectrum | None = None,
         num_segments: int = 1,
         verbose: bool = False,
         **kwargs,
@@ -548,7 +509,7 @@ class ColorPathRegression:
 
         Args:
             spectrum (ColorSpectrum): The color spectrum to analyze.
-            base_color_spectrum (ColorSpectrum | None): The baseline color spectrum to ignore.
+            ignore_spectrum (ColorSpectrum | None): The color spectrum to ignore.
             num_segments (int): The number of segments for the color path.
             verbose (bool): Whether to print additional information.
 
@@ -559,16 +520,9 @@ class ColorPathRegression:
         # Step 0: Prepare
         num_dofs = num_segments + 1
 
-        # Step 1: Extract spectrum and convert to relative colors in the range [-1.5, 1.5]
-        x_points, y_points, z_points = np.where(spectrum.spectrum)
-        relative_colors = (
-            np.vstack((x_points, y_points, z_points)).T
-            * 2
-            * self.range
-            / spectrum.spectrum.shape[0]
-            - self.range
-        )
-        absolute_colors = spectrum.base_color + relative_colors
+        # Step 1: Extract spectrum and convert to relative colors in the color range
+        relative_colors = spectrum.relative_colors
+        absolute_colors = spectrum.absolute_colors
         num_points = relative_colors.shape[0]
 
         # Check for empty color path - need at least two points to define a path
@@ -582,83 +536,108 @@ class ColorPathRegression:
                 mode="rgb",
             )
 
-        # Add origin to relative colors and use high weight 1.
-        origin = np.zeros(3)
-        relative_colors = np.vstack((relative_colors, origin))
-        absolute_colors = np.vstack((absolute_colors, spectrum.base_color))
-
         # Step 2: Reduce to 1D using Locally Linear Embedding
         n_neighbors = min(10, num_points - 1)
         lle = LocallyLinearEmbedding(n_neighbors=n_neighbors, n_components=1)
-        embedding = lle.fit_transform(relative_colors)
+        embedding = lle.fit_transform(relative_colors).flatten()
 
         # Step 3: Sort embedding and colors
-        sorted_indices = np.argsort(embedding[:, 0])
+        sorted_indices = np.argsort(embedding)
         sorted_embedding = embedding[sorted_indices]
         sorted_relative_colors = relative_colors[sorted_indices]
 
         # Step 3.2: Identify "left" part from origin and remove it
-        origin_index = np.where(np.all(sorted_relative_colors == origin, axis=1))[0][0]
+        origin = np.zeros(3)
+        # origin_index = np.where(np.all(sorted_relative_colors == origin, axis=1))[0][0]
+        origin_index = np.argmin(
+            np.linalg.norm(sorted_relative_colors - origin, axis=1)
+        )
         # Assume origin to be close to the extreme left, if exreme right, flip everything
         if origin_index > len(sorted_relative_colors) // 2:
             origin_index = len(sorted_relative_colors) - origin_index - 1
             sorted_embedding = np.flip(sorted_embedding, axis=0)
             sorted_relative_colors = np.flip(sorted_relative_colors, axis=0)
-        sorted_embedding = sorted_embedding[origin_index:, :]
+        sorted_embedding = sorted_embedding[origin_index:]
         sorted_relative_colors = sorted_relative_colors[origin_index:, :]
 
+        # Add origin to the beginning
+        sorted_embedding = np.hstack(
+            (
+                sorted_embedding[0]
+                + np.sign(sorted_embedding[0] - sorted_embedding[-1]),
+                sorted_embedding,
+            )
+        )
+        sorted_relative_colors = np.vstack((origin, sorted_relative_colors))
+
         # Initialize segments
-        segments = []
+        segments = []  # Find the two representative key colors representing the start and end of the path
 
-        # Find the two representative key colors representing the start and end of the path
-        # Hardcode the origin to be the first key color.
-
-        def fitting_error(segment_range):
+        def segment_error(segment_range):
             segment_embedding = sorted_embedding[segment_range]
             segment_relative_colors = sorted_relative_colors[segment_range]
-            segment_interpolator = LinearRegression().fit(
-                [segment_embedding[0], segment_embedding[-1]],
-                [segment_relative_colors[0], segment_relative_colors[-1]],
-            )
+
+            # Create proper arrays for LinearRegression
+            X = np.array([segment_embedding[0], segment_embedding[-1]]).reshape(-1, 1)
+            y = np.array([segment_relative_colors[0], segment_relative_colors[-1]])
+            segment_interpolator = LinearRegression().fit(X, y)
+            prediction = segment_interpolator.predict(segment_embedding.reshape(-1, 1))
             segment_error = np.sum(
                 np.linalg.norm(
-                    segment_interpolator.predict(segment_embedding)
-                    - segment_relative_colors,
+                    prediction - segment_relative_colors,
                     axis=1,
                     ord=1,
                 )
             )
             return segment_error
 
+        def segment_length(segment_range):
+            segment_embedding = sorted_embedding[segment_range]
+            length = np.linalg.norm(segment_embedding[-1] - segment_embedding[0])
+            return length
+
         def split_segment(segment_range):
-            # Find the best split point for the selected segment
-            min_error = float("inf")
+            # Find the best split point for the selected segment.
+            # Balance between error reduction and segment length
+            min_metric = float("inf")
+
+            total_error = segment_error(segment_range)
+            total_length = segment_length(segment_range)
+
             for split_point in range(1, len(segment_range) - 1):
                 left_segment_range = segment_range[:split_point]
                 right_segment_range = segment_range[split_point:]
-                left_error = fitting_error(left_segment_range)
-                right_error = fitting_error(right_segment_range)
-                total_error = max(left_error, right_error)
+                left_error = segment_error(left_segment_range)
+                right_error = segment_error(right_segment_range)
+                left_length = segment_length(left_segment_range)
+                right_length = segment_length(right_segment_range)
+                split_error = max(left_error, right_error)
+                split_length = left_length + right_length
 
                 # Update the best split if this one is better
-                if total_error < min_error:
-                    min_error = total_error
+                split_metric = split_error / total_error + split_length / total_length
+                if split_metric < min_metric:
+                    min_metric = split_metric
 
                     left_segment = {
                         "range": left_segment_range,
                         "error": left_error,
+                        "length": left_length,
                     }
                     right_segment = {
                         "range": right_segment_range,
                         "error": right_error,
+                        "length": right_length,
                     }
             return left_segment, right_segment
 
         segment_range = range(0, len(sorted_embedding))
-        segment_error = fitting_error(segment_range)
+        _segment_error = segment_error(segment_range)
+        _segment_length = segment_length(segment_range)
         segment = {
             "range": segment_range,
-            "error": segment_error,
+            "error": _segment_error,
+            "length": _segment_length,
         }
         segments.append(segment)
 
@@ -688,8 +667,11 @@ class ColorPathRegression:
             segments.insert(global_segment_to_split_index + 1, right_segment)
 
         # Improve segments by re-evaluating their error
-        # Hard-code 10 smoothing steps (these are not expensive)
-        for _ in range(10):
+        for _ in range(1000):
+            # Cache previous segments for convergence check
+            previous_segments = copy.deepcopy(segments)
+
+            # Segment by segment, try to improve by combining with neighbor segments
             for i, segment in enumerate(segments):
                 if i == len(segments) - 1:
                     continue  # Last segment, nothing to do
@@ -706,13 +688,32 @@ class ColorPathRegression:
                 segments[i] = left_segment
                 segments[i + 1] = right_segment
 
+            # Check for convergence - if no change in segments, stop
+            if all(
+                segments[i]["range"] == previous_segments[i]["range"]
+                for i in range(len(segments))
+            ):
+                break
+            else:
+                distance = sum(
+                    abs(
+                        segments[i]["range"].start - previous_segments[i]["range"].start
+                    )
+                    + abs(
+                        segments[i]["range"].stop - previous_segments[i]["range"].stop
+                    )
+                    for i in range(len(segments))
+                )
+                print(f"Segment smoothing distance: {distance}")
+
         # Extract the key relative colors from the segments
         key_relative_colors: list[np.ndarray] = [
             sorted_relative_colors[segment["range"].start] for segment in segments
         ] + [sorted_relative_colors[segments[-1]["range"].stop - 1]]
 
         # Determine the maximum error for information
-        max_error = max(seg["error"] for seg in segments)
+        # TODO error quantification
+        # max_error = max(seg["error"] for seg in segments)
 
         if key_relative_colors == []:
             logger.info("No key colors found. Returning default color path.")
@@ -738,6 +739,8 @@ class ColorPathRegression:
             # Step 6: Visualize
             fig = plt.figure(figsize=(8, 4))
             ax = fig.add_subplot(111, projection="3d")
+
+            # Plot all significant colors
             ax.scatter(
                 relative_colors[:, 0],
                 relative_colors[:, 1],
@@ -746,6 +749,8 @@ class ColorPathRegression:
                 s=10,
                 alpha=0.5,
             )
+
+            # Plot key colors and connecting lines
             if np.array(key_relative_colors).shape[0] == num_dofs:
                 ax.plot(*np.array(key_relative_colors).T, c="black", linewidth=2)
                 ax.scatter(
@@ -753,15 +758,13 @@ class ColorPathRegression:
                     c=np.clip(key_absolute_colors, 0, 1),
                     s=100,
                 )
-            if base_color_spectrum is not None:
-                base_x, base_y, base_z = np.where(base_color_spectrum.spectrum)
-                base_relative_colors = (
-                    np.vstack((base_x, base_y, base_z)).T
-                    * 2
-                    * self.range
-                    / base_color_spectrum.spectrum.shape[0]
-                    - self.range
-                )
+
+            # Plot connecting lines for all points along the sorted embedding
+            ax.plot(*np.array(relative_colors).T, c="gray", linewidth=1, alpha=0.5)
+
+            # Band of ignored colors (in red)
+            if ignore_spectrum is not None:
+                base_relative_colors = ignore_spectrum.relative_colors
                 ax.scatter(
                     base_relative_colors[:, 0],
                     base_relative_colors[:, 1],
@@ -770,6 +773,8 @@ class ColorPathRegression:
                     s=10,
                     alpha=0.1,
                 )
+
+            # Some plot settings
             plot_title = kwargs.get("plot_title", "Color Path Analysis")
             ax.set_title(plot_title)
             ax.set_xlabel("R")
@@ -792,36 +797,3 @@ class ColorPathRegression:
             mode="rgb",
         )
         return relative_color_path
-
-    def find_color_path_clusters(
-        self, color_paths: dict[int, darsia.ColorPath]
-    ) -> dict:
-        """Find clusters of color paths based on their similarity."""
-        ...
-
-        # # Extract features from color paths
-        # features = []
-        # for path in color_paths.values():
-        #     features.append(path.relative_colors.flatten())
-        # features = np.array(features)
-
-        # # Cluster color paths using DBSCAN
-        # clustering = DBSCAN(eps=0.5, min_samples=2).fit(features)
-        # labels = clustering.labels_
-
-        # # Organize color paths into clusters
-        # clusters = {}
-        # for label, path in zip(labels, color_paths.values()):
-        #     if label not in clusters:
-        #         clusters[label] = []
-        #     clusters[label].append(path)
-
-        # return clusters
-
-    def _color_to_index(
-        self, color: np.ndarray, resolution: tuple[int, int, int]
-    ) -> tuple[int, int, int]:
-        """Identify the voxel index of the base color in the [0,1]^3 color space given the resolution"""
-        return tuple(
-            int(np.clip(c * (r - 1), 0, r - 1)) for c, r in zip(color, resolution)
-        )
