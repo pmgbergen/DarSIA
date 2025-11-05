@@ -24,7 +24,7 @@ class ColorSpectrum:
         return self.spectrum.shape
 
     @property
-    def effective_spectrum(self) -> np.ndarray:
+    def relative_colors(self) -> np.ndarray:
         """Compute the effective color spectrum as colors within the color range.
 
         Returns:
@@ -40,3 +40,13 @@ class ColorSpectrum:
             )
         relative_colors = np.vstack(relative_color_components).T
         return relative_colors
+
+    @property
+    def absolute_colors(self) -> np.ndarray:
+        """Compute the absolute color spectrum.
+
+        Returns:
+            np.ndarray: Absolute color spectrum.
+
+        """
+        return self.base_color + self.relative_colors
