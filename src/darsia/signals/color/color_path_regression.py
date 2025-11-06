@@ -567,10 +567,11 @@ class LabelColorPathMapRegression:
             logger.info("""Empty color or path found. Returning default color path.""")
             return darsia.ColorPath(
                 colors=None,
-                relative_colors=num_dofs * [np.zeros(3)],
                 base_color=spectrum.base_color,
+                relative_colors=num_dofs * [np.zeros(3)],
                 values=np.linspace(0.0, 1.0, num_dofs).tolist(),
                 mode="rgb",
+                name=name,
             )
 
         # Step 2: Reduce to 1D using Locally Linear Embedding
@@ -761,8 +762,8 @@ class LabelColorPathMapRegression:
             logger.info("No key colors found. Returning default color path.")
             return darsia.ColorPath(
                 colors=None,
-                relative_colors=num_dofs * [np.zeros(3)],
                 base_color=spectrum.base_color,
+                relative_colors=num_dofs * [np.zeros(3)],
                 values=np.linspace(0.0, 1.0, num_dofs).tolist(),
                 mode="rgb",
                 name=name,
