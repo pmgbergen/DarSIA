@@ -34,9 +34,9 @@ class ColorRange:
             min_color = np.min(np.vstack((min_color, _min_color)), axis=0)
             max_color = np.max(np.vstack((max_color, _max_color)), axis=0)
 
-        self.min_color = min_color
+        self.min_color = min_color.flatten()
         """Minimum color observed."""
-        self.max_color = max_color
+        self.max_color = max_color.flatten()
         """Maximum color observed."""
         self.range = (
             (self.min_color[0], self.max_color[0]),
