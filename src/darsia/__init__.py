@@ -68,8 +68,9 @@ from darsia.signals.reduction.dimensionreduction import *
 from darsia.signals.color.color_range import *
 from darsia.signals.color.discrete_color_range import *
 from darsia.signals.color.color_spectrum import *
-from darsia.signals.color.label_color_map import *
 from darsia.signals.color.color_path import *
+from darsia.signals.color.label_color_spectrum_map import *
+from darsia.signals.color.label_color_map import *
 from darsia.signals.color.label_color_path_map import *
 from darsia.signals.color.color_path_regression import *
 from darsia.signals.models.basemodel import *
