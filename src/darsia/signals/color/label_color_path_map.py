@@ -50,7 +50,8 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
         for label, color_path in self.items():
             color_path.save(directory / f"color_path_{label}.json")
 
-    def load(self, directory: Path) -> None:
+    @classmethod
+    def load(cls, directory: Path) -> "LabelColorPathMap":
         """Load color paths from a directory.
 
         Identifies files named `color_path_{label}.json` and loads them.
@@ -62,12 +63,15 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
         labels = [
             int(f.stem.split("_")[-1]) for f in directory.glob("color_path_*.json")
         ]
+        color_path_map = {}
         for label in labels:
             path = directory / f"color_path_{label}.json"
             if path.exists():
-                self[label] = darsia.ColorPath()
-                self[label].load(path)
+                color_path_map[label] = darsia.ColorPath()
+                color_path_map[label].load(path)
             else:
                 logger.warning(f"No color path found for label {label}, skipping.")
 
         logger.info("Loaded color paths from %s", directory)
+
+        return cls(color_path_map)
