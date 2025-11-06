@@ -35,16 +35,19 @@ def setup_rig(cls, path: Path, show: bool = False) -> None:
     config.check("data", "depth", "labeling", "protocol")
 
     # Mypy type checking
-    for c in [
-        config.data,
-        config.depth,
-        config.labeling,
-        config.protocol,
-    ]:
-        assert c is not None
+    assert config.rig is not None
+    assert config.data is not None
+    assert config.depth is not None
+    assert config.labeling is not None
+    assert config.protocol is not None
+    assert config.protocol.imaging is not None
+    assert config.protocol.injection is not None
+    assert config.protocol.pressure_temperature is not None
+    assert config.protocol.blacklist is not None
 
     # Load imaging protocol
     experiment = darsia.ProtocolledExperiment(
+        data=config.data.data,
         imaging_protocol=config.protocol.imaging,
         injection_protocol=config.protocol.injection,
         pressure_temperature_protocol=config.protocol.pressure_temperature,
