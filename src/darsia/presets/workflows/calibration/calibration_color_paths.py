@@ -29,12 +29,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     assert config.protocol.pressure_temperature is not None
     assert config.protocol.blacklist is not None
 
-    # ! ---- LOAD RUN AND RIG ----
-
-    fluidflower = cls()
-    fluidflower.load(config.rig.path)
-
-    # Load experiment
+    # ! ---- LOAD EXPERIMENT ----
     experiment = darsia.ProtocolledExperiment(
         data=config.data.data,
         imaging_protocol=config.protocol.imaging,
@@ -43,6 +38,10 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
         blacklist_protocol=config.protocol.blacklist,
         pad=config.data.pad,
     )
+
+    # ! ---- LOAD RIG ----
+    fluidflower = cls()
+    fluidflower.load(config.rig.path)
     fluidflower.load_experiment(experiment)
 
     # ! ---- LOAD IMAGES ----
@@ -71,13 +70,14 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
             calibration_image = darsia.imread(cache_path)
         calibration_images.append(calibration_image)
 
-    # ! ---- IDENTIFY COLOR RANGE ----
+    # ! ---- IDENTIFY AND STORE COLOR RANGE ----
 
     tracer_color_range = darsia.ColorRange(
         images=calibration_images,
         baseline=fluidflower.baseline,
         mask=fluidflower.boolean_porosity,
     )
+    tracer_color_range.save(config.color_paths.color_range_file)
 
     # ! ---- COLOR PATH TOOL ----
 
