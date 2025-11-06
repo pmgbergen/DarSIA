@@ -2,6 +2,7 @@
 
 import copy
 import logging
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -107,8 +108,8 @@ def define_color_path(image: darsia.Image, mask: darsia.Image) -> darsia.ColorPa
 # ! ---- ALGORITHMIC COLOR PATH DEFINITION ----
 
 
-class ColorPathRegression:
-    """Algorithmic definition of relative color paths through regression."""
+class LabelColorPathMapRegression:
+    """Algorithmic definition of relative color paths through regression for labeled images."""
 
     def __init__(
         self,
@@ -195,15 +196,15 @@ class ColorPathRegression:
         return base_color_image
 
     @timing_decorator
-    def get_color_spectrum(
+    def get_label_color_spectrum_map(
         self,
         images: list[darsia.Image],
         baseline: darsia.Image | None = None,
-        ignore_color_spectrum: dict[int, darsia.ColorSpectrum] | None = None,
+        ignore: darsia.LabelColorSpectrumMap | darsia.ColorSpectrum | None = None,
         threshold_zero: float = 0.0,
         threshold_significant: float = 0.0,
         verbose: bool = False,
-    ) -> dict[int, darsia.ColorSpectrum]:
+    ) -> darsia.LabelColorSpectrumMap:
         """Get the color spectrum for each label in the image.
 
         The color spectrum is calculated by analyzing the distribution of
@@ -215,13 +216,14 @@ class ColorPathRegression:
             images (list[darsia.Image]): The images to analyze.
             baseline (darsia.Image | None): The baseline image for comparison.
             resolution (tuple[int, int, int]): The resolution of the color histogram.
-            ignore_color_spectrum (dict[int, tuple[np.ndarray, np.ndarray]] | None): Colors to ignore in the spectrum.
+            ignore (darsia.LabelColorSpectrumMap | darsia.ColorSpectrum | None): Colors to
+                ignore in the spectrum.
             threshold_zero (float): The threshold for zeroing out insignificant colors.
             threshold_significant (float): The threshold for significant colors.
             verbose (bool): Whether to print verbose output.
 
         Returns:
-            dict[int, darsia.ColorSpectrum]: The color spectrum for each label.
+            LabelColorSpectrumMap: The color spectrum for each label.
 
         """
         # TODO introduce a mask, and remove labels.
@@ -235,17 +237,21 @@ class ColorPathRegression:
             base_colors = self.get_base_colors(baseline)
 
         # Prepare analysis and result
-        color_spectrum = dict(
-            (
-                label,
-                darsia.ColorSpectrum(
-                    base_color=base_color,
-                    histogram=np.zeros(self.discrete_color_range.shape, dtype=float),
-                    spectrum=np.zeros(self.discrete_color_range.shape, dtype=bool),
-                    color_range=self.color_range,
-                ),
+        color_spectrum_map = darsia.LabelColorSpectrumMap(
+            dict(
+                (
+                    label,
+                    darsia.ColorSpectrum(
+                        base_color=base_color,
+                        histogram=np.zeros(
+                            self.discrete_color_range.shape, dtype=float
+                        ),
+                        spectrum=np.zeros(self.discrete_color_range.shape, dtype=bool),
+                        color_range=self.color_range,
+                    ),
+                )
+                for label, base_color in base_colors.colors.items()
             )
-            for label, base_color in base_colors.colors.items()
         )
 
         # Loop over all images
@@ -276,21 +282,25 @@ class ColorPathRegression:
                 )
 
                 # Ignore colors
-                if ignore_color_spectrum is not None:
-                    ignore = ignore_color_spectrum[label].spectrum
-                    assert ignore.shape == self.discrete_color_range.shape
-                    assert ignore.dtype == bool
-                    single_hist[ignore] = 0.0
+                if ignore is not None:
+                    ignore_spectrum = (
+                        ignore[label].spectrum
+                        if isinstance(ignore, darsia.LabelColorSpectrumMap)
+                        else ignore.spectrum
+                    )
+                    assert ignore_spectrum.shape == self.discrete_color_range.shape
+                    assert ignore_spectrum.dtype == bool
+                    single_hist[ignore_spectrum] = 0.0
 
-                color_spectrum[label].histogram += single_hist
+                color_spectrum_map[label].histogram += single_hist
 
         # Normalize the histogram, and identify the significant colors
-        for label in color_spectrum.keys():
-            color_spectrum[label].histogram = color_spectrum[label].histogram / np.sum(
-                color_spectrum[label].histogram
-            )
-            color_spectrum[label].spectrum = (
-                color_spectrum[label].histogram > threshold_significant
+        for label in color_spectrum_map.keys():
+            color_spectrum_map[label].histogram = color_spectrum_map[
+                label
+            ].histogram / np.sum(color_spectrum_map[label].histogram)
+            color_spectrum_map[label].spectrum = (
+                color_spectrum_map[label].histogram > threshold_significant
             )
 
         # Plot the histogram as a 3D voxel plot
@@ -310,7 +320,7 @@ class ColorPathRegression:
             )
 
             for label in np.unique(self.labels.img):
-                if not np.any(color_spectrum[label].spectrum):
+                if not np.any(color_spectrum_map[label].spectrum):
                     logger.info(f"Skip plotting color spectrum for label {label}.")
                     continue
                 ax = plt.figure().add_subplot(projection="3d")
@@ -318,7 +328,7 @@ class ColorPathRegression:
 
                 # Add colors to each mesh point
                 c_mesh = np.clip(
-                    color_spectrum[label].base_color
+                    color_spectrum_map[label].base_color
                     + np.vstack(
                         (x_mesh.flatten(), y_mesh.flatten(), z_mesh.flatten())
                     ).T,
@@ -327,187 +337,217 @@ class ColorPathRegression:
                 ).reshape(self.discrete_color_range.shape + (3,))
 
                 # Plot the significant boxes
-                ax.voxels(color_spectrum[label].spectrum, facecolors=c_mesh)
+                ax.voxels(color_spectrum_map[label].spectrum, facecolors=c_mesh)
                 # Mark the ignored colors
-                if ignore_color_spectrum is not None:
+                if ignore is not None:
                     ax.voxels(
-                        ignore_color_spectrum[label].spectrum,
+                        ignore[label].spectrum
+                        if isinstance(ignore, darsia.LabelColorSpectrumMap)
+                        else ignore.spectrum,
                         facecolors="red",
                         alpha=0.1,
                     )
                 # Highlight the origin
-                origin = np.zeros_like(color_spectrum[label].spectrum, dtype=bool)
+                origin = np.zeros_like(color_spectrum_map[label].spectrum, dtype=bool)
                 origin[tuple(self.discrete_color_range.origin)] = True
                 ax.voxels(origin, facecolors="red")
                 plt.show()
 
         logger.info("Done. Color spectrum analysis.")
-        return color_spectrum
+        return color_spectrum_map
 
     @timing_decorator
     def expand_color_spectrum(
         self,
-        color_spectrum: dict[int, darsia.ColorSpectrum],
+        color_spectrum: darsia.ColorSpectrum,
         min_points: int = 6,
+        title="Expanded Color Spectrum",
         verbose: bool = False,
-    ) -> dict[int, darsia.ColorSpectrum]:
+    ) -> darsia.ColorSpectrum:
         """Expand the color spectrum through linear regression.
 
         Args:
-            color_spectrum (dict[int, ColorSpectrum]): The color spectrum to expand.
-            verbose (bool): Whether to print additional information.
+            color_spectrum (LabelColorSpectrum): The color spectrum to expand.
             min_points (int): Minimum number of significant points to perform regression.
-            # min_weight (float): Minimum weight for the regression.
+            title (str): Title for the verbose plot.
+            verbose (bool): Whether to print additional information.
 
         Returns:
-            dict[int, ColorSpectrum]: The expanded color spectrum.
+            ColorSpectrum: The expanded color spectrum.
 
         """
         # Prepare the result
         expanded_color_spectrum = copy.deepcopy(color_spectrum)
 
-        for label, _single_color_spectrum in color_spectrum.items():
-            # Step 0: Add 8 neighbors to significant voxels to densen the spectrum
-            single_color_spectrum = copy.deepcopy(_single_color_spectrum)
-            spectrum = single_color_spectrum.spectrum
-            single_color_spectrum.spectrum[1:-1, 1:-1, 1:-1] |= (
-                spectrum[:-2, 1:-1, 1:-1]
-                | spectrum[2:, 1:-1, 1:-1]
-                | spectrum[1:-1, :-2, 1:-1]
-                | spectrum[1:-1, 2:, 1:-1]
-                | spectrum[1:-1, 1:-1, :-2]
-                | spectrum[1:-1, 1:-1, 2:]
-                | spectrum[:-2, :-2, 1:-1]
-                | spectrum[2:, 2:, 1:-1]
-                | spectrum[:-2, 1:-1, :-2]
-                | spectrum[2:, 1:-1, 2:]
-                | spectrum[1:-1, :-2, :-2]
-                | spectrum[1:-1, 2:, 2:]
-                | spectrum[:-2, :-2, :-2]
-                | spectrum[2:, 2:, 2:]
-                | spectrum[:-2, 2:, :-2]
-                | spectrum[2:, :-2, 2:]
-                | spectrum[1:-1, :-2, 2:]
-                | spectrum[1:-1, 2:, :-2]
-                | spectrum[:-2, 1:-1, 2:]
-                | spectrum[2:, 1:-1, :-2]
-                | spectrum[:-2, 2:, 1:-1]
-                | spectrum[2:, :-2, 1:-1]
-                | spectrum[1:-1, :-2, 1:-1]
-                | spectrum[1:-1, 2:, 1:-1]
-                | spectrum[:-2, 1:-1, 2:]
-                | spectrum[2:, 1:-1, :-2]
-                | spectrum[:-2, :-2, 2:]
-                | spectrum[2:, 2:, :-2]
-                | spectrum[:-2, 2:, 2:]
-                | spectrum[2:, :-2, 2:]
-                | spectrum[1:-1, :-2, :-2]
-                | spectrum[1:-1, 2:, 2:]
-                | spectrum[:-2, 1:-1, :-2]
-                | spectrum[2:, 1:-1, 2:]
-                | spectrum[:-2, :-2, 1:-1]
-                | spectrum[2:, 2:, 1:-1]
-                | spectrum[:-2, 2:, 1:-1]
-                | spectrum[2:, :-2, 1:-1]
+        # Step 0: Add 8 neighbors to significant voxels to densen the spectrum
+        spectrum = expanded_color_spectrum.spectrum
+        expanded_color_spectrum.spectrum[1:-1, 1:-1, 1:-1] |= (
+            spectrum[:-2, 1:-1, 1:-1]
+            | spectrum[2:, 1:-1, 1:-1]
+            | spectrum[1:-1, :-2, 1:-1]
+            | spectrum[1:-1, 2:, 1:-1]
+            | spectrum[1:-1, 1:-1, :-2]
+            | spectrum[1:-1, 1:-1, 2:]
+            | spectrum[:-2, :-2, 1:-1]
+            | spectrum[2:, 2:, 1:-1]
+            | spectrum[:-2, 1:-1, :-2]
+            | spectrum[2:, 1:-1, 2:]
+            | spectrum[1:-1, :-2, :-2]
+            | spectrum[1:-1, 2:, 2:]
+            | spectrum[:-2, :-2, :-2]
+            | spectrum[2:, 2:, 2:]
+            | spectrum[:-2, 2:, :-2]
+            | spectrum[2:, :-2, 2:]
+            | spectrum[1:-1, :-2, 2:]
+            | spectrum[1:-1, 2:, :-2]
+            | spectrum[:-2, 1:-1, 2:]
+            | spectrum[2:, 1:-1, :-2]
+            | spectrum[:-2, 2:, 1:-1]
+            | spectrum[2:, :-2, 1:-1]
+            | spectrum[1:-1, :-2, 1:-1]
+            | spectrum[1:-1, 2:, 1:-1]
+            | spectrum[:-2, 1:-1, 2:]
+            | spectrum[2:, 1:-1, :-2]
+            | spectrum[:-2, :-2, 2:]
+            | spectrum[2:, 2:, :-2]
+            | spectrum[:-2, 2:, 2:]
+            | spectrum[2:, :-2, 2:]
+            | spectrum[1:-1, :-2, :-2]
+            | spectrum[1:-1, 2:, 2:]
+            | spectrum[:-2, 1:-1, :-2]
+            | spectrum[2:, 1:-1, 2:]
+            | spectrum[:-2, :-2, 1:-1]
+            | spectrum[2:, 2:, 1:-1]
+            | spectrum[:-2, 2:, 1:-1]
+            | spectrum[2:, :-2, 1:-1]
+        )
+
+        # Step 1: If too few data points available, return the simply expanded spectrum
+        if color_spectrum.relative_colors.shape[0] <= min_points:
+            return expanded_color_spectrum
+
+        # Step 2: PCA - base on original input for lower cost and better accuracy
+        pca = PCA(n_components=1)
+        pca.fit(color_spectrum.relative_colors)
+        coef = pca.components_.flatten()
+
+        # Step 3: Expand along the line segment - first continuously.
+        # Make sure to use high-resolution and to cover enough length.
+        expanded_relative_colors = np.empty((0, 3))
+        relative_colors = expanded_color_spectrum.relative_colors
+        high_resolution = 10 * self.discrete_color_range.shape[0]
+        rescaled_coef = (
+            np.max(expanded_color_spectrum.color_range.range)
+            / np.mean(coef)
+            / high_resolution
+            * coef
+        ).flatten()
+        for i in range(-2 * high_resolution, 2 * high_resolution + 1):
+            shifted_colors = relative_colors + i * rescaled_coef
+            expanded_relative_colors = np.vstack(
+                (expanded_relative_colors, shifted_colors)
             )
 
-            # Step 1: Extract significant points and transfer to relative colors in the range
-            relative_colors = single_color_spectrum.relative_colors
-            num_points = relative_colors.shape[0]
-            if num_points <= min_points:
-                continue
+        # Convert to discrete histogram
+        expanded_histogram, _ = np.histogramdd(
+            expanded_relative_colors,
+            bins=self.discrete_color_range.shape,
+            range=self.color_range.range,
+        )
+        expanded_histogram = expanded_histogram / np.sum(expanded_histogram)
+        expanded_spectrum = expanded_histogram > 0.0
 
-            # Step 2: PCA
-            pca = PCA(n_components=1)
-            pca.fit(relative_colors)
-            coef = pca.components_.flatten()
+        expanded_color_spectrum.histogram = expanded_histogram
+        expanded_color_spectrum.spectrum = expanded_spectrum
 
-            # Step 3: Expand along the line segment - first continuously.
-            # Make sure to use high-resolution and to cover enough length.
-            expanded_relative_colors = np.empty((0, 3))
-            high_resolution = 10 * self.discrete_color_range.shape[0]
-            rescaled_coef = (
-                np.max(single_color_spectrum.color_range.range)
-                / np.mean(coef)
-                / high_resolution
-                * coef
-            ).flatten()
-            for i in range(-2 * high_resolution, 2 * high_resolution + 1):
-                shifted_colors = relative_colors + i * rescaled_coef
-                expanded_relative_colors = np.vstack(
-                    (expanded_relative_colors, shifted_colors)
-                )
-
-            # Convert to discrete histogram
-            expanded_histogram, _ = np.histogramdd(
-                expanded_relative_colors,
+        # Add same verbose plotting as for get_color_spectrum
+        if verbose:
+            # Prepare reusable data
+            _, edges = np.histogramdd(
+                np.zeros((1, 3)),
                 bins=self.discrete_color_range.shape,
                 range=self.color_range.range,
             )
-            expanded_histogram = expanded_histogram / np.sum(expanded_histogram)
-            expanded_spectrum = expanded_histogram > 0.0
 
-            expanded_color_spectrum[label].histogram = expanded_histogram
-            expanded_color_spectrum[label].spectrum = expanded_spectrum
+            # Define the respective meshgrid for the histogram
+            x_edges = edges[0][:-1] + 0.5 * (edges[0][1] - edges[0][0])
+            y_edges = edges[1][:-1] + 0.5 * (edges[1][1] - edges[1][0])
+            z_edges = edges[2][:-1] + 0.5 * (edges[2][1] - edges[2][0])
+            x_mesh, y_mesh, z_mesh = np.meshgrid(
+                x_edges, y_edges, z_edges, indexing="ij"
+            )
 
-            # Add same verbose plotting as for get_color_spectrum
-            if verbose:
-                # Prepare reusable data
-                _, edges = np.histogramdd(
-                    np.zeros((1, 3)),
-                    bins=self.discrete_color_range.shape,
-                    range=self.color_range.range,
-                )
+            ax = plt.figure().add_subplot(projection="3d")
+            ax.set_title(title)
 
-                # Define the respective meshgrid for the histogram
-                x_edges = edges[0][:-1] + 0.5 * (edges[0][1] - edges[0][0])
-                y_edges = edges[1][:-1] + 0.5 * (edges[1][1] - edges[1][0])
-                z_edges = edges[2][:-1] + 0.5 * (edges[2][1] - edges[2][0])
-                x_mesh, y_mesh, z_mesh = np.meshgrid(
-                    x_edges, y_edges, z_edges, indexing="ij"
-                )
+            # Add colors to each mesh point
+            c_mesh = np.clip(
+                color_spectrum.base_color
+                + np.vstack((x_mesh.flatten(), y_mesh.flatten(), z_mesh.flatten())).T,
+                0.0,
+                1.0,
+            ).reshape(self.discrete_color_range.shape + (3,))
 
-                ax = plt.figure().add_subplot(projection="3d")
-                ax.set_title(f"Expanded Color Spectrum for Label {label}")
-
-                # Add colors to each mesh point
-                c_mesh = np.clip(
-                    color_spectrum[label].base_color
-                    + np.vstack(
-                        (x_mesh.flatten(), y_mesh.flatten(), z_mesh.flatten())
-                    ).T,
-                    0.0,
-                    1.0,
-                ).reshape(self.discrete_color_range.shape + (3,))
-
-                # Plot the significant boxes
-                ax.voxels(spectrum, facecolors=c_mesh, alpha=0.8)
-                ax.voxels(expanded_spectrum, facecolors=c_mesh, alpha=0.1)
-                # Highlight the origin
-                origin = np.zeros_like(expanded_spectrum, dtype=bool)
-                origin[tuple(self.discrete_color_range.origin)] = True
-                ax.voxels(origin, facecolors="red")
-                plt.show()
+            # Plot the significant boxes
+            ax.voxels(spectrum, facecolors=c_mesh, alpha=0.8)
+            ax.voxels(expanded_spectrum, facecolors=c_mesh, alpha=0.1)
+            # Highlight the origin
+            origin = np.zeros_like(expanded_spectrum, dtype=bool)
+            origin[tuple(self.discrete_color_range.origin)] = True
+            ax.voxels(origin, facecolors="red")
+            plt.show()
 
         logger.info("Done. Expanded color spectrum analysis.")
 
         return expanded_color_spectrum
 
     @timing_decorator
+    def expand_label_color_spectrum_map(
+        self,
+        label_color_spectrum_map: darsia.LabelColorSpectrumMap,
+        min_points: int = 6,
+        verbose: bool = False,
+    ) -> darsia.LabelColorSpectrumMap:
+        """Expand the color spectrum through linear regression.
+
+        Args:
+            color_spectrum_map (LabelColorSpectrumMap): The color spectrum to expand.
+            verbose (bool): Whether to print additional information.
+            min_points (int): Minimum number of significant points to perform regression.
+            # min_weight (float): Minimum weight for the regression.
+
+        Returns:
+            LabelColorSpectrumMap: The expanded color spectrum.
+
+        """
+        expanded_color_spectrum_map = copy.deepcopy(label_color_spectrum_map)
+        for label, color_spectrum in expanded_color_spectrum_map.items():
+            expanded_color_spectrum_map[label] = self.expand_color_spectrum(
+                color_spectrum=color_spectrum,
+                min_points=min_points,
+                title=f"Expanded Color Spectrum for Label {label}",
+                verbose=verbose,
+            )
+        return expanded_color_spectrum_map
+
+    @timing_decorator
     def find_relative_color_path(
         self,
         spectrum: darsia.ColorSpectrum,
-        ignore_spectrum: darsia.ColorSpectrum | None = None,
+        ignore: darsia.ColorSpectrum | None = None,
         num_segments: int = 1,
+        name: str = "Color Path",
+        directory: Path | None = None,
         verbose: bool = False,
-        **kwargs,
     ) -> darsia.ColorPath:
         """Find a relative color path through the significant boxes.
 
         Args:
             spectrum (ColorSpectrum): The color spectrum to analyze.
-            ignore_spectrum (ColorSpectrum | None): The color spectrum to ignore.
+            ignore (ColorSpectrum | None): The color spectrum to ignore.
             num_segments (int): The number of segments for the color path.
+            name (str): Name of the color path.
+            directory (Path | None): Directory to save verbose plots.
             verbose (bool): Whether to print additional information.
 
         Returns:
@@ -664,6 +704,7 @@ class ColorPathRegression:
             segments.insert(global_segment_to_split_index + 1, right_segment)
 
         # Improve segments by re-evaluating their error
+        old_distances = []
         for _ in range(1000):
             # Cache previous segments for convergence check
             previous_segments = copy.deepcopy(segments)
@@ -701,6 +742,10 @@ class ColorPathRegression:
                     )
                     for i in range(len(segments))
                 )
+                old_distances.append(distance)
+                if len(old_distances) > 5 and len(np.unique(old_distances[-5:])) == 1:
+                    # No change in the last 5 iterations - oscillation detected
+                    break
                 print(f"Segment smoothing distance: {distance}")
 
         # Extract the key relative colors from the segments
@@ -720,70 +765,73 @@ class ColorPathRegression:
                 base_color=spectrum.base_color,
                 values=np.linspace(0.0, 1.0, num_dofs).tolist(),
                 mode="rgb",
+                name=name,
             )
 
         # Step 5: Define the corresponding absolute colors
         key_absolute_colors = [spectrum.base_color + c for c in key_relative_colors]
 
         # Step 6: Verbose output
+
+        # Print key colors
         if verbose:
-            # Print key colors
             for i, (color, rel) in enumerate(
                 zip(key_absolute_colors, key_relative_colors)
             ):
                 print(f"Key color {i + 1}: RGB = {color}, relative: {rel}")
 
-            # Step 6: Visualize
-            fig = plt.figure(figsize=(8, 4))
-            ax = fig.add_subplot(111, projection="3d")
+        # Step 6: Visualize
+        fig = plt.figure(figsize=(8, 4))
+        ax = fig.add_subplot(111, projection="3d")
 
-            # Plot all significant colors
+        # Plot all significant colors
+        ax.scatter(
+            relative_colors[:, 0],
+            relative_colors[:, 1],
+            relative_colors[:, 2],
+            c=np.clip(absolute_colors, 0, 1),
+            s=10,
+            alpha=0.5,
+        )
+
+        # Plot key colors and connecting lines
+        if np.array(key_relative_colors).shape[0] == num_dofs:
+            ax.plot(*np.array(key_relative_colors).T, c="black", linewidth=2)
             ax.scatter(
-                relative_colors[:, 0],
-                relative_colors[:, 1],
-                relative_colors[:, 2],
-                c=np.clip(absolute_colors, 0, 1),
-                s=10,
-                alpha=0.5,
+                *np.array(key_relative_colors).T,
+                c=np.clip(key_absolute_colors, 0, 1),
+                s=100,
             )
 
-            # Plot key colors and connecting lines
-            if np.array(key_relative_colors).shape[0] == num_dofs:
-                ax.plot(*np.array(key_relative_colors).T, c="black", linewidth=2)
-                ax.scatter(
-                    *np.array(key_relative_colors).T,
-                    c=np.clip(key_absolute_colors, 0, 1),
-                    s=100,
-                )
+        # Plot connecting lines for all points along the sorted embedding
+        ax.plot(*np.array(relative_colors).T, c="gray", linewidth=1, alpha=0.5)
 
-            # Plot connecting lines for all points along the sorted embedding
-            ax.plot(*np.array(relative_colors).T, c="gray", linewidth=1, alpha=0.5)
+        # Band of ignored colors (in red)
+        if ignore is not None:
+            base_relative_colors = ignore.relative_colors
+            ax.scatter(
+                base_relative_colors[:, 0],
+                base_relative_colors[:, 1],
+                base_relative_colors[:, 2],
+                c="r",
+                s=10,
+                alpha=0.1,
+            )
 
-            # Band of ignored colors (in red)
-            if ignore_spectrum is not None:
-                base_relative_colors = ignore_spectrum.relative_colors
-                ax.scatter(
-                    base_relative_colors[:, 0],
-                    base_relative_colors[:, 1],
-                    base_relative_colors[:, 2],
-                    c="r",
-                    s=10,
-                    alpha=0.1,
-                )
+        # Some plot settings
+        ax.set_title(name)
+        ax.set_xlabel("R")
+        ax.set_ylabel("G")
+        ax.set_zlabel("B")
 
-            # Some plot settings
-            plot_title = kwargs.get("plot_title", "Color Path Analysis")
-            ax.set_title(plot_title)
-            ax.set_xlabel("R")
-            ax.set_ylabel("G")
-            ax.set_zlabel("B")
-
-            plt.tight_layout()
-            if kwargs.get("plot_save", False):
-                plot_save_path = kwargs.get("plot_save_path", "color_path_analysis.png")
-                dpi = kwargs.get("plot_save_dpi", 300)
-                plt.savefig(plot_save_path, dpi=dpi)
+        plt.tight_layout()
+        if directory:
+            directory.mkdir(parents=True, exist_ok=True)
+            plot_save_path = directory / f"{name}.png"
+            plt.savefig(plot_save_path, dpi=300)
+        if verbose:
             plt.show()
+        plt.close()
 
         # Step 7: Construct relative color path
         relative_color_path = darsia.ColorPath(
@@ -792,5 +840,45 @@ class ColorPathRegression:
             base_color=spectrum.base_color,
             values=None,
             mode="rgb",
+            name=name,
         )
         return relative_color_path
+
+    @timing_decorator
+    def find_label_color_path_map(
+        self,
+        label_color_spectrum_map: darsia.LabelColorSpectrumMap,
+        ignore: darsia.LabelColorSpectrumMap | None = None,
+        num_segments: int = 1,
+        directory: Path | None = None,
+        verbose: bool = False,
+    ) -> darsia.LabelColorPathMap:
+        """Find relative color paths for each label in the spectrum map.
+
+        Args:
+            label_color_spectrum_map (LabelColorSpectrumMap): The color spectrum map to analyze.
+            ignore (LabelColorSpectrumMap | None): The color spectrum map to ignore.
+            num_segments (int): The number of segments for the color path.
+            verbose (bool): Whether to print additional information.
+
+        Returns:
+            LabelColorPathMap: The relative color path map through the significant boxes.
+
+        """
+        label_color_path_map = darsia.LabelColorPathMap(
+            dict(
+                (
+                    label,
+                    self.find_relative_color_path(
+                        spectrum=label_color_spectrum_map[label],
+                        ignore=ignore[label] if ignore is not None else None,
+                        num_segments=num_segments,
+                        name=f"Color Path for Label {label}",
+                        directory=directory,
+                        verbose=verbose,
+                    ),
+                )
+                for label in label_color_spectrum_map.keys()
+            )
+        )
+        return label_color_path_map
