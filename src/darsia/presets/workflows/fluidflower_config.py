@@ -274,6 +274,8 @@ class ColorPathsConfig:
     """List of image times used for calibration."""
     calibration_file: Path = field(default_factory=Path)
     """Path to the calibration file."""
+    color_range_file: Path = field(default_factory=Path)
+    """Path to the color range file."""
     reference_label: int = 0
     """Label to use as reference for visualization."""
 
@@ -359,6 +361,12 @@ class ColorPathsConfig:
         if not self.calibration_file:
             assert results is not None
             self.calibration_file = results / "calibration" / "color_paths"
+        self.color_range_file = _get_key(
+            sec, "color_range_file", required=False, type_=Path
+        )
+        if not self.color_range_file:
+            assert results is not None
+            self.color_range_file = results / "calibration" / "color_range"
         return self
 
     def error(self):
