@@ -179,13 +179,13 @@ class FluidFlowerDepthConfig:
 
 @dataclass
 class FluidFlowerProtocolConfig:
-    imaging: str | tuple[Path, str] | None = None
+    imaging: Path | tuple[Path, str] | None = None
     """Path to the imaging protocol file or (file, sheet)."""
-    injection: str | tuple[Path, str] | None = None
+    injection: Path | tuple[Path, str] | None = None
     """Path to the injection protocol file or (file, sheet)."""
-    blacklist: str | tuple[Path, str] | None = None
+    blacklist: Path | tuple[Path, str] | None = None
     """Path to the blacklist protocol file or (file, sheet)."""
-    pressure_temperature: str | tuple[Path, str] | None = None
+    pressure_temperature: Path | tuple[Path, str] | None = None
     """Path to the pressure-temperature protocol file or (file, sheet)."""
 
     def load(self, path: Path) -> "FluidFlowerProtocolConfig":
@@ -258,7 +258,7 @@ class ColorPathsConfig:
     """Number of segments for the color path."""
     ignore_labels: list[int] = field(default_factory=list)
     """List of labels to ignore in color analysis."""
-    resolution: tuple[int, int, int] = (51, 51, 51)
+    resolution: int = 51
     """Resolution for the color spectrum."""
     threshold_baseline: float = 0.0
     """Threshold for baseline images."""
@@ -287,7 +287,7 @@ class ColorPathsConfig:
         )
         self.ignore_labels = _get_key(sec, "ignore_labels", required=False, type_=list)
         self.resolution = _get_key(
-            sec, "resolution", default=(51,) * 3, required=False, type_=tuple
+            sec, "resolution", default=51, required=False, type_=int
         )
         self.threshold_baseline = _get_key(
             sec, "threshold_baseline", default=0.0, required=False, type_=float
@@ -368,7 +368,7 @@ class ColorPathsConfig:
             Example:
             [color_paths]
             ignore_labels = [0, 1]
-            resolution = [51, 51, 51]
+            resolution = 51
             threshold_baseline = 0.0
             threshold_calibration = 0.0
             baseline_images = [
