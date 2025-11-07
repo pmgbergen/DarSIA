@@ -17,9 +17,12 @@ def block_test(factor, block1, block2, options, weights=None, method="newton", p
 
     mass1_array = np.zeros(shape, dtype=float)
     mass2_array = np.zeros(shape, dtype=float)
-
-    mass1_array[factor * (8-block1[1]-block1[2]) : factor * (8-block1[1]+block1[2]), factor * (block1[0]-block1[2]) : factor * (block1[0]+block1[2])] = 1
-    mass2_array[factor * (8-block2[1]-block2[2]) : factor * (8-block2[1]+block2[2]), factor * (block2[0]-block2[2]) : factor * (block2[0]+block2[2])] = 1
+    block1_help = [int(round(factor * (8-block1[1]-block1[2]))), int(round(factor * (8-block1[1]+block1[2]))), int(round(factor * (block1[0]-block1[2]))), int(round(factor * (block1[0]+block1[2])))]
+    block2_help = [int(round(factor * (8-block2[1]-block2[2]))), int(round(factor * (8-block2[1]+block2[2]))), int(round(factor * (block2[0]-block2[2]))), int(round(factor * (block2[0]+block2[2])))]
+    #mass1_array[factor * (8-block1[1]-block1[2]) : factor * (8-block1[1]+block1[2]), factor * (block1[0]-block1[2]) : factor * (block1[0]+block1[2])] = 1
+    #mass2_array[factor * (8-block2[1]-block2[2]) : factor * (8-block2[1]+block2[2]), factor * (block2[0]-block2[2]) : factor * (block2[0]+block2[2])] = 1
+    mass1_array[block1_help[0]:block1_help[1], block1_help[2]:block1_help[3]] = 1
+    mass2_array[block2_help[0]:block2_help[1], block2_help[2]:block2_help[3]] = 1
 
     width = shape[1] * voxel_size[1]
     height = shape[0] * voxel_size[0]
@@ -71,12 +74,13 @@ def block_test(factor, block1, block2, options, weights=None, method="newton", p
             "dpi": 800,
         }
         darsia.plotting.plot_2d_wasserstein_distance(info, **plot_options)
+        #darsia.plotting.to_vtk('test', flux)
 
     flux_restructured = np.copy(flux)
     flux_restructured[:, :, 0] = -flux[:, :, 1]
     flux_restructured[:, :, 1] = flux[:, :, 0]
 
-    return distance, flux
+    return distance, flux_restructured
     '''
     flux[:, :, 1] = -flux[:, :, 1]  # reverse x-component to match coordinate system
     # make 2D grid
@@ -102,7 +106,7 @@ def block_test(factor, block1, block2, options, weights=None, method="newton", p
     '''
 
 def plot_flux(xs, ys, flux, real_flux):
-    fig, axs = plt.subplots(1, 3, dpi=500)
+    fig, axs = plt.subplots(2, 2, dpi=500, constrained_layout=True)
     # plot a vector field
     flux_diff = np.copy(real_flux)
     flux_diff = flux_diff - flux
@@ -111,17 +115,17 @@ def plot_flux(xs, ys, flux, real_flux):
         #ax.invert_yaxis()
         #ax.invert_xaxis()
         pass
-    axs[0].quiver(
+    axs[0, 0].quiver(
         xs,
         ys,
-        flux[:, :, 1],
         flux[:, :, 0],
+        flux[:, :, 1],
         scale=50,
         color="blue",
         label="Computed Flux",
     )
-    axs[0].set_title("Computed Flux")
-    axs[1].quiver(
+    axs[0,0].set_title("Computed Flux")
+    axs[0,1].quiver(
         xs,
         ys,
         real_flux[:, :, 0],
@@ -130,8 +134,8 @@ def plot_flux(xs, ys, flux, real_flux):
         color="red",
         label="Analytic Flux",
     )
-    axs[1].set_title("Analytic Flux")
-    axs[2].quiver(
+    axs[0,1].set_title("Analytic Flux")
+    axs[1,0].quiver(
         xs,
         ys,
         flux_diff[:, :, 0],
@@ -140,8 +144,12 @@ def plot_flux(xs, ys, flux, real_flux):
         color="green",
         label="Flux Error",
     )
-    axs[2].set_title("Flux Error")
+    axs[1,0].set_title("Flux Error")
 
+    im = axs[1,1].imshow(np.sqrt(flux_diff[:, :, 0]**2 + flux_diff[:, :, 1]**2))
+    # add colorbar
+    plt.colorbar(im)
+    axs[1,1].set_title("Flux Error Magnitude")
     plt.show()
 
 
@@ -150,9 +158,8 @@ def plot_flux(xs, ys, flux, real_flux):
 def circular_testing(factor, n_datapoints, options, method="newton"):
     angles = np.linspace(0, 2*np.pi, n_datapoints)
 
-    cos = (np.round(2*np.cos(angles)*factor)/factor).astype(int)
-    sin = (np.round(2*np.sin(angles)*factor)/factor).astype(int)
-
+    cos = np.round(2*np.cos(angles)*factor)/factor
+    sin = np.round(2*np.sin(angles)*factor)/factor
 
     dist_error_array = np.zeros(n_datapoints)
     flux_error_array = np.zeros(n_datapoints)
@@ -162,7 +169,7 @@ def circular_testing(factor, n_datapoints, options, method="newton"):
         block2 = [4 + cos[i], 4 + sin[i], 1]
         #dist = np.sqrt((block1[0]-block2[0])**2 + (block1[1]-block2[1])**2)
         dist, flux = analytic_solution(block1, block2, factor)
-        num_dist, num_flux = block_test(factor, block1, block2, options, method=method)
+        num_dist, num_flux = block_test(factor, block1, block2, options, method=method, plotting=False)
 
         dist_error_array[i] = abs(dist - num_dist)/dist
         flux_error_array[i] = L_dist(flux - num_flux)/dist
@@ -170,9 +177,11 @@ def circular_testing(factor, n_datapoints, options, method="newton"):
 
     fig, axs = plt.subplots(2, 1, dpi=500, constrained_layout=True)
     axs[0].plot(angles, dist_error_array)
+    axs[0].plot(angles, dist_error_array, marker='o')
     axs[0].set_title("Distance Error (relative)")
     axs[0].set_xlabel("Angle")
     axs[1].plot(angles, flux_error_array)
+    axs[1].plot(angles, flux_error_array, marker='o')
     axs[1].set_title("Flux Error (relative)")
     axs[1].set_xlabel("Angle")
     fig.suptitle(f"Method : {method}")
@@ -210,6 +219,26 @@ def wall_test(factor, L, K, options, plotting=False):
     
     return dist, flux
 
+def block_test_analysis(block1, block2, factor, options, plotting=False):
+    shape = (factor * 8, factor * 8)
+    voxel_size = [1 / factor, 1 / factor]
+    dist, flux = block_test(factor, block1, block2, options, plotting=plotting)
+    analytic_dist, analytic_flux = analytic_solution(block1, block2, factor)
+
+    dist_error = abs(analytic_dist - dist)/analytic_dist
+    flux_error = L_dist(analytic_flux - flux)/analytic_dist
+    y, x = np.meshgrid(
+        voxel_size[0] * (0.5 + np.arange(shape[0] - 1, -1, -1)),
+        voxel_size[1] * (0.5 + np.arange(shape[1])),
+        indexing="ij",
+    )
+    plot_flux(x, y, flux, analytic_flux)
+
+    print(f"Distance error: {dist_error}, Flux error: {flux_error}")
+
+
+    return dist_error, flux_error
+
 if __name__ == "__main__":
     method = "newton"
     L_Bregman = 1e2
@@ -223,7 +252,7 @@ if __name__ == "__main__":
 
     scaling = 3e1
     regularization = 1e-16
-    num_iter = int(3e2)
+    num_iter = int(3e3)
     tol = 1e-16
     
     options = {
@@ -236,22 +265,33 @@ if __name__ == "__main__":
         "regularization": regularization,
         "scaling": scaling,
         "depth": 0,
-        "verbose": False,
+        "verbose": True,
         "return_info": True
     }
 
-    #wall_test(10, 6, 4, options, plotting=True)
-    
-    
-    factor = 5
-    angle = 5.385587406153931
-    cos = int(np.round(2 * np.cos(angle) * factor) / factor)
-    sin = int(np.round(2 * np.sin(angle) * factor) / factor)
-    block1 = [4 - cos, 4 - sin, 1]
-    block2 = [4 + cos, 4 + sin, 1]
-    #block_test(block1, block2, factor=factor, plotting=True)
+    dist, flux = wall_test(10, 6, 1.5, options, plotting=True)
+
+    bool_map = np.where(flux[:, :, 0] > 0)
+    flux[:, :, 0][bool_map] = 1e4
+    plt.figure()
+    plt.imshow(flux[:, :, 0])
+    plt.show()
+
+    n_datapoints=30
+    factor = 10
+    angles = np.linspace(0, 2 * np.pi, n_datapoints)
+
+    cos = np.round(2 * np.cos(angles) * factor) / factor
+    sin = np.round(2 * np.sin(angles) * factor) / factor
+
+    index = 0
+    cos_i = cos[index]
+    sin_i = sin[index]
+    block1 = [4 - cos_i, 4 - sin_i, 1]
+    block2 = [4 + cos_i, 4 + sin_i, 1]
+    #block_test_analysis(block1, block2, factor, options, plotting=True)
     #wasserstein_test(4, "newton", case=1, plotting=True)
     #convergence_test([1, 2, 4, 8, 16], "newton", case=2)
-    circular_testing(20, 30, options, method="newton")
+    #circular_testing(5, 30, options, method="newton")
 
 

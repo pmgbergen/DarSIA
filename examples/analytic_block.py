@@ -40,7 +40,7 @@ def analytic_solution(block1, block2, factor):
     scaling2 = np.minimum(np.abs(x[mask2] - (block2[0] + np.sign(dx)*width))/abs(cos), np.abs(y[mask2] - (block2[1] + np.sign(dy)*width))/abs(sin))
     x_res[mask2], y_res[mask2] = cos * scaling2, sin * scaling2
 
-    d = width * np.abs(1 - np.abs(sin/cos))
+    d = abs(cos)*width * np.abs(1 - np.abs(sin/cos))
     e = 2 * width * min(abs(cos), abs(sin))
 
 
