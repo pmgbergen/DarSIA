@@ -13,6 +13,7 @@ from darsia.image.arithmetics import *
 from darsia.measure.integration import *
 from darsia.measure.emd import *
 from darsia.measure.wasserstein import *
+from darsia.utils.timings import *
 from darsia.utils.point import *
 from darsia.utils.sort import *
 from darsia.utils.box import *
