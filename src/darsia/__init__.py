@@ -65,6 +65,7 @@ from darsia.image.coordinatetransformation import *  # Requires affine correctio
 from darsia.signals.reduction.signalreduction import *
 from darsia.signals.reduction.monochromatic import *
 from darsia.signals.reduction.dimensionreduction import *
+from darsia.signals.color.color_mode import ColorMode
 from darsia.signals.color.color_range import *
 from darsia.signals.color.discrete_color_range import *
 from darsia.signals.color.color_spectrum import *
