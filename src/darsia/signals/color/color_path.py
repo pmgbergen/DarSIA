@@ -420,4 +420,50 @@ class ColorPath:
             self.num_segments = len(self.colors) - 1
             self.name = data["name"]
             self.sort()
-            logger.info(f"Loaded color path from {path}.")
+        logger.info(f"Loaded color path from {path}.")
+
+
+# ! ---- INTERACTIVE COLOR PATH DEFINITION ----
+
+
+def define_color_path(image: darsia.Image, mask: darsia.Image) -> ColorPath:
+    """Interactive setup of a color path based on an image.
+
+    Args:
+        image (darsia.Image): The image to define the color path from.
+        mask (darsia.Image): The mask to apply on the image.
+
+    Returns:
+        darsia.ColorPath: The defined color path with selected colors.
+
+    """
+    # Sanity checks
+    assert mask.img.dtype == bool, "Mask must be a boolean mask."
+
+    colors = []
+    while True:
+        assistant = darsia.RectangleSelectionAssistant(image)
+
+        # Pick a box in the image and convert it to a mask
+        box: tuple[slice, slice] = assistant()
+        boxed_mask = darsia.zeros_like(mask, dtype=bool)
+        boxed_mask.img[box] = mask.img[box]
+
+        # Determine the mean color in the box
+        mean_color = _get_mean_color(image, mask=boxed_mask)
+        colors.append(mean_color)
+
+        add_more = (
+            input("Do you want to add another color to the path? (y/n) ")
+            .strip()
+            .lower()
+        )
+        if add_more != "y":
+            break
+
+    # Create a global color path
+    return darsia.ColorPath(
+        colors=colors,
+        base_color=colors[0],
+        mode="rgb",
+    )
