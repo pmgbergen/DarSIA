@@ -21,16 +21,16 @@ class DiscreteColorRange(darsia.ColorRange):
     def __repr__(self) -> str:
         return f"DiscreteColorRange(resolution={self.resolution}, {super().__repr__()})"
 
-    @property
-    def origin(self) -> tuple[int, int, int]:
-        """Get the (relative) origin of the color raster in terms of the discrete grid."""
-        # Check if we are inheriting from colorrange or relativecolorrange
-        if self.color_mode == darsia.ColorMode.RELATIVE:
-            return self.color_to_index(np.zeros(3))
+    def __eq__(self, other: object) -> bool:
+        """Check equality between two DiscreteColorRange objects."""
+        if isinstance(other, DiscreteColorRange):
+            return super().__eq__(other) and self.resolution == other.resolution
+        elif isinstance(other, darsia.ColorRange) and not isinstance(
+            other, DiscreteColorRange
+        ):
+            return super().__eq__(other)
         else:
-            raise ValueError(
-                "Require base color - call color_to_index with base color."
-            )
+            return NotImplemented
 
     @property
     def shape(self) -> tuple[int, int, int]:
