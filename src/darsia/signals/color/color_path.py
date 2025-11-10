@@ -75,6 +75,7 @@ class ColorPath:
         elif relative_colors is not None:
             self.relative_colors: list[np.ndarray] = relative_colors
             """Relative colors in RGB space."""
+            assert base_color is not None
             self.base_color = base_color
             self.colors = [self.base_color + c for c in relative_colors]
 
@@ -90,7 +91,7 @@ class ColorPath:
                 np.linalg.norm(self.relative_colors[i] - self.relative_colors[i - 1])
                 for i in range(1, len(self.relative_colors))
             ]
-            self.values = (np.cumsum([0] + distances) / sum(distances)).tolist()
+            self.values = (np.cumsum([0.0] + distances) / sum(distances)).tolist()
 
         self.num_segments = len(self.colors) - 1
         """Number of segments in the color path."""
@@ -105,11 +106,25 @@ class ColorPath:
         """String representation of the color path."""
         return (
             f"ColorPath with {self.num_segments} segments, "
-            f"base color {self.base_color}, "
-            f"mode {self.mode}, "
             f"colors {self.colors}, "
-            f"values {self.values}."
+            f"base color {self.base_color}, "
+            f"relative colors {self.relative_colors}, "
+            f"values {self.values}, "
+            f"mode {self.mode}, "
             f"name {self.name}."
+        )
+
+    def __repr__(self) -> str:
+        """String representation of the color path."""
+        return (
+            f"ColorPath("
+            f"colors: {self.colors}, "
+            f"base_color: {self.base_color}, "
+            f"relative_colors: {self.relative_colors}, "
+            f"values: {self.values}, "
+            f"mode: {self.mode}, "
+            f"name: {self.name}"
+            f")"
         )
 
     def sort(self) -> None:
@@ -229,7 +244,7 @@ class ColorPath:
         plt.show()
 
     def _parametrize_colors(
-        self, array: np.ndarray, supports: list[np.ndarray]
+        self, colors: np.ndarray, supports: list[np.ndarray]
     ) -> np.ndarray:
         """Parametrize the image in terms of the color path.
 
@@ -253,7 +268,7 @@ class ColorPath:
             scalar_interpretation = self.values[segment] + (
                 self.values[segment + 1] - self.values[segment]
             ) * np.tensordot(
-                array - supports[segment],
+                colors - supports[segment],
                 supports[segment + 1] - supports[segment],
                 axes=([-1], [0]),
             ) / np.dot(
@@ -263,7 +278,7 @@ class ColorPath:
             interpretations.append(scalar_interpretation)
 
         # Convert each segment to its color interpretation
-        shape = array.shape[:-1] + (-1,)
+        shape = colors.shape[:-1] + (-1,)
         color_interpretations = [
             supports[segment]
             + np.outer(
@@ -277,14 +292,14 @@ class ColorPath:
         # Compare the different segments and find the global best-fit segment for each pixel
         distances = np.stack(
             [
-                np.linalg.norm(array - color_interpretations[segment], axis=-1)
+                np.sum((colors - color_interpretations[segment]) ** 2, axis=-1)
                 for segment in range(self.num_segments)
             ]
         )
         closest_segment = np.argmin(distances, axis=0)
 
         # Finalize minimization by taking the best-fit interpretation
-        best_fit_interpretation = np.zeros(array.shape[:-1])
+        best_fit_interpretation = np.zeros(colors.shape[:-1])
         for segment in range(self.num_segments):
             mask = closest_segment == segment
             best_fit_interpretation[mask] = interpretations[segment][mask]
@@ -318,11 +333,11 @@ class ColorPath:
 
         """
         if isinstance(image, np.ndarray):
-            return self._parametrize_colors(image, self.absolute_colors)
+            return self._parametrize_colors(image, self.colors)
         if isinstance(image, darsia.Image):
             return darsia.full_like(
                 image,
-                fill_value=self._parametrize_colors(image.img, self.absolute_colors),
+                fill_value=self._parametrize_colors(image.img, self.colors),
                 mode="voxels",
             )
 
@@ -332,7 +347,9 @@ class ColorPath:
     @overload
     def relative_inverse(self, image: darsia.Image) -> darsia.Image: ...
 
-    def relative_inverse(self, image: darsia.Image) -> darsia.Image:
+    def relative_inverse(
+        self, image: np.ndarray | darsia.Image
+    ) -> np.ndarray | darsia.Image:
         """Inverse the relative color path to an image defined by the closest color
         representation on the path.
 
@@ -340,8 +357,11 @@ class ColorPath:
             image: Input image to be interpreted.
 
         Returns:
-            darsia.Image: Parametrization of the input image in terms of the relative
-                color path.
+            np.ndarray | darsia.Image: Parametrization of the input image in
+                terms of the relative color path.
+
+        Raises:
+            TypeError: If the input image is neither a numpy array nor a darsia.Image.
 
         """
         if isinstance(image, np.ndarray):
@@ -370,6 +390,7 @@ class ColorPath:
             "relative_colors": [c.tolist() for c in self.relative_colors],
             "values": self.values,
             "mode": self.mode,
+            "name": self.name,
         }
 
     def save(self, path: Path) -> None:
@@ -379,7 +400,7 @@ class ColorPath:
             path (Path): The path to the file where the color path should be saved.
 
         """
-        with open(path, "w") as f:
+        with open(path.with_suffix(".json"), "w") as f:
             json.dump(self.to_dict(), f)
 
     def load(self, path: Path) -> None:
@@ -389,7 +410,7 @@ class ColorPath:
             path (Path): The path to the file from which the color path should be loaded.
 
         """
-        with open(path, "r") as f:
+        with open(path.with_suffix(".json"), "r") as f:
             data = json.load(f)
             self.colors = [np.array(c) for c in data["colors"]]
             self.base_color = np.array(data["base_color"])
@@ -397,5 +418,6 @@ class ColorPath:
             self.values = data["values"]
             self.mode = data["mode"]
             self.num_segments = len(self.colors) - 1
+            self.name = data["name"]
             self.sort()
             logger.info(f"Loaded color path from {path}.")
