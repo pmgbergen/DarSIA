@@ -34,7 +34,7 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
 
     def show(self) -> None:
         """Show the color paths."""
-        for label, color_path in self.items():
+        for _, color_path in self.items():
             color_path.show()
 
     def save(self, directory: Path) -> None:
