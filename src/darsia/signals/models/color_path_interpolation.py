@@ -1,4 +1,4 @@
-from typing import Literal, overload
+from typing import overload
 
 import numpy as np
 
@@ -9,10 +9,10 @@ class ColorPathInterpolation(darsia.Model):
     def __init__(
         self,
         color_path: darsia.ColorPath,
-        interpolation: Literal["absolute", "relative"] = "absolute",
+        color_mode: darsia.ColorMode,
     ):
         self.color_path = color_path
-        self.interpolation = interpolation
+        self.color_mode = color_mode
 
     def update(
         self,
@@ -51,9 +51,4 @@ class ColorPathInterpolation(darsia.Model):
     def __call__(self, img: darsia.Image) -> darsia.Image: ...
 
     def __call__(self, img: np.ndarray | darsia.Image) -> np.ndarray | darsia.Image:
-        if self.interpolation == "absolute":
-            return self.color_path.absolute_inverse(img)
-        elif self.interpolation == "relative":
-            return self.color_path.relative_inverse(img)
-        else:
-            raise ValueError
+        return self.color_path.parametrize(img, color_mode=self.color_mode)
