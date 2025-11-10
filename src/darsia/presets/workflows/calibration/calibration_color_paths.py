@@ -45,7 +45,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     fluidflower.load_experiment(experiment)
 
     # ! ---- LOAD IMAGES ----
-    baseline_images = []
+    baseline_images: list[darsia.Image] = []
     for p in config.color_paths.baseline_image_paths:
         cache_path = Path(".") / "tmp" / f"cache_{p.stem}.npz"
         if not cache_path.exists():
@@ -55,12 +55,12 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
             baseline_image = darsia.imread(cache_path)
         baseline_images.append(baseline_image)
 
-    calibration_image_paths = config.color_paths.calibration_image_paths
+    calibration_image_paths: list[Path] = config.color_paths.calibration_image_paths
     if len(calibration_image_paths) == 0:
         calibration_image_paths = experiment.find_images_for_times(
             times=config.color_paths.calibration_image_times
         )
-    calibration_images = []
+    calibration_images: list[darsia.Image] = []
     for p in calibration_image_paths:
         cache_path = Path(".") / "tmp" / f"cache_{p.stem}.npz"
         if not cache_path.exists():
@@ -70,9 +70,9 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
             calibration_image = darsia.imread(cache_path)
         calibration_images.append(calibration_image)
 
-    # ! ---- IDENTIFY AND STORE COLOR RANGE ----
+    # ! ---- IDENTIFY AND STORE (RELATIVE) COLOR RANGE ----
 
-    tracer_color_range = darsia.ColorRange(
+    tracer_color_range = darsia.ColorRange.from_images(
         images=calibration_images,
         baseline=fluidflower.baseline,
         mask=fluidflower.boolean_porosity,
@@ -83,8 +83,8 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
 
     color_path_regression = darsia.LabelColorPathMapRegression(
         labels=fluidflower.labels,
-        mask=fluidflower.boolean_porosity,
         color_range=tracer_color_range,
+        mask=fluidflower.boolean_porosity,
         resolution=config.color_paths.resolution,
         ignore_labels=config.color_paths.ignore_labels,
     )
@@ -92,7 +92,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     # ! ---- ANALYZE FLUCTUATIONS IN BASELINE IMAGES ----
 
     baseline_color_spectrum: darsia.LabelColorSpectrumMap = (
-        color_path_regression.get_label_color_spectrum_map(
+        color_path_regression.get_color_spectrum(
             images=baseline_images,
             baseline=fluidflower.baseline,
             threshold_significant=config.color_paths.threshold_baseline,
@@ -104,15 +104,18 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
 
     # Expand the baseline color spectrum through linear regression
     expanded_baseline_color_spectrum: darsia.LabelColorSpectrumMap = (
-        color_path_regression.expand_label_color_spectrum_map(
-            label_color_spectrum_map=baseline_color_spectrum,
-            verbose=False,
+        color_path_regression.expand_color_spectrum(
+            color_spectrum=baseline_color_spectrum,
+            verbose=True,
         )
+    )
+    expanded_baseline_color_spectrum.save(
+        config.color_paths.baseline_color_spectrum_file
     )
 
     # ! ---- EXTRACT COLOR SPECTRUM OF TRACERS ---- ! #
 
-    tracer_color_spectrum = color_path_regression.get_label_color_spectrum_map(
+    tracer_color_spectrum = color_path_regression.get_color_spectrum(
         images=calibration_images,
         baseline=fluidflower.baseline,
         ignore=expanded_baseline_color_spectrum,
@@ -124,8 +127,8 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
 
     # Find a relative color path through the significant boxes
     label_color_path_map: darsia.LabelColorPathMap = (
-        color_path_regression.find_label_color_path_map(
-            label_color_spectrum_map=tracer_color_spectrum,
+        color_path_regression.find_color_path(
+            color_spectrum=tracer_color_spectrum,
             ignore=expanded_baseline_color_spectrum,
             num_segments=config.color_paths.num_segments,
             directory=config.color_paths.calibration_file,
