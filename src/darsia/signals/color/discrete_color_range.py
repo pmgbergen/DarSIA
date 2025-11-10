@@ -37,7 +37,7 @@ class DiscreteColorRange(darsia.ColorRange):
         """Get the shape of the discrete color raster."""
         return (self.resolution, self.resolution, self.resolution)
 
-    def color_to_index(self, color: np.ndarray) -> np.ndarray:
+    def color_to_index(self, color: np.ndarray) -> np.ndarray[int]:
         """Convert color array to the respective indices in the discrete color raster.
 
         Args:
@@ -51,9 +51,8 @@ class DiscreteColorRange(darsia.ColorRange):
             f"Color array must have shape (N,3), got {color.shape}"
         )
         if NUMBA_AVAILABLE:
-            print(type(color), color.dtype, color.shape)
             min_color = self.min_color.astype(np.float64)
-            extent = self.color_range.extent.astype(np.float64)
+            extent = self.extent.astype(np.float64)
             resolution = self.resolution
             return color_to_index_numba(
                 color.astype(np.float64).reshape((-1, 3)),
@@ -67,9 +66,9 @@ class DiscreteColorRange(darsia.ColorRange):
             for i in range(3):
                 indices[:, i] = np.clip(
                     np.round(
-                        (color[:, i] - self.color_range.min_color[i])
+                        (color[:, i] - self.min_color[i])
                         * (self.resolution - 1)
-                        / (self.color_range.extent[i])
+                        / (self.extent[i])
                     ),
                     0,
                     self.resolution - 1,
