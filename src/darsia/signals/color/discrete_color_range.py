@@ -15,6 +15,7 @@ class DiscreteColorRange(darsia.ColorRange):
         super().__init__(
             min_color=color_range.min_color,
             max_color=color_range.max_color,
+            color_mode=color_range.color_mode,
         )
 
     def __repr__(self) -> str:
