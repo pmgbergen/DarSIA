@@ -2,36 +2,16 @@
 
 import copy
 import logging
+
+import numpy as np
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.manifold import LocallyLinearEmbedding
-from time import time
-from functools import wraps
-from warnings import warn
 from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
 
 import darsia
 
 logger = logging.getLogger(__name__)
-
-
-def timing_decorator(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        start = time()
-        result = func(*args, **kwargs)
-        end = time()
-        # Do not only use the name of the function, but also the class it belongs to
-        logger.info(
-            f"{func.__module__}.{func.__name__} executed in {end - start:.3f} seconds"
-        )
-        return result
-
-    return wrapper
-
 
 # ! ---- AUXILIARY FUNCTIONS ----
 
@@ -59,52 +39,6 @@ def _get_mean_color(
     return np.mean(subimage.reshape(-1, 3), axis=0)
 
 
-# ! ---- INTERACTIVE COLOR PATH DEFINITION ----
-
-
-def define_color_path(image: darsia.Image, mask: darsia.Image) -> darsia.ColorPath:
-    """Interactive setup of a color path based on an image.
-
-    Args:
-        image (darsia.Image): The image to define the color path from.
-        mask (darsia.Image): The mask to apply on the image.
-
-    Returns:
-        darsia.ColorPath: The defined color path with selected colors.
-
-    """
-    # Sanity checks
-    assert mask.img.dtype == bool, "Mask must be a boolean mask."
-
-    colors = []
-    while True:
-        assistant = darsia.RectangleSelectionAssistant(image)
-
-        # Pick a box in the image and convert it to a mask
-        box: tuple[slice, slice] = assistant()
-        boxed_mask = darsia.zeros_like(mask, dtype=bool)
-        boxed_mask.img[box] = mask.img[box]
-
-        # Determine the mean color in the box
-        mean_color = _get_mean_color(image, mask=boxed_mask)
-        colors.append(mean_color)
-
-        add_more = (
-            input("Do you want to add another color to the path? (y/n) ")
-            .strip()
-            .lower()
-        )
-        if add_more != "y":
-            break
-
-    # Create a global color path
-    return darsia.ColorPath(
-        colors=colors,
-        base_color=colors[0],
-        mode="rgb",
-    )
-
-
 # ! ---- ALGORITHMIC COLOR PATH DEFINITION ----
 
 
@@ -114,21 +48,37 @@ class LabelColorPathMapRegression:
     def __init__(
         self,
         labels: darsia.Image,
-        mask: darsia.Image,  # TODO extend to allow for None
         color_range: darsia.ColorRange,
         resolution: int = 11,
+        mask: darsia.Image | None = None,  # TODO extend to allow for None
         ignore_labels: list[int] = [],
     ) -> None:
         self.labels = labels
-        self.mask = mask
+        """Labeled image to define color paths for."""
         self.color_range = color_range
-        self.resolution = resolution
+        """Color range for the regression."""
         self.discrete_color_range = darsia.DiscreteColorRange(
             color_range=color_range, resolution=resolution
         )
+        """Discrete color range for regression."""
+        self.mask = mask
+        """Mask to apply when analyzing colors."""
         self.ignore_labels = ignore_labels
+        """Labels to ignore during color path regression."""
+        self.color_mode = color_range.color_mode
+        """Color mode."""
 
-    @timing_decorator
+        # Sanity check
+        assert mask is not None
+        if self.color_mode != darsia.ColorMode.RELATIVE:
+            raise NotImplementedError("Only relative color ranges are supported.")
+
+    @property
+    def _shape(self) -> tuple[int, int, int]:
+        """Get the shape of the discrete color range."""
+        return 3 * (self.discrete_color_range.resolution,)
+
+    @darsia.timing_decorator
     def get_base_colors(
         self, image: darsia.Image, verbose: bool = False
     ) -> darsia.LabelColorMap:
@@ -166,7 +116,7 @@ class LabelColorPathMapRegression:
 
         return darsia.LabelColorMap(base_colors)
 
-    @timing_decorator
+    @darsia.timing_decorator
     def get_mean_base_color(self, image: darsia.Image) -> np.ndarray:
         """Get the mean base color across all labels in the image.
 
@@ -179,7 +129,7 @@ class LabelColorPathMapRegression:
         base_colors = self.get_base_colors(image)
         return base_colors.mean()
 
-    @timing_decorator
+    @darsia.timing_decorator
     def base_color_image(self, image: darsia.Image) -> darsia.Image:
         """Create an image where each label is colored by its base color.
 
@@ -195,8 +145,8 @@ class LabelColorPathMapRegression:
             base_color_image.img[mask.img, :] = base_colors[label]
         return base_color_image
 
-    @timing_decorator
-    def get_label_color_spectrum_map(
+    @darsia.timing_decorator
+    def get_color_spectrum(
         self,
         images: list[darsia.Image],
         baseline: darsia.Image | None = None,
@@ -243,10 +193,8 @@ class LabelColorPathMapRegression:
                     label,
                     darsia.ColorSpectrum(
                         base_color=base_color,
-                        histogram=np.zeros(
-                            self.discrete_color_range.shape, dtype=float
-                        ),
-                        spectrum=np.zeros(self.discrete_color_range.shape, dtype=bool),
+                        histogram=np.zeros(self._shape, dtype=float),
+                        spectrum=np.zeros(self._shape, dtype=bool),
                         color_range=self.color_range,
                     ),
                 )
@@ -277,7 +225,7 @@ class LabelColorPathMapRegression:
                 # Put the data into a 3D histogram
                 single_hist, _ = np.histogramdd(
                     relative_colors,
-                    bins=self.discrete_color_range.shape,
+                    bins=self._shape,
                     range=self.color_range.range,
                 )
 
@@ -288,7 +236,7 @@ class LabelColorPathMapRegression:
                         if isinstance(ignore, darsia.LabelColorSpectrumMap)
                         else ignore.spectrum
                     )
-                    assert ignore_spectrum.shape == self.discrete_color_range.shape
+                    assert ignore_spectrum.shape == self._shape
                     assert ignore_spectrum.dtype == bool
                     single_hist[ignore_spectrum] = 0.0
 
@@ -308,7 +256,7 @@ class LabelColorPathMapRegression:
             # Prepare reusable data
             _, edges = np.histogramdd(
                 np.zeros((1, 3)),
-                bins=self.discrete_color_range.shape,
+                bins=self._shape,
                 range=self.color_range.range,
             )
             # Define the respective meshgrid for the histogram
@@ -334,7 +282,7 @@ class LabelColorPathMapRegression:
                     ).T,
                     0.0,
                     1.0,
-                ).reshape(self.discrete_color_range.shape + (3,))
+                ).reshape(self._shape + (3,))
 
                 # Plot the significant boxes
                 ax.voxels(color_spectrum_map[label].spectrum, facecolors=c_mesh)
@@ -347,17 +295,59 @@ class LabelColorPathMapRegression:
                         facecolors="red",
                         alpha=0.1,
                     )
-                # Highlight the origin
+                # Highlight the (relative) origin
                 origin = np.zeros_like(color_spectrum_map[label].spectrum, dtype=bool)
-                origin[tuple(self.discrete_color_range.origin)] = True
+                origin_index = self.discrete_color_range.color_to_index(
+                    np.zeros(3)
+                    if self.color_mode == darsia.ColorMode.RELATIVE
+                    else color_spectrum_map[label].base_color
+                )
+                origin[tuple(origin_index)] = True
                 ax.voxels(origin, facecolors="red")
                 plt.show()
 
         logger.info("Done. Color spectrum analysis.")
         return color_spectrum_map
 
-    @timing_decorator
+    @darsia.timing_decorator
     def expand_color_spectrum(
+        self,
+        color_spectrum: darsia.ColorSpectrum | darsia.LabelColorSpectrumMap,
+        min_points: int = 6,
+        verbose: bool = False,
+    ) -> darsia.LabelColorSpectrumMap:
+        """Expand the color spectrum through linear regression.
+
+        Args:
+            color_spectrum_map (LabelColorSpectrumMap): The color spectrum to expand.
+            verbose (bool): Whether to print additional information.
+            min_points (int): Minimum number of significant points to perform regression.
+            # min_weight (float): Minimum weight for the regression.
+
+        Returns:
+            LabelColorSpectrumMap: The expanded color spectrum.
+
+        """
+        if isinstance(color_spectrum, darsia.ColorSpectrum):
+            return self._expand_color_spectrum(
+                color_spectrum=color_spectrum,
+                min_points=min_points,
+                title="Expanded Color Spectrum",
+                verbose=verbose,
+            )
+        elif isinstance(color_spectrum, darsia.LabelColorSpectrumMap):
+            expanded_label_color_spectrum_map = copy.deepcopy(color_spectrum)
+            for label, color_spectrum in expanded_label_color_spectrum_map.items():
+                expanded_label_color_spectrum_map[label] = self._expand_color_spectrum(
+                    color_spectrum=color_spectrum,
+                    min_points=min_points,
+                    title=f"Expanded Color Spectrum for Label {label}",
+                    verbose=verbose,
+                )
+            return expanded_label_color_spectrum_map
+
+    @darsia.timing_decorator
+    def _expand_color_spectrum(
         self,
         color_spectrum: darsia.ColorSpectrum,
         min_points: int = 6,
@@ -376,6 +366,10 @@ class LabelColorPathMapRegression:
             ColorSpectrum: The expanded color spectrum.
 
         """
+        # Sanity check - compatibility of spectrum with discrete color range
+        assert color_spectrum.spectrum.shape == self.discrete_color_range.shape
+        assert color_spectrum.color_range == self.discrete_color_range
+
         # Prepare the result
         expanded_color_spectrum = copy.deepcopy(color_spectrum)
 
@@ -435,7 +429,7 @@ class LabelColorPathMapRegression:
         # Make sure to use high-resolution and to cover enough length.
         expanded_relative_colors = np.empty((0, 3))
         relative_colors = expanded_color_spectrum.relative_colors
-        high_resolution = 10 * self.discrete_color_range.shape[0]
+        high_resolution = 10 * self._shape[0]
         rescaled_coef = (
             np.max(expanded_color_spectrum.color_range.range)
             / np.mean(coef)
@@ -451,7 +445,7 @@ class LabelColorPathMapRegression:
         # Convert to discrete histogram
         expanded_histogram, _ = np.histogramdd(
             expanded_relative_colors,
-            bins=self.discrete_color_range.shape,
+            bins=self._shape,
             range=self.color_range.range,
         )
         expanded_histogram = expanded_histogram / np.sum(expanded_histogram)
@@ -465,7 +459,7 @@ class LabelColorPathMapRegression:
             # Prepare reusable data
             _, edges = np.histogramdd(
                 np.zeros((1, 3)),
-                bins=self.discrete_color_range.shape,
+                bins=self._shape,
                 range=self.color_range.range,
             )
 
@@ -486,14 +480,19 @@ class LabelColorPathMapRegression:
                 + np.vstack((x_mesh.flatten(), y_mesh.flatten(), z_mesh.flatten())).T,
                 0.0,
                 1.0,
-            ).reshape(self.discrete_color_range.shape + (3,))
+            ).reshape(self._shape + (3,))
 
             # Plot the significant boxes
             ax.voxels(spectrum, facecolors=c_mesh, alpha=0.8)
             ax.voxels(expanded_spectrum, facecolors=c_mesh, alpha=0.1)
-            # Highlight the origin
+            # Highlight the base color / relative origin
             origin = np.zeros_like(expanded_spectrum, dtype=bool)
-            origin[tuple(self.discrete_color_range.origin)] = True
+            origin_index = self.discrete_color_range.color_to_index(
+                np.zeros(3)
+                if self.color_mode == darsia.ColorMode.RELATIVE
+                else color_spectrum.base_color
+            )
+            origin[tuple(origin_index)] = True
             ax.voxels(origin, facecolors="red")
             plt.show()
 
@@ -501,36 +500,7 @@ class LabelColorPathMapRegression:
 
         return expanded_color_spectrum
 
-    @timing_decorator
-    def expand_label_color_spectrum_map(
-        self,
-        label_color_spectrum_map: darsia.LabelColorSpectrumMap,
-        min_points: int = 6,
-        verbose: bool = False,
-    ) -> darsia.LabelColorSpectrumMap:
-        """Expand the color spectrum through linear regression.
-
-        Args:
-            color_spectrum_map (LabelColorSpectrumMap): The color spectrum to expand.
-            verbose (bool): Whether to print additional information.
-            min_points (int): Minimum number of significant points to perform regression.
-            # min_weight (float): Minimum weight for the regression.
-
-        Returns:
-            LabelColorSpectrumMap: The expanded color spectrum.
-
-        """
-        expanded_color_spectrum_map = copy.deepcopy(label_color_spectrum_map)
-        for label, color_spectrum in expanded_color_spectrum_map.items():
-            expanded_color_spectrum_map[label] = self.expand_color_spectrum(
-                color_spectrum=color_spectrum,
-                min_points=min_points,
-                title=f"Expanded Color Spectrum for Label {label}",
-                verbose=verbose,
-            )
-        return expanded_color_spectrum_map
-
-    @timing_decorator
+    @darsia.timing_decorator
     def find_relative_color_path(
         self,
         spectrum: darsia.ColorSpectrum,
@@ -559,7 +529,7 @@ class LabelColorPathMapRegression:
 
         # Step 1: Extract spectrum and convert to relative colors in the color range
         relative_colors = spectrum.relative_colors
-        absolute_colors = spectrum.absolute_colors
+        colors = spectrum.colors
         num_points = relative_colors.shape[0]
 
         # Check for empty color path - need at least two points to define a path
@@ -770,15 +740,13 @@ class LabelColorPathMapRegression:
             )
 
         # Step 5: Define the corresponding absolute colors
-        key_absolute_colors = [spectrum.base_color + c for c in key_relative_colors]
+        key_colors = [spectrum.base_color + c for c in key_relative_colors]
 
         # Step 6: Verbose output
 
         # Print key colors
         if verbose:
-            for i, (color, rel) in enumerate(
-                zip(key_absolute_colors, key_relative_colors)
-            ):
+            for i, (color, rel) in enumerate(zip(key_colors, key_relative_colors)):
                 print(f"Key color {i + 1}: RGB = {color}, relative: {rel}")
 
         # Step 6: Visualize
@@ -790,7 +758,7 @@ class LabelColorPathMapRegression:
             relative_colors[:, 0],
             relative_colors[:, 1],
             relative_colors[:, 2],
-            c=np.clip(absolute_colors, 0, 1),
+            c=np.clip(colors, 0, 1),
             s=10,
             alpha=0.5,
         )
@@ -800,7 +768,7 @@ class LabelColorPathMapRegression:
             ax.plot(*np.array(key_relative_colors).T, c="black", linewidth=2)
             ax.scatter(
                 *np.array(key_relative_colors).T,
-                c=np.clip(key_absolute_colors, 0, 1),
+                c=np.clip(key_colors, 0, 1),
                 s=100,
             )
 
@@ -845,10 +813,10 @@ class LabelColorPathMapRegression:
         )
         return relative_color_path
 
-    @timing_decorator
-    def find_label_color_path_map(
+    @darsia.timing_decorator
+    def find_color_path(
         self,
-        label_color_spectrum_map: darsia.LabelColorSpectrumMap,
+        color_spectrum: darsia.LabelColorSpectrumMap,
         ignore: darsia.LabelColorSpectrumMap | None = None,
         num_segments: int = 1,
         directory: Path | None = None,
@@ -871,7 +839,7 @@ class LabelColorPathMapRegression:
                 (
                     label,
                     self.find_relative_color_path(
-                        spectrum=label_color_spectrum_map[label],
+                        spectrum=color_spectrum[label],
                         ignore=ignore[label] if ignore is not None else None,
                         num_segments=num_segments,
                         name=f"Color Path for Label {label}",
@@ -879,7 +847,7 @@ class LabelColorPathMapRegression:
                         verbose=verbose,
                     ),
                 )
-                for label in label_color_spectrum_map.keys()
+                for label in color_spectrum.keys()
             )
         )
         return label_color_path_map
