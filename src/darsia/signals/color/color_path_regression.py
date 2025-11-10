@@ -7,6 +7,8 @@ import numpy as np
 from pathlib import Path
 
 from sklearn.decomposition import PCA
+from sklearn.manifold import LocallyLinearEmbedding
+from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 
 import darsia
@@ -501,7 +503,7 @@ class LabelColorPathMapRegression:
         return expanded_color_spectrum
 
     @darsia.timing_decorator
-    def find_relative_color_path(
+    def _find_color_path(
         self,
         spectrum: darsia.ColorSpectrum,
         ignore: darsia.ColorSpectrum | None = None,
@@ -524,6 +526,9 @@ class LabelColorPathMapRegression:
             darsia.ColorPath: The relative color path through the significant boxes.
 
         """
+        assert spectrum.color_range.color_mode == darsia.ColorMode.RELATIVE, (
+            "Color path regression only implemented for RELATIVE color mode."
+        )
         # Step 0: Prepare
         num_dofs = num_segments + 1
 
@@ -838,7 +843,7 @@ class LabelColorPathMapRegression:
             dict(
                 (
                     label,
-                    self.find_relative_color_path(
+                    self._find_color_path(
                         spectrum=color_spectrum[label],
                         ignore=ignore[label] if ignore is not None else None,
                         num_segments=num_segments,
