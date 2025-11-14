@@ -32,10 +32,10 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
             str_str += f"Label {label}: {str(color_path)}\n"
         return str_str
 
-    def show(self) -> None:
+    def show_cmap(self) -> None:
         """Show the color paths."""
         for _, color_path in self.items():
-            color_path.show()
+            color_path.show_cmap()
 
     def save(self, directory: Path) -> None:
         """Save color paths to a directory.
