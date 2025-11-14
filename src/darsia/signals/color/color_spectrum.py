@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ColorSpectrum:
-    """Data structure to hold a color spectrum."""
+    """Data structure to hold a (discrete) color spectrum."""
 
     base_color: np.ndarray
     """Reference color for the spectrum."""
@@ -77,6 +77,24 @@ class ColorSpectrum:
             return colors
         elif self.color_mode == darsia.ColorMode.ABSOLUTE:
             return colors - self.base_color
+
+    def distance(self, color: np.ndarray) -> np.ndarray | float:
+        """Compute the (minimum) distance between a color and the spectrum.
+
+        Args:
+            color (np.ndarray): The color to compare against the spectrum.
+
+        Returns:
+            The computed distance.
+
+        """
+        # Compute the distance as the minimum distance to any color in the spectrum
+        if len(color.ravel().shape) == 1:
+            return np.min(np.linalg.norm(self.colors - color, axis=1))
+        else:
+            return np.array(
+                [np.min(np.linalg.norm(self.colors - c, axis=1)) for c in color]
+            )
 
     def save(self, file_path: Path) -> None:
         """Save the color spectrum to a file.
