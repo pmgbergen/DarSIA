@@ -21,14 +21,11 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
     config.check("color_signal", "color_paths", "rig", "data", "protocol")
 
     # Mypy type checking
-    for c in [
-        config.color_signal,
-        config.color_paths,
-        config.rig,
-        config.data,
-        config.protocol,
-    ]:
-        assert c is not None
+    assert config.data is not None
+    assert config.protocol is not None
+    assert config.color_paths is not None
+    assert config.rig is not None
+    assert config.color_signal is not None  # TODO redundant?
 
     # ! ---- LOAD EXPERIMENT ----
     experiment = darsia.ProtocolledExperiment(
@@ -49,7 +46,8 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
     color_paths = darsia.LabelColorPathMap.load(config.color_paths.calibration_file)
 
     # ! ---- LOAD COLOR RANGE ----
-    color_range = darsia.ColorRange.load(config.color_paths.color_range_file)
+    # TODO rm?
+    # color_range = darsia.ColorRange.load(config.color_paths.color_range_file)
 
     # ! ---- LOAD IMAGES ----
     # Store cached versions of calibration images to speed up development
@@ -90,6 +88,9 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
 
     # TODO move this to another calibration function.
 
+    # Util 1.
+    threshold = 0.2  # TODO include in config.
+
     # Metric I.
     # Determine distance from color path to baseline spectrum (consider the furthest
     # away color to measure sensitivity)
@@ -98,10 +99,14 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
     )
     distances = {
         label: max(
-            [baseline_color_spectrum[label].distance(c) for c in color_path.colors]
+            [
+                float(baseline_color_spectrum[label].distance(c))
+                for c in color_path.colors
+            ]
         )
         for label, color_path in color_paths.items()
     }
+    reference_distance = max(distances.values())
 
     # Metric II.
     # Determine distance from color path to reference color path.
@@ -119,14 +124,14 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
         )
         for label, color_path in color_paths.items()
     }
+    reference_interpolation_value = max(interpolation_values.values())
 
     # Decide which labels to ignore based on the two metrics
-    threshold = 0.5  # TODO include in config.
     ignore_labels = []
     for label in np.unique(fluidflower.labels.img):
-        relative_distance = distances[label] / max(distances.values())
-        relative_max_interpolation = interpolation_values[label] / max(
-            interpolation_values.values()
+        relative_distance = distances[label] / reference_distance
+        relative_max_interpolation = (
+            interpolation_values[label] / reference_interpolation_value
         )
         print(label, relative_distance, relative_max_interpolation)
         if min(relative_distance, relative_max_interpolation) < threshold:
@@ -144,32 +149,29 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
                 _img.img[mask.img] = np.mean(_img.img[mask.img], axis=1, keepdims=True)
             _img.show(cmap=custom_cmap, title="Ignored labels")
 
-    # Utils I. Determine distance to baseline spectrum
+    # Utils II. Determine distance to baseline spectrum and use that for the first interpolation value
+    # Helps to tone down fluctuations in the baseline color spectrum
     for label in baseline_color_spectrum:
         color_path = color_paths[label]
-        # Determine the minimum distance
         min_distance = baseline_color_spectrum[label].distance(
             color_path.relative_colors[1]
         )
-        # Corresponding relative distance
-        relative_distance = color_path.relative_distances[1]
-        # Adjust all relative distances accordingly through additive shift
-        if relative_distance is not np.nan:
-            color_path.relative_distances[1:] += min_distance - relative_distance
+        if color_path.relative_distances[1] is not np.nan:
+            color_path.relative_distances[1] = min_distance
 
-    # Utils II.
+    # Utils III. Adapt the interpolation values based on the reference color path
 
     # Rescale color paths based on reference interpolation
-    # for label in color_path_interpolation:
-    #     color_path_interpolation[label].values *= interpolation_values[label]
-    #     # color_path = color_paths[label]
-    #     # color_path_interpolation[label].values = (
-    #     #    np.array(color_path.relative_distances)
-    #     #    * interpolation_values[label]
-    #     #    / max(
-    #     #        color_path.relative_distances
-    #     #    )  # Normalization not needed as relative distances are normalized # TODO
-    #     # ).tolist()
+    for label in color_path_interpolation:
+        color_path_interpolation[label].values *= interpolation_values[label]
+    color_path = color_paths[label]
+    color_path_interpolation[label].values = (
+        np.array(color_path.relative_distances)
+        * interpolation_values[label]
+        / max(
+            color_path.relative_distances
+        )  # Normalization not needed as relative distances are normalized # TODO
+    ).tolist()
 
     # Overwrite the color paths with updated interpolation values
     for label in np.unique(fluidflower.labels.img):
@@ -207,7 +209,8 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
     # if config.color_signal.calibration_file.exists():
     #    concentration_analysis.load(config.color_signal.calibration_file)
 
-    color_paths[23].show_path()
+    if False:
+        color_paths[23].show_path()
 
     # Perform local calibration
     color_analysis.local_calibration_values(
