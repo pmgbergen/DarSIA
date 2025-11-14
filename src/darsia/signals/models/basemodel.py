@@ -51,18 +51,27 @@ class Model:
 class HeterogeneousModel(Model):
     def __init__(
         self,
-        obj: Union[Model, list[Model]],
+        obj: Model | list[Model] | dict[int, Model],
         labels: darsia.Image,
         ignore_labels: list[int] = None,
     ) -> None:
         self.masks = darsia.Masks(labels)
         """Masks for each label in the image."""
-        self.obj = {}
-        """Dictionary of models for each label."""
-        for label in self.masks.unique_labels:
-            self.obj[label] = copy.copy(obj)
         self.ignore_labels = ignore_labels if ignore_labels is not None else []
         """Labels to ignore for signals."""
+        self.obj = {}
+        """Dictionary of models for each label."""
+        for j, label in enumerate(self.masks.unique_labels):
+            if isinstance(obj, list):
+                assert len(obj) == len(self.masks.unique_labels), (
+                    "Length of model list must match number of unique labels."
+                )
+                self.obj[label] = copy.copy(obj[j])
+            elif isinstance(obj, dict):
+                assert label in obj, f"Label {label} not found in model dictionary."
+                self.obj[label] = copy.copy(obj[label])
+            else:
+                self.obj[label] = copy.copy(obj)
 
     def __call__(self, signal: np.ndarray) -> np.ndarray:
         output = np.zeros(signal.shape[:2])  # TODO shape?
@@ -75,3 +84,6 @@ class HeterogeneousModel(Model):
 
     def __getitem__(self, key):
         return self.obj[key]
+
+    def __setitem__(self, key, value):
+        self.obj[key] = value
