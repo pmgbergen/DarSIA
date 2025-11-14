@@ -3,13 +3,14 @@
 import json
 import logging
 from pathlib import Path
-from typing import Literal, overload
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 
 import darsia
+from .utils import get_mean_color
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,6 @@ class ColorPath:
         colors: list[np.ndarray] | None = [np.zeros(3), np.ones(3)],
         base_color: np.ndarray | None = None,
         relative_colors: list[np.ndarray] | None = None,
-        values: np.ndarray | list[float] | None = None,
         mode: Literal["rgb", "lab", "hcl"] = "rgb",
         name: str = "ColorPath",
     ) -> None:
@@ -46,8 +46,6 @@ class ColorPath:
             base_color: Base color in RGB space, used as the first color in the path.
             relative_colors: Relative colors in RGB space wrt. the base color,
                 defining the color path. If provided, `colors` must be `None`.
-            values: Values from 0 to 1 parametrizing/sampling the colors. If `None`,
-                the relative distances between the colors are used as natural values.
             mode: Color space to use for interpolation in between colors.
                 Defaults to "rgb".
             name: Name of the color path.
@@ -57,7 +55,6 @@ class ColorPath:
         assert colors is not None or relative_colors is not None
         assert not (colors is not None and relative_colors is not None)
         assert not (relative_colors is not None and base_color is None)
-        assert not np.any(np.isnan(values)) if values is not None else True
 
         if colors is not None:
             self.colors: list[np.ndarray] = colors
@@ -79,19 +76,13 @@ class ColorPath:
             self.base_color = base_color
             self.colors = [self.base_color + c for c in relative_colors]
 
-        if values is not None:
-            if isinstance(values, np.ndarray):
-                self.values = values.tolist()
-            elif isinstance(values, list):
-                self.values = values
-            """Relative distances between the colors in the path."""
-        else:
-            # Utilize the relative distances as natural values
-            distances = [
-                np.linalg.norm(self.relative_colors[i] - self.relative_colors[i - 1])
-                for i in range(1, len(self.relative_colors))
-            ]
-            self.values = (np.cumsum([0.0] + distances) / sum(distances)).tolist()
+        # Two useful parametrizations of the color path with values between 0 and 1:
+        # - Relative distances between the colors in the path.
+        # - Equidistant values between 0, 1/n, 2/n, ..., 1.
+        self.relative_distances: list[float] = self._compute_relative_distances()
+        """Relative distances between the colors in the path."""
+        self.equidistant_distances: list[float] = self._compute_equidistant_distances()
+        """Equidistant distance between 0 and 1 for each color in the path."""
 
         self.num_segments = len(self.colors) - 1
         """Number of segments in the color path."""
@@ -109,7 +100,8 @@ class ColorPath:
             f"colors {self.colors}, "
             f"base color {self.base_color}, "
             f"relative colors {self.relative_colors}, "
-            f"values {self.values}, "
+            f"relative distances {self.relative_distances}, "
+            f"equidistant distances {self.equidistant_distances}, "
             f"mode {self.mode}, "
             f"name {self.name}."
         )
@@ -121,47 +113,34 @@ class ColorPath:
             f"colors: {self.colors}, "
             f"base_color: {self.base_color}, "
             f"relative_colors: {self.relative_colors}, "
-            f"values: {self.values}, "
+            f"relative_distances: {self.relative_distances}, "
+            f"equidistant_distances: {self.equidistant_distances}, "
             f"mode: {self.mode}, "
             f"name: {self.name}"
             f")"
         )
 
-    def sort(self) -> None:
-        """Sort values such that they are in ascending order."""
-        sorted_indices = np.argsort(self.values)
-        self.colors = [self.colors[i] for i in sorted_indices]
-        self.relative_colors = [self.relative_colors[i] for i in sorted_indices]
-        self.values = [self.values[i] for i in sorted_indices]
+    def _compute_relative_distances(self) -> list[float]:
+        """Compute relative distances between the colors in the path.
 
-    def update_values(self, values: list[float]) -> None:
-        """Update the values of the color path, and resort colors."""
-        self.values = values
-        self.sort()
+        Returns:
+            list[float]: Relative distances between the colors in the path.
 
-    def add_absolute(self, colors, values) -> None:
-        """Add absolute colors and their corresponding values to the color path."""
-        # Sanity check
-        assert len(colors) == len(values)
+        """
+        distances = [
+            np.linalg.norm(self.relative_colors[i] - self.relative_colors[i - 1])
+            for i in range(1, len(self.relative_colors))
+        ]
+        relative_distances = (np.cumsum([0.0] + distances) / sum(distances)).tolist()
+        return relative_distances
 
-        # Add colors and values to the color path
-        self.colors.extend(colors)
-        self.relative_colors.extend([c - self.base_color for c in colors])
-        self.values.extend(values)
-        self.num_segments = len(self.colors) - 1
-        self.sort()
+    def _compute_equidistant_distances(self) -> list[float]:
+        """Compute equidistant distances between the colors in the path.
 
-    def add_relative(self, colors: list[np.ndarray], values: list[float]) -> None:
-        """Add relative colors and their corresponding values to the color path."""
-        # Sanity check
-        assert len(colors) == len(values)
-
-        # Add colors and values to the color path
-        self.colors.extend([self.base_color + c for c in colors])
-        self.relative_colors.extend(colors)
-        self.values.extend(values)
-        self.num_segments = len(self.colors) - 1
-        self.sort()
+        Returns:
+            list[float]: Equidistant distances between the colors in the path.
+        """
+        return np.linspace(0.0, 1.0, len(self.colors)).tolist()
 
     def sample_absolute_color_path(self, n_colors: int = 256) -> list[np.ndarray]:
         """Sample the absolute color path through interpolation.
@@ -179,8 +158,9 @@ class ColorPath:
             color_list = []
             # Normalize the values to the range [0, 1]
             normalized_values = [
-                (v - min(self.values)) / (max(self.values) - min(self.values))
-                for v in self.values
+                (v - min(self.relative_distances))
+                / (max(self.relative_distances) - min(self.relative_distances))
+                for v in self.relative_distances
             ]
             for i in range(n_colors):
                 ratio = i / (n_colors - 1)
@@ -236,146 +216,61 @@ class ColorPath:
             N=n_colors,
         )
 
-    def show(self) -> None:
+    def show_cmap(self) -> None:
         """Visualize the color path as a colormap."""
         cmap = self.get_color_map(n_colors=256)
         plt.imshow([np.arange(256)], aspect="auto", cmap=cmap)
         plt.axis("off")
         plt.show()
 
-    def _parametrize_colors(
-        self, colors: np.ndarray, supports: list[np.ndarray]
-    ) -> np.ndarray:
-        """Parametrize the image in terms of the color path.
+    def show_path(
+        self,
+        name: str = "",
+        directory: Path | None = None,
+        delay: bool = False,
+        **kwargs,
+    ) -> None:
+        """Visualize the color path in RGB space."""
+        fig = plt.figure(figsize=(8, 4))
+        ax = fig.add_subplot(111, projection="3d")
 
-        Apply brute-force minimization to find the closest color representation
-        on the path for each pixel in the image.
-
-        Args:
-            image: Input image to be interpreted.
-            supports: List of colors defining the color path.
-
-        Returns:
-            darsia.Image: Parametrization of the input image in terms of the color path.
-
-        """
-        # Sanity check
-        assert len(supports) == self.num_segments + 1
-
-        # Find the best-fit scalar interpretation for each segment
-        interpretations = []
-        for segment in range(self.num_segments):
-            scalar_interpretation = self.values[segment] + (
-                self.values[segment + 1] - self.values[segment]
-            ) * np.tensordot(
-                colors - supports[segment],
-                supports[segment + 1] - supports[segment],
-                axes=([-1], [0]),
-            ) / np.dot(
-                supports[segment + 1] - supports[segment],
-                supports[segment + 1] - supports[segment],
+        # Plot all significant colors
+        if "relative_colors" in kwargs and "colors" in kwargs:
+            relative_colors = kwargs["relative_colors"]
+            colors = kwargs["colors"]
+            ax.scatter(
+                relative_colors[:, 0],
+                relative_colors[:, 1],
+                relative_colors[:, 2],
+                c=np.clip(colors, 0, 1),
+                s=10,
+                alpha=0.5,
             )
-            interpretations.append(scalar_interpretation)
 
-        # Convert each segment to its color interpretation
-        shape = colors.shape[:-1] + (-1,)
-        color_interpretations = [
-            supports[segment]
-            + np.outer(
-                (interpretations[segment] - self.values[segment])
-                / (self.values[segment + 1] - self.values[segment]),
-                supports[segment + 1] - supports[segment],
-            ).reshape(shape)
-            for segment in range(self.num_segments)
-        ]
-
-        # Compare the different segments and find the global best-fit segment for each pixel
-        distances = np.stack(
-            [
-                np.sum((colors - color_interpretations[segment]) ** 2, axis=-1)
-                for segment in range(self.num_segments)
-            ]
+        # Plot key colors and connecting lines
+        ax.plot(*np.array(self.relative_colors).T, c="black", linewidth=2)
+        ax.scatter(
+            *np.array(self.relative_colors).T,
+            c=np.clip(self.colors, 0, 1),
+            s=100,
         )
-        closest_segment = np.argmin(distances, axis=0)
 
-        # Finalize minimization by taking the best-fit interpretation
-        best_fit_interpretation = np.zeros(colors.shape[:-1])
-        for segment in range(self.num_segments):
-            mask = closest_segment == segment
-            best_fit_interpretation[mask] = interpretations[segment][mask]
+        # Plot connecting lines for all points along the sorted embedding
+        ax.plot(*np.array(self.relative_colors).T, c="gray", linewidth=1, alpha=0.5)
 
-        # Deal with nan values...
-        if np.any(np.isnan(best_fit_interpretation)):
-            logger.info(
-                f"Some pixels could not be interpreted by the color path '{self.name}'. Setting their values to 0."
-            )
-            best_fit_interpretation[np.isnan(best_fit_interpretation)] = 0.0
+        # Some plot settings
+        ax.set_title(name)
+        ax.set_xlabel("R")
+        ax.set_ylabel("G")
+        ax.set_zlabel("B")
 
-        return best_fit_interpretation
-
-    @overload
-    def absolute_inverse(self, image: np.ndarray) -> np.ndarray: ...
-
-    @overload
-    def absolute_inverse(self, image: darsia.Image) -> darsia.Image: ...
-
-    def absolute_inverse(
-        self, image: np.ndarray | darsia.Image
-    ) -> np.ndarray | darsia.Image:
-        """Inverse the absolute color path to an image defined by the closest color
-        representation on the path.
-
-        Args:
-            image: Input image to be interpreted.
-
-        Returns:
-            darsia.Image: Parametrization of the input image in terms of the color path.
-
-        """
-        if isinstance(image, np.ndarray):
-            return self._parametrize_colors(image, self.colors)
-        if isinstance(image, darsia.Image):
-            return darsia.full_like(
-                image,
-                fill_value=self._parametrize_colors(image.img, self.colors),
-                mode="voxels",
-            )
-
-    @overload
-    def relative_inverse(self, image: np.ndarray) -> np.ndarray: ...
-
-    @overload
-    def relative_inverse(self, image: darsia.Image) -> darsia.Image: ...
-
-    def relative_inverse(
-        self, image: np.ndarray | darsia.Image
-    ) -> np.ndarray | darsia.Image:
-        """Inverse the relative color path to an image defined by the closest color
-        representation on the path.
-
-        Args:
-            image: Input image to be interpreted.
-
-        Returns:
-            np.ndarray | darsia.Image: Parametrization of the input image in
-                terms of the relative color path.
-
-        Raises:
-            TypeError: If the input image is neither a numpy array nor a darsia.Image.
-
-        """
-        if isinstance(image, np.ndarray):
-            return self._parametrize_colors(image, self.relative_colors)
-        elif isinstance(image, darsia.Image):
-            return darsia.ScalarImage(
-                self._parametrize_colors(image.img, self.relative_colors),
-                **image.metadata(),
-            )
-        else:
-            raise TypeError(
-                """"Input image must be of type np.ndarray or darsia.Image, """
-                f"""got {type(image)}."""
-            )
+        plt.tight_layout()
+        if directory:
+            directory.mkdir(parents=True, exist_ok=True)
+            plot_save_path = directory / f"{name}.png"
+            plt.savefig(plot_save_path, dpi=300)
+        if not delay:
+            plt.show()
 
     def to_dict(self) -> dict:
         """Convert the color path to a dictionary representation.
@@ -388,7 +283,8 @@ class ColorPath:
             "colors": [c.tolist() for c in self.colors],
             "base_color": self.base_color.tolist(),
             "relative_colors": [c.tolist() for c in self.relative_colors],
-            "values": self.values,
+            "relative_distances": self.relative_distances,
+            "equidistant_distances": self.equidistant_distances,
             "mode": self.mode,
             "name": self.name,
         }
@@ -415,12 +311,171 @@ class ColorPath:
             self.colors = [np.array(c) for c in data["colors"]]
             self.base_color = np.array(data["base_color"])
             self.relative_colors = [np.array(c) for c in data["relative_colors"]]
-            self.values = data["values"]
+            self.relative_distances = self._compute_relative_distances()
+            self.equidistant_distances = self._compute_equidistant_distances()
             self.mode = data["mode"]
             self.num_segments = len(self.colors) - 1
             self.name = data["name"]
-            self.sort()
+            # self.sort()
         logger.info(f"Loaded color path from {path}.")
+
+    # ! ---- PARAMETRIZATION OF COLORS ----
+
+    def fit(
+        self,
+        colors: np.ndarray,
+        color_mode: darsia.ColorMode,
+        mode: Literal["equidistant", "relative"] = "relative",
+    ) -> np.ndarray:
+        """Parametrize colors in terms of the color path.
+
+        Apply brute-force minimization to find the closest color representation
+        on the path for each pixel in the image.
+
+        Args:
+            colors: Colors to be interpreted.
+
+        Returns:
+            np.ndarray: Parametrization of the input image in terms of the color path.
+
+        """
+        # Fetch the right supports
+        supports = (
+            self.colors
+            if color_mode == darsia.ColorMode.ABSOLUTE
+            else self.relative_colors
+        )
+
+        # Fetch the distances along the path
+        if mode == "equidistant":
+            distances = self.equidistant_distances
+        elif mode == "relative":
+            distances = self.relative_distances
+        else:
+            raise ValueError(f"Unknown mode '{mode}' for color path parametrization.")
+
+        # Find the best-fit scalar interpretation for each segment
+        interpretations = []
+        for segment in range(self.num_segments):
+            scalar_interpretation = distances[segment] + (
+                distances[segment + 1] - distances[segment]
+            ) * np.tensordot(
+                colors - supports[segment],
+                supports[segment + 1] - supports[segment],
+                axes=([-1], [0]),
+            ) / np.dot(
+                supports[segment + 1] - supports[segment],
+                supports[segment + 1] - supports[segment],
+            )
+            if segment == 0:
+                scalar_interpretation = np.clip(
+                    scalar_interpretation,
+                    None,
+                    distances[segment + 1],
+                )
+            elif segment == self.num_segments - 1:
+                scalar_interpretation = np.clip(
+                    scalar_interpretation,
+                    distances[segment],
+                    None,
+                )
+            else:
+                scalar_interpretation = np.clip(
+                    scalar_interpretation,
+                    distances[segment],
+                    distances[segment + 1],
+                )
+            interpretations.append(scalar_interpretation)
+
+        # Convert each segment to its color interpretation
+        shape = colors.shape[:-1] + (-1,)
+        color_interpretations = [
+            supports[segment]
+            + np.outer(
+                (interpretations[segment] - distances[segment])
+                / (distances[segment + 1] - distances[segment]),
+                supports[segment + 1] - supports[segment],
+            ).reshape(shape)
+            for segment in range(self.num_segments)
+        ]
+
+        # Compare the different segments and find the global best-fit segment for each pixel
+        color_distances = np.stack(
+            [
+                np.sum((colors - color_interpretations[segment]) ** 2, axis=-1)
+                for segment in range(self.num_segments)
+            ]
+        )
+        closest_segment = np.argmin(color_distances, axis=0)
+
+        # Finalize minimization by taking the best-fit interpretation
+        best_fit_interpretation = np.zeros(colors.shape[:-1])
+        for segment in range(self.num_segments):
+            mask = closest_segment == segment
+            best_fit_interpretation[mask] = interpretations[segment][mask]
+
+        # Deal with nan values...
+        if np.any(np.isnan(best_fit_interpretation)):
+            logger.info(
+                f"Some pixels could not be interpreted by the color path '{self.name}'. Setting their values to 0."
+            )
+            best_fit_interpretation[np.isnan(best_fit_interpretation)] = 0.0
+
+        return best_fit_interpretation
+
+    def interpret(
+        self,
+        parameters: np.ndarray,
+        color_mode: darsia.ColorMode,
+        mode: Literal["equidistant", "relative"] = "relative",
+    ) -> np.ndarray:
+        """Interpret parameters in terms of the color path.
+
+        Args:
+            parameters: Parameters to be interpreted.
+            color_mode: Color mode to use for interpretation.
+            mode: Mode to use for interpretation.
+
+        Returns:
+            np.ndarray: Interpreted colors.
+
+        """
+        # Fetch the right supports
+        supports = (
+            self.colors
+            if color_mode == darsia.ColorMode.ABSOLUTE
+            else self.relative_colors
+        )
+
+        # Fetch the distances along the path
+        if mode == "equidistant":
+            distances = self.equidistant_distances
+        elif mode == "relative":
+            distances = self.relative_distances
+        else:
+            raise ValueError(f"Unknown mode '{mode}' for color path interpretation.")
+
+        # Find the right segment for each pixel
+        shape = parameters.shape + (-1,)
+        interpretations = np.zeros(shape)
+        for segment in range(self.num_segments):
+            if segment == 0:
+                mask = parameters <= distances[segment + 1]
+            elif segment == self.num_segments - 1:
+                mask = parameters >= distances[segment]
+            else:
+                mask = (parameters >= distances[segment]) & (
+                    parameters <= distances[segment + 1]
+                )
+            ratio_in_segment = (parameters[mask] - distances[segment]) / (
+                distances[segment + 1] - distances[segment]
+            )
+            interpretations[mask] = supports[segment] + np.outer(
+                ratio_in_segment,
+                supports[segment + 1] - supports[segment],
+            ).reshape((-1, 3))
+
+        return interpretations
 
 
 # ! ---- INTERACTIVE COLOR PATH DEFINITION ----
@@ -450,7 +505,7 @@ def define_color_path(image: darsia.Image, mask: darsia.Image) -> ColorPath:
         boxed_mask.img[box] = mask.img[box]
 
         # Determine the mean color in the box
-        mean_color = _get_mean_color(image, mask=boxed_mask)
+        mean_color = get_mean_color(image, mask=boxed_mask)
         colors.append(mean_color)
 
         add_more = (
