@@ -10,36 +10,12 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import LocallyLinearEmbedding
 from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
+from warnings import warn
 
 import darsia
+from .utils import get_mean_color
 
 logger = logging.getLogger(__name__)
-
-# ! ---- AUXILIARY FUNCTIONS ----
-
-
-def _get_mean_color(
-    image: darsia.Image, mask: darsia.Image | np.ndarray | None = None
-) -> np.ndarray:
-    """Calculate the mean color of an image, optionally masked by a boolean mask.
-
-    Args:
-        image (darsia.Image): The image from which to calculate the mean color.
-        mask (darsia.Image | np.ndarray | None): Optional mask to apply on the image.
-            If `None`, the entire image is used.
-
-    Returns:
-        np.ndarray: The mean color of the image, calculated as the average of RGB values.
-
-    """
-    if isinstance(mask, darsia.Image):
-        subimage = image.img[mask.img]
-    elif isinstance(mask, np.ndarray):
-        subimage = image.img[mask]
-    else:
-        subimage = image.img
-    return np.mean(subimage.reshape(-1, 3), axis=0)
-
 
 # ! ---- ALGORITHMIC COLOR PATH DEFINITION ----
 
@@ -76,7 +52,7 @@ class LabelColorPathMapRegression:
             raise NotImplementedError("Only relative color ranges are supported.")
 
     @property
-    def _shape(self) -> tuple[int, int, int]:
+    def _shape(self) -> tuple[int, ...]:
         """Get the shape of the discrete color range."""
         return 3 * (self.discrete_color_range.resolution,)
 
@@ -99,7 +75,7 @@ class LabelColorPathMapRegression:
             if label in self.ignore_labels:
                 base_colors[label] = np.zeros(3)
                 continue
-            base_colors[label] = _get_mean_color(image, mask=(self.mask.img & mask.img))
+            base_colors[label] = get_mean_color(image, mask=(self.mask.img & mask.img))
 
         if verbose:
             fig = plt.figure(figsize=(8, 4))
@@ -544,7 +520,6 @@ class LabelColorPathMapRegression:
                 colors=None,
                 base_color=spectrum.base_color,
                 relative_colors=num_dofs * [np.zeros(3)],
-                values=np.linspace(0.0, 1.0, num_dofs).tolist(),
                 mode="rgb",
                 name=name,
             )
@@ -595,14 +570,15 @@ class LabelColorPathMapRegression:
             y = np.array([segment_relative_colors[0], segment_relative_colors[-1]])
             segment_interpolator = LinearRegression().fit(X, y)
             prediction = segment_interpolator.predict(segment_embedding.reshape(-1, 1))
-            segment_error = np.sum(
-                np.linalg.norm(
-                    prediction - segment_relative_colors,
-                    axis=1,
-                    ord=1,
-                )
+            segment_errors = np.linalg.norm(
+                prediction - segment_relative_colors,
+                axis=1,
+                ord=1,
             )
-            return segment_error
+            # Use quantile error instead of sum to exclude outliers
+            quantile = 0.8
+            quantile_error = np.quantile(segment_errors, quantile)
+            return quantile_error
 
         def segment_length(segment_range):
             segment_embedding = sorted_embedding[segment_range]
@@ -739,7 +715,6 @@ class LabelColorPathMapRegression:
                 colors=None,
                 base_color=spectrum.base_color,
                 relative_colors=num_dofs * [np.zeros(3)],
-                values=np.linspace(0.0, 1.0, num_dofs).tolist(),
                 mode="rgb",
                 name=name,
             )
@@ -747,14 +722,23 @@ class LabelColorPathMapRegression:
         # Step 5: Define the corresponding absolute colors
         key_colors = [spectrum.base_color + c for c in key_relative_colors]
 
-        # Step 6: Verbose output
+        # Step 6: Construct relative color path
+        relative_color_path = darsia.ColorPath(
+            colors=None,
+            relative_colors=key_relative_colors,
+            base_color=spectrum.base_color,
+            mode="rgb",
+            name=name,
+        )
+
+        # Step 7: Verbose output
 
         # Print key colors
         if verbose:
             for i, (color, rel) in enumerate(zip(key_colors, key_relative_colors)):
                 print(f"Key color {i + 1}: RGB = {color}, relative: {rel}")
 
-        # Step 6: Visualize
+        # Visualize
         fig = plt.figure(figsize=(8, 4))
         ax = fig.add_subplot(111, projection="3d")
 
@@ -807,15 +791,6 @@ class LabelColorPathMapRegression:
             plt.show()
         plt.close()
 
-        # Step 7: Construct relative color path
-        relative_color_path = darsia.ColorPath(
-            colors=None,
-            relative_colors=key_relative_colors,
-            base_color=spectrum.base_color,
-            values=None,
-            mode="rgb",
-            name=name,
-        )
         return relative_color_path
 
     @darsia.timing_decorator
