@@ -417,7 +417,8 @@ class ColorPath:
         # Deal with nan values...
         if np.any(np.isnan(best_fit_interpretation)):
             logger.info(
-                f"Some pixels could not be interpreted by the color path '{self.name}'. Setting their values to 0."
+                f"Some pixels could not be interpreted by the color path "
+                f"'{self.name}'. Setting their values to 0."
             )
             best_fit_interpretation[np.isnan(best_fit_interpretation)] = 0.0
 
