@@ -98,6 +98,20 @@ class DiscreteColorRange(darsia.ColorRange):
         flat_indices = self.flatten_index(indices)
         return flat_indices
 
+    @property
+    def colors(self, flat: bool = False) -> np.ndarray:
+        """Get all colors in the discrete color range as an array."""
+        linspaces = [
+            np.linspace(self.min_color[i], self.max_color[i], self.resolution)
+            for i in range(3)
+        ]
+        grid = np.meshgrid(*linspaces, indexing="ij")
+        colors = np.stack(grid, axis=-1)
+        if flat:
+            return colors.reshape((-1, 3))
+        else:
+            return colors
+
 
 @jit(nopython=True, cache=True)
 def color_to_index_numba(
