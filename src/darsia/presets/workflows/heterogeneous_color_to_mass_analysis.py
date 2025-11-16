@@ -17,7 +17,7 @@ import darsia
 logger = logging.getLogger(__name__)
 
 
-class HeterogeneousColorToMassAnalysis(darsia.ConcentrationAnalysis):
+class HeterogeneousColorToMassAnalysis:
     """Hetereogeneous analysis converting colors to mass."""
 
     def __init__(
@@ -50,8 +50,11 @@ class HeterogeneousColorToMassAnalysis(darsia.ConcentrationAnalysis):
             "restoration -> model": False,
         }
 
+        # TODO make use of ignore_labels
+        # TODO make use of restoration
+
         # Define general ConcentrationAnalysis.
-        super().__init__(
+        self.color_analysis = darsia.ConcentrationAnalysis(
             base=baseline if color_mode == darsia.ColorMode.RELATIVE else None,
             restoration=restoration,
             labels=labels,
@@ -59,10 +62,23 @@ class HeterogeneousColorToMassAnalysis(darsia.ConcentrationAnalysis):
             **config,
         )
 
-        self.signal_model = darsia.HeterogeneousModel(
-            signal_functions,
-            labels,
-            ignore_labels=ignore_labels,
+        signal_model = darsia.CombinedModel(
+            [
+                darsia.ClipModel(0.0, 1.0),  # TODO fetch from signal_functions...
+                darsia.HeterogeneousModel(
+                    signal_functions,
+                    labels,
+                    ignore_labels=ignore_labels,
+                ),
+            ],
+        )
+
+        self.signal_model = darsia.ConcentrationAnalysis(
+            base=None,
+            restoration=None,
+            labels=labels,
+            model=signal_model,
+            **config,
         )
         """Model converting color interpretation to pH."""
 
@@ -75,13 +91,21 @@ class HeterogeneousColorToMassAnalysis(darsia.ConcentrationAnalysis):
         self.geometry = geometry
         """Geometry of the experiment - for the integration of mass during calibration."""
 
-    def call_color_interpretation(self, image: darsia.Image) -> darsia.Image:
-        return super().__call__(image)
+    @property
+    def labels(self) -> darsia.Image:
+        """Labels image - refer to attribute of color analysis."""
+        assert self.color_analysis.labels is not None
+        return self.color_analysis.labels
 
+    def call_color_interpretation(self, image: darsia.Image) -> darsia.Image:
+        return self.color_analysis(image)
+
+    @darsia.timing_decorator
     def call_pH_analysis(self, color_interpretation: darsia.Image) -> darsia.Image:
         """Run the mass analysis on a single image."""
         return self.signal_model(color_interpretation)
 
+    @darsia.timing_decorator
     def call_flash_and_mass_analysis(
         self, pH: darsia.Image
     ) -> SimpleMassAnalysisResults:
@@ -95,7 +119,8 @@ class HeterogeneousColorToMassAnalysis(darsia.ConcentrationAnalysis):
         )
         return mass_analysis_result
 
-    def __call__(self, image: darsia.Image) -> darsia.Image:
+    @darsia.timing_decorator
+    def __call__(self, image: darsia.Image) -> SimpleMassAnalysisResults:
         """Run the analysis on a single image."""
         color_interpretation = self.call_color_interpretation(image)
         pH = self.call_pH_analysis(color_interpretation)
@@ -116,9 +141,47 @@ class HeterogeneousColorToMassAnalysis(darsia.ConcentrationAnalysis):
             - Tune the values for the color path.
 
         Args:
-            image (darsia.Image): The image from which to define the local color path.
+            image (darsia.Image): The image from which to define the local color path."""
 
-        """
+        # ! ---- GRID FOR PLOTTING ----
+
+        # Use gridspec to create a 2x2 grid with proper ratios
+        import matplotlib.gridspec as gridspec
+
+        fig = plt.figure(figsize=(16, 12))
+        gs = gridspec.GridSpec(
+            nrows=2,
+            ncols=2,
+            width_ratios=[1, 1],  # Bottom: sliders(1) : mass plot(2)
+            height_ratios=[1, 1],  # Top row larger(2) : bottom row smaller(1)
+            left=0.08,
+            right=0.95,
+            bottom=0.08,
+            top=0.92,
+            wspace=0.25,
+            hspace=0.25,
+        )
+
+        # Create the 2x2 grid of subplots
+        # Top left: Density/Image visualization
+        ax_image = plt.subplot(gs[0, 0])
+        ax_image.axis("off")
+        ax_image.set_title("Current Density")
+
+        # Top right: Contour/Secondary visualization
+        ax_contour = plt.subplot(gs[0, 1])
+        ax_contour.axis("off")
+        ax_contour.set_title("Current Image & Phase segmentation")
+
+        # Bottom left: Mass evolution plots
+        ax_mass = plt.subplot(gs[1, 0])
+        ax_mass.set_title("Mass Evolution")
+
+        # Bottom right: Parameter sliders (will be subdivided)
+        ax_sliders = plt.subplot(gs[1, 1])
+        ax_sliders.axis("off")  # Turn off axis for slider area
+        ax_sliders.set_title("Parameter Controls")
+
         # ! ---- IMAGES -----
 
         # Set up parameters for coarse visualization
@@ -175,7 +238,48 @@ class HeterogeneousColorToMassAnalysis(darsia.ConcentrationAnalysis):
             plt.show()
             return image_idx
 
-        image_idx = image_idx_selector()
+        # Select coarse image and color interpretation from data base
+        image_idx = len(images) // 2  # image_idx_selector()
+        coarse_image = coarse_images[image_idx]
+        color_interpretation = color_interpretations[image_idx]
+
+        # Perform detailed mass analysis
+        def detailed_mass_analysis(_color_interpretation: darsia.Image) -> None:
+            pH = self.call_pH_analysis(color_interpretation)
+            c_aq, s_g = self.flash(pH)
+            mass_analysis_result: SimpleMassAnalysisResults = (
+                self.co2_mass_analysis.mass_analysis(
+                    c_aq=c_aq,
+                    s_g=s_g,
+                )
+            )
+            density = mass_analysis_result.mass
+            return density, c_aq, s_g
+
+        # Identify mass density for chosen image
+        density, c_aq, s_g = detailed_mass_analysis(color_interpretation)
+
+        # Coarsen outputs for visualization
+        coarse_density = darsia.resize(density, shape=coarse_shape)
+        coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
+        coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
+
+        # Determine contours
+        coarse_contour = darsia.plot_contour_on_image(
+            coarse_image,
+            mask=[
+                coarse_c_aq > 0.05,
+                coarse_s_g > 0.05,
+            ],  # TODO make thresholds adjustable
+            color=[(255, 0, 0), (0, 255, 0)],  # TODO make colors adjustable
+            return_image=True,
+        )
+
+        # Plot the coarse density in ax_image
+        coarse_density_img = ax_image.imshow(coarse_density.img, cmap=cmap)
+        coarse_contour_img = ax_contour.imshow(coarse_contour.img)
+
+        # ! ---- MASS ANALYSIS SETUP ----
 
         # Allocate variables for mass analysis
         # Step 2: Initialize multiphase time series
@@ -188,7 +292,8 @@ class HeterogeneousColorToMassAnalysis(darsia.ConcentrationAnalysis):
 
         analysis = SimpleRunAnalysis(self.geometry)
 
-        def update_analysis():
+        @darsia.timing_decorator
+        def update_mass_analysis():
             """Auxiliary function to update multiphase time series analysis."""
             # nonlocal analysis
             nonlocal times
@@ -199,33 +304,24 @@ class HeterogeneousColorToMassAnalysis(darsia.ConcentrationAnalysis):
             nonlocal square_error
 
             analysis.reset()
-            for img in images:
-                # Preliminaries
-                state = experiment.pressure_temperature_protocol.get_state(img.time)
-                self.co2_mass_analysis.update_state(
-                    atmospheric_pressure=state.pressure, temperature=state.temperature
-                )
+            for img, color_interpretation in zip(images, color_interpretations):
+                # Update thermodynamic state
+                # state = experiment.pressure_temperature_protocol.get_state(img.time)
+                # self.co2_mass_analysis.update_state(
+                #    atmospheric_pressure=state.pressure, temperature=state.temperature
+                # )
 
                 # Signal analysis
-                tic_local = time.time()
                 pH = self.call_pH_analysis(color_interpretation)
-                print(f"Color analysis took {time.time() - tic_local} seconds")
 
                 # Mass computation
-                tic_local = time.time()
                 mass_analysis_result = self.call_flash_and_mass_analysis(pH)
-                print(f"Mass computation took {time.time() - tic_local} seconds")
 
                 # Compute expected mass
                 exact_mass = experiment.injection_protocol.injected_mass(img.date)
 
                 # Track result
-                tic_local = time.time()
-                analysis.track(
-                    mass_analysis_result,
-                    exact_mass=exact_mass,
-                )
-                print(f"Tracking took {time.time() - tic_local} seconds")
+                analysis.track(mass_analysis_result, exact_mass=exact_mass)
 
                 # # Clean data - TODO?
                 # analysis.clean(threshold=1.0)
@@ -242,9 +338,58 @@ class HeterogeneousColorToMassAnalysis(darsia.ConcentrationAnalysis):
                 np.array(integrated_mass) - np.array(expected_mass)
             )
 
-        tic = time.time()
-        update_analysis()
-        print(f"Update analysis took {time.time() - tic} seconds")
+        # Compute initial mass analysis
+        update_mass_analysis()
+
+        # ! ---- MASS PLOTS ----
+        # Combine plot and scatter for integrated mass over time.
+        # Decompose into total, gas, and aqueous mass, and add
+        # expected mass using a dashed line.
+        ax_mass.set_xlabel("Time (h)")
+        ax_mass.set_ylabel("Mass (g)")
+        [integrated_mass_plot] = ax_mass.plot(
+            times,
+            integrated_mass,
+            color="blue",
+            label="total",
+        )
+        [integrated_mass_plot_g] = ax_mass.plot(
+            times,
+            integrated_mass_g,
+            color="green",
+            label="gas",
+        )
+        [integrated_mass_plot_aq] = ax_mass.plot(
+            times,
+            integrated_mass_aq,
+            color="orange",
+            label="aqueous",
+        )
+        ax_mass.plot(
+            times,
+            expected_mass,
+            linestyle="--",
+            color="red",
+            label="injected",
+        )
+        integrated_mass_scatter = ax_mass.scatter(
+            times,
+            integrated_mass,
+            color="blue",
+        )
+        integrated_mass_scatter_g = ax_mass.scatter(
+            times,
+            integrated_mass_g,
+            color="green",
+        )
+        integrated_mass_scatter_aq = ax_mass.scatter(
+            times,
+            integrated_mass_aq,
+            color="orange",
+        )
+        ax_mass.set_ylim(0.0, 0.01)
+        ax_mass.legend()
+        ax_mass.grid(True, alpha=0.3)
 
         # Interactive tuning of values for each color path (chosen by user)
         done_picking_new_labels = False
@@ -263,121 +408,190 @@ class HeterogeneousColorToMassAnalysis(darsia.ConcentrationAnalysis):
             assistant = darsia.RectangleSelectionAssistant(
                 density, labels=self.labels, cmap=cmap
             )
-
-            # Identify the label of interest
             label_box: Tuple[slice, slice] = assistant()
             label = np.argmax(np.bincount(self.labels.img[label_box].ravel()))
 
+            # Tune values for this label
             done_tuning_values = False
             while not done_tuning_values:
 
                 def show_tuner(idx):
                     nonlocal done_tuning_values, done_picking_new_labels
-                    fig, ax_conc = plt.subplots(figsize=(8, 4))
-                    ax_image = plt.axes([0.05, 0.5, 0.15, 0.4])
-                    plt.subplots_adjust(left=0.25, bottom=0.25)
-                    ax_image.imshow(coarse_image.img)
-                    mask = np.zeros_like(coarse_labels.img, dtype=np.uint8)
-                    mask[coarse_labels.img == idx] = 1
-                    ax_image.imshow(mask, alpha=0.5, cmap="gray", vmin=0, vmax=1)
-                    ax_conc.set_title(f"Tune values for color path #{idx}")
+
+                    # Identify mass density for chosen image
+                    density, c_aq, s_g = detailed_mass_analysis(color_interpretation)
+
+                    # Coarsen outputs for visualization
+                    coarse_density = darsia.resize(density, shape=coarse_shape)
+                    coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
+                    coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
+
+                    # Determine contours
+                    coarse_contour = darsia.plot_contour_on_image(
+                        coarse_image,
+                        mask=[
+                            coarse_c_aq > 0.05,
+                            coarse_s_g > 0.05,
+                        ],  # TODO make thresholds adjustable
+                        color=[(255, 0, 0), (0, 255, 0)],  # TODO make colors adjustable
+                        return_image=True,
+                    )
+
+                    # Update images for plotting
+                    coarse_density_img.set_data(coarse_density.img)
+                    coarse_contour_img.set_data(coarse_contour.img)
+
+                    # Get slider area position in figure coordinates
+                    slider_bbox = ax_sliders.get_position()
+                    slider_left = slider_bbox.x0
+                    slider_bottom = slider_bbox.y0
+                    slider_width = slider_bbox.width
+                    slider_height_total = slider_bbox.height
+
+                    # Calculate total number of sliders needed
+                    num_value_sliders = len(self.signal_model.model[1][idx].values)
+                    num_flash_sliders = 2
+                    total_sliders = num_value_sliders + num_flash_sliders
+
+                    # Calculate dimensions for vertical sliders
+                    # Leave some spacing between sliders
+                    slider_width_individual = slider_width / total_sliders * 0.8
+                    # Leave space for labels at bottom
+                    slider_height_individual = slider_height_total * 0.6
+                    spacing_width = slider_width / total_sliders * 0.2
+                    spacing = (
+                        spacing_width / (total_sliders - 1) if total_sliders > 1 else 0
+                    )
 
                     sliders_color_to_signal = []
-                    slider_height = 0.03
-                    for i, val in enumerate(self.signal_model[idx].values):
-                        ax_slider = plt.axes(
-                            [0.25, 0.15 - i * slider_height, 0.65, slider_height]
-                        )
-                        slider = Slider(
-                            ax_slider,
-                            f"Value {i}",
-                            -0.5,
-                            1.5,
-                            valinit=val,
-                            valstep=0.05,
-                        )
-                        sliders_color_to_signal.append(slider)
 
-                    # Determine number for positioning of flash sliders
-                    num_sliders = len(self.signal_model[idx].values)
+                    # # Create vertical sliders for signal model values
+                    # for i, val in enumerate(self.signal_model.model[1][idx].values):
+                    #     slider_x = slider_left + i * (slider_width_individual + spacing)
+                    #     # Leave space at bottom for labels
+                    #     slider_y = slider_bottom + slider_height_total * 0.2
 
-                    # Add two sliders for thresholding flash model
-                    ax_slider_phase = plt.axes(
+                    #     ax_slider = fig.add_axes(
+                    #         [
+                    #             slider_x,
+                    #             slider_y,
+                    #             slider_width_individual,
+                    #             slider_height_individual,
+                    #         ]
+                    #     )
+
+                    #     slider = Slider(
+                    #         ax_slider,
+                    #         f"Val {i}",
+                    #         -0.5,
+                    #         1.5,
+                    #         valinit=val,
+                    #         valstep=0.05,
+                    #         orientation="vertical",
+                    #     )
+                    #     sliders_color_to_signal.append(slider)
+
+                    # # Add two vertical sliders for thresholding flash model
+                    # flash_slider_start_idx = num_value_sliders
+
+                    # # Flash cut-off slider
+                    # slider_x = slider_left + flash_slider_start_idx * (
+                    #     slider_width_individual + spacing
+                    # )
+                    # slider_y = slider_bottom + slider_height_total * 0.2
+
+                    # ax_slider_phase = fig.add_axes(
+                    #     [
+                    #         slider_x,
+                    #         slider_y,
+                    #         slider_width_individual,
+                    #         slider_height_individual,
+                    #     ]
+                    # )
+                    # slider_phase = Slider(
+                    #     ax_slider_phase,
+                    #     "Flash\ncut-off",
+                    #     0.0,
+                    #     1.5,
+                    #     valinit=self.flash.cut_off,
+                    #     valstep=0.05,
+                    #     orientation="vertical",
+                    # )
+
+                    # # Flash max slider
+                    # slider_x = slider_left + (flash_slider_start_idx + 1) * (
+                    #     slider_width_individual + spacing
+                    # )
+
+                    # ax_slider_max = fig.add_axes(
+                    #     [
+                    #         slider_x,
+                    #         slider_y,
+                    #         slider_width_individual,
+                    #         slider_height_individual,
+                    #     ]
+                    # )
+                    # slider_max = Slider(
+                    #     ax_slider_max,
+                    #     "Flash\nmax",
+                    #     0.0,
+                    #     1.5,
+                    #     valinit=self.flash.max_value,
+                    #     valstep=0.05,
+                    #     orientation="vertical",
+                    # )
+                    # sliders_flash = [slider_phase, slider_max]
+
+                    # Position buttons at the top of the figure
+                    button_width = 0.08
+                    button_height = 0.04
+                    button_y = 0.95
+                    button_spacing = 0.01
+
+                    ax_update = plt.axes(
+                        [0.85 - button_width, button_y, button_width, button_height]
+                    )
+                    btn_update = Button(ax_update, "Update")
+
+                    ax_close = plt.axes(
                         [
-                            0.25,
-                            0.15 - (num_sliders + 2) * slider_height,
-                            0.65,
-                            slider_height,
+                            0.85 - 2 * button_width - button_spacing,
+                            button_y,
+                            button_width,
+                            button_height,
                         ]
                     )
-                    slider_phase = Slider(
-                        ax_slider_phase,
-                        "Flash cut-off",
-                        0.0,
-                        1.5,
-                        valinit=self.flash.cut_off,
-                        valstep=0.05,
-                    )
-                    ax_slider_max = plt.axes(
+                    btn_close = Button(ax_close, "Next")
+
+                    ax_next_image = plt.axes(
                         [
-                            0.25,
-                            0.15 - (num_sliders + 3) * slider_height,
-                            0.65,
-                            slider_height,
+                            0.85 - 3 * button_width - 2 * button_spacing,
+                            button_y,
+                            button_width,
+                            button_height,
                         ]
                     )
-                    slider_max = Slider(
-                        ax_slider_max,
-                        "Flash max",
-                        0.0,
-                        1.5,
-                        valinit=self.flash.max_value,
-                        valstep=0.05,
-                    )
-                    sliders_flash = [slider_phase, slider_max]
+                    btn_next_image = Button(ax_next_image, "Switch")
 
-                    ax_update = plt.axes([0.8, 0.925, 0.1, 0.04])
-                    btn_update = Button(ax_update, "Update values")
-                    ax_close = plt.axes([0.68, 0.925, 0.1, 0.04])
-                    btn_close = Button(ax_close, "Next layer")
-                    ax_next_image = plt.axes([0.56, 0.925, 0.1, 0.04])
-                    btn_next_image = Button(ax_next_image, "Switch image")
-                    ax_finish = plt.axes([0.44, 0.925, 0.1, 0.04])
+                    ax_finish = plt.axes(
+                        [
+                            0.85 - 4 * button_width - 3 * button_spacing,
+                            button_y,
+                            button_width,
+                            button_height,
+                        ]
+                    )
                     btn_finish = Button(ax_finish, "Finish")
 
-                    # Determine  and plot density
-                    pH = self.call_pH_analysis(color_interpretation)
-                    c_aq, s_g = self.flash(pH)
-                    mass_analysis_result: SimpleMassAnalysisResults = (
-                        self.co2_mass_analysis.mass_analysis(
-                            c_aq=c_aq,
-                            s_g=s_g,
-                        )
-                    )
-                    density = mass_analysis_result.mass
-                    coarse_density = darsia.resize(density, shape=coarse_shape)
-
-                    # Extract contours for s_w and c_aq if available, added to the coarse image.
-                    # TODO
-                    # c_aq ...
-                    # s_g ...
-                    coarse_contour = coarse_image.img.copy()
-
-                    # Plot
-                    density_img = ax_conc.imshow(coarse_density.img, cmap=cmap)
-                    # contour_img = ax_contour.imshow(coarse_contour.img)
-
-                    def update_density(event=None):
+                    def update_analysis(event=None):
                         # Update parameters
-                        self.signal_model.update_model_parameters(
+                        self.signal_model.model[1][idx].update_model_parameters(
                             [slider.val for slider in sliders_color_to_signal]
                         )
                         self.flash.update(
                             cutoff=sliders_flash[0].val,
                             max_value=sliders_flash[1].val,
-                        )
-
-                        # Update images
+                        )  # Update images
                         pH = self.call_pH_analysis(color_interpretation)
                         c_aq, s_g = self.flash(pH)
                         mass_analysis_result: SimpleMassAnalysisResults = (
@@ -389,14 +603,34 @@ class HeterogeneousColorToMassAnalysis(darsia.ConcentrationAnalysis):
                         density = mass_analysis_result.mass
                         coarse_density = darsia.resize(density, shape=coarse_shape)
 
-                        # Update contours TODO
+                        # Update density display in top left
+                        coarse_density_img.set_data(coarse_density.img)
 
-                        # Update plots
-                        density_img.set_data(coarse_density.img)
-                        # contour_img.set_data(coarse_contour.img)
+                        # Update contour display in top right
+                        coarse_contour = coarse_image.img.copy()
+                        coarse_contour_img.set_data(coarse_contour)
+
+                        # Update mass analysis
+                        update_mass_analysis()
+
+                        # Update mass plots
+                        integrated_mass_plot.set_ydata(integrated_mass)
+                        integrated_mass_scatter.set_offsets(
+                            np.c_[times, integrated_mass]
+                        )
+                        integrated_mass_plot_g.set_ydata(integrated_mass_g)
+                        integrated_mass_scatter_g.set_offsets(
+                            np.c_[times, integrated_mass_g]
+                        )
+                        integrated_mass_plot_aq.set_ydata(integrated_mass_aq)
+                        integrated_mass_scatter_aq.set_offsets(
+                            np.c_[times, integrated_mass_aq]
+                        )
+
+                        # Update plots - contour image stays the same (original image)
                         fig.canvas.draw_idle()
 
-                    btn_update.on_clicked(update_density)
+                    btn_update.on_clicked(update_analysis)
 
                     def close(event):
                         nonlocal done_tuning_values
@@ -424,192 +658,6 @@ class HeterogeneousColorToMassAnalysis(darsia.ConcentrationAnalysis):
                     plt.show()
 
                 show_tuner(label)
-
-    def global_calibration_flash(
-        self,
-        mass_computation: MassComputation,
-        mask: darsia.Image,
-        calibration_images: list[darsia.Image],
-        experiment: darsia.ProtocolledExperiment,
-        cmap=None,
-        show: bool = False,
-    ) -> None:
-        """Coarse tuning of the color signal analysis."""
-
-        # Check expected status
-
-        # Step 1: pre-mass analysis (nothing to do as images already converted to signals)
-        analysis = SimpleRunAnalysis(mass_computation.geometry)
-
-        # # Tracking...
-        # folder = Path("calibration_mass")  # TODO?
-        # # Remove everything in the folder
-        # if folder.exists():
-        #     for file in folder.iterdir():
-        #         if file.is_file():
-        #             file.unlink()
-        # folder.mkdir(parents=True, exist_ok=True)
-
-        # Step 2: Initialize multiphase time series
-        times = []
-        expected_mass = []
-        integrated_mass = []
-        integrated_mass_g = []
-        integrated_mass_aq = []
-        square_error = []
-
-        def update_analysis():
-            """Auxiliary function to update multiphase time series analysis."""
-            nonlocal analysis
-            nonlocal times
-            nonlocal expected_mass
-            nonlocal integrated_mass
-            nonlocal integrated_mass_g
-            nonlocal integrated_mass_aq
-            nonlocal square_error
-
-            analysis.reset()
-            for img in calibration_images:
-                # Preliminaries
-                img_time = img.time
-                # TODO update co2_mass_analysis/flash etc based on img_time.
-
-                # Signal analysis
-                tic_local = time.time()
-                signal = self(img)
-                print(f"Color analysis took {time.time() - tic_local} seconds")
-
-                # Mass computation
-                tic_local = time.time()
-                mass_analysis_result: SimpleMassAnalysisResults = mass_computation(
-                    signal
-                )
-                print(f"Mass computation took {time.time() - tic_local} seconds")
-
-                # Compute expected mass
-                exact_mass = experiment.injection_protocol.injected_mass(img.date)
-
-                # Track result
-                tic_local = time.time()
-                analysis.track(
-                    mass_analysis_result,
-                    exact_mass=exact_mass,
-                )
-                print(f"Tracking took {time.time() - tic_local} seconds")
-
-                # # Clean data - TODO?
-                # analysis.clean(threshold=1.0)
-
-            # Monitor mass evolution over time
-            times = analysis.data.time
-            expected_mass = analysis.data.exact_mass_tot
-            integrated_mass = analysis.data.mass_tot
-            integrated_mass_g = analysis.data.mass_g
-            integrated_mass_aq = analysis.data.mass_aq
-
-            # Errors
-            square_error = np.square(
-                np.array(integrated_mass) - np.array(expected_mass)
-            )
-
-        tic = time.time()
-        update_analysis()
-        toc = time.time()
-
-        from icecream import ic
-
-        ic(f"First analysis took {toc - tic} seconds")
-
-        # TODO log iteration?
-
-        # Make one annotation and four plots
-        # 0. Error as text in the top left corner
-        # 1. PWTransformation for gas with sliders
-        # 2. PWTransformation for aqueous with sliders
-        # 3. Integrated mass over time, entire run, updated upon activation
-        # 4. Integrated mass over time, first 12 hours, updated upon activation
-
-        # Set up the figure layout: sliders on the left, plots on the right
-        fig = plt.figure(figsize=(18, 10))
-
-        # Use gridspec to allocate space for sliders and plots
-        import matplotlib.gridspec as gridspec
-
-        gs = gridspec.GridSpec(
-            nrows=1,
-            ncols=2,
-            width_ratios=[1, 2],  # Sliders:Plots
-            left=0.05,
-            right=0.95,
-            bottom=0.05,
-            top=0.95,
-            wspace=0.3,
-        )
-        # Sliders area (left)
-        slider_area = plt.subplot(gs[0, 0])
-        slider_area.axis("off")
-        # Plots area (right, 2x1)
-        gs_plots = gridspec.GridSpecFromSubplotSpec(
-            nrows=2,
-            ncols=1,
-            subplot_spec=gs[0, 1],
-            height_ratios=[1, 1],
-            hspace=0.3,
-        )
-        ax = [plt.subplot(gs_plots[0, 0]), plt.subplot(gs_plots[1, 0])]
-
-        # ! ---- PLOT 3: INTEGRATED MASS OVER TIME, ENTIRE RUN ----
-
-        # Combine plot and scatter for integrated mass over time.
-        # Decompose into total, gas, and aqueous mass, and add
-        # expected mass using a dashed line.
-        ax[1].set_xlabel("Time (h)")
-        ax[1].set_ylabel("Mass (g)")
-        [integrated_mass_plot] = ax[1].plot(
-            times,
-            integrated_mass,
-            color="blue",
-            label="total",
-        )
-        [integrated_mass_plot_g] = ax[1].plot(
-            times,
-            integrated_mass_g,
-            color="green",
-            label="gas",
-        )
-        [integrated_mass_plot_aq] = ax[1].plot(
-            times,
-            integrated_mass_aq,
-            color="orange",
-            label="aqueous",
-        )
-        ax[1].plot(
-            times,
-            expected_mass,
-            linestyle="--",
-            color="red",
-            label="injected",
-        )
-        integrated_mass_scatter = ax[1].scatter(
-            times,
-            integrated_mass,
-            color="blue",
-        )
-        integrated_mass_scatter_g = ax[1].scatter(
-            times,
-            integrated_mass_g,
-            color="green",
-        )
-        integrated_mass_scatter_aq = ax[1].scatter(
-            times,
-            integrated_mass_aq,
-            color="orange",
-        )
-        ax[1].set_ylim(0.0, 0.01)
-        ax[1].legend()
-        ax[1].set_title("Integrated mass over time, entire run")
-
-        plt.show()
 
     def save(self, path: Path) -> None:
         """Save the calibration data to json file.
