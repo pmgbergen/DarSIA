@@ -229,10 +229,10 @@ class HeterogeneousColorToMassAnalysis:
 
         # ! ---- LABEL SELECTION ----
 
-        def label_idx_selector(density: darsia.Image) -> int:
+        def label_idx_selector(pH: darsia.Image) -> int:
             nonlocal label_idx
             assistant = darsia.RectangleSelectionAssistant(
-                density, labels=self.labels, cmap=cmap
+                pH, labels=self.labels, cmap=cmap
             )
             label_box: Tuple[slice, slice] = assistant()
             label_idx = np.argmax(np.bincount(self.labels.img[label_box].ravel()))
@@ -332,12 +332,7 @@ class HeterogeneousColorToMassAnalysis:
 
             # Pick label interactively
             if need_to_pick_new_label:
-                label_idx = label_idx_selector(density)
-
-                # # Highlight the label (using coarse_labels) and lightening it up.
-                # coarse_image.img[coarse_labels.img == label_idx] = np.mean(
-                #     coarse_image.img[coarse_labels.img == label_idx], keepdims=True
-                # )
+                label_idx = label_idx_selector(pH)
 
             # Compute mass analysis
             update_mass_analysis()
@@ -426,7 +421,18 @@ class HeterogeneousColorToMassAnalysis:
             coarse_image_img = ax_coarse_image.imshow(labeled_coarse_image)
 
             # Plot the coarse signal
-            coarse_signal_img = ax_signal.imshow(coarse_signal.img, cmap=cmap)
+            coarse_signal_img = ax_signal.imshow(
+                coarse_signal.img, cmap=cmap
+            )  # Add colorbar for the signal
+            coarse_signal_colorbar = fig.colorbar(
+                coarse_signal_img, ax=ax_signal, shrink=1.0
+            )
+
+            # Set initial color scale for the signal
+            initial_signal_min = np.nanmin(coarse_signal.img)
+            initial_signal_max = np.nanmax(coarse_signal.img)
+            coarse_signal_img.set_clim(vmin=initial_signal_min, vmax=initial_signal_max)
+            coarse_signal_colorbar.update_normal(coarse_signal_img)
 
             # Plot the contour
             coarse_contour_img = ax_contour.imshow(coarse_contour.img)
@@ -884,7 +890,6 @@ class HeterogeneousColorToMassAnalysis:
                         )
 
                         # Update dense plots
-                        coarse_image_img.set_data(coarse_image.img)
                         coarse_signal_img.set_data(coarse_signal.img)
                         coarse_contour_img.set_data(coarse_contour.img)
 
@@ -892,6 +897,7 @@ class HeterogeneousColorToMassAnalysis:
                         signal_min = np.nanmin(coarse_signal.img)
                         signal_max = np.nanmax(coarse_signal.img)
                         coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
+                        coarse_signal_colorbar.update_normal(coarse_signal_img)
 
                         # Update mass plots
                         integrated_mass_plot.set_data(times, integrated_mass)
@@ -969,12 +975,11 @@ class HeterogeneousColorToMassAnalysis:
                         coarse_signal_img.set_data(coarse_signal.img)
                         ax_signal.set_title(
                             signal_options[signal_option_ptr[signal_option_idx]]
-                        )
-
-                        # Update color scale (min/max values) based on current signal
+                        )  # Update color scale (min/max values) based on current signal
                         signal_min = np.nanmin(coarse_signal.img)
                         signal_max = np.nanmax(coarse_signal.img)
                         coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
+                        coarse_signal_colorbar.update_normal(coarse_signal_img)
 
                         # Redraw
                         fig.canvas.draw_idle()
