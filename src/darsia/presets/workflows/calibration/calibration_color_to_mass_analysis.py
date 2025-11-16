@@ -3,18 +3,17 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.cluster import KMeans
 
 import darsia
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
-from darsia.presets.workflows.heterogeneous_color_analysis import (
-    HeterogeneousColorAnalysis,
+from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
+    HeterogeneousColorToMassAnalysis,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def calibration_color_analysis(cls, path: Path, show: bool = False):
+def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
     # ! ---- LOAD RUN AND RIG ----
 
     config = FluidFlowerConfig(path)
@@ -133,7 +132,6 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
         relative_max_interpolation = (
             interpolation_values[label] / reference_interpolation_value
         )
-        print(label, relative_distance, relative_max_interpolation)
         if min(relative_distance, relative_max_interpolation) < threshold:
             ignore_labels.append(label)
 
@@ -179,26 +177,44 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
             color_path_interpolation[label] = color_path_interpolation[reference_label]
             # TODO: Set an empty color path based on the mean background color.
             # color_paths[label] = darsia.ColorPath()
-        elif False:
-            print(color_path_interpolation[label].values)
-            color_paths[label].show()
 
-    # ! ---- CONCENTRATION ANALYSIS ---- ! #
+    # ! ---- COLOR PATH INTERPRETATION ---- ! #
 
     color_path_interpretation = {
         label: darsia.ColorPathInterpolation(
             color_path=color_path,
             color_mode=darsia.ColorMode.RELATIVE,
-            # values=color_path.equidistant_distances,
-            values=color_path.relative_distances,
+            values=color_path.equidistant_distances,
+            # values=color_path.relative_distances,
         )
         for label, color_path in color_paths.items()
     }
-    color_analysis = HeterogeneousColorAnalysis(
+
+    # ! ---- FROM COLOR PATH TO MASS ----
+
+    experiment_start = experiment.experiment_start
+    flash = darsia.SimpleFlash(cut_off=0.5, max_value=1.0, restoration=None)
+    co2_mass_analysis = darsia.CO2MassAnalysis(
+        baseline=fluidflower.baseline,
+        atmospheric_pressure=experiment.pressure_temperature_protocol.get_state(
+            experiment_start
+        ).pressure,
+        temperature=experiment.pressure_temperature_protocol.get_state(
+            experiment_start
+        ).temperature,
+    )
+    color_analysis = HeterogeneousColorToMassAnalysis(
         baseline=fluidflower.baseline,
         labels=fluidflower.labels,
         color_mode=darsia.ColorMode.RELATIVE,
-        color_path_functions=color_path_interpretation,
+        color_path_interpretation=color_path_interpretation,
+        signal_functions={
+            label: darsia.PWTransformation([0, 1], [0, 1])
+            for label in np.unique(fluidflower.labels.img)
+        },  # TODO add restoration?
+        flash=flash,
+        co2_mass_analysis=co2_mass_analysis,
+        geometry=fluidflower.geometry,
         # restoration=fluidflower.restoration,
         ignore_labels=config.color_paths.ignore_labels + ignore_labels,
     )
@@ -213,8 +229,8 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
         color_paths[23].show_path()
 
     # Perform local calibration
-    color_analysis.local_calibration_values(
-        images=calibration_images, mask=fluidflower.boolean_porosity, cmap=custom_cmap
+    color_analysis.manual_calibration(
+        images=calibration_images, experiment=experiment, cmap=custom_cmap
     )
 
     # TODO use reference color path to ignore labels?
