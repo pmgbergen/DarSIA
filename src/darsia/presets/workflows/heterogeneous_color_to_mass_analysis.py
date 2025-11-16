@@ -38,8 +38,7 @@ class HeterogeneousColorToMassAnalysis:
                     color_path_interpretation,
                     labels,
                     ignore_labels=ignore_labels,
-                ),
-                # restoration ...
+                )
             ]
         )
 
@@ -50,7 +49,6 @@ class HeterogeneousColorToMassAnalysis:
         }
 
         # TODO make use of ignore_labels
-        # TODO make use of restoration
 
         # Define general ConcentrationAnalysis.
         self.color_analysis = darsia.ConcentrationAnalysis(
