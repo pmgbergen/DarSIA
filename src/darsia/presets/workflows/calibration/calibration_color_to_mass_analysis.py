@@ -190,6 +190,16 @@ def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
         for label, color_path in color_paths.items()
     }
 
+    # ! ---- SIGNAL FUNCTIONS ---- ! #
+
+    signal_functions = {
+        label: darsia.PWTransformation(
+            color_paths[label].equidistant_distances,
+            color_path_interpolation[label].values,
+        )
+        for label in color_path_interpolation
+    }
+
     # ! ---- FROM COLOR PATH TO MASS ----
 
     experiment_start = experiment.experiment_start
@@ -208,10 +218,7 @@ def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
         labels=fluidflower.labels,
         color_mode=darsia.ColorMode.RELATIVE,
         color_path_interpretation=color_path_interpretation,
-        signal_functions={
-            label: darsia.PWTransformation([0, 1], [0, 1])
-            for label in np.unique(fluidflower.labels.img)
-        },  # TODO add restoration?
+        signal_functions=signal_functions,
         flash=flash,
         co2_mass_analysis=co2_mass_analysis,
         geometry=fluidflower.geometry,
