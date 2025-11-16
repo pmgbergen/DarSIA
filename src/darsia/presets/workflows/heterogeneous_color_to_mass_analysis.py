@@ -461,7 +461,7 @@ class HeterogeneousColorToMassAnalysis:
                 color_path_cmap = _color_path_interpretation.color_path.get_color_map()
 
                 # Display the gradient as background
-                ax_signal_function.imshow(
+                signal_function_background = ax_signal_function.imshow(
                     gradient_data,
                     extent=[
                         0,
@@ -526,7 +526,7 @@ class HeterogeneousColorToMassAnalysis:
                 )
 
                 # Make text annotations "CO2(aq)" and "CO2(g)" below and above the cut-off line
-                ax_signal_function.text(
+                signal_function_co2_aq = ax_signal_function.text(
                     x=cut_off_x - 0.05,
                     y=self.flash.cut_off - 0.05,
                     s="CO2(aq)",
@@ -535,7 +535,7 @@ class HeterogeneousColorToMassAnalysis:
                     fontsize=8,
                     color="k",
                 )
-                ax_signal_function.text(
+                signal_function_co2_g = ax_signal_function.text(
                     x=cut_off_x + 0.05,
                     y=self.flash.cut_off + 0.05,
                     s="CO2(g)",
@@ -749,7 +749,10 @@ class HeterogeneousColorToMassAnalysis:
                 color=(0, 1, 0),
                 orientation="vertical",
             )
-            sliders_threshold = [slider_c_aq, slider_s_g]
+            sliders_threshold = [
+                slider_c_aq,
+                slider_s_g,
+            ]
 
             # Position buttons at the top of the figure
             button_width = 0.08
@@ -757,14 +760,57 @@ class HeterogeneousColorToMassAnalysis:
             button_y = 0.95
             button_spacing = 0.01
 
+            # Button order from left to right (Update moved to bottom right):
+            # - Next Signal
+            # - Next Label
+            # - New Label
+            # - Next Image
+            # - New Image
+            # - Finish
+            # Calculate positions for 6 buttons with proper spacing
+            total_buttons = 5
+            button_start_x = (
+                0.98
+                - total_buttons * button_width
+                - (total_buttons - 1) * button_spacing
+            )
+
+            # Position Update button at bottom right corner
+            update_button_x = 0.98 - button_width  # Right side with small margin
+            update_button_y = 0.02  # Bottom with small margin
             ax_update = plt.axes(
-                [0.85 - button_width, button_y, button_width, button_height]
+                [
+                    update_button_x,
+                    update_button_y,
+                    button_width,
+                    button_height,
+                ]
             )
             btn_update = Button(ax_update, "Update")
 
+            ax_next_signal = plt.axes(
+                [
+                    button_start_x + 0 * (button_width + button_spacing),
+                    button_y,
+                    button_width,
+                    button_height,
+                ]
+            )
+            btn_next_signal = Button(ax_next_signal, "Next Signal")
+
+            ax_next_label = plt.axes(
+                [
+                    button_start_x + 1 * (button_width + button_spacing),
+                    button_y,
+                    button_width,
+                    button_height,
+                ]
+            )
+            btn_next_label = Button(ax_next_label, "Next Label")
+
             ax_new_label = plt.axes(
                 [
-                    0.85 - 2 * button_width - button_spacing,
+                    button_start_x + 2 * (button_width + button_spacing),
                     button_y,
                     button_width,
                     button_height,
@@ -772,9 +818,19 @@ class HeterogeneousColorToMassAnalysis:
             )
             btn_new_label = Button(ax_new_label, "New Label")
 
+            ax_next_image = plt.axes(
+                [
+                    button_start_x + 3 * (button_width + button_spacing),
+                    button_y,
+                    button_width,
+                    button_height,
+                ]
+            )
+            btn_next_image = Button(ax_next_image, "Next Image")
+
             ax_new_image = plt.axes(
                 [
-                    0.85 - 3 * button_width - 2 * button_spacing,
+                    button_start_x + 4 * (button_width + button_spacing),
                     button_y,
                     button_width,
                     button_height,
@@ -782,25 +838,16 @@ class HeterogeneousColorToMassAnalysis:
             )
             btn_new_image = Button(ax_new_image, "New Image")
 
+            finish_button_x = 0.02  # Right side with small margin
             ax_finish = plt.axes(
                 [
-                    0.85 - 4 * button_width - 3 * button_spacing,
+                    finish_button_x,
                     button_y,
                     button_width,
                     button_height,
                 ]
             )
             btn_finish = Button(ax_finish, "Finish")
-
-            ax_next_signal = plt.axes(
-                [
-                    0.85 - 5 * button_width - 4 * button_spacing,
-                    button_y,
-                    button_width,
-                    button_height,
-                ]
-            )
-            btn_next_signal = Button(ax_next_signal, "Next Signal")
 
             # Tune values for this label
             done_tuning_values = False
@@ -996,11 +1043,196 @@ class HeterogeneousColorToMassAnalysis:
                         signal_max = np.nanmax(coarse_signal.img)
                         coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
                         coarse_signal_colorbar.update_normal(coarse_signal_img)
-
                         # Redraw
                         fig.canvas.draw_idle()
 
                     btn_next_signal.on_clicked(next_signal)
+
+                    def next_label(event):
+                        nonlocal label_idx
+                        # Get available labels from the labels image
+                        available_labels = np.unique(self.labels.img)
+                        available_labels = available_labels[
+                            available_labels >= 0
+                        ]  # Remove negative labels if any
+
+                        # Find current position and move to next
+                        if label_idx in available_labels:
+                            current_pos = np.where(available_labels == label_idx)[0][0]
+                            next_pos = (current_pos + 1) % len(available_labels)
+                            label_idx = available_labels[next_pos]
+                        else:
+                            label_idx = available_labels[
+                                0
+                            ]  # Default to first available label
+
+                        # Update coarse image plot that depends on label_idx
+                        ax_coarse_image.set_title(
+                            f"Current Image {image_idx} and Label {label_idx}"
+                        )
+                        # Update coarse image highlighting
+                        labeled_coarse_image = coarse_image.img.copy()
+                        labeled_coarse_image[coarse_labels.img != label_idx] = (
+                            0.7
+                            * np.mean(
+                                labeled_coarse_image[coarse_labels.img != label_idx],
+                                axis=-1,
+                                keepdims=True,
+                            )
+                            + 0.3 * coarse_image.img[coarse_labels.img != label_idx]
+                        )
+                        coarse_image_img.set_data(labeled_coarse_image)
+
+                        # Update signal function
+                        ax_signal_function.set_title(
+                            f"Signal Function - Label {label_idx}"
+                        )
+                        if signal_function_line is not None:
+                            signal_func = self.signal_model.model[1][label_idx]
+                            if (
+                                hasattr(signal_func, "values")
+                                and len(signal_func.values) > 0
+                            ):
+                                x_vals = signal_func.supports
+                                y_vals = signal_func.values.copy()
+                                signal_function_line.set_data(x_vals, y_vals)
+                                signal_function_scatter.set_offsets(
+                                    np.c_[x_vals, y_vals]
+                                )
+
+                        # Plot the signal function for the selected label
+                        signal_func: darsia.PWTransformation = self.signal_model.model[
+                            1
+                        ][label_idx]
+
+                        # Get the color path interpretation for gradient background
+                        _color_path_interpretation: darsia.ColorPathInterpolation = (
+                            self.color_path_interpretation[label_idx]
+                        )
+
+                        # Get the colormap from the color path
+                        color_path_cmap = (
+                            _color_path_interpretation.color_path.get_color_map()
+                        )
+
+                        # Update the cmap in signal_function_background
+                        signal_function_background.set_cmap(color_path_cmap)
+
+                        # Create x values for plotting the piecewise linear function
+                        x_vals = signal_func.supports
+                        y_vals = signal_func.values.copy()
+                        signal_function_line.set_data(x_vals, y_vals)
+                        signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
+
+                        # Update flash cut-off and max value lines
+                        signal_function_cut_off_y.set_ydata(self.flash.cut_off)
+                        signal_function_max_value_y.set_ydata(self.flash.max_value)
+                        cut_off_x = signal_func.inverse(self.flash.cut_off)
+                        max_value_x = signal_func.inverse(self.flash.max_value)
+                        signal_function_cut_off_x.set_xdata(cut_off_x)
+                        signal_function_max_value_x.set_xdata(max_value_x)
+
+                        # Update the position of the annotaion
+                        ax_signal_function.texts[0].set_position(
+                            (cut_off_x - 0.05, self.flash.cut_off - 0.05)
+                        )
+                        ax_signal_function.texts[1].set_position(
+                            (cut_off_x + 0.05, self.flash.cut_off + 0.05)
+                        )  # Update  colors of sliders_signal
+                        for i, slider in enumerate(sliders_color_to_signal):
+                            new_color = np.clip(
+                                self.color_path_interpretation[
+                                    label_idx
+                                ].color_path.colors[i],
+                                0,
+                                1,
+                            )
+                            slider.color = new_color
+                            # Update the visual elements of the slider
+                            if hasattr(slider, "poly") and slider.poly is not None:
+                                slider.poly.set_facecolor(new_color)
+                            if hasattr(slider, "hline") and slider.hline is not None:
+                                slider.hline.set_color(new_color)
+                            # Force redraw of the slider's axes
+                            slider.ax.figure.canvas.draw_idle()
+
+                        # Redraw
+                        fig.canvas.draw_idle()
+
+                    btn_next_label.on_clicked(next_label)
+
+                    def next_image(event):
+                        nonlocal image_idx, coarse_image, color_interpretation
+                        # Cycle to next image
+                        image_idx = (image_idx + 1) % len(images)
+
+                        # Update image-dependent variables
+                        coarse_image = coarse_images[image_idx]
+                        color_interpretation = color_interpretations[image_idx]
+
+                        # Recalculate mass analysis for new image
+                        pH, density, c_aq, s_g = detailed_mass_analysis(
+                            color_interpretation
+                        )
+
+                        # Coarsen outputs for visualization
+                        coarse_pH = darsia.resize(pH, shape=coarse_shape)
+                        coarse_density = darsia.resize(density, shape=coarse_shape)
+                        coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
+                        coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
+                        coarse_signal_dict = {
+                            "pH": coarse_pH,
+                            "density": coarse_density,
+                            "c_aq": coarse_c_aq,
+                            "s_g": coarse_s_g,
+                        }
+                        coarse_signal = coarse_signal_dict[
+                            signal_option_ptr[signal_option_idx]
+                        ]
+
+                        # Update contours
+                        coarse_contour = darsia.plot_contour_on_image(
+                            coarse_image,
+                            mask=[
+                                coarse_c_aq > sliders_threshold[0].val,
+                                coarse_s_g > sliders_threshold[1].val,
+                            ],
+                            color=[(255, 0, 0), (0, 255, 0)],
+                            return_image=True,
+                        )
+
+                        # Update plot titles
+                        ax_coarse_image.set_title(
+                            f"Current Image {image_idx} and Label {label_idx}"
+                        )
+
+                        # Update coarse image highlighting
+                        labeled_coarse_image = coarse_image.img.copy()
+                        labeled_coarse_image[coarse_labels.img != label_idx] = (
+                            0.7
+                            * np.mean(
+                                labeled_coarse_image[coarse_labels.img != label_idx],
+                                axis=-1,
+                                keepdims=True,
+                            )
+                            + 0.3 * coarse_image.img[coarse_labels.img != label_idx]
+                        )
+                        coarse_image_img.set_data(labeled_coarse_image)
+
+                        # Update signal image and colorbar
+                        coarse_signal_img.set_data(coarse_signal.img)
+                        signal_min = np.nanmin(coarse_signal.img)
+                        signal_max = np.nanmax(coarse_signal.img)
+                        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
+                        coarse_signal_colorbar.update_normal(coarse_signal_img)
+
+                        # Update contour image
+                        coarse_contour_img.set_data(coarse_contour.img)
+
+                        # Redraw
+                        fig.canvas.draw_idle()
+
+                    btn_next_image.on_clicked(next_image)
 
                     plt.show()
 
