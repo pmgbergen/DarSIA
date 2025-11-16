@@ -762,7 +762,7 @@ class HeterogeneousColorToMassAnalysis:
             )
             btn_update = Button(ax_update, "Update")
 
-            ax_next_label = plt.axes(
+            ax_new_label = plt.axes(
                 [
                     0.85 - 2 * button_width - button_spacing,
                     button_y,
@@ -770,9 +770,9 @@ class HeterogeneousColorToMassAnalysis:
                     button_height,
                 ]
             )
-            btn_next_label = Button(ax_next_label, "New Label")
+            btn_new_label = Button(ax_new_label, "New Label")
 
-            ax_next_image = plt.axes(
+            ax_new_image = plt.axes(
                 [
                     0.85 - 3 * button_width - 2 * button_spacing,
                     button_y,
@@ -780,7 +780,7 @@ class HeterogeneousColorToMassAnalysis:
                     button_height,
                 ]
             )
-            btn_next_image = Button(ax_next_image, "New Image")
+            btn_new_image = Button(ax_new_image, "New Image")
 
             ax_finish = plt.axes(
                 [
@@ -937,21 +937,21 @@ class HeterogeneousColorToMassAnalysis:
 
                     btn_update.on_clicked(update_analysis)
 
-                    def next_label(event):
+                    def new_label(event):
                         nonlocal done_tuning_values, need_to_pick_new_label
                         done_tuning_values = True
                         need_to_pick_new_label = True
                         plt.close("all")
 
-                    btn_next_label.on_clicked(next_label)
+                    btn_new_label.on_clicked(new_label)
 
-                    def next_image(event):
+                    def new_image(event):
                         nonlocal done_tuning_values, need_to_pick_new_image
                         done_tuning_values = True
                         need_to_pick_new_image = True
                         plt.close("all")
 
-                    btn_next_image.on_clicked(next_image)
+                    btn_new_image.on_clicked(new_image)
 
                     def finish(event):
                         nonlocal done_tuning_values, done_calibration
