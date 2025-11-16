@@ -1,4 +1,3 @@
-import copy
 import logging
 from pathlib import Path
 from typing import Tuple
@@ -10,7 +9,6 @@ from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
 )
-import time
 import matplotlib.gridspec as gridspec
 
 import darsia
@@ -298,7 +296,6 @@ class HeterogeneousColorToMassAnalysis:
         done_calibration = False
         need_to_pick_new_image = True
         need_to_pick_new_label = True
-        first_time_plotting = True
         while not done_calibration:
             # General design:
             # 1. User needs to pick a focus image (interactively)
@@ -323,6 +320,11 @@ class HeterogeneousColorToMassAnalysis:
             # Pick label interactively
             if need_to_pick_new_label:
                 label_idx = label_idx_selector(density)
+
+                # # Highlight the label (using coarse_labels) and lightening it up.
+                # coarse_image.img[coarse_labels.img == label_idx] = np.mean(
+                #     coarse_image.img[coarse_labels.img == label_idx], keepdims=True
+                # )
 
             # Compute mass analysis
             update_mass_analysis()
@@ -443,13 +445,16 @@ class HeterogeneousColorToMassAnalysis:
             slider_bottom = slider_bbox.y0
             slider_width = slider_bbox.width
             slider_height_total = slider_bbox.height
+
             # Calculate total number of sliders needed
             num_value_sliders = len(self.signal_model.model[1][label_idx].values)
             num_flash_sliders = 2
             num_threshold_sliders = 2
             total_sliders = (
                 num_value_sliders + num_flash_sliders + num_threshold_sliders
-            )  # Calculate dimensions for vertical sliders
+            )
+
+            # Calculate dimensions for vertical sliders
             # Leave some spacing between sliders - ensure they all fit in the box
             available_width = slider_width * 0.95  # Use 95% of available width
             slider_width_individual = available_width / total_sliders * 0.85
@@ -533,7 +538,6 @@ class HeterogeneousColorToMassAnalysis:
             sliders_flash = [slider_phase, slider_max]
 
             # Sliders for thresholding flash model for c_aq and s_g, start with value 0.05
-            sliders_threshold = []
             slider_x = slider_left + (flash_slider_start_idx + 2) * (
                 slider_width_individual + spacing
             )
