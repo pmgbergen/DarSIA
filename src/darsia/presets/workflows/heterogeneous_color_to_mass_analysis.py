@@ -639,6 +639,11 @@ class HeterogeneousColorToMassAnalysis:
                     2.5,
                     valinit=val,
                     valstep=0.05,
+                    color=np.clip(
+                        self.color_path_interpretation[label_idx].color_path.colors[i],
+                        0,
+                        1,
+                    ),
                     orientation="vertical",
                 )
                 sliders_color_to_signal.append(slider)
@@ -658,6 +663,7 @@ class HeterogeneousColorToMassAnalysis:
                     slider_height_individual,
                 ]
             )
+
             slider_phase = Slider(
                 ax_slider_phase,
                 "Flash\ncut-off",
@@ -665,6 +671,7 @@ class HeterogeneousColorToMassAnalysis:
                 1.5,
                 valinit=self.flash.cut_off,
                 valstep=0.05,
+                color="darkgray",
                 orientation="vertical",
             )
 
@@ -688,6 +695,7 @@ class HeterogeneousColorToMassAnalysis:
                 1.5,
                 valinit=self.flash.max_value,
                 valstep=0.05,
+                color="darkgray",
                 orientation="vertical",
             )
             sliders_flash = [slider_phase, slider_max]
@@ -711,6 +719,7 @@ class HeterogeneousColorToMassAnalysis:
                 1.0,
                 valinit=0.05,
                 valstep=0.01,
+                color=(1, 0, 0),
                 orientation="vertical",
             )
             slider_x = slider_left + (flash_slider_start_idx + 3) * (
@@ -731,6 +740,7 @@ class HeterogeneousColorToMassAnalysis:
                 1.0,
                 valinit=0.05,
                 valstep=0.01,
+                color=(0, 1, 0),
                 orientation="vertical",
             )
             sliders_threshold = [slider_c_aq, slider_s_g]
