@@ -200,6 +200,15 @@ def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
         for label in color_path_interpolation
     }
 
+    # ! ---- POROSITY-INFORMED AVERAGING ---- ! #
+    image_porosity = fluidflower.image_porosity
+    # boolean_porosity = image_porosity > 0.9
+    restoration = darsia.VolumeAveraging(
+        rev=darsia.REV(size=0.005, img=fluidflower.baseline),
+        mask=image_porosity,
+        # labels=fluidflower.labels,
+    )
+
     # ! ---- FROM COLOR PATH TO MASS ----
 
     experiment_start = experiment.experiment_start
@@ -222,7 +231,7 @@ def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
         flash=flash,
         co2_mass_analysis=co2_mass_analysis,
         geometry=fluidflower.geometry,
-        # restoration=fluidflower.restoration,
+        restoration=restoration,
         ignore_labels=config.color_paths.ignore_labels + ignore_labels,
     )
 
