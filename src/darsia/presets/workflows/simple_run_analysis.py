@@ -18,6 +18,8 @@ class SimpleMassAnalysisResults:
     """Name for the mass analysis result, e.g., name of raw image."""
     date: datetime | None
     """Date of the mass analysis result."""
+    time: float | None
+    """Relative time (e.g., since injection start) of the mass analysis result."""
     mass: darsia.Image
     """Total mass of phase."""
     mass_g: darsia.Image
@@ -35,6 +37,7 @@ class SimpleMassAnalysisResults:
         return SimpleMassAnalysisResults(
             name=self.name,
             date=self.date,
+            time=self.time,
             mass=self.mass.subregion(roi),
             mass_g=self.mass_g.subregion(roi),
             mass_aq=self.mass_aq.subregion(roi),
@@ -190,8 +193,7 @@ class SimpleRunAnalysis(darsia.MultiphaseTimeSeriesAnalysis):
     def track(
         self,
         mass_analysis_result: darsia.MassAnalysisResults,
-        exact_mass: float,
-        time: float,
+        exact_mass: float | None = None,
     ) -> None:
         """Track the mass analysis result and add to time series data.
 
@@ -203,7 +205,7 @@ class SimpleRunAnalysis(darsia.MultiphaseTimeSeriesAnalysis):
 
         """
         self.data.append(
-            time=time,
+            time=mass_analysis_result.time,
             name=mass_analysis_result.name,
             mass_g=self.geometry.integrate(mass_analysis_result.mass_g),
             mass_aq=self.geometry.integrate(mass_analysis_result.mass_aq),
