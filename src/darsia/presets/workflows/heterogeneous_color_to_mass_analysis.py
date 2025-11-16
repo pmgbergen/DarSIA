@@ -421,12 +421,18 @@ class HeterogeneousColorToMassAnalysis:
             coarse_image_img = ax_coarse_image.imshow(labeled_coarse_image)
 
             # Plot the coarse signal
-            coarse_signal_img = ax_signal.imshow(
-                coarse_signal.img, cmap=cmap
-            )  # Add colorbar for the signal
-            coarse_signal_colorbar = fig.colorbar(
-                coarse_signal_img, ax=ax_signal, shrink=1.0
+            coarse_signal_img = ax_signal.imshow(coarse_signal.img, cmap=cmap)
+
+            # Add colorbar
+            signal_pos = ax_signal.get_position()
+            colorbar_width = 0.01
+            colorbar_height = signal_pos.height
+            colorbar_x = signal_pos.x1 + 0.01
+            colorbar_y = signal_pos.y0
+            colorbar_ax = fig.add_axes(
+                [colorbar_x, colorbar_y, colorbar_width, colorbar_height]
             )
+            coarse_signal_colorbar = fig.colorbar(coarse_signal_img, cax=colorbar_ax)
 
             # Set initial color scale for the signal
             initial_signal_min = np.nanmin(coarse_signal.img)
