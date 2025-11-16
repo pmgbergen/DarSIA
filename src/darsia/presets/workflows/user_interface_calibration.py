@@ -21,9 +21,15 @@ from darsia.presets.workflows.calibration.calibration_mass_analysis import (
 from darsia.presets.workflows.calibration.calibration_color_signal import (
     calibration_color_signal,
 )
+from darsia.presets.workflows.calibration.calibration_color_analysis import (
+    calibration_color_analysis,
+)
+from darsia.presets.workflows.calibration.calibration_color_to_mass_analysis import (
+    calibration_color_to_mass_analysis,
+)
+from darsia.presets.workflows.calibration.calibration_flash import calibration_flash
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 
 def build_parser_for_calibration():
@@ -43,7 +49,22 @@ def build_parser_for_calibration():
     parser.add_argument(
         "--color-signal", action="store_true", help="Calibrate color signal (step 2)."
     )
+    parser.add_argument(
+        "--color-analysis",
+        action="store_true",
+        help="Calibrate color analysis (step 2).",
+    )
+    parser.add_argument(
+        "--color-to-mass-analysis",
+        action="store_true",
+        help="Calibrate color to mass analysis (step 2).",
+    )
     parser.add_argument("--mass", action="store_true", help="Calibrate mass (step 3).")
+    parser.add_argument(
+        "--flash",
+        action="store_true",
+        help="Calibrate flash settings (step 2/3 combined).",
+    )
     parser.add_argument(
         "--show", action="store_true", help="Show the labels after each step."
     )
@@ -74,6 +95,11 @@ def print_help_for_flags(args, parser):
                 "The --mass flag activates the calibration of mass. "
                 "This step calibrates the mass analysis based on the provided configuration."
             )
+        if args.flash:
+            print(
+                "The --flash flag activates the calibration of flash settings. "
+                "This step combines the calibration of color signal and mass based on the provided configuration."
+            )
 
 
 def preset_calibration(rig=Rig):
@@ -85,8 +111,17 @@ def preset_calibration(rig=Rig):
     if args.all or args.color_paths:
         calibration_color_paths(rig, Path(args.config), args.show)
 
+    if args.all or args.color_analysis:
+        calibration_color_analysis(rig, Path(args.config), args.show)
+
+    if args.all or args.color_to_mass_analysis:
+        calibration_color_to_mass_analysis(rig, Path(args.config), args.show)
+
     if args.all or args.color_signal:
         calibration_color_signal(rig, Path(args.config), args.show)
 
     if args.all or args.mass:
         calibration_mass_analysis(rig, Path(args.config), args.show)
+
+    if args.all or args.flash:
+        calibration_flash(rig, Path(args.config), args.show)

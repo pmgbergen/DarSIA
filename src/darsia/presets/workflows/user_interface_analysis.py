@@ -17,7 +17,6 @@ from darsia.presets.workflows.analysis.analysis_mass import (
 )
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 
 def build_parser_for_analysis():

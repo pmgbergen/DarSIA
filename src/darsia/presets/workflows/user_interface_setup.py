@@ -24,7 +24,6 @@ from darsia.presets.workflows.rig import Rig
 
 # Set logging level
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 
 def build_parser_for_setup():
