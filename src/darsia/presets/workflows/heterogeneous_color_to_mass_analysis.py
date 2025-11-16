@@ -90,6 +90,9 @@ class HeterogeneousColorToMassAnalysis:
         self.geometry = geometry
         """Geometry of the experiment - for the integration of mass during calibration."""
 
+        self.color_path_interpretation = color_path_interpretation
+        """Color path interpretations for different labels."""
+
     @property
     def labels(self) -> darsia.Image:
         """Labels image - refer to attribute of color analysis."""
@@ -158,6 +161,16 @@ class HeterogeneousColorToMassAnalysis:
         integrated_mass_g = []
         integrated_mass_aq = []
         square_error = []
+
+        # Choices for signal illustration
+        signal_options = {
+            "pH": "pH",
+            "density": "CO2 Density",
+            "c_aq": "CO2(aq) concentration",
+            "s_g": "CO2(g) saturation",
+        }
+        signal_option_idx = 0
+        signal_option_ptr = list(signal_options.keys())
 
         # ! ---- IMAGES -----
 
@@ -230,7 +243,7 @@ class HeterogeneousColorToMassAnalysis:
         # Perform detailed mass analysis
         def detailed_mass_analysis(
             _color_interpretation: darsia.Image,
-        ) -> Tuple[darsia.Image, darsia.Image, darsia.Image]:
+        ) -> Tuple[darsia.Image, darsia.Image, darsia.Image, darsia.Image]:
             pH = self.call_pH_analysis(color_interpretation)
             c_aq, s_g = self.flash(pH)
             mass_analysis_result: SimpleMassAnalysisResults = (
@@ -240,7 +253,7 @@ class HeterogeneousColorToMassAnalysis:
                 )
             )
             density = mass_analysis_result.mass
-            return density, c_aq, s_g
+            return pH, density, c_aq, s_g
 
         # ! ---- MASS ANALYSIS SETUP ----
 
@@ -315,7 +328,7 @@ class HeterogeneousColorToMassAnalysis:
             color_interpretation = color_interpretations[image_idx]
 
             # Identify mass density for chosen image
-            density, c_aq, s_g = detailed_mass_analysis(color_interpretation)
+            pH, density, c_aq, s_g = detailed_mass_analysis(color_interpretation)
 
             # Pick label interactively
             if need_to_pick_new_label:
@@ -330,9 +343,17 @@ class HeterogeneousColorToMassAnalysis:
             update_mass_analysis()
 
             # Coarsen outputs for visualization
+            coarse_pH = darsia.resize(pH, shape=coarse_shape)
             coarse_density = darsia.resize(density, shape=coarse_shape)
             coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
             coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
+            coarse_signal_dict = {
+                "pH": coarse_pH,
+                "density": coarse_density,
+                "c_aq": coarse_c_aq,
+                "s_g": coarse_s_g,
+            }
+            coarse_signal = coarse_signal_dict[signal_option_ptr[signal_option_idx]]
 
             # Determine contours
             coarse_contour = darsia.plot_contour_on_image(
@@ -343,52 +364,180 @@ class HeterogeneousColorToMassAnalysis:
                 ],  # TODO make thresholds adjustable
                 color=[(255, 0, 0), (0, 255, 0)],  # TODO make colors adjustable
                 return_image=True,
-            )
-
-            # Use gridspec to create a 2x2 grid with proper ratios
-            fig = plt.figure(figsize=(16, 12))
+            )  # Use gridspec to create a 2x3 grid with proper ratios
+            fig = plt.figure(figsize=(20, 12))
             gs = gridspec.GridSpec(
                 nrows=2,
-                ncols=2,
-                width_ratios=[1, 1],  # Bottom: sliders(1) : mass plot(2)
-                height_ratios=[1, 1],  # Top row larger(2) : bottom row smaller(1)
-                left=0.08,
+                ncols=3,
+                width_ratios=[1, 1, 1],  # Three equal columns
+                height_ratios=[1, 1],  # Two equal rows
+                left=0.05,
                 right=0.95,
                 bottom=0.08,
                 top=0.92,
-                wspace=0.25,
+                wspace=0.2,
                 hspace=0.25,
             )
 
-            # Create the 2x2 grid of subplots
-            # Top left: Density/Image visualization
-            ax_image = plt.subplot(gs[0, 0])
-            ax_image.axis("off")
-            ax_image.set_title("Current Density")
+            # Create the 2x3 grid of subplots
+            # Top left: Coarse image
+            ax_coarse_image = plt.subplot(gs[0, 0])
+            ax_coarse_image.axis("off")
+            ax_coarse_image.set_title(
+                f"Current Image {image_idx} and Label {label_idx}"
+            )
+
+            # Top middle: Density visualization
+            ax_signal = plt.subplot(gs[0, 1])
+            ax_signal.axis("off")
+            ax_signal.set_title(signal_options[signal_option_ptr[signal_option_idx]])
 
             # Top right: Contour/Secondary visualization
-            ax_contour = plt.subplot(gs[0, 1])
+            ax_contour = plt.subplot(gs[0, 2])
             ax_contour.axis("off")
-            ax_contour.set_title("Current Image & Phase segmentation")
+            ax_contour.set_title("Phase Segmentation")
 
-            # Bottom left: Mass evolution plots
-            ax_mass = plt.subplot(gs[1, 0])
+            # Bottom left: Signal function plot
+            ax_signal_function = plt.subplot(gs[1, 0])
+            ax_signal_function.set_title(f"Signal Function - Label {label_idx}")
+
+            # Bottom middle: Mass evolution plots
+            ax_mass = plt.subplot(gs[1, 1])
             ax_mass.set_title("Mass Evolution")
 
             # Bottom right: Parameter sliders (will be subdivided)
-            ax_sliders = plt.subplot(gs[1, 1])
+            ax_sliders = plt.subplot(gs[1, 2])
             ax_sliders.axis("off")  # Turn off axis for slider area
             ax_sliders.set_title("Parameter Controls")
 
             # ! ---- PLOTTING ----
 
-            # if first_time_plotting:
-            #    # Turn off setup for next call
-            #    first_time_plotting = False
+            # Plot the coarse image with highlighted label - turn the rest to gray
+            labeled_coarse_image = coarse_image.img.copy()
+            labeled_coarse_image[coarse_labels.img != label_idx] = (
+                0.7
+                * np.mean(
+                    labeled_coarse_image[coarse_labels.img != label_idx],
+                    axis=-1,
+                    keepdims=True,
+                )
+                + 0.3 * coarse_image.img[coarse_labels.img != label_idx]
+            )
+            coarse_image_img = ax_coarse_image.imshow(labeled_coarse_image)
 
-            # Plot the coarse density in ax_image
-            coarse_density_img = ax_image.imshow(coarse_density.img, cmap=cmap)
+            # Plot the coarse signal
+            coarse_signal_img = ax_signal.imshow(coarse_signal.img, cmap=cmap)
+
+            # Plot the contour
             coarse_contour_img = ax_contour.imshow(coarse_contour.img)
+
+            # Plot the signal function for the selected label
+            signal_func: darsia.PWTransformation = self.signal_model.model[1][label_idx]
+            signal_function_line = None
+            if hasattr(signal_func, "values") and len(signal_func.values) > 0:
+                # Get the color path interpretation for gradient background
+                _color_path_interpretation: darsia.ColorPathInterpolation = (
+                    self.color_path_interpretation[label_idx]
+                )
+
+                # Create background gradient using the color path colormap
+                x_gradient = np.linspace(0, 1, 256).reshape(1, -1)
+                y_gradient = np.ones((10, 1))  # Height for visualization
+                gradient_data = x_gradient * y_gradient
+
+                # Get the colormap from the color path
+                color_path_cmap = _color_path_interpretation.color_path.get_color_map()
+
+                # Display the gradient as background
+                ax_signal_function.imshow(
+                    gradient_data,
+                    extent=[
+                        0,
+                        1,
+                        0,
+                        1,
+                    ],  # TODO update extent if extending the pw transforms
+                    aspect="auto",
+                    cmap=color_path_cmap,
+                    alpha=0.3,  # Semi-transparent
+                    zorder=0,  # Behind everything else
+                )
+
+                # Create x values for plotting the piecewise linear function
+                x_vals = signal_func.supports
+                y_vals = signal_func.values.copy()
+                [signal_function_line] = ax_signal_function.plot(
+                    x_vals, y_vals, "gray", linewidth=2, zorder=2
+                )
+
+                colors = _color_path_interpretation.color_path.colors
+                signal_function_scatter = ax_signal_function.scatter(
+                    x_vals,
+                    y_vals,
+                    c=np.clip(colors, 0, 1),
+                    zorder=3,
+                    s=50,
+                    edgecolors="black",
+                    linewidth=1,
+                )
+
+                # Indicate cut-off and max value from flash model
+                signal_function_cut_off_y = ax_signal_function.axhline(
+                    y=self.flash.cut_off,
+                    color="k",
+                    linestyle="--",
+                    label="cut-off",
+                    zorder=1,
+                )
+                signal_function_max_value_y = ax_signal_function.axhline(
+                    y=self.flash.max_value,
+                    color="k",
+                    linestyle="--",
+                    label="max value",
+                    zorder=1,
+                )
+
+                # Find the corresponding x-values for the cut-off and max value lines as solution to the signal_function(x) = cut_off and signal_function(x) = max_value
+                cut_off_x = signal_func.inverse(self.flash.cut_off)
+                max_value_x = signal_func.inverse(self.flash.max_value)
+
+                # Add vertical lines for cut-off and max value
+                signal_function_cut_off_x = ax_signal_function.axvline(
+                    x=cut_off_x, color="k", linestyle="--", label="cut-off", zorder=1
+                )
+                signal_function_max_value_x = ax_signal_function.axvline(
+                    x=max_value_x,
+                    color="k",
+                    linestyle="--",
+                    label="max value",
+                    zorder=1,
+                )
+
+                # Make text annotations "CO2(aq)" and "CO2(g)" below and above the cut-off line
+                ax_signal_function.text(
+                    x=cut_off_x - 0.05,
+                    y=self.flash.cut_off - 0.05,
+                    s="CO2(aq)",
+                    ha="center",
+                    va="bottom",
+                    fontsize=8,
+                    color="k",
+                )
+                ax_signal_function.text(
+                    x=cut_off_x + 0.05,
+                    y=self.flash.cut_off + 0.05,
+                    s="CO2(g)",
+                    ha="center",
+                    va="top",
+                    fontsize=8,
+                    color="k",
+                )
+
+                ax_signal_function.set_xlabel("Color Interpretation")
+                ax_signal_function.set_ylabel("Signal Value")
+                ax_signal_function.grid(True, alpha=0.3, zorder=1)
+                ax_signal_function.set_xlim(0, 1)
+                ax_signal_function.set_ylim(0, 1)
 
             # Combine plot and scatter for integrated mass over time.
             # Decompose into total, gas, and aqueous mass, and add
@@ -621,6 +770,16 @@ class HeterogeneousColorToMassAnalysis:
             )
             btn_finish = Button(ax_finish, "Finish")
 
+            ax_next_signal = plt.axes(
+                [
+                    0.85 - 5 * button_width - 4 * button_spacing,
+                    button_y,
+                    button_width,
+                    button_height,
+                ]
+            )
+            btn_next_signal = Button(ax_next_signal, "Next Signal")
+
             # Tune values for this label
             done_tuning_values = False
             while not done_tuning_values:
@@ -637,11 +796,17 @@ class HeterogeneousColorToMassAnalysis:
                             _label_idx
 
                         # Check if any slider value has changed that requires updating mass analysis
-                        # need_update = any(
-                        #    slider.val != slider.init
-                        #    for slider in sliders_color_to_signal + sliders_flash
-                        #
-                        need_update = any(
+                        need_update = False
+                        need_update = need_update or any(
+                            [
+                                sliders_color_to_signal[i].val
+                                != self.signal_model.model[1][_label_idx].values[i]
+                                for i in range(
+                                    len(self.signal_model.model[1][_label_idx].values)
+                                )
+                            ]
+                        )
+                        need_update = need_update or any(
                             [
                                 sliders_flash[0].val != self.flash.cut_off,
                                 sliders_flash[1].val != self.flash.max_value,
@@ -649,22 +814,32 @@ class HeterogeneousColorToMassAnalysis:
                         )
 
                         ## Update parameters
-                        # self.signal_model.model[1][_label_idx].update_model_parameters(
-                        #    [slider.val for slider in sliders_color_to_signal]
-                        # )
+                        self.signal_model.model[1][_label_idx].update(
+                            values=[slider.val for slider in sliders_color_to_signal]
+                        )
                         self.flash.update(
                             cut_off=sliders_flash[0].val,
                             max_value=sliders_flash[1].val,
                         )
                         # Identify mass density for chosen image
-                        density, c_aq, s_g = detailed_mass_analysis(
+                        pH, density, c_aq, s_g = detailed_mass_analysis(
                             color_interpretation
                         )
 
                         # Coarsen outputs for visualization
+                        coarse_pH = darsia.resize(pH, shape=coarse_shape)
                         coarse_density = darsia.resize(density, shape=coarse_shape)
                         coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
                         coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
+                        coarse_signal_dict = {
+                            "pH": coarse_pH,
+                            "density": coarse_density,
+                            "c_aq": coarse_c_aq,
+                            "s_g": coarse_s_g,
+                        }
+                        coarse_signal = coarse_signal_dict[
+                            signal_option_ptr[signal_option_idx]
+                        ]
 
                         # Determine contours
                         coarse_contour = darsia.plot_contour_on_image(
@@ -684,9 +859,41 @@ class HeterogeneousColorToMassAnalysis:
                         if need_update:
                             update_mass_analysis()
 
-                        # Update plots
-                        coarse_density_img.set_data(coarse_density.img)
+                        # Update signal function plot
+                        if signal_function_line is not None:
+                            signal_func = self.signal_model.model[1][_label_idx]
+                            x_vals = signal_func.supports
+                            y_vals = signal_func.values.copy()
+                            signal_function_line.set_data(x_vals, y_vals)
+                            signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
+
+                        # Update flash cut-off and max value lines
+                        signal_function_cut_off_y.set_ydata(self.flash.cut_off)
+                        signal_function_max_value_y.set_ydata(self.flash.max_value)
+                        cut_off_x = signal_func.inverse(self.flash.cut_off)
+                        max_value_x = signal_func.inverse(self.flash.max_value)
+                        signal_function_cut_off_x.set_xdata(cut_off_x)
+                        signal_function_max_value_x.set_xdata(max_value_x)
+
+                        # Update the position of the annotaion
+                        ax_signal_function.texts[0].set_position(
+                            (cut_off_x - 0.05, self.flash.cut_off - 0.05)
+                        )
+                        ax_signal_function.texts[1].set_position(
+                            (cut_off_x + 0.05, self.flash.cut_off + 0.05)
+                        )
+
+                        # Update dense plots
+                        coarse_image_img.set_data(coarse_image.img)
+                        coarse_signal_img.set_data(coarse_signal.img)
                         coarse_contour_img.set_data(coarse_contour.img)
+
+                        # Update color scale (min/max values) based on current signal
+                        signal_min = np.nanmin(coarse_signal.img)
+                        signal_max = np.nanmax(coarse_signal.img)
+                        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
+
+                        # Update mass plots
                         integrated_mass_plot.set_data(times, integrated_mass)
                         integrated_mass_plot_g.set_data(times, integrated_mass_g)
                         integrated_mass_plot_aq.set_data(times, integrated_mass_aq)
@@ -699,8 +906,11 @@ class HeterogeneousColorToMassAnalysis:
                         integrated_mass_scatter_aq.set_offsets(
                             np.c_[times, integrated_mass_aq]
                         )
+
+                        # Redraw
                         fig.canvas.draw_idle()
 
+                        # TODO remove if everything works
                         # done_tuning_values = True
 
                     btn_update.on_clicked(update_analysis)
@@ -728,6 +938,48 @@ class HeterogeneousColorToMassAnalysis:
                         plt.close("all")
 
                     btn_finish.on_clicked(finish)
+
+                    def next_signal(event):
+                        nonlocal signal_option_idx
+                        signal_option_idx = (signal_option_idx + 1) % len(
+                            signal_option_ptr
+                        )
+
+                        # Identify mass density for chosen image
+                        pH, density, c_aq, s_g = detailed_mass_analysis(
+                            color_interpretation
+                        )
+
+                        # Coarsen outputs for visualization
+                        coarse_pH = darsia.resize(pH, shape=coarse_shape)
+                        coarse_density = darsia.resize(density, shape=coarse_shape)
+                        coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
+                        coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
+                        coarse_signal_dict = {
+                            "pH": coarse_pH,
+                            "density": coarse_density,
+                            "c_aq": coarse_c_aq,
+                            "s_g": coarse_s_g,
+                        }
+                        coarse_signal = coarse_signal_dict[
+                            signal_option_ptr[signal_option_idx]
+                        ]
+
+                        # Update the image and title
+                        coarse_signal_img.set_data(coarse_signal.img)
+                        ax_signal.set_title(
+                            signal_options[signal_option_ptr[signal_option_idx]]
+                        )
+
+                        # Update color scale (min/max values) based on current signal
+                        signal_min = np.nanmin(coarse_signal.img)
+                        signal_max = np.nanmax(coarse_signal.img)
+                        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
+
+                        # Redraw
+                        fig.canvas.draw_idle()
+
+                    btn_next_signal.on_clicked(next_signal)
 
                     plt.show()
 
