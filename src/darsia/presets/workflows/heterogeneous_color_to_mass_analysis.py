@@ -443,23 +443,21 @@ class HeterogeneousColorToMassAnalysis:
             slider_bottom = slider_bbox.y0
             slider_width = slider_bbox.width
             slider_height_total = slider_bbox.height
-
             # Calculate total number of sliders needed
             num_value_sliders = len(self.signal_model.model[1][label_idx].values)
             num_flash_sliders = 2
-            total_sliders = num_value_sliders + num_flash_sliders
-
-            # Calculate dimensions for vertical sliders
-            # Leave some spacing between sliders
-            slider_width_individual = slider_width / total_sliders * 0.8
+            num_threshold_sliders = 2
+            total_sliders = (
+                num_value_sliders + num_flash_sliders + num_threshold_sliders
+            )  # Calculate dimensions for vertical sliders
+            # Leave some spacing between sliders - ensure they all fit in the box
+            available_width = slider_width * 0.95  # Use 95% of available width
+            slider_width_individual = available_width / total_sliders * 0.85
             # Leave space for labels at bottom
             slider_height_individual = slider_height_total * 0.6
-            spacing_width = slider_width / total_sliders * 0.2
-            spacing = spacing_width / (total_sliders - 1) if total_sliders > 1 else 0
+            spacing = available_width / total_sliders * 0.15 if total_sliders > 1 else 0
 
-            sliders_color_to_signal = []
-
-            # Create vertical sliders for signal model values
+            sliders_color_to_signal = []  # Create vertical sliders for signal model values
             for i, val in enumerate(self.signal_model.model[1][label_idx].values):
                 slider_x = slider_left + i * (slider_width_individual + spacing)
                 # Leave space at bottom for labels
@@ -477,8 +475,8 @@ class HeterogeneousColorToMassAnalysis:
                 slider = Slider(
                     ax_slider,
                     f"Val {i}",
-                    -0.5,
-                    1.5,
+                    0.0,
+                    2.5,
                     valinit=val,
                     valstep=0.05,
                     orientation="vertical",
@@ -486,9 +484,7 @@ class HeterogeneousColorToMassAnalysis:
                 sliders_color_to_signal.append(slider)
 
             # Add two vertical sliders for thresholding flash model
-            flash_slider_start_idx = num_value_sliders
-
-            # Flash cut-off slider
+            flash_slider_start_idx = num_value_sliders  # Flash cut-off slider
             slider_x = slider_left + flash_slider_start_idx * (
                 slider_width_individual + spacing
             )
@@ -537,7 +533,7 @@ class HeterogeneousColorToMassAnalysis:
             sliders_flash = [slider_phase, slider_max]
 
             # Sliders for thresholding flash model for c_aq and s_g, start with value 0.05
-
+            sliders_threshold = []
             slider_x = slider_left + (flash_slider_start_idx + 2) * (
                 slider_width_individual + spacing
             )
@@ -578,7 +574,7 @@ class HeterogeneousColorToMassAnalysis:
                 valstep=0.01,
                 orientation="vertical",
             )
-            sliders_flash.extend([slider_c_aq, slider_s_g])
+            sliders_threshold = [slider_c_aq, slider_s_g]
 
             # Position buttons at the top of the figure
             button_width = 0.08
@@ -633,7 +629,20 @@ class HeterogeneousColorToMassAnalysis:
                             done_tuning_values, \
                             sliders_color_to_signal, \
                             sliders_flash, \
+                            sliders_threshold, \
                             _label_idx
+
+                        # Check if any slider value has changed that requires updating mass analysis
+                        # need_update = any(
+                        #    slider.val != slider.init
+                        #    for slider in sliders_color_to_signal + sliders_flash
+                        #
+                        need_update = any(
+                            [
+                                sliders_flash[0].val != self.flash.cut_off,
+                                sliders_flash[1].val != self.flash.max_value,
+                            ]
+                        )
 
                         ## Update parameters
                         # self.signal_model.model[1][_label_idx].update_model_parameters(
@@ -657,8 +666,8 @@ class HeterogeneousColorToMassAnalysis:
                         coarse_contour = darsia.plot_contour_on_image(
                             coarse_image,
                             mask=[
-                                coarse_c_aq > slider_c_aq.val,
-                                coarse_s_g > slider_s_g.val,
+                                coarse_c_aq > sliders_threshold[0].val,
+                                coarse_s_g > sliders_threshold[1].val,
                             ],
                             color=[
                                 (255, 0, 0),
@@ -668,7 +677,8 @@ class HeterogeneousColorToMassAnalysis:
                         )
 
                         # Update mass analysis
-                        update_mass_analysis()
+                        if need_update:
+                            update_mass_analysis()
 
                         # Update plots
                         coarse_density_img.set_data(coarse_density.img)
