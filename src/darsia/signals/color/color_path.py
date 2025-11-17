@@ -462,14 +462,17 @@ class ColorPath:
             for segment in range(self.num_segments)
         ]
 
-        # Compare the different segments and find the global best-fit segment for each pixel
-        color_distances = np.stack(
-            [
-                np.sum((colors - color_interpretations[segment]) ** 2, axis=-1)
-                for segment in range(self.num_segments)
-            ]
-        )
-        closest_segment = np.argmin(color_distances, axis=0)
+        # Optimized method - find closest segment without storing all distances
+        closest_segment = np.zeros(colors.shape[:-1], dtype=np.int32)
+        min_distances = np.full(colors.shape[:-1], np.inf)
+
+        for segment in range(self.num_segments):
+            distances = np.linalg.norm(
+                colors - color_interpretations[segment], ord=1, axis=-1
+            )
+            mask = distances < min_distances
+            closest_segment[mask] = segment
+            min_distances[mask] = distances[mask]
 
         # Finalize minimization by taking the best-fit interpretation
         best_fit_interpretation = np.zeros(colors.shape[:-1])
@@ -520,7 +523,7 @@ class ColorPath:
             raise ValueError(f"Unknown mode '{mode}' for color path interpretation.")
 
         # Find the right segment for each pixel
-        shape = parameters.shape + (-1,)
+        shape = parameters.shape + (3,)
         interpretations = np.zeros(shape)
         for segment in range(self.num_segments):
             if segment == 0:
