@@ -300,7 +300,8 @@ class ColorPath:
         with open(path.with_suffix(".json"), "w") as f:
             json.dump(self.to_dict(), f)
 
-    def load(self, path: Path) -> None:
+    @classmethod
+    def load(self, path: Path) -> "ColorPath":
         """Load the color path from a file.
 
         Args:
@@ -309,16 +310,77 @@ class ColorPath:
         """
         with open(path.with_suffix(".json"), "r") as f:
             data = json.load(f)
-            self.colors = [np.array(c) for c in data["colors"]]
-            self.base_color = np.array(data["base_color"])
-            self.relative_colors = [np.array(c) for c in data["relative_colors"]]
-            self.relative_distances = self._compute_relative_distances()
-            self.equidistant_distances = self._compute_equidistant_distances()
-            self.mode = data["mode"]
-            self.num_segments = len(self.colors) - 1
-            self.name = data["name"]
-            # self.sort()
+            color_path = ColorPath(
+                base_color=np.array(data["base_color"]),
+                relative_colors=[np.array(c) for c in data["relative_colors"]],
+                mode=data["mode"],
+                name=data["name"],
+            )
+            color_path.colors = [np.array(c) for c in data["colors"]]
         logger.info(f"Loaded color path from {path}.")
+        return color_path
+        # self.relative_colors = [np.array(c) for c in data["relative_colors"]]
+        # self.relative_distances = self._compute_relative_distances()
+        # self.equidistant_distances = self._compute_equidistant_distances()
+        # self.mode = data["mode"]
+        # self.num_segments = len(self.colors) - 1
+        # self.name = data["name"]
+        # import time
+
+        # tic = time.time()
+        ## Create discrete optimization arrays
+        # (
+        #    self.discrete_equidistant_distances,
+        #    self.discrete_equidistant_absolute_colors,
+        #    self.discrete_equidistant_relative_colors,
+        # ) = self._setup_discrete_optimization(mode="equidistant")
+        # (
+        #    self.discrete_relative_distances,
+        #    self.discrete_relative_absolute_colors,
+        #    self.discrete_relative_relative_colors,
+        # ) = self._setup_discrete_optimization(mode="relative")
+        # print(f"ColorPath setup took {time.time() - tic:.2f} seconds.")
+
+    def refine(
+        self,
+        num_segments: int,
+        distance_to_left: float | None = None,
+        distance_to_right: float | None = None,
+    ) -> "ColorPath":
+        """Redefine the color path with a given number of segments.
+
+        Args:
+            num_segments: Number of segments for the refined color path.
+            distance_to_left: Value to extend the color path to the left (inter).
+            distance_to_right: Value to extend the color path to the right.
+
+        Returns:
+            ColorPath: Refined color path with the specified number of segments.
+
+        """
+
+        # Define new relative distances
+        num_colors = num_segments + 1
+        distances = np.linspace(0, 1, num_colors)
+        if distance_to_left:
+            distances = np.hstack((distance_to_left, distances))
+        if distance_to_right:
+            distances = np.hstack((distances, distance_to_right))
+
+        # Interpret corresponding relative colors
+        relative_colors = self.interpret(
+            distances,
+            color_mode=darsia.ColorMode.RELATIVE,
+            mode="relative",
+        )
+
+        # Create new color path
+        return ColorPath(
+            base_color=self.base_color,
+            relative_colors=relative_colors,
+            mode=self.mode,
+            name=self.name,
+        )
 
     # ! ---- PARAMETRIZATION OF COLORS ----
 
