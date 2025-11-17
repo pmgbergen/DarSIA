@@ -32,7 +32,7 @@ class ColorPath:
 
     def __init__(
         self,
-        colors: list[np.ndarray] | None = [np.zeros(3), np.ones(3)],
+        colors: list[np.ndarray] | None = None,
         base_color: np.ndarray | None = None,
         relative_colors: list[np.ndarray] | None = None,
         mode: Literal["rgb", "lab", "hcl"] = "rgb",
@@ -81,6 +81,7 @@ class ColorPath:
         # - Equidistant values between 0, 1/n, 2/n, ..., 1.
         self.relative_distances: list[float] = self._compute_relative_distances()
         """Relative distances between the colors in the path."""
+
         self.equidistant_distances: list[float] = self._compute_equidistant_distances()
         """Equidistant distance between 0 and 1 for each color in the path."""
 
