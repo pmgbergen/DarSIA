@@ -686,6 +686,54 @@ class HeterogeneousColorToMassAnalysis:
                 )
                 sliders_color_to_signal.append(slider)
 
+            # Add two rows of arrow buttons below the signal sliders
+            arrow_button_height = slider_height_total * 0.05  # Small height for arrow buttons
+            arrow_button_spacing = slider_height_total * 0.02  # Small spacing between up and down buttons
+            
+            # Calculate positions for arrow buttons
+            up_button_y = slider_bottom + slider_height_total * 0.1
+            down_button_y = up_button_y - arrow_button_height - arrow_button_spacing
+
+            # Create empty functions for arrow button callbacks
+            def slider_up_arrow(slider_index):
+                """Placeholder function for up arrow button."""
+                pass
+
+            def slider_down_arrow(slider_index):
+                """Placeholder function for down arrow button."""
+                pass
+
+            # Create arrow buttons for each signal slider
+            arrow_buttons_up = []
+            arrow_buttons_down = []
+            
+            for i in range(num_value_sliders):
+                slider_x = slider_left + i * (slider_width_individual + spacing)
+                
+                # Up arrow button
+                ax_up_button = fig.add_axes(
+                    [
+                        slider_x,
+                        up_button_y,
+                        slider_width_individual,
+                        arrow_button_height,
+                    ]
+                )
+                btn_up = Button(ax_up_button, "▲")
+                arrow_buttons_up.append(btn_up)
+                
+                # Down arrow button
+                ax_down_button = fig.add_axes(
+                    [
+                        slider_x,
+                        down_button_y,
+                        slider_width_individual,
+                        arrow_button_height,
+                    ]
+                )
+                btn_down = Button(ax_down_button, "▼")
+                arrow_buttons_down.append(btn_down)
+
             # Add two vertical sliders for thresholding flash model
             flash_slider_start_idx = num_value_sliders  # Flash cut-off slider
             slider_x = slider_left + flash_slider_start_idx * (
