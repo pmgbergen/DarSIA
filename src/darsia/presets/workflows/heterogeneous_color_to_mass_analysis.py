@@ -54,14 +54,35 @@ class HeterogeneousColorToMassAnalysis:
         self.color_analysis = darsia.ConcentrationAnalysis(
             base=baseline if color_mode == darsia.ColorMode.RELATIVE else None,
             restoration=restoration,
-            labels=labels,
             model=base_model,
+            labels=labels,
             **config,
+        )
+
+        # To make sure the signal functions can be evaluated (within their domain of support)
+        # explicitly clip the arguments of the signal model
+        min_domain_signal_functions = max(
+            min(func.supports) for func in signal_functions.values()
+        )
+        max_domain_signal_functions = min(
+            max(func.supports) for func in signal_functions.values()
+        )
+        min_range_signal_functions = min(
+            min(func.values) for func in signal_functions.values()
+        )
+        max_range_signal_functions = max(
+            max(func.values) for func in signal_functions.values()
+        )
+        self.signal_model_extents = (
+            (min_domain_signal_functions, max_domain_signal_functions),
+            (min_range_signal_functions, max_range_signal_functions),
         )
 
         signal_model = darsia.CombinedModel(
             [
-                darsia.ClipModel(0.0, 1.0),  # TODO fetch from signal_functions...
+                darsia.ClipModel(
+                    min_domain_signal_functions, max_domain_signal_functions
+                ),
                 darsia.HeterogeneousModel(
                     signal_functions,
                     labels,
@@ -71,10 +92,10 @@ class HeterogeneousColorToMassAnalysis:
         )
 
         self.signal_model = darsia.ConcentrationAnalysis(
-            base=None,
-            restoration=None,
-            labels=labels,
+            # base=None,
+            # restoration=None,
             model=signal_model,
+            labels=labels,
             **config,
         )
         """Model converting color interpretation to pH."""
@@ -462,11 +483,11 @@ class HeterogeneousColorToMassAnalysis:
                 signal_function_background = ax_signal_function.imshow(
                     gradient_data,
                     extent=[
-                        0,
-                        1,
-                        0,
-                        1,
-                    ],  # TODO update extent if extending the pw transforms
+                        self.signal_model_extents[0][0],
+                        self.signal_model_extents[0][1],
+                        self.signal_model_extents[1][0],
+                        self.signal_model_extents[1][1],
+                    ],
                     aspect="auto",
                     cmap=color_path_cmap,
                     alpha=0.3,  # Semi-transparent
@@ -526,7 +547,7 @@ class HeterogeneousColorToMassAnalysis:
                 # Make text annotations "CO2(aq)" and "CO2(g)" below and above the cut-off line
                 signal_function_co2_aq = ax_signal_function.text(
                     x=cut_off_x - 0.05,
-                    y=self.flash.cut_off - 0.05,
+                    y=0.05,
                     s="CO2(aq)",
                     ha="center",
                     va="bottom",
@@ -535,8 +556,17 @@ class HeterogeneousColorToMassAnalysis:
                 )
                 signal_function_co2_g = ax_signal_function.text(
                     x=cut_off_x + 0.05,
-                    y=self.flash.cut_off + 0.05,
+                    y=0.02,
                     s="CO2(g)",
+                    ha="center",
+                    va="top",
+                    fontsize=8,
+                    color="k",
+                )
+                signal_function_co2_g_full = ax_signal_function.text(
+                    x=max_value_x + 0.05,
+                    y=0.02,
+                    s="CO2(g) - 100%",
                     ha="center",
                     va="top",
                     fontsize=8,
@@ -546,8 +576,12 @@ class HeterogeneousColorToMassAnalysis:
                 ax_signal_function.set_xlabel("Color Interpretation")
                 ax_signal_function.set_ylabel("Signal Value")
                 ax_signal_function.grid(True, alpha=0.3, zorder=1)
-                ax_signal_function.set_xlim(0, 1)
-                ax_signal_function.set_ylim(0, 1)
+                ax_signal_function.set_xlim(
+                    self.signal_model_extents[0][0], self.signal_model_extents[0][1]
+                )
+                ax_signal_function.set_ylim(
+                    self.signal_model_extents[1][0], self.signal_model_extents[1][1]
+                )
 
             # Combine plot and scatter for integrated mass over time.
             # Decompose into total, gas, and aqueous mass, and add
@@ -594,7 +628,7 @@ class HeterogeneousColorToMassAnalysis:
                 integrated_mass_aq,
                 color="orange",
             )
-            ax_mass.set_ylim(0.0, 0.01)
+            ax_mass.set_ylim(0.0, 2.0 * max(expected_mass))
             ax_mass.legend()
             ax_mass.grid(True, alpha=0.3)
 
@@ -944,10 +978,13 @@ class HeterogeneousColorToMassAnalysis:
 
                         # Update the position of the annotaion
                         ax_signal_function.texts[0].set_position(
-                            (cut_off_x - 0.05, self.flash.cut_off - 0.05)
+                            (cut_off_x - 0.05, 0.02)
                         )
                         ax_signal_function.texts[1].set_position(
-                            (cut_off_x + 0.05, self.flash.cut_off + 0.05)
+                            (cut_off_x + 0.05, 0.02)
+                        )
+                        ax_signal_function.texts[2].set_position(
+                            (max_value_x + 0.05, 0.02)
                         )
 
                         # Update dense plots
@@ -1132,11 +1169,22 @@ class HeterogeneousColorToMassAnalysis:
 
                         # Update the position of the annotaion
                         ax_signal_function.texts[0].set_position(
-                            (cut_off_x - 0.05, self.flash.cut_off - 0.05)
+                            (cut_off_x - 0.05, 0.02)
                         )
                         ax_signal_function.texts[1].set_position(
-                            (cut_off_x + 0.05, self.flash.cut_off + 0.05)
-                        )  # Update  colors of sliders_signal
+                            (cut_off_x + 0.05, 0.02)
+                        )
+                        ax_signal_function.texts[2].set_position(
+                            (max_value_x + 0.05, 0.02)
+                        )
+
+                        # Update values of slides_signal
+                        for i, slider in enumerate(sliders_color_to_signal):
+                            slider.set_val(
+                                self.signal_model.model[1][label_idx].values[i]
+                            )
+
+                        # Update colors of sliders_signal
                         for i, slider in enumerate(sliders_color_to_signal):
                             new_color = np.clip(
                                 self.color_path_interpretation[
