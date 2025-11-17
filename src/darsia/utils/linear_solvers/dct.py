@@ -21,11 +21,12 @@ class DCTSolver:
         if grid.dim == 2:
             # note the permutation of x and y in the grid
             ny, nx = grid.shape
-            hy, hx = 1.0 / (nx-1) , 1.0/(ny-1) #grid.voxel_size
+            #hy, hx = 1.0 / (nx-1) , 1.0/(ny-1) #grid.voxel_size
+            hy, hx = 1.0 / nx , 1.0 / ny #grid.voxel_size
             
 
-            lambda_x = 2 * (np.cos(np.pi * np.arange(nx) / (nx - 1)) - 1)
-            lambda_y = 2 * (np.cos(np.pi * np.arange(ny) / (ny - 1)) - 1)
+            lambda_x = 2 * (np.cos(np.pi * np.arange(nx) / nx) - 1)
+            lambda_y = 2 * (np.cos(np.pi * np.arange(ny) / ny) - 1)
 
             kernel_inv = (
                 np.outer(lambda_x / (hx**2), np.ones(ny)) 
@@ -35,6 +36,7 @@ class DCTSolver:
             kernel_inv[zero_mode_index]=1.0
 
         if grid.dim == 3:
+            raise NotImplementedError(f"Dimension {grid.dim} not supported.")
             # note the permutation of x and y in the grid
             ny, nx, nz = grid.shape
             hy, hx, hz = hy, hx = 1.0 / (nx-1) , 1.0/(ny-1), 1.0/ (nz-1) #grid.voxel_size
@@ -67,18 +69,17 @@ class DCTSolver:
         Returns:
             np.ndarray: Solution to the Poisson equation (1D array)
         """
-
         # de-integrate the rhs
         rhs_2d = np.reshape(rhs, self.grid.shape, order="F") / self.volume
 
         # take the discrete cosine transform
-        dct = scipy.fft.dctn(-rhs_2d, type=2, norm="ortho")
+        dct = scipy.fft.dctn(-rhs_2d, type=2, orthogonalize=True , norm="ortho")
 
         # multiply by the kernel
         np.multiply(dct, np.transpose(self.kernel), out=dct)
 
         # inverse transform
-        sol_2d = scipy.fft.idctn(dct, type=2, norm="ortho")
+        sol_2d = scipy.fft.idctn(dct, type=2, orthogonalize=True, norm="ortho")
 
         sol = np.ravel(sol_2d, order="F")
 
