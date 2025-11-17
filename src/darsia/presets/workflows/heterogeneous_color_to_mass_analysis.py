@@ -184,9 +184,13 @@ class HeterogeneousColorToMassAnalysis:
         # Choices for signal illustration
         signal_options = {
             "pH": "pH",
-            "density": "CO2 Density",
+            "rho_co2": "CO2 Density",
             "c_aq": "CO2(aq) concentration",
             "s_g": "CO2(g) saturation",
+            "labels": "Labels",
+            "depth": "Depth",
+            "rho_co2(g)": "CO2(g) Density",
+            "solubility_co2(aq)": "CO2(aq) Solubility",
         }
         signal_option_idx = 0
         signal_option_ptr = list(signal_options.keys())
@@ -207,6 +211,11 @@ class HeterogeneousColorToMassAnalysis:
             interpolation="inter_nearest",
         )
         coarse_images = [darsia.resize(image, shape=coarse_shape) for image in images]
+
+        coarse_depth = darsia.resize(
+            self.geometry.depth,
+            shape=coarse_shape,
+        )
 
         # ! ---- COLOR INTERPRETATIONS ----
         color_interpretations = [
@@ -290,10 +299,10 @@ class HeterogeneousColorToMassAnalysis:
             analysis.reset()
             for img, color_interpretation in zip(images, color_interpretations):
                 # Update thermodynamic state
-                # state = experiment.pressure_temperature_protocol.get_state(img.time)
-                # self.co2_mass_analysis.update_state(
-                #    atmospheric_pressure=state.pressure, temperature=state.temperature
-                # )
+                state = experiment.pressure_temperature_protocol.get_state(img.date)
+                self.co2_mass_analysis.update_state(
+                    atmospheric_pressure=state.pressure, temperature=state.temperature
+                )
 
                 # Signal analysis
                 pH = self.call_pH_analysis(color_interpretation)
@@ -356,16 +365,38 @@ class HeterogeneousColorToMassAnalysis:
             # Compute mass analysis
             update_mass_analysis()
 
+            # Fetch thermodynamic infos for current image
+            state = experiment.pressure_temperature_protocol.get_state(
+                coarse_image.date
+            )
+            self.co2_mass_analysis.update_state(
+                atmospheric_pressure=state.pressure, temperature=state.temperature
+            )
+            co2_g_density = darsia.full_like(
+                pH, self.co2_mass_analysis.density_gaseous_co2
+            )
+            co2_aq_solubility = darsia.full_like(
+                pH, self.co2_mass_analysis.solubility_co2
+            )
+
             # Coarsen outputs for visualization
             coarse_pH = darsia.resize(pH, shape=coarse_shape)
             coarse_density = darsia.resize(density, shape=coarse_shape)
             coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
             coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
+            coarse_co2_g_density = darsia.resize(co2_g_density, shape=coarse_shape)
+            coarse_co2_aq_solubility = darsia.resize(
+                co2_aq_solubility, shape=coarse_shape
+            )
             coarse_signal_dict = {
                 "pH": coarse_pH,
-                "density": coarse_density,
+                "rho_co2": coarse_density,
                 "c_aq": coarse_c_aq,
                 "s_g": coarse_s_g,
+                "labels": coarse_labels,
+                "depth": coarse_depth,
+                "rho_co2(g)": coarse_co2_g_density,
+                "solubility_co2(aq)": coarse_co2_aq_solubility,
             }
             coarse_signal = coarse_signal_dict[signal_option_ptr[signal_option_idx]]
 
@@ -457,10 +488,39 @@ class HeterogeneousColorToMassAnalysis:
             initial_signal_min = np.nanmin(coarse_signal.img)
             initial_signal_max = np.nanmax(coarse_signal.img)
             coarse_signal_img.set_clim(vmin=initial_signal_min, vmax=initial_signal_max)
-            coarse_signal_colorbar.update_normal(coarse_signal_img)
-
-            # Plot the contour
+            coarse_signal_colorbar.update_normal(coarse_signal_img)  # Plot the contour
             coarse_contour_img = ax_contour.imshow(coarse_contour.img)
+
+            # Synchronize zoom and pan for the top row plots (same resolution)
+            def sync_xlim(ax_src):
+                """Synchronize x-axis limits across top row plots."""
+                xlim = ax_src.get_xlim()
+                if ax_src != ax_coarse_image:
+                    ax_coarse_image.set_xlim(xlim)
+                if ax_src != ax_signal:
+                    ax_signal.set_xlim(xlim)
+                if ax_src != ax_contour:
+                    ax_contour.set_xlim(xlim)
+                fig.canvas.draw_idle()
+
+            def sync_ylim(ax_src):
+                """Synchronize y-axis limits across top row plots."""
+                ylim = ax_src.get_ylim()
+                if ax_src != ax_coarse_image:
+                    ax_coarse_image.set_ylim(ylim)
+                if ax_src != ax_signal:
+                    ax_signal.set_ylim(ylim)
+                if ax_src != ax_contour:
+                    ax_contour.set_ylim(ylim)
+                fig.canvas.draw_idle()
+
+            # Connect the synchronization callbacks
+            ax_coarse_image.callbacks.connect("xlim_changed", sync_xlim)
+            ax_coarse_image.callbacks.connect("ylim_changed", sync_ylim)
+            ax_signal.callbacks.connect("xlim_changed", sync_xlim)
+            ax_signal.callbacks.connect("ylim_changed", sync_ylim)
+            ax_contour.callbacks.connect("xlim_changed", sync_xlim)
+            ax_contour.callbacks.connect("ylim_changed", sync_ylim)
 
             # Plot the signal function for the selected label
             signal_func: darsia.PWTransformation = self.signal_model.model[1][label_idx]
@@ -472,7 +532,11 @@ class HeterogeneousColorToMassAnalysis:
                 )
 
                 # Create background gradient using the color path colormap
-                x_gradient = np.linspace(0, 1, 256).reshape(1, -1)
+                x_gradient = np.linspace(
+                    self.signal_model_extents[0][0],
+                    self.signal_model_extents[0][1],
+                    256,
+                ).reshape(1, -1)
                 y_gradient = np.ones((10, 1))  # Height for visualization
                 gradient_data = x_gradient * y_gradient
 
@@ -547,7 +611,7 @@ class HeterogeneousColorToMassAnalysis:
                 # Make text annotations "CO2(aq)" and "CO2(g)" below and above the cut-off line
                 signal_function_co2_aq = ax_signal_function.text(
                     x=cut_off_x - 0.05,
-                    y=0.05,
+                    y=0.04,
                     s="CO2(aq)",
                     ha="center",
                     va="bottom",
@@ -556,7 +620,7 @@ class HeterogeneousColorToMassAnalysis:
                 )
                 signal_function_co2_g = ax_signal_function.text(
                     x=cut_off_x + 0.05,
-                    y=0.02,
+                    y=0.04,
                     s="CO2(g)",
                     ha="center",
                     va="top",
@@ -565,7 +629,7 @@ class HeterogeneousColorToMassAnalysis:
                 )
                 signal_function_co2_g_full = ax_signal_function.text(
                     x=max_value_x + 0.05,
-                    y=0.02,
+                    y=0.04,
                     s="CO2(g) - 100%",
                     ha="center",
                     va="top",
@@ -770,9 +834,13 @@ class HeterogeneousColorToMassAnalysis:
                     coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
                     coarse_signal_dict = {
                         "pH": coarse_pH,
-                        "density": coarse_density,
+                        "rho_co2": coarse_density,
                         "c_aq": coarse_c_aq,
                         "s_g": coarse_s_g,
+                        "labels": coarse_labels,
+                        "depth": coarse_depth,
+                        "rho_co2(g)": coarse_co2_g_density,
+                        "solubility_co2(aq)": coarse_co2_aq_solubility,
                     }
                     coarse_signal = coarse_signal_dict[
                         signal_option_ptr[signal_option_idx]
@@ -812,9 +880,9 @@ class HeterogeneousColorToMassAnalysis:
                     signal_function_max_value_x.set_xdata(max_value_x)
 
                     # Update the position of the annotaion
-                    ax_signal_function.texts[0].set_position((cut_off_x - 0.05, 0.02))
-                    ax_signal_function.texts[1].set_position((cut_off_x + 0.05, 0.02))
-                    ax_signal_function.texts[2].set_position((max_value_x + 0.05, 0.02))
+                    ax_signal_function.texts[0].set_position((cut_off_x - 0.05, 0.04))
+                    ax_signal_function.texts[1].set_position((cut_off_x + 0.05, 0.04))
+                    ax_signal_function.texts[2].set_position((max_value_x + 0.05, 0.04))
 
                     # Update dense plots
                     coarse_signal_img.set_data(coarse_signal.img)
@@ -912,9 +980,13 @@ class HeterogeneousColorToMassAnalysis:
                     coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
                     coarse_signal_dict = {
                         "pH": coarse_pH,
-                        "density": coarse_density,
+                        "rho_co2": coarse_density,
                         "c_aq": coarse_c_aq,
                         "s_g": coarse_s_g,
+                        "labels": coarse_labels,
+                        "depth": coarse_depth,
+                        "rho_co2(g)": coarse_co2_g_density,
+                        "solubility_co2(aq)": coarse_co2_aq_solubility,
                     }
                     coarse_signal = coarse_signal_dict[
                         signal_option_ptr[signal_option_idx]
@@ -1403,9 +1475,13 @@ class HeterogeneousColorToMassAnalysis:
                         coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
                         coarse_signal_dict = {
                             "pH": coarse_pH,
-                            "density": coarse_density,
+                            "rho_co2": coarse_density,
                             "c_aq": coarse_c_aq,
                             "s_g": coarse_s_g,
+                            "labels": coarse_labels,
+                            "depth": coarse_depth,
+                            "rho_co2(g)": coarse_co2_g_density,
+                            "solubility_co2(aq)": coarse_co2_aq_solubility,
                         }
                         coarse_signal = coarse_signal_dict[
                             signal_option_ptr[signal_option_idx]
@@ -1447,13 +1523,13 @@ class HeterogeneousColorToMassAnalysis:
 
                         # Update the position of the annotaion
                         ax_signal_function.texts[0].set_position(
-                            (cut_off_x - 0.05, 0.02)
+                            (cut_off_x - 0.05, 0.04)
                         )
                         ax_signal_function.texts[1].set_position(
-                            (cut_off_x + 0.05, 0.02)
+                            (cut_off_x + 0.05, 0.04)
                         )
                         ax_signal_function.texts[2].set_position(
-                            (max_value_x + 0.05, 0.02)
+                            (max_value_x + 0.05, 0.04)
                         )
 
                         # Update dense plots
@@ -1530,9 +1606,13 @@ class HeterogeneousColorToMassAnalysis:
                         coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
                         coarse_signal_dict = {
                             "pH": coarse_pH,
-                            "density": coarse_density,
+                            "rho_co2": coarse_density,
                             "c_aq": coarse_c_aq,
                             "s_g": coarse_s_g,
+                            "labels": coarse_labels,
+                            "depth": coarse_depth,
+                            "rho_co2(g)": coarse_co2_g_density,
+                            "solubility_co2(aq)": coarse_co2_aq_solubility,
                         }
                         coarse_signal = coarse_signal_dict[
                             signal_option_ptr[signal_option_idx]
@@ -1638,13 +1718,13 @@ class HeterogeneousColorToMassAnalysis:
 
                         # Update the position of the annotaion
                         ax_signal_function.texts[0].set_position(
-                            (cut_off_x - 0.05, 0.02)
+                            (cut_off_x - 0.05, 0.04)
                         )
                         ax_signal_function.texts[1].set_position(
-                            (cut_off_x + 0.05, 0.02)
+                            (cut_off_x + 0.05, 0.04)
                         )
                         ax_signal_function.texts[2].set_position(
-                            (max_value_x + 0.05, 0.02)
+                            (max_value_x + 0.05, 0.04)
                         )
 
                         # Update values of slides_signal
@@ -1697,9 +1777,13 @@ class HeterogeneousColorToMassAnalysis:
                         coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
                         coarse_signal_dict = {
                             "pH": coarse_pH,
-                            "density": coarse_density,
+                            "rho_co2": coarse_density,
                             "c_aq": coarse_c_aq,
                             "s_g": coarse_s_g,
+                            "labels": coarse_labels,
+                            "depth": coarse_depth,
+                            "rho_co2(g)": coarse_co2_g_density,
+                            "solubility_co2(aq)": coarse_co2_aq_solubility,
                         }
                         coarse_signal = coarse_signal_dict[
                             signal_option_ptr[signal_option_idx]
