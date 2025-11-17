@@ -74,3 +74,32 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
         logger.info("Loaded color paths from %s", directory)
 
         return cls(color_path_map)
+
+    @classmethod
+    def refine(
+        cls,
+        color_path_map: "LabelColorPathMap",
+        num_segments: int,
+        distance_to_left: float | None = None,
+        distance_to_right: float | None = None,
+    ) -> "LabelColorPathMap":
+        """Refine each color path in the map by increasing the number of segments.
+
+        Args:
+            color_path_map (LabelColorPathMap): The original color path map.
+            num_segments (int): The number of segments to use for refinement.
+            distance_to_left (float, optional): Value to extend the color path to the left (inter).
+            distance_to_right (float, optional): Value to extend the color path to the right.
+
+        Returns:
+            LabelColorPathMap: The refined color path map.
+
+        """
+        refined_map = cls()
+        for label, color_path in color_path_map.items():
+            refined_map[label] = color_path.refine(
+                num_segments=num_segments,
+                distance_to_left=distance_to_left,
+                distance_to_right=distance_to_right,
+            )
+        return refined_map
