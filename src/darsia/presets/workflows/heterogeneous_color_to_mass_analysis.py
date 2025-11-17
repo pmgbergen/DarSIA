@@ -687,9 +687,13 @@ class HeterogeneousColorToMassAnalysis:
                 sliders_color_to_signal.append(slider)
 
             # Add two rows of arrow buttons below the signal sliders
-            arrow_button_height = slider_height_total * 0.05  # Small height for arrow buttons
-            arrow_button_spacing = slider_height_total * 0.02  # Small spacing between up and down buttons
-            
+            arrow_button_height = (
+                slider_height_total * 0.05
+            )  # Small height for arrow buttons
+            arrow_button_spacing = (
+                slider_height_total * 0.02
+            )  # Small spacing between up and down buttons
+
             # Calculate positions for arrow buttons
             up_button_y = slider_bottom + slider_height_total * 0.1
             down_button_y = up_button_y - arrow_button_height - arrow_button_spacing
@@ -706,10 +710,10 @@ class HeterogeneousColorToMassAnalysis:
             # Create arrow buttons for each signal slider
             arrow_buttons_up = []
             arrow_buttons_down = []
-            
+
             for i in range(num_value_sliders):
                 slider_x = slider_left + i * (slider_width_individual + spacing)
-                
+
                 # Up arrow button
                 ax_up_button = fig.add_axes(
                     [
@@ -721,7 +725,7 @@ class HeterogeneousColorToMassAnalysis:
                 )
                 btn_up = Button(ax_up_button, "▲")
                 arrow_buttons_up.append(btn_up)
-                
+
                 # Down arrow button
                 ax_down_button = fig.add_axes(
                     [
@@ -833,6 +837,106 @@ class HeterogeneousColorToMassAnalysis:
                 slider_c_aq,
                 slider_s_g,
             ]
+
+            # Add arrow buttons for flash sliders (cut-off and max)
+            flash_arrow_buttons_up = []
+            flash_arrow_buttons_down = []
+
+            for i in range(num_flash_sliders):
+                slider_x = slider_left + (flash_slider_start_idx + i) * (
+                    slider_width_individual + spacing
+                )
+
+                # Up arrow button for flash sliders
+                ax_flash_up_button = fig.add_axes(
+                    [
+                        slider_x,
+                        up_button_y,
+                        slider_width_individual,
+                        arrow_button_height,
+                    ]
+                )
+                btn_flash_up = Button(ax_flash_up_button, "▲")
+                flash_arrow_buttons_up.append(btn_flash_up)
+
+                # Down arrow button for flash sliders
+                ax_flash_down_button = fig.add_axes(
+                    [
+                        slider_x,
+                        down_button_y,
+                        slider_width_individual,
+                        arrow_button_height,
+                    ]
+                )
+                btn_flash_down = Button(ax_flash_down_button, "▼")
+                flash_arrow_buttons_down.append(btn_flash_down)
+
+            # Add arrow buttons for threshold sliders (c_aq and s_g)
+            threshold_arrow_buttons_up = []
+            threshold_arrow_buttons_down = []
+
+            for i in range(num_threshold_sliders):
+                slider_x = slider_left + (
+                    flash_slider_start_idx + num_flash_sliders + i
+                ) * (slider_width_individual + spacing)
+
+                # Up arrow button for threshold sliders
+                ax_threshold_up_button = fig.add_axes(
+                    [
+                        slider_x,
+                        up_button_y,
+                        slider_width_individual,
+                        arrow_button_height,
+                    ]
+                )
+                btn_threshold_up = Button(ax_threshold_up_button, "▲")
+                threshold_arrow_buttons_up.append(btn_threshold_up)
+
+                # Down arrow button for threshold sliders
+                ax_threshold_down_button = fig.add_axes(
+                    [
+                        slider_x,
+                        down_button_y,
+                        slider_width_individual,
+                        arrow_button_height,
+                    ]
+                )
+                btn_threshold_down = Button(ax_threshold_down_button, "▼")
+                threshold_arrow_buttons_down.append(btn_threshold_down)
+
+            # Create empty functions for flash slider arrow button callbacks
+            def flash_slider_up_arrow(slider_index):
+                """Placeholder function for flash slider up arrow button.
+
+                Args:
+                    slider_index (int): Index of the flash slider (0=cut-off, 1=max)
+                """
+                pass
+
+            def flash_slider_down_arrow(slider_index):
+                """Placeholder function for flash slider down arrow button.
+
+                Args:
+                    slider_index (int): Index of the flash slider (0=cut-off, 1=max)
+                """
+                pass
+
+            # Create empty functions for threshold slider arrow button callbacks
+            def threshold_slider_up_arrow(slider_index):
+                """Placeholder function for threshold slider up arrow button.
+
+                Args:
+                    slider_index (int): Index of the threshold slider (0=c_aq, 1=s_g)
+                """
+                pass
+
+            def threshold_slider_down_arrow(slider_index):
+                """Placeholder function for threshold slider down arrow button.
+
+                Args:
+                    slider_index (int): Index of the threshold slider (0=c_aq, 1=s_g)
+                """
+                pass
 
             # Position buttons at the top of the figure
             button_width = 0.08
