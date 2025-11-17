@@ -906,37 +906,77 @@ class HeterogeneousColorToMassAnalysis:
 
             # Create empty functions for flash slider arrow button callbacks
             def flash_slider_up_arrow(slider_index):
-                """Placeholder function for flash slider up arrow button.
+                """Increment flash slider by one step.
 
                 Args:
                     slider_index (int): Index of the flash slider (0=cut-off, 1=max)
                 """
-                pass
+                # Get the slider object
+                slider = sliders_flash[slider_index]
+
+                # Get current value and slider parameters
+                current_val = slider.val
+                step_size = slider.valstep
+                max_val = slider.valmax
+
+                # Calculate new value with step increment, capped at maximum
+                new_val = min(current_val + step_size, max_val)
+                slider.set_val(new_val)
 
             def flash_slider_down_arrow(slider_index):
-                """Placeholder function for flash slider down arrow button.
+                """Decrement flash slider by one step.
 
                 Args:
                     slider_index (int): Index of the flash slider (0=cut-off, 1=max)
                 """
-                pass
+                # Get the slider object
+                slider = sliders_flash[slider_index]
+
+                # Get current value and slider parameters
+                current_val = slider.val
+                step_size = slider.valstep
+                min_val = slider.valmin
+
+                # Calculate new value with step decrement, capped at minimum
+                new_val = max(current_val - step_size, min_val)
+                slider.set_val(new_val)
 
             # Create empty functions for threshold slider arrow button callbacks
             def threshold_slider_up_arrow(slider_index):
-                """Placeholder function for threshold slider up arrow button.
+                """Increment threshold slider by one step.
 
                 Args:
                     slider_index (int): Index of the threshold slider (0=c_aq, 1=s_g)
                 """
-                pass
+                # Get the slider object
+                slider = sliders_threshold[slider_index]
+
+                # Get current value and slider parameters
+                current_val = slider.val
+                step_size = slider.valstep
+                max_val = slider.valmax
+
+                # Calculate new value with step increment, capped at maximum
+                new_val = min(current_val + step_size, max_val)
+                slider.set_val(new_val)
 
             def threshold_slider_down_arrow(slider_index):
-                """Placeholder function for threshold slider down arrow button.
+                """Decrement threshold slider by one step.
 
                 Args:
                     slider_index (int): Index of the threshold slider (0=c_aq, 1=s_g)
                 """
-                pass
+                # Get the slider object
+                slider = sliders_threshold[slider_index]
+
+                # Get current value and slider parameters
+                current_val = slider.val
+                step_size = slider.valstep
+                min_val = slider.valmin
+
+                # Calculate new value with step decrement, capped at minimum
+                new_val = max(current_val - step_size, min_val)
+                slider.set_val(new_val)
 
             # Position buttons at the top of the figure
             button_width = 0.08
@@ -1431,6 +1471,30 @@ class HeterogeneousColorToMassAnalysis:
                         fig.canvas.draw_idle()
 
                     btn_next_image.on_clicked(next_image)
+
+                    # Connect flash arrow button callbacks
+                    for i, btn_flash_up in enumerate(flash_arrow_buttons_up):
+                        btn_flash_up.on_clicked(
+                            lambda event, idx=i: flash_slider_up_arrow(idx)
+                        )
+
+                    for i, btn_flash_down in enumerate(flash_arrow_buttons_down):
+                        btn_flash_down.on_clicked(
+                            lambda event, idx=i: flash_slider_down_arrow(idx)
+                        )
+
+                    # Connect threshold arrow button callbacks
+                    for i, btn_threshold_up in enumerate(threshold_arrow_buttons_up):
+                        btn_threshold_up.on_clicked(
+                            lambda event, idx=i: threshold_slider_up_arrow(idx)
+                        )
+
+                    for i, btn_threshold_down in enumerate(
+                        threshold_arrow_buttons_down
+                    ):
+                        btn_threshold_down.on_clicked(
+                            lambda event, idx=i: threshold_slider_down_arrow(idx)
+                        )
 
                     plt.show()
 
