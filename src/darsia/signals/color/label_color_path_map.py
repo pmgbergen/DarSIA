@@ -67,8 +67,7 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
         for label in labels:
             path = directory / f"color_path_{label}.json"
             if path.exists():
-                color_path_map[label] = darsia.ColorPath()
-                color_path_map[label].load(path)
+                color_path_map[label] = darsia.ColorPath.load(path)
             else:
                 logger.warning(f"No color path found for label {label}, skipping.")
 
