@@ -698,14 +698,167 @@ class HeterogeneousColorToMassAnalysis:
             up_button_y = slider_bottom + slider_height_total * 0.1
             down_button_y = up_button_y - arrow_button_height - arrow_button_spacing
 
-            # Create empty functions for arrow button callbacks
+            # Create functions for signal slider arrow button callbacks
             def slider_up_arrow(slider_index):
-                """Placeholder function for up arrow button."""
-                pass
+                """Increment signal slider by one step.
+
+                Args:
+                    slider_index (int): Index of the signal slider
+                """
+                # Get the slider object
+                slider = sliders_color_to_signal[slider_index]
+
+                # Get current value and slider parameters
+                # current_val = slider.val
+                # step_size = slider.valstep
+                max_val = slider.valmax
+
+                # # Calculate new value with step increment, capped at maximum
+                # new_val = min(current_val + step_size, max_val)
+                # slider.set_val(new_val)
+                # Fetch all values of all color_path_interpolations for all labels
+                available_labels = np.unique(self.labels.img)
+                current_values = [
+                    self.signal_model.model[1][_label_idx].values[slider_index]
+                    for _label_idx in available_labels
+                ]
+
+                # Fetch all values of next slider index for all labels
+                if slider_index + 1 < len(self.signal_model.model[1][0].values):
+                    next_slider_index = slider_index + 1
+                    next_values = {
+                        _label_idx: self.signal_model.model[1][_label_idx].values[
+                            next_slider_index
+                        ]
+                        for _label_idx in available_labels
+                    }
+                    ten_percent_increase = {
+                        _label_idx: 0.1
+                        * (next_values[_label_idx] - current_values[_label_idx])
+                        for _label_idx in available_labels
+                    }
+                    new_values = {
+                        _label_idx: min(
+                            current_values[_label_idx]
+                            + ten_percent_increase[_label_idx],
+                            max_val,
+                        )
+                        for _label_idx in available_labels
+                    }
+
+                    # Update the current slider
+                    slider.set_val(new_values[label_idx])
+
+                    # Update parameters
+
+                    for _label_idx in available_labels:
+                        _old_values = self.signal_model.model[1][_label_idx].values
+                        _new_values = _old_values.copy()
+                        _new_values[slider_index] = new_values[_label_idx]
+                        self.signal_model.model[1][_label_idx].update(
+                            values=_new_values
+                        )
+
+                    # Identify mass density for chosen image
+                    pH, density, c_aq, s_g = detailed_mass_analysis(
+                        color_interpretation
+                    )
+
+                    # Coarsen outputs for visualization
+                    coarse_pH = darsia.resize(pH, shape=coarse_shape)
+                    coarse_density = darsia.resize(density, shape=coarse_shape)
+                    coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
+                    coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
+                    coarse_signal_dict = {
+                        "pH": coarse_pH,
+                        "density": coarse_density,
+                        "c_aq": coarse_c_aq,
+                        "s_g": coarse_s_g,
+                    }
+                    coarse_signal = coarse_signal_dict[
+                        signal_option_ptr[signal_option_idx]
+                    ]
+
+                    # Determine contours
+                    coarse_contour = darsia.plot_contour_on_image(
+                        coarse_image,
+                        mask=[
+                            coarse_c_aq > sliders_threshold[0].val,
+                            coarse_s_g > sliders_threshold[1].val,
+                        ],
+                        color=[
+                            (255, 0, 0),
+                            (0, 255, 0),
+                        ],  # TODO make colors adjustable
+                        return_image=True,
+                    )
+
+                    # Update mass analysis
+                    update_mass_analysis()
+
+                    # Update signal function plot
+                    if signal_function_line is not None:
+                        signal_func = self.signal_model.model[1][label_idx]
+                        x_vals = signal_func.supports
+                        y_vals = signal_func.values.copy()
+                        signal_function_line.set_data(x_vals, y_vals)
+                        signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
+
+                    # Update flash cut-off and max value lines
+                    signal_function_cut_off_y.set_ydata(self.flash.cut_off)
+                    signal_function_max_value_y.set_ydata(self.flash.max_value)
+                    cut_off_x = signal_func.inverse(self.flash.cut_off)
+                    max_value_x = signal_func.inverse(self.flash.max_value)
+                    signal_function_cut_off_x.set_xdata(cut_off_x)
+                    signal_function_max_value_x.set_xdata(max_value_x)
+
+                    # Update the position of the annotaion
+                    ax_signal_function.texts[0].set_position((cut_off_x - 0.05, 0.02))
+                    ax_signal_function.texts[1].set_position((cut_off_x + 0.05, 0.02))
+                    ax_signal_function.texts[2].set_position((max_value_x + 0.05, 0.02))
+
+                    # Update dense plots
+                    coarse_signal_img.set_data(coarse_signal.img)
+                    coarse_contour_img.set_data(coarse_contour.img)
+
+                    # Update color scale (min/max values) based on current signal
+                    signal_min = np.nanmin(coarse_signal.img)
+                    signal_max = np.nanmax(coarse_signal.img)
+                    coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
+                    coarse_signal_colorbar.update_normal(coarse_signal_img)
+
+                    # Update mass plots
+                    integrated_mass_plot.set_data(times, integrated_mass)
+                    integrated_mass_plot_g.set_data(times, integrated_mass_g)
+                    integrated_mass_plot_aq.set_data(times, integrated_mass_aq)
+                    integrated_mass_scatter.set_offsets(np.c_[times, integrated_mass])
+                    integrated_mass_scatter_g.set_offsets(
+                        np.c_[times, integrated_mass_g]
+                    )
+                    integrated_mass_scatter_aq.set_offsets(
+                        np.c_[times, integrated_mass_aq]
+                    )
+
+                    # Redraw
+                    fig.canvas.draw_idle()
 
             def slider_down_arrow(slider_index):
-                """Placeholder function for down arrow button."""
-                pass
+                """Decrement signal slider by one step.
+
+                Args:
+                    slider_index (int): Index of the signal slider
+                """
+                # Get the slider object
+                slider = sliders_color_to_signal[slider_index]
+
+                # Get current value and slider parameters
+                current_val = slider.val
+                step_size = slider.valstep
+                min_val = slider.valmin
+
+                # Calculate new value with step decrement, capped at minimum
+                new_val = max(current_val - step_size, min_val)
+                slider.set_val(new_val)
 
             # Create arrow buttons for each signal slider
             arrow_buttons_up = []
@@ -760,7 +913,7 @@ class HeterogeneousColorToMassAnalysis:
                 0.0,
                 1.5,
                 valinit=self.flash.cut_off,
-                valstep=0.05,
+                valstep=0.01,
                 color="darkgray",
                 orientation="vertical",
             )
@@ -784,7 +937,7 @@ class HeterogeneousColorToMassAnalysis:
                 0.0,
                 1.5,
                 valinit=self.flash.max_value,
-                valstep=0.05,
+                valstep=0.01,
                 color="darkgray",
                 orientation="vertical",
             )
@@ -906,10 +1059,11 @@ class HeterogeneousColorToMassAnalysis:
 
             # Create empty functions for flash slider arrow button callbacks
             def flash_slider_up_arrow(slider_index):
-                """Increment flash slider by one step.
+                """Increment flash slider by one step. And all signal function sliders across all labels.
 
                 Args:
                     slider_index (int): Index of the flash slider (0=cut-off, 1=max)
+
                 """
                 # Get the slider object
                 slider = sliders_flash[slider_index]
@@ -1471,6 +1625,13 @@ class HeterogeneousColorToMassAnalysis:
                         fig.canvas.draw_idle()
 
                     btn_next_image.on_clicked(next_image)
+
+                    # Connect signal slider arrow button callbacks
+                    for i, btn_up in enumerate(arrow_buttons_up):
+                        btn_up.on_clicked(lambda event, idx=i: slider_up_arrow(idx))
+
+                    for i, btn_down in enumerate(arrow_buttons_down):
+                        btn_down.on_clicked(lambda event, idx=i: slider_down_arrow(idx))
 
                     # Connect flash arrow button callbacks
                     for i, btn_flash_up in enumerate(flash_arrow_buttons_up):
