@@ -109,6 +109,12 @@ class HeterogeneousColorToMassAnalysis:
         self.geometry = geometry
         """Geometry of the experiment - for the integration of mass during calibration."""
 
+        self.original_depth = geometry.depth.copy()
+        """Original depth image."""
+
+        self.analysis = SimpleRunAnalysis(self.geometry)
+        """Analysis tool for tracking mass evolution."""
+
         self.color_path_interpretation = color_path_interpretation
         """Color path interpretations for different labels."""
 
@@ -165,9 +171,6 @@ class HeterogeneousColorToMassAnalysis:
             image (darsia.Image): The image from which to define the local color path."""
 
         # ! ---- SETUP ----
-
-        # Initialize analysis tool
-        analysis = SimpleRunAnalysis(self.geometry)
 
         # Allocate identifiers
         image_idx = 0
@@ -296,7 +299,7 @@ class HeterogeneousColorToMassAnalysis:
             nonlocal integrated_mass_aq
             nonlocal square_error
 
-            analysis.reset()
+            self.analysis.reset()
             for img, color_interpretation in zip(images, color_interpretations):
                 # Update thermodynamic state
                 state = experiment.pressure_temperature_protocol.get_state(img.date)
@@ -314,22 +317,24 @@ class HeterogeneousColorToMassAnalysis:
                 exact_mass = experiment.injection_protocol.injected_mass(img.date)
 
                 # Track result
-                analysis.track(mass_analysis_result, exact_mass=exact_mass)
+                self.analysis.track(mass_analysis_result, exact_mass=exact_mass)
 
                 # # Clean data - TODO?
                 # analysis.clean(threshold=1.0)
 
             # Monitor mass evolution over time
-            times = analysis.data.time
-            expected_mass = analysis.data.exact_mass_tot
-            integrated_mass = analysis.data.mass_tot
-            integrated_mass_g = analysis.data.mass_g
-            integrated_mass_aq = analysis.data.mass_aq
+            times = self.analysis.data.time
+            expected_mass = self.analysis.data.exact_mass_tot
+            integrated_mass = self.analysis.data.mass_tot
+            integrated_mass_g = self.analysis.data.mass_g
+            integrated_mass_aq = self.analysis.data.mass_aq
 
             # Errors
             square_error = np.square(
                 np.array(integrated_mass) - np.array(expected_mass)
             )
+
+            logging.info(f"Mass analysis updated. New Error: {square_error}")
 
         # ! ---- GRID FOR PLOTTING ----
 
@@ -676,8 +681,12 @@ class HeterogeneousColorToMassAnalysis:
             num_value_sliders = len(self.signal_model.model[1][label_idx].values)
             num_flash_sliders = 2
             num_threshold_sliders = 2
+            num_depth_sliders = 1  # Depth scaling slider
             total_sliders = (
-                num_value_sliders + num_flash_sliders + num_threshold_sliders
+                num_value_sliders
+                + num_flash_sliders
+                + num_threshold_sliders
+                + num_depth_sliders
             )
 
             # Calculate dimensions for vertical sliders
@@ -1121,7 +1130,7 @@ class HeterogeneousColorToMassAnalysis:
             )
             slider_c_aq = Slider(
                 ax_slider_c_aq,
-                "contour\nc_aq",
+                "Cont.\nc_aq",
                 0.0,
                 1.0,
                 valinit=0.05,
@@ -1142,7 +1151,7 @@ class HeterogeneousColorToMassAnalysis:
             )
             slider_s_g = Slider(
                 ax_slider_s_g,
-                "contour\ns_g",
+                "Cont.\ns_g",
                 0.0,
                 1.0,
                 valinit=0.05,
@@ -1154,6 +1163,30 @@ class HeterogeneousColorToMassAnalysis:
                 slider_c_aq,
                 slider_s_g,
             ]
+
+            # Add depth scaling slider
+            slider_x = slider_left + (flash_slider_start_idx + 4) * (
+                slider_width_individual + spacing
+            )
+            ax_slider_depth = fig.add_axes(
+                [
+                    slider_x,
+                    slider_y,
+                    slider_width_individual,
+                    slider_height_individual,
+                ]
+            )
+            slider_depth = Slider(
+                ax_slider_depth,
+                "Depth\ncorr.(+/-)",
+                -0.01,
+                0.01,
+                valinit=0.0,
+                valstep=0.001,
+                color=(0, 0, 1),  # Blue color
+                orientation="vertical",
+            )
+            sliders_depth = [slider_depth]
 
             # Add arrow buttons for flash sliders (cut-off and max)
             flash_arrow_buttons_up = []
@@ -1220,6 +1253,42 @@ class HeterogeneousColorToMassAnalysis:
                 )
                 btn_threshold_down = Button(ax_threshold_down_button, "▼")
                 threshold_arrow_buttons_down.append(btn_threshold_down)
+
+            # Add arrow buttons for depth correction slider
+            depth_arrow_buttons_up = []
+            depth_arrow_buttons_down = []
+
+            for i in range(num_depth_sliders):
+                slider_x = slider_left + (
+                    flash_slider_start_idx
+                    + num_flash_sliders
+                    + num_threshold_sliders
+                    + i
+                ) * (slider_width_individual + spacing)
+
+                # Up arrow button for depth correction slider
+                ax_depth_up_button = fig.add_axes(
+                    [
+                        slider_x,
+                        up_button_y,
+                        slider_width_individual,
+                        arrow_button_height,
+                    ]
+                )
+                btn_depth_up = Button(ax_depth_up_button, "▲")
+                depth_arrow_buttons_up.append(btn_depth_up)
+
+                # Down arrow button for depth correction slider
+                ax_depth_down_button = fig.add_axes(
+                    [
+                        slider_x,
+                        down_button_y,
+                        slider_width_individual,
+                        arrow_button_height,
+                    ]
+                )
+                btn_depth_down = Button(ax_depth_down_button, "▼")
+                depth_arrow_buttons_down.append(btn_depth_down)
 
             # Create empty functions for flash slider arrow button callbacks
             def flash_slider_up_arrow(slider_index):
@@ -1295,6 +1364,123 @@ class HeterogeneousColorToMassAnalysis:
                 # Calculate new value with step decrement, capped at minimum
                 new_val = max(current_val - step_size, min_val)
                 slider.set_val(new_val)
+
+            # Create empty functions for depth scaling slider arrow button callbacks
+            def depth_slider_up_arrow(slider_index):
+                """Increment depth scaling slider by one step.
+
+                Args:
+                    slider_index (int): Index of the depth scaling slider (always 0)
+                """
+                nonlocal \
+                    coarse_depth, \
+                    times, \
+                    integrated_mass, \
+                    integrated_mass_g, \
+                    integrated_mass_aq
+                # Get the slider object
+                slider = sliders_depth[slider_index]
+
+                # Get current value and slider parameters
+                current_val = slider.val
+                step_size = slider.valstep
+                max_val = slider.valmax
+
+                # Calculate new value with step increment, capped at maximum
+                new_val = min(current_val + step_size, max_val)
+                slider.set_val(new_val)
+
+                # Update the depth in the geometry
+                new_depth = self.original_depth.copy()
+                new_depth.img += new_val
+                self.geometry.update(depth=new_depth)
+                self.analysis.geometry.update(depth=new_depth)
+
+                # Update coarse depth for visualization
+                coarse_depth = darsia.resize(self.geometry.depth, shape=coarse_shape)
+
+                # Update coarse signal plot if active
+                if signal_option_ptr[signal_option_idx] == "depth":
+                    coarse_signal = coarse_depth
+                    coarse_signal_img.set_data(coarse_signal.img)
+
+                    # Update color scale (min/max values) based on current signal
+                    signal_min = np.nanmin(coarse_signal.img)
+                    signal_max = np.nanmax(coarse_signal.img)
+                    coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
+                    coarse_signal_colorbar.update_normal(coarse_signal_img)
+
+                # Update mass analysis
+                update_mass_analysis()
+
+                # Update mass plots
+                integrated_mass_plot.set_data(times, integrated_mass)
+                integrated_mass_plot_g.set_data(times, integrated_mass_g)
+                integrated_mass_plot_aq.set_data(times, integrated_mass_aq)
+                integrated_mass_scatter.set_offsets(np.c_[times, integrated_mass])
+                integrated_mass_scatter_g.set_offsets(np.c_[times, integrated_mass_g])
+                integrated_mass_scatter_aq.set_offsets(np.c_[times, integrated_mass_aq])
+
+                # Redraw
+                fig.canvas.draw_idle()
+
+            def depth_slider_down_arrow(slider_index):
+                """Decrement depth scaling slider by one step.
+
+                Args:
+                    slider_index (int): Index of the depth scaling slider (always 0)
+                """
+                nonlocal \
+                    coarse_depth, \
+                    times, \
+                    integrated_mass, \
+                    integrated_mass_g, \
+                    integrated_mass_aq
+                # Get the slider object
+                slider = sliders_depth[slider_index]
+
+                # Get current value and slider parameters
+                current_val = slider.val
+                step_size = slider.valstep
+                min_val = slider.valmin
+
+                # Calculate new value with step decrement, capped at minimum
+                new_val = max(current_val - step_size, min_val)
+                slider.set_val(new_val)
+
+                # Update the depth in the geometry
+                new_depth = self.original_depth.copy()
+                new_depth.img += new_val
+                self.geometry.update(depth=new_depth)
+                self.analysis.geometry.update(depth=new_depth)
+
+                # Update coarse depth for visualization
+                coarse_depth = darsia.resize(self.geometry.depth, shape=coarse_shape)
+
+                # Update coarse signal plot if active
+                if signal_option_ptr[signal_option_idx] == "depth":
+                    coarse_signal = coarse_depth
+                    coarse_signal_img.set_data(coarse_signal.img)
+
+                    # Update color scale (min/max values) based on current signal
+                    signal_min = np.nanmin(coarse_signal.img)
+                    signal_max = np.nanmax(coarse_signal.img)
+                    coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
+                    coarse_signal_colorbar.update_normal(coarse_signal_img)
+
+                # Update mass analysis
+                update_mass_analysis()
+
+                # Update mass plots
+                integrated_mass_plot.set_data(times, integrated_mass)
+                integrated_mass_plot_g.set_data(times, integrated_mass_g)
+                integrated_mass_plot_aq.set_data(times, integrated_mass_aq)
+                integrated_mass_scatter.set_offsets(np.c_[times, integrated_mass])
+                integrated_mass_scatter_g.set_offsets(np.c_[times, integrated_mass_g])
+                integrated_mass_scatter_aq.set_offsets(np.c_[times, integrated_mass_aq])
+
+                # Redraw
+                fig.canvas.draw_idle()
 
             # Position buttons at the top of the figure
             button_width = 0.08
@@ -1527,9 +1713,6 @@ class HeterogeneousColorToMassAnalysis:
 
                         # Redraw
                         fig.canvas.draw_idle()
-
-                        # TODO remove if everything works
-                        # done_tuning_values = True
 
                     btn_update.on_clicked(update_analysis)
 
@@ -1831,6 +2014,17 @@ class HeterogeneousColorToMassAnalysis:
                     ):
                         btn_threshold_down.on_clicked(
                             lambda event, idx=i: threshold_slider_down_arrow(idx)
+                        )
+
+                    # Connect depth scaling arrow button callbacks
+                    for i, btn_depth_up in enumerate(depth_arrow_buttons_up):
+                        btn_depth_up.on_clicked(
+                            lambda event, idx=i: depth_slider_up_arrow(idx)
+                        )
+
+                    for i, btn_depth_down in enumerate(depth_arrow_buttons_down):
+                        btn_depth_down.on_clicked(
+                            lambda event, idx=i: depth_slider_down_arrow(idx)
                         )
 
                     plt.show()
