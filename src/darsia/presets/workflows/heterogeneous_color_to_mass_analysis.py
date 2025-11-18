@@ -491,37 +491,6 @@ class HeterogeneousColorToMassAnalysis:
             coarse_signal_colorbar.update_normal(coarse_signal_img)  # Plot the contour
             coarse_contour_img = ax_contour.imshow(coarse_contour.img)
 
-            # Synchronize zoom and pan for the top row plots (same resolution)
-            def sync_xlim(ax_src):
-                """Synchronize x-axis limits across top row plots."""
-                xlim = ax_src.get_xlim()
-                if ax_src != ax_coarse_image:
-                    ax_coarse_image.set_xlim(xlim)
-                if ax_src != ax_signal:
-                    ax_signal.set_xlim(xlim)
-                if ax_src != ax_contour:
-                    ax_contour.set_xlim(xlim)
-                fig.canvas.draw_idle()
-
-            def sync_ylim(ax_src):
-                """Synchronize y-axis limits across top row plots."""
-                ylim = ax_src.get_ylim()
-                if ax_src != ax_coarse_image:
-                    ax_coarse_image.set_ylim(ylim)
-                if ax_src != ax_signal:
-                    ax_signal.set_ylim(ylim)
-                if ax_src != ax_contour:
-                    ax_contour.set_ylim(ylim)
-                fig.canvas.draw_idle()
-
-            # Connect the synchronization callbacks
-            ax_coarse_image.callbacks.connect("xlim_changed", sync_xlim)
-            ax_coarse_image.callbacks.connect("ylim_changed", sync_ylim)
-            ax_signal.callbacks.connect("xlim_changed", sync_xlim)
-            ax_signal.callbacks.connect("ylim_changed", sync_ylim)
-            ax_contour.callbacks.connect("xlim_changed", sync_xlim)
-            ax_contour.callbacks.connect("ylim_changed", sync_ylim)
-
             # Plot the signal function for the selected label
             signal_func: darsia.PWTransformation = self.signal_model.model[1][label_idx]
             signal_function_line = None
@@ -614,7 +583,7 @@ class HeterogeneousColorToMassAnalysis:
                     y=0.04,
                     s="CO2(aq)",
                     ha="center",
-                    va="bottom",
+                    va="center",
                     fontsize=8,
                     color="k",
                 )
@@ -623,16 +592,16 @@ class HeterogeneousColorToMassAnalysis:
                     y=0.04,
                     s="CO2(g)",
                     ha="center",
-                    va="top",
+                    va="center",
                     fontsize=8,
                     color="k",
                 )
                 signal_function_co2_g_full = ax_signal_function.text(
-                    x=max_value_x + 0.05,
+                    x=max_value_x + 0.1,
                     y=0.04,
                     s="CO2(g) - 100%",
                     ha="center",
-                    va="top",
+                    va="center",
                     fontsize=8,
                     color="k",
                 )
@@ -882,7 +851,7 @@ class HeterogeneousColorToMassAnalysis:
                     # Update the position of the annotaion
                     ax_signal_function.texts[0].set_position((cut_off_x - 0.05, 0.04))
                     ax_signal_function.texts[1].set_position((cut_off_x + 0.05, 0.04))
-                    ax_signal_function.texts[2].set_position((max_value_x + 0.05, 0.04))
+                    ax_signal_function.texts[2].set_position((max_value_x + 0.1, 0.04))
 
                     # Update dense plots
                     coarse_signal_img.set_data(coarse_signal.img)
@@ -1026,9 +995,9 @@ class HeterogeneousColorToMassAnalysis:
                     signal_function_max_value_x.set_xdata(max_value_x)
 
                     # Update the position of the annotaion
-                    ax_signal_function.texts[0].set_position((cut_off_x - 0.05, 0.02))
-                    ax_signal_function.texts[1].set_position((cut_off_x + 0.05, 0.02))
-                    ax_signal_function.texts[2].set_position((max_value_x + 0.05, 0.02))
+                    ax_signal_function.texts[0].set_position((cut_off_x - 0.05, 0.04))
+                    ax_signal_function.texts[1].set_position((cut_off_x + 0.05, 0.04))
+                    ax_signal_function.texts[2].set_position((max_value_x + 0.1, 0.04))
 
                     # Update dense plots
                     coarse_signal_img.set_data(coarse_signal.img)
@@ -1152,7 +1121,7 @@ class HeterogeneousColorToMassAnalysis:
             )
             slider_c_aq = Slider(
                 ax_slider_c_aq,
-                "threshold\nc_aq",
+                "contour\nc_aq",
                 0.0,
                 1.0,
                 valinit=0.05,
@@ -1173,7 +1142,7 @@ class HeterogeneousColorToMassAnalysis:
             )
             slider_s_g = Slider(
                 ax_slider_s_g,
-                "threshold\ns_g",
+                "contour\ns_g",
                 0.0,
                 1.0,
                 valinit=0.05,
@@ -1529,7 +1498,7 @@ class HeterogeneousColorToMassAnalysis:
                             (cut_off_x + 0.05, 0.04)
                         )
                         ax_signal_function.texts[2].set_position(
-                            (max_value_x + 0.05, 0.04)
+                            (max_value_x + 0.1, 0.04)
                         )
 
                         # Update dense plots
@@ -1724,7 +1693,7 @@ class HeterogeneousColorToMassAnalysis:
                             (cut_off_x + 0.05, 0.04)
                         )
                         ax_signal_function.texts[2].set_position(
-                            (max_value_x + 0.05, 0.04)
+                            (max_value_x + 0.1, 0.04)
                         )
 
                         # Update values of slides_signal
