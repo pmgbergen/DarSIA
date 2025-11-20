@@ -20,6 +20,7 @@ from pathlib import Path
 from darsia.presets.workflows.setup.setup_rig import setup_rig
 from darsia.presets.workflows.setup.setup_depth import setup_depth_map
 from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
+from darsia.presets.workflows.setup.setup_facies import setup_facies
 from darsia.presets.workflows.rig import Rig
 
 # Set logging level
@@ -38,6 +39,9 @@ def build_parser_for_setup():
     parser.add_argument("--depth", action="store_true", help="Activate setup of depth.")
     parser.add_argument(
         "--segmentation", action="store_true", help="Activate labeling."
+    )
+    parser.add_argument(
+        "--facies", action="store_true", help="Activate setup of facies."
     )
     parser.add_argument("--rig", action="store_true", help="Activate setup of rig.")
     parser.add_argument(
@@ -59,5 +63,7 @@ def preset_setup(rig=Rig):
         setup_depth_map(Path(args.config), key="depth", show=args.show)
     if args.all or args.segmentation:
         segment_colored_image(Path(args.config), args.show)
+    if args.all or args.facies:
+        setup_facies(rig, Path(args.config), args.show)
     if args.all or args.rig:
         setup_rig(rig, Path(args.config), args.show)
