@@ -108,14 +108,39 @@ class FluidFlowerDataConfig:
 
     def load(self, path: Path) -> "FluidFlowerDataConfig":
         sec = _get_section_from_toml(path, "data")
+
+        # Get folder
         self.folder = _get_key(sec, "folder", required=True, type_=Path)
+        if not self.folder.is_dir():
+            raise FileNotFoundError(f"Folder {self.folder} not found.")
+
+        # Get baseline
         self.baseline = self.folder / _get_key(
             sec, "baseline", required=True, type_=Path
         )
-        self.data = list(sorted(self.folder.glob(f"*{self.baseline.suffix}")))
-        self.results = _get_key(sec, "results", required=True, type_=Path)
+        if not self.baseline.is_file():
+            raise FileNotFoundError(f"Baseline image {self.baseline} not found.")
+
+        # Get format
         numeric_part = "".join(filter(str.isdigit, self.baseline.stem))
         self.pad = len(numeric_part) if numeric_part else 0
+
+        # Get data
+        self.data = list(sorted(self.folder.glob(f"*{self.baseline.suffix}")))
+        if len(self.data) == 0:
+            raise FileNotFoundError(
+                f"No image files with suffix {self.baseline.suffix} found in {self.folder}."
+            )
+
+        # Get results
+        self.results = _get_key(sec, "results", required=True, type_=Path)
+        try:
+            self.results.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            raise PermissionError(
+                f"Cannot create results directory at {self.results}."
+            ) from e
+
         return self
 
     def error(self):
@@ -154,6 +179,33 @@ class FluidFlowerLabelingConfig:
 
     def error(self):
         raise ValueError("Use [labeling] in the config file to load labeling.")
+
+
+@dataclass
+class FluidFlowerFaciesConfig:
+    id: list[int] = field(default_factory=list)
+    """List of facies IDs."""
+    props: Path = field(default_factory=Path)
+    """Path to the facies properties file."""
+    path: Path = field(default_factory=Path)
+    """Path to the facies file."""
+    groups: dict[int, str] = field(default_factory=dict)
+    """Mapping from facies ID to facies."""
+
+    def load(
+        self, path: Path, results: Path | None = None
+    ) -> "FluidFlowerFaciesConfig":
+        """Load facies config from a toml file from [section]."""
+        sec = _get_section_from_toml(path, "facies")
+        self.id = _get_key(sec, "id", required=True, type_=list)
+        self.props = _get_key(sec, "props", required=True, type_=Path)
+        self.path = _get_key(sec, "path", required=False, type_=Path)
+        self.id_label_map = {i: sec[str(i)]["labels"] for i in self.id}
+        if not self.path:
+            assert results is not None
+            self.path = results / "setup" / "facies.npz"
+
+        return self
 
 
 @dataclass
@@ -274,6 +326,8 @@ class ColorPathsConfig:
     """List of image times used for calibration."""
     calibration_file: Path = field(default_factory=Path)
     """Path to the calibration file."""
+    baseline_color_spectrum_file: Path = field(default_factory=Path)
+    """Path to the baseline color spectrum file."""
     color_range_file: Path = field(default_factory=Path)
     """Path to the color range file."""
     reference_label: int = 0
@@ -361,6 +415,11 @@ class ColorPathsConfig:
         if not self.calibration_file:
             assert results is not None
             self.calibration_file = results / "calibration" / "color_paths"
+        if not self.baseline_color_spectrum_file:
+            assert results is not None
+            self.baseline_color_spectrum_file = (
+                results / "calibration" / "baseline_color_spectrum"
+            )
         self.color_range_file = _get_key(
             sec, "color_range_file", required=False, type_=Path
         )
@@ -670,6 +729,22 @@ class FluidFlowerConfig:
             self.labeling = None
             warn(f"Section labeling not found in {path}, use [labeling].")
 
+        # ! ---- FACIES ---- ! #
+        self.facies: FluidFlowerFaciesConfig | None = FluidFlowerFaciesConfig()
+        self.facies.load(
+            path=path,
+            results=self.data.results if self.data else None,
+        )
+        try:
+            self.facies: FluidFlowerFaciesConfig | None = FluidFlowerFaciesConfig()
+            self.facies.load(
+                path=path,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.facies = None
+            warn(f"Section facies not found in {path}, use [facies].")
+
         # ! ---- DEPTH ---- ! #
         try:
             self.depth: FluidFlowerDepthConfig | None = FluidFlowerDepthConfig()
@@ -795,16 +870,17 @@ class FluidFlowerConfig:
         """
         for key in args:
             assert key in [
-                "data",
-                "rig",
-                "labeling",
-                "depth",
-                "protocol",
-                "color_paths",
-                "color_signal",
-                "mass",
                 "analysis",
                 "analysis.segmentation",
+                "color_paths",
+                "color_signal",
+                "data",
+                "depth",
+                "facies",
+                "labeling",
+                "mass",
+                "protocol",
+                "rig",
             ], f"Key {key} not recognized for checking."
             self._check(key)
 
