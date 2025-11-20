@@ -16,9 +16,10 @@ from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 # Set logging level
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+from darsia.presets.workflows.rig import Rig
 
 
-def setup_rig(cls, path: Path, show: bool = False) -> None:
+def setup_rig(cls: Rig, path: Path, show: bool = False) -> None:
     """Setup and store fluidflower object.
 
     Args:
