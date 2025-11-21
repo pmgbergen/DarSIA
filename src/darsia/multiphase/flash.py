@@ -3,8 +3,13 @@
 from warnings import warn
 
 import numpy as np
+from pathlib import Path
+import json
 
 import darsia
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Flash:
@@ -111,10 +116,38 @@ class AdvancedFlash(Flash):
 
 
 class SimpleFlash:
-    def __init__(self, restoration=None) -> None:
+    def __init__(
+        self,
+        cut_off: float,
+        max_value: float | None = None,
+        restoration=None,
+    ) -> None:
         """Constructor."""
-        self.restoration = restoration
 
+        self.cut_off = cut_off
+        """Cut-off value."""
+        self.max_value = max_value
+        """Maximum value."""
+        self.restoration = restoration
+        """Restoration object."""
+
+    def update(
+        self, cut_off: float | None = None, max_value: float | None = None
+    ) -> None:
+        """Update of internal parameters.
+
+        Args:
+            cut_off (float, optional): cut-off value
+            max_value (float, optional): maximum value
+
+        """
+        if cut_off is not None:
+            self.cut_off = cut_off
+
+        if max_value is not None:
+            self.max_value = max_value
+
+    @darsia.timing_decorator
     def __call__(self, signal: darsia.Image) -> tuple[darsia.Image, darsia.Image]:
         """Simple flash calculation.
 
@@ -125,10 +158,78 @@ class SimpleFlash:
             tuple: volumetric concentration in aqueous phase, saturation in gas phase
 
         """
-        c_aq = darsia.full_like(signal, np.clip(signal.img, 0, 1))
-        s_g = darsia.full_like(signal, np.clip(signal.img - 1, 0, 1))
+        if np.isclose(self.cut_off, 0):
+            c_aq = darsia.full_like(signal, 0.0)
+        else:
+            c_aq = darsia.full_like(
+                signal, np.clip(signal.img, 0, self.cut_off) / self.cut_off
+            )
+        if self.max_value is None:
+            s_g = darsia.full_like(signal, np.clip(signal.img - self.cut_off, 0, None))
+        elif np.isclose(self.max_value, self.cut_off):
+            s_g = darsia.full_like(signal, signal.img >= self.cut_off)
+        else:
+            s_g = darsia.full_like(
+                signal,
+                (np.clip(signal.img, self.cut_off, self.max_value) - self.cut_off)
+                / (self.max_value - self.cut_off),
+            )
         if self.restoration is not None:
             c_aq = self.restoration(c_aq)
             s_g = self.restoration(s_g)
 
         return c_aq, s_g
+
+    def to_dict(self) -> dict:
+        """Convert the SimpleFlash parameters to a dictionary.
+
+        Returns:
+            dict: Dictionary representation of the SimpleFlash parameters.
+
+        """
+        return {
+            "cut_off": self.cut_off,
+            "max_value": self.max_value,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "SimpleFlash":
+        """Create a SimpleFlash from a dictionary.
+
+        Args:
+            data (dict): Dictionary representation of the SimpleFlash parameters.
+
+        """
+        return cls(
+            cut_off=data["cut_off"],
+            max_value=data.get("max_value"),
+        )
+
+    def save(self, path: Path) -> None:
+        """Save the SimpleFlash parameters to a file.
+
+        Args:
+            path (Path): The path to the file where the parameters will be saved.
+
+        """
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path.with_suffix(".json"), "w") as f:
+            json.dump(self.to_dict(), f)
+        logger.info(f"Saved SimpleFlash parameters to {path}.")
+
+    @classmethod
+    def load(cls, path: Path) -> "SimpleFlash":
+        """Load the SimpleFlash parameters from a file.
+
+        Args:
+            path (Path): The path to the file from which the parameters will be loaded.
+
+        Returns:
+            SimpleFlash: The loaded SimpleFlash instance.
+
+        """
+        with open(path.with_suffix(".json"), "r") as f:
+            data = json.load(f)
+        flash = cls.from_dict(data)
+        logger.info(f"Loaded SimpleFlash parameters from {path}.")
+        return flash
