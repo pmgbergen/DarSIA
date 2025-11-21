@@ -9,17 +9,18 @@ adapted to the corrected baseline image etc.
 import logging
 import time
 from pathlib import Path
+from typing import Type
 
 import darsia
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.rig import Rig
 
 # Set logging level
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-from darsia.presets.workflows.rig import Rig
 
 
-def setup_rig(cls: Rig, path: Path, show: bool = False) -> None:
+def setup_rig(cls: Type[Rig], path: Path, show: bool = False) -> None:
     """Setup and store fluidflower object.
 
     Args:
@@ -36,10 +37,10 @@ def setup_rig(cls: Rig, path: Path, show: bool = False) -> None:
     config.check("data", "depth", "labeling", "protocol")
 
     # Mypy type checking
-    assert config.rig is not None
     assert config.data is not None
     assert config.depth is not None
     assert config.labeling is not None
+    assert config.facies is not None
     assert config.protocol is not None
     assert config.protocol.imaging is not None
     assert config.protocol.injection is not None
@@ -63,6 +64,8 @@ def setup_rig(cls: Rig, path: Path, show: bool = False) -> None:
         baseline_path=config.data.baseline,
         depth_map_path=config.depth.depth_map,
         labels_path=config.labeling.labels,
+        facies_path=config.facies.path,
+        facies_props_path=config.facies.props,
         correction_config_path=path,  # TODO replace with actual config file read from toml
         log=config.data.results,
     )
