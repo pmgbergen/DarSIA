@@ -652,7 +652,9 @@ def label_image(
         return labels
 
 
-def group_labels(labels: darsia.Image, groups: list[list[int]]) -> None:
+def group_labels(
+    labels: darsia.Image, groups: list[list[int]], values: list[int] | None = None
+) -> darsia.Image:
     """
     Unite labels in the given groups.
 
@@ -663,9 +665,13 @@ def group_labels(labels: darsia.Image, groups: list[list[int]]) -> None:
             other labels in the group will be united.
     """
     reduced_labels = labels.copy()
-    for group in groups:
-        for label in group[1:]:
-            reduced_labels.img[reduced_labels.img == label] = group[0]
+    for group_counter, group in enumerate(groups):
+        if values is None:
+            for label in group[1:]:
+                reduced_labels.img[labels.img == label] = group[0]
+        else:
+            for label in group:
+                reduced_labels.img[labels.img == label] = values[group_counter]
 
     return reduced_labels
 
