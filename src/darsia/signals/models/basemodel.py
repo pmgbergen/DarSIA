@@ -53,11 +53,11 @@ class HeterogeneousModel(Model):
         self,
         obj: Model | list[Model] | dict[int, Model],
         labels: darsia.Image,
-        ignore_labels: list[int] = None,
+        ignore_labels: list[int] | None = None,
     ) -> None:
         self.masks = darsia.Masks(labels)
         """Masks for each label in the image."""
-        self.ignore_labels = ignore_labels if ignore_labels is not None else []
+        self.ignore_labels = ignore_labels or []
         """Labels to ignore for signals."""
         self.obj = {}
         """Dictionary of models for each label."""
