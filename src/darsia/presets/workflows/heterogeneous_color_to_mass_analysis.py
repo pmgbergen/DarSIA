@@ -728,7 +728,9 @@ class HeterogeneousColorToMassAnalysis:
             slider_height_individual = slider_height_total * 0.6
             spacing = available_width / total_sliders * 0.15 if total_sliders > 1 else 0
 
-            sliders_color_to_signal = []  # Create vertical sliders for signal model values
+            sliders_color_to_signal = []
+
+            # Create vertical sliders for signal model values
             for i, val in enumerate(self.signal_model.model[1][label_idx].values):
                 slider_x = slider_left + i * (slider_width_individual + spacing)
                 # Leave space at bottom for labels
@@ -1543,6 +1545,20 @@ class HeterogeneousColorToMassAnalysis:
             # Position Update button at bottom right corner
             update_button_x = 0.98 - button_width  # Right side with small margin
             update_button_y = 0.02  # Bottom with small margin
+
+            # Add "Update label" button to the left of "Update all"
+            update_label_button_x = update_button_x - button_width - button_spacing
+            ax_update_label = plt.axes(
+                [
+                    update_label_button_x,
+                    update_button_y,
+                    button_width,
+                    button_height,
+                ]
+            )
+            btn_update_label = Button(ax_update_label, "Update label")
+
+            # Add "Update all" button
             ax_update = plt.axes(
                 [
                     update_button_x,
@@ -1551,7 +1567,7 @@ class HeterogeneousColorToMassAnalysis:
                     button_height,
                 ]
             )
-            btn_update = Button(ax_update, "Update")
+            btn_update = Button(ax_update, "Update all")
 
             ax_next_signal = plt.axes(
                 [
@@ -1749,12 +1765,110 @@ class HeterogeneousColorToMassAnalysis:
                         )
                         integrated_mass_scatter_aq.set_offsets(
                             np.c_[times, integrated_mass_aq]
+                        )  # Redraw
+                        fig.canvas.draw_idle()
+
+                    def update_label_analysis(event=None):
+                        """Update analysis for current label only (copy of update_analysis for now)"""
+                        nonlocal \
+                            done_tuning_values, \
+                            sliders_color_to_signal, \
+                            sliders_flash, \
+                            sliders_threshold, \
+                            _label_idx
+
+                        # Update parameters
+                        self.signal_model.model[1][_label_idx].update(
+                            values=[slider.val for slider in sliders_color_to_signal]
                         )
+                        self.flash.update(
+                            cut_off=sliders_flash[0].val,
+                            max_value=sliders_flash[1].val,
+                        )
+                        # Identify mass density for chosen image
+                        pH, density, c_aq, s_g = detailed_mass_analysis(
+                            color_interpretation
+                        )
+
+                        # Coarsen outputs for visualization
+                        coarse_pH = darsia.resize(pH, shape=coarse_shape)
+                        coarse_density = darsia.resize(density, shape=coarse_shape)
+                        coarse_c_aq = darsia.resize(c_aq, shape=coarse_shape)
+                        coarse_s_g = darsia.resize(s_g, shape=coarse_shape)
+                        coarse_signal_dict = {
+                            "color": coarse_color_interpretation,
+                            "pH": coarse_pH,
+                            "rho_co2": coarse_density,
+                            "c_aq": coarse_c_aq,
+                            "s_g": coarse_s_g,
+                            "labels": coarse_labels,
+                            "depth": coarse_depth,
+                            "rho_co2(g)": coarse_co2_g_density,
+                            "solubility_co2(aq)": coarse_co2_aq_solubility,
+                            "porosity": coarse_porosity,
+                            "effective_depth": coarse_effective_depth,
+                        }
+                        coarse_signal = coarse_signal_dict[
+                            signal_option_ptr[signal_option_idx]
+                        ]
+
+                        # Determine contours
+                        coarse_contour = darsia.plot_contour_on_image(
+                            coarse_image,
+                            mask=[
+                                coarse_c_aq > sliders_threshold[0].val,
+                                coarse_s_g > sliders_threshold[1].val,
+                            ],
+                            color=[
+                                (255, 0, 0),
+                                (0, 255, 0),
+                            ],
+                            return_image=True,
+                        )
+
+                        # Update signal function plot
+                        if signal_function_line is not None:
+                            signal_func = self.signal_model.model[1][_label_idx]
+                            x_vals = signal_func.supports
+                            y_vals = signal_func.values.copy()
+                            signal_function_line.set_data(x_vals, y_vals)
+                            signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
+
+                        # Update flash cut-off and max value lines
+                        signal_function_cut_off_y.set_ydata(self.flash.cut_off)
+                        signal_function_max_value_y.set_ydata(self.flash.max_value)
+                        cut_off_x = signal_func.inverse(self.flash.cut_off)
+                        max_value_x = signal_func.inverse(self.flash.max_value)
+                        signal_function_cut_off_x.set_xdata(cut_off_x)
+                        signal_function_max_value_x.set_xdata(max_value_x)
+
+                        # Update the position of the annotation
+                        ax_signal_function.texts[0].set_position(
+                            (cut_off_x - 0.05, 0.04)
+                        )
+                        ax_signal_function.texts[1].set_position(
+                            (cut_off_x + 0.05, 0.04)
+                        )
+                        ax_signal_function.texts[2].set_position(
+                            (max_value_x + 0.1, 0.04)
+                        )
+
+                        # Update dense plots
+                        coarse_signal_img.set_data(coarse_signal.img)
+                        coarse_contour_img.set_data(coarse_contour.img)
+
+                        # Update color scale (min/max values) based on current signal
+                        signal_min = np.nanmin(coarse_signal.img)
+                        signal_max = np.nanmax(coarse_signal.img)
+                        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
+                        coarse_signal_colorbar.update_normal(coarse_signal_img)
 
                         # Redraw
                         fig.canvas.draw_idle()
 
+                    # Connect button callbacks
                     btn_update.on_clicked(update_analysis)
+                    btn_update_label.on_clicked(update_label_analysis)
 
                     def new_label(event):
                         nonlocal done_tuning_values, need_to_pick_new_label
