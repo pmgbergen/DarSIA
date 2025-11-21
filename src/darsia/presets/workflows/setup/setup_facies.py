@@ -3,11 +3,12 @@
 import logging
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
 import darsia
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.rig import Rig
-import pandas as pd
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
