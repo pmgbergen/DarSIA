@@ -1,7 +1,6 @@
 import logging
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 import darsia
@@ -13,18 +12,20 @@ from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
 logger = logging.getLogger(__name__)
 
 
-def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
+def calibration_color_to_mass_analysis(
+    cls, path: Path, reset: bool = False, show: bool = False
+):
     # ! ---- LOAD RUN AND RIG ----
 
     config = FluidFlowerConfig(path)
-    config.check("color_signal", "color_paths", "rig", "data", "protocol")
+    config.check("color_paths", "rig", "data", "protocol", "color_to_mass")
 
     # Mypy type checking
     assert config.data is not None
     assert config.protocol is not None
     assert config.color_paths is not None
     assert config.rig is not None
-    assert config.color_signal is not None  # TODO redundant?
+    assert config.color_to_mass is not None
 
     # ! ---- LOAD EXPERIMENT ----
     experiment = darsia.ProtocolledExperiment(
@@ -42,19 +43,26 @@ def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
     fluidflower.load_experiment(experiment)
 
     # ! ---- LOAD COLOR PATHS ----
-    color_paths = darsia.LabelColorPathMap.load(config.color_paths.calibration_file)
+    pre_color_paths = darsia.LabelColorPathMap.load(config.color_paths.calibration_file)
 
-    # ! ---- LOAD COLOR RANGE ----
-    # TODO rm?
-    # color_range = darsia.ColorRange.load(config.color_paths.color_range_file)
+    # ! ---- REFINE COLOR PATHS ----
+    color_paths = darsia.LabelColorPathMap.refine(
+        pre_color_paths,
+        num_segments=8,
+    )
+
+    # ! ---- LOAD BASELINE COLOR SPECTRUM ----
+    baseline_color_spectrum = darsia.LabelColorSpectrumMap.load(
+        config.color_paths.baseline_color_spectrum_file
+    )
 
     # ! ---- LOAD IMAGES ----
     # Store cached versions of calibration images to speed up development
     # TODO Use calibration.flash.image_paths or so.
-    calibration_image_paths = config.color_paths.calibration_image_paths
+    calibration_image_paths = config.color_to_mass.calibration_image_paths
     if len(calibration_image_paths) == 0:
         calibration_image_paths = experiment.find_images_for_times(
-            times=config.color_paths.calibration_image_times
+            times=config.color_to_mass.calibration_image_times
         )
     calibration_images = []
     for p in calibration_image_paths:
@@ -74,11 +82,13 @@ def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
         reference_color_path.show()
 
     # ! ---- ALLOCATE EMPTY INTERPOLATIONS ----
+
     color_path_interpolation = {
         label: darsia.ColorPathInterpolation(
             color_path=color_path,
             color_mode=darsia.ColorMode.RELATIVE,
             values=color_path.relative_distances,
+            ignore_spectrum=baseline_color_spectrum[label],
         )
         for label, color_path in color_paths.items()
     }
@@ -93,9 +103,6 @@ def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
     # Metric I.
     # Determine distance from color path to baseline spectrum (consider the furthest
     # away color to measure sensitivity)
-    baseline_color_spectrum = darsia.LabelColorSpectrumMap.load(
-        config.color_paths.baseline_color_spectrum_file
-    )
     distances = {
         label: max(
             [
@@ -109,11 +116,7 @@ def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
 
     # Metric II.
     # Determine distance from color path to reference color path.
-    reference_interpolation = darsia.ColorPathInterpolation(
-        color_path=reference_color_path,
-        color_mode=darsia.ColorMode.RELATIVE,
-        values=reference_color_path.relative_distances,
-    )
+    reference_interpolation = color_path_interpolation[reference_label]
     interpolation_values = {
         label: max(
             [
@@ -147,36 +150,32 @@ def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
                 _img.img[mask.img] = np.mean(_img.img[mask.img], axis=1, keepdims=True)
             _img.show(cmap=custom_cmap, title="Ignored labels")
 
-    # Utils II. Determine distance to baseline spectrum and use that for the first interpolation value
-    # Helps to tone down fluctuations in the baseline color spectrum
-    for label in baseline_color_spectrum:
-        color_path = color_paths[label]
-        min_distance = baseline_color_spectrum[label].distance(
-            color_path.relative_colors[1]
-        )
-        if color_path.relative_distances[1] is not np.nan:
-            color_path.relative_distances[1] = min_distance
+    # TODO deactivate?
+
+    # Utils I. Scale refined color paths to match the original color paths (scale by 2)
+    # for label in color_path_interpolation:
+    #    color_path_interpolation[label].values *= 2
+
+    ## Utils II. Determine distance to baseline spectrum and use that for the first interpolation value
+    ## Helps to tone down fluctuations in the baseline color spectrum
+    # for label in baseline_color_spectrum:
+    #    color_path = color_paths[label]
+    #    min_distance = baseline_color_spectrum[label].distance(
+    #        color_path.relative_colors[1]
+    #    )
+    #    if color_path.relative_distances[1] is not np.nan:
+    #        color_path.relative_distances[1] = min_distance
 
     # Utils III. Adapt the interpolation values based on the reference color path
 
     # Rescale color paths based on reference interpolation
     for label in color_path_interpolation:
         color_path_interpolation[label].values *= interpolation_values[label]
-    color_path = color_paths[label]
-    color_path_interpolation[label].values = (
-        np.array(color_path.relative_distances)
-        * interpolation_values[label]
-        / max(
-            color_path.relative_distances
-        )  # Normalization not needed as relative distances are normalized # TODO
-    ).tolist()
 
     # Overwrite the color paths with updated interpolation values
     for label in np.unique(fluidflower.labels.img):
         if label in config.color_paths.ignore_labels or label in ignore_labels:
             color_path_interpolation[label] = color_path_interpolation[reference_label]
-            # TODO: Set an empty color path based on the mean background color.
-            # color_paths[label] = darsia.ColorPath()
 
     # ! ---- COLOR PATH INTERPRETATION ---- ! #
 
@@ -186,6 +185,7 @@ def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
             color_mode=darsia.ColorMode.RELATIVE,
             values=color_path.equidistant_distances,
             # values=color_path.relative_distances,
+            ignore_spectrum=baseline_color_spectrum[label],
         )
         for label, color_path in color_paths.items()
     }
@@ -195,12 +195,13 @@ def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
     signal_functions = {
         label: darsia.PWTransformation(
             color_paths[label].equidistant_distances,
-            color_path_interpolation[label].values,
+            color_path_interpretation[label].values,
         )
-        for label in color_path_interpolation
+        for label in color_path_interpretation
     }
 
     # ! ---- POROSITY-INFORMED AVERAGING ---- ! #
+    # TODO: holes in the segmentation?
     image_porosity = fluidflower.image_porosity
     # boolean_porosity = image_porosity > 0.9
     restoration = darsia.VolumeAveraging(
@@ -212,37 +213,44 @@ def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
     # ! ---- FROM COLOR PATH TO MASS ----
 
     experiment_start = experiment.experiment_start
-    flash = darsia.SimpleFlash(cut_off=0.5, max_value=1.0, restoration=None)
+    flash = darsia.SimpleFlash(cut_off=0.8, max_value=0.95, restoration=None)
+    state = experiment.pressure_temperature_protocol.get_state(experiment_start)
+    gradient = experiment.pressure_temperature_protocol.get_gradient(experiment_start)
     co2_mass_analysis = darsia.CO2MassAnalysis(
         baseline=fluidflower.baseline,
-        atmospheric_pressure=experiment.pressure_temperature_protocol.get_state(
-            experiment_start
-        ).pressure,
-        temperature=experiment.pressure_temperature_protocol.get_state(
-            experiment_start
-        ).temperature,
+        atmospheric_pressure=state.pressure,
+        atmospheric_temperature=state.temperature,
+        atmospheric_pressure_gradient=gradient.pressure,
+        atmospheric_temperature_gradient=gradient.temperature,
     )
-    color_analysis = HeterogeneousColorToMassAnalysis(
-        baseline=fluidflower.baseline,
-        labels=fluidflower.labels,
-        color_mode=darsia.ColorMode.RELATIVE,
-        color_path_interpretation=color_path_interpretation,
-        signal_functions=signal_functions,
-        flash=flash,
-        co2_mass_analysis=co2_mass_analysis,
-        geometry=fluidflower.geometry,
-        restoration=restoration,
-        ignore_labels=config.color_paths.ignore_labels + ignore_labels,
-    )
+
+    if not reset and config.color_to_mass.calibration_folder.exists():
+        # Start from existing calibration if available
+        color_analysis = HeterogeneousColorToMassAnalysis.load(
+            folder=config.color_to_mass.calibration_folder,
+            baseline=fluidflower.baseline,
+            labels=fluidflower.labels,
+            co2_mass_analysis=co2_mass_analysis,
+            geometry=fluidflower.geometry,
+            restoration=restoration,
+        )
+    else:
+        color_analysis = HeterogeneousColorToMassAnalysis(
+            baseline=fluidflower.baseline,
+            labels=fluidflower.labels,
+            color_mode=darsia.ColorMode.RELATIVE,
+            # color_path_interpretation=color_path_interpretation,
+            # signal_functions=signal_functions,
+            color_path_interpretation=color_path_interpretation,
+            signal_functions=signal_functions,
+            flash=flash,
+            co2_mass_analysis=co2_mass_analysis,
+            geometry=fluidflower.geometry,
+            restoration=restoration,
+            ignore_labels=config.color_paths.ignore_labels + ignore_labels,
+        )
 
     # ! ---- INTERACTIVE CALIBRATION ---- ! #
-
-    ## Start from existing calibration if available
-    # if config.color_signal.calibration_file.exists():
-    #    concentration_analysis.load(config.color_signal.calibration_file)
-
-    if False:
-        color_paths[23].show_path()
 
     # Perform local calibration
     color_analysis.manual_calibration(
@@ -255,14 +263,9 @@ def calibration_color_to_mass_analysis(cls, path: Path, show: bool = False):
     #        # TODO color_paths[label] = reference_color_path
 
     # Store calibration
-    color_analysis.save(config.color_signal.calibration_file)
+    color_analysis.save(config.color_to_mass.calibration_folder)
 
     # Test run
-    concentration_images = [color_analysis(img) for img in calibration_images]
-
-    for i in range(len(calibration_images)):
-        calibration_images[i].show(title=f"Calibration image {i}", delay=True)
-        concentration_images[i].show(
-            title=f"Concentration image {i}", cmap=custom_cmap, delay=True
-        )
-    plt.show()
+    for img in calibration_images:
+        mass = color_analysis(img).mass
+        mass.show(title=f"Mass image {img.time}", cmap=custom_cmap, delay=False)
