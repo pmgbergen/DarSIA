@@ -778,6 +778,36 @@ class Image:
         if return_image:
             return type(self)(img=self.img.copy(), **metadata)
 
+    # ! ---- Setter/getter routines
+
+    def __getitem__(self, key):
+        """Get item using indexing syntax.
+
+        Args:
+            key: Index or mask for the image data
+
+        Returns:
+            Indexed image data
+
+        """
+        if isinstance(key, darsia.Image):
+            assert key.dtype == bool
+            return self.img[key.img]
+        return self.img[key]
+
+    def __setitem__(self, key, value):
+        """Set item using indexing syntax.
+
+        Args:
+            key: Index or mask for the image data
+            value: Value to assign to the indexed locations
+        """
+        if isinstance(key, darsia.Image):
+            assert key.dtype == bool
+            self.img[key.img] = value
+        else:
+            self.img[key] = value
+
     # ! ---- Arithmetics
 
     def __add__(self, other: Image) -> Image:
