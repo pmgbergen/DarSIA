@@ -96,6 +96,38 @@ class ColorSpectrum:
                 [np.min(np.linalg.norm(self.colors - c, axis=1)) for c in color]
             )
 
+    def to_dict(self) -> dict:
+        """Convert the color spectrum to a dictionary.
+
+        Returns:
+            dict: Dictionary representation of the color spectrum.
+
+        """
+        return {
+            "base_color": self.base_color.tolist(),
+            "spectrum": self.spectrum.tolist(),
+            "histogram": self.histogram.tolist(),
+            "color_range": self.color_range.to_dict(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ColorSpectrum":
+        """Create a ColorSpectrum from a dictionary.
+
+        Args:
+            data (dict): Dictionary representation of the color spectrum.
+
+        Returns:
+            ColorSpectrum: The created ColorSpectrum instance.
+
+        """
+        return cls(
+            base_color=np.array(data["base_color"]),
+            spectrum=np.array(data["spectrum"]),
+            histogram=np.array(data["histogram"]),
+            color_range=darsia.ColorRange.load_from_dict(data["color_range"]),
+        )
+
     def save(self, file_path: Path) -> None:
         """Save the color spectrum to a file.
 
@@ -103,14 +135,8 @@ class ColorSpectrum:
             file_path (Path): The path to the file where the color spectrum will be saved.
 
         """
-        data = {
-            "base_color": self.base_color.tolist(),
-            "spectrum": self.spectrum.tolist(),
-            "histogram": self.histogram.tolist(),
-            "color_range": self.color_range.to_dict(),
-        }
         with open(file_path.with_suffix(".json"), "w") as f:
-            json.dump(data, f)
+            json.dump(self.to_dict(), f)
         logger.info("Saved color spectrum to %s", file_path.with_suffix(".json"))
 
     @classmethod
@@ -126,10 +152,36 @@ class ColorSpectrum:
         """
         with open(file_path.with_suffix(".json"), "r") as f:
             data = json.load(f)
-        color_spectrum = cls(
-            base_color=np.array(data["base_color"]),
-            spectrum=np.array(data["spectrum"]),
-            histogram=np.array(data["histogram"]),
-            color_range=darsia.ColorRange.load_from_dict(data["color_range"]),
+        return ColorSpectrum.from_dict(data)
+
+    @darsia.timing_decorator
+    def in_spectrum(
+        self, colors: np.ndarray, color_mode: darsia.ColorMode
+    ) -> np.ndarray:
+        """Check if given colors are within the spectrum.
+
+        Args:
+            colors (np.ndarray): Colors to check.
+            color_mode (darsia.ColorMode): Color mode of the input colors.
+
+        Returns:
+            np.ndarray: Boolean array indicating if each color is in the spectrum.
+        """
+        if color_mode == darsia.ColorMode.RELATIVE:
+            check_colors = colors
+        elif color_mode == darsia.ColorMode.ABSOLUTE:
+            check_colors = colors - self.base_color
+        else:
+            raise ValueError(f"Unsupported color mode: {color_mode}")
+
+        # Check if each color is in the spectrum
+        in_spectrum = np.array(
+            [
+                any(
+                    np.allclose(check_color, spec_color)
+                    for spec_color in self.relative_colors
+                )
+                for check_color in check_colors
+            ]
         )
-        return color_spectrum
+        return in_spectrum
