@@ -290,6 +290,23 @@ class ColorPath:
             "name": self.name,
         }
 
+    @classmethod
+    def from_dict(self, data: dict) -> "ColorPath":
+        """Create a ColorPath instance from a dictionary representation.
+
+        Args:
+            data (dict): Dictionary representation of the color path.
+
+        """
+        color_path = ColorPath(
+            base_color=np.array(data["base_color"]),
+            relative_colors=[np.array(c) for c in data["relative_colors"]],
+            mode=data["mode"],
+            name=data["name"],
+        )
+        color_path.colors = [np.array(c) for c in data["colors"]]
+        return color_path
+
     def save(self, path: Path) -> None:
         """Save the color path to a file.
 
@@ -301,7 +318,7 @@ class ColorPath:
             json.dump(self.to_dict(), f)
 
     @classmethod
-    def load(self, path: Path) -> "ColorPath":
+    def load(cls, path: Path) -> "ColorPath":
         """Load the color path from a file.
 
         Args:
@@ -310,15 +327,10 @@ class ColorPath:
         """
         with open(path.with_suffix(".json"), "r") as f:
             data = json.load(f)
-            color_path = ColorPath(
-                base_color=np.array(data["base_color"]),
-                relative_colors=[np.array(c) for c in data["relative_colors"]],
-                mode=data["mode"],
-                name=data["name"],
-            )
-            color_path.colors = [np.array(c) for c in data["colors"]]
+        color_path = cls.from_dict(data)
         logger.info(f"Loaded color path from {path}.")
         return color_path
+
         # self.relative_colors = [np.array(c) for c in data["relative_colors"]]
         # self.relative_distances = self._compute_relative_distances()
         # self.equidistant_distances = self._compute_equidistant_distances()
