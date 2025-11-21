@@ -81,6 +81,20 @@ class PWTransformation:
         else:
             raise ValueError
 
+    def inverse(self, value: float | np.ndarray) -> float | np.ndarray:
+        """Compute the inverse transformation at given value(s)."""
+
+        assert hasattr(self, "interpolator"), "Interpolator not set."
+
+        inv_interpolator = interpolate.interp1d(
+            self.values,
+            self.supports,
+            kind="linear",
+            fill_value="extrapolate",
+        )
+
+        return inv_interpolator(value)
+
     def log(self, log: Optional[Path]) -> None:
         """Plot the transformation and store to file."""
 
@@ -101,18 +115,20 @@ class PWTransformation:
             path (Path): Path to the file where the transformation should be saved.
 
         """
+        path.parent.mkdir(parents=True, exist_ok=True)
         df = pd.DataFrame({"supports": self.supports, "values": self.values})
         df.to_csv(path.with_suffix(".csv"), index=False)
         logger.info(f"Saved transformation to {path.with_suffix('.csv')}.")
 
-    def load(self, path: Path) -> None:
+    @classmethod
+    def load(cls, path: Path) -> "PWTransformation":
         """Load the transformation from file in csv format.
 
         Args:
             path (Path): Path to the file from which the transformation should be loaded.
 
         """
-        df = pd.read_csv(path)
-        self.supports = df["supports"].to_numpy()
-        self.values = df["values"].to_numpy()
-        self.update(supports=self.supports, values=self.values)
+        df = pd.read_csv(path.with_suffix(".csv"))
+        supports = df["supports"].to_numpy()
+        values = df["values"].to_numpy()
+        return cls(supports=supports, values=values)
