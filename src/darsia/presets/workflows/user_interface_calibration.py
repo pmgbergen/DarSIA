@@ -66,6 +66,9 @@ def build_parser_for_calibration():
         help="Calibrate flash settings (step 2/3 combined).",
     )
     parser.add_argument(
+        "--reset", action="store_true", help="Reset existing calibration data."
+    )
+    parser.add_argument(
         "--show", action="store_true", help="Show the labels after each step."
     )
     parser.add_argument(
@@ -115,7 +118,9 @@ def preset_calibration(rig=Rig):
         calibration_color_analysis(rig, Path(args.config), args.show)
 
     if args.all or args.color_to_mass_analysis:
-        calibration_color_to_mass_analysis(rig, Path(args.config), args.show)
+        calibration_color_to_mass_analysis(
+            rig, Path(args.config), reset=args.reset, show=args.show
+        )
 
     if args.all or args.color_signal:
         calibration_color_signal(rig, Path(args.config), args.show)
