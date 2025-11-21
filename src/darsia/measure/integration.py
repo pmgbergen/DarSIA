@@ -260,6 +260,7 @@ class PorousGeometry(WeightedGeometry):
             voxel_size (list): see Geometry.
 
         """
+        self.porosity = porosity
         super().__init__(porosity, space_dim, num_voxels, dimensions, voxel_size)
 
 
@@ -288,6 +289,8 @@ class ExtrudedPorousGeometry(ExtrudedGeometry):
             voxel_size (list): see Geometry.
 
         """
+        self.porosity = porosity
+        self.depth = depth
         if isinstance(porosity, darsia.Image) and isinstance(depth, darsia.Image):
             integrated_porosity = np.multiply(porosity.img, depth.img)
         elif isinstance(depth, darsia.Image):
@@ -299,3 +302,25 @@ class ExtrudedPorousGeometry(ExtrudedGeometry):
         super().__init__(
             integrated_porosity, space_dim, num_voxels, dimensions, voxel_size
         )
+
+    def update(self, depth: float | np.ndarray | darsia.Image) -> None:
+        """Update effective depth and recompute weighted volume.
+
+        Args:
+            depth (float or array): effective depth.
+
+        """
+        self.depth = depth
+        if isinstance(self.porosity, darsia.Image) and isinstance(depth, darsia.Image):
+            integrated_porosity = np.multiply(self.porosity.img, depth.img)
+        elif isinstance(depth, darsia.Image):
+            integrated_porosity = np.multiply(self.porosity, depth.img)
+        elif isinstance(self.porosity, darsia.Image):
+            integrated_porosity = np.multiply(self.porosity.img, depth)
+        else:
+            integrated_porosity = np.multiply(self.porosity, depth)
+        self.voxel_volume = np.multiply(
+            self.voxel_volume / self.weight, integrated_porosity
+        )
+        self.cached_voxel_volume = self.voxel_volume.copy()
+        self.weight = integrated_porosity
