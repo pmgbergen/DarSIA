@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import darsia
-from darsia.presets.analysis.porosity import patched_porosity_analysis
+from darsia.presets.workflows.facies_props import FaciesProps
 
 logger = logging.getLogger(__name__)
 
@@ -19,14 +19,6 @@ logger = logging.getLogger(__name__)
 
 class Rig:
     """Rig object for CO2 analysis."""
-
-    def __init__(self) -> None:
-        self.define_specs()
-
-    def define_specs(self) -> None:
-        """Define some basic specs."""
-        # TODO read from config file
-        self.porosity = 0.44
 
     def setup_reading(
         self,
@@ -68,7 +60,7 @@ class Rig:
         pre_baseline: darsia.Image | None = None,
         config: Path | None = None,
     ) -> None:
-        """Setup corrections for the museum rig.
+        """Setup corrections for the rig.
 
         Prioritize loading existing corrections from the specified path.
 
@@ -145,7 +137,7 @@ class Rig:
         path: Path,
         log: Path | None = None,
     ) -> None:
-        """Setup depth map for the museum rig object.
+        """Setup depth map for the rig object.
 
         Args:
             path (Path | None): Path to the precomputed depth map file.
@@ -157,7 +149,7 @@ class Rig:
         assert path.exists(), f"Path to depth map {path} does not exist."
         pre_depth = darsia.imread(path)
         self.depth: darsia.Image = darsia.resize(pre_depth, ref_image=self.baseline)
-        """Depth map for the museum rig object."""
+        """Depth map for the rig object."""
 
         # Log results
         if log:
@@ -189,7 +181,7 @@ class Rig:
     def setup_labels(
         self, path: Path, apply_corrections: bool = False, log: Path | None = None
     ) -> None:
-        """Setup labels for the museum rig object.
+        """Setup labels for the rig object.
 
         This method loads labels from a specified path and applies corrections if needed.
 
@@ -231,6 +223,71 @@ class Rig:
 
         logger.info("Labels setup completed.")
 
+    def setup_facies(
+        self, path: Path, apply_corrections: bool = False, log: Path | None = None
+    ) -> None:
+        """Setup facies.
+
+        This method loads facies from a specified path and applies corrections if needed.
+
+        Args:
+            path (Path): Path to the facies file. If the file exists, it will be loaded.
+            apply_correction (bool): If True, applies corrections to the facies based on
+                the baseline image.
+            log (Path | None): Path to the log folder where facies images will be saved.
+
+        """
+        assert path.exists(), f"Facies file {path} does not exist."
+        if apply_corrections:
+            # Assume that the facies are based on non-corrected baseline image.
+            # Thus, need to apply the relevant corrections from the read routine.
+            plain_facies = darsia.imread(path)
+            resized_facies = self.resize_correction_inter_nearest(plain_facies)
+            self.facies = self.curvature_correction(resized_facies)
+
+        else:
+            # Assume the facies are aligned with the corrected baseline.
+            pre_facies = darsia.imread(path)
+            self.facies = darsia.resize(
+                pre_facies,
+                ref_image=self.baseline,
+                interpolation="inter_nearest",
+            )
+
+        if log:
+            # Create folder for facies images
+            (Path(log) / "rig" / "facies").mkdir(parents=True, exist_ok=True)
+
+            # Plot facies
+            plt.figure()
+            plt.imshow(self.facies.img)
+            plt.colorbar()
+            plt.title("Facies")
+            plt.savefig(Path(log) / "rig" / "facies" / "facies.png", dpi=500)
+            plt.close()
+
+        logger.info("Facies setup completed.")
+
+    def setup_facies_props(
+        self, props_path: Path | None = None, porosity: Path | None = None
+    ) -> None:
+        """Define facies properties like porosity.
+
+        Args:
+            props_path (Path | None): Path to the facies properties CSV file.
+                If provided, it will load the facies properties from this path.
+            porosity (Path | None): Path to the porosity image file. If provided,
+                it will load the porosity image from this path.
+
+        """
+        if porosity:
+            self.porosity = darsia.imread(porosity)
+            """Porosity for the rig object."""
+        else:
+            assert props_path is not None, "Facies properties path is not set."
+            facies_props = FaciesProps.load(facies=self.facies, path=props_path)
+            self.porosity = facies_props.porosity
+
     # ! ---- ILLUMINATION CORRECTION ----
     def setup_illumination_correction(self, log: Path | None = None) -> None:
         """Setup illumination correction (empty in Rig)"""
@@ -263,7 +320,7 @@ class Rig:
         self.image_porosity = darsia.ones_like(
             self.baseline, mode="voxels", dtype=np.float32
         )
-        """Image porosity for the museum rig object."""
+        """Image porosity for the rig object."""
         logger.info("Porosity setup completed.")
 
     def setup_boolean_image_porosity(
@@ -300,6 +357,8 @@ class Rig:
         baseline_path: Path,
         depth_map_path: Path,
         labels_path: Path,
+        facies_path: Path | None = None,
+        facies_props_path: Path | None = None,
         correction_config_path: Path | None = None,
         # ref_colorchecker_path: Path,
         log: Path | None = None,
@@ -312,7 +371,7 @@ class Rig:
         # Cache reference date
         self.reference_date = experiment.experiment_start
 
-        # Initialize the museum rig - responsible for reading/preprocessing photographs
+        # Initialize the rig - responsible for reading/preprocessing photographs
         self.setup_reading(
             baseline_path,
             experiment.imaging_protocol,
@@ -326,15 +385,28 @@ class Rig:
             log=log,
         )
 
-        # Define geometry for integration
-        self.setup_geometry()
-
         # Add labels
         self.setup_labels(
             path=labels_path,
             apply_corrections=True,
             log=log,
         )
+
+        # Add facies
+        if facies_path is not None:
+            self.setup_facies(
+                path=facies_path,
+                apply_corrections=True,
+                log=log,
+            )
+        else:
+            self.facies = self.labels.copy()
+
+        # Setup facies props
+        self.setup_facies_props(facies_props_path)
+
+        # Define geometry for integration
+        self.setup_geometry()
 
         # Setup illumination correction
         self.setup_illumination_correction(
@@ -358,7 +430,7 @@ class Rig:
         #    temperature=kwargs.get("temperature", 23.0),
         # )
 
-        logger.info("Museum rig setup completed.")
+        logger.info("Rig setup completed.")
 
         # ! ---- AVERAGING ----
 
@@ -371,7 +443,7 @@ class Rig:
         self.restoration = restoration
         """Restoration model based on porosity-based averaging."""
 
-        clipping = darsia.ClipModel()
+        clipping = darsia.ClipModel(min_value=0.0)
         self.upscaling = darsia.CombinedModel([clipping] + 2 * [restoration])
         logger.info("Upscaling setup completed.")
 
@@ -446,21 +518,33 @@ class Rig:
         except Exception:
             warn("Labels not available for saving.", UserWarning)
 
-        # Save porosity information
+        # Save facies information
         try:
-            self.image_porosity.save(folder / "porosity.npz")
+            self.facies.save(folder / "facies.npz")
+        except Exception:
+            warn("Facies not available for saving.", UserWarning)
+
+        # Save facies properties
+        try:
+            self.porosity.save(folder / "porosity.npz")
         except Exception:
             warn("Porosity not available for saving.", UserWarning)
+
+        # Save porosity information
+        try:
+            self.image_porosity.save(folder / "image_porosity.npz")
+        except Exception:
+            warn("Image porosity not available for saving.", UserWarning)
 
         logger.info(f"Rig object saved to {folder}.")
 
     def load(self, folder: Path) -> None:
-        """Load museum rig object from file.
+        """Load rig object from file.
 
         Mimick the save method.
 
         Args:
-            folder (Path): Path to the folder where the museum rig object is saved.
+            folder (Path): Path to the folder where the rig object is saved.
 
         """
         # TODO: move into single function self.setup_basics() or so.
@@ -479,20 +563,26 @@ class Rig:
         # Load depth map
         self.setup_depth(path=folder / "depth.npz")
 
-        # Setup geometry information
-        self.setup_geometry()
-
         # Load labels information - corrections not needed assuming labels are aligned with
         # the corrected baseline.
         self.setup_labels(path=folder / "labels.npz", apply_corrections=False)
 
+        # Load facies information - corrections not needed assuming facies are aligned with
+        self.setup_facies(path=folder / "facies.npz", apply_corrections=False)
+
+        # Load facies properties
+        self.setup_facies_props(porosity=folder / "porosity.npz")
+
+        # Setup geometry information
+        self.setup_geometry()
+
         # Load image porosity information
-        self.setup_image_porosity(path=folder / "porosity.npz")
+        self.setup_image_porosity(path=folder / "image_porosity.npz")
         self.setup_boolean_image_porosity()
 
         # TODO setup color_analysis, and pw_transformation.
 
-        logger.info("Museum rig object loaded.")
+        logger.info("Rig object loaded.")
 
     # ! ---- I/O ----
 
@@ -544,10 +634,10 @@ class Rig:
         logger.info("Experiment and protocols loaded.")
 
     def update(self, path: Path) -> None:
-        """Update the state of the museum rig based on the image path.
+        """Update the state of the rig based on the image path.
 
         This method updates the current date, time, pressure, and temperature
-        of the museum rig object based on the provided image path.
+        of the rig object based on the provided image path.
 
         Args:
             path (Path): Path to the image file.
