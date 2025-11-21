@@ -282,6 +282,10 @@ class ImagingProtocol:
         available_image_ids = {self.image_id(p): p for p in available_paths}
         df = self.df[self.df["image_id"].isin(available_image_ids.keys())]
 
+        # Safety check.
+        if df.empty:
+            raise ValueError("No available images found in the specified paths.")
+
         # Collect the closest images
         closest_available_image_paths = []
         for dt in datetimes:
@@ -524,6 +528,61 @@ class PressureTemperatureProtocol:
             )
             return ThermodynamicState(pressure=pressure, temperature=temperature)
 
+    def get_gradient(self, date: datetime) -> ThermodynamicState:
+        """Get the pressure and temperature gradient (upwards) at the given date.
+
+        Args:
+            date (datetime): Date to get the pressure and temperature gradient for.
+
+        Returns:
+            ThermodynamicState: Pressure [bar] and temperature [Celsius] gradient at the given date.
+
+        """
+        # Find the two rows surrounding the date
+        before = (
+            self.df[self.df["datetime"] <= date].iloc[-1]
+            if not self.df[self.df["datetime"] <= date].empty
+            else None
+        )
+        after = (
+            self.df[self.df["datetime"] >= date].iloc[0]
+            if not self.df[self.df["datetime"] >= date].empty
+            else None
+        )
+
+        if before is None and after is None:
+            raise ValueError("Date is outside the range of the protocol.")
+
+        if before is None:
+            return ThermodynamicState(
+                pressure=after["pressure_gradient_bar"],
+                temperature=after["temperature_gradient_celsius"],
+            )
+
+        if after is None:
+            return ThermodynamicState(
+                pressure=before["pressure_gradient_bar"],
+                temperature=before["temperature_gradient_celsius"],
+            )
+
+        if before["datetime"] == after["datetime"]:
+            return ThermodynamicState(
+                pressure=before["pressure_gradient_bar"],
+                temperature=before["temperature_gradient_celsius"],
+            )
+        else:
+            # Linear interpolation
+            total_seconds = (after["datetime"] - before["datetime"]).total_seconds()
+            weight = (date - before["datetime"]).total_seconds() / total_seconds
+            pressure = before["pressure_gradient_bar"] + weight * (
+                after["pressure_gradient_bar"] - before["pressure_gradient_bar"]
+            )
+            temperature = before["temperature_gradient_celsius"] + weight * (
+                after["temperature_gradient_celsius"]
+                - before["temperature_gradient_celsius"]
+            )
+            return ThermodynamicState(pressure=pressure, temperature=temperature)
+
     def _load_protocol(self, path: Path | tuple[Path, str]) -> pd.DataFrame:
         if isinstance(path, list) or isinstance(path, tuple):
             protocol_path = path[0]
@@ -553,15 +612,26 @@ class PressureTemperatureProtocol:
         assert "temperature_celsius" in df.columns, (
             "Column 'Temperature_Celsius' not found in the protocol file."
         )
+        assert "pressure_gradient_bar" in df.columns, (
+            "Column 'Pressure_Gradient_Bar' not found in the protocol file."
+        )
+        assert "temperature_gradient_celsius" in df.columns, (
+            "Column 'Temperature_Gradient_Celsius' not found in the protocol file."
+        )
 
         # Generate a new dataframe with correct types
         datetimes = pd.to_datetime(df["datetime"])
         pressure_bars = df["pressure_bar"].astype(float)
         temperature_celsius = df["temperature_celsius"].astype(float)
+        pressure_gradient_bars = df["pressure_gradient_bar"].astype(float)
+        temperature_gradient_celsius = df["temperature_gradient_celsius"].astype(float)
+
         return pd.DataFrame(
             {
                 "datetime": datetimes,
                 "pressure_bar": pressure_bars,
                 "temperature_celsius": temperature_celsius,
+                "pressure_gradient_bar": pressure_gradient_bars,
+                "temperature_gradient_celsius": temperature_gradient_celsius,
             }
         )
