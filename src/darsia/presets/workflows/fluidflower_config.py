@@ -52,8 +52,6 @@ class FluidFlowerRigConfig:
     """Height of the FluidFlower rig in meters."""
     dim: int = 2  # spatial dimension (2 or 3)
     """Spatial dimension (2 or 3)."""
-    porosity: float = 0  # porosity of the medium
-    """Porosity of the medium."""
     resolution: tuple[int, int] = (500, 1000)
     """Default resolution for images (height, width)."""
     path: Path = field(default_factory=Path)
@@ -64,7 +62,6 @@ class FluidFlowerRigConfig:
         self.width = _get_key(sec, "width", required=True, type_=float)
         self.height = _get_key(sec, "height", required=True, type_=float)
         self.dim = _get_key(sec, "dim", required=True, type_=int)
-        self.porosity = _get_key(sec, "porosity", required=True, type_=float)
         self.resolution = _get_key(
             sec, "resolution", default=(500, 1000), required=False, type_=tuple
         )
@@ -454,6 +451,59 @@ class ColorPathsConfig:
 
 
 @dataclass
+class ColorToMassConfig:
+    calibration_image_paths: list[Path] = field(default_factory=list[Path])
+    """List of image paths used for calibration."""
+    calibration_image_times: list[float] = field(default_factory=list[float])
+    """List of image times used for calibration."""
+    calibration_folder: Path = field(default_factory=Path)
+    """Path to the calibration folder."""
+
+    def load(
+        self, path: Path, data: Path | None, results: Path | None = None
+    ) -> "ColorToMassConfig":
+        sec = _get_section_from_toml(path, "color_to_mass")
+        self.calibration_image_paths = sorted(
+            [
+                Path(p) if data is None else data / p
+                for p in _get_key(
+                    sec,
+                    "calibration_image_paths",
+                    default=[],
+                    required=False,
+                    type_=list[Path],
+                )
+            ]
+        )
+        self.calibration_image_times = sorted(
+            [
+                float(t)
+                for t in _get_key(
+                    sec,
+                    "calibration_image_times",
+                    default=[],
+                    required=False,
+                    type_=list[float],
+                )
+            ]
+        )
+        if (
+            len(self.calibration_image_paths) > 0
+            and len(self.calibration_image_times) > 0
+        ):
+            raise ValueError(
+                "Provide either calibration_image_times or calibration_image_paths, not both."
+            )
+        self.calibration_folder = _get_key(
+            sec, "calibration_folder", required=False, type_=Path
+        )
+        if not self.calibration_folder:
+            assert results is not None
+            self.calibration_folder = results / "calibration" / "color_to_mass"
+        return self
+
+
+@dataclass
 class ColorSignalConfig:
     num_clusters: int = field(default=0)
     """Number of clusters to identify background colors."""
@@ -778,6 +828,18 @@ class FluidFlowerConfig:
             self.color_paths = None
             warn(f"Section color_paths not found in {path}.")
 
+        # ! ---- COLOR TO MASS ---- ! #
+        try:
+            self.color_to_mass: ColorToMassConfig | None = ColorToMassConfig()
+            self.color_to_mass.load(
+                path=path,
+                data=self.data.folder if self.data else None,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.color_to_mass = None
+            warn(f"Section color_to_mass not found in {path}.")
+
         # ! ---- COLOR SIGNAL ---- ! #
         try:
             self.color_signal: ColorSignalConfig | None = ColorSignalConfig()
@@ -874,6 +936,7 @@ class FluidFlowerConfig:
                 "analysis.segmentation",
                 "color_paths",
                 "color_signal",
+                "color_to_mass",
                 "data",
                 "depth",
                 "facies",
