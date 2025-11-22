@@ -323,7 +323,7 @@ class ColorPathsConfig:
     """List of image times used for calibration."""
     calibration_file: Path = field(default_factory=Path)
     """Path to the calibration file."""
-    baseline_color_spectrum_file: Path = field(default_factory=Path)
+    baseline_color_spectrum_folder: Path = field(default_factory=Path)
     """Path to the baseline color spectrum file."""
     color_range_file: Path = field(default_factory=Path)
     """Path to the color range file."""
@@ -412,9 +412,12 @@ class ColorPathsConfig:
         if not self.calibration_file:
             assert results is not None
             self.calibration_file = results / "calibration" / "color_paths"
-        if not self.baseline_color_spectrum_file:
+        self.baseline_color_spectrum_folder = _get_key(
+            sec, "baseline_color_spectrum_folder", required=False, type_=Path
+        )
+        if not self.baseline_color_spectrum_folder:
             assert results is not None
-            self.baseline_color_spectrum_file = (
+            self.baseline_color_spectrum_folder = (
                 results / "calibration" / "baseline_color_spectrum"
             )
         self.color_range_file = _get_key(
