@@ -43,6 +43,7 @@ class LabelColorSpectrumMap(dict[int, darsia.ColorSpectrum]):
         directory.mkdir(parents=True, exist_ok=True)
         for label, color_spectrum in self.items():
             color_spectrum.save(directory / f"color_spectrum_{label}.json")
+        logger.info(f"Saved color spectra to {directory}.")
 
     @classmethod
     def load(cls, directory: darsia.Path) -> "LabelColorSpectrumMap":
@@ -59,4 +60,5 @@ class LabelColorSpectrumMap(dict[int, darsia.ColorSpectrum]):
             label = int(file.stem.split("_")[-1])
             color_spectrum = darsia.ColorSpectrum.load(file)
             color_spectra[label] = color_spectrum
+        logger.info(f"Loaded color spectra from {directory}.")
         return cls(color_spectra)
