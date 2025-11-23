@@ -5,6 +5,7 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.widgets import Button, Slider
+from scipy.optimize import minimize
 from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
@@ -156,6 +157,7 @@ class HeterogeneousColorToMassAnalysis:
         self,
         images: list[darsia.Image],
         experiment: darsia.ProtocolledExperiment,
+        rois: dict[str, darsia.VoxelArray | darsia.CoordinateArray] | None = None,
         cmap=None,
     ) -> None:
         """Define a local color path for a specific label.
@@ -166,7 +168,23 @@ class HeterogeneousColorToMassAnalysis:
             - Tune the values for the color path.
 
         Args:
-            image (darsia.Image): The image from which to define the local color path."""
+            image (darsia.Image): The image from which to define the local color path.
+
+        """
+
+        # Fill up rois with "entire frame"
+        rois = rois or {}
+        assert "" not in rois
+        rois.update(
+            {
+                "full": darsia.CoordinateArray(
+                    [
+                        self.color_analysis.base.origin,
+                        self.color_analysis.base.opposite_corner,
+                    ]
+                )
+            }
+        )
 
         # ! ---- SETUP ----
 
@@ -175,12 +193,12 @@ class HeterogeneousColorToMassAnalysis:
         label_idx = 0
 
         # Allocate variables for mass analysis
-        times = []
-        expected_mass = []
-        integrated_mass = []
-        integrated_mass_g = []
-        integrated_mass_aq = []
-        square_error = []
+        times = {r: [] for r in rois}
+        expected_mass = {r: [] for r in rois}
+        integrated_mass = {r: [] for r in rois}
+        integrated_mass_g = {r: [] for r in rois}
+        integrated_mass_aq = {r: [] for r in rois}
+        square_error = {r: [] for r in rois}
 
         # Choices for signal illustration
         signal_options = {
@@ -284,8 +302,9 @@ class HeterogeneousColorToMassAnalysis:
 
         # Perform detailed mass analysis
         def detailed_mass_analysis(
-            _color_interpretation: darsia.Image,
+            _color_interpretation: darsia.Image, roi: darsia.Image | None = None
         ) -> Tuple[darsia.Image, darsia.Image, darsia.Image, darsia.Image]:
+            # TODO:color_interpretation: darsia.Image restrivuted to the separate boxes
             pH = self.call_pH_analysis(color_interpretation)
             c_aq, s_g = self.flash(pH)
             mass_analysis_result: SimpleMassAnalysisResults = (
@@ -310,7 +329,10 @@ class HeterogeneousColorToMassAnalysis:
             nonlocal integrated_mass_aq
             nonlocal square_error
 
-            self.analysis.reset()
+            analysis = {
+                roi_key: SimpleRunAnalysis(self.geometry.subregion(roi))
+                for roi_key, roi in rois.items()
+            }
             for img, color_interpretation in zip(images, color_interpretations):
                 # Update thermodynamic state
                 state = experiment.pressure_temperature_protocol.get_state(img.date)
@@ -330,30 +352,41 @@ class HeterogeneousColorToMassAnalysis:
                 # Mass computation
                 mass_analysis_result = self.call_flash_and_mass_analysis(pH)
 
-                # Compute expected mass
-                exact_mass = experiment.injection_protocol.injected_mass(img.date)
+                for roi_key, roi in rois.items():
+                    # Subregion mass
+                    roi_mass_analysis_result = mass_analysis_result.subregion(roi)
 
-                # Track result
-                self.analysis.track(mass_analysis_result, exact_mass=exact_mass)
+                    # Compute expected mass
+                    assert isinstance(roi, darsia.CoordinateArray)
+                    roi_exact_mass = experiment.injection_protocol.injected_mass(
+                        img.date, roi
+                    )
 
-                # # Clean data - TODO?
-                # analysis.clean(threshold=1.0)
+                    # Track result
+                    analysis[roi_key].track(
+                        roi_mass_analysis_result, exact_mass=roi_exact_mass
+                    )
+
+                    # # Clean data - TODO?
+                    # analysis.clean(threshold=5.0)
 
             # Monitor mass evolution over time
-            times = self.analysis.data.time
-            expected_mass = self.analysis.data.exact_mass_tot
-            integrated_mass = self.analysis.data.mass_tot
-            integrated_mass_g = self.analysis.data.mass_g
-            integrated_mass_aq = self.analysis.data.mass_aq
+            for roi_key in rois:
+                times[roi_key] = analysis[roi_key].data.time
+                expected_mass[roi_key] = analysis[roi_key].data.exact_mass_tot
+                integrated_mass[roi_key] = analysis[roi_key].data.mass_tot
+                integrated_mass_g[roi_key] = analysis[roi_key].data.mass_g
+                integrated_mass_aq[roi_key] = analysis[roi_key].data.mass_aq
 
-            # Errors
-            relative_error = np.abs(
-                np.array(integrated_mass) - np.array(expected_mass)
-            ) / np.abs(expected_mass)
+                # Errors
+                relative_error = np.abs(
+                    np.array(integrated_mass[roi_key])
+                    - np.array(expected_mass[roi_key])
+                ) / np.abs(expected_mass[roi_key]).clip(min=1e-8)
 
-            logging.info(
-                f"Mass analysis updated.\nNew relative error: {relative_error}"
-            )
+                logging.info(
+                    f"Mass analysis for roi {roi_key} updated.\nNew relative error: {relative_error}"
+                )
 
         # ! ---- GRID FOR PLOTTING ----
 
@@ -506,7 +539,8 @@ class HeterogeneousColorToMassAnalysis:
             )
             coarse_image_img = ax_coarse_image.imshow(labeled_coarse_image)
 
-            # Plot the coarse signal
+            # Plot the coarse signal with rois
+            # TODO
             coarse_signal_img = ax_signal.imshow(coarse_signal.img, cmap=cmap)
 
             # Add colorbar
@@ -521,8 +555,12 @@ class HeterogeneousColorToMassAnalysis:
             coarse_signal_colorbar = fig.colorbar(coarse_signal_img, cax=colorbar_ax)
 
             # Set initial color scale for the signal
-            initial_signal_min = np.nanmin(coarse_signal.img)
-            initial_signal_max = np.nanmax(coarse_signal.img)
+            if signal_option_ptr[signal_option_idx] == "pH":
+                initial_signal_min = 0.0
+                initial_signal_max = 1.0
+            else:
+                initial_signal_min = np.nanmin(coarse_signal.img)
+                initial_signal_max = np.nanmax(coarse_signal.img)
             coarse_signal_img.set_clim(vmin=initial_signal_min, vmax=initial_signal_max)
             coarse_signal_colorbar.update_normal(coarse_signal_img)  # Plot the contour
             coarse_contour_img = ax_contour.imshow(coarse_contour.img)
@@ -650,54 +688,100 @@ class HeterogeneousColorToMassAnalysis:
                 )
                 ax_signal_function.set_ylim(
                     self.signal_model_extents[1][0], self.signal_model_extents[1][1]
-                )
-
-            # Combine plot and scatter for integrated mass over time.
+                )  # Combine plot and scatter for integrated mass over time.
             # Decompose into total, gas, and aqueous mass, and add
             # expected mass using a dashed line.
             ax_mass.set_xlabel("Time (h)")
             ax_mass.set_ylabel("Mass (g)")
-            [integrated_mass_plot] = ax_mass.plot(
-                times,
-                integrated_mass,
-                color="blue",
-                label="total",
-            )
-            [integrated_mass_plot_g] = ax_mass.plot(
-                times,
-                integrated_mass_g,
-                color="green",
-                label="gas",
-            )
-            [integrated_mass_plot_aq] = ax_mass.plot(
-                times,
-                integrated_mass_aq,
-                color="orange",
-                label="aqueous",
-            )
-            ax_mass.plot(
-                times,
-                expected_mass,
-                linestyle="--",
-                color="red",
-                label="injected",
-            )
-            integrated_mass_scatter = ax_mass.scatter(
-                times,
-                integrated_mass,
-                color="blue",
-            )
-            integrated_mass_scatter_g = ax_mass.scatter(
-                times,
-                integrated_mass_g,
-                color="green",
-            )
-            integrated_mass_scatter_aq = ax_mass.scatter(
-                times,
-                integrated_mass_aq,
-                color="orange",
-            )
-            ax_mass.set_ylim(0.0, 2.0 * max(expected_mass))
+
+            # Store plot objects for updates
+            integrated_mass_plots = {}
+            integrated_mass_plots_g = {}
+            integrated_mass_plots_aq = {}
+            expected_mass_plots = {}
+            integrated_mass_scatters = {}
+            integrated_mass_scatters_g = {}
+            integrated_mass_scatters_aq = {}
+
+            # Generate distinct colors for each ROI
+            num_rois = len(rois)
+            _cmap = plt.cm.get_cmap("tab10" if num_rois <= 10 else "tab20")
+            roi_colors = [_cmap(i / max(1, num_rois - 1)) for i in range(num_rois)]
+
+            # Plot each ROI as separate series
+            max_expected = 0
+            for i, (roi_key, roi_times) in enumerate(times.items()):
+                if len(roi_times) > 0:
+                    color = roi_colors[i % len(roi_colors)]
+                    roi_label = roi_key if roi_key else "entire_frame"
+
+                    # Plot lines
+                    [integrated_mass_plots[roi_key]] = ax_mass.plot(
+                        roi_times,
+                        integrated_mass[roi_key],
+                        color=color,
+                        label=f"total ({roi_label})",
+                        linewidth=2,
+                    )
+                    [integrated_mass_plots_g[roi_key]] = ax_mass.plot(
+                        roi_times,
+                        integrated_mass_g[roi_key],
+                        color=color,
+                        label=f"gas ({roi_label})",
+                        linestyle=":",
+                        linewidth=2,
+                    )
+                    [integrated_mass_plots_aq[roi_key]] = ax_mass.plot(
+                        roi_times,
+                        integrated_mass_aq[roi_key],
+                        color=color,
+                        label=f"aqueous ({roi_label})",
+                        linestyle="-.",
+                        linewidth=2,
+                    )
+                    [expected_mass_plots[roi_key]] = ax_mass.plot(
+                        roi_times,
+                        expected_mass[roi_key],
+                        linestyle="--",
+                        color=color,
+                        label=f"injected ({roi_label})",
+                        alpha=0.7,
+                    )
+
+                    # Plot scatter points
+                    integrated_mass_scatters[roi_key] = ax_mass.scatter(
+                        roi_times,
+                        integrated_mass[roi_key],
+                        color=color,
+                        s=20,
+                        alpha=0.8,
+                    )
+                    integrated_mass_scatters_g[roi_key] = ax_mass.scatter(
+                        roi_times,
+                        integrated_mass_g[roi_key],
+                        color=color,
+                        s=15,
+                        alpha=0.6,
+                        marker="^",
+                    )
+                    integrated_mass_scatters_aq[roi_key] = ax_mass.scatter(
+                        roi_times,
+                        integrated_mass_aq[roi_key],
+                        color=color,
+                        s=15,
+                        alpha=0.6,
+                        marker="s",
+                    )
+
+                    # Track maximum for y-axis scaling
+                    if len(expected_mass[roi_key]) > 0:
+                        max_expected = max(max_expected, max(expected_mass[roi_key]))
+
+            # Set y-axis limits based on maximum expected mass across all ROIs
+            if max_expected > 0:
+                ax_mass.set_ylim(0.0, 2.0 * max_expected)
+            else:
+                ax_mass.set_ylim(0.0, 1.0)
             ax_mass.legend()
             ax_mass.grid(True, alpha=0.3)
 
@@ -751,7 +835,7 @@ class HeterogeneousColorToMassAnalysis:
                     0.0,
                     2.0,
                     valinit=val,
-                    valstep=0.05,
+                    valstep=0.01,
                     color=np.clip(
                         self.color_path_interpretation[label_idx].color_path.colors[i],
                         0,
@@ -791,7 +875,7 @@ class HeterogeneousColorToMassAnalysis:
                 # # Calculate new value with step increment, capped at maximum
                 # slider.set_val(new_val)
                 # Fetch all values of all color_path_interpolations for all labels
-                available_labels = np.unique(self.labels.img)
+                available_labels = np.sort(list(self.signal_model.model[1].keys()))
                 current_values = [
                     self.signal_model.model[1][_label_idx].values[slider_index]
                     for _label_idx in available_labels
@@ -903,22 +987,35 @@ class HeterogeneousColorToMassAnalysis:
                     coarse_contour_img.set_data(coarse_contour.img)
 
                     # Update color scale (min/max values) based on current signal
-                    signal_min = np.nanmin(coarse_signal.img)
-                    signal_max = np.nanmax(coarse_signal.img)
+                    if signal_option_ptr[signal_option_idx] == "pH":
+                        signal_min = 0.0
+                        signal_max = 1.0
+                    else:
+                        signal_min = np.nanmin(coarse_signal.img)
+                        signal_max = np.nanmax(coarse_signal.img)
                     coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
                     coarse_signal_colorbar.update_normal(coarse_signal_img)
 
                     # Update mass plots
-                    integrated_mass_plot.set_data(times, integrated_mass)
-                    integrated_mass_plot_g.set_data(times, integrated_mass_g)
-                    integrated_mass_plot_aq.set_data(times, integrated_mass_aq)
-                    integrated_mass_scatter.set_offsets(np.c_[times, integrated_mass])
-                    integrated_mass_scatter_g.set_offsets(
-                        np.c_[times, integrated_mass_g]
-                    )
-                    integrated_mass_scatter_aq.set_offsets(
-                        np.c_[times, integrated_mass_aq]
-                    )
+                    for roi_key in rois:
+                        integrated_mass_plots[roi_key].set_data(
+                            times[roi_key], integrated_mass[roi_key]
+                        )
+                        integrated_mass_plots_g[roi_key].set_data(
+                            times[roi_key], integrated_mass_g[roi_key]
+                        )
+                        integrated_mass_plots_aq[roi_key].set_data(
+                            times[roi_key], integrated_mass_aq[roi_key]
+                        )
+                        integrated_mass_scatters[roi_key].set_offsets(
+                            np.c_[times[roi_key], integrated_mass[roi_key]]
+                        )
+                        integrated_mass_scatters_g[roi_key].set_offsets(
+                            np.c_[times[roi_key], integrated_mass_g[roi_key]]
+                        )
+                        integrated_mass_scatters_aq[roi_key].set_offsets(
+                            np.c_[times[roi_key], integrated_mass_aq[roi_key]]
+                        )
 
                     # Redraw
                     fig.canvas.draw_idle()
@@ -940,7 +1037,7 @@ class HeterogeneousColorToMassAnalysis:
                 # # Calculate new value with step increment, capped at maximum
                 # slider.set_val(new_val)
                 # Fetch all values of all color_path_interpolations for all labels
-                available_labels = np.unique(self.labels.img)
+                available_labels = np.sort(list(self.signal_model.model[1].keys()))
                 current_values = [
                     self.signal_model.model[1][_label_idx].values[slider_index]
                     for _label_idx in available_labels
@@ -1052,22 +1149,35 @@ class HeterogeneousColorToMassAnalysis:
                     coarse_contour_img.set_data(coarse_contour.img)
 
                     # Update color scale (min/max values) based on current signal
-                    signal_min = np.nanmin(coarse_signal.img)
-                    signal_max = np.nanmax(coarse_signal.img)
+                    if signal_option_ptr[signal_option_idx] == "pH":
+                        signal_min = 0.0
+                        signal_max = 1.0
+                    else:
+                        signal_min = np.nanmin(coarse_signal.img)
+                        signal_max = np.nanmax(coarse_signal.img)
                     coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
                     coarse_signal_colorbar.update_normal(coarse_signal_img)
 
                     # Update mass plots
-                    integrated_mass_plot.set_data(times, integrated_mass)
-                    integrated_mass_plot_g.set_data(times, integrated_mass_g)
-                    integrated_mass_plot_aq.set_data(times, integrated_mass_aq)
-                    integrated_mass_scatter.set_offsets(np.c_[times, integrated_mass])
-                    integrated_mass_scatter_g.set_offsets(
-                        np.c_[times, integrated_mass_g]
-                    )
-                    integrated_mass_scatter_aq.set_offsets(
-                        np.c_[times, integrated_mass_aq]
-                    )
+                    for roi_key in rois:
+                        integrated_mass_plots[roi_key].set_data(
+                            times[roi_key], integrated_mass[roi_key]
+                        )
+                        integrated_mass_plots_g[roi_key].set_data(
+                            times[roi_key], integrated_mass_g[roi_key]
+                        )
+                        integrated_mass_plots_aq[roi_key].set_data(
+                            times[roi_key], integrated_mass_aq[roi_key]
+                        )
+                        integrated_mass_scatters[roi_key].set_offsets(
+                            np.c_[times[roi_key], integrated_mass[roi_key]]
+                        )
+                        integrated_mass_scatters_g[roi_key].set_offsets(
+                            np.c_[times[roi_key], integrated_mass_g[roi_key]]
+                        )
+                        integrated_mass_scatters_aq[roi_key].set_offsets(
+                            np.c_[times[roi_key], integrated_mass_aq[roi_key]]
+                        )
 
                     # Redraw
                     fig.canvas.draw_idle()
@@ -1411,57 +1521,59 @@ class HeterogeneousColorToMassAnalysis:
                 Args:
                     slider_index (int): Index of the depth scaling slider (always 0)
                 """
-                nonlocal \
-                    coarse_depth, \
-                    times, \
-                    integrated_mass, \
-                    integrated_mass_g, \
-                    integrated_mass_aq
-                # Get the slider object
-                slider = sliders_depth[slider_index]
+                pass
 
-                # Get current value and slider parameters
-                current_val = slider.val
-                step_size = slider.valstep
-                max_val = slider.valmax
+            #    nonlocal \
+            #        coarse_depth, \
+            #        times, \
+            #        integrated_mass, \
+            #        integrated_mass_g, \
+            #        integrated_mass_aq
+            #    # Get the slider object
+            #    slider = sliders_depth[slider_index]
 
-                # Calculate new value with step increment, capped at maximum
-                new_val = min(current_val + step_size, max_val)
-                slider.set_val(new_val)
+            #    # Get current value and slider parameters
+            #    current_val = slider.val
+            #    step_size = slider.valstep
+            #    max_val = slider.valmax
 
-                # Update the depth in the geometry
-                new_depth = self.original_depth.copy()
-                new_depth.img += new_val
-                self.geometry.update(depth=new_depth)
-                self.analysis.geometry.update(depth=new_depth)
+            #    # Calculate new value with step increment, capped at maximum
+            #    new_val = min(current_val + step_size, max_val)
+            #    slider.set_val(new_val)
 
-                # Update coarse depth for visualization
-                coarse_depth = darsia.resize(self.geometry.depth, shape=coarse_shape)
+            #    # Update the depth in the geometry
+            #    new_depth = self.original_depth.copy()
+            #    new_depth.img += new_val
+            #    self.geometry.update(depth=new_depth)
+            #    self.analysis.geometry.update(depth=new_depth)
 
-                # Update coarse signal plot if active
-                if signal_option_ptr[signal_option_idx] == "depth":
-                    coarse_signal = coarse_depth
-                    coarse_signal_img.set_data(coarse_signal.img)
+            #    # Update coarse depth for visualization
+            #    coarse_depth = darsia.resize(self.geometry.depth, shape=coarse_shape)
 
-                    # Update color scale (min/max values) based on current signal
-                    signal_min = np.nanmin(coarse_signal.img)
-                    signal_max = np.nanmax(coarse_signal.img)
-                    coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
-                    coarse_signal_colorbar.update_normal(coarse_signal_img)
+            #    # Update coarse signal plot if active
+            #    if signal_option_ptr[signal_option_idx] == "depth":
+            #        coarse_signal = coarse_depth
+            #        coarse_signal_img.set_data(coarse_signal.img)
 
-                # Update mass analysis
-                update_mass_analysis()
+            #        # Update color scale (min/max values) based on current signal
+            #        signal_min = np.nanmin(coarse_signal.img)
+            #        signal_max = np.nanmax(coarse_signal.img)
+            #        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
+            #        coarse_signal_colorbar.update_normal(coarse_signal_img)
 
-                # Update mass plots
-                integrated_mass_plot.set_data(times, integrated_mass)
-                integrated_mass_plot_g.set_data(times, integrated_mass_g)
-                integrated_mass_plot_aq.set_data(times, integrated_mass_aq)
-                integrated_mass_scatter.set_offsets(np.c_[times, integrated_mass])
-                integrated_mass_scatter_g.set_offsets(np.c_[times, integrated_mass_g])
-                integrated_mass_scatter_aq.set_offsets(np.c_[times, integrated_mass_aq])
+            #    # Update mass analysis
+            #    update_mass_analysis()
 
-                # Redraw
-                fig.canvas.draw_idle()
+            #    # Update mass plots
+            #    integrated_mass_plot.set_data(times, integrated_mass)
+            #    integrated_mass_plot_g.set_data(times, integrated_mass_g)
+            #    integrated_mass_plot_aq.set_data(times, integrated_mass_aq)
+            #    integrated_mass_scatter.set_offsets(np.c_[times, integrated_mass])
+            #    integrated_mass_scatter_g.set_offsets(np.c_[times, integrated_mass_g])
+            #    integrated_mass_scatter_aq.set_offsets(np.c_[times, integrated_mass_aq])
+
+            #    # Redraw
+            #    fig.canvas.draw_idle()
 
             def depth_slider_down_arrow(slider_index):
                 """Decrement depth scaling slider by one step.
@@ -1469,57 +1581,59 @@ class HeterogeneousColorToMassAnalysis:
                 Args:
                     slider_index (int): Index of the depth scaling slider (always 0)
                 """
-                nonlocal \
-                    coarse_depth, \
-                    times, \
-                    integrated_mass, \
-                    integrated_mass_g, \
-                    integrated_mass_aq
-                # Get the slider object
-                slider = sliders_depth[slider_index]
+                pass
 
-                # Get current value and slider parameters
-                current_val = slider.val
-                step_size = slider.valstep
-                min_val = slider.valmin
+            #    nonlocal \
+            #        coarse_depth, \
+            #        times, \
+            #        integrated_mass, \
+            #        integrated_mass_g, \
+            #        integrated_mass_aq
+            #    # Get the slider object
+            #    slider = sliders_depth[slider_index]
 
-                # Calculate new value with step decrement, capped at minimum
-                new_val = max(current_val - step_size, min_val)
-                slider.set_val(new_val)
+            #    # Get current value and slider parameters
+            #    current_val = slider.val
+            #    step_size = slider.valstep
+            #    min_val = slider.valmin
 
-                # Update the depth in the geometry
-                new_depth = self.original_depth.copy()
-                new_depth.img += new_val
-                self.geometry.update(depth=new_depth)
-                self.analysis.geometry.update(depth=new_depth)
+            #    # Calculate new value with step decrement, capped at minimum
+            #    new_val = max(current_val - step_size, min_val)
+            #    slider.set_val(new_val)
 
-                # Update coarse depth for visualization
-                coarse_depth = darsia.resize(self.geometry.depth, shape=coarse_shape)
+            #    # Update the depth in the geometry
+            #    new_depth = self.original_depth.copy()
+            #    new_depth.img += new_val
+            #    self.geometry.update(depth=new_depth)
+            #    self.analysis.geometry.update(depth=new_depth)
 
-                # Update coarse signal plot if active
-                if signal_option_ptr[signal_option_idx] == "depth":
-                    coarse_signal = coarse_depth
-                    coarse_signal_img.set_data(coarse_signal.img)
+            #    # Update coarse depth for visualization
+            #    coarse_depth = darsia.resize(self.geometry.depth, shape=coarse_shape)
 
-                    # Update color scale (min/max values) based on current signal
-                    signal_min = np.nanmin(coarse_signal.img)
-                    signal_max = np.nanmax(coarse_signal.img)
-                    coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
-                    coarse_signal_colorbar.update_normal(coarse_signal_img)
+            #    # Update coarse signal plot if active
+            #    if signal_option_ptr[signal_option_idx] == "depth":
+            #        coarse_signal = coarse_depth
+            #        coarse_signal_img.set_data(coarse_signal.img)
 
-                # Update mass analysis
-                update_mass_analysis()
+            #        # Update color scale (min/max values) based on current signal
+            #        signal_min = np.nanmin(coarse_signal.img)
+            #        signal_max = np.nanmax(coarse_signal.img)
+            #        coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
+            #        coarse_signal_colorbar.update_normal(coarse_signal_img)
 
-                # Update mass plots
-                integrated_mass_plot.set_data(times, integrated_mass)
-                integrated_mass_plot_g.set_data(times, integrated_mass_g)
-                integrated_mass_plot_aq.set_data(times, integrated_mass_aq)
-                integrated_mass_scatter.set_offsets(np.c_[times, integrated_mass])
-                integrated_mass_scatter_g.set_offsets(np.c_[times, integrated_mass_g])
-                integrated_mass_scatter_aq.set_offsets(np.c_[times, integrated_mass_aq])
+            #    # Update mass analysis
+            #    update_mass_analysis()
 
-                # Redraw
-                fig.canvas.draw_idle()
+            #    # Update mass plots
+            #    integrated_mass_plot.set_data(times, integrated_mass)
+            #    integrated_mass_plot_g.set_data(times, integrated_mass_g)
+            #    integrated_mass_plot_aq.set_data(times, integrated_mass_aq)
+            #    integrated_mass_scatter.set_offsets(np.c_[times, integrated_mass])
+            #    integrated_mass_scatter_g.set_offsets(np.c_[times, integrated_mass_g])
+            #    integrated_mass_scatter_aq.set_offsets(np.c_[times, integrated_mass_aq])
+
+            #    # Redraw
+            #    fig.canvas.draw_idle()
 
             # Position buttons at the top of the figure
             button_width = 0.08
@@ -1748,24 +1862,37 @@ class HeterogeneousColorToMassAnalysis:
                         coarse_contour_img.set_data(coarse_contour.img)
 
                         # Update color scale (min/max values) based on current signal
-                        signal_min = np.nanmin(coarse_signal.img)
-                        signal_max = np.nanmax(coarse_signal.img)
+                        if signal_option_ptr[signal_option_idx] == "pH":
+                            signal_min = 0.0
+                            signal_max = 1.0
+                        else:
+                            signal_min = np.nanmin(coarse_signal.img)
+                            signal_max = np.nanmax(coarse_signal.img)
                         coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
                         coarse_signal_colorbar.update_normal(coarse_signal_img)
 
                         # Update mass plots
-                        integrated_mass_plot.set_data(times, integrated_mass)
-                        integrated_mass_plot_g.set_data(times, integrated_mass_g)
-                        integrated_mass_plot_aq.set_data(times, integrated_mass_aq)
-                        integrated_mass_scatter.set_offsets(
-                            np.c_[times, integrated_mass]
-                        )
-                        integrated_mass_scatter_g.set_offsets(
-                            np.c_[times, integrated_mass_g]
-                        )
-                        integrated_mass_scatter_aq.set_offsets(
-                            np.c_[times, integrated_mass_aq]
-                        )  # Redraw
+                        for roi_key in rois:
+                            integrated_mass_plots[roi_key].set_data(
+                                times[roi_key], integrated_mass[roi_key]
+                            )
+                            integrated_mass_plots_g[roi_key].set_data(
+                                times[roi_key], integrated_mass_g[roi_key]
+                            )
+                            integrated_mass_plots_aq[roi_key].set_data(
+                                times[roi_key], integrated_mass_aq[roi_key]
+                            )
+                            integrated_mass_scatters[roi_key].set_offsets(
+                                np.c_[times[roi_key], integrated_mass[roi_key]]
+                            )
+                            integrated_mass_scatters_g[roi_key].set_offsets(
+                                np.c_[times[roi_key], integrated_mass_g[roi_key]]
+                            )
+                            integrated_mass_scatters_aq[roi_key].set_offsets(
+                                np.c_[times[roi_key], integrated_mass_aq[roi_key]]
+                            )
+
+                        # Redraw
                         fig.canvas.draw_idle()
 
                     def update_label_analysis(event=None):
@@ -1858,8 +1985,12 @@ class HeterogeneousColorToMassAnalysis:
                         coarse_contour_img.set_data(coarse_contour.img)
 
                         # Update color scale (min/max values) based on current signal
-                        signal_min = np.nanmin(coarse_signal.img)
-                        signal_max = np.nanmax(coarse_signal.img)
+                        if signal_option_ptr[signal_option_idx] == "pH":
+                            signal_min = 0.0
+                            signal_max = 1.0
+                        else:
+                            signal_min = np.nanmin(coarse_signal.img)
+                            signal_max = np.nanmax(coarse_signal.img)
                         coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
                         coarse_signal_colorbar.update_normal(coarse_signal_img)
 
@@ -1936,8 +2067,12 @@ class HeterogeneousColorToMassAnalysis:
                         ax_signal.set_title(
                             signal_options[signal_option_ptr[signal_option_idx]]
                         )  # Update color scale (min/max values) based on current signal
-                        signal_min = np.nanmin(coarse_signal.img)
-                        signal_max = np.nanmax(coarse_signal.img)
+                        if signal_option_ptr[signal_option_idx] == "pH":
+                            signal_min = 0.0
+                            signal_max = 1.0
+                        else:
+                            signal_min = np.nanmin(coarse_signal.img)
+                            signal_max = np.nanmax(coarse_signal.img)
                         coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
                         coarse_signal_colorbar.update_normal(coarse_signal_img)
                         # Redraw
@@ -1946,9 +2081,11 @@ class HeterogeneousColorToMassAnalysis:
                     btn_next_signal.on_clicked(next_signal)
 
                     def next_label(event):
-                        nonlocal label_idx
+                        nonlocal label_idx, _label_idx
                         # Get available labels from the labels image
-                        available_labels = np.unique(self.labels.img)
+                        available_labels = np.sort(
+                            list(self.signal_model.model[1].keys())
+                        )
                         available_labels = available_labels[
                             available_labels >= 0
                         ]  # Remove negative labels if any
@@ -1962,6 +2099,7 @@ class HeterogeneousColorToMassAnalysis:
                             label_idx = available_labels[
                                 0
                             ]  # Default to first available label
+                        _label_idx = label_idx
 
                         # Update coarse image plot that depends on label_idx
                         ax_coarse_image.set_title(
@@ -2136,8 +2274,12 @@ class HeterogeneousColorToMassAnalysis:
 
                         # Update signal image and colorbar
                         coarse_signal_img.set_data(coarse_signal.img)
-                        signal_min = np.nanmin(coarse_signal.img)
-                        signal_max = np.nanmax(coarse_signal.img)
+                        if signal_option_ptr[signal_option_idx] == "pH":
+                            signal_min = 0.0
+                            signal_max = 1.0
+                        else:
+                            signal_min = np.nanmin(coarse_signal.img)
+                            signal_max = np.nanmax(coarse_signal.img)
                         coarse_signal_img.set_clim(vmin=signal_min, vmax=signal_max)
                         coarse_signal_colorbar.update_normal(coarse_signal_img)
 
@@ -2194,6 +2336,223 @@ class HeterogeneousColorToMassAnalysis:
                     plt.show()
 
                 show_tuner(label_idx)
+
+    def automatic_calibration(
+        self,
+        images: list[darsia.Image],
+        experiment: darsia.ProtocolledExperiment,
+        rois: dict[str, darsia.VoxelArray | darsia.CoordinateArray] | None = None,
+        cmap=None,
+    ) -> None:
+        """Define a local color path for a specific label.
+
+        Instructions:
+            - Pick a label in the image using the mouse and select a rectangle.
+            - Define a new color path just for this label.
+            - Tune the values for the color path.
+
+        Args:
+            image (darsia.Image): The image from which to define the local color path.
+
+        """
+        # Fill up rois with "entire frame"
+        rois = rois or {}
+        assert "" not in rois
+        rois.update(
+            {
+                "full": darsia.CoordinateArray(
+                    [
+                        self.color_analysis.base.origin,
+                        self.color_analysis.base.opposite_corner,
+                    ]
+                )
+            }
+        )
+
+        # ! ---- COLOR INTERPRETATIONS ----
+        color_interpretations = [
+            self.call_color_interpretation(image) for image in images
+        ]
+
+        # ! ---- INITIAL DOFS ----
+        available_labels = np.sort(list(self.signal_model.model[1].keys()))
+        ignore_labels = [1, 3, 4]
+        initial_dofs = np.hstack(
+            [
+                np.diff(self.signal_model.model[1][label].values)
+                for label in available_labels
+                if label not in ignore_labels
+            ]
+            + [self.flash.cut_off, self.flash.max_value - self.flash.cut_off]
+        )
+        logging.info(f"Number of DOFs for optimization: {len(initial_dofs)}")
+
+        # ! ---- OBJECTIVE FUNCTION ----
+
+        def objective_function(dofs: np.ndarray) -> float:
+            logging.info(f"DOFs {dofs}")
+            logging.info(f"DOFs hash: {hash(tuple(dofs))}")
+            # Update the signal model
+            idx = 0
+            for label in available_labels:
+                if label in ignore_labels:
+                    continue
+                num_values = len(self.signal_model.model[1][label].values)
+                new_values = np.cumsum(
+                    np.hstack(
+                        [
+                            0.0,
+                            dofs[idx : idx + num_values - 1],
+                        ]
+                    )
+                )
+                logging.info(f"Label {label}: {new_values}")
+                self.signal_model.model[1][label].update(values=new_values)
+                idx += num_values - 1
+            # Update the flash model
+            self.flash.update(cut_off=dofs[-2], max_value=dofs[-1] + dofs[-2])
+            logging.info(
+                f"Flash cut-off: {self.flash.cut_off}, max value: {self.flash.max_value}"
+            )
+
+            # Allocate variables for mass analysis
+            times = {r: [] for r in rois}
+            expected_mass = {r: [] for r in rois}
+            integrated_mass = {r: [] for r in rois}
+            integrated_mass_g = {r: [] for r in rois}
+            integrated_mass_aq = {r: [] for r in rois}
+            error = 0.0
+
+            analysis = {
+                roi_key: SimpleRunAnalysis(self.geometry.subregion(roi))
+                for roi_key, roi in rois.items()
+            }
+            for img, color_interpretation in zip(images, color_interpretations):
+                # Update thermodynamic state
+                state = experiment.pressure_temperature_protocol.get_state(img.date)
+                gradient = experiment.pressure_temperature_protocol.get_gradient(
+                    img.date
+                )
+                self.co2_mass_analysis.update_state(
+                    atmospheric_pressure=state.pressure,
+                    atmospheric_temperature=state.temperature,
+                    atmospheric_pressure_gradient=gradient.pressure,
+                    atmospheric_temperature_gradient=gradient.temperature,
+                )
+
+                # Signal analysis
+                pH = self.call_pH_analysis(color_interpretation)
+
+                # Mass computation
+                mass_analysis_result = self.call_flash_and_mass_analysis(pH)
+
+                for roi_key, roi in rois.items():
+                    # Subregion mass
+                    roi_mass_analysis_result = mass_analysis_result.subregion(roi)
+
+                    # Compute expected mass
+                    assert isinstance(roi, darsia.CoordinateArray)
+                    roi_exact_mass = experiment.injection_protocol.injected_mass(
+                        img.date, roi
+                    )
+
+                    # Track result
+                    analysis[roi_key].track(
+                        roi_mass_analysis_result, exact_mass=roi_exact_mass
+                    )
+
+            # Monitor mass evolution over time
+            for roi_key in rois:
+                times[roi_key] = analysis[roi_key].data.time
+                expected_mass[roi_key] = analysis[roi_key].data.exact_mass_tot
+                integrated_mass[roi_key] = analysis[roi_key].data.mass_tot
+                integrated_mass_g[roi_key] = analysis[roi_key].data.mass_g
+                integrated_mass_aq[roi_key] = analysis[roi_key].data.mass_aq
+
+                # Errors
+                _error = np.abs(
+                    np.array(integrated_mass[roi_key])
+                    - np.array(expected_mass[roi_key])
+                ) / np.abs(expected_mass[roi_key]).clip(min=1e-8)
+
+                logging.info(
+                    f"Mass analysis for roi {roi_key} updated.\nNew relative error: {_error}"
+                )
+                error += np.sum(_error)
+            logging.info(f"Current total error: {error}")
+
+            return error
+
+        # ! ---- OPTIMIZATION ----
+        # Use Nelder-Mead method for derivative-free optimization
+        # Configure comprehensive optimization options with detailed explanations
+        optimization_options = {
+            "maxiter": 10,  # Maximum number of iterations to prevent infinite loops
+            # "maxfev": 5000,  # Maximum function evaluations (safety limit)
+            "disp": True,  # Display convergence messages during optimization
+            "xtol": 1e-6,  # Absolute tolerance for parameter convergence
+            "ftol": 1e-6,  # Absolute tolerance for function value convergence
+            # "adaptive": True,  # Use adaptive algorithm parameters for better performance
+            # "return_all": False,  # Don't return all intermediate results (saves memory)
+        }
+
+        # Create initial simplex for Nelder-Mead method with custom increment sizes
+        # The simplex needs n+1 vertices where n is the number of parameters
+        n_params = len(initial_dofs)
+        initial_simplex = np.zeros((n_params + 1, n_params))
+
+        # First vertex is the initial guess
+        initial_simplex[0] = initial_dofs
+
+        # Create remaining vertices by adding increments to each parameter
+        for i in range(n_params):
+            initial_simplex[i + 1] = initial_dofs.copy()
+
+            # Use different increment sizes based on parameter type
+            if i < n_params - 2:  # Signal function parameters
+                increment = 0.2
+            else:  # Last two parameters (flash cut-off and max_value)
+                increment = 0.01
+
+            initial_simplex[i + 1, i] += increment
+
+        logging.info(f"Initial simplex shape: {initial_simplex.shape}")
+        logging.info(f"Initial simplex:\n{initial_simplex}")
+
+        # Add initial simplex to optimization options
+        optimization_options["initial_simplex"] = initial_simplex
+
+        result = minimize(
+            objective_function,
+            initial_dofs,
+            method="Nelder-Mead",
+            # method="Powell",
+            # method="L-BFGS-B",
+            bounds=[(0, 1)] * len(initial_dofs),
+            options=optimization_options,
+        )
+        logging.info(f"Optimization result: {result}")
+
+        # Final update of the signal model with optimized DOFs
+        idx = 0
+        for label in available_labels:
+            num_values = len(self.signal_model.model[1][label].values)
+            new_values = np.cumsum(
+                np.hstack(
+                    [
+                        0.0,
+                        result.x[idx : idx + num_values - 1],
+                    ]
+                )
+            )
+            logging.info(f"Label {label}: {new_values}")
+            self.signal_model.model[1][label].update(values=new_values)
+            idx += num_values - 1
+        # Update the flash model
+        self.flash.update(cut_off=result.x[-2], max_value=result.x[-1] + result.x[-2])
+        logging.info(
+            f"Flash cut-off: {self.flash.cut_off}, max value: {self.flash.max_value}"
+        )
 
     def save(self, folder: Path) -> None:
         """Save the calibration data to json file.
