@@ -128,6 +128,7 @@ class ColorRange:
             path (Path): Path to the json file.
 
         """
+        path.mkdir(parents=True, exist_ok=True)
         with open(path.with_suffix(".json"), "w") as f:
             json.dump(
                 self.to_dict(),
