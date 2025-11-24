@@ -41,6 +41,11 @@ def build_parser_for_calibration():
         help="Path to config file.",
     )
     parser.add_argument(
+        "--ref-config",
+        type=str,
+        help="Path to reference/global config file.",
+    )
+    parser.add_argument(
         "--all", action="store_true", help="Activate all calibration steps."
     )
     parser.add_argument(
@@ -114,13 +119,18 @@ def preset_calibration(rig=Rig):
     if args.all or args.color_paths:
         calibration_color_paths(rig, Path(args.config), args.show)
 
+    if args.all or args.color_to_mass_analysis:
+        ref_config = Path(args.ref_config) if args.ref_config else None
+        calibration_color_to_mass_analysis(
+            rig,
+            Path(args.config),
+            ref_path=ref_config,
+            reset=args.reset,
+            show=args.show,
+        )
+
     if args.all or args.color_analysis:
         calibration_color_analysis(rig, Path(args.config), args.show)
-
-    if args.all or args.color_to_mass_analysis:
-        calibration_color_to_mass_analysis(
-            rig, Path(args.config), reset=args.reset, show=args.show
-        )
 
     if args.all or args.color_signal:
         calibration_color_signal(rig, Path(args.config), args.show)
