@@ -122,3 +122,6 @@ from darsia.experiment.experiment import *
 from darsia.experiment.protocols import *
 
 from darsia.corrections.readcorrection import *
+
+# Presets
+from darsia.presets.workflows.simple_run_analysis import *
