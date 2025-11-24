@@ -316,6 +316,7 @@ class ColorPath:
         """
         with open(path.with_suffix(".json"), "w") as f:
             json.dump(self.to_dict(), f)
+        logger.info(f"Saved color path to {path}.")
 
     @classmethod
     def load(cls, path: Path) -> "ColorPath":
@@ -358,6 +359,7 @@ class ColorPath:
         num_segments: int,
         distance_to_left: float | None = None,
         distance_to_right: float | None = None,
+        mode: Literal["relative", "equidistant"] = "relative",
     ) -> "ColorPath":
         """Redefine the color path with a given number of segments.
 
@@ -383,7 +385,7 @@ class ColorPath:
         relative_colors = self.interpret(
             distances,
             color_mode=darsia.ColorMode.RELATIVE,
-            mode="relative",
+            mode=mode,
         )
 
         # Create new color path
@@ -396,6 +398,7 @@ class ColorPath:
 
     # ! ---- PARAMETRIZATION OF COLORS ----
 
+    @darsia.timing_decorator
     def fit(
         self,
         colors: np.ndarray,
