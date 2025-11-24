@@ -44,6 +44,9 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     fluidflower.load(config.rig.path)
     fluidflower.load_experiment(experiment)
 
+    # Hardcode the use of facies.
+    fluidflower.labels = fluidflower.facies.copy()
+
     # ! ---- LOAD IMAGES ----
     baseline_images: list[darsia.Image] = []
     for p in config.color_paths.baseline_image_paths:
@@ -106,11 +109,11 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     expanded_baseline_color_spectrum: darsia.LabelColorSpectrumMap = (
         color_path_regression.expand_color_spectrum(
             color_spectrum=baseline_color_spectrum,
-            verbose=True,
+            verbose=False,
         )
     )
     expanded_baseline_color_spectrum.save(
-        config.color_paths.baseline_color_spectrum_file
+        config.color_paths.baseline_color_spectrum_folder
     )
 
     # ! ---- EXTRACT COLOR SPECTRUM OF TRACERS ---- ! #
@@ -120,7 +123,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
         baseline=fluidflower.baseline,
         ignore=expanded_baseline_color_spectrum,
         threshold_significant=config.color_paths.threshold_calibration,
-        verbose=False,
+        verbose=show,
     )
     # Free memory for performance
     del calibration_images
@@ -142,8 +145,8 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     # Display the color paths
     if show:
         print(label_color_path_map)
-        label_color_path_map.show()
-
-    # TODO: Provide advanced plotting - mostly for paper publication.
+        label_color_path_map.show_cmaps()
+        # label_color_path_map.show_paths()
+        # TODO: Provide advanced plotting - mostly for paper publication.
 
     logger.info("Calibration of color paths completed.")
