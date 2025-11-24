@@ -338,7 +338,9 @@ class InjectionProtocol:
         """Number of injections in the protocol."""
 
     def injected_mass(
-        self, date: datetime, roi: Optional[darsia.Image] = None
+        self,
+        date: datetime,
+        roi: Optional[darsia.Image | darsia.CoordinateArray] = None,
     ) -> float:
         """Get the cumulative injected mass until the given date.
 
@@ -359,12 +361,24 @@ class InjectionProtocol:
             end = row["end"]
             rate_mass = row["rate_kg_s"]  # kg/s
 
-            if roi is not None:
-                # Check if the injection location is within the ROI
+            # Check if the injection location is within the ROI
+            if isinstance(roi, darsia.Image):
                 if not roi.coordinate_system.contains_point(
                     darsia.Coordinate([location_x, location_y])
                 ):
                     continue
+            elif isinstance(roi, darsia.CoordinateArray):
+                min_coordinate = roi.min(axis=0)
+                max_coordinate = roi.max(axis=0)
+                if not (
+                    min_coordinate[0] <= location_x <= max_coordinate[0]
+                    and min_coordinate[1] <= location_y <= max_coordinate[1]
+                ):
+                    continue
+            elif roi:
+                raise ValueError(
+                    "ROI must be either a darsia.Image or darsia.CoordinateArray."
+                )
 
             # Determine how much time of the interval has passed (between 0 and the full interval)
             if date <= start:
