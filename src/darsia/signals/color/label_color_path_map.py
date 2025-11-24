@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 import darsia
+from typing import Literal
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +33,15 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
             str_str += f"Label {label}: {str(color_path)}\n"
         return str_str
 
-    def show_cmap(self) -> None:
+    def show_cmaps(self) -> None:
         """Show the color paths."""
         for _, color_path in self.items():
             color_path.show_cmap()
+
+    def show_paths(self) -> None:
+        """Show the color paths."""
+        for _, color_path in self.items():
+            color_path.show_path()
 
     def save(self, directory: Path) -> None:
         """Save color paths to a directory.
@@ -82,6 +88,7 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
         num_segments: int,
         distance_to_left: float | None = None,
         distance_to_right: float | None = None,
+        mode: Literal["relative", "equidistant"] = "relative",
     ) -> "LabelColorPathMap":
         """Refine each color path in the map by increasing the number of segments.
 
@@ -101,5 +108,6 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
                 num_segments=num_segments,
                 distance_to_left=distance_to_left,
                 distance_to_right=distance_to_right,
+                mode=mode,
             )
         return refined_map
