@@ -164,6 +164,36 @@ class Geometry:
         else:
             return rescaled_img
 
+    def subregion(self, roi: darsia.CoordinateArray) -> "Geometry":
+        """Extract subregion of the geometry.
+
+        Args:
+            roi (darsia.CoordinateArray): region of interest.
+
+        Returns:
+            Geometry: subregion geometry.
+
+        """
+        # Compute new dimensions
+        new_dimensions = []
+        for i in range(self.space_dim):
+            length = np.max(roi, axis=0)[i] - np.min(roi, axis=0)[i]
+            new_dimensions.append(length)
+
+        # Compute new number of voxels
+        new_num_voxels = []
+        for i in range(self.space_dim):
+            length = np.max(roi, axis=0)[i] - np.min(roi, axis=0)[i]
+            voxel_size = self.voxel_size[i]
+            new_num_voxels.append(int(np.ceil(length / voxel_size)))
+
+        # Create sub-geometry
+        return Geometry(
+            self.space_dim,
+            new_num_voxels,
+            new_dimensions,
+        )
+
 
 class WeightedGeometry(Geometry):
     """Geometry with weighted volume."""
@@ -206,6 +236,38 @@ class WeightedGeometry(Geometry):
         """Effective voxel volume in 3d."""
         self.cached_voxel_volume = self.voxel_volume.copy()
         """Internal copy of the voxel volume for efficient integration."""
+
+    def subregion(self, roi: darsia.CoordinateArray) -> "WeightedGeometry":
+        """Extract subregion of the geometry.
+
+        Args:
+            roi (darsia.CoordinateArray): region of interest.
+
+        Returns:
+            WeightedGeometry: subregion geometry.
+
+        """
+        # Extract sub-geometry using base class method
+        sub_geometry = super().subregion(roi)
+
+        # Extract weight
+        if isinstance(self.weight, np.ndarray):
+            weight_image = darsia.Image(
+                self.weight, dimensions=self.dimensions, space_dim=self.space_dim
+            )
+            sub_weight_image = weight_image.subregion(roi)
+            sub_weight = sub_weight_image.img
+        else:
+            sub_weight = self.weight
+
+        # Create sub-weighted geometry
+        return WeightedGeometry(
+            sub_weight,
+            sub_geometry.space_dim,
+            list(sub_weight.shape),
+            sub_geometry.dimensions,
+            sub_geometry.voxel_size,
+        )
 
 
 class ExtrudedGeometry(WeightedGeometry):
