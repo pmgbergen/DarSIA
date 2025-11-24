@@ -118,34 +118,45 @@ class AdvancedFlash(Flash):
 class SimpleFlash:
     def __init__(
         self,
-        cut_off: float,
-        max_value: float | None = None,
+        min_value_aq: float,
+        max_value_aq: float,
+        min_value_g: float,
+        max_value_g: float,
         restoration=None,
     ) -> None:
         """Constructor."""
 
-        self.cut_off = cut_off
-        """Cut-off value."""
-        self.max_value = max_value
+        self.min_value_aq = min_value_aq
+        """Minimum value."""
+        self.max_value_aq = max_value_aq
+        """Maximum value."""
+        self.min_value_g = min_value_g
+        """Minimum value."""
+        self.max_value_g = max_value_g
         """Maximum value."""
         self.restoration = restoration
         """Restoration object."""
 
     def update(
-        self, cut_off: float | None = None, max_value: float | None = None
+        self,
+        min_value_aq: float | None = None,
+        max_value_aq: float | None = None,
+        min_value_g: float | None = None,
+        max_value_g: float | None = None,
     ) -> None:
         """Update of internal parameters.
 
         Args:
-            cut_off (float, optional): cut-off value
-            max_value (float, optional): maximum value
+            min_value_aq (float | None): Minimum value for aqueous phase.
+            max_value_aq (float | None): Maximum value for aqueous phase.
+            min_value_g (float | None): Minimum value for gas phase.
+            max_value_g (float | None): Maximum value for gas phase.
 
         """
-        if cut_off is not None:
-            self.cut_off = cut_off
-
-        if max_value is not None:
-            self.max_value = max_value
+        self.min_value_aq = min_value_aq or self.min_value_aq
+        self.max_value_aq = max_value_aq or self.max_value_aq
+        self.min_value_g = min_value_g or self.min_value_g
+        self.max_value_g = max_value_g or self.max_value_g
 
     @darsia.timing_decorator
     def __call__(self, signal: darsia.Image) -> tuple[darsia.Image, darsia.Image]:
@@ -158,26 +169,44 @@ class SimpleFlash:
             tuple: volumetric concentration in aqueous phase, saturation in gas phase
 
         """
-        if np.isclose(self.cut_off, 0):
-            c_aq = darsia.full_like(signal, 0.0)
-        else:
-            c_aq = darsia.full_like(
-                signal, np.clip(signal.img, 0, self.cut_off) / self.cut_off
+        # if np.isclose(self.cut_off, 0):
+        #    c_aq = darsia.full_like(signal, 0.0)
+        # else:
+        #    c_aq = darsia.full_like(
+        #        signal, np.clip(signal.img, 0, self.cut_off) / self.cut_off
+        #    )
+        # if self.max_value is None:
+        #    s_g = darsia.full_like(signal, np.clip(signal.img - self.cut_off, 0, None))
+        # elif np.isclose(self.max_value, self.cut_off):
+        #    s_g = darsia.full_like(signal, signal.img >= self.cut_off)
+        # else:
+        #    s_g = darsia.full_like(
+        #        signal,
+        #        (np.clip(signal.img, self.cut_off, self.max_value) - self.cut_off)
+        #        / (self.max_value - self.cut_off),
+        #    )
+        # if self.restoration is not None:
+        #    c_aq = self.restoration(c_aq)
+        #    s_g = self.restoration(s_g)
+
+        # return c_aq, s_g
+
+        c_aq = darsia.full_like(
+            signal,
+            (
+                np.clip(signal.img, self.min_value_aq, self.max_value_aq)
+                - self.min_value_aq
             )
-        if self.max_value is None:
-            s_g = darsia.full_like(signal, np.clip(signal.img - self.cut_off, 0, None))
-        elif np.isclose(self.max_value, self.cut_off):
-            s_g = darsia.full_like(signal, signal.img >= self.cut_off)
-        else:
-            s_g = darsia.full_like(
-                signal,
-                (np.clip(signal.img, self.cut_off, self.max_value) - self.cut_off)
-                / (self.max_value - self.cut_off),
-            )
+            / (self.max_value_aq - self.min_value_aq),
+        )
+        s_g = darsia.full_like(
+            signal,
+            (np.clip(signal.img, self.min_value_g, self.max_value_g) - self.min_value_g)
+            / (self.max_value_g - self.min_value_g),
+        )
         if self.restoration is not None:
             c_aq = self.restoration(c_aq)
             s_g = self.restoration(s_g)
-
         return c_aq, s_g
 
     def to_dict(self) -> dict:
@@ -188,8 +217,10 @@ class SimpleFlash:
 
         """
         return {
-            "cut_off": self.cut_off,
-            "max_value": self.max_value,
+            "min_value_aq": self.min_value_aq,
+            "max_value_aq": self.max_value_aq,
+            "min_value_g": self.min_value_g,
+            "max_value_g": self.max_value_g,
         }
 
     @classmethod
@@ -201,8 +232,10 @@ class SimpleFlash:
 
         """
         return cls(
-            cut_off=data["cut_off"],
-            max_value=data.get("max_value"),
+            min_value_aq=data["min_value_aq"],
+            max_value_aq=data.get("max_value_aq"),
+            min_value_g=data.get("min_value_g"),
+            max_value_g=data.get("max_value_g"),
         )
 
     def save(self, path: Path) -> None:
