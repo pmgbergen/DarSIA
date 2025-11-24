@@ -198,7 +198,6 @@ class HeterogeneousColorToMassAnalysis:
         integrated_mass = {r: [] for r in rois}
         integrated_mass_g = {r: [] for r in rois}
         integrated_mass_aq = {r: [] for r in rois}
-        square_error = {r: [] for r in rois}
 
         # Choices for signal illustration
         signal_options = {
@@ -327,7 +326,6 @@ class HeterogeneousColorToMassAnalysis:
             nonlocal integrated_mass
             nonlocal integrated_mass_g
             nonlocal integrated_mass_aq
-            nonlocal square_error
 
             analysis = {
                 roi_key: SimpleRunAnalysis(self.geometry.subregion(roi))
@@ -372,14 +370,14 @@ class HeterogeneousColorToMassAnalysis:
 
             # Monitor mass evolution over time
             for roi_key in rois:
-                times[roi_key] = analysis[roi_key].data.time
+                times[roi_key] = [t / 3600 for t in analysis[roi_key].data.time]
                 expected_mass[roi_key] = analysis[roi_key].data.exact_mass_tot
                 integrated_mass[roi_key] = analysis[roi_key].data.mass_tot
                 integrated_mass_g[roi_key] = analysis[roi_key].data.mass_g
                 integrated_mass_aq[roi_key] = analysis[roi_key].data.mass_aq
 
                 # Errors
-                relative_error = np.abs(
+                relative_error = (
                     np.array(integrated_mass[roi_key])
                     - np.array(expected_mass[roi_key])
                 ) / np.abs(expected_mass[roi_key]).clip(min=1e-8)
@@ -474,9 +472,21 @@ class HeterogeneousColorToMassAnalysis:
                 coarse_image,
                 mask=[
                     coarse_c_aq > 0.05,
+                    coarse_c_aq > 0.1,
+                    coarse_c_aq > 0.25,
+                    coarse_c_aq > 0.50,
+                    coarse_c_aq > 0.9,
                     coarse_s_g > 0.05,
-                ],  # TODO make thresholds adjustable
-                color=[(255, 0, 0), (0, 255, 0)],  # TODO make colors adjustable
+                ],
+                color=[
+                    (255, 0, 0),
+                    (255, 0, 0),
+                    (255, 0, 0),
+                    (255, 0, 0),
+                    (255, 0, 0),
+                    (0, 255, 0),
+                ],
+                alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
                 return_image=True,
             )  # Use gridspec to create a 2x3 grid with proper ratios
             fig = plt.figure(figsize=(20, 12))
@@ -620,40 +630,75 @@ class HeterogeneousColorToMassAnalysis:
                 )
 
                 # Indicate cut-off and max value from flash model
-                signal_function_cut_off_y = ax_signal_function.axhline(
-                    y=self.flash.cut_off,
+                signal_function_aq_min_y = ax_signal_function.axhline(
+                    y=self.flash.min_value_aq,
                     color="k",
                     linestyle="--",
-                    label="cut-off",
+                    label="aq_min",
                     zorder=1,
                 )
-                signal_function_max_value_y = ax_signal_function.axhline(
-                    y=self.flash.max_value,
+                signal_function_aq_max_y = ax_signal_function.axhline(
+                    y=self.flash.max_value_aq,
                     color="k",
                     linestyle="--",
-                    label="max value",
+                    label="aq_max",
+                    zorder=1,
+                )
+                signal_function_g_max_y = ax_signal_function.axhline(
+                    y=self.flash.max_value_g,
+                    color="k",
+                    linestyle="--",
+                    label="g_max",
+                    zorder=1,
+                )
+
+                signal_function_g_min_y = ax_signal_function.axhline(
+                    y=self.flash.min_value_g,
+                    color="k",
+                    linestyle="--",
+                    label="g_min",
                     zorder=1,
                 )
 
                 # Find the corresponding x-values for the cut-off and max value lines as solution to the signal_function(x) = cut_off and signal_function(x) = max_value
-                cut_off_x = signal_func.inverse(self.flash.cut_off)
-                max_value_x = signal_func.inverse(self.flash.max_value)
+                aq_min_x = signal_func.inverse(self.flash.min_value_aq)
+                aq_max_x = signal_func.inverse(self.flash.max_value_aq)
+                g_max_x = signal_func.inverse(self.flash.max_value_g)
+                g_min_x = signal_func.inverse(self.flash.min_value_g)
 
                 # Add vertical lines for cut-off and max value
-                signal_function_cut_off_x = ax_signal_function.axvline(
-                    x=cut_off_x, color="k", linestyle="--", label="cut-off", zorder=1
-                )
-                signal_function_max_value_x = ax_signal_function.axvline(
-                    x=max_value_x,
+                signal_function_aq_min_x = ax_signal_function.axvline(
+                    x=aq_min_x,
                     color="k",
                     linestyle="--",
-                    label="max value",
+                    label="min value aq",
+                    zorder=1,
+                )
+                signal_function_aq_max_x = ax_signal_function.axvline(
+                    x=aq_max_x,
+                    color="k",
+                    linestyle="--",
+                    label="max value aq",
+                    zorder=1,
+                )
+                signal_function_g_max_x = ax_signal_function.axvline(
+                    x=g_max_x,
+                    color="k",
+                    linestyle="--",
+                    label="max value g",
+                    zorder=1,
+                )
+                signal_function_g_min_x = ax_signal_function.axvline(
+                    x=g_min_x,
+                    color="k",
+                    linestyle="--",
+                    label="min value g",
                     zorder=1,
                 )
 
                 # Make text annotations "CO2(aq)" and "CO2(g)" below and above the cut-off line
                 signal_function_co2_aq = ax_signal_function.text(
-                    x=cut_off_x - 0.05,
+                    x=aq_max_x - 0.05,
                     y=0.04,
                     s="CO2(aq)",
                     ha="center",
@@ -662,7 +707,7 @@ class HeterogeneousColorToMassAnalysis:
                     color="k",
                 )
                 signal_function_co2_g = ax_signal_function.text(
-                    x=cut_off_x + 0.05,
+                    x=aq_max_x + 0.05,
                     y=0.04,
                     s="CO2(g)",
                     ha="center",
@@ -671,7 +716,7 @@ class HeterogeneousColorToMassAnalysis:
                     color="k",
                 )
                 signal_function_co2_g_full = ax_signal_function.text(
-                    x=max_value_x + 0.1,
+                    x=g_max_x + 0.1,
                     y=0.04,
                     s="CO2(g) - 100%",
                     ha="center",
@@ -794,7 +839,7 @@ class HeterogeneousColorToMassAnalysis:
 
             # Calculate total number of sliders needed
             num_value_sliders = len(self.signal_model.model[1][label_idx].values)
-            num_flash_sliders = 2
+            num_flash_sliders = 4
             num_threshold_sliders = 2
             num_depth_sliders = 1  # Depth scaling slider
             total_sliders = (
@@ -949,12 +994,21 @@ class HeterogeneousColorToMassAnalysis:
                         coarse_image,
                         mask=[
                             coarse_c_aq > sliders_threshold[0].val,
+                            coarse_c_aq > 0.1,
+                            coarse_c_aq > 0.25,
+                            coarse_c_aq > 0.50,
+                            coarse_c_aq > 0.9,
                             coarse_s_g > sliders_threshold[1].val,
                         ],
                         color=[
                             (255, 0, 0),
+                            (255, 0, 0),
+                            (255, 0, 0),
+                            (255, 0, 0),
+                            (255, 0, 0),
                             (0, 255, 0),
-                        ],  # TODO make colors adjustable
+                        ],
+                        alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
                         return_image=True,
                     )
 
@@ -970,17 +1024,23 @@ class HeterogeneousColorToMassAnalysis:
                         signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
 
                     # Update flash cut-off and max value lines
-                    signal_function_cut_off_y.set_ydata(self.flash.cut_off)
-                    signal_function_max_value_y.set_ydata(self.flash.max_value)
-                    cut_off_x = signal_func.inverse(self.flash.cut_off)
-                    max_value_x = signal_func.inverse(self.flash.max_value)
-                    signal_function_cut_off_x.set_xdata(cut_off_x)
-                    signal_function_max_value_x.set_xdata(max_value_x)
+                    signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
+                    signal_function_aq_min_y.set_ydata(self.flash.min_value_aq)
+                    signal_function_g_max_y.set_ydata(self.flash.max_value_g)
+                    signal_function_g_min_y.set_ydata(self.flash.min_value_g)
+                    aq_max_x = signal_func.inverse(self.flash.max_value_aq)
+                    aq_min_x = signal_func.inverse(self.flash.min_value_aq)
+                    g_max_x = signal_func.inverse(self.flash.max_value_g)
+                    g_min_x = signal_func.inverse(self.flash.min_value_g)
+                    signal_function_aq_max_x.set_xdata(aq_max_x)
+                    signal_function_aq_min_x.set_xdata(aq_min_x)
+                    signal_function_g_max_x.set_xdata(g_max_x)
+                    signal_function_g_min_x.set_xdata(g_min_x)
 
                     # Update the position of the annotaion
-                    ax_signal_function.texts[0].set_position((cut_off_x - 0.05, 0.04))
-                    ax_signal_function.texts[1].set_position((cut_off_x + 0.05, 0.04))
-                    ax_signal_function.texts[2].set_position((max_value_x + 0.1, 0.04))
+                    ax_signal_function.texts[0].set_position((aq_max_x - 0.05, 0.04))
+                    ax_signal_function.texts[1].set_position((aq_max_x + 0.05, 0.04))
+                    ax_signal_function.texts[2].set_position((g_max_x + 0.1, 0.04))
 
                     # Update dense plots
                     coarse_signal_img.set_data(coarse_signal.img)
@@ -1111,12 +1171,21 @@ class HeterogeneousColorToMassAnalysis:
                         coarse_image,
                         mask=[
                             coarse_c_aq > sliders_threshold[0].val,
+                            coarse_c_aq > 0.1,
+                            coarse_c_aq > 0.25,
+                            coarse_c_aq > 0.5,
+                            coarse_c_aq > 0.9,
                             coarse_s_g > sliders_threshold[1].val,
                         ],
                         color=[
                             (255, 0, 0),
+                            (255, 0, 0),
+                            (255, 0, 0),
+                            (255, 0, 0),
+                            (255, 0, 0),
                             (0, 255, 0),
-                        ],  # TODO make colors adjustable
+                        ],
+                        alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
                         return_image=True,
                     )
 
@@ -1132,17 +1201,23 @@ class HeterogeneousColorToMassAnalysis:
                         signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
 
                     # Update flash cut-off and max value lines
-                    signal_function_cut_off_y.set_ydata(self.flash.cut_off)
-                    signal_function_max_value_y.set_ydata(self.flash.max_value)
-                    cut_off_x = signal_func.inverse(self.flash.cut_off)
-                    max_value_x = signal_func.inverse(self.flash.max_value)
-                    signal_function_cut_off_x.set_xdata(cut_off_x)
-                    signal_function_max_value_x.set_xdata(max_value_x)
+                    signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
+                    signal_function_aq_min_y.set_ydata(self.flash.min_value_aq)
+                    signal_function_g_max_y.set_ydata(self.flash.max_value_g)
+                    signal_function_g_min_y.set_ydata(self.flash.min_value_g)
+                    aq_max_x = signal_func.inverse(self.flash.max_value_aq)
+                    aq_min_x = signal_func.inverse(self.flash.min_value_aq)
+                    g_max_x = signal_func.inverse(self.flash.max_value_g)
+                    g_min_x = signal_func.inverse(self.flash.min_value_g)
+                    signal_function_aq_max_x.set_xdata(aq_max_x)
+                    signal_function_aq_min_x.set_xdata(aq_min_x)
+                    signal_function_g_max_x.set_xdata(g_max_x)
+                    signal_function_g_min_x.set_xdata(g_min_x)
 
                     # Update the position of the annotaion
-                    ax_signal_function.texts[0].set_position((cut_off_x - 0.05, 0.04))
-                    ax_signal_function.texts[1].set_position((cut_off_x + 0.05, 0.04))
-                    ax_signal_function.texts[2].set_position((max_value_x + 0.1, 0.04))
+                    ax_signal_function.texts[0].set_position((aq_max_x - 0.05, 0.04))
+                    ax_signal_function.texts[1].set_position((aq_max_x + 0.05, 0.04))
+                    ax_signal_function.texts[2].set_position((g_max_x + 0.1, 0.04))
 
                     # Update dense plots
                     coarse_signal_img.set_data(coarse_signal.img)
@@ -1213,14 +1288,14 @@ class HeterogeneousColorToMassAnalysis:
                 btn_down = Button(ax_down_button, "▼")
                 arrow_buttons_down.append(btn_down)
 
-            # Add two vertical sliders for thresholding flash model
-            flash_slider_start_idx = num_value_sliders  # Flash cut-off slider
+            # Add four vertical sliders for thresholding flash model
+            flash_slider_start_idx = num_value_sliders  # Flash min value aq slider
             slider_x = slider_left + flash_slider_start_idx * (
                 slider_width_individual + spacing
             )
             slider_y = slider_bottom + slider_height_total * 0.2
 
-            ax_slider_phase = fig.add_axes(
+            ax_slider_min_aq = fig.add_axes(
                 [
                     slider_x,
                     slider_y,
@@ -1229,12 +1304,12 @@ class HeterogeneousColorToMassAnalysis:
                 ]
             )
 
-            slider_phase = Slider(
-                ax_slider_phase,
-                "Flash\ncut-off",
+            slider_min_aq = Slider(
+                ax_slider_min_aq,
+                "Flash\nmin aq",
                 0.0,
                 2.0,
-                valinit=self.flash.cut_off,
+                valinit=self.flash.min_value_aq,
                 valstep=0.01,
                 color="darkgray",
                 orientation="vertical",
@@ -1245,7 +1320,7 @@ class HeterogeneousColorToMassAnalysis:
                 slider_width_individual + spacing
             )
 
-            ax_slider_max = fig.add_axes(
+            ax_slider_max_aq = fig.add_axes(
                 [
                     slider_x,
                     slider_y,
@@ -1253,20 +1328,66 @@ class HeterogeneousColorToMassAnalysis:
                     slider_height_individual,
                 ]
             )
-            slider_max = Slider(
-                ax_slider_max,
-                "Flash\nmax",
+            slider_max_aq = Slider(
+                ax_slider_max_aq,
+                "Flash\nmax aq",
                 0.0,
                 2.0,
-                valinit=self.flash.max_value,
+                valinit=self.flash.max_value_aq,
                 valstep=0.01,
                 color="darkgray",
                 orientation="vertical",
             )
-            sliders_flash = [slider_phase, slider_max]
+            slider_x = slider_left + (flash_slider_start_idx + 2) * (
+                slider_width_individual + spacing
+            )
+            ax_slider_min_g = fig.add_axes(
+                [
+                    slider_x,
+                    slider_y,
+                    slider_width_individual,
+                    slider_height_individual,
+                ]
+            )
+
+            slider_min_g = Slider(
+                ax_slider_min_g,
+                "Flash\nmin g",
+                0.0,
+                2.0,
+                valinit=self.flash.min_value_g,
+                valstep=0.01,
+                color="darkgray",
+                orientation="vertical",
+            )
+
+            # Flash max slider
+            slider_x = slider_left + (flash_slider_start_idx + 3) * (
+                slider_width_individual + spacing
+            )
+
+            ax_slider_max_g = fig.add_axes(
+                [
+                    slider_x,
+                    slider_y,
+                    slider_width_individual,
+                    slider_height_individual,
+                ]
+            )
+            slider_max_g = Slider(
+                ax_slider_max_g,
+                "Flash\nmax g",
+                0.0,
+                2.0,
+                valinit=self.flash.max_value_g,
+                valstep=0.01,
+                color="darkgray",
+                orientation="vertical",
+            )
+            sliders_flash = [slider_min_aq, slider_max_aq, slider_min_g, slider_max_g]
 
             # Sliders for thresholding flash model for c_aq and s_g, start with value 0.05
-            slider_x = slider_left + (flash_slider_start_idx + 2) * (
+            slider_x = slider_left + (flash_slider_start_idx + 4) * (
                 slider_width_individual + spacing
             )
             ax_slider_c_aq = fig.add_axes(
@@ -1287,7 +1408,7 @@ class HeterogeneousColorToMassAnalysis:
                 color=(1, 0, 0),
                 orientation="vertical",
             )
-            slider_x = slider_left + (flash_slider_start_idx + 3) * (
+            slider_x = slider_left + (flash_slider_start_idx + 5) * (
                 slider_width_individual + spacing
             )
             ax_slider_s_g = fig.add_axes(
@@ -1314,7 +1435,7 @@ class HeterogeneousColorToMassAnalysis:
             ]
 
             # Add depth scaling slider
-            slider_x = slider_left + (flash_slider_start_idx + 4) * (
+            slider_x = slider_left + (flash_slider_start_idx + 6) * (
                 slider_width_individual + spacing
             )
             ax_slider_depth = fig.add_axes(
@@ -1772,8 +1893,10 @@ class HeterogeneousColorToMassAnalysis:
                         )
                         need_update = need_update or any(
                             [
-                                sliders_flash[0].val != self.flash.cut_off,
-                                sliders_flash[1].val != self.flash.max_value,
+                                sliders_flash[0].val != self.flash.min_value_aq,
+                                sliders_flash[1].val != self.flash.max_value_aq,
+                                sliders_flash[2].val != self.flash.min_value_g,
+                                sliders_flash[3].val != self.flash.max_value_g,
                             ]
                         )
 
@@ -1782,8 +1905,10 @@ class HeterogeneousColorToMassAnalysis:
                             values=[slider.val for slider in sliders_color_to_signal]
                         )
                         self.flash.update(
-                            cut_off=sliders_flash[0].val,
-                            max_value=sliders_flash[1].val,
+                            min_value_aq=sliders_flash[0].val,
+                            max_value_aq=sliders_flash[1].val,
+                            min_value_g=sliders_flash[2].val,
+                            max_value_g=sliders_flash[3].val,
                         )
                         # Identify mass density for chosen image
                         pH, density, c_aq, s_g = detailed_mass_analysis(
@@ -1817,12 +1942,21 @@ class HeterogeneousColorToMassAnalysis:
                             coarse_image,
                             mask=[
                                 coarse_c_aq > sliders_threshold[0].val,
+                                coarse_c_aq > 0.1,
+                                coarse_c_aq > 0.25,
+                                coarse_c_aq > 0.5,
+                                coarse_c_aq > 0.9,
                                 coarse_s_g > sliders_threshold[1].val,
                             ],
                             color=[
                                 (255, 0, 0),
+                                (255, 0, 0),
+                                (255, 0, 0),
+                                (255, 0, 0),
+                                (255, 0, 0),
                                 (0, 255, 0),
-                            ],  # TODO make colors adjustable
+                            ],
+                            alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
                             return_image=True,
                         )
 
@@ -1839,23 +1973,26 @@ class HeterogeneousColorToMassAnalysis:
                             signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
 
                         # Update flash cut-off and max value lines
-                        signal_function_cut_off_y.set_ydata(self.flash.cut_off)
-                        signal_function_max_value_y.set_ydata(self.flash.max_value)
-                        cut_off_x = signal_func.inverse(self.flash.cut_off)
-                        max_value_x = signal_func.inverse(self.flash.max_value)
-                        signal_function_cut_off_x.set_xdata(cut_off_x)
-                        signal_function_max_value_x.set_xdata(max_value_x)
+                        signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
+                        signal_function_g_max_y.set_ydata(self.flash.max_value_g)
+                        signal_function_g_min_y.set_ydata(self.flash.min_value_g)
+                        aq_max_x = signal_func.inverse(self.flash.max_value_aq)
+                        aq_min_x = signal_func.inverse(self.flash.min_value_aq)
+                        g_max_x = signal_func.inverse(self.flash.max_value_g)
+                        g_min_x = signal_func.inverse(self.flash.min_value_g)
+                        signal_function_aq_max_x.set_xdata(aq_max_x)
+                        signal_function_aq_min_x.set_xdata(aq_min_x)
+                        signal_function_g_max_x.set_xdata(g_max_x)
+                        signal_function_g_min_x.set_xdata(g_min_x)
 
                         # Update the position of the annotaion
                         ax_signal_function.texts[0].set_position(
-                            (cut_off_x - 0.05, 0.04)
+                            (aq_max_x - 0.05, 0.04)
                         )
                         ax_signal_function.texts[1].set_position(
-                            (cut_off_x + 0.05, 0.04)
+                            (aq_max_x + 0.05, 0.04)
                         )
-                        ax_signal_function.texts[2].set_position(
-                            (max_value_x + 0.1, 0.04)
-                        )
+                        ax_signal_function.texts[2].set_position((g_max_x + 0.1, 0.04))
 
                         # Update dense plots
                         coarse_signal_img.set_data(coarse_signal.img)
@@ -1909,8 +2046,10 @@ class HeterogeneousColorToMassAnalysis:
                             values=[slider.val for slider in sliders_color_to_signal]
                         )
                         self.flash.update(
-                            cut_off=sliders_flash[0].val,
-                            max_value=sliders_flash[1].val,
+                            min_value_aq=sliders_flash[0].val,
+                            max_value_aq=sliders_flash[1].val,
+                            min_value_g=sliders_flash[2].val,
+                            max_value_g=sliders_flash[3].val,
                         )
                         # Identify mass density for chosen image
                         pH, density, c_aq, s_g = detailed_mass_analysis(
@@ -1944,12 +2083,21 @@ class HeterogeneousColorToMassAnalysis:
                             coarse_image,
                             mask=[
                                 coarse_c_aq > sliders_threshold[0].val,
+                                coarse_c_aq > 0.1,
+                                coarse_c_aq > 0.25,
+                                coarse_c_aq > 0.5,
+                                coarse_c_aq > 0.9,
                                 coarse_s_g > sliders_threshold[1].val,
                             ],
                             color=[
                                 (255, 0, 0),
+                                (255, 0, 0),
+                                (255, 0, 0),
+                                (255, 0, 0),
+                                (255, 0, 0),
                                 (0, 255, 0),
                             ],
+                            alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
                             return_image=True,
                         )
 
@@ -1962,23 +2110,26 @@ class HeterogeneousColorToMassAnalysis:
                             signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
 
                         # Update flash cut-off and max value lines
-                        signal_function_cut_off_y.set_ydata(self.flash.cut_off)
-                        signal_function_max_value_y.set_ydata(self.flash.max_value)
-                        cut_off_x = signal_func.inverse(self.flash.cut_off)
-                        max_value_x = signal_func.inverse(self.flash.max_value)
-                        signal_function_cut_off_x.set_xdata(cut_off_x)
-                        signal_function_max_value_x.set_xdata(max_value_x)
+                        signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
+                        signal_function_g_max_y.set_ydata(self.flash.max_value_g)
+                        signal_function_g_min_y.set_ydata(self.flash.min_value_g)
+                        aq_max_x = signal_func.inverse(self.flash.max_value_aq)
+                        aq_min_x = signal_func.inverse(self.flash.min_value_aq)
+                        g_max_x = signal_func.inverse(self.flash.max_value_g)
+                        g_min_x = signal_func.inverse(self.flash.min_value_g)
+                        signal_function_aq_max_x.set_xdata(aq_max_x)
+                        signal_function_aq_min_x.set_xdata(aq_min_x)
+                        signal_function_g_max_x.set_xdata(g_max_x)
+                        signal_function_g_min_x.set_xdata(g_min_x)
 
                         # Update the position of the annotation
                         ax_signal_function.texts[0].set_position(
-                            (cut_off_x - 0.05, 0.04)
+                            (aq_max_x - 0.05, 0.04)
                         )
                         ax_signal_function.texts[1].set_position(
-                            (cut_off_x + 0.05, 0.04)
+                            (aq_max_x + 0.05, 0.04)
                         )
-                        ax_signal_function.texts[2].set_position(
-                            (max_value_x + 0.1, 0.04)
-                        )
+                        ax_signal_function.texts[2].set_position((g_max_x + 0.1, 0.04))
 
                         # Update dense plots
                         coarse_signal_img.set_data(coarse_signal.img)
@@ -2160,23 +2311,26 @@ class HeterogeneousColorToMassAnalysis:
                         signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
 
                         # Update flash cut-off and max value lines
-                        signal_function_cut_off_y.set_ydata(self.flash.cut_off)
-                        signal_function_max_value_y.set_ydata(self.flash.max_value)
-                        cut_off_x = signal_func.inverse(self.flash.cut_off)
-                        max_value_x = signal_func.inverse(self.flash.max_value)
-                        signal_function_cut_off_x.set_xdata(cut_off_x)
-                        signal_function_max_value_x.set_xdata(max_value_x)
+                        signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
+                        signal_function_g_max_y.set_ydata(self.flash.max_value_g)
+                        signal_function_g_min_y.set_ydata(self.flash.min_value_g)
+                        aq_max_x = signal_func.inverse(self.flash.max_value_aq)
+                        aq_min_x = signal_func.inverse(self.flash.min_value_aq)
+                        g_max_x = signal_func.inverse(self.flash.max_value_g)
+                        g_min_x = signal_func.inverse(self.flash.min_value_g)
+                        signal_function_aq_max_x.set_xdata(aq_max_x)
+                        signal_function_aq_min_x.set_xdata(aq_min_x)
+                        signal_function_g_max_x.set_xdata(g_max_x)
+                        signal_function_g_min_x.set_xdata(g_min_x)
 
                         # Update the position of the annotaion
                         ax_signal_function.texts[0].set_position(
-                            (cut_off_x - 0.05, 0.04)
+                            (aq_max_x - 0.05, 0.04)
                         )
                         ax_signal_function.texts[1].set_position(
-                            (cut_off_x + 0.05, 0.04)
+                            (aq_max_x + 0.05, 0.04)
                         )
-                        ax_signal_function.texts[2].set_position(
-                            (max_value_x + 0.1, 0.04)
-                        )
+                        ax_signal_function.texts[2].set_position((g_max_x + 0.1, 0.04))
 
                         # Update values of slides_signal
                         for i, slider in enumerate(sliders_color_to_signal):
@@ -2248,9 +2402,21 @@ class HeterogeneousColorToMassAnalysis:
                             coarse_image,
                             mask=[
                                 coarse_c_aq > sliders_threshold[0].val,
+                                coarse_c_aq > 0.1,
+                                coarse_c_aq > 0.25,
+                                coarse_c_aq > 0.5,
+                                coarse_c_aq > 0.9,
                                 coarse_s_g > sliders_threshold[1].val,
                             ],
-                            color=[(255, 0, 0), (0, 255, 0)],
+                            color=[
+                                (255, 0, 0),
+                                (255, 0, 0),
+                                (255, 0, 0),
+                                (255, 0, 0),
+                                (255, 0, 0),
+                                (0, 255, 0),
+                            ],
+                            alpha=[0.2, 0.3, 0.4, 0.5, 1.0, 1.0],
                             return_image=True,
                         )
 
@@ -2383,7 +2549,12 @@ class HeterogeneousColorToMassAnalysis:
                 for label in available_labels
                 if label not in ignore_labels
             ]
-            + [self.flash.cut_off, self.flash.max_value - self.flash.cut_off]
+            + [
+                self.flash.min_value_aq,
+                self.flash.max_value_aq - self.flash.min_value_aq,
+                self.flash.min_value_g,
+                self.flash.max_value_g - self.flash.min_value_g,
+            ]
         )
         logging.info(f"Number of DOFs for optimization: {len(initial_dofs)}")
 
@@ -2410,9 +2581,14 @@ class HeterogeneousColorToMassAnalysis:
                 self.signal_model.model[1][label].update(values=new_values)
                 idx += num_values - 1
             # Update the flash model
-            self.flash.update(cut_off=dofs[-2], max_value=dofs[-1] + dofs[-2])
+            self.flash.update(
+                min_value_aq=dofs[-4],
+                max_value_aq=dofs[-4] + dofs[-3],
+                min_value_g=dofs[-2],
+                max_value_g=dofs[-1] + dofs[-2],
+            )
             logging.info(
-                f"Flash cut-off: {self.flash.cut_off}, max value: {self.flash.max_value}"
+                f"Flash min: {self.flash.min_value_aq}, max: {self.flash.max_value_aq}, min g: {self.flash.min_value_g}, max g: {self.flash.max_value_g}"
             )
 
             # Allocate variables for mass analysis
@@ -2549,9 +2725,14 @@ class HeterogeneousColorToMassAnalysis:
             self.signal_model.model[1][label].update(values=new_values)
             idx += num_values - 1
         # Update the flash model
-        self.flash.update(cut_off=result.x[-2], max_value=result.x[-1] + result.x[-2])
+        self.flash.update(
+            min_value_aq=result.x[-4],
+            max_value_aq=result.x[-4] + result.x[-3],
+            min_value_g=result.x[-2],
+            max_value_g=result.x[-1] + result.x[-2],
+        )
         logging.info(
-            f"Flash cut-off: {self.flash.cut_off}, max value: {self.flash.max_value}"
+            f"Flash min: {self.flash.min_value_aq}, max: {self.flash.max_value_aq}, min g: {self.flash.min_value_g}, max g: {self.flash.max_value_g}"
         )
 
     def save(self, folder: Path) -> None:
