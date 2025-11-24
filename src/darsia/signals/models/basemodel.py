@@ -87,3 +87,6 @@ class HeterogeneousModel(Model):
 
     def __setitem__(self, key, value):
         self.obj[key] = value
+
+    def keys(self):
+        return self.obj.keys()
