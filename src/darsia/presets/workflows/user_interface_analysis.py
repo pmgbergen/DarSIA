@@ -15,6 +15,9 @@ from darsia.presets.workflows.analysis.analysis_segmentation import (
 from darsia.presets.workflows.analysis.analysis_mass import (
     analysis_mass,
 )
+from darsia.presets.workflows.analysis.analysis_color_to_mass import (
+    analysis_color_to_mass,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +44,9 @@ def build_parser_for_analysis():
     )
     parser.add_argument("--mass", action="store_true", help="Perform mass analysis.")
     parser.add_argument(
+        "--color-to-mass", action="store_true", help="Perform color to mass analysis."
+    )
+    parser.add_argument(
         "--show",
         action="store_true",
         help="Show the labels after each step.",
@@ -54,6 +60,11 @@ def build_parser_for_analysis():
         "--save-npz",
         action="store_true",
         help="Save output figures as NPZ.",
+    )
+    parser.add_argument(
+        "--test-run",
+        action="store_true",
+        help="Perform a test run with limited data.",
     )
     parser.add_argument(
         "--info", action="store_true", help="Provide help for activated flags."
@@ -122,6 +133,13 @@ def run_analysis(rig, args):
             args.show,
             args.save_jpg,
             args.save_npz,
+        )
+    if args.all or args.color_to_mass:
+        analysis_color_to_mass(
+            rig,
+            Path(args.config),
+            test_run=args.test_run,
+            show=args.show,
         )
 
 
