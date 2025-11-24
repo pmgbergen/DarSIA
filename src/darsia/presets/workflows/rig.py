@@ -607,7 +607,7 @@ class Rig:
         # Read image from file and apply corrections
         img = darsia.imread(
             path,
-            transformations=self.corrections,
+            transformations=self.corrections[:4],
             date=date,
             reference_date=self.reference_date,
             name=path.name,
