@@ -427,10 +427,11 @@ class MassComputation:
         gas_density_array = self.co2_mass_analysis.density_gaseous_co2
         solubility_array = self.co2_mass_analysis.solubility_co2
         mass_g_array = gas_density_array * s_g.img
-        mass_aq_array = solubility_array * c_aq.img * (1 - s_g.img)
+        mass_aq_array = solubility_array * c_aq.img * np.clip(1 - s_g.img, 0, None)
         return SimpleMassAnalysisResults(
             name=img.name,
             date=img.date,
+            time=img.time,
             mass=darsia.full_like(img, mass_g_array + mass_aq_array),
             mass_g=darsia.full_like(img, mass_g_array),
             mass_aq=darsia.full_like(img, mass_aq_array),
