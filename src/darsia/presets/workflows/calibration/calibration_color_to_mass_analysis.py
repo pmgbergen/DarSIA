@@ -18,6 +18,7 @@ def calibration_color_to_mass_analysis(
     ref_path: Path | None = None,
     reset: bool = False,
     show: bool = False,
+    use_facies: bool = True,
 ):
     # ! ---- LOAD RUN AND RIG ----
 
@@ -48,20 +49,7 @@ def calibration_color_to_mass_analysis(
 
     # ! ---- LOAD COLOR PATHS ----
 
-    # TODO make not hardcoded and add control via config.
-
-    if False:
-        # Use fine-grained but artificial labels for analysis
-        _color_paths = darsia.LabelColorPathMap.load(
-            config.color_paths.calibration_file
-        )
-
-        # ! ---- REFINE COLOR PATHS ----
-        color_paths = darsia.LabelColorPathMap.refine(
-            _color_paths,
-            num_segments=8,
-        )
-    else:
+    if use_facies:
         # NOTE: Base analysis on facies (not labels)
         fluidflower.labels = fluidflower.facies.copy()
         _color_paths = darsia.LabelColorPathMap.load(
@@ -71,6 +59,17 @@ def calibration_color_to_mass_analysis(
             _color_paths,
             num_segments=6,
             mode="relative",
+        )
+    else:
+        # Use fine-grained but artificial labels for analysis
+        _color_paths = darsia.LabelColorPathMap.load(
+            config.color_paths.calibration_file
+        )
+
+        # ! ---- REFINE COLOR PATHS ----
+        color_paths = darsia.LabelColorPathMap.refine(
+            _color_paths,
+            num_segments=8,
         )
 
     # Pick a reference color path - merely for visualization
@@ -289,12 +288,13 @@ def calibration_color_to_mass_analysis(
         rois=rois,
         cmap=custom_cmap,
     )
-    # Store calibration
-    color_analysis.save(config.color_to_mass.calibration_folder)
 
     for label in np.unique(fluidflower.labels.img):
         if label in config.color_paths.ignore_labels or label in ignore_labels:
             color_paths[label] = color_paths[reference_label]
+
+    # Store calibration
+    color_analysis.save(config.color_to_mass.calibration_folder)
 
     # Test run
     for img in calibration_images:
