@@ -17,8 +17,12 @@ logger = logging.getLogger(__name__)
 def analysis_color_to_mass(
     cls,
     path: Path,
+    rois: dict[str, darsia.CoordinateArray] | None = None,
+    rois_and_labels: dict[str, tuple[int, darsia.CoordinateArray]] | None = None,
     test_run: bool = False,
     show: bool = False,
+    use_facies: bool = True,
+    **kwargs,
 ):
     # ! ---- LOAD RUN AND RIG ----
     config = FluidFlowerConfig(path)
@@ -55,9 +59,8 @@ def analysis_color_to_mass(
     fluidflower = cls()
     fluidflower.load(config.rig.path)
     fluidflower.load_experiment(experiment)
-
-    # NOTE: Base analysis on facies (not labels)
-    fluidflower.labels = fluidflower.facies.copy()
+    if use_facies:
+        fluidflower.labels = fluidflower.facies.copy()
 
     # ! ---- POROSITY-INFORMED AVERAGING ---- ! #
     image_porosity = fluidflower.image_porosity
@@ -103,30 +106,20 @@ def analysis_color_to_mass(
     (config.data.results / "saturation_g").mkdir(parents=True, exist_ok=True)
     (config.data.results / "concentration_aq").mkdir(parents=True, exist_ok=True)
 
-    rois = {
-        "box1a": darsia.CoordinateArray([(0.0, 0.0), (1.45, 0.58)]),
-        "box1b": darsia.CoordinateArray([(0.0, 0.58), (1.45, 1.5)]),
-        "box2a": darsia.CoordinateArray([(1.45, 0.0), (2.745, 0.75)]),
-        "box2b": darsia.CoordinateArray([(1.45, 0.75), (2.745, 1.5)]),
-        "box1": darsia.CoordinateArray([(0.0, 0.0), (1.45, 1.5)]),
-        "box2": darsia.CoordinateArray([(1.45, 0.0), (2.745, 1.5)]),
-        "full": darsia.CoordinateArray([(0.0, 0.0), (2.745, 1.5)]),
+    # Define default ROIs
+    rois = rois or {
+        "full": darsia.CoordinateArray(
+            [fluidflower.baseline.origin, fluidflower.baseline.opposite_corner]
+        )
     }
-    box_6 = {
-        "box_left_sand_6": darsia.CoordinateArray([(0.49, 0.65), (1.52, 0.5)]),
-        "box_right_sand_6": darsia.CoordinateArray([(1.54, 0.63), (2.56, 0.79)]),
-    }
-    box_7 = {
-        "box_left_sand_7": darsia.CoordinateArray([(0.52, 0.73), (1.53, 0.57)]),
-        "box_right_sand_7": darsia.CoordinateArray([(1.54, 0.65), (2.57, 0.84)]),
-    }
+    rois_and_labels = rois_and_labels or {}
 
     geometry = {key: fluidflower.geometry.subregion(roi) for key, roi in rois.items()}
     geometry.update(
-        {key: fluidflower.geometry.subregion(roi) for key, roi in box_6.items()}
-    )
-    geometry.update(
-        {key: fluidflower.geometry.subregion(roi) for key, roi in box_7.items()}
+        {
+            key: fluidflower.geometry.subregion(roi)
+            for key, (_, roi) in rois_and_labels.items()
+        }
     )
 
     # Initialize DataFrame for storing integrated masses
@@ -141,6 +134,8 @@ def analysis_color_to_mass(
     for path in image_paths:
         # Extract color signal and assign mass
         img = fluidflower.read_image(path)
+        img.show()
+        print(img.time, img.date)
         mass_analysis_result = color_to_mass_analysis(img)
 
         # Log time
@@ -174,29 +169,14 @@ def analysis_color_to_mass(
             row_data[f"{key}_exact_mass"] = exact_mass_roi
 
         # Compute integrated mass, mass_g, mass_aq in sub-ROIs and add to row data
-        for key, roi in box_6.items():
+        for key, (label, roi) in rois_and_labels.items():
             # Compute mass in the analysed data
             _mass = mass.copy()
-            _mass.img[fluidflower.labels.img != 6] = 0.0
+            _mass.img[fluidflower.labels.img != label] = 0.0
             _mass_g = mass_g.copy()
-            _mass_g.img[fluidflower.labels.img != 6] = 0.0
+            _mass_g.img[fluidflower.labels.img != label] = 0.0
             _mass_aq = mass_aq.copy()
-            _mass_aq.img[fluidflower.labels.img != 6] = 0.0
-            mass_roi = geometry[key].integrate(_mass.subregion(roi))
-            mass_g_roi = geometry[key].integrate(_mass_g.subregion(roi))
-            mass_aq_roi = geometry[key].integrate(_mass_aq.subregion(roi))
-            row_data[f"{key}_detected_mass"] = mass_roi
-            row_data[f"{key}_detected_mass_g"] = mass_g_roi
-            row_data[f"{key}_detected_mass_aq"] = mass_aq_roi
-
-        for key, roi in box_7.items():
-            # Compute mass in the analysed data
-            _mass = mass.copy()
-            _mass.img[fluidflower.labels.img != 7] = 0.0
-            _mass_g = mass_g.copy()
-            _mass_g.img[fluidflower.labels.img != 7] = 0.0
-            _mass_aq = mass_aq.copy()
-            _mass_aq.img[fluidflower.labels.img != 7] = 0.0
+            _mass_aq.img[fluidflower.labels.img != label] = 0.0
             mass_roi = geometry[key].integrate(_mass.subregion(roi))
             mass_g_roi = geometry[key].integrate(_mass_g.subregion(roi))
             mass_aq_roi = geometry[key].integrate(_mass_aq.subregion(roi))
