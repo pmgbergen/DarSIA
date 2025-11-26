@@ -466,7 +466,7 @@ class ColorPath:
             interpretations.append(scalar_interpretation)
 
         # Convert each segment to its color interpretation
-        shape = colors.shape[:-1] + (-1,)
+        shape = colors.shape[:-1] + (3,)
         color_interpretations = [
             supports[segment]
             + np.outer(
