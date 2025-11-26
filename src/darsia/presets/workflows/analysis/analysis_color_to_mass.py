@@ -22,7 +22,6 @@ def analysis_color_to_mass(
     test_run: bool = False,
     show: bool = False,
     use_facies: bool = True,
-    **kwargs,
 ):
     # ! ---- LOAD RUN AND RIG ----
     config = FluidFlowerConfig(path)
@@ -90,21 +89,8 @@ def analysis_color_to_mass(
         geometry=fluidflower.geometry,
         restoration=restoration,
     )
-    # ! ---- ANALYSIS ----
 
-    if test_run:
-        image_paths = config.color_to_mass.calibration_image_paths
-        if len(image_paths) == 0:
-            image_paths = experiment.find_images_for_times(
-                times=config.color_to_mass.calibration_image_times
-            )
-    else:
-        image_paths = config.data.data
-
-    # Plotting
-    (config.data.results / "mass").mkdir(parents=True, exist_ok=True)
-    (config.data.results / "saturation_g").mkdir(parents=True, exist_ok=True)
-    (config.data.results / "concentration_aq").mkdir(parents=True, exist_ok=True)
+    # ! ---- GEOMETRY FOR INTEGRATION ---- ! #
 
     # Define default ROIs
     rois = rois or {
@@ -122,10 +108,34 @@ def analysis_color_to_mass(
         }
     )
 
+    # ! ---- ANALYSIS ----
+
+    if test_run:
+        image_paths = config.color_to_mass.calibration_image_paths
+        if len(image_paths) == 0:
+            image_paths = experiment.find_images_for_times(
+                times=config.color_to_mass.calibration_image_times
+            )
+    else:
+        image_paths = config.data.data
+
+    # Plotting
+    (config.data.results / "mass").mkdir(parents=True, exist_ok=True)
+    (config.data.results / "saturation_g").mkdir(parents=True, exist_ok=True)
+    (config.data.results / "concentration_aq").mkdir(parents=True, exist_ok=True)
+
     # Initialize DataFrame for storing integrated masses
     detected_cols = [f"{key}_detected_mass" for key in rois.keys()]
+    detected_cols_g = [f"{key}_detected_mass_g" for key in rois.keys()]
+    detected_cols_aq = [f"{key}_detected_mass_aq" for key in rois.keys()]
     exact_cols = [f"{key}_exact_mass" for key in rois.keys()]
-    columns = ["time", "datetime", "image_stem"] + detected_cols + exact_cols
+    columns = (
+        ["time", "datetime", "image_stem"]
+        + exact_cols
+        + detected_cols
+        + detected_cols_g
+        + detected_cols_aq
+    )
     mass_df = pd.DataFrame(columns=columns)
     csv_path = config.data.results / "sparse_data" / "integrated_masses.csv"
     csv_path.parent.mkdir(parents=True, exist_ok=True)
@@ -134,8 +144,6 @@ def analysis_color_to_mass(
     for path in image_paths:
         # Extract color signal and assign mass
         img = fluidflower.read_image(path)
-        img.show()
-        print(img.time, img.date)
         mass_analysis_result = color_to_mass_analysis(img)
 
         # Log time
@@ -160,26 +168,36 @@ def analysis_color_to_mass(
 
         # Compute exact mass in ROIs and add to row data
         for key, roi in rois.items():
-            # Compute mass in the analysed data
-            mass_roi = geometry[key].integrate(mass.subregion(roi))
-            row_data[f"{key}_detected_mass"] = mass_roi
-
             # Fetch exact mass from injection protocol
             exact_mass_roi = experiment.injection_protocol.injected_mass(img.date, roi)
+
+            # Integrate over chosen roi
+            mass_roi = geometry[key].integrate(mass.subregion(roi))
+            mass_g_roi = geometry[key].integrate(mass_g.subregion(roi))
+            mass_aq_roi = geometry[key].integrate(mass_aq.subregion(roi))
+
+            # Store
             row_data[f"{key}_exact_mass"] = exact_mass_roi
+            row_data[f"{key}_detected_mass"] = mass_roi
+            row_data[f"{key}_detected_mass_g"] = mass_g_roi
+            row_data[f"{key}_detected_mass_aq"] = mass_aq_roi
 
         # Compute integrated mass, mass_g, mass_aq in sub-ROIs and add to row data
         for key, (label, roi) in rois_and_labels.items():
-            # Compute mass in the analysed data
+            # Restrict mass arrays to labeled area.
             _mass = mass.copy()
             _mass.img[fluidflower.labels.img != label] = 0.0
             _mass_g = mass_g.copy()
             _mass_g.img[fluidflower.labels.img != label] = 0.0
             _mass_aq = mass_aq.copy()
             _mass_aq.img[fluidflower.labels.img != label] = 0.0
+
+            # Integrate over chosen roi
             mass_roi = geometry[key].integrate(_mass.subregion(roi))
             mass_g_roi = geometry[key].integrate(_mass_g.subregion(roi))
             mass_aq_roi = geometry[key].integrate(_mass_aq.subregion(roi))
+
+            # Store
             row_data[f"{key}_detected_mass"] = mass_roi
             row_data[f"{key}_detected_mass_g"] = mass_g_roi
             row_data[f"{key}_detected_mass_aq"] = mass_aq_roi
@@ -194,9 +212,9 @@ def analysis_color_to_mass(
         # Log the current analysis results
         logger.info(f"Processed {path.stem} at time {time}")
         for key in rois.keys():
-            detected = row_data[f"{key}_detected_mass"]
             exact = row_data[f"{key}_exact_mass"]
-            error = abs(detected - exact) / max(exact, 1e-8) if exact else 0
+            detected = row_data[f"{key}_detected_mass"]
+            error = (detected - exact) / max(exact, 1e-8) if exact else 0
             logger.info(
                 f"  {key}: detected={detected:.6f}, exact={exact:.6f}, "
                 f"error={error:.2%}"
