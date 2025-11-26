@@ -19,6 +19,7 @@ def analysis_mass(
     show: bool = False,
     save_jpg: bool = False,
     save_npz: bool = False,
+    **kwargs,
 ):
     # ! ---- LOAD RUN AND RIG ----
     config = FluidFlowerConfig(path)
@@ -45,6 +46,7 @@ def analysis_mass(
 
     # Load experiment
     experiment = darsia.ProtocolledExperiment(
+        data=config.data.data,
         imaging_protocol=config.protocol.imaging,
         injection_protocol=config.protocol.injection,
         pressure_temperature_protocol=config.protocol.pressure_temperature,
@@ -104,9 +106,9 @@ def analysis_mass(
     if len(config.analysis.image_paths) > 0:
         image_paths = [config.data.folder / p for p in config.analysis.image_paths]
     else:
-        image_times = config.analysis.image_times
         image_datetimes = [
-            experiment.experiment_start + darsia.timedelta(hours=t) for t in image_times
+            experiment.experiment_start + darsia.timedelta(hours=t)
+            for t in config.analysis.image_times
         ]
         image_paths = experiment.imaging_protocol.find_images_for_datetimes(
             paths=config.data.data,

@@ -77,6 +77,7 @@ def analysis_segmentation(
     show: bool = False,
     save_jpg: bool = False,
     save_npz: bool = False,
+    **kwargs,
 ):
     # ! ---- LOAD RUN AND RIG ----
     config = FluidFlowerConfig(path)
@@ -110,6 +111,7 @@ def analysis_segmentation(
 
     # Load experiment
     experiment = darsia.ProtocolledExperiment(
+        data=config.data.data,
         imaging_protocol=config.protocol.imaging,
         injection_protocol=config.protocol.injection,
         pressure_temperature_protocol=config.protocol.pressure_temperature,

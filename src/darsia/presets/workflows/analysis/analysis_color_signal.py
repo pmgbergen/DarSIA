@@ -18,6 +18,7 @@ def analysis_color_signal(
     show: bool = False,
     save_jpg: bool = False,
     save_npz: bool = False,
+    **kwargs,
 ):
     # ! ---- LOAD RUN AND RIG ----
     config = FluidFlowerConfig(path)
@@ -39,6 +40,7 @@ def analysis_color_signal(
 
     # Load experiment
     experiment = darsia.ProtocolledExperiment(
+        data=config.data.data,
         imaging_protocol=config.protocol.imaging,
         injection_protocol=config.protocol.injection,
         pressure_temperature_protocol=config.protocol.pressure_temperature,
@@ -69,9 +71,9 @@ def analysis_color_signal(
 
     # ! ---- ANALYSIS ----
 
-    if len(config.analysis.image_paths) > 0:
-        image_paths = [config.data.folder / p for p in config.analysis.image_paths]
-    else:
+    # assert False, "make this part of the config?"
+
+    if len(config.analysis.image_paths) == 0:
         image_times = config.analysis.image_times
         image_datetimes = [
             experiment.experiment_start + darsia.timedelta(hours=t) for t in image_times
@@ -80,6 +82,8 @@ def analysis_color_signal(
             paths=config.data.data,
             datetimes=image_datetimes,
         )
+    else:
+        image_paths = config.analysis.image_paths
 
     # Loop over images and analyze
     for path in image_paths:

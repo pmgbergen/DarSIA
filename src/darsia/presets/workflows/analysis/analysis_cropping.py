@@ -18,6 +18,7 @@ def analysis_cropping(
     show: bool = False,
     save_jpg: bool = False,
     save_npz: bool = False,
+    **kwargs,
 ):
     # Read data from meta
     config = FluidFlowerConfig(path)
@@ -39,6 +40,7 @@ def analysis_cropping(
 
     # Load run
     experiment = darsia.ProtocolledExperiment(
+        data=config.data.data,
         imaging_protocol=config.protocol.imaging,
         injection_protocol=config.protocol.injection,
         pressure_temperature_protocol=config.protocol.pressure_temperature,
