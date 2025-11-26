@@ -98,53 +98,39 @@ def print_help_for_flags(args, parser):
         sys.exit(0)
 
 
-def run_analysis(rig, args):
+def run_analysis(rig, args, **kwargs):
     if args.all or args.cropping:
         analysis_cropping(
-            rig,
-            Path(args.config),
-            args.show,
-            args.save_jpg,
-            args.save_npz,
+            rig, Path(args.config), args.show, args.save_jpg, args.save_npz, **kwargs
         )
 
     if args.all or args.color_signal:
         analysis_color_signal(
-            rig,
-            Path(args.config),
-            args.show,
-            args.save_jpg,
-            args.save_npz,
+            rig, Path(args.config), args.show, args.save_jpg, args.save_npz, **kwargs
         )
 
     if args.all or args.segmentation:
         analysis_segmentation(
-            rig,
-            Path(args.config),
-            args.show,
-            args.save_jpg,
-            args.save_npz,
+            rig, Path(args.config), args.show, args.save_jpg, args.save_npz, **kwargs
         )
 
     if args.all or args.mass:
         analysis_mass(
-            rig,
-            Path(args.config),
-            args.show,
-            args.save_jpg,
-            args.save_npz,
+            rig, Path(args.config), args.show, args.save_jpg, args.save_npz, **kwargs
         )
+
     if args.all or args.color_to_mass:
         analysis_color_to_mass(
             rig,
             Path(args.config),
             test_run=args.test_run,
             show=args.show,
+            **kwargs,
         )
 
 
-def preset_analysis(rig):
+def preset_analysis(rig, **kwargs):
     parser = build_parser_for_analysis()
     args = parser.parse_args()
     print_help_for_flags(args, parser)
-    run_analysis(rig, args)
+    run_analysis(rig, args, **kwargs)
