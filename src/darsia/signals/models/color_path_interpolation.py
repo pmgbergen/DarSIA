@@ -207,13 +207,13 @@ class ColorPathInterpolation(ColorPathFunction):
             )  # self.ignore_spectrum.in_spectrum(colors, self.color_mode)
             parametrization = np.zeros(colors.shape[0])
             print(f"Color mask took {time.time() - tic:.2f} seconds.")
+
             tic = time.time()
             parametrization[color_mask] = self.color_path.fit(
                 colors=colors[color_mask],
                 color_mode=self.color_mode,
                 mode="equidistant",
             )
-            print(colors.shape, np.sum(color_mask))
             print(f"Fitting colors took {time.time() - tic:.2f} seconds.")
             tic = time.time()
             sub_colors = colors[color_mask]
@@ -223,7 +223,6 @@ class ColorPathInterpolation(ColorPathFunction):
                 mode="equidistant",
             )
             parametrization[color_mask] = sub_parametrization
-            print(colors.shape, np.sum(color_mask))
             print(f"Fitting colors took {time.time() - tic:.2f} seconds.")
 
         print(f"Fitting colors took {time.time() - tic:.2f} seconds.")
