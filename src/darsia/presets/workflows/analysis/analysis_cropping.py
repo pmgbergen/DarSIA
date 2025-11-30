@@ -14,12 +14,30 @@ logging.basicConfig(level=logging.INFO)
 
 def analysis_cropping(
     cls,
-    path: Path,
+    path: Path | list[Path],
     show: bool = False,
     save_jpg: bool = False,
     save_npz: bool = False,
-    **kwargs,
-):
+    all: bool = False,
+) -> None:
+    """Cropping analysis.
+
+    Note: If no options are set, the images are only read and no output is saved.
+
+    Args:
+        cls: FluidFlower rig class.
+        path: Path or list of Paths to the images.
+        show: Whether to show the images.
+        save_jpg: Whether to save the images as JPG.
+        save_npz: Whether to save the images as NPZ.
+        all: Whether to use all images or only the ones specified in the config.
+
+    """
+    # Make sure that conig is a Path or list of Path
+    if not isinstance(path, list):
+        path = [path]
+    path = [Path(p) for p in path]
+
     # Read data from meta
     config = FluidFlowerConfig(path)
     config.check("analysis", "protocol", "data", "rig")
@@ -33,38 +51,26 @@ def analysis_cropping(
     ]:
         assert c is not None
 
-    # ! ---- LOAD RIG AND RUN ----
+    # ! ---- LOAD EXPERIMENT ----
+    experiment = darsia.ProtocolledExperiment.init_from_config(config)
 
+    # ! ---- LOAD RIG ----
     fluidflower = cls()
     fluidflower.load(config.rig.path)
-
-    # Load run
-    experiment = darsia.ProtocolledExperiment(
-        data=config.data.data,
-        imaging_protocol=config.protocol.imaging,
-        injection_protocol=config.protocol.injection,
-        pressure_temperature_protocol=config.protocol.pressure_temperature,
-        blacklist_protocol=config.protocol.blacklist,
-        pad=config.data.pad,
-    )
     fluidflower.load_experiment(experiment)
 
-    # Plotting
-    plot_folder = config.data.results / "cropped_images"
-    plot_folder.mkdir(parents=True, exist_ok=True)
-
-    # Make selection of images to analyze
-    if len(config.analysis.image_paths) > 0:
-        image_paths = [config.data.folder / p for p in config.analysis.image_paths]
+    # ! ---- LOAD IMAGES ----
+    if all:
+        image_paths = config.data.data
+    elif len(config.analysis.image_paths) > 0:
+        image_paths = config.analysis.image_paths
     else:
-        image_times = config.analysis.image_times
-        image_datetimes = [
-            experiment.experiment_start + darsia.timedelta(hours=t) for t in image_times
-        ]
-        image_paths = experiment.imaging_protocol.find_images_for_datetimes(
-            paths=config.data.data, datetimes=image_datetimes
+        image_paths = experiment.find_images_for_times(
+            times=config.analysis.image_times
         )
 
+    # ! ---- CROPPING ----
+    plot_folder = config.data.results / "cropped_images"
     for path in image_paths:
         # Update
         fluidflower.update(path)
