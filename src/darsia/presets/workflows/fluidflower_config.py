@@ -670,24 +670,53 @@ class _AnalysisData:
 
 @dataclass
 class SegmentationConfig(_AnalysisData):
-    # labels: list[str] = field(default_factory=list)
-    # """List of labels for segmentation."""
+    labels: list[str] = field(default_factory=list)
+    """List of labels for segmentation."""
     thresholds: dict[str, list[float, float]] = field(default_factory=dict)
     """List of (min, max) tuples for thresholding."""
     colors: dict[str, list[int, int, int]] = field(default_factory=dict)
     """List of RGB colors for contours."""
+    alphas: dict[str, list[float]] = field(default_factory=dict)
+    """List of alpha values for contours."""
+    linewidth: int = 2
+    """Line width for contour visualization."""
 
     def load(
         self, sec: dict, section: str, data: Path | None = None
     ) -> "SegmentationConfig":
         super().load(sec, section, data=data)
         sub_sec = _get_section(sec, section)
-        _labels = _get_key(sub_sec, "labels", required=True, type_=list)
+
+        # Annotations and line style
+        self.labels = _get_key(sub_sec, "labels", required=True, type_=list)
+        num_labels = len(self.labels)
+        self.linewidth = _get_key(
+            sub_sec, "line_width", default=2, required=False, type_=int
+        )
+
+        # Cache the threshold values
         _thresholds = _get_key(sub_sec, "thresholds", required=True, type_=list)
-        _thresholds = [[_convert_none(t0), _convert_none(t1)] for t0, t1 in _thresholds]
-        _colors = _get_key(sub_sec, "colors", required=True, type_=list)
-        self.thresholds = dict(zip(_labels, _thresholds))
-        self.colors = dict(zip(_labels, _colors))
+        assert len(_thresholds) == num_labels
+        thresholds = []
+        for _t in _thresholds:
+            thresholds.append([_convert_none(t) for t in _t])
+
+        # Define RGB colors for each contour line
+        _single_colors = _get_key(sub_sec, "colors", required=True, type_=list)
+        assert len(_single_colors) == num_labels
+        colors = []
+        for _c, _t in zip(_single_colors, thresholds):
+            colors.append([_c] * len(_t))
+
+        # Convert from RGB to RGBA
+        _alphas = _get_key(sub_sec, "alphas", required=False, type_=list)
+        if not _alphas:
+            _alphas = [[1.0] * len(t) for t in thresholds]
+
+        # Create mappings
+        self.thresholds = dict(zip(self.labels, thresholds))
+        self.colors = dict(zip(self.labels, colors))
+        self.alphas = dict(zip(self.labels, _alphas))
         return self
 
     def error(self):
