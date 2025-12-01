@@ -20,8 +20,14 @@ def _get_section(data: dict, section: str) -> dict:
         raise KeyError(f"Section {section} not found.")
 
 
-def _get_section_from_toml(path: Path, section: str) -> dict:
-    data = tomllib.loads(path.read_text())
+def _get_section_from_toml(path: Path | list[Path], section: str) -> dict:
+    if isinstance(path, Path):
+        data = tomllib.loads(path.read_text())
+    elif isinstance(path, list):
+        data = {}
+        for p in path:
+            part = tomllib.loads(p.read_text())
+            data.update(part)
     sec = _get_section(data, section)
     return sec
 
@@ -747,7 +753,7 @@ class AnalysisData:
 class FluidFlowerConfig:
     """Meta data for FluidFlower CO2 analysis."""
 
-    def __init__(self, path: Path):
+    def __init__(self, path: Path | list[Path]):
         # ! ---- DATA ---- ! #
         try:
             self.data: FluidFlowerDataConfig | None = FluidFlowerDataConfig()
