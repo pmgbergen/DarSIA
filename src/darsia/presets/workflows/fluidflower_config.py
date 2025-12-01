@@ -784,6 +784,13 @@ class FluidFlowerConfig:
 
     def __init__(self, path: Path | list[Path]):
         # ! ---- DATA ---- ! #
+
+        # Make sure that path is compatible
+        if isinstance(path, list):
+            path = [Path(p) for p in path]
+        else:
+            path = Path(path)
+
         try:
             self.data: FluidFlowerDataConfig | None = FluidFlowerDataConfig()
             self.data.load(path)
