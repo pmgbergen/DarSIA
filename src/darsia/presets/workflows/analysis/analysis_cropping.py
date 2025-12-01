@@ -7,13 +7,14 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
 def analysis_cropping(
-    cls,
+    cls: type[Rig],
     path: Path | list[Path],
     show: bool = False,
     save_jpg: bool = False,
@@ -33,41 +34,37 @@ def analysis_cropping(
         all: Whether to use all images or only the ones specified in the config.
 
     """
-    # Make sure that conig is a Path or list of Path
-    if not isinstance(path, list):
-        path = [path]
-    path = [Path(p) for p in path]
-
     # Read data from meta
     config = FluidFlowerConfig(path)
     config.check("analysis", "protocol", "data", "rig")
 
     # Mypy type checking
-    for c in [
-        config.rig,
-        config.data,
-        config.protocol,
-        config.analysis,
-    ]:
-        assert c is not None
+    assert config.rig is not None
+    assert config.rig.path is not None
+    assert config.data is not None
+    assert config.protocol is not None
+    assert config.analysis is not None
 
     # ! ---- LOAD EXPERIMENT ----
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
 
     # ! ---- LOAD RIG ----
-    fluidflower = cls()
-    fluidflower.load(config.rig.path)
+    fluidflower = cls.load(config.rig.path)
     fluidflower.load_experiment(experiment)
 
     # ! ---- LOAD IMAGES ----
     if all:
+        assert config.data.data is not None
         image_paths = config.data.data
     elif len(config.analysis.image_paths) > 0:
+        assert config.analysis.image_paths is not None
         image_paths = config.analysis.image_paths
     else:
+        assert config.analysis.image_times is not None
         image_paths = experiment.find_images_for_times(
             times=config.analysis.image_times
         )
+    assert len(image_paths) > 0, "No images found for analysis."
 
     # ! ---- CROPPING ----
     plot_folder = config.data.results / "cropped_images"
