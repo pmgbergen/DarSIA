@@ -538,7 +538,8 @@ class Rig:
 
         logger.info(f"Rig object saved to {folder}.")
 
-    def load(self, folder: Path) -> None:
+    @classmethod
+    def load(cls, folder: Path) -> "Rig":
         """Load rig object from file.
 
         Mimick the save method.
@@ -547,42 +548,46 @@ class Rig:
             folder (Path): Path to the folder where the rig object is saved.
 
         """
+        # Create rig object
+        rig = cls()
+
         # TODO: move into single function self.setup_basics() or so.
         # Load meta data
         with open(folder / "meta_data.json", "r") as f:
             meta_data = json.load(f)
-        self.baseline_path = Path(meta_data["baseline_path"])
+        rig.baseline_path = Path(meta_data["baseline_path"])
 
         # Load data for reading images
-        self.baseline = darsia.imread(folder / "baseline.npz")
+        rig.baseline = darsia.imread(folder / "baseline.npz")
         logger.info("Baseline setup complete.")
 
         # Load corrections
-        self.setup_corrections(folder)
+        rig.setup_corrections(folder)
 
         # Load depth map
-        self.setup_depth(path=folder / "depth.npz")
+        rig.setup_depth(path=folder / "depth.npz")
 
         # Load labels information - corrections not needed assuming labels are aligned with
         # the corrected baseline.
-        self.setup_labels(path=folder / "labels.npz", apply_corrections=False)
+        rig.setup_labels(path=folder / "labels.npz", apply_corrections=False)
 
         # Load facies information - corrections not needed assuming facies are aligned with
-        self.setup_facies(path=folder / "facies.npz", apply_corrections=False)
+        rig.setup_facies(path=folder / "facies.npz", apply_corrections=False)
 
         # Load facies properties
-        self.setup_facies_props(porosity=folder / "porosity.npz")
+        rig.setup_facies_props(porosity=folder / "porosity.npz")
 
         # Setup geometry information
-        self.setup_geometry()
+        rig.setup_geometry()
 
         # Load image porosity information
-        self.setup_image_porosity(path=folder / "image_porosity.npz")
-        self.setup_boolean_image_porosity()
+        rig.setup_image_porosity(path=folder / "image_porosity.npz")
+        rig.setup_boolean_image_porosity()
 
         # TODO setup color_analysis, and pw_transformation.
 
         logger.info("Rig object loaded.")
+        return rig
 
     # ! ---- I/O ----
 
