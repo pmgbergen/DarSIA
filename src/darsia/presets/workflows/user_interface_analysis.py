@@ -90,7 +90,7 @@ def run_analysis(rig, args, **kwargs):
     if args.mass:
         analysis_color_to_mass(
             rig,
-            Path(args.config),
+            args.config,
             show=args.show,
             rois=kwargs.get("rois"),
             rois_and_labels=kwargs.get("rois_and_labels"),
@@ -100,10 +100,10 @@ def run_analysis(rig, args, **kwargs):
     if args.segmentation:
         analysis_segmentation(
             rig,
-            Path(args.config),
+            args.config,
             rois=kwargs.get("rois"),
-            test_run=args.test_run,
             show=args.show,
+            all=args.all,
         )
 
 
