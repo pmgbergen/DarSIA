@@ -9,18 +9,19 @@ from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
+from darsia.presets.workflows.rig import Rig
 
 
 logger = logging.getLogger(__name__)
 
 
 def analysis_color_to_mass(
-    cls,
-    path: Path,
+    cls: type[Rig],
+    path: Path | list[Path],
     rois: dict[str, darsia.CoordinateArray] | None = None,
     rois_and_labels: dict[str, tuple[int, darsia.CoordinateArray]] | None = None,
-    test_run: bool = False,
     show: bool = False,
+    all: bool = False,
     use_facies: bool = True,
 ):
     # ! ---- LOAD RUN AND RIG ----
@@ -45,18 +46,10 @@ def analysis_color_to_mass(
     assert config.color_to_mass is not None
 
     # ! ---- Load experiment
-    experiment = darsia.ProtocolledExperiment(
-        data=config.data.data,
-        imaging_protocol=config.protocol.imaging,
-        injection_protocol=config.protocol.injection,
-        pressure_temperature_protocol=config.protocol.pressure_temperature,
-        blacklist_protocol=config.protocol.blacklist,
-        pad=config.data.pad,
-    )
+    experiment = darsia.ProtocolledExperiment.init_from_config(config)
 
     # ! ---- LOAD RIG ----
-    fluidflower = cls()
-    fluidflower.load(config.rig.path)
+    fluidflower = cls.load(config.rig.path)
     fluidflower.load_experiment(experiment)
     if use_facies:
         fluidflower.labels = fluidflower.facies.copy()
@@ -110,24 +103,30 @@ def analysis_color_to_mass(
 
     # ! ---- ANALYSIS ----
 
-    if test_run:
-        image_paths = config.color_to_mass.calibration_image_paths
-        if len(image_paths) == 0:
-            image_paths = experiment.find_images_for_times(
-                times=config.color_to_mass.calibration_image_times
-            )
-    else:
+    if all:
         image_paths = config.data.data
+    elif len(config.analysis.image_paths) > 0:
+        image_paths = config.analysis.image_paths
+    else:
+        image_paths = experiment.find_images_for_times(
+            times=config.analysis.image_times
+        )
+    assert len(image_paths) > 0, "No images found for analysis."
 
     # Plotting
-    (config.data.results / "mass").mkdir(parents=True, exist_ok=True)
-    (config.data.results / "saturation_g").mkdir(parents=True, exist_ok=True)
-    (config.data.results / "concentration_aq").mkdir(parents=True, exist_ok=True)
+    folder_mass = config.data.results / "mass"
+    folder_mass.mkdir(parents=True, exist_ok=True)
 
     # Initialize DataFrame for storing integrated masses
-    detected_cols = [f"{key}_detected_mass" for key in rois.keys()]
-    detected_cols_g = [f"{key}_detected_mass_g" for key in rois.keys()]
-    detected_cols_aq = [f"{key}_detected_mass_aq" for key in rois.keys()]
+    detected_cols = [f"{key}_detected_mass" for key in rois.keys()] + [
+        f"{key}_detected_mass" for key in rois_and_labels.keys()
+    ]
+    detected_cols_g = [f"{key}_detected_mass_g" for key in rois.keys()] + [
+        f"{key}_detected_mass_g" for key in rois_and_labels.keys()
+    ]
+    detected_cols_aq = [f"{key}_detected_mass_aq" for key in rois.keys()] + [
+        f"{key}_detected_mass_aq" for key in rois_and_labels.keys()
+    ]
     exact_cols = [f"{key}_exact_mass" for key in rois.keys()]
     columns = (
         ["time", "datetime", "image_stem"]
@@ -153,18 +152,10 @@ def analysis_color_to_mass(
         mass = mass_analysis_result.mass
         mass_g = mass_analysis_result.mass_g
         mass_aq = mass_analysis_result.mass_aq
-        saturation = mass_analysis_result.saturation_g
-        concentration = mass_analysis_result.concentration_aq
 
-        # Store coarse data to disk
-        mass.save(config.data.results / "mass" / f"{path.stem}.npz")
-        saturation.save(config.data.results / "saturation_g" / f"{path.stem}.npz")
-        concentration.save(
-            config.data.results / "concentration_aq" / f"{path.stem}.npz"
-        )
-
-        # Prepare row data for DataFrame
-        row_data = {"time": time, "datetime": img.date, "path": path.stem}
+        # Store data to disk
+        mass.save(folder_mass / f"{path.stem}.npz")  # Prepare row data for DataFrame
+        row_data = {"time": time, "datetime": img.date, "image_stem": path.stem}
 
         # Compute exact mass in ROIs and add to row data
         for key, roi in rois.items():
@@ -207,9 +198,7 @@ def analysis_color_to_mass(
         mass_df = pd.concat([mass_df, new_row], ignore_index=True)
 
         # Save DataFrame to CSV after each image analysis
-        mass_df.to_csv(csv_path, index=False)
-
-        # Log the current analysis results
+        mass_df.to_csv(csv_path, index=False)  # Log the current analysis results
         logger.info(f"Processed {path.stem} at time {time}")
         for key in rois.keys():
             exact = row_data[f"{key}_exact_mass"]
@@ -225,6 +214,6 @@ def analysis_color_to_mass(
 
             img.show(title=f"Image at {path.stem}", delay=True)
             mass.show(title=f"Mass at {path.stem}", delay=True)
-            saturation.show(title=f"Saturation at {path.stem}", delay=True)
-            concentration.show(title=f"Concentration at {path.stem}", delay=True)
+            mass_g.show(title=f"Mass G at {path.stem}", delay=True)
+            mass_aq.show(title=f"Mass AQ at {path.stem}", delay=True)
             plt.show()
