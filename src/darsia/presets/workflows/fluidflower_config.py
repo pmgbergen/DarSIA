@@ -998,3 +998,112 @@ class FluidFlowerConfig:
         else:
             raise ValueError(f"Unsupported meta file format: {meta.suffix}")
         return meta_data
+
+
+@dataclass
+class EventConfig:
+    """Configuration for a single event."""
+
+    event_id: str = ""
+    """ID of the event."""
+    type: str = ""
+    """Type of the event (e.g., 'mass', 'volume')."""
+    key: str = ""
+    """Key to monitor for this event."""
+    relative_threshold: float = 0.01
+    """Relative threshold for this event detection, defaults to 1%."""
+
+    def load(self, event_id: str, event_data: dict) -> "EventConfig":
+        """Load event configuration from event data dictionary."""
+        self.event_id = event_id
+        self.type = _get_key(event_data, "type", required=True, type_=str)
+        self.key = _get_key(event_data, "key", required=True, type_=str)
+        self.relative_threshold = _get_key(
+            event_data,
+            "relative_threshold",
+            default=0.01,
+            required=False,
+            type_=float,
+        )
+        return self
+
+
+@dataclass
+class EventsConfig:
+    """Configuration for events detection and analysis."""
+
+    events: dict[str, EventConfig] = field(default_factory=dict)
+    """Dictionary of individual event configurations keyed by event ID."""
+
+    def load(self, path: Path | list[Path]) -> "EventsConfig":
+        """Load events configuration from TOML file."""
+        # Load the entire TOML data to access events section
+        events_section = _get_section_from_toml(path, "events")
+
+        # Load each individual event
+        for event_id, event_data in events_section.items():
+            event_config = EventConfig()
+            event_config.load(event_id, event_data)
+            self.events[event_id] = event_config
+
+        return self
+
+
+class MultiFluidFlowerConfig:
+    """Meta data for multiple FluidFlower CO2 analysis."""
+
+    def __init__(self, path: Path):
+        """Initialize from a comparison config file like runs_comparison.toml."""
+        self.path = path
+        self.configs: dict[str, FluidFlowerConfig] = {}
+        self.events: EventsConfig | None = None
+
+        # Load the comparison config
+        comparison_data = tomllib.loads(path.read_text())
+
+        # Load individual run configs
+        if "run" in comparison_data:
+            # Allow for common config, to be added to any other run
+            if "common" in comparison_data["run"]:
+                run_config = comparison_data["run"]["common"]
+                common_config_path = path.parent / run_config["config"]
+            else:
+                common_config_path = None
+
+            # Setup config for single runs - combine with common config if provided
+            for run_id, run_config in comparison_data["run"].items():
+                if run_id == "common":
+                    continue
+                config_path = path.parent / run_config["config"]
+                self.configs[run_id] = FluidFlowerConfig(
+                    [config_path, common_config_path]
+                    if common_config_path
+                    else config_path
+                )
+                logger.info(f"FluidFlowerConfig finished setup for run {run_id}.")
+
+        # Load events configuration if present
+        try:
+            self.events = EventsConfig()
+            self.events.load(path)
+        except KeyError:
+            self.events = None
+            logger.info(f"Section events not found in {path}.")
+
+    def get_run_config(self, run_id: str) -> FluidFlowerConfig:
+        """Get configuration for a specific run."""
+        if run_id not in self.configs:
+            raise KeyError(f"Run {run_id} not found in configuration.")
+        return self.configs[run_id]
+
+    def get_run_ids(self) -> list[str]:
+        """Get list of all run IDs."""
+        return list(self.configs.keys())
+
+    def check(self, *sections: str) -> None:
+        """Check that all specified sections exist in all run configs."""
+        for run_id, config in self.configs.items():
+            try:
+                config.check(*sections)
+            except ValueError as e:
+                raise ValueError(f"Run {run_id}: {e}")
