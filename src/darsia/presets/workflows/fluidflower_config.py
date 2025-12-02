@@ -825,11 +825,6 @@ class FluidFlowerConfig:
             warn(f"Section labeling not found in {path}, use [labeling].")
 
         # ! ---- FACIES ---- ! #
-        self.facies: FluidFlowerFaciesConfig | None = FluidFlowerFaciesConfig()
-        self.facies.load(
-            path=path,
-            results=self.data.results if self.data else None,
-        )
         try:
             self.facies: FluidFlowerFaciesConfig | None = FluidFlowerFaciesConfig()
             self.facies.load(
