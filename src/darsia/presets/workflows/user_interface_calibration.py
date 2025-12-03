@@ -110,7 +110,7 @@ def print_help_for_flags(args, parser):
             )
 
 
-def preset_calibration(rig=Rig):
+def preset_calibration(rig=Rig, **kwargs):
     parser = build_parser_for_calibration()
     args = parser.parse_args()
 
@@ -127,6 +127,7 @@ def preset_calibration(rig=Rig):
             ref_path=ref_config,
             reset=args.reset,
             show=args.show,
+            rois=kwargs.get("rois"),
         )
 
     if args.all or args.color_analysis:
