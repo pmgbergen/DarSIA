@@ -18,6 +18,7 @@ def calibration_color_to_mass_analysis(
     ref_path: Path | None = None,
     reset: bool = False,
     show: bool = False,
+    rois: dict[str, darsia.CoordinateArray] | None = None,
     use_facies: bool = True,
 ):
     # ! ---- LOAD RUN AND RIG ----
@@ -33,14 +34,7 @@ def calibration_color_to_mass_analysis(
     assert config.color_to_mass is not None
 
     # ! ---- LOAD EXPERIMENT ----
-    experiment = darsia.ProtocolledExperiment(
-        data=config.data.data,
-        imaging_protocol=config.protocol.imaging,
-        injection_protocol=config.protocol.injection,
-        pressure_temperature_protocol=config.protocol.pressure_temperature,
-        blacklist_protocol=config.protocol.blacklist,
-        pad=config.data.pad,
-    )
+    experiment = darsia.ProtocolledExperiment.init_from_config(config)
 
     # ! ---- LOAD RIG ----
     fluidflower = cls()
@@ -277,9 +271,14 @@ def calibration_color_to_mass_analysis(
 
     # ! ---- INTERACTIVE CALIBRATION ---- ! #
 
-    left_box_roi = darsia.make_coordinate([[0.0, 0.0], [1.4, 1.5]])
-    right_box_roi = darsia.make_coordinate([[1.4, 0.0], [2.8, 1.5]])
-    rois = {"left_box": left_box_roi, "right_box": right_box_roi}
+    rois = rois or {}
+    rois.update(
+        {
+            "full": darsia.CoordinateArray(
+                [fluidflower.baseline.origin, fluidflower.baseline.opposite_corner]
+            )
+        }
+    )
 
     # Perform local calibration
     color_analysis.manual_calibration(

@@ -28,14 +28,7 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
     assert config.color_signal is not None  # TODO redundant?
 
     # ! ---- LOAD EXPERIMENT ----
-    experiment = darsia.ProtocolledExperiment(
-        data=config.data.data,
-        imaging_protocol=config.protocol.imaging,
-        injection_protocol=config.protocol.injection,
-        pressure_temperature_protocol=config.protocol.pressure_temperature,
-        blacklist_protocol=config.protocol.blacklist,
-        pad=config.data.pad,
-    )
+    experiment = darsia.ProtocolledExperiment.init_from_config(config)
 
     # ! ---- LOAD RIG ----
     fluidflower = cls()
@@ -185,20 +178,11 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
 
     # ! ---- CONCENTRATION ANALYSIS ---- ! #
 
-    color_path_interpretation = {
-        label: darsia.ColorPathInterpolation(
-            color_path=color_path,
-            color_mode=darsia.ColorMode.RELATIVE,
-            # values=color_path.equidistant_distances,
-            values=color_path.relative_distances,
-        )
-        for label, color_path in color_paths.items()
-    }
     color_analysis = HeterogeneousColorAnalysis(
         baseline=fluidflower.baseline,
         labels=fluidflower.labels,
         color_mode=darsia.ColorMode.RELATIVE,
-        color_path_functions=color_path_interpretation,
+        color_path_functions=color_path_interpolation,
         # restoration=fluidflower.restoration,
         ignore_labels=config.color_paths.ignore_labels + ignore_labels,
     )

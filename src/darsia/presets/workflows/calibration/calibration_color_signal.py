@@ -30,17 +30,12 @@ def calibration_color_signal(cls, path: Path, show: bool = False):
     ]:
         assert c is not None
 
+    # ! ---- LOAD EXPERIMENT ----
+    experiment = darsia.ProtocolledExperiment.init_from_config(config)
+
+    # ! ---- LOAD RIG ----
     fluidflower = cls()
     fluidflower.load(config.rig.path)
-
-    # Load experiment
-    experiment = darsia.ProtocolledExperiment(
-        imaging_protocol=config.protocol.imaging,
-        injection_protocol=config.protocol.injection,
-        pressure_temperature_protocol=config.protocol.pressure_temperature,
-        blacklist_protocol=config.protocol.blacklist,
-        pad=config.data.pad,
-    )
     fluidflower.load_experiment(experiment)
 
     # ! ---- COLOR PATH TOOL ----

@@ -31,17 +31,9 @@ def calibration_mass_analysis(cls, path: Path, show: bool = False) -> None:
     ]:
         assert c is not None
 
+    experiment = darsia.ProtocolledExperiment.init_from_config(config)
     fluidflower = cls()
     fluidflower.load(config.rig.path)
-
-    # Load experiment
-    experiment = darsia.ProtocolledExperiment(
-        imaging_protocol=config.protocol.imaging,
-        injection_protocol=config.protocol.injection,
-        pressure_temperature_protocol=config.protocol.pressure_temperature,
-        blacklist_protocol=config.protocol.blacklist,
-        pad=config.data.pad,
-    )
     fluidflower.load_experiment(experiment)
 
     # ! ---- READ COLOR PATHS FROM FILE ----

@@ -30,14 +30,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     assert config.protocol.blacklist is not None
 
     # ! ---- LOAD EXPERIMENT ----
-    experiment = darsia.ProtocolledExperiment(
-        data=config.data.data,
-        imaging_protocol=config.protocol.imaging,
-        injection_protocol=config.protocol.injection,
-        pressure_temperature_protocol=config.protocol.pressure_temperature,
-        blacklist_protocol=config.protocol.blacklist,
-        pad=config.data.pad,
-    )
+    experiment = darsia.ProtocolledExperiment.init_from_config(config)
 
     # ! ---- LOAD RIG ----
     fluidflower = cls()
