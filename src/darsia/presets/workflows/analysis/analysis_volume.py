@@ -2,14 +2,15 @@
 
 import logging
 from pathlib import Path
+
 import pandas as pd
 
 import darsia
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
-from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
+from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
 

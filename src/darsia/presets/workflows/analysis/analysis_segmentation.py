@@ -8,8 +8,8 @@ from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
-from darsia.presets.workflows.segmentation_contours import SegmentationContours
 from darsia.presets.workflows.rig import Rig
+from darsia.presets.workflows.segmentation_contours import SegmentationContours
 
 logger = logging.getLogger(__name__)
 
