@@ -8,8 +8,8 @@ from darsia.presets.workflows.analysis.analysis_cropping import analysis_croppin
 from darsia.presets.workflows.analysis.analysis_segmentation import (
     analysis_segmentation,
 )
-from darsia.presets.workflows.analysis.analysis_color_to_mass import (
-    analysis_color_to_mass,
+from darsia.presets.workflows.analysis.analysis_mass import (
+    analysis_mass,
 )
 from darsia.presets.workflows.analysis.analysis_volume import analysis_volume
 
@@ -91,7 +91,7 @@ def run_analysis(rig, args, **kwargs):
         )
 
     if args.mass:
-        analysis_color_to_mass(
+        analysis_mass(
             rig,
             args.config,
             show=args.show,
