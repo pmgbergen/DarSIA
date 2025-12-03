@@ -1,7 +1,6 @@
 """User interface to standardized analysis workflows."""
 
 import argparse
-from pathlib import Path
 
 import logging
 
@@ -12,6 +11,7 @@ from darsia.presets.workflows.analysis.analysis_segmentation import (
 from darsia.presets.workflows.analysis.analysis_color_to_mass import (
     analysis_color_to_mass,
 )
+from darsia.presets.workflows.analysis.analysis_volume import analysis_volume
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,9 @@ def build_parser_for_analysis():
     )
     parser.add_argument(
         "--mass", action="store_true", help="Perform color to mass analysis."
+    )
+    parser.add_argument(
+        "--volume", action="store_true", help="Perform color to volume analysis."
     )
     parser.add_argument(
         "--all", action="store_true", help="Perform analysis on entire dataset."
@@ -94,6 +97,15 @@ def run_analysis(rig, args, **kwargs):
             show=args.show,
             rois=kwargs.get("rois"),
             rois_and_labels=kwargs.get("rois_and_labels"),
+            all=args.all,
+        )
+
+    if args.volume:
+        analysis_volume(
+            rig,
+            args.config,
+            rois=kwargs.get("rois"),
+            show=args.show,
             all=args.all,
         )
 
