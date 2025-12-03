@@ -523,81 +523,6 @@ class ColorToMassConfig:
 
 
 @dataclass
-class SegmentationConfig:
-    label: str | None = None
-    """Label for segmentation."""
-    mode: str | None = None
-    """Type for segmentation."""
-    thresholds: list[float] = field(default_factory=list)
-    """List of thresholds."""
-    color: list[int, int, int] = field(default_factory=list)
-    """RGB color for contours."""
-    alpha: list[float] = field(default_factory=list)
-    """Alpha values for contours."""
-    linewidth: int = 2
-    """Line width for contour visualization."""
-
-    def load(self, sec: dict) -> "SegmentationConfig":
-        self.label = _get_key(sec, "label", required=True, type_=str)
-        self.mode = _get_key(sec, "mode", required=True, type_=str)
-        self.thresholds = _get_key(sec, "thresholds", required=True, type_=list)
-        self.color = _get_key(sec, "color", required=True, type_=list)
-        self.alpha = _get_key(sec, "alpha", required=False, type_=list)
-        if not self.alpha:
-            self.alpha = [1.0] * len(self.thresholds)
-        self.linewidth = _get_key(
-            sec, "linewidth", default=2, required=False, type_=int
-        )
-        return self
-
-    def error(self):
-        raise ValueError(
-            f"Use [analysis.segmentation] in the config file to load segmentation."
-        )
-
-
-@dataclass
-class AnalysisSegmentationConfig:
-    config: SegmentationConfig | dict[str, SegmentationConfig] = field(
-        default_factory=lambda: SegmentationConfig()
-    )
-    folder: Path = field(default_factory=Path)
-    """Path to the results folder for segmentation."""
-
-    def load(self, sec: dict, results: Path | None) -> "AnalysisSegmentationConfig":
-        # Allow for two scenarios: single segmentation or multiple segmentations
-        sub_sec = _get_section(sec, "segmentation")
-
-        try:
-            self.config = SegmentationConfig().load(sub_sec)
-        except KeyError:
-            self.config = {}
-            for key in sub_sec.keys():
-                self.config[key] = SegmentationConfig().load(_get_section(sub_sec, key))
-            try:
-                self.config = {}
-                for key in sub_sec.keys():
-                    self.config[key] = SegmentationConfig().load(
-                        _get_section(sub_sec, key)
-                    )
-            except KeyError as e:
-                raise KeyError(
-                    "Segmentation config must be either a single segmentation or multiple segmentations."
-                ) from e
-
-        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
-        if not folder:
-            assert results is not None
-            self.folder = results / "segmentation"
-        return self
-
-    def error(self):
-        raise ValueError(
-            f"Use [analysis.segmentation] in the config file to load segmentation."
-        )
-
-
-@dataclass
 class ImageTimeInterval:
     start: float
     """Start time of the interval."""
@@ -678,6 +603,81 @@ class AnalysisData:
 
     def error(self):
         raise ValueError(f"Use [analysis] in the config file to load analysis data.")
+
+
+@dataclass
+class SegmentationConfig:
+    label: str | None = None
+    """Label for segmentation."""
+    mode: str | None = None
+    """Type for segmentation."""
+    thresholds: list[float] = field(default_factory=list)
+    """List of thresholds."""
+    color: list[int, int, int] = field(default_factory=list)
+    """RGB color for contours."""
+    alpha: list[float] = field(default_factory=list)
+    """Alpha values for contours."""
+    linewidth: int = 2
+    """Line width for contour visualization."""
+
+    def load(self, sec: dict) -> "SegmentationConfig":
+        self.label = _get_key(sec, "label", required=True, type_=str)
+        self.mode = _get_key(sec, "mode", required=True, type_=str)
+        self.thresholds = _get_key(sec, "thresholds", required=True, type_=list)
+        self.color = _get_key(sec, "color", required=True, type_=list)
+        self.alpha = _get_key(sec, "alpha", required=False, type_=list)
+        if not self.alpha:
+            self.alpha = [1.0] * len(self.thresholds)
+        self.linewidth = _get_key(
+            sec, "linewidth", default=2, required=False, type_=int
+        )
+        return self
+
+    def error(self):
+        raise ValueError(
+            f"Use [analysis.segmentation] in the config file to load segmentation."
+        )
+
+
+@dataclass
+class AnalysisSegmentationConfig:
+    config: SegmentationConfig | dict[str, SegmentationConfig] = field(
+        default_factory=lambda: SegmentationConfig()
+    )
+    folder: Path = field(default_factory=Path)
+    """Path to the results folder for segmentation."""
+
+    def load(self, sec: dict, results: Path | None) -> "AnalysisSegmentationConfig":
+        # Allow for two scenarios: single segmentation or multiple segmentations
+        sub_sec = _get_section(sec, "segmentation")
+
+        try:
+            self.config = SegmentationConfig().load(sub_sec)
+        except KeyError:
+            self.config = {}
+            for key in sub_sec.keys():
+                self.config[key] = SegmentationConfig().load(_get_section(sub_sec, key))
+            try:
+                self.config = {}
+                for key in sub_sec.keys():
+                    self.config[key] = SegmentationConfig().load(
+                        _get_section(sub_sec, key)
+                    )
+            except KeyError as e:
+                raise KeyError(
+                    "Segmentation config must be either a single segmentation or multiple segmentations."
+                ) from e
+
+        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
+        if not folder:
+            assert results is not None
+            self.folder = results / "segmentation"
+        return self
+
+    def error(self):
+        raise ValueError(
+            f"Use [analysis.segmentation] in the config file to load segmentation."
+        )
 
 
 @dataclass
