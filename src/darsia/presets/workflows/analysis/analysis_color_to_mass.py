@@ -25,7 +25,7 @@ def analysis_color_to_mass(
     use_facies: bool = True,
 ):
     # ! ---- LOAD RUN AND RIG ----
-    config = FluidFlowerConfig(path)
+    config = FluidFlowerConfig(path, require_data=True)
     config.check(
         "protocol",
         "data",
@@ -136,7 +136,8 @@ def analysis_color_to_mass(
         + detected_cols_aq
     )
     mass_df = pd.DataFrame(columns=columns)
-    csv_path = config.data.results / "sparse_data" / "integrated_masses.csv"
+    # TODO control this path through toml/config.
+    csv_path = config.data.results / "sparse_data" / "integrated_mass.csv"
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Loop over images and analyze

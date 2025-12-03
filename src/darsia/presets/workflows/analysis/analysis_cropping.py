@@ -35,7 +35,7 @@ def analysis_cropping(
 
     """
     # Read data from meta
-    config = FluidFlowerConfig(path)
+    config = FluidFlowerConfig(path, require_data=True)
     config.check("analysis", "protocol", "data", "rig")
 
     # Mypy type checking

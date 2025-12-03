@@ -24,7 +24,7 @@ def analysis_segmentation(
     use_facies: bool = True,
 ):
     # ! ---- LOAD RUN AND RIG ----
-    config = FluidFlowerConfig(path)
+    config = FluidFlowerConfig(path, require_data=True, require_results=True)
     config.check(
         "data",
         "rig",
