@@ -101,7 +101,6 @@ def run_analysis(rig, args, **kwargs):
         analysis_segmentation(
             rig,
             args.config,
-            rois=kwargs.get("rois"),
             show=args.show,
             all=args.all,
         )

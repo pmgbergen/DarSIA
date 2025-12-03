@@ -29,6 +29,8 @@ def _get_section_from_toml(path: Path | list[Path], section: str) -> dict:
         for p in path:
             part = tomllib.loads(p.read_text())
             data.update(part)
+    else:
+        raise TypeError(f"Path must be a Path or list of Paths. It is {type(path)}.")
     sec = _get_section(data, section)
     return sec
 
@@ -522,52 +524,71 @@ class ColorToMassConfig:
 
 @dataclass
 class SegmentationConfig:
-    labels: list[str] = field(default_factory=list)
-    """List of labels for segmentation."""
-    thresholds: dict[str, list[float, float]] = field(default_factory=dict)
-    """List of (min, max) tuples for thresholding."""
-    colors: dict[str, list[int, int, int]] = field(default_factory=dict)
-    """List of RGB colors for contours."""
-    alphas: dict[str, list[float]] = field(default_factory=dict)
-    """List of alpha values for contours."""
+    label: str | None = None
+    """Label for segmentation."""
+    mode: str | None = None
+    """Type for segmentation."""
+    thresholds: list[float] = field(default_factory=list)
+    """List of thresholds."""
+    color: list[int, int, int] = field(default_factory=list)
+    """RGB color for contours."""
+    alpha: list[float] = field(default_factory=list)
+    """Alpha values for contours."""
     linewidth: int = 2
     """Line width for contour visualization."""
 
-    def load(
-        self, sec: dict, section: str, data: Path | None = None
-    ) -> "SegmentationConfig":
-        sub_sec = _get_section(sec, section)
-
-        # Annotations and line style
-        self.labels = _get_key(sub_sec, "labels", required=True, type_=list)
-        num_labels = len(self.labels)
+    def load(self, sec: dict) -> "SegmentationConfig":
+        self.label = _get_key(sec, "label", required=True, type_=str)
+        self.mode = _get_key(sec, "mode", required=True, type_=str)
+        self.thresholds = _get_key(sec, "thresholds", required=True, type_=list)
+        self.color = _get_key(sec, "color", required=True, type_=list)
+        self.alpha = _get_key(sec, "alpha", required=False, type_=list)
+        if not self.alpha:
+            self.alpha = [1.0] * len(self.thresholds)
         self.linewidth = _get_key(
-            sub_sec, "line_width", default=2, required=False, type_=int
+            sec, "linewidth", default=2, required=False, type_=int
+        )
+        return self
+
+    def error(self):
+        raise ValueError(
+            f"Use [analysis.segmentation] in the config file to load segmentation."
         )
 
-        # Cache the threshold values
-        _thresholds = _get_key(sub_sec, "thresholds", required=True, type_=list)
-        assert len(_thresholds) == num_labels
-        thresholds = []
-        for _t in _thresholds:
-            thresholds.append([_convert_none(t) for t in _t])
 
-        # Define RGB colors for each contour line
-        _single_colors = _get_key(sub_sec, "colors", required=True, type_=list)
-        assert len(_single_colors) == num_labels
-        colors = []
-        for _c, _t in zip(_single_colors, thresholds):
-            colors.append([_c] * len(_t))
+@dataclass
+class AnalysisSegmentationConfig:
+    config: SegmentationConfig | dict[str, SegmentationConfig] = field(
+        default_factory=lambda: SegmentationConfig()
+    )
+    folder: Path = field(default_factory=Path)
+    """Path to the results folder for segmentation."""
 
-        # Convert from RGB to RGBA
-        _alphas = _get_key(sub_sec, "alphas", required=False, type_=list)
-        if not _alphas:
-            _alphas = [[1.0] * len(t) for t in thresholds]
+    def load(self, sec: dict, results: Path | None) -> "AnalysisSegmentationConfig":
+        # Allow for two scenarios: single segmentation or multiple segmentations
+        sub_sec = _get_section(sec, "segmentation")
 
-        # Create mappings
-        self.thresholds = dict(zip(self.labels, thresholds))
-        self.colors = dict(zip(self.labels, colors))
-        self.alphas = dict(zip(self.labels, _alphas))
+        try:
+            self.config = SegmentationConfig().load(sub_sec)
+        except KeyError:
+            self.config = {}
+            for key in sub_sec.keys():
+                self.config[key] = SegmentationConfig().load(_get_section(sub_sec, key))
+            try:
+                self.config = {}
+                for key in sub_sec.keys():
+                    self.config[key] = SegmentationConfig().load(
+                        _get_section(sub_sec, key)
+                    )
+            except KeyError as e:
+                raise KeyError(
+                    "Segmentation config must be either a single segmentation or multiple segmentations."
+                ) from e
+
+        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
+        if not folder:
+            assert results is not None
+            self.folder = results / "segmentation"
         return self
 
     def error(self):
@@ -602,8 +623,7 @@ class AnalysisData:
     image_paths: list[Path] = field(default_factory=list)
     """List of image paths corresponding to the image times."""
 
-    def load(self, path: Path, data: Path | None = None) -> "AnalysisData":
-        sec = _get_section_from_toml(path, "analysis")
+    def load(self, sec: dict, data: Path | None) -> "AnalysisData":
         sub_sec = _get_section(sec, "data")
         self.image_times = sorted(
             [
@@ -658,6 +678,34 @@ class AnalysisData:
 
     def error(self):
         raise ValueError(f"Use [analysis] in the config file to load analysis data.")
+
+
+@dataclass
+class AnalysisConfig:
+    data: AnalysisData | None = None
+    """Analysis data configuration."""
+    segmentation: AnalysisSegmentationConfig | None = None
+    """Analysis segmentation configuration."""
+
+    def load(
+        self, path: Path, data: Path | None, results: Path | None
+    ) -> "AnalysisConfig":
+        sec = _get_section_from_toml(path, "analysis")
+
+        # Config to load analysis data
+        try:
+            self.data = AnalysisData().load(sec, data)
+        except KeyError:
+            warn("No analysis data found. Use [analysis.data].")
+            self.data = None
+
+        # Config to load analysis segmentation
+        try:
+            self.segmentation = AnalysisSegmentationConfig().load(sec, results)
+        except KeyError:
+            warn("No analysis segmentation found. Use [analysis.segmentation].")
+            self.segmentation = None
+        return self
 
 
 @dataclass
@@ -769,12 +817,12 @@ class FluidFlowerConfig:
 
         # ! ---- ANALYSIS DATA ---- ! #
 
-        try:
-            self.analysis: AnalysisData | None = AnalysisData()
-            self.analysis.load(path, data=self.data.folder if self.data else None)
-        except KeyError:
-            self.analysis = None
-            warn(f"Section analysis not found in {path}.")
+        self.analysis = AnalysisConfig()
+        self.analysis.load(
+            path,
+            data=self.data.folder if self.data else None,
+            results=self.data.results if self.data else None,
+        )
 
         ## Reference colorchecker
         # try:

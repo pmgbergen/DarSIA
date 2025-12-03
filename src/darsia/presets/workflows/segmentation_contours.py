@@ -4,6 +4,7 @@ import logging
 
 import darsia
 from darsia.utils.augmented_plotting import plot_contour_on_image
+from darsia.presets.workflows.fluidflower_config import SegmentationConfig
 
 logger = logging.getLogger(__name__)
 
@@ -12,34 +13,12 @@ class SegmentationContours:
     """Threshold based segmentation analysis."""
 
     def __init__(
-        self,
-        thresholds: dict[str, list[list[float]]],
-        colors: dict[str, list[float]] | None = None,
-        alphas: dict[str, list[float]] | None = None,
-        linewidth: int = 2,
-    ):
-        self.thresholds = thresholds
-        self.colors = colors or {}
-        self.alphas = alphas or {
-            label: [1.0] * len(thresholds[label]) for label in thresholds
-        }
-        self.linewidth = linewidth
-
-        # Safety checks
-        assert set(self.thresholds.keys()) == set(self.colors.keys()), (
-            "Thresholds and colors must have the same labels."
-        )
-        assert set(self.thresholds.keys()) == set(self.alphas.keys()), (
-            "Thresholds and alphas must have the same labels."
-        )
-        assert all(
-            len(self.thresholds[label]) == len(self.colors[label])
-            for label in self.thresholds
-        ), "Number of thresholds and colors must match for each label."
-        assert all(
-            len(self.thresholds[label]) == len(self.alphas[label])
-            for label in self.thresholds
-        ), "Number of thresholds and alphas must match for each label."
+        self, config: SegmentationConfig | dict[str, SegmentationConfig]
+    ) -> None:
+        if isinstance(config, dict):
+            self.config = config
+        else:
+            self.config = {"": config}
 
     def extract_mask(
         self, img: darsia.ScalarImage, thresholds: list[float]
@@ -66,9 +45,10 @@ class SegmentationContours:
     def add_contours(
         self,
         img: darsia.Image,
-        colors: list[list[float]],
-        alphas: list[float],
         masks: list[darsia.ScalarImage],
+        color: list[float],
+        alpha: list[float],
+        linewidth: int = 2,
     ) -> darsia.Image:
         """Add contours to image based on segmentation of mass.
 
@@ -81,23 +61,46 @@ class SegmentationContours:
         """
         contour_image = img.copy()
 
-        for color, mask, alpha in zip(colors, masks, alphas):
+        for mask, alpha in zip(masks, alpha):
             contour_image = plot_contour_on_image(
                 img=contour_image,
                 mask=[mask],
                 color=[color],
                 alpha=[alpha],
-                thickness=self.linewidth,
+                thickness=linewidth,
                 return_image=True,
             )
         return contour_image
 
-    def __call__(self, img, values: dict[str, darsia.Image]) -> darsia.Image:
+    def __call__(
+        self,
+        img,
+        saturation_g: darsia.Image,
+        concentration_aq: darsia.Image,
+        mass: darsia.Image,
+    ) -> darsia.Image:
         contour_img = img.copy()
-        for label in values.keys():
-            masks = self.extract_mask(values[label], self.thresholds[label])
+        for segmentation_config in self.config.values():
+            # Select values based on mode
+            mode = segmentation_config.mode
+            if mode == "saturation_g":
+                values = saturation_g
+            elif mode == "concentration_aq":
+                values = concentration_aq
+            elif mode == "mass":
+                values = mass
+            else:
+                raise ValueError(f"Unknown label {mode} in segmentation config.")
+
+            # Extract masks based on thresholds
+            masks = self.extract_mask(values, segmentation_config.thresholds)
+
+            # Add contours to image
             contour_img = self.add_contours(
-                contour_img, self.colors[label], self.alphas[label], masks
+                contour_img,
+                masks,
+                segmentation_config.color,
+                segmentation_config.alpha,
+                segmentation_config.linewidth,
             )
-        contour_img.show()
         return contour_img

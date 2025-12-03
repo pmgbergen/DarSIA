@@ -3,7 +3,6 @@
 import logging
 from pathlib import Path
 
-import pandas as pd
 import darsia
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
@@ -18,7 +17,6 @@ logger = logging.getLogger(__name__)
 def analysis_segmentation(
     cls: type[Rig],
     path: Path | list[Path],
-    rois: dict[str, darsia.CoordinateArray] | None = None,
     show: bool = False,
     all: bool = False,
     use_facies: bool = True,
@@ -78,52 +76,21 @@ def analysis_segmentation(
         restoration=restoration,
     )
 
-    # ! ---- GEOMETRY FOR INTEGRATION ---- ! #
-
-    # Define default ROIs
-    rois = rois or {
-        "full": darsia.CoordinateArray(
-            [fluidflower.baseline.origin, fluidflower.baseline.opposite_corner]
-        )
-    }
-
-    geometry = {key: fluidflower.geometry.subregion(roi) for key, roi in rois.items()}
-
-    # ! ---- CONTOUR PLOTTING ---- ! #
-
-    segmentation_contours = SegmentationContours(
-        thresholds=config.analysis.segmentation.thresholds,
-        colors=config.analysis.segmentation.colors,
-        alphas=config.analysis.segmentation.alphas,
-        linewidth=config.analysis.segmentation.linewidth,
-    )
-
-    # ! ---- ANALYSIS ----
+    # ! ---- IMAGES ----
 
     if all:
         image_paths = config.data.data
-    elif len(config.analysis.image_paths) > 0:
-        image_paths = config.analysis.image_paths
+    elif len(config.analysis.data.image_paths) > 0:
+        image_paths = config.analysis.data.image_paths
     else:
         image_paths = experiment.find_images_for_times(
-            times=config.analysis.image_times
+            times=config.analysis.data.image_times
         )
     assert len(image_paths) > 0, "No images found for analysis."
 
-    # Storing and plotting
-    folder_saturation_g = config.data.results / "saturation_g"
-    folder_concentration_aq = config.data.results / "concentration_aq"
-    folder_contours = config.data.results / "segmentation_contours"
+    # ! ---- CONTOUR PLOTTING ---- ! #
 
-    # Initialize DataFrame for storing integrated masses
-    detected_volume_g_cols = [f"{key}_detected_volume_g" for key in rois.keys()]
-    detected_volume_aq_cols = [f"{key}_detected_volume_aq" for key in rois.keys()]
-    columns = (
-        ["time", "datetime", "stem"] + detected_volume_g_cols + detected_volume_aq_cols
-    )
-    volume_df = pd.DataFrame(columns=columns)
-    csv_path = config.data.results / "sparse_data" / "integrated_volume.csv"
-    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    segmentation_contours = SegmentationContours(config.analysis.segmentation.config)
 
     # Loop over images and analyze
     for path in image_paths:
@@ -131,60 +98,18 @@ def analysis_segmentation(
         img = fluidflower.read_image(path)
         mass_analysis_result = color_to_mass_analysis(img)
 
-        # Log time
-        time = mass_analysis_result.time
-
-        # Fetch results
-        saturation_g = mass_analysis_result.saturation_g
-        concentration_aq = mass_analysis_result.concentration_aq
-
-        # Store coarse data to disk
-        saturation_g.save(folder_saturation_g / f"{path.stem}.npz")
-        concentration_aq.save(folder_concentration_aq / f"{path.stem}.npz")
-
-        # Assign to gaseous and acqueous values for thresholding
-        values = {"g": saturation_g, "aq": concentration_aq}
-
         # Produce contour images
-        contour_image = segmentation_contours(img, values)
+        contour_image = segmentation_contours(
+            img,
+            saturation_g=mass_analysis_result.saturation_g,
+            concentration_aq=mass_analysis_result.concentration_aq,
+            mass=mass_analysis_result.mass,
+        )
 
         if show:
             contour_image.show(
                 title=f"Contours for {path.stem} | {img.time} seconds", delay=False
             )
 
-        contour_path = folder_contours / f"{path.stem}.jpg"
+        contour_path = config.analysis.segmentation.folder / f"{path.stem}.jpg"
         contour_image.write(contour_path, quality=80)
-
-        # Prepare row data for DataFrame
-        row_data = {"time": time, "datetime": img.date, "stem": path.stem}
-
-        # Compute exact mass in ROIs and add to row data
-        for key, roi in rois.items():
-            # Build effective aqueous saturation
-            saturation_aq = concentration_aq.copy()
-            saturation_aq.img *= 1 - saturation_g.img
-
-            # Integrate over chosen roi
-            volume_g_roi = geometry[key].integrate(saturation_g.subregion(roi))
-            volume_aq_roi = geometry[key].integrate(saturation_aq.subregion(roi))
-
-            # Store
-            row_data[f"{key}_detected_volume_g"] = volume_g_roi
-            row_data[f"{key}_detected_volume_aq"] = volume_aq_roi
-
-        # Add row to DataFrame using pd.concat for better performance
-        new_row = pd.DataFrame([row_data])
-        volume_df = pd.concat([volume_df, new_row], ignore_index=True)
-
-        # Save DataFrame to CSV after each image analysis
-        volume_df.to_csv(csv_path, index=False)
-
-        # Log the current analysis results
-        logger.info(f"Processed {path.stem} at time {time}")
-        for key in rois.keys():
-            detected_g = row_data[f"{key}_detected_volume_g"]
-            detected_aq = row_data[f"{key}_detected_volume_aq"]
-            logger.info(
-                f"  {key}: detected_g={detected_g:.6f}, detected_aq={detected_aq:.6f}"
-            )
