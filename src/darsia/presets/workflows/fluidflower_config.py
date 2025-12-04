@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from warnings import warn
 from typing import Any
+from datetime import datetime, timedelta
+from darsia import CoordinateArray
 
 logger = logging.getLogger(__name__)
 
@@ -681,11 +683,94 @@ class AnalysisSegmentationConfig:
 
 
 @dataclass
+class RoiConfig:
+    roi: CoordinateArray = field(default_factory=CoordinateArray)
+    """ROI coordinates."""
+    name: str = ""
+    """Name of the ROI."""
+
+    def load(self, sec: dict) -> "RoiConfig":
+        self.roi = CoordinateArray(
+            [
+                _get_key(sec, "corner_1", required=True, type_=list),
+                _get_key(sec, "corner_2", required=True, type_=list),
+            ]
+        )
+
+        name = _get_key(sec, "name", required=True, type_=str)
+        self.name = name
+        return self
+
+
+@dataclass
+class RoiAndLabelConfig:
+    roi: CoordinateArray = field(default_factory=CoordinateArray)
+    """ROI coordinates."""
+    name: str = ""
+    """Name of the ROI."""
+    label: int = -1
+    """Label associated with the ROI."""
+
+    def load(self, sec: dict) -> "RoiAndLabelConfig":
+        self.roi = CoordinateArray(
+            [
+                _get_key(sec, "corner_1", required=True, type_=list),
+                _get_key(sec, "corner_2", required=True, type_=list),
+            ]
+        )
+
+        self.name = _get_key(sec, "name", required=True, type_=str)
+        self.label = _get_key(sec, "label", required=True, type_=int)
+        return self
+
+
+@dataclass
+class AnalysisMassConfig:
+    roi: dict[str, RoiConfig] = field(default_factory=dict)
+    """ROI configurations for mass analysis."""
+    roi_and_label: dict[str, RoiAndLabelConfig] = field(default_factory=dict)
+    """ROI and label configurations for mass analysis."""
+    folder: Path = field(default_factory=Path)
+    """Path to the results folder for mass analysis."""
+
+    def load(self, sec: dict, results: Path | None) -> "AnalysisMassConfig":
+        sub_sec = _get_section(sec, "mass")
+
+        # Load ROIs
+        try:
+            roi_sec = _get_section(sub_sec, "roi")
+            self.roi = {}
+            for key in roi_sec.keys():
+                self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
+        except KeyError:
+            self.roi = {}
+
+        # Load ROIs with labels
+        try:
+            roi_label_sec = _get_section(sub_sec, "roi_and_label")
+            self.roi_and_label = {}
+            for key in roi_label_sec.keys():
+                self.roi_and_label[key] = RoiAndLabelConfig().load(
+                    _get_section(roi_label_sec, key)
+                )
+        except KeyError:
+            self.roi_and_label = {}
+
+        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
+        if not folder:
+            assert results is not None
+            self.folder = results / "mass"
+        return self
+
+
+@dataclass
 class AnalysisConfig:
     data: AnalysisData | None = None
     """Analysis data configuration."""
     segmentation: AnalysisSegmentationConfig | None = None
     """Analysis segmentation configuration."""
+    mass: AnalysisMassConfig | None = None
+    """Analysis mass configuration."""
 
     def load(
         self, path: Path, data: Path | None, results: Path | None
@@ -705,6 +790,14 @@ class AnalysisConfig:
         except KeyError:
             warn("No analysis segmentation found. Use [analysis.segmentation].")
             self.segmentation = None
+
+        # Config to load analysis mass
+        try:
+            self.mass = AnalysisMassConfig().load(sec, results)
+        except KeyError:
+            warn("No analysis mass found. Use [analysis.mass].")
+            self.mass = None
+
         return self
 
 

@@ -95,8 +95,6 @@ def run_analysis(rig, args, **kwargs):
             rig,
             args.config,
             show=args.show,
-            rois=kwargs.get("rois"),
-            rois_and_labels=kwargs.get("rois_and_labels"),
             all=args.all,
         )
 
@@ -104,8 +102,6 @@ def run_analysis(rig, args, **kwargs):
         analysis_volume(
             rig,
             args.config,
-            rois=kwargs.get("rois"),
-            show=args.show,
             all=args.all,
         )
 

@@ -18,8 +18,6 @@ logger = logging.getLogger(__name__)
 def analysis_mass(
     cls: type[Rig],
     path: Path | list[Path],
-    rois: dict[str, darsia.CoordinateArray] | None = None,
-    rois_and_labels: dict[str, tuple[int, darsia.CoordinateArray]] | None = None,
     show: bool = False,
     all: bool = False,
     use_facies: bool = True,
@@ -44,6 +42,7 @@ def analysis_mass(
     assert config.analysis is not None
     assert config.rig is not None
     assert config.color_to_mass is not None
+    assert config.analysis.mass is not None
 
     # ! ---- Load experiment
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
@@ -85,49 +84,66 @@ def analysis_mass(
 
     # ! ---- GEOMETRY FOR INTEGRATION ---- ! #
 
-    # Define default ROIs
-    rois = rois or {
-        "full": darsia.CoordinateArray(
-            [fluidflower.baseline.origin, fluidflower.baseline.opposite_corner]
-        )
-    }
-    rois_and_labels = rois_and_labels or {}
-
-    geometry = {key: fluidflower.geometry.subregion(roi) for key, roi in rois.items()}
+    geometry = {}
     geometry.update(
         {
-            key: fluidflower.geometry.subregion(roi)
-            for key, (_, roi) in rois_and_labels.items()
+            roi_config.name: fluidflower.geometry.subregion(roi_config.roi)
+            for roi_config in config.analysis.mass.roi.values()
+        }
+    )
+    geometry.update(
+        {
+            roi_and_label_config.name: fluidflower.geometry.subregion(
+                roi_and_label_config.roi
+            )
+            for roi_and_label_config in config.analysis.mass.roi_and_label.values()
         }
     )
 
-    # ! ---- ANALYSIS ----
+    # ! ---- IMAGES ----
 
     if all:
         image_paths = config.data.data
-    elif len(config.analysis.image_paths) > 0:
-        image_paths = config.analysis.image_paths
+    elif len(config.analysis.data.image_paths) > 0:
+        image_paths = config.analysis.data.image_paths
     else:
         image_paths = experiment.find_images_for_times(
-            times=config.analysis.image_times
+            times=config.analysis.data.image_times
         )
     assert len(image_paths) > 0, "No images found for analysis."
+
+    # ! ---- ANALYSIS ----
 
     # Plotting
     folder_mass = config.data.results / "mass"
     folder_mass.mkdir(parents=True, exist_ok=True)
 
     # Initialize DataFrame for storing integrated masses
-    detected_cols = [f"{key}_detected_mass" for key in rois.keys()] + [
-        f"{key}_detected_mass" for key in rois_and_labels.keys()
+    detected_cols = [
+        f"{roi_config.name}_detected_mass"
+        for roi_config in config.analysis.mass.roi.values()
+    ] + [
+        f"{roi_and_label_config.name}_detected_mass"
+        for roi_and_label_config in config.analysis.mass.roi_and_label.values()
     ]
-    detected_cols_g = [f"{key}_detected_mass_g" for key in rois.keys()] + [
-        f"{key}_detected_mass_g" for key in rois_and_labels.keys()
+    detected_cols_g = [
+        f"{roi_config.name}_detected_mass_g"
+        for roi_config in config.analysis.mass.roi.values()
+    ] + [
+        f"{roi_and_label_config.name}_detected_mass_g"
+        for roi_and_label_config in config.analysis.mass.roi_and_label.values()
     ]
-    detected_cols_aq = [f"{key}_detected_mass_aq" for key in rois.keys()] + [
-        f"{key}_detected_mass_aq" for key in rois_and_labels.keys()
+    detected_cols_aq = [
+        f"{roi_config.name}_detected_mass_aq"
+        for roi_config in config.analysis.mass.roi.values()
+    ] + [
+        f"{roi_and_label_config.name}_detected_mass_aq"
+        for roi_and_label_config in config.analysis.mass.roi_and_label.values()
     ]
-    exact_cols = [f"{key}_exact_mass" for key in rois.keys()]
+    exact_cols = [
+        f"{roi_config.name}_exact_mass"
+        for roi_config in config.analysis.mass.roi.values()
+    ]
     columns = (
         ["time", "datetime", "image_stem"]
         + exact_cols
@@ -159,9 +175,13 @@ def analysis_mass(
         row_data = {"time": time, "datetime": img.date, "image_stem": path.stem}
 
         # Compute exact mass in ROIs and add to row data
-        for key, roi in rois.items():
+        for roi_config in config.analysis.mass.roi.values():
+            key = roi_config.name
+            roi = roi_config.roi
             # Fetch exact mass from injection protocol
-            exact_mass_roi = experiment.injection_protocol.injected_mass(img.date, roi)
+            exact_mass_roi = experiment.injection_protocol.injected_mass(
+                img.date, roi_config.roi
+            )
 
             # Integrate over chosen roi
             mass_roi = geometry[key].integrate(mass.subregion(roi))
@@ -175,7 +195,11 @@ def analysis_mass(
             row_data[f"{key}_detected_mass_aq"] = mass_aq_roi
 
         # Compute integrated mass, mass_g, mass_aq in sub-ROIs and add to row data
-        for key, (label, roi) in rois_and_labels.items():
+        for roi_and_label_config in config.analysis.mass.roi_and_label.values():
+            key = roi_and_label_config.name
+            label = roi_and_label_config.label
+            roi = roi_and_label_config.roi
+
             # Restrict mass arrays to labeled area.
             _mass = mass.copy()
             _mass.img[fluidflower.labels.img != label] = 0.0
@@ -201,7 +225,9 @@ def analysis_mass(
         # Save DataFrame to CSV after each image analysis
         mass_df.to_csv(csv_path, index=False)  # Log the current analysis results
         logger.info(f"Processed {path.stem} at time {time}")
-        for key in rois.keys():
+
+        for roi_config in config.analysis.mass.roi.values():
+            key = roi_config.name
             exact = row_data[f"{key}_exact_mass"]
             detected = row_data[f"{key}_detected_mass"]
             error = (detected - exact) / max(exact, 1e-8) if exact else 0
