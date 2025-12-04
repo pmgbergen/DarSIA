@@ -49,6 +49,62 @@ def _get_key(section: dict, key: str, default=None, required=True, type_=None) -
         return default
 
 
+def _convert_to_hours(time_value: float | str) -> float:
+    """Convert time value to hours.
+
+    Args:
+        time_value: Time as float (hours) or string in "DD:HH:MM:SS" format
+
+    Returns:
+        Time in hours as float
+
+    """
+    if isinstance(time_value, (int, float)):
+        return float(time_value)
+
+    if isinstance(time_value, str):
+        # Handle "DD:HH:MM:SS", "HH:MM:SS", "HH:MM", or "HH" format
+        assert ":" in time_value
+        parts = time_value.split(":")
+        if len(parts) == 4:
+            # DD:HH:MM:SS format
+            days = int(parts[0])
+            hours = int(parts[1])
+            minutes = int(parts[2])
+            seconds = int(parts[3])
+        elif len(parts) == 3:
+            # HH:MM:SS format
+            days = 0
+            hours = int(parts[0])
+            minutes = int(parts[1])
+            seconds = int(parts[2])
+        elif len(parts) == 2:
+            # HH:MM format
+            days = seconds = 0
+            hours = int(parts[0])
+            minutes = int(parts[1])
+        elif len(parts) == 1:
+            # HH format
+            days = minutes = seconds = 0
+            hours = int(parts[0])
+            total_hours = hours
+        else:
+            raise ValueError(
+                f"Invalid time format: {time_value}. Use DD:HH:MM:SS, HH:MM:SS, HH:MM, or HH"
+            )
+        total_hours = (
+            timedelta(
+                days=days, hours=hours, minutes=minutes, seconds=seconds
+            ).total_seconds()
+            / 3600
+        )
+        return total_hours
+
+    raise ValueError(
+        f"Invalid time value: {time_value}. Must be float or DD:HH:MM:SS format"
+    )
+
+
 def _convert_none(v):
     return None if ((isinstance(v, str) and v.lower() == "none") or v is None) else v
 
@@ -380,13 +436,13 @@ class ColorPathsConfig:
         )
         self.baseline_image_times = sorted(
             [
-                float(t)
+                _convert_to_hours(t)
                 for t in _get_key(
                     sec,
                     "baseline_image_times",
                     default=[],
                     required=False,
-                    type_=list[float],
+                    type_=list[float | str],
                 )
             ]
         )
@@ -404,13 +460,13 @@ class ColorPathsConfig:
         )
         self.calibration_image_times = sorted(
             [
-                float(t)
+                _convert_to_hours(t)
                 for t in _get_key(
                     sec,
                     "calibration_image_times",
                     default=[],
                     required=False,
-                    type_=list[float],
+                    type_=list[float | str],
                 )
             ]
         )
@@ -498,13 +554,13 @@ class ColorToMassConfig:
         )
         self.calibration_image_times = sorted(
             [
-                float(t)
+                _convert_to_hours(t)
                 for t in _get_key(
                     sec,
                     "calibration_image_times",
                     default=[],
                     required=False,
-                    type_=list[float],
+                    type_=list[float | str],
                 )
             ]
         )
@@ -527,17 +583,33 @@ class ColorToMassConfig:
 @dataclass
 class ImageTimeInterval:
     start: float
-    """Start time of the interval."""
+    """Start time of the interval, relative to experiment start, in hours."""
     end: float
-    """End time of the interval."""
+    """End time of the interval, relative to experiment start, in hours."""
     step: float
-    """Step size between images."""
+    """Step size between images, in hours."""
     num: int
     """Number of images in the interval."""
 
+    def __init__(
+        self,
+        start: float | str,
+        end: float | str,
+        step: float | str = 0.0,
+        num: int = 0,
+    ):
+        self.start = _convert_to_hours(start)
+        self.end = _convert_to_hours(end)
+        self.step = _convert_to_hours(step)
+        self.num = num
+
     def __post_init__(self):
         self.step = (self.end - self.start) / self.num if self.num > 0 else 0
-        self.num = int((self.end - self.start) / self.step) + 1 if self.step > 0 else 0
+        self.num = (
+            int((self.end - self.start) / self.step) + 1
+            if not np.isclose(self.step, 0)
+            else 0
+        )
 
     def generate_times(self) -> list[float]:
         return np.unique(np.linspace(self.start, self.end, self.num)).tolist()
@@ -554,9 +626,13 @@ class AnalysisData:
         sub_sec = _get_section(sec, "data")
         self.image_times = sorted(
             [
-                float(t)
+                _convert_to_hours(t)
                 for t in _get_key(
-                    sub_sec, "image_times", default=[], required=False, type_=list
+                    sub_sec,
+                    "image_times",
+                    default=[],
+                    required=False,
+                    type_=list[float | str],
                 )
             ]
         )
@@ -578,12 +654,13 @@ class AnalysisData:
             # Loop through interval sections
             interval_times = []
             for interval_key in intervals_sec.keys():
-                interval_data = intervals_sec[interval_key]
-
-                # Create ImageTimeInterval object
-                start = _get_key(interval_data, "start", required=True, type_=float)
-                end = _get_key(interval_data, "end", required=True, type_=float)
-                step = _get_key(interval_data, "step", required=False, type_=float)
+                interval_data = intervals_sec[
+                    interval_key
+                ]  # Create ImageTimeInterval object
+                # Allow start/end/step to be either float or string (HH:MM:SS format)
+                start = _get_key(interval_data, "start", required=True)
+                end = _get_key(interval_data, "end", required=True)
+                step = _get_key(interval_data, "step", required=False, default=0.0)
                 num = _get_key(interval_data, "num", required=False, type_=int)
 
                 # Create interval and generate times
