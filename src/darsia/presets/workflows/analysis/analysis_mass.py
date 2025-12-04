@@ -10,6 +10,7 @@ from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
+from darsia.presets.workflows.fluidflower_config import AnalysisMassConfig
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,6 @@ def analysis_mass(
     assert config.analysis is not None
     assert config.rig is not None
     assert config.color_to_mass is not None
-    assert config.analysis.mass is not None
 
     # ! ---- Load experiment
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
@@ -52,6 +52,23 @@ def analysis_mass(
     fluidflower.load_experiment(experiment)
     if use_facies:
         fluidflower.labels = fluidflower.facies.copy()
+
+    # ! ---- ENSURE MASS CONFIGURATION ----
+    if config.analysis.mass is None:
+        config.analysis.mass = AnalysisMassConfig().load(
+            sec={
+                "mass": {
+                    "roi": {
+                        "full": {
+                            "name": "full",
+                            "corner_1": fluidflower.baseline.origin,
+                            "corner_2": fluidflower.baseline.opposite_corner,
+                        }
+                    }
+                }
+            },
+            results=config.data.results,
+        )
 
     # ! ---- POROSITY-INFORMED AVERAGING ---- ! #
     image_porosity = fluidflower.image_porosity
