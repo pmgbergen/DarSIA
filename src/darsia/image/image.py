@@ -1777,6 +1777,9 @@ class ScalarImage(Image):
                 cmap (str): color map used for storing the image.
 
         """
+        # Make sure the parent directory exists
+        path.parents[0].mkdir(parents=True, exist_ok=True)
+
         # Write image, using the conventional matrix indexing
         ubyte_image = self.img_as(np.uint8).img
         suffix = Path(path).suffix.lower()
