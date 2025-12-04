@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 import darsia
+from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 
 
 # TODO rm.
@@ -56,6 +57,17 @@ class ProtocolledExperiment:
         # Reference date
         self.experiment_start = self.injection_protocol.df["start"].min()
         """Start of the experiment."""
+
+    @classmethod
+    def init_from_config(cls, config: FluidFlowerConfig):
+        return cls(
+            data=config.data.data,
+            imaging_protocol=config.protocol.imaging,
+            injection_protocol=config.protocol.injection,
+            pressure_temperature_protocol=config.protocol.pressure_temperature,
+            blacklist_protocol=config.protocol.blacklist,
+            pad=config.data.pad,
+        )
 
     def time_since_start(self, date: datetime) -> float:
         """Hours since start of the experiment.
