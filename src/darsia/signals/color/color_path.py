@@ -132,7 +132,9 @@ class ColorPath:
             np.linalg.norm(self.relative_colors[i] - self.relative_colors[i - 1])
             for i in range(1, len(self.relative_colors))
         ]
-        relative_distances = (np.cumsum([0.0] + distances) / sum(distances)).tolist()
+        relative_distances = (
+            np.cumsum([0.0] + distances) / (sum(distances) if sum(distances) > 0 else 1)
+        ).tolist()
         return relative_distances
 
     def _compute_equidistant_distances(self) -> list[float]:
