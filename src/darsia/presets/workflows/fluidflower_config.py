@@ -841,6 +841,45 @@ class AnalysisMassConfig:
 
 
 @dataclass
+class AnalysisVolumeConfig:
+    roi: dict[str, RoiConfig] = field(default_factory=dict)
+    """ROI configurations for volume analysis."""
+    roi_and_label: dict[str, RoiAndLabelConfig] = field(default_factory=dict)
+    """ROI and label configurations for volume analysis."""
+    folder: Path = field(default_factory=Path)
+    """Path to the results folder for volume analysis."""
+
+    def load(self, sec: dict, results: Path | None) -> "AnalysisVolumeConfig":
+        sub_sec = _get_section(sec, "volume")
+
+        # Load ROIs
+        try:
+            roi_sec = _get_section(sub_sec, "roi")
+            self.roi = {}
+            for key in roi_sec.keys():
+                self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
+        except KeyError:
+            self.roi = {}
+
+        # Load ROIs with labels
+        try:
+            roi_label_sec = _get_section(sub_sec, "roi_and_label")
+            self.roi_and_label = {}
+            for key in roi_label_sec.keys():
+                self.roi_and_label[key] = RoiAndLabelConfig().load(
+                    _get_section(roi_label_sec, key)
+                )
+        except KeyError:
+            self.roi_and_label = {}
+
+        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
+        if not folder:
+            assert results is not None
+            self.folder = results / "volume"
+        return self
+
+
+@dataclass
 class AnalysisConfig:
     data: AnalysisData | None = None
     """Analysis data configuration."""
@@ -848,6 +887,8 @@ class AnalysisConfig:
     """Analysis segmentation configuration."""
     mass: AnalysisMassConfig | None = None
     """Analysis mass configuration."""
+    volume: AnalysisVolumeConfig | None = None
+    """Analysis volume configuration."""
 
     def load(
         self, path: Path, data: Path | None, results: Path | None
@@ -874,6 +915,13 @@ class AnalysisConfig:
         except KeyError:
             warn("No analysis mass found. Use [analysis.mass].")
             self.mass = None
+
+        # Config to load analysis volume
+        try:
+            self.volume = AnalysisVolumeConfig().load(sec, results)
+        except KeyError:
+            warn("No analysis volume found. Use [analysis.volume].")
+            self.volume = None
 
         return self
 
@@ -987,12 +1035,16 @@ class FluidFlowerConfig:
 
         # ! ---- ANALYSIS DATA ---- ! #
 
-        self.analysis = AnalysisConfig()
-        self.analysis.load(
-            path,
-            data=self.data.folder if self.data else None,
-            results=self.data.results if self.data else None,
-        )
+        try:
+            self.analysis = AnalysisConfig()
+            self.analysis.load(
+                path,
+                data=self.data.folder if self.data else None,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.analysis = None
+            warn(f"Section analysis not found in {path}, use [analysis].")
 
         ## Reference colorchecker
         # try:
@@ -1104,18 +1156,18 @@ class EventConfig:
 
     event_id: str = ""
     """ID of the event."""
-    type: str = ""
+    mode: str = ""
     """Type of the event (e.g., 'mass', 'volume')."""
-    key: str = ""
-    """Key to monitor for this event."""
+    roi_name: str = ""
+    """Region of interest for this event."""
     relative_threshold: float = 0.01
     """Relative threshold for this event detection, defaults to 1%."""
 
     def load(self, event_id: str, event_data: dict) -> "EventConfig":
         """Load event configuration from event data dictionary."""
         self.event_id = event_id
-        self.type = _get_key(event_data, "type", required=True, type_=str)
-        self.key = _get_key(event_data, "key", required=True, type_=str)
+        self.mode = _get_key(event_data, "mode", required=True, type_=str)
+        self.roi_name = _get_key(event_data, "roi_name", required=True, type_=str)
         self.relative_threshold = _get_key(
             event_data,
             "relative_threshold",
@@ -1155,6 +1207,7 @@ class EventsConfig:
             raise ValueError(
                 f"Events path not specified and results path is None in {path}."
             )
+        self.path.parent.mkdir(parents=True, exist_ok=True)
 
         return self
 
@@ -1214,6 +1267,8 @@ class MultiFluidFlowerConfig:
         self.runs = list(self.sub_config.keys())
         """List of run IDs available in the comparison config."""  # Load events configuration if present
 
+        self.events = EventsConfig()
+        self.events.load(path, results=self.data.results if self.data else None)
         # Events
         try:
             self.events = EventsConfig()
