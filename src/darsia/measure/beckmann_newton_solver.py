@@ -126,6 +126,9 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
             self.darcy_init.copy(), beckmann_problem_rhs.copy(), solution
         )
 
+        # Changing initial condition
+        #solution = np.load(f"Trygve/factor_{int(np.sqrt(self.grid.num_cells)//8)}_angle_0_unprocessed_solution.npy")
+
         # Initialize distance in case below iteration fails
         distance = 0
 
@@ -271,6 +274,11 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         unweighted_transport_density = self.transport_density(flux, weighted=False)
         flux_l1_norm = self.mass_matrix_cells.dot(unweighted_transport_density).sum()
 
+        # Get the residual for the pressure and the flux optimality
+        residual = self.compute_residual(solution, beckmann_problem_rhs)
+        residual_vector_pressure = self.pressure_view(residual)
+        residual_vector_optimality = self.rescaled_flux_optimality_conditions(solution)
+
         # Define performance metric
         info = {
             "distance": distance,  # includes weight
@@ -280,6 +288,9 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
             "convergence_history": convergence_history.as_dict(),
             "timings": total_timings,
             "peak_memory_consumption": peak_memory_consumption,
+            "residual_pressure": residual_vector_pressure,
+            "residual_optimality": residual_vector_optimality,
+            "unprocessed_solution": solution,
         }
 
         return distance, solution, info
