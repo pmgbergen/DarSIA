@@ -10,7 +10,7 @@ def L_dist(x, n=1):
     return (np.sum(np.abs(x)**n))**(1/n)/(x.shape[0]*x.shape[1])
 
 
-def block_test(factor, block1, block2, options, weights=None, method="newton", plotting=False):
+def block_test(factor, block1, block2, options, weights=None, method="newton", plotting=False, return_info=False):
     dim = 2
     shape = (factor * 8, factor * 8)
     voxel_size = [1 / factor, 1 / factor]
@@ -79,7 +79,8 @@ def block_test(factor, block1, block2, options, weights=None, method="newton", p
     flux_restructured = np.copy(flux)
     flux_restructured[:, :, 0] = -flux[:, :, 1]
     flux_restructured[:, :, 1] = flux[:, :, 0]
-
+    if return_info:
+        return distance, flux_restructured, info
     return distance, flux_restructured
     '''
     flux[:, :, 1] = -flux[:, :, 1]  # reverse x-component to match coordinate system
@@ -182,9 +183,9 @@ def circular_testing(factor, n_datapoints, options, method="newton"):
     axs[0].set_xlabel("Angle")
     axs[1].plot(angles, flux_error_array)
     axs[1].plot(angles, flux_error_array, marker='o')
-    axs[1].set_title("Flux Error (relative)")
+    axs[1].set_title("Flux Error (relative) $(L^1)$")
     axs[1].set_xlabel("Angle")
-    fig.suptitle(f"Method : {method}")
+    #fig.suptitle(f"Method : {method}")
     plt.show()
 
 
@@ -239,6 +240,29 @@ def block_test_analysis(block1, block2, factor, options, plotting=False):
 
     return dist_error, flux_error
 
+
+def plot_residuals(res_pressure, res_opt_1, res_opt_2):
+    fig, axs = plt.subplots(1, 1, dpi=500, constrained_layout=True)
+
+    im0 = axs.imshow(np.abs(res_pressure.T), cmap='viridis')
+    axs.set_title("Pressure Residual")
+    plt.colorbar(im0, ax=axs)
+    plt.show()
+
+    fig, axs = plt.subplots(1, 1, dpi=500, constrained_layout=True)
+    im1 = axs.imshow(np.abs(res_opt_1.T), cmap='viridis')
+    axs.set_title("Optimality Residual Component 1")
+    plt.colorbar(im1, ax=axs)
+    plt.show()
+
+    fig, axs = plt.subplots(1, 1, dpi=500, constrained_layout=True)
+    im2 = axs.imshow(np.abs(res_opt_2.T), cmap='viridis')
+    axs.set_title("Optimality Residual Component 2")
+    plt.colorbar(im2, ax=axs)
+
+    plt.show()
+
+
 if __name__ == "__main__":
     method = "newton"
     L_Bregman = 1e2
@@ -269,14 +293,6 @@ if __name__ == "__main__":
         "return_info": True
     }
 
-    dist, flux = wall_test(10, 6, 1.5, options, plotting=True)
-
-    bool_map = np.where(flux[:, :, 0] > 0)
-    flux[:, :, 0][bool_map] = 1e4
-    plt.figure()
-    plt.imshow(flux[:, :, 0])
-    plt.show()
-
     n_datapoints=30
     factor = 10
     angles = np.linspace(0, 2 * np.pi, n_datapoints)
@@ -284,11 +300,29 @@ if __name__ == "__main__":
     cos = np.round(2 * np.cos(angles) * factor) / factor
     sin = np.round(2 * np.sin(angles) * factor) / factor
 
-    index = 0
+    index = 12
     cos_i = cos[index]
     sin_i = sin[index]
     block1 = [4 - cos_i, 4 - sin_i, 1]
     block2 = [4 + cos_i, 4 + sin_i, 1]
+
+    #wall_test(factor, L=6, K=8, options=options, plotting=True)
+    #distance, flux, info = block_test(factor, block1, block2, options, plotting=True, return_info=True)
+    circular_testing(factor, n_datapoints, options)
+
+    """
+    # Extract residuals and reshape them into suitable 2D arrays for visualization
+    res_pressure = info["residual_pressure"].reshape(8*factor, 8*factor)
+    res_opt_1 = info["residual_optimality"][:(8*factor)*(8*factor-1)].reshape(8*factor, 8*factor-1)
+    res_opt_2 = info["residual_optimality"][(8*factor)*(8*factor-1):].reshape(8*factor-1, 8*factor)
+    print(f"Shape of res_opt_1: {res_opt_1.T.shape}")
+    print(f"Shape of res_opt_2: {res_opt_2.T.shape}")
+    plot_residuals(res_pressure, res_opt_1, res_opt_2)
+    """
+    #unprocessed_solution = info["unprocessed_solution"]
+    #np.save(f"Trygve/factor_{factor}_angle_{index}_unprocessed_solution.npy", unprocessed_solution)
+
+    #print(f"Shape of optimality residual: {residual_optimality.shape}")
     #block_test_analysis(block1, block2, factor, options, plotting=True)
     #wasserstein_test(4, "newton", case=1, plotting=True)
     #convergence_test([1, 2, 4, 8, 16], "newton", case=2)
