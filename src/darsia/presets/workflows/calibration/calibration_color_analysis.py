@@ -31,8 +31,7 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
 
     # ! ---- LOAD RIG ----
-    fluidflower = cls()
-    fluidflower.load(config.rig.path)
+    fluidflower = cls.load(config.rig.path)
     fluidflower.load_experiment(experiment)
 
     # ! ---- LOAD COLOR PATHS ----

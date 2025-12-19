@@ -33,8 +33,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
 
     # ! ---- LOAD RIG ----
-    fluidflower = cls()
-    fluidflower.load(config.rig.path)
+    fluidflower = cls.load(config.rig.path)
     fluidflower.load_experiment(experiment)
 
     # Hardcode the use of facies.
