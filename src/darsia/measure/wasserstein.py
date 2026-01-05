@@ -521,7 +521,7 @@ class VariationalWassersteinDistance(darsia.EMD):
                     "ksp_rtol": rtol,
                     "ksp_atol": atol,
                     "ksp_max_it": maxiter,
-                    "ksp_monitor": None,
+                    #"ksp_monitor": None,
                     # "ksp_monitor_true_residual": None, #this is for debugging
                     "pc_type": "fieldsplit",
                     "pc_fieldsplit_type": "schur",
@@ -2654,12 +2654,13 @@ class WassersteinDistanceGproxPGHD(darsia.EMD):
         linear_solver_options = self.options.get("tdens_poisson_solver_options", {})
         tol = linear_solver_options.get("rtol", 1e-6)
         maxiter = linear_solver_options.get("maxiter", 100)
+        min_tdens = 1e-8
         weighted_Poisson_solver = self.setup_poisson_solver(
             "transport_density_weighted_poisson",
             linear_solver_type=linear_solver_type,
             linear_solver_rtol=tol,
             linear_solver_maxiter=maxiter,
-            permeability_faces=transport_density_faces,
+            permeability_faces=transport_density_faces + min_tdens,
         )
         integrated_mass_diff = self.mass_matrix_cells.dot(flat_mass_diff)
         pressure = weighted_Poisson_solver.solve(
