@@ -50,53 +50,59 @@ class WassersteinResult:
     """Name of the sub-region of interest, if applicable."""
     subroi_normalized_wasserstein_distance: Optional[float] = None
     """Normalized Wasserstein distance for sub-ROI, if applicable."""
+    success: Optional[bool] = None
+    """Whether the computation was successful."""
 
+    @staticmethod
+    def get_filename(
+        results_dir: Path,
+        run_1: str,
+        run_2: str,
+        time: float,
+        roi_name: str,
+        sub_roi_name: Optional[str] = None,
+    ) -> Path:
+        """Generate standardized filename for intermediate results."""
+        # Sanitize time for filename (replace . and : with _)
+        time_str = f"{time:.3f}".replace(".", "_").replace(":", "_")
 
-def get_result_filename(
-    results_dir: Path,
-    run_1: str,
-    run_2: str,
-    time: float,
-    roi_name: str,
-    sub_roi_name: Optional[str] = None,
-) -> Path:
-    """Generate standardized filename for intermediate results."""
-    # Sanitize time for filename (replace . with _)
-    time_str = f"{time:.3f}".replace(".", "_")
-    time_str = f"{time:.3f}".replace(":", "_")
+        if sub_roi_name:
+            filename = (
+                f"wasserstein_{run_1}_{run_2}_{time_str}_{roi_name}_{sub_roi_name}.json"
+            )
+        else:
+            filename = f"wasserstein_{run_1}_{run_2}_{time_str}_{roi_name}.json"
 
-    if sub_roi_name:
-        filename = (
-            f"wasserstein_{run_1}_{run_2}_{time_str}_{roi_name}_{sub_roi_name}.json"
+        return results_dir / filename
+
+    def get_result_filename(self, results_dir: Path) -> Path:
+        """Get the filename for this result."""
+        return self.get_filename(
+            results_dir,
+            self.run_1,
+            self.run_2,
+            self.time,
+            self.roi_name,
+            self.sub_roi_name,
         )
-    else:
-        filename = f"wasserstein_{run_1}_{run_2}_{time_str}_{roi_name}.json"
 
-    return results_dir / filename
+    def save(self, path: Path) -> None:
+        """Save result to JSON file at specified path."""
+        with open(path, "w") as f:
+            json.dump(asdict(self), f, indent=2)
 
+    def save_to_dir(self, results_dir: Path) -> Path:
+        """Save result to JSON file in results directory with auto-generated name."""
+        filename = self.get_result_filename(results_dir)
+        self.save(filename)
+        return filename
 
-def save_result(result: WassersteinResult, results_dir: Path) -> Path:
-    """Save intermediate result to JSON file."""
-    filename = get_result_filename(
-        results_dir,
-        result.run_1,
-        result.run_2,
-        result.time,
-        result.roi_name,
-        result.sub_roi_name,
-    )
-
-    with open(filename, "w") as f:
-        json.dump(asdict(result), f, indent=2)
-
-    return filename
-
-
-def load_result(filename: Path) -> WassersteinResult:
-    """Load result from JSON file."""
-    with open(filename, "r") as f:
-        data = json.load(f)
-    return WassersteinResult(**data)
+    @classmethod
+    def load(cls, filename: Path) -> "WassersteinResult":
+        """Load result from JSON file."""
+        with open(filename, "r") as f:
+            data = json.load(f)
+        return cls(**data)
 
 
 def comparison_wasserstein(
@@ -162,10 +168,10 @@ def _compute_wasserstein_distances(config, skip_existing: bool) -> None:
             )
 
             for run_2 in active_runs:
-                if run_1 >= run_2:  # Only compute upper triangle
-                    continue
-
-                # Load mass data for run_2
+                if run_1 >= run_2:
+                    # Only compute upper triangle
+                    # TODO fetch and copy existing result? or keep this for the assembly?
+                    continue  # Load mass data for run_2
                 mass_2 = load_mass_data(
                     config.sub_config[run_2],
                     time=time,
@@ -175,7 +181,6 @@ def _compute_wasserstein_distances(config, skip_existing: bool) -> None:
 
                 for roi_config in config.wasserstein.roi.values():
                     # Main ROI computation
-                    assert False
                     distance, info = _compute_single_wasserstein(
                         run_1,
                         run_2,
@@ -221,8 +226,8 @@ def _compute_single_wasserstein(
     """Compute single Wasserstein distance with error handling."""
 
     # Check if result already exists
-    result_file = get_result_filename(
-        run_1, run_2, time, roi_name, sub_roi_name, results_dir
+    result_file = WassersteinResult.get_filename(
+        results_dir, run_1, run_2, time, roi_name, sub_roi_name
     )
     if skip_existing and result_file.exists():
         logger.debug(f"Skipping existing result: {result_file.name}")
@@ -263,13 +268,13 @@ def _compute_single_wasserstein(
             normalized_wasserstein_distance=normalized_wasserstein_distance,
             roi_exact_mass_1=roi_exact_mass_1,
             roi_exact_mass_2=roi_exact_mass_2,
-            roi_detected_mass_1=float(roi_detected_mass_1.sum()),  # Convert to scalar
+            roi_detected_mass_1=float(roi_detected_mass_1.sum()),
             roi_detected_mass_2=float(roi_detected_mass_2.sum()),
             computation_time=computation_time,
             timestamp=datetime.now().isoformat(),
         )
 
-        save_result(result, results_dir)
+        result.save_to_dir(results_dir)
         logger.debug(f"Computed Wasserstein distance: {result_file.name}")
 
     except Exception as e:
@@ -292,6 +297,56 @@ def _compute_single_wasserstein(
                 f,
                 indent=2,
             )
+
+
+def _compute_roi_geometry(roi):
+    """Compute geometry for a region of interest.
+
+    TODO: Implement this function.
+    """
+    raise NotImplementedError("_compute_roi_geometry not yet implemented")
+
+
+def _extract_exact_mass(mass, roi, time):
+    """Extract exact mass at given time and ROI.
+
+    TODO: Implement this function.
+    """
+    raise NotImplementedError("_extract_exact_mass not yet implemented")
+
+
+def _extract_detected_mass(coarse_mass, roi):
+    """Extract detected mass at given ROI.
+
+    TODO: Implement this function.
+    """
+    raise NotImplementedError("_extract_detected_mass not yet implemented")
+
+
+def _compute_wasserstein_distance(mass_1, mass_2):
+    """Compute Wasserstein distance between two mass distributions.
+
+    TODO: Implement this function.
+    """
+    raise NotImplementedError("_compute_wasserstein_distance not yet implemented")
+
+
+def _normalize_wasserstein_distance(wasserstein_distance, roi_geometry):
+    """Normalize Wasserstein distance by ROI geometry.
+
+    TODO: Implement this function.
+    """
+    raise NotImplementedError("_normalize_wasserstein_distance not yet implemented")
+
+
+def _evaluate_single_wasserstein_roi(
+    distance, info, sub_roi_name, sub_roi_config, results_dir, skip_existing
+):
+    """Evaluate Wasserstein distance for a sub-ROI.
+
+    TODO: Implement this function.
+    """
+    raise NotImplementedError("_evaluate_single_wasserstein_roi not yet implemented")
 
 
 def _assemble_wasserstein_results(config):
@@ -319,17 +374,16 @@ def _assemble_wasserstein_results(config):
         )
 
         missing_results = []
-
         # Fill DataFrame with results
         for run_1, run_2 in run_pairs:
             for roi_name in roi_names:
-                result_file = get_result_filename(
-                    run_1, run_2, time, roi_name, None, results_dir
+                result_file = WassersteinResult.get_filename(
+                    results_dir, run_1, run_2, time, roi_name, None
                 )
 
                 try:
                     if result_file.exists():
-                        result = load_result(result_file)
+                        result = WassersteinResult.load(result_file)
                         df.loc[(run_1, run_2), roi_name] = (
                             result.normalized_wasserstein_distance
                         )
@@ -371,7 +425,7 @@ def _check_completion_status(config):
     for result_file in results_dir.glob("*.json"):
         total += 1
         try:
-            result = load_result(result_file)
+            result = WassersteinResult.load(result_file)
             if result:
                 completed += 1
         except Exception as e:
@@ -492,7 +546,9 @@ def _check_completion_status(config):
 #                    # Advance counter
 #                    counter += 1
 #                    logger.info(
-#                        f"Wasserstein distance for ROI {roi.roi_name} between runs {run_1} and {run_2} at time {time}: {wasserstein_distance_normalized}"
+#                        f"Wasserstein distance for ROI {roi.roi_name} "
+#                        f"between runs {run_1} and {run_2} at time {time}: "
+#                        f"{wasserstein_distance_normalized}"
 #                    )
 #
 #        # Store to file.
