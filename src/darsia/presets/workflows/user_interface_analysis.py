@@ -1,17 +1,21 @@
 """User interface to standardized analysis workflows."""
 
 import argparse
-
 import logging
 
-from darsia.presets.workflows.analysis.analysis_cropping import analysis_cropping
+from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_context
+from darsia.presets.workflows.analysis.analysis_cropping import (
+    analysis_cropping_from_context,
+)
 from darsia.presets.workflows.analysis.analysis_segmentation import (
-    analysis_segmentation,
+    analysis_segmentation_from_context,
 )
 from darsia.presets.workflows.analysis.analysis_mass import (
-    analysis_mass,
+    analysis_mass_from_context,
 )
-from darsia.presets.workflows.analysis.analysis_volume import analysis_volume
+from darsia.presets.workflows.analysis.analysis_volume import (
+    analysis_volume_from_context,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -67,11 +71,13 @@ def print_help_for_flags(args, parser):
             parser.print_help()
         if args.cropping:
             print(
-                "Cropping analysis: Applies cropping to specified images based on configuration."
+                "Cropping analysis: Applies cropping to specified images "
+                "based on configuration."
             )
         if args.segmentation:
             print(
-                "Segmentation analysis: Performs segmentation on images according to configuration."
+                "Segmentation analysis: Performs segmentation on images "
+                "according to configuration."
             )
         print("To run the analysis, remove the '--info' flag.")
         import sys
@@ -80,37 +86,52 @@ def print_help_for_flags(args, parser):
 
 
 def run_analysis(rig, args, **kwargs):
+    if not (args.cropping or args.mass or args.volume or args.segmentation):
+        raise ValueError(
+            """No analysis type specified. Please select at least one analysis."""
+            """Choose from --cropping, --mass, --volume, or --segmentation."""
+        )
+
+    # Determine if we need color-to-mass analysis (expensive initialization)
+    require_color_to_mass = args.mass or args.volume or args.segmentation
+
+    # Determine if we need facies (only for mass/volume/segmentation)
+    use_facies = require_color_to_mass
+
+    # Prepare shared context once for all analyses
+    ctx = prepare_analysis_context(
+        cls=rig,
+        path=args.config,
+        all=args.all,
+        use_facies=use_facies,
+        require_color_to_mass=require_color_to_mass,
+    )
+
+    # Run requested analyses using shared context
     if args.cropping:
-        analysis_cropping(
-            rig,
-            args.config,
-            args.show,
-            args.save_jpg,
-            args.save_npz,
-            args.all,
+        analysis_cropping_from_context(
+            ctx,
+            show=args.show,
+            save_jpg=args.save_jpg,
+            save_npz=args.save_npz,
         )
 
     if args.mass:
-        analysis_mass(
-            rig,
-            args.config,
+        analysis_mass_from_context(
+            ctx,
             show=args.show,
-            all=args.all,
         )
 
     if args.volume:
-        analysis_volume(
-            rig,
-            args.config,
-            all=args.all,
+        analysis_volume_from_context(
+            ctx,
+            show=args.show,
         )
 
     if args.segmentation:
-        analysis_segmentation(
-            rig,
-            args.config,
+        analysis_segmentation_from_context(
+            ctx,
             show=args.show,
-            all=args.all,
         )
 
 

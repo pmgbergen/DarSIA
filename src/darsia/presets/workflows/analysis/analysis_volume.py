@@ -1,14 +1,15 @@
 """Template for color signal analysis."""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 
 import pandas as pd
 
-import darsia
-from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
-from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
-    HeterogeneousColorToMassAnalysis,
+from darsia.presets.workflows.analysis.analysis_context import (
+    AnalysisContext,
+    prepare_analysis_context,
 )
 from darsia.presets.workflows.fluidflower_config import AnalysisVolumeConfig
 from darsia.presets.workflows.rig import Rig
@@ -16,38 +17,25 @@ from darsia.presets.workflows.rig import Rig
 logger = logging.getLogger(__name__)
 
 
-def analysis_volume(
-    cls: type[Rig],
-    path: Path,
-    all: bool = False,
+def analysis_volume_from_context(
+    ctx: AnalysisContext,
     show: bool = False,
-    use_facies: bool = True,
-):
-    # ! ---- LOAD RUN AND RIG ----
-    config = FluidFlowerConfig(path, require_data=True, require_results=True)
-    config.check(
-        "data",
-        "rig",
-        "protocol",
-        "analysis",
-        "analysis.segmentation",
-    )
+) -> None:
+    """Volume analysis using pre-prepared context.
 
-    # Mypy type checking
-    assert config.data is not None
-    assert config.rig is not None
-    assert config.rig.path is not None
-    assert config.protocol is not None
-    assert config.analysis is not None
+    Args:
+        ctx: Pre-prepared analysis context with color_to_mass_analysis initialized.
+        show: Whether to show the images.
 
-    # ! ---- Load experiment
-    experiment = darsia.ProtocolledExperiment.init_from_config(config)
+    """
+    assert ctx.config.data is not None
+    assert ctx.config.analysis is not None
+    assert ctx.color_to_mass_analysis is not None
 
-    # ! ---- LOAD RIG ----
-    fluidflower = cls.load(config.rig.path)
-    fluidflower.load_experiment(experiment)
-    if use_facies:
-        fluidflower.labels = fluidflower.facies.copy()
+    config = ctx.config
+    fluidflower = ctx.fluidflower
+    image_paths = ctx.image_paths
+    color_to_mass_analysis = ctx.color_to_mass_analysis
 
     # ! ---- ENSURE VOLUME CONFIGURATION ----
     if config.analysis.volume is None:
@@ -66,37 +54,7 @@ def analysis_volume(
             results=config.data.results,
         )
 
-    # ! ---- POROSITY-INFORMED AVERAGING ---- ! #
-    image_porosity = fluidflower.image_porosity
-    restoration = darsia.VolumeAveraging(
-        rev=darsia.REV(size=0.005, img=fluidflower.baseline),
-        mask=image_porosity,
-    )
-
-    # ! ---- FROM COLOR PATH TO MASS ----
-
-    experiment_start = experiment.experiment_start
-    state = experiment.pressure_temperature_protocol.get_state(experiment_start)
-    gradient = experiment.pressure_temperature_protocol.get_gradient(experiment_start)
-    co2_mass_analysis = darsia.CO2MassAnalysis(
-        baseline=fluidflower.baseline,
-        atmospheric_pressure=state.pressure,
-        atmospheric_temperature=state.temperature,
-        atmospheric_pressure_gradient=gradient.pressure,
-        atmospheric_temperature_gradient=gradient.temperature,
-    )
-
-    color_to_mass_analysis = HeterogeneousColorToMassAnalysis.load(
-        folder=config.color_to_mass.calibration_folder,
-        baseline=fluidflower.baseline,
-        labels=fluidflower.labels,
-        co2_mass_analysis=co2_mass_analysis,
-        geometry=fluidflower.geometry,
-        restoration=restoration,
-    )
-    # ! ---- GEOMETRY FOR INTEGRATION ---- ! #
-
-    # Define default ROIs
+    # ! ---- GEOMETRY FOR INTEGRATION ----
     geometry = {}
     geometry.update(
         {
@@ -148,18 +106,8 @@ def analysis_volume(
     # Storing and plotting
     folder_saturation_g = config.data.results / "saturation_g"
     folder_concentration_aq = config.data.results / "concentration_aq"
-
-    # ! ---- IMAGES ----
-
-    if all:
-        image_paths = config.data.data
-    elif len(config.analysis.data.image_paths) > 0:
-        image_paths = config.analysis.data.image_paths
-    else:
-        image_paths = experiment.find_images_for_times(
-            times=config.analysis.data.image_times
-        )
-    assert len(image_paths) > 0, "No images found for analysis."
+    folder_saturation_g.mkdir(parents=True, exist_ok=True)
+    folder_concentration_aq.mkdir(parents=True, exist_ok=True)
 
     # ! ---- ANALYSIS ----
 
@@ -254,3 +202,30 @@ def analysis_volume(
             saturation_g.show(title=f"Saturation_g at {path.stem}", delay=True)
             concentration_aq.show(title=f"Concentration_aq at {path.stem}", delay=True)
             plt.show()
+
+
+def analysis_volume(
+    cls: type[Rig],
+    path: Path,
+    all: bool = False,
+    show: bool = False,
+    use_facies: bool = True,
+):
+    """Volume analysis (standalone entry point).
+
+    Args:
+        cls: FluidFlower rig class.
+        path: Path to config file.
+        all: Whether to use all images.
+        show: Whether to show the images.
+        use_facies: Whether to use facies as labels.
+
+    """
+    ctx = prepare_analysis_context(
+        cls=cls,
+        path=path,
+        all=all,
+        use_facies=use_facies,
+        require_color_to_mass=True,
+    )
+    analysis_volume_from_context(ctx, show=show)

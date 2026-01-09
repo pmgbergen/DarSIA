@@ -1,79 +1,54 @@
 """Template for cropping/reading images."""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.analysis.analysis_context import (
+    AnalysisContext,
+    prepare_analysis_context,
+)
 from darsia.presets.workflows.rig import Rig
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def analysis_cropping(
-    cls: type[Rig],
-    path: Path | list[Path],
+def analysis_cropping_from_context(
+    ctx: AnalysisContext,
     show: bool = False,
     save_jpg: bool = False,
     save_npz: bool = False,
-    all: bool = False,
 ) -> None:
-    """Cropping analysis.
-
-    Note: If no options are set, the images are only read and no output is saved.
+    """Cropping analysis using pre-prepared context.
 
     Args:
-        cls: FluidFlower rig class.
-        path: Path or list of Paths to the images.
+        ctx: Pre-prepared analysis context.
         show: Whether to show the images.
         save_jpg: Whether to save the images as JPG.
         save_npz: Whether to save the images as NPZ.
-        all: Whether to use all images or only the ones specified in the config.
 
     """
-    # Read data from meta
-    config = FluidFlowerConfig(path, require_data=True)
-    config.check("analysis", "protocol", "data", "rig")
-
-    # Mypy type checking
-    assert config.rig is not None
-    assert config.rig.path is not None
-    assert config.data is not None
-    assert config.protocol is not None
-    assert config.analysis is not None
-
-    # ! ---- LOAD EXPERIMENT ----
-    experiment = darsia.ProtocolledExperiment.init_from_config(config)
-
-    # ! ---- LOAD RIG ----
-    fluidflower = cls.load(config.rig.path)
-    fluidflower.load_experiment(experiment)
-
-    # ! ---- LOAD IMAGES ----
-    if all:
-        assert config.data.data is not None
-        image_paths = config.data.data
-    elif len(config.analysis.image_paths) > 0:
-        assert config.analysis.image_paths is not None
-        image_paths = config.analysis.image_paths
-    else:
-        assert config.analysis.image_times is not None
-        image_paths = experiment.find_images_for_times(
-            times=config.analysis.image_times
-        )
-    assert len(image_paths) > 0, "No images found for analysis."
+    assert ctx.config.data is not None
 
     # ! ---- CROPPING ----
-    plot_folder = config.data.results / "cropped_images"
-    for path in image_paths:
+    plot_folder = ctx.config.data.results / "cropped_images"
+    plot_folder.mkdir(parents=True, exist_ok=True)
+
+    for path in ctx.image_paths:
         # Update
-        fluidflower.update(path)
+        ctx.fluidflower.update(path)
 
         # Read image
-        img = fluidflower.read_image(path)
+        img = ctx.fluidflower.read_image(path)
 
         # Convert image to darsia.OpticalImage
         img = darsia.OpticalImage(img.img, **img.metadata())
@@ -90,3 +65,34 @@ def analysis_cropping(
             img.write(plot_folder / f"{path.stem}.jpg", quality=50)
 
     print("Done. Analysis.")
+
+
+def analysis_cropping(
+    cls: type[Rig],
+    path: Path | list[Path],
+    show: bool = False,
+    save_jpg: bool = False,
+    save_npz: bool = False,
+    all: bool = False,
+) -> None:
+    """Cropping analysis (standalone entry point).
+
+    Note: If no options are set, the images are only read and no output is saved.
+
+    Args:
+        cls: FluidFlower rig class.
+        path: Path or list of Paths to the images.
+        show: Whether to show the images.
+        save_jpg: Whether to save the images as JPG.
+        save_npz: Whether to save the images as NPZ.
+        all: Whether to use all images or only the ones specified in the config.
+
+    """
+    ctx = prepare_analysis_context(
+        cls=cls,
+        path=path,
+        all=all,
+        use_facies=False,
+        require_color_to_mass=False,
+    )
+    analysis_cropping_from_context(ctx, show=show, save_jpg=save_jpg, save_npz=save_npz)

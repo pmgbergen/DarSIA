@@ -1,14 +1,15 @@
 """Template for mass analysis."""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 
 import pandas as pd
 
-import darsia
-from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
-from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
-    HeterogeneousColorToMassAnalysis,
+from darsia.presets.workflows.analysis.analysis_context import (
+    AnalysisContext,
+    prepare_analysis_context,
 )
 from darsia.presets.workflows.fluidflower_config import AnalysisMassConfig
 from darsia.presets.workflows.rig import Rig
@@ -16,42 +17,26 @@ from darsia.presets.workflows.rig import Rig
 logger = logging.getLogger(__name__)
 
 
-def analysis_mass(
-    cls: type[Rig],
-    path: Path | list[Path],
+def analysis_mass_from_context(
+    ctx: AnalysisContext,
     show: bool = False,
-    all: bool = False,
-    use_facies: bool = True,
-):
-    # ! ---- LOAD RUN AND RIG ----
-    config = FluidFlowerConfig(path, require_data=True)
-    config.check(
-        "protocol",
-        "data",
-        "color_paths",
-        "rig",
-    )
+) -> None:
+    """Mass analysis using pre-prepared context.
 
-    # Mypy type checking
-    assert config.protocol is not None
-    assert config.protocol.imaging is not None
-    assert config.protocol.injection is not None
-    assert config.protocol.pressure_temperature is not None
-    assert config.protocol.blacklist is not None
-    assert config.data is not None
-    assert config.color_paths is not None
-    assert config.analysis is not None
-    assert config.rig is not None
-    assert config.color_to_mass is not None
+    Args:
+        ctx: Pre-prepared analysis context with color_to_mass_analysis initialized.
+        show: Whether to show the images.
 
-    # ! ---- Load experiment
-    experiment = darsia.ProtocolledExperiment.init_from_config(config)
+    """
+    assert ctx.config.data is not None
+    assert ctx.config.analysis is not None
+    assert ctx.color_to_mass_analysis is not None
 
-    # ! ---- LOAD RIG ----
-    fluidflower = cls.load(config.rig.path)
-    fluidflower.load_experiment(experiment)
-    if use_facies:
-        fluidflower.labels = fluidflower.facies.copy()
+    config = ctx.config
+    experiment = ctx.experiment
+    fluidflower = ctx.fluidflower
+    image_paths = ctx.image_paths
+    color_to_mass_analysis = ctx.color_to_mass_analysis
 
     # ! ---- ENSURE MASS CONFIGURATION ----
     if config.analysis.mass is None:
@@ -70,37 +55,7 @@ def analysis_mass(
             results=config.data.results,
         )
 
-    # ! ---- POROSITY-INFORMED AVERAGING ---- ! #
-    image_porosity = fluidflower.image_porosity
-    restoration = darsia.VolumeAveraging(
-        rev=darsia.REV(size=0.005, img=fluidflower.baseline),
-        mask=image_porosity,
-    )
-
-    # ! ---- FROM COLOR PATH TO MASS ----
-
-    experiment_start = experiment.experiment_start
-    state = experiment.pressure_temperature_protocol.get_state(experiment_start)
-    gradient = experiment.pressure_temperature_protocol.get_gradient(experiment_start)
-    co2_mass_analysis = darsia.CO2MassAnalysis(
-        baseline=fluidflower.baseline,
-        atmospheric_pressure=state.pressure,
-        atmospheric_temperature=state.temperature,
-        atmospheric_pressure_gradient=gradient.pressure,
-        atmospheric_temperature_gradient=gradient.temperature,
-    )
-
-    color_to_mass_analysis = HeterogeneousColorToMassAnalysis.load(
-        folder=config.color_to_mass.calibration_folder,
-        baseline=fluidflower.baseline,
-        labels=fluidflower.labels,
-        co2_mass_analysis=co2_mass_analysis,
-        geometry=fluidflower.geometry,
-        restoration=restoration,
-    )
-
-    # ! ---- GEOMETRY FOR INTEGRATION ---- ! #
-
+    # ! ---- GEOMETRY FOR INTEGRATION ----
     geometry = {}
     geometry.update(
         {
@@ -116,18 +71,6 @@ def analysis_mass(
             for roi_and_label_config in config.analysis.mass.roi_and_label.values()
         }
     )
-
-    # ! ---- IMAGES ----
-
-    if all:
-        image_paths = config.data.data
-    elif len(config.analysis.data.image_paths) > 0:
-        image_paths = config.analysis.data.image_paths
-    else:
-        image_paths = experiment.find_images_for_times(
-            times=config.analysis.data.image_times
-        )
-    assert len(image_paths) > 0, "No images found for analysis."
 
     # ! ---- ANALYSIS ----
 
@@ -261,3 +204,30 @@ def analysis_mass(
             mass_g.show(title=f"Mass G at {path.stem}", delay=True)
             mass_aq.show(title=f"Mass AQ at {path.stem}", delay=True)
             plt.show()
+
+
+def analysis_mass(
+    cls: type[Rig],
+    path: Path | list[Path],
+    show: bool = False,
+    all: bool = False,
+    use_facies: bool = True,
+):
+    """Mass analysis (standalone entry point).
+
+    Args:
+        cls: FluidFlower rig class.
+        path: Path or list of paths to config files.
+        show: Whether to show the images.
+        all: Whether to use all images.
+        use_facies: Whether to use facies as labels.
+
+    """
+    ctx = prepare_analysis_context(
+        cls=cls,
+        path=path,
+        all=all,
+        use_facies=use_facies,
+        require_color_to_mass=True,
+    )
+    analysis_mass_from_context(ctx, show=show)
