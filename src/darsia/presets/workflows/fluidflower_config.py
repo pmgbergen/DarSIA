@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from warnings import warn
 from typing import Any
-from datetime import datetime, timedelta
+from datetime import timedelta
 from darsia import CoordinateArray
 
 logger = logging.getLogger(__name__)
@@ -1127,6 +1127,62 @@ class FluidFlowerConfig:
         return meta_data
 
 
+# ! ---- MULTI FLUIDFLOWER CONFIG ---- ! #
+
+
+@dataclass
+class MultiFluidFlowerRunsConfig:
+    """Database configuration for multiple FluidFlower runs comparison."""
+
+    config: dict[str, FluidFlowerConfig] = field(default_factory=dict)
+    """Dictionary of FluidFlowerConfig objects for each run."""
+
+    def load(
+        self,
+        path: Path,
+        require_data: bool = False,
+        require_results: bool = False,
+    ) -> "MultiFluidFlowerRunsConfig":
+        """Load database configuration from TOML file."""
+
+        run_section = _get_section_from_toml(path, "run")
+        # self.results = _get_key(data_section, "results", required=True, type_=Path)
+
+        # Allow for common configs, to be added to any other run
+        if "common" in run_section:
+            common_config = run_section["common"]
+            if "config" in common_config:
+                if isinstance(common_config["config"], str):
+                    common_config_paths = [path.parent / common_config["config"]]
+                else:
+                    assert isinstance(common_config["config"], list)
+                    common_config_paths = [
+                        path.parent / p for p in common_config["config"]
+                    ]
+        else:
+            common_config_paths = []
+
+        # Setup config for single runs - combine with common config if provided
+        for run_id, run_config in run_section.items():
+            # Skip the common config entry
+            if run_id in ["common"]:
+                continue
+
+            # Attach run specific config(s)
+            config_paths = [path.parent / run_config["config"]]
+            config_paths.extend(common_config_paths)
+
+            # Create FluidFlowerConfig for this run
+            self.config[run_id] = FluidFlowerConfig(
+                config_paths,
+                require_data=require_data,
+                require_results=require_results,
+            )
+            logger.info(f"FluidFlowerConfig finished setup for run {run_id}.")
+
+        return self
+
+
 @dataclass
 class MultiFluidFlowerDataConfig:
     """Data configuration for multiple FluidFlower runs comparison."""
@@ -1212,11 +1268,72 @@ class EventsConfig:
         return self
 
 
+@dataclass
+class WassersteinDistancesConfig:
+    """Configuration for Wasserstein comparison."""
+
+    results: Path = field(default_factory=Path)
+    """Path to the results folder for Wasserstein comparison."""
+    runs: list[str] = field(default_factory=list)
+    """List of run IDs to compare."""
+    times_with_uncertainty: list[tuple[float, float]] = field(default_factory=list)
+    """List of times at which to compute Wasserstein distances."""
+    refinement_ratio: float | None = None
+    """Spatial refinement ratio for Wasserstein computation."""
+    roi: dict[str, RoiConfig] | None = None
+    """ROIs to consider for Wasserstein computation."""
+
+    def load(
+        self,
+        path: Path | list[Path],
+        results: Path | None,
+        roi: MultiRoiConfig | None = None,
+    ) -> "WassersteinDistancesConfig":
+        """Load Wasserstein comparison configuration from TOML file."""
+        data_section = _get_section_from_toml(path, "wasserstein")
+        self.results = _get_key(data_section, "results", required=False, type_=Path)
+        if not self.results:
+            assert results is not None
+            self.results = results / "wasserstein_distances"
+        self.runs = _get_key(data_section, "runs", required=True, type_=list)
+
+        # Create results directory if it doesn't exist
+        try:
+            self.results.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            raise PermissionError(
+                f"Cannot create results directory at {self.results}."
+            ) from e
+
+        # Load times. Allow for different options.
+        self.times_with_uncertainty = []
+        try:
+            self.times_with_uncertainty = load_image_times_with_uncertainty(
+                data_section
+            )
+        except KeyError:
+            pass
+
+        # Spatial refinement ratio
+        self.refinement_ratio = _get_key(
+            data_section, "refinement_ratio", required=False, type_=float
+        )
+
+        # Load ROIs
+        roi_name = _get_key(data_section, "roi", required=True, type_=list)
+        self.roi = {name: roi.roi[name] for name in roi_name}
+
+        return self
+
+
 class MultiFluidFlowerConfig:
     """Meta data for multiple FluidFlower CO2 analysis."""
 
     def __init__(
-        self, path: Path, require_data: bool = False, require_results: bool = False
+        self,
+        path: Path,
+        require_data: bool = True,
+        require_results: bool = False,
     ):
         """Initialize from a comparison config file like runs_comparison.toml.
 
@@ -1226,13 +1343,29 @@ class MultiFluidFlowerConfig:
             require_results (bool): Whether to require results section in each run config.
 
         """
-        self.path = path
-        self.sub_config: dict[str, FluidFlowerConfig] = {}
-        self.events: EventsConfig | None = None
+        # Make sure that path is compatible
+        if isinstance(path, list):
+            raise ValueError(
+                "Path must be a single Path object for MultiFluidFlowerConfig."
+            )
+        path = Path(path)
+
         self.data: MultiFluidFlowerDataConfig | None = None
+        self.events: EventsConfig | None = None
+        self.roi: MultiRoiConfig | None = None
+        self.wasserstein: WassersteinDistancesConfig | None = None
 
         # Load the comparison config
-        comparison_data = tomllib.loads(path.read_text())
+        try:
+            self.runs = MultiFluidFlowerRunsConfig()
+            self.runs.load(
+                path,
+                require_data=require_data,
+                require_results=require_results,
+            )
+        except KeyError:
+            self.runs = None
+            logger.info(f"Section [database] not found in {path}.")
 
         # Load data configuration if present
         try:
@@ -1241,34 +1374,6 @@ class MultiFluidFlowerConfig:
         except KeyError:
             raise ValueError(f"Section [data] not found in {path}.")
 
-        # Load individual run config
-        if "run" in comparison_data:
-            # Allow for common config, to be added to any other run
-            if "common" in comparison_data["run"]:
-                run_config = comparison_data["run"]["common"]
-                common_config_path = path.parent / run_config["config"]
-            else:
-                common_config_path = None
-
-            # Setup config for single runs - combine with common config if provided
-            for run_id, run_config in comparison_data["run"].items():
-                if run_id == "common":
-                    continue
-                config_path = path.parent / run_config["config"]
-                self.sub_config[run_id] = FluidFlowerConfig(
-                    [config_path, common_config_path]
-                    if common_config_path
-                    else config_path,
-                    require_data=require_data,
-                    require_results=require_results,
-                )
-                logger.info(f"FluidFlowerConfig finished setup for run {run_id}.")
-
-        self.runs = list(self.sub_config.keys())
-        """List of run IDs available in the comparison config."""  # Load events configuration if present
-
-        self.events = EventsConfig()
-        self.events.load(path, results=self.data.results if self.data else None)
         # Events
         try:
             self.events = EventsConfig()
@@ -1277,9 +1382,27 @@ class MultiFluidFlowerConfig:
             self.events = None
             logger.info(f"Section [events] not found in {path}.")
 
+        # Load ROIs
+        try:
+            self.roi = MultiRoiConfig()
+            self.roi.load(path)
+        except KeyError:
+            self.roi = None
+            logger.info(f"Section [roi] not found in {path}.")
+
+        # Wasserstein distances
+        try:
+            self.wasserstein = WassersteinDistancesConfig()
+            self.wasserstein.load(
+                path, results=self.data.results if self.data else None, roi=self.roi
+            )
+        except Exception as e:
+            self.wasserstein = None
+            logger.info(f"Section [wasserstein] not found in {path}: {e}")
+
     def check(self, *sections: str) -> None:
         """Check that all specified sections exist in all run sub_config."""
-        for run_id, config in self.sub_config.items():
+        for run_id, config in self.runs.config.items():
             try:
                 config.check(*sections)
             except ValueError as e:
