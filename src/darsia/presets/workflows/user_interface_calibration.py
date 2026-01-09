@@ -37,8 +37,9 @@ def build_parser_for_calibration():
     parser.add_argument(
         "--config",
         type=str,
-        default="config.toml",
-        help="Path to config file.",
+        nargs="+",
+        required=True,
+        help="Path(s) to config file(s). Multiple files can be specified.",
     )
     parser.add_argument(
         "--ref-config",
@@ -117,13 +118,13 @@ def preset_calibration(rig=Rig, **kwargs):
     print_help_for_flags(args, parser)
 
     if args.all or args.color_paths:
-        calibration_color_paths(rig, Path(args.config), args.show)
+        calibration_color_paths(rig, args.config, args.show)
 
     if args.all or args.color_to_mass_analysis:
         ref_config = Path(args.ref_config) if args.ref_config else None
         calibration_color_to_mass_analysis(
             rig,
-            Path(args.config),
+            args.config,
             ref_path=ref_config,
             reset=args.reset,
             show=args.show,
@@ -131,13 +132,13 @@ def preset_calibration(rig=Rig, **kwargs):
         )
 
     if args.all or args.color_analysis:
-        calibration_color_analysis(rig, Path(args.config), args.show)
+        calibration_color_analysis(rig, args.config, args.show)
 
     if args.all or args.color_signal:
-        calibration_color_signal(rig, Path(args.config), args.show)
+        calibration_color_signal(rig, args.config, args.show)
 
     if args.all or args.mass:
-        calibration_mass_analysis(rig, Path(args.config), args.show)
+        calibration_mass_analysis(rig, args.config, args.show)
 
     if args.all or args.flash:
-        calibration_flash(rig, Path(args.config), args.show)
+        calibration_flash(rig, args.config, args.show)
