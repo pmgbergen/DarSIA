@@ -255,6 +255,9 @@ def _compute_single_wasserstein(
             wasserstein_distance, roi_geometry
         )
 
+        # Evaluate Wasserstein flux over subroi, if given.
+        ...
+
         computation_time = time.time() - start_time
 
         # Create and save result
@@ -433,126 +436,3 @@ def _check_completion_status(config):
 
     logger.info(f"Completed {completed}/{total} computations.")
     return completed, total
-
-
-#    # Safety checks
-#    assert config.events is not None
-#
-#    # Loop over times of interest
-#    times = None
-#
-#    # Loop over active runs
-#    active_runs = config.wasserstein.runs
-#
-#    # Count commands
-#    counter = 0
-#
-#    for time in times:
-#        if assemble:
-#            # Prepare data frame to store results
-#            wasserstein_distances = pd.DataFrame(
-#                columns=["run"] + list(config.events.events.keys())
-#            )
-#
-#        # Prepare overall data frame file
-#        for run_1, run_config_1 in config.sub_config.items():
-#            # Safety checks
-#            assert run_config_1.data is not None
-#            if run_1 not in active_runs:
-#                continue
-#
-#            # Fetch mass from run_1
-#            mass_1 = ...
-#
-#            # Coarsen the mass
-#            coarse_mass_1 = ...
-#
-#            for run_2, run_config_2 in config.sub_config.items():
-#                # TODO make sure to compare each pair only once
-#                ...
-#
-#                # TODO no need to compare run with itself
-#                if run_2 not in active_runs:
-#                    continue
-#                if run_1 == run_2:
-#                    continue
-#
-#                # Fetch mass from run_2
-#                mass_2 = ...
-#
-#                # Coarsen the mass
-#                coarse_mass_2 = ...
-#
-#                for roi_config in config.wasserstein.roi.values():
-#                    if compute:
-#                        # Fetch some data from roi
-#                        name = roi_config.name
-#                        roi = roi_config.roi
-#                        sub_rois = roi_config.sub_roi
-#
-#                        # Determine geometry for roi
-#                        roi_geometry = ...
-#
-#                        # Determine exact mass at given time and roi
-#                        roi_exact_mass_1 = ...
-#                        roi_exact_mass_2 = ...
-#
-#                        # Determine detected mass at given time and roi
-#                        roi_detected_mass_1 = ...
-#                        roi_detected_mass_2 = ...
-#
-#                        # Normalize...
-#                        roi_detected_mass_1 /= (
-#                            roi_exact_mass_1 if roi_exact_mass_1 else 1
-#                        )
-#                        roi_detected_mass_2 /= (
-#                            roi_exact_mass_2 if roi_exact_mass_2 else 1
-#                        )
-#
-#                        # Compute Wasserstein distance
-#                        wasserstein_distance = ...
-#
-#                        # Normalize Wasserstein distance
-#                        normalized_wasserstein_distance = ...
-#
-#                        # Store result to file
-#                        ...
-#
-#                        # Evaluate Wasserstein distance at subset of roi
-#                        for sub_roi_name in sub_rois:
-#                            sub_roi_config = config.wasserstein.sub_roi[sub_roi_name]
-#                            sub_roi = sub_roi_config.roi
-#
-#                            # Determine geometry for sub roi
-#                            sub_roi_geometry = ...
-#
-#                            # Evalauate Wasserstein distance on sub roi
-#                            sub_roi_normalized_wasserstein_distance = ...
-#
-#                            # Store result to file
-#                            ...
-#
-#                    # Store in data frame
-#                    if assemble:
-#                        # Fetch result
-#                        ...
-#
-#                        # Check if result does not exist
-#                        ...
-#
-#                        # Store result
-#                        wasserstein_distances.at[counter, roi.roi_name] = ...
-#
-#                    # Advance counter
-#                    counter += 1
-#                    logger.info(
-#                        f"Wasserstein distance for ROI {roi.roi_name} "
-#                        f"between runs {run_1} and {run_2} at time {time}: "
-#                        f"{wasserstein_distance_normalized}"
-#                    )
-#
-#        # Store to file.
-#        if assemble:
-#            path = f"wasserstein_distances_{time}.csv"
-#            wasserstein_distances.to_csv(path)
-#
