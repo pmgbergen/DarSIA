@@ -978,21 +978,22 @@ class FluidFlowerConfig:
     def __init__(
         self,
         path: Path | list[Path],
-        require_data: bool = False,
-        require_results: bool = False,
+        require_data: bool,
+        require_results: bool,
     ):
-        # ! ---- DATA ---- ! #
-
         # Make sure that path is compatible
         if isinstance(path, list):
             path = [Path(p) for p in path]
         else:
             path = Path(path)
 
+        # ! ---- DATA ---- ! #
         try:
             self.data: FluidFlowerDataConfig | None = FluidFlowerDataConfig()
             self.data.load(
-                path, require_data=require_data, require_results=require_results
+                path,
+                require_data=require_data,
+                require_results=require_results,
             )
         except KeyError:
             self.data = None
@@ -1185,8 +1186,8 @@ class MultiFluidFlowerRunsConfig:
     def load(
         self,
         path: Path,
-        require_data: bool = False,
-        require_results: bool = False,
+        require_data: bool,
+        require_results: bool,
     ) -> "MultiFluidFlowerRunsConfig":
         """Load database configuration from TOML file."""
 
