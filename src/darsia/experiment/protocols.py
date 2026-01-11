@@ -339,19 +339,26 @@ class InjectionProtocol:
 
     def injected_mass(
         self,
-        date: datetime,
+        date: datetime | None = None,
+        time: float | None = None,
         roi: Optional[darsia.Image | darsia.CoordinateArray] = None,
     ) -> float:
         """Get the cumulative injected mass until the given date.
 
         Args:
             date (datetime): Date to get the cumulative injected mass for.
+            time (float): Time (in seconds) to get the cumulative injected mass for.
             roi (Optional[darsia.Image]): Region of interest for the mass calculation.
 
         Returns:
             float: Cumulative injected mass [kg] until the given date.
 
         """
+        if date is None and time is None:
+            raise ValueError("Either date or time must be provided.")
+        if date is not None and time is not None:
+            raise ValueError("Only one of date or time must be provided.")
+
         # Loop over all injection intervals and sum up the contributions
         mass = 0.0
         for _, row in self.df.iterrows():
@@ -381,15 +388,21 @@ class InjectionProtocol:
                 )
 
             # Determine how much time of the interval has passed (between 0 and the full interval)
-            if date <= start:
-                # No time has passed in this interval
-                time_passed = 0.0
-            elif start < date < end:
-                # Partial time has passed in this interval in
-                time_passed = (date - start).total_seconds()
-            else:  # date >= end
-                # Full time has passed in this interval
-                time_passed = (end - start).total_seconds()
+            if date is not None:
+                if date <= start:
+                    # No time has passed in this interval
+                    time_passed = 0.0
+                elif start < date < end:
+                    # Partial time has passed in this interval in
+                    time_passed = (date - start).total_seconds()
+                else:  # date >= end
+                    # Full time has passed in this interval
+                    time_passed = (end - start).total_seconds()
+            elif time is not None:
+                time_in_seconds = time * 3600
+                time_passed = np.clip(
+                    time_in_seconds, 0.0, (end - start).total_seconds()
+                )
 
             mass += time_passed * rate_mass
 
