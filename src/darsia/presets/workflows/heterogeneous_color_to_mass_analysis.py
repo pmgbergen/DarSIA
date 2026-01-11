@@ -357,7 +357,7 @@ class HeterogeneousColorToMassAnalysis:
                     # Compute expected mass
                     assert isinstance(roi, darsia.CoordinateArray)
                     roi_exact_mass = experiment.injection_protocol.injected_mass(
-                        img.date, roi
+                        date=img.date, roi=roi
                     )
 
                     # Track result

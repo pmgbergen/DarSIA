@@ -472,7 +472,7 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
                 print(f"Mass computation took {time.time() - tic_local} seconds")
 
                 # Compute expected mass
-                exact_mass = experiment.injection_protocol.injected_mass(img.date)
+                exact_mass = experiment.injection_protocol.injected_mass(date=img.date)
 
                 # Track result
                 tic_local = time.time()

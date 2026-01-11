@@ -140,7 +140,7 @@ def analysis_mass_from_context(
             roi = roi_config.roi
             # Fetch exact mass from injection protocol
             exact_mass_roi = experiment.injection_protocol.injected_mass(
-                img.date, roi_config.roi
+                date=img.date, roi=roi_config.roi
             )
 
             # Integrate over chosen roi
