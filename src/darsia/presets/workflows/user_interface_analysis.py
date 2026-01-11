@@ -16,6 +16,7 @@ from darsia.presets.workflows.analysis.analysis_mass import (
 from darsia.presets.workflows.analysis.analysis_volume import (
     analysis_volume_from_context,
 )
+from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ def print_help_for_flags(args, parser):
         sys.exit(0)
 
 
-def run_analysis(rig, args, **kwargs):
+def run_analysis(rig: type[Rig], args, **kwargs):
     if not (args.cropping or args.mass or args.volume or args.segmentation):
         raise ValueError(
             """No analysis type specified. Please select at least one analysis."""
@@ -135,7 +136,7 @@ def run_analysis(rig, args, **kwargs):
         )
 
 
-def preset_analysis(rig, **kwargs):
+def preset_analysis(rig: type[Rig], **kwargs):
     parser = build_parser_for_analysis()
     args = parser.parse_args()
     print_help_for_flags(args, parser)
