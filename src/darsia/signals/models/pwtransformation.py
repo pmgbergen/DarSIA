@@ -73,13 +73,15 @@ class PWTransformation:
         assert hasattr(self, "interpolator"), "Interpolator not set."
 
         if isinstance(img, np.ndarray):
-            return self.interpolator(img)
+            return self._call_for_array(img)
         elif isinstance(img, darsia.Image):
-            result = img.copy()
-            result.img = self.interpolator(img.img)
-            return result
+            return darsia.full_like(img, fill_value=self._call_for_array(img.img))
         else:
             raise ValueError
+
+    def _call_for_array(self, arr: np.ndarray) -> np.ndarray:
+        """Apply the transformation to a numpy array."""
+        return self.interpolator(arr)
 
     def inverse(self, value: float | np.ndarray) -> float | np.ndarray:
         """Compute the inverse transformation at given value(s)."""
