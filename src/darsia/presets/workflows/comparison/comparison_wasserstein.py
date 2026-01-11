@@ -7,7 +7,8 @@ import pandas as pd
 import numpy as np
 import darsia
 from darsia.presets.workflows.fluidflower_config import MultiFluidFlowerConfig
-from darsia.presets.workflows.utils.mass import load_mass_data
+from darsia.presets.workflows.utils.mass import load_data
+from darsia.presets.workflows.rig import Rig
 
 
 import json
@@ -106,7 +107,8 @@ class WassersteinResult:
 
 
 def comparison_wasserstein(
-    path: Path,
+    cls: type[Rig],
+    path: Path | list[Path],
     compute: bool = False,
     assemble: bool = False,
     check: bool = False,
@@ -117,11 +119,11 @@ def comparison_wasserstein(
         "Exactly one of compute, assemble, or check_completion must be True."
     )
 
-    config = MultiFluidFlowerConfig(path, require_results=True)
+    config = MultiFluidFlowerConfig(path, require_data=False, require_results=True)
     assert config.wasserstein is not None
 
     if compute:
-        _compute_wasserstein_distances(config, skip_existing)
+        _compute_wasserstein_distances(cls, config, skip_existing)
 
     if assemble:
         _assemble_wasserstein_results(config)
@@ -130,18 +132,82 @@ def comparison_wasserstein(
         _check_completion_status(config)
 
 
-def _compute_wasserstein_distances(config, skip_existing: bool) -> None:
+def _compute_wasserstein_distances(
+    cls: type[Rig], config: MultiFluidFlowerConfig, skip_existing: bool
+) -> None:
     """Compute all Wasserstein distances with intermediate file storage."""
 
-    times_with_uncertainty = config.wasserstein.times_with_uncertainty
+    # Set some 'standard' options for computing the Wasserstein distance.
+    options = {
+        # L1 options for discretization
+        "mobility_mode": darsia.MobilityMode.CELL_BASED,
+        "l1_mode": darsia.L1Mode.RAVIART_THOMAS,  # Accuarate
+        # Nonlinear solver
+        "bregman_update": lambda iter: iter in [0, 10, 20],
+        # Performance control
+        "num_iter": 20,
+        "tol_distance": 1e-4,
+        "tol_increment": 1e-2,
+        # Linear solver
+        "linear_solver": "direct",
+        # Output
+        "return_info": True,
+        "return_status": True,
+        "verbose": True,
+    }
+
+    times = config.wasserstein.times
     active_runs = config.wasserstein.runs
     results_dir = config.wasserstein.results
 
     total_computations = 0
     completed_computations = 0
 
+    # Fetch geometry weighting factor
+    example_config = config.runs.config[active_runs[0]]
+    fluidflower = cls.load(example_config.rig.path)
+    geometry = fluidflower.geometry
+    porosity_times_depth = geometry.weight
+
+    # Determine a weight for the Wasserstein distance based on the permeability.
+    permeability = fluidflower.permeability
+    # Make sure to clip values to avoid division by zero.
+    non_zero_min_permeability = np.min(
+        permeability.img[~np.isclose(permeability.img, 0)]
+    )
+    clip_value = (
+        1e-6 * non_zero_min_permeability
+        if np.isclose(np.min(fluidflower.permeability.img), 0)
+        else 0
+    )
+    # Use the inverse of the permeability divided by its maximum.
+    max_permeability = np.max(permeability.img)
+    wasserstein_weight = darsia.full_like(
+        permeability, max_permeability / np.clip(permeability.img, clip_value, None)
+    )
+
+    # Fetch experimental protocol for defining reference values based on injection profile
+    example_experiment = darsia.ProtocolledExperiment.init_from_config(example_config)
+
+    # Determine characteristic solubility distriburion
+    state = example_experiment.pressure_temperature_protocol.get_state(
+        example_experiment.experiment_start
+    )
+    gradient = example_experiment.pressure_temperature_protocol.get_gradient(
+        example_experiment.experiment_start
+    )
+    co2_mass_analysis = darsia.CO2MassAnalysis(
+        baseline=fluidflower.baseline,
+        atmospheric_pressure=state.pressure,
+        atmospheric_temperature=state.temperature,
+        atmospheric_pressure_gradient=gradient.pressure,
+        atmospheric_temperature_gradient=gradient.temperature,
+    )
+    example_solubility = co2_mass_analysis.solubility_co2
+    avg_solubility = np.average(example_solubility)
+
     # Count total computations for progress tracking
-    for time, uncertainty in times_with_uncertainty:
+    for time, uncertainty in times:
         for run_1 in active_runs:
             for run_2 in active_runs:
                 if run_1 >= run_2:  # Only compute upper triangle
@@ -150,206 +216,255 @@ def _compute_wasserstein_distances(config, skip_existing: bool) -> None:
                     total_computations += 1
     logger.info(f"Starting computation of {total_computations} Wasserstein distances")
 
-    for time, uncertainty in times_with_uncertainty:
+    for time, uncertainty in times:
         logger.info(f"Processing time {time} with uncertainty {uncertainty}")
+
+        # Obtain expected mass from injection profile at given time
+        exact_mass = example_experiment.injection_protocol.injected_mass(time=time)
+
+        # Determine refernce distance based on plume expansion
+        avg_depth = np.average(geometry.depth.img)
+        avg_volume = exact_mass / avg_solubility
+        avg_plume_area = avg_volume / avg_depth
+        avg_plume_radius = np.sqrt(avg_plume_area / np.pi)
+
+        plume_based_reference_distance = avg_plume_radius * exact_mass
+
+        # Determine reference distance based on rig dimensions
+        rig_length = geometry.dimensions[0]
+        rig_width = geometry.dimensions[1]
+        avg_rig_dimension = 0.5 * (rig_length + rig_width)
+
+        rig_based_reference_distance = exact_mass * avg_rig_dimension
+
+        print(
+            f"Example reference distances {plume_based_reference_distance=} and {rig_based_reference_distance=}"
+        )
 
         for run_1 in active_runs:
             # Load mass data for run_1 once per time
-            mass_1 = load_mass_data(
-                config.sub_config[str(run_1)],
+            mass_1 = load_data(
+                config.runs.config[run_1],
+                data="mass",
                 time=time,
                 tol=uncertainty,
             )
-            coarse_mass_1 = darsia.resize(
-                mass_1,
+            if mass_1 is None:
+                logger.warning(
+                    f"Mass data for run {run_1} at time {time} not found. Skipping."
+                )
+                continue
+
+            # Add weight accounting for 3D effect and porosity
+            dimensionally_reduced_mass_1 = mass_1 * porosity_times_depth
+
+            # Resize and rescale mass distributions
+            dimensionally_reduced_coarse_mass_1 = darsia.resize(
+                dimensionally_reduced_mass_1,
                 fx=config.wasserstein.resize_factor,
                 fy=config.wasserstein.resize_factor,
-                interpolation="area",
+                interpolation="inter_area",
             )
+            integrated_mass_1 = dimensionally_reduced_mass_1.integral()
+            integrated_coarse_mass_1 = dimensionally_reduced_coarse_mass_1.integral()
+            coarse_mass_1 = dimensionally_reduced_coarse_mass_1 * (
+                integrated_mass_1 / integrated_coarse_mass_1
+            )
+
+            # Same for the weight
+            coarse_wasserstein_weight = darsia.resize(
+                wasserstein_weight,
+                ref_image=dimensionally_reduced_coarse_mass_1,
+                interpolation="inter_nearest",
+            )
+
+            # dimensionally_reduced_mass_1.show(title="mass", delay=True)
+            # coarse_mass_1.show(title="coarse mass", delay=False)
 
             for run_2 in active_runs:
                 if run_1 >= run_2:
                     # Only compute upper triangle
                     # TODO fetch and copy existing result? or keep this for the assembly?
                     continue  # Load mass data for run_2
-                mass_2 = load_mass_data(
-                    config.sub_config[run_2],
+                mass_2 = load_data(
+                    config.runs.config[run_2],
+                    data="mass",
                     time=time,
                     tol=uncertainty,
                 )
-                coarse_mass_2 = darsia.resize(mass_2, ref_image=coarse_mass_1)
+                if mass_2 is None:
+                    logger.warning(
+                        f"Mass data for run {run_2} at time {time} not found. Skipping."
+                    )
+                    continue
+                dimensionally_reduced_mass_2 = mass_2 * porosity_times_depth
 
+                # Resize and rescale mass distributions
+                dimensionally_reduced_coarse_mass_2 = darsia.resize(
+                    dimensionally_reduced_mass_2,
+                    ref_image=dimensionally_reduced_coarse_mass_1,
+                    interpolation="inter_area",
+                )
+                integrated_mass_2 = dimensionally_reduced_mass_2.integral()
+                integrated_coarse_mass_2 = (
+                    dimensionally_reduced_coarse_mass_2.integral()
+                )
+                coarse_mass_2 = dimensionally_reduced_coarse_mass_2 * (
+                    integrated_mass_2 / integrated_coarse_mass_2
+                )
+
+                # Perform wasserstein computations for all ROIs
                 for roi_config in config.wasserstein.roi.values():
                     # Main ROI computation
-                    distance, info = _compute_single_wasserstein(
-                        run_1,
-                        run_2,
-                        time,
-                        roi_config.name,
-                        None,
-                        roi_config,
-                        coarse_mass_1,
-                        coarse_mass_2,
-                        results_dir,
-                        skip_existing,
+                    # TODO condense to single function?
+                    # distance, info = _compute_single_wasserstein(...)
+                    roi_name = roi_config.name
+                    sub_roi_name = None
+
+                    # Check if result already exists
+                    result_file = WassersteinResult.get_filename(
+                        results_dir, run_1, run_2, time, roi_name, sub_roi_name
+                    )
+                    if skip_existing and result_file.exists():
+                        logger.debug(f"Skipping existing result: {result_file.name}")
+                        raise NotImplementedError
+
+                    import time as time_
+
+                    start_time = time_.time()
+
+                    # Your actual Wasserstein computation here
+                    roi_mass_1 = coarse_mass_1.subregion(roi_config.roi)
+                    roi_mass_2 = coarse_mass_2.subregion(roi_config.roi)
+                    roi_wasserstein_weight = coarse_wasserstein_weight.subregion(
+                        roi_config.roi
                     )
 
+                    roi_integral_1 = roi_mass_1.integral()
+                    roi_integral_2 = roi_mass_2.integral()
+
+                    # React to zero mass cases
+                    if np.isclose(integrated_mass_1, 0) or np.isclose(
+                        integrated_mass_2, 0
+                    ):
+                        raise NotImplementedError
+
+                    # React to large relative differences in mass
+                    roi_integral_average = 0.5 * (roi_integral_1 + roi_integral_2)
+                    relative_mass_difference = (
+                        abs(roi_integral_1 - roi_integral_2) / roi_integral_average
+                    )
+                    if config.wasserstein.relative_tol is not None:
+                        if relative_mass_difference > config.wasserstein.relative_tol:
+                            raise NotImplementedError
+
+                    # Normalize roi masses by their average
+                    roi_mass_1 *= roi_integral_average / roi_integral_1
+                    roi_mass_2 *= roi_integral_average / roi_integral_2
+                    assert np.isclose(roi_mass_1.integral(), roi_mass_2.integral())
+
+                    # Compute Wasserstein distance
+                    wasserstein_distance, info = darsia.wasserstein_distance(
+                        roi_mass_1,
+                        roi_mass_2,
+                        weight=None,  # roi_wasserstein_weight,
+                        method="bregman",
+                        options=options,
+                    )
+
+                    # Fetch status.
+                    # if info["status"] == "diverged": ...
+                    # if not info["converged"]:
+                    #    raise NotImplementedError
+
+                    # Print the result to vtk.
+                    vtk_path = (
+                        Path("./unweighted_w1")
+                        / f"roi_{roi_name}"
+                        / f"run_{run_1}_to_{run_2}"
+                        / f"w1_{time}"
+                    )
+                    darsia.wasserstein_distance_to_vtk(vtk_path, info)
+
+                    # Normalize Wasserstein distance.
+                    normalized_wasserstein_distance = {
+                        "plume_based": wasserstein_distance
+                        / plume_based_reference_distance,
+                        "rig_based": wasserstein_distance
+                        / rig_based_reference_distance,
+                        "mass_based": wasserstein_distance / roi_integral_average,
+                    }
+
+                    print(f"{normalized_wasserstein_distance=}")
+
                     # Sub-ROI evaluation
-                    for sub_roi_name in roi_config.sub_roi:
-                        sub_roi_config = config.wasserstein.sub_roi[sub_roi_name]
-                        subroi_distance = _evaluate_single_wasserstein_roi(
-                            distance,
-                            info,
-                            sub_roi_name,
-                            sub_roi_config,
-                            results_dir,
-                            skip_existing,
-                        )
+                    # Evaluate Wasserstein flux over subroi, if given.
+                    transport_density = darsia.full_like(
+                        roi_mass_1, info["transport_density"]
+                    )
+                    # transport_density.show()
+                    # for sub_roi_name in roi_config.sub_roi:
+                    #    sub_roi_config = config.wasserstein.sub_roi[sub_roi_name]
+                    # subroi_distance = _evaluate_single_wasserstein_roi(
+                    #    distance,
+                    #    info,
+                    #    sub_roi_name,
+                    #    sub_roi_config,
+                    #    results_dir,
+                    #    skip_existing,
+                    # )
+
+                    computation_time = time_.time() - start_time
+
+                    # Create and save result
+                    # result = WassersteinResult(
+                    #    run_1=run_1,
+                    #    run_2=run_2,
+                    #    time=time,
+                    #    roi_name=roi_name,
+                    #    sub_roi_name=sub_roi_name,
+                    #    wasserstein_distance=wasserstein_distance,
+                    #    normalized_wasserstein_distance=normalized_wasserstein_distance,
+                    #    roi_exact_mass_1=roi_exact_mass_1,
+                    #    roi_exact_mass_2=roi_exact_mass_2,
+                    #    roi_detected_mass_1=float(roi_detected_mass_1.sum()),
+                    #    roi_detected_mass_2=float(roi_detected_mass_2.sum()),
+                    #    computation_time=computation_time,
+                    #    timestamp=datetime.now().isoformat(),
+                    # )
+
+                    # result.save_to_dir(results_dir)
+                    logger.debug(f"Computed Wasserstein distance: {result_file.name}")
 
                     completed_computations += 1
 
 
-def _compute_single_wasserstein(
-    run_1,
-    run_2,
-    time,
-    roi_name,
-    sub_roi_name,
-    roi_config,
-    mass_1,
-    mass_2,
-    coarse_mass_1,
-    coarse_mass_2,
-    results_dir,
-    skip_existing,
-):
-    """Compute single Wasserstein distance with error handling."""
+# TODO include helper functions here
+# def _compute_single_wasserstein(...)
 
-    # Check if result already exists
-    result_file = WassersteinResult.get_filename(
-        results_dir, run_1, run_2, time, roi_name, sub_roi_name
-    )
-    if skip_existing and result_file.exists():
-        logger.debug(f"Skipping existing result: {result_file.name}")
-        return
-
-    try:
-        start_time = time.time()
-
-        # Your actual Wasserstein computation here
-        roi_geometry = _compute_roi_geometry(roi_config.roi)
-        roi_exact_mass_1 = _extract_exact_mass(mass_1, roi_config.roi, time)
-        roi_exact_mass_2 = _extract_exact_mass(mass_2, roi_config.roi, time)
-        roi_detected_mass_1 = _extract_detected_mass(coarse_mass_1, roi_config.roi)
-        roi_detected_mass_2 = _extract_detected_mass(coarse_mass_2, roi_config.roi)
-
-        # Normalize
-        roi_detected_mass_1 /= roi_exact_mass_1 if roi_exact_mass_1 else 1
-        roi_detected_mass_2 /= roi_exact_mass_2 if roi_exact_mass_2 else 1
-
-        # Compute Wasserstein distance
-        wasserstein_distance = _compute_wasserstein_distance(
-            roi_detected_mass_1, roi_detected_mass_2
-        )
-        normalized_wasserstein_distance = _normalize_wasserstein_distance(
-            wasserstein_distance, roi_geometry
-        )
-
-        # Evaluate Wasserstein flux over subroi, if given.
-        ...
-
-        computation_time = time.time() - start_time
-
-        # Create and save result
-        result = WassersteinResult(
-            run_1=run_1,
-            run_2=run_2,
-            time=time,
-            roi_name=roi_name,
-            sub_roi_name=sub_roi_name,
-            wasserstein_distance=wasserstein_distance,
-            normalized_wasserstein_distance=normalized_wasserstein_distance,
-            roi_exact_mass_1=roi_exact_mass_1,
-            roi_exact_mass_2=roi_exact_mass_2,
-            roi_detected_mass_1=float(roi_detected_mass_1.sum()),
-            roi_detected_mass_2=float(roi_detected_mass_2.sum()),
-            computation_time=computation_time,
-            timestamp=datetime.now().isoformat(),
-        )
-
-        result.save_to_dir(results_dir)
-        logger.debug(f"Computed Wasserstein distance: {result_file.name}")
-
-    except Exception as e:
-        logger.error(f"Failed to compute {result_file.name}: {str(e)}")
-        # Optionally save error info
-        error_file = result_file.with_suffix(".error")
-        with open(error_file, "w") as f:
-            json.dump(
-                {
-                    "error": str(e),
-                    "timestamp": datetime.now().isoformat(),
-                    "parameters": {
-                        "run_1": run_1,
-                        "run_2": run_2,
-                        "time": time,
-                        "roi_name": roi_name,
-                        "sub_roi_name": sub_roi_name,
-                    },
-                },
-                f,
-                indent=2,
-            )
-
-
-def _compute_roi_geometry(roi):
-    """Compute geometry for a region of interest.
-
-    TODO: Implement this function.
-    """
-    raise NotImplementedError("_compute_roi_geometry not yet implemented")
-
-
-def _extract_exact_mass(mass, roi, time):
-    """Extract exact mass at given time and ROI.
-
-    TODO: Implement this function.
-    """
-    raise NotImplementedError("_extract_exact_mass not yet implemented")
-
-
-def _extract_detected_mass(coarse_mass, roi):
-    """Extract detected mass at given ROI.
-
-    TODO: Implement this function.
-    """
-    raise NotImplementedError("_extract_detected_mass not yet implemented")
-
-
-def _compute_wasserstein_distance(mass_1, mass_2):
-    """Compute Wasserstein distance between two mass distributions.
-
-    TODO: Implement this function.
-    """
-    raise NotImplementedError("_compute_wasserstein_distance not yet implemented")
-
-
-def _normalize_wasserstein_distance(wasserstein_distance, roi_geometry):
-    """Normalize Wasserstein distance by ROI geometry.
-
-    TODO: Implement this function.
-    """
-    raise NotImplementedError("_normalize_wasserstein_distance not yet implemented")
-
-
-def _evaluate_single_wasserstein_roi(
-    distance, info, sub_roi_name, sub_roi_config, results_dir, skip_existing
-):
-    """Evaluate Wasserstein distance for a sub-ROI.
-
-    TODO: Implement this function.
-    """
-    raise NotImplementedError("_evaluate_single_wasserstein_roi not yet implemented")
+# try:
+#    # Your actual Wasserstein computation here
+# ...
+# except Exception as e:
+#    logger.error(f"Failed to compute {result_file.name}: {str(e)}")
+#    # Optionally save error info
+#    error_file = result_file.with_suffix(".error")
+#    with open(error_file, "w") as f:
+#        json.dump(
+#            {
+#                "error": str(e),
+#                "timestamp": datetime.now().isoformat(),
+#                "parameters": {
+#                    "run_1": run_1,
+#                    "run_2": run_2,
+#                    "time": time,
+#                    "roi_name": roi_name,
+#                    "sub_roi_name": sub_roi_name,
+#                },
+#            },
+#            f,
+#            indent=2,
+#        )
 
 
 def _assemble_wasserstein_results(config):
