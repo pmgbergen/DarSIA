@@ -842,22 +842,19 @@ class Image:
             metadata = self.metadata()
             return type(self)(self.img - other.img, **metadata)
 
-    def __mul__(self, scalar: float | int) -> Image:
+    def __mul__(self, weight: float | int | np.ndarray) -> Image:
         """Scaling of image.
 
         Arguments:
-            scalar (float or int): scaling parameter
+            weight (float or int): scaling parameter
 
         Returns:
             Image: scaled image
 
         """
-        if not isinstance(scalar, (float, int)):
+        if not isinstance(weight, (float, int, np.ndarray)):
             raise ValueError
-
-        result_image = self.copy()
-        result_image.img *= scalar
-        return result_image
+        return darsia.full_like(self, self.img * weight)
 
     __rmul__ = __mul__
 
