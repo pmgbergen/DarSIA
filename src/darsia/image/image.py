@@ -1716,6 +1716,29 @@ class Image:
         else:
             return item is None
 
+    def geometry(self) -> darsia.Geometry:
+        """Generate (flat) geometry object corresponding to the image.
+
+        Returns:
+            darsia.Geometry: geometry object.
+
+        """
+        return darsia.Geometry(**self.shape_metadata())
+
+    def integral(self) -> float:
+        """Integrate the image over its spatial dimensions.
+
+        Returns:
+            float: integral of the image over space.
+
+        """
+        if not self.scalar:
+            raise NotImplementedError("Integration only implemented for scalar images.")
+        if self.series:
+            raise NotImplementedError("Integration only implemented for single images.")
+
+        return self.geometry().integrate(self)
+
 
 class ScalarImage(Image):
     """Special case of a space-time image, with 1d data, e.g., monochromatic
