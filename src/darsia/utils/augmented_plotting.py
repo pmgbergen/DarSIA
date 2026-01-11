@@ -19,7 +19,6 @@ def plot_contour_on_image(
     show_plot: bool = False,
     return_image: bool = False,
 ) -> Optional[darsia.Image]:
-
     # Start with the original image
     if isinstance(img, darsia.Image):
         if img.img.dtype == np.uint8:
@@ -85,9 +84,7 @@ def plot_contour_on_image(
         print(f"Image with contours saved as: {path}")
 
     if return_image:
-        img_with_contours = img.copy()
-        img_with_contours.img = original_img
-        return img_with_contours
+        return darsia.full_like(img, original_img.astype(np.uint8), dtype=np.uint8)
 
 
 def plot_distribution_on_image(
@@ -98,7 +95,6 @@ def plot_distribution_on_image(
     show_plot: bool = False,
     return_image: bool = False,
 ) -> None:
-
     # Start with the original image
     original_img = np.clip(np.copy(img.img), 0, 1)
     original_img = skimage.img_as_ubyte(original_img)
@@ -134,9 +130,7 @@ def plot_distribution_on_image(
         )
 
     if return_image:
-        img_with_distribution = img.copy()
-        img_with_distribution.img = original_img
-        return img_with_distribution
+        return darsia.full_like(img, original_img)
 
 
 def plot_image_statistics(
@@ -148,7 +142,6 @@ def plot_image_statistics(
     show_plot: bool = False,
     return_image: bool = False,
 ) -> None:
-
     # Start with the original image
     original_img = np.clip(np.copy(img.img), 0, 1)
     original_img = skimage.img_as_ubyte(original_img)
@@ -178,6 +171,4 @@ def plot_image_statistics(
         )
 
     if return_image:
-        img_with_masks = img.copy()
-        img_with_masks.img = original_img
-        return img_with_masks
+        return darsia.full_like(img, original_img)

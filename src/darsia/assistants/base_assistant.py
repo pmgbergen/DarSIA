@@ -27,9 +27,9 @@ class BaseAssistant(ABC):
         """Figure for analysis."""
         self.ax = kwargs.get("ax")
         """Axes for analysis."""
-        assert (self.fig is None) == (
-            self.ax is None
-        ), "Both fig and ax must be None or not None."
+        assert (self.fig is None) == (self.ax is None), (
+            "Both fig and ax must be None or not None."
+        )
         if self.fig is None and self.ax is None:
             self.fig = plt.figure()  # self.name)
             if self.img.space_dim == 2:
@@ -57,6 +57,8 @@ class BaseAssistant(ABC):
         """Flag controlling whether plots use physical coordinates."""
         self.verbosity = kwargs.get("verbosity", False)
         """Flag controlling verbosity."""
+        self.cmap = kwargs.get("cmap", "viridis")
+        """Colormap for plotting."""
 
     @abstractmethod
     def _print_instructions() -> None:
@@ -152,9 +154,10 @@ class BaseAssistant(ABC):
                 arr,
                 extent=(origin[0], opposite_corner[0], opposite_corner[1], origin[1]),
                 alpha=alpha,
+                cmap=self.cmap if img.scalar else None,
             )
         else:
-            self.ax.imshow(arr, alpha=alpha)
+            self.ax.imshow(arr, alpha=alpha, cmap=self.cmap if img.scalar else None)
 
         # Plot grid
         plot_grid = self.plot_grid

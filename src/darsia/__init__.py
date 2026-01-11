@@ -26,6 +26,7 @@ from darsia.measure.beckmann_newton_solver import *
 from darsia.measure.beckmann_bregman_solver import *
 from darsia.measure.beckmann_gprox_solver import *
 from darsia.measure.wasserstein import *
+from darsia.utils.timings import *
 
 # Utilities
 from darsia.utils.arithmetics import *
@@ -60,6 +61,7 @@ from darsia.utils.slices import *
 
 # Image subregions (required specific placing)
 from darsia.image.subregions import *
+from darsia.image.roi import *
 
 # Corrections and transformations
 from darsia.corrections.basecorrection import *
@@ -80,10 +82,19 @@ from darsia.corrections.color.dynamicilluminationcorrection import *
 from darsia.corrections.color.colorcorrection import *
 from darsia.corrections.color.relativecolorcorrection import *
 from darsia.corrections.color.experimentalcolorcorrection import *
-from darsia.corrections.readcorrection import *
 from darsia.image.coordinatetransformation import *  # Requires affine correction
-
-# Signals, reduction, and models
+from darsia.signals.reduction.signalreduction import *
+from darsia.signals.reduction.monochromatic import *
+from darsia.signals.reduction.dimensionreduction import *
+from darsia.signals.color.color_mode import ColorMode
+from darsia.signals.color.color_range import *
+from darsia.signals.color.discrete_color_range import *
+from darsia.signals.color.color_spectrum import *
+from darsia.signals.color.color_path import *
+from darsia.signals.color.label_color_spectrum_map import *
+from darsia.signals.color.label_color_map import *
+from darsia.signals.color.label_color_path_map import *
+from darsia.signals.color.color_path_regression import *
 from darsia.signals.models.basemodel import *
 from darsia.signals.models.combinedmodel import *
 from darsia.signals.models.linearmodel import *
@@ -94,11 +105,7 @@ from darsia.signals.models.dynamicthresholdmodel import *
 from darsia.signals.models.binarydataselector import *
 from darsia.signals.models.kernelinterpolation import *
 from darsia.signals.models.pwtransformation import *
-from darsia.signals.reduction.signalreduction import *
-from darsia.signals.reduction.monochromatic import *
-from darsia.signals.reduction.dimensionreduction import *
-
-# Restoration
+from darsia.signals.models.color_path_interpolation import *
 from darsia.restoration.tvd import *
 from darsia.restoration.median import *
 from darsia.restoration.resize import *
@@ -135,4 +142,14 @@ from darsia.assistants.labels_assistant import *
 # Multiphase flow
 from darsia.multiphase.flash import *
 from darsia.multiphase.mass_analysis import *
+from darsia.multiphase.fluidflower_co2_meta import *
 from darsia.multiphase.multiphase_time_series_data import *
+from darsia.multiphase.multiphase_time_series_analysis import *
+
+from darsia.experiment.experiment import *
+from darsia.experiment.protocols import *
+
+from darsia.corrections.readcorrection import *
+
+# Presets
+from darsia.presets.workflows.simple_run_analysis import *

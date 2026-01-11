@@ -18,7 +18,9 @@ import darsia
 class BasePoint(np.ndarray):
     """Base class for defining points."""
 
-    def __new__(cls, input_array):
+    def __new__(cls, input_array=None):
+        if input_array is None:
+            input_array = np.empty((0,))
         obj = np.asarray(input_array).view(cls)
         return obj
 
