@@ -296,6 +296,7 @@ class ExtrudedGeometry(WeightedGeometry):
             ValueError: if spatial dimension not 2.
 
         """
+        self.depth = expansion
         super().__init__(expansion, space_dim, num_voxels, dimensions, voxel_size)
 
 
@@ -326,7 +327,7 @@ class PorousGeometry(WeightedGeometry):
         super().__init__(porosity, space_dim, num_voxels, dimensions, voxel_size)
 
 
-class ExtrudedPorousGeometry(ExtrudedGeometry):
+class ExtrudedPorousGeometry(WeightedGeometry):
     """Class containing information of a porous geometry."""
 
     def __init__(
