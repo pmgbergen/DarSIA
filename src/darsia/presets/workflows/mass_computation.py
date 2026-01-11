@@ -65,7 +65,7 @@ class MassComputation:
         # Check expected status
         times = [experiment.time_since_start(img.date) for img in untransformed_images]
         expected_mass = [
-            experiment.injection_protocol.injected_mass(img.date)
+            experiment.injection_protocol.injected_mass(date=img.date)
             for img in untransformed_images
         ]
 
