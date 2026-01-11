@@ -75,19 +75,25 @@ class SegmentationContours:
     def __call__(
         self,
         img,
-        saturation_g: darsia.Image,
-        concentration_aq: darsia.Image,
-        mass: darsia.Image,
+        saturation_g: darsia.Image | None,
+        concentration_aq: darsia.Image | None,
+        mass: darsia.Image | None,
     ) -> darsia.Image:
         contour_img = img.copy()
         for segmentation_config in self.config.values():
             # Select values based on mode
             mode = segmentation_config.mode
             if mode == "saturation_g":
+                if saturation_g is None:
+                    raise ValueError(f"Missing image for mode {mode}")
                 values = saturation_g
             elif mode == "concentration_aq":
+                if concentration_aq is None:
+                    raise ValueError(f"Missing image for mode {mode}")
                 values = concentration_aq
             elif mode == "mass":
+                if mass is None:
+                    raise ValueError(f"Missing image for mode {mode}")
                 values = mass
             else:
                 raise ValueError(f"Unknown label {mode} in segmentation config.")
