@@ -173,8 +173,8 @@ class FluidFlowerDataConfig:
     def load(
         self,
         path: Path | list[Path],
-        require_data: bool = True,
-        require_results: bool = False,
+        require_data: bool,
+        require_results: bool,
     ) -> "FluidFlowerDataConfig":
         sec = _get_section_from_toml(path, "data")
 
@@ -195,22 +195,27 @@ class FluidFlowerDataConfig:
         self.pad = len(numeric_part) if numeric_part else 0
 
         # Get data
-        self.data = list(sorted(self.folder.glob(f"*{self.baseline.suffix}")))
-        if require_data and len(self.data) == 0:
-            raise FileNotFoundError(
-                f"No image files with suffix {self.baseline.suffix} found in {self.folder}."
-            )
+        if require_data:
+            self.data = list(sorted(self.folder.glob(f"*{self.baseline.suffix}")))
+            if len(self.data) == 0:
+                raise FileNotFoundError(
+                    f"No image files with suffix {self.baseline.suffix} found in {self.folder}."
+                )
+        else:
+            self.data = None
 
         # Get results
         self.results = _get_key(sec, "results", required=True, type_=Path)
-        if require_results and not self.results.is_dir():
-            raise FileNotFoundError(f"Results folder {self.results} not found.")
-        try:
-            self.results.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            raise PermissionError(
-                f"Cannot create results directory at {self.results}."
-            ) from e
+        if require_results:
+            if not self.results.is_dir():
+                raise FileNotFoundError(f"Results folder {self.results} not found.")
+        else:
+            try:
+                self.results.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                raise PermissionError(
+                    f"Cannot create results directory at {self.results}."
+                ) from e
 
         return self
 
