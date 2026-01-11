@@ -83,7 +83,8 @@ class ProtocolledExperiment:
 
     def find_images_for_times(
         self,
-        times: list[float],
+        times: float | list[float],
+        tol: float | None = None,
         data: list[Path] | None = None,
     ) -> list[Path]:
         """Find image paths for given times since start of the experiment.
@@ -94,9 +95,16 @@ class ProtocolledExperiment:
                 uses the experiment's data pool.
 
         """
+        times_is_list = isinstance(times, list)
+        if not times_is_list:
+            times = [times]
         datetimes = [self.experiment_start + darsia.timedelta(hours=t) for t in times]
         paths = self.imaging_protocol.find_images_for_datetimes(
             paths=data or self.data,
             datetimes=datetimes,
+            tol=tol,
         )
-        return paths
+        if times_is_list:
+            return paths
+        else:
+            return paths[0] if paths else None
