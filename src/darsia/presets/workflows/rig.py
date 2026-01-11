@@ -24,7 +24,7 @@ class Rig:
         self,
         baseline_path: Path,
         imaging_protocol: darsia.ImagingProtocol,
-        correction_config: Path | None = None,
+        config_path: Path | list[Path] | None = None,
         log: Path | None = None,
     ):
         # Cache imaging protocol
@@ -32,7 +32,7 @@ class Rig:
 
         # Setup (based on baseline image without any corrections applied)
         pre_baseline = darsia.imread(baseline_path)
-        self.setup_corrections(pre_baseline=pre_baseline, config=correction_config)
+        self.setup_corrections(pre_baseline=pre_baseline, config_path=config_path)
 
         # Define reference baseline (with corrections applied)
         self.baseline = self.read_image(baseline_path)
@@ -58,7 +58,7 @@ class Rig:
         self,
         path: Path | None = None,
         pre_baseline: darsia.Image | None = None,
-        config: Path | None = None,
+        config_path: Path | list[Path] | None = None,
     ) -> None:
         """Setup corrections for the rig.
 
@@ -69,7 +69,7 @@ class Rig:
                 If provided, it will load existing corrections from this path.
             pre_baseline (darsia.Image | None): Pre-baseline image used for defining
                 corrections. If `path` is provided and exists, this argument is ignored.
-            curvature_correction (Path | None): Path to curvature correction config.
+            config_path (Path | list[Path] | None): Path to curvature correction config.
 
         """
         if path and path.exists():
@@ -116,7 +116,7 @@ class Rig:
         """Drift correction based on color checker alignment."""
 
         # Define curvature correction as derived from analysis of laser grid images
-        self.curvature_correction = darsia.CurvatureCorrection(config=config)
+        self.curvature_correction = darsia.CurvatureCorrection(config=config_path)
         """Curvature correction based on laser grid analysis."""
 
         # Define workflow of corrections
@@ -269,7 +269,10 @@ class Rig:
         logger.info("Facies setup completed.")
 
     def setup_facies_props(
-        self, props_path: Path | None = None, porosity: Path | None = None
+        self,
+        props_path: Path | None = None,
+        porosity: Path | None = None,
+        permeability: Path | None = None,
     ) -> None:
         """Define facies properties like porosity.
 
@@ -280,13 +283,17 @@ class Rig:
                 it will load the porosity image from this path.
 
         """
-        if porosity:
-            self.porosity = darsia.imread(porosity)
-            """Porosity for the rig object."""
-        else:
-            assert props_path is not None, "Facies properties path is not set."
+        if props_path:
             facies_props = FaciesProps.load(facies=self.facies, path=props_path)
             self.porosity = facies_props.porosity
+            """Porosity for the rig object."""
+            self.permeability = facies_props.permeability
+            """Permeability for the rig object."""
+        else:
+            if not (porosity and permeability):
+                raise FileNotFoundError("No facies properties provided.")
+            self.porosity = darsia.imread(porosity)
+            self.permeability = darsia.imread(permeability)
 
     # ! ---- ILLUMINATION CORRECTION ----
     def setup_illumination_correction(self, log: Path | None = None) -> None:
@@ -359,7 +366,7 @@ class Rig:
         labels_path: Path,
         facies_path: Path | None = None,
         facies_props_path: Path | None = None,
-        correction_config_path: Path | None = None,
+        config_path: Path | list[Path] | None = None,
         # ref_colorchecker_path: Path,
         log: Path | None = None,
     ) -> None:
@@ -375,7 +382,7 @@ class Rig:
         self.setup_reading(
             baseline_path,
             experiment.imaging_protocol,
-            correction_config_path,
+            config_path,
             log=log,
         )
 
@@ -530,6 +537,11 @@ class Rig:
         except Exception:
             warn("Porosity not available for saving.", UserWarning)
 
+        try:
+            self.permeability.save(folder / "permeability.npz")
+        except Exception:
+            warn("Permeability not available for saving.", UserWarning)
+
         # Save porosity information
         try:
             self.image_porosity.save(folder / "image_porosity.npz")
@@ -575,7 +587,10 @@ class Rig:
         rig.setup_facies(path=folder / "facies.npz", apply_corrections=False)
 
         # Load facies properties
-        rig.setup_facies_props(porosity=folder / "porosity.npz")
+        rig.setup_facies_props(
+            porosity=folder / "porosity.npz",
+            permeability=folder / "permeability.npz",
+        )
 
         # Setup geometry information
         rig.setup_geometry()
