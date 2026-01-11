@@ -595,18 +595,22 @@ class ImageTimeInterval:
     """Step size between images, in hours."""
     num: int
     """Number of images in the interval."""
+    tol: float | None = None
+    """Tolerance for time matching, in hours."""
 
     def __init__(
         self,
         start: float | str,
         end: float | str,
-        step: float | str = 0.0,
+        step: float | str | None = None,
         num: int = 0,
+        tol: float | None = None,
     ):
         self.start = _convert_to_hours(start)
         self.end = _convert_to_hours(end)
-        self.step = _convert_to_hours(step)
+        self.step = _convert_to_hours(step or 0.0)
         self.num = num
+        self.tol = _convert_to_hours(tol or 0.0)
 
     def __post_init__(self):
         self.step = (self.end - self.start) / self.num if self.num > 0 else 0
@@ -619,28 +623,91 @@ class ImageTimeInterval:
     def generate_times(self) -> list[float]:
         return np.unique(np.linspace(self.start, self.end, self.num)).tolist()
 
+    def generate_times_with_uncertainty(self) -> list[tuple[float, float]]:
+        times = self.generate_times()
+        return [(t, self.tol) for t in times]
+
+
+def load_image_times(
+    sec: dict, include_uncertainty: bool = False
+) -> list[tuple[float, float]]:
+    """Load image times from a toml section together with tolerance."""
+
+    # Start with explicit times
+    image_times = sorted(
+        [
+            _convert_to_hours(t)
+            for t in _get_key(
+                sec,
+                "image_times",
+                default=[],
+                required=False,
+                type_=list[float | str],
+            )
+        ]
+    )
+    image_time_tolerance = _convert_to_hours(
+        _get_key(sec, "image_time_tolerance", required=False, type_=str | float) or 0.0
+    )
+    image_times_with_uncertainty = [(t, image_time_tolerance) for t in image_times]
+
+    # Add times provided as intervals
+    try:
+        intervals_sec = _get_section(sec, "image_time_interval")
+
+        # Loop through interval sections
+        interval_times_with_uncertainty = []
+        for interval_key in intervals_sec.keys():
+            interval_data = intervals_sec[interval_key]
+
+            # Create ImageTimeInterval object
+            # Allow start/end/step to be either float or string (HH:MM:SS format)
+            start = _get_key(interval_data, "start", required=True)
+            end = _get_key(interval_data, "end", required=True)
+            step = _get_key(interval_data, "step", required=False)
+            num = _get_key(interval_data, "num", required=False, type_=int)
+            tol = _get_key(interval_data, "tol", required=False)
+
+            # Create interval and generate times
+            interval = ImageTimeInterval(
+                start=start, end=end, step=step, num=num, tol=tol
+            )
+            interval_times_with_uncertainty.extend(
+                interval.generate_times_with_uncertainty()
+            )
+
+        # Append interval times to existing image_times and sort
+        image_times_with_uncertainty.extend(interval_times_with_uncertainty)
+
+    except KeyError:
+        # No image_time_interval section found, which is okay
+        pass
+
+    # TODO Add events.
+    ...
+
+    # Remove duplicates and sort based on first entry of the tuple
+    image_times_with_uncertainty = sorted(
+        list(set(image_times_with_uncertainty)), key=lambda x: x[0]
+    )
+
+    # Return based on user preference
+    if not include_uncertainty:
+        return [t for t, _ in image_times_with_uncertainty]
+    return image_times_with_uncertainty
+
 
 @dataclass
 class AnalysisData:
-    image_times: list[float] = field(default_factory=list)
-    """List of image times in hours since experiment start."""
     image_paths: list[Path] = field(default_factory=list)
     """List of image paths corresponding to the image times."""
+    image_times: list[float] = field(default_factory=list)
+    """List of image times in hours since experiment start."""
 
     def load(self, sec: dict, data: Path | None) -> "AnalysisData":
         sub_sec = _get_section(sec, "data")
-        self.image_times = sorted(
-            [
-                _convert_to_hours(t)
-                for t in _get_key(
-                    sub_sec,
-                    "image_times",
-                    default=[],
-                    required=False,
-                    type_=list[float | str],
-                )
-            ]
-        )
+
+        # Load image paths
         self.image_paths = sorted(
             [
                 Path(p) if data is None else data / p
@@ -649,39 +716,12 @@ class AnalysisData:
                 )
             ]
         )
-        if len(self.image_times) > 0 and len(self.image_paths) > 0:
+
+        # Load image times
+        self.image_times = load_image_times(sub_sec)
+
+        if len(self.image_paths) > 0 and len(self.image_times) > 0:
             raise ValueError("Provide either image_times or image_paths, not both.")
-
-        # Add times provided as intervals
-        try:
-            intervals_sec = _get_section(sub_sec, "image_time_interval")
-
-            # Loop through interval sections
-            interval_times = []
-            for interval_key in intervals_sec.keys():
-                interval_data = intervals_sec[
-                    interval_key
-                ]  # Create ImageTimeInterval object
-                # Allow start/end/step to be either float or string (HH:MM:SS format)
-                start = _get_key(interval_data, "start", required=True)
-                end = _get_key(interval_data, "end", required=True)
-                step = _get_key(interval_data, "step", required=False, default=0.0)
-                num = _get_key(interval_data, "num", required=False, type_=int)
-
-                # Create interval and generate times
-                interval = ImageTimeInterval(start=start, end=end, step=step, num=num)
-
-                # Generate and collect times from this interval
-                interval_times.extend(interval.generate_times())
-
-            # Append interval times to existing image_times and sort
-            self.image_times.extend(interval_times)
-            # Remove duplicates and sort
-            self.image_times = sorted(list(set(self.image_times)))
-
-        except KeyError:
-            # No image_time_interval section found, which is okay
-            pass
 
         return self
 
