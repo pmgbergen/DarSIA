@@ -96,7 +96,10 @@ class Resize:
             self.interpolation = cv2.INTER_NEAREST
         else:
             raise NotImplementedError(
-                f"Interpolation option {interpolation_pre} is not implemented."
+                f"Interpolation option {interpolation_pre} is not implemented. Pick from:\n"
+                f" - inter_area\n"
+                f" - inter_linear\n"
+                f" - inter_nearest\n"
             )
 
         # Check for conservative rescaling
