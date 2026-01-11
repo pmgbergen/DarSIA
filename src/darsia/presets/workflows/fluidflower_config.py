@@ -1326,12 +1326,14 @@ class WassersteinDistancesConfig:
     """Path to the results folder for Wasserstein comparison."""
     runs: list[str] = field(default_factory=list)
     """List of run IDs to compare."""
-    times_with_uncertainty: list[tuple[float, float]] = field(default_factory=list)
-    """List of times at which to compute Wasserstein distances."""
-    refinement_ratio: float | None = None
-    """Spatial refinement ratio for Wasserstein computation."""
+    resize_factor: float | None = None
+    """Spatial resize factor for Wasserstein computation."""
+    relative_tol: float | None = None
+    """Relative tolerance for Wasserstein computation to consider."""
     roi: dict[str, RoiConfig] | None = None
     """ROIs to consider for Wasserstein computation."""
+    times: list[tuple[float, float]] = field(default_factory=list)
+    """List of times (with uncertainty) at which to compute Wasserstein distances."""
 
     def load(
         self,
@@ -1340,12 +1342,14 @@ class WassersteinDistancesConfig:
         roi: MultiRoiConfig | None = None,
     ) -> "WassersteinDistancesConfig":
         """Load Wasserstein comparison configuration from TOML file."""
+
         data_section = _get_section_from_toml(path, "wasserstein")
+
+        # Define results directory
         self.results = _get_key(data_section, "results", required=False, type_=Path)
         if not self.results:
             assert results is not None
-            self.results = results / "wasserstein_distances"
-        self.runs = _get_key(data_section, "runs", required=True, type_=list)
+            self.results = results / "wasserstein"
 
         # Create results directory if it doesn't exist
         try:
@@ -1355,19 +1359,20 @@ class WassersteinDistancesConfig:
                 f"Cannot create results directory at {self.results}."
             ) from e
 
-        # Load times. Allow for different options.
-        self.times_with_uncertainty = []
+        # Define runs to compare
+        self.runs = _get_key(data_section, "runs", required=True, type_=list)
+
+        # Spatial resize factor
+        self.resize_factor = _get_key(
+            data_section, "resize", required=False, type_=float
+        )
+
+        # Load times.
+        self.times = []
         try:
-            self.times_with_uncertainty = load_image_times_with_uncertainty(
-                data_section
-            )
+            self.times = load_image_times(data_section, include_uncertainty=True)
         except KeyError:
             pass
-
-        # Spatial refinement ratio
-        self.refinement_ratio = _get_key(
-            data_section, "refinement_ratio", required=False, type_=float
-        )
 
         # Load ROIs
         roi_name = _get_key(data_section, "roi", required=True, type_=list)
