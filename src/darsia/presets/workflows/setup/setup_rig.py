@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def setup_rig(cls: Type[Rig], path: Path, show: bool = False) -> None:
+def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> None:
     """Setup and store fluidflower object.
 
     Args:
@@ -33,7 +33,7 @@ def setup_rig(cls: Type[Rig], path: Path, show: bool = False) -> None:
     tic = time.time()
 
     # ! ---- LOAD RUN AND RIG ----
-    config = FluidFlowerConfig(path)
+    config = FluidFlowerConfig(path, require_data=False, require_results=False)
     config.check("data", "depth", "labeling", "protocol")
 
     # Mypy type checking
@@ -66,7 +66,7 @@ def setup_rig(cls: Type[Rig], path: Path, show: bool = False) -> None:
         labels_path=config.labeling.labels,
         facies_path=config.facies.path,
         facies_props_path=config.facies.props,
-        correction_config_path=path,  # TODO replace with actual config file read from toml
+        config_path=path,  # TODO replace with actual config file read from toml
         log=config.data.results,
     )
     rig.save(config.data.results / "setup" / "rig")

@@ -8,7 +8,7 @@ import darsia
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 
 
-def setup_depth_map(path: Path, key="mean", show: bool = False) -> None:
+def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> None:
     """Set up depth map from measurements.
 
     NOTE: This function stores the depth map in npz format according to the
@@ -23,7 +23,7 @@ def setup_depth_map(path: Path, key="mean", show: bool = False) -> None:
     print("Setting up depth map...")
 
     # ! ---- READ CONFIG ---- ! #
-    config = FluidFlowerConfig(path)
+    config = FluidFlowerConfig(path, require_data=False, require_results=False)
     config.check("depth", "rig")
 
     # Mypy type checking

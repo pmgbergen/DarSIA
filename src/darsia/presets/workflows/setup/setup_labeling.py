@@ -11,10 +11,10 @@ from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 logger = logging.getLogger(__name__)
 
 
-def segment_colored_image(config_path: Path, show: bool = False):
+def segment_colored_image(path: Path, show: bool = False):
     """Segment colored image based on config file."""
 
-    config = FluidFlowerConfig(Path(config_path))
+    config = FluidFlowerConfig(path, require_data=False, require_results=False)
     config.check("labeling", "rig")
 
     # Mypy type checking

@@ -15,7 +15,6 @@ Usage (for more information run with --help and/or --info flag):
 
 import argparse
 import logging
-from pathlib import Path
 
 from darsia.presets.workflows.setup.setup_rig import setup_rig
 from darsia.presets.workflows.setup.setup_depth import setup_depth_map
@@ -32,8 +31,9 @@ def build_parser_for_setup():
     parser.add_argument(
         "--config",
         type=str,
-        default="config.toml",
-        help="Path to config file.",
+        nargs="+",
+        required=True,
+        help="Path(s) to config file(s). Multiple files can be specified.",
     )
     parser.add_argument("--all", action="store_true", help="Activate all setup steps.")
     parser.add_argument("--depth", action="store_true", help="Activate setup of depth.")
@@ -60,10 +60,10 @@ def preset_setup(rig=Rig):
     args = parser.parse_args()
 
     if args.all or args.depth:
-        setup_depth_map(Path(args.config), key="depth", show=args.show)
+        setup_depth_map(args.config, key="depth", show=args.show)
     if args.all or args.segmentation:
-        segment_colored_image(Path(args.config), args.show)
+        segment_colored_image(args.config, args.show)
     if args.all or args.facies:
-        setup_facies(rig, Path(args.config), args.show)
+        setup_facies(rig, args.config, args.show)
     if args.all or args.rig:
-        setup_rig(rig, Path(args.config), args.show)
+        setup_rig(rig, args.config, args.show)

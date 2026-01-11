@@ -13,10 +13,10 @@ from darsia.presets.workflows.rig import Rig
 logger = logging.getLogger(__name__)
 
 
-def setup_facies(cls: Rig, config_path: Path, show: bool = False):
+def setup_facies(cls: Rig, path: Path, show: bool = False):
     """Setup facies based on config file."""
 
-    config = FluidFlowerConfig(Path(config_path))
+    config = FluidFlowerConfig(path, require_data=False, require_results=False)
     config.check("facies", "labeling")
 
     # Mypy type checking
