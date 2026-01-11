@@ -1214,6 +1214,10 @@ class MultiFluidFlowerRunsConfig:
             if run_id in ["common"]:
                 continue
 
+            # Make run_id numeric if possible
+            if run_id.isdigit():
+                run_id = int(run_id)
+
             # Attach run specific config(s)
             config_paths = [path.parent / run_config["config"]]
             config_paths.extend(common_config_paths)
