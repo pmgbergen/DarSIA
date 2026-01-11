@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Optional
 import pandas as pd
 import darsia
+from warnings import warn
+import numpy as np
 
 
 @dataclass
@@ -258,12 +260,14 @@ class ImagingProtocol:
         self,
         paths: Path | list[Path],
         datetimes: list[datetime],
+        tol: float | None = None,
     ) -> list[Path]:
         """Find images in the folder that are closest to the specified times.
 
         Args:
             paths (Path | list[Path]): Path to the folder containing images.
             times (list[float]): List of times (in seconds) to find corresponding images for.
+            tol (float | None): Tolerance (in seconds) for finding closest images.
 
         Returns:
             list[darsia.Image]: List of images corresponding to the specified times.
@@ -292,13 +296,25 @@ class ImagingProtocol:
             closest_available_time = min(
                 df["datetime"], key=lambda t: abs((t - dt).total_seconds())
             )
-            closest_available_image_path = available_image_ids[
-                df[df["datetime"] == closest_available_time]["image_id"].values[0]
-            ]
-            closest_available_image_paths.append(closest_available_image_path)
+            time_distance = abs((df["datetime"] - dt).dt.total_seconds())
+            if tol is None:
+                closest_available_image_path = available_image_ids[
+                    df[df["datetime"] == closest_available_time]["image_id"].values[0]
+                ]
+                closest_available_image_paths.append(closest_available_image_path)
+            elif time_distance.min() < tol:
+                closest_available_image_path = available_image_ids[
+                    df[df["datetime"] == closest_available_time]["image_id"].values[0]
+                ]
+                closest_available_image_paths.append(closest_available_image_path)
 
         # Return unique paths only but keep order
-        return list(dict.fromkeys(closest_available_image_paths))
+        return_paths = list(dict.fromkeys(closest_available_image_paths))
+        if len(return_paths) < len(datetimes):
+            warn(
+                f"Only found {len(return_paths)} images for {len(datetimes)} requested times."
+            )
+        return return_paths
 
     def find_ideal_images_for_datetimes(
         self,
