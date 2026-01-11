@@ -10,7 +10,6 @@ import json
 import math
 import tomllib
 from pathlib import Path
-from typing import Optional, Union
 from warnings import warn
 
 import cv2
@@ -23,13 +22,30 @@ import darsia
 
 
 def load_curvature_correction_config_from_toml(path: Path) -> dict:
+    """Load curvature correction config from a toml file.
+
+    Arguments:
+        path (Path): path to the toml file.
+
+    Returns:
+        config (dict): config dictionary for curvature correction.
+
+    """
     data = tomllib.loads(path.read_text())
     config = {}
+
+    # Fetch the main curvature section. Only continue if it exists.
     try:
         sec = data["curvature"]
     except KeyError:
-        raise UserWarning(f"No 'curvature' section found in {path}.")
+        warn(f"No 'curvature' section found in {path}.")
         return config
+
+    # Fetch sub-sections:
+    # - init
+    # - crop
+    # - bulge
+    # - stretch
     try:
         sec_init = sec["init"]
         if sec_init is not None:
@@ -39,6 +55,7 @@ def load_curvature_correction_config_from_toml(path: Path) -> dict:
             }
     except KeyError:
         raise UserWarning(f"No 'curvature.init' section found in {path}.")
+
     try:
         sec_crop = sec["crop"]
         if sec_crop is not None:
@@ -50,6 +67,7 @@ def load_curvature_correction_config_from_toml(path: Path) -> dict:
             }
     except KeyError:
         raise UserWarning(f"No 'curvature.crop' section found in {path}.")
+
     try:
         sec_bulge = sec["bulge"]
         if sec_bulge is not None:
@@ -63,6 +81,7 @@ def load_curvature_correction_config_from_toml(path: Path) -> dict:
             }
     except KeyError:
         raise UserWarning(f"No 'curvature.bulge' section found in {path}.")
+
     try:
         sec_stretch = sec["stretch"]
         if sec_stretch is not None:
@@ -100,7 +119,7 @@ class CurvatureCorrection(darsia.BaseCorrection):
     """
 
     def __init__(
-        self, config: Optional[Union[dict, str, Path]] = None, **kwargs
+        self, config: dict | str | Path | list[Path] | None = None, **kwargs
     ) -> None:
         """
         Constructor of curvature correction class.
@@ -115,7 +134,7 @@ class CurvatureCorrection(darsia.BaseCorrection):
             kwargs (Optional keyword arguments):
                 config (dict, str, Path): config dictionary; default is None. Either this
                             or the image must be provided.
-                image (Union[Path, np.ndarray]): image source that either can
+                image (Path | np.ndarray): image source that either can
                             be provided as a path to an image or an image matrix.
                             Either this or the config must be provided.
                 width (float): physical width of the image. Only relevant if
@@ -127,19 +146,8 @@ class CurvatureCorrection(darsia.BaseCorrection):
                             is provided.
         """
 
-        if config is not None:
-            # Read config directly from argument list
-            if isinstance(config, dict):
-                self.config = copy.deepcopy(config)
-            elif isinstance(config, (str, Path)):
-                path = Path(config)
-                if path.suffix == ".json":
-                    with open(path, "r") as openfile:
-                        self.config = json.load(openfile)
-                elif path.suffix == ".toml":
-                    self.config = load_curvature_correction_config_from_toml(path)
-        else:
-            self.config = {}
+        # Setup config from file if provided
+        self.setup_config(config)
 
         if "image" in kwargs:
             im_source = kwargs.get("image")
@@ -187,9 +195,34 @@ class CurvatureCorrection(darsia.BaseCorrection):
         # coordinates
         self.interpolation_order: int = kwargs.get("interpolation_order", 1)
 
+    def setup_config(
+        self, config: dict | str | Path | list[Path] | None = None
+    ) -> None:
+        def _read_from_single_file(path: Path) -> dict:
+            if path.suffix == ".json":
+                with open(path, "r") as openfile:
+                    return json.load(openfile)
+            elif path.suffix == ".toml":
+                return load_curvature_correction_config_from_toml(path)
+
+        if config is not None:
+            # Read config directly from argument list
+            if isinstance(config, dict):
+                self.config = copy.deepcopy(config)
+            elif isinstance(config, (str, Path)):
+                path = Path(config)
+                self.config = _read_from_single_file(path)
+            elif isinstance(config, list):
+                paths = [Path(p) for p in config]
+                self.config = {}
+                for path in paths:
+                    self.config.update(_read_from_single_file(path))
+        else:
+            self.config = {}
+
     # ! ---- I/O routines
 
-    def write_config_to_file(self, path: Union[Path, str]) -> None:
+    def write_config_to_file(self, path: Path | str) -> None:
         """
         Writes the config dictionary to a json-file.
 
@@ -399,7 +432,7 @@ class CurvatureCorrection(darsia.BaseCorrection):
 
     # ! ---- Auxiliary routines for computing tuning parameters in the correction.
 
-    def compute_bulge(self, img: Optional[np.ndarray] = None, **kwargs):
+    def compute_bulge(self, img: np.ndarray | None = None, **kwargs):
         """
         Compute the bulge parameters depending on the maximum number of pixels
         that the image has been displaced on each side.
@@ -463,7 +496,7 @@ class CurvatureCorrection(darsia.BaseCorrection):
             vertical_bulge_center_offset,
         )
 
-    def compute_stretch(self, img: Optional[np.ndarray] = None, **kwargs):
+    def compute_stretch(self, img: np.ndarray | None = None, **kwargs):
         """
         Compute the stretch parameters depending on the stretch center,
         and a known translation.
