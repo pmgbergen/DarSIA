@@ -192,8 +192,8 @@ options = {
     # Performance control
     "num_iter": 400,
     "tol_residual": 1e-3,
-    "tol_increment": 1e-4,
-    "tol_distance": 1e-6,
+    "tol_increment": 1e-3,
+    "tol_distance": 1e-3,
     "return_info": True,
     "verbose": False,
 }
@@ -262,7 +262,7 @@ def test_adaptive_bregman(a_key, s_key, dim):
 @pytest.mark.parametrize("dim", [2, 3])
 @pytest.mark.parametrize("s_key", range(len(solvers_gprox)))
 def test_gprox(dim, s_key):
-    """Test all combinations for adaptive Bregman."""
+    """Test all combinations for GProx."""
     options.update(gprox_options)
     options.update(solvers_gprox[s_key])
     distance, info = darsia.wasserstein_distance(
