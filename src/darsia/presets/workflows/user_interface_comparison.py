@@ -8,6 +8,11 @@ import logging
 from darsia.presets.workflows.comparison.comparison_events import (
     comparison_events,
 )
+from darsia.presets.workflows.comparison.comparison_wasserstein import (
+    comparison_wasserstein,
+)
+from darsia.presets.workflows.rig import Rig
+
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +22,18 @@ def build_parser_for_comparison():
     parser.add_argument(
         "--config",
         type=str,
-        default="config.toml",
-        help="Path to config file.",
+        required=True,
+        help="Path(s) to config file(s). Multiple files can be specified.",
     )
     parser.add_argument("--events", action="store_true", help="Determine events.")
     parser.add_argument(
-        "--wasserstein", action="store_true", help="Determine W1 over time."
+        "--wasserstein-compute", action="store_true", help="Determine W1 over time."
+    )
+    parser.add_argument(
+        "--wasserstein-assemble", action="store_true", help="Determine W1 over time."
+    )
+    parser.add_argument(
+        "--wasserstein-check", action="store_true", help="Determine W1 over time."
     )
     parser.add_argument(
         "--show",
@@ -42,13 +53,51 @@ def print_help_for_flags(args, parser):
         sys.exit(0)
 
 
-def run_comparison(args, **kwargs):
+def run_comparison(rig: type[Rig], args, **kwargs):
+    # Only allow one option at a time
+    assert (
+        args.events
+        + args.wasserstein_compute
+        + args.wasserstein_assemble
+        + args.wasserstein_check
+    ) == 1, (
+        "Exactly one of events, wasserstein_compute, wasserstein_assemble, or wasserstein_check must be True."
+    )
+    # Check if none is chosen
+    if not (
+        args.events
+        or args.wasserstein_compute
+        or args.wasserstein_assemble
+        or args.wasserstein_check
+    ):
+        parser.print_help()
+        sys.exit(1)
+
     if args.events:
-        comparison_events(Path(args.config), args.show, **kwargs)
+        comparison_events(args.config, **kwargs)
+
+    if args.wasserstein_compute:
+        comparison_wasserstein(
+            cls=Rig,
+            path=args.config,
+            compute=True,
+        )
+
+    if args.wasserstein_assemble:
+        comparison_wasserstein(
+            path=args.config,
+            assemble=True,
+        )
+
+    if args.wasserstein_check:
+        comparison_wasserstein(
+            path=args.config,
+            check=True,
+        )
 
 
-def preset_comparison(**kwargs):
+def preset_comparison(rig: type[Rig], **kwargs):
     parser = build_parser_for_comparison()
     args = parser.parse_args()
     print_help_for_flags(args, parser)
-    run_comparison(args, **kwargs)
+    run_comparison(rig, args, **kwargs)
