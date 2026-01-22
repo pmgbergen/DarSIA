@@ -759,6 +759,19 @@ class RoiConfig:
         return self
 
 
+class MultiRoiConfig:
+    roi: dict[str, RoiConfig] = field(default_factory=dict)
+    """Dictionary of ROI configurations."""
+
+    def load(self, path: Path) -> "MultiRoiConfig":
+        # Load the entire TOML data to access events section
+        roi_sec = _get_section_from_toml(path, "roi")
+        self.roi = {}
+        for key in roi_sec.keys():
+            self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
+        return self
+
+
 @dataclass
 class RoiAndLabelConfig:
     roi: CoordinateArray = field(default_factory=CoordinateArray)
@@ -778,6 +791,18 @@ class RoiAndLabelConfig:
 
         self.name = _get_key(sec, "name", required=True, type_=str)
         self.label = _get_key(sec, "label", required=True, type_=int)
+        return self
+
+
+@dataclass
+class RoiAndSubroiConfig(RoiConfig):
+    subroi_config: RoiConfig = field(default_factory=RoiConfig)
+    """Sub-ROI configuration."""
+
+    def load(self, sec: dict) -> "RoiAndSubroiConfig":
+        super().load(sec)
+        subroi_sec = _get_section(sec, "subroi")
+        self.subroi_config = RoiConfig().load(subroi_sec)
         return self
 
 
@@ -1015,7 +1040,6 @@ class FluidFlowerConfig:
             warn(f"Section color_to_mass not found in {path}.")
 
         # ! ---- ANALYSIS DATA ---- ! #
-
         try:
             self.analysis = AnalysisConfig()
             self.analysis.load(
