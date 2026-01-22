@@ -8,6 +8,7 @@ from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
+from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ def calibration_color_to_mass_analysis(
 ):
     # ! ---- LOAD RUN AND RIG ----
 
-    config = FluidFlowerConfig(path)
+    config = FluidFlowerConfig(path, require_data=True, require_results=False)
     config.check("color_paths", "rig", "data", "protocol", "color_to_mass")
 
     # Mypy type checking
@@ -78,14 +79,11 @@ def calibration_color_to_mass_analysis(
     )
 
     # ! ---- LOAD IMAGES ----
-    # Store cached versions of calibration images to speed up development
-    # TODO Use calibration.flash.image_paths or so.
-    calibration_image_paths = config.color_to_mass.calibration_image_paths
-    if len(calibration_image_paths) == 0:
-        calibration_image_paths = experiment.find_images_for_times(
-            times=config.color_to_mass.calibration_image_times
-        )
+    calibration_image_paths = select_image_paths(
+        config, experiment, all=False, sub_config=config.color_to_mass
+    )
 
+    # Store cached versions of calibration images to speed up development
     calibration_images = []
     for p in calibration_image_paths:
         cache_path = config.data.results / "tmp" / f"cache_{p.stem}.npz"
