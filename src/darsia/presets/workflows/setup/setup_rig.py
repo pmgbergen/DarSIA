@@ -45,7 +45,6 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
     assert config.protocol.imaging is not None
     assert config.protocol.injection is not None
     assert config.protocol.pressure_temperature is not None
-    assert config.protocol.blacklist is not None
 
     # Load imaging protocol
     experiment = darsia.ProtocolledExperiment(

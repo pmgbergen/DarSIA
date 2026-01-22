@@ -151,7 +151,7 @@ def calibration_color_to_mass_analysis(
         if min(relative_distance, relative_max_interpolation) < threshold:
             ignore_labels.append(label)
 
-    print("Ignoring labels:", ignore_labels)
+    logger.info(f"\033[93mIgnoring labels: {ignore_labels}\033[0m")
 
     # Illustrate the ignored labels for the calibration images throgh grayscaling
     if False:
