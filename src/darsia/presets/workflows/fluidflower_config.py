@@ -224,6 +224,40 @@ class FluidFlowerDataConfig:
 
 
 @dataclass
+class TimeData:
+    image_paths: list[Path] = field(default_factory=list)
+    """List of image paths corresponding to the image times."""
+    image_times: list[float] = field(default_factory=list)
+    """List of image times in hours since experiment start."""
+
+    def load(self, sec: dict, data: Path | None) -> "TimeData":
+        sub_sec = _get_section(sec, "data")
+
+        # Load image paths
+        self.image_paths = sorted(
+            [
+                Path(p) if data is None else data / p
+                for p in _get_key(
+                    sub_sec, "image_paths", default=[], required=False, type_=list[Path]
+                )
+            ]
+        )
+
+        # Load image times
+        self.image_times = load_image_times(sub_sec)
+
+        if len(self.image_paths) > 0 and len(self.image_times) > 0:
+            raise ValueError("Provide either image_times or image_paths, not both.")
+
+        return self
+
+    def error(self):
+        raise ValueError(
+            f"Use key `data` within the considered subsection in the config file to load data."
+        )
+
+
+@dataclass
 class FluidFlowerLabelingConfig:
     colored_image: Path = field(default_factory=Path)
     """Path to the segmented file."""
@@ -394,12 +428,8 @@ class ColorPathsConfig:
     """Threshold for calibration images."""
     baseline_image_paths: list[Path] = field(default_factory=list[Path])
     """List of image paths used for baseline."""
-    baseline_image_times: list[float] = field(default_factory=list[float])
-    """List of image times used for baseline."""
-    calibration_image_paths: list[Path] = field(default_factory=list[Path])
-    """List of image paths used for calibration."""
-    calibration_image_times: list[float] = field(default_factory=list[float])
-    """List of image times used for calibration."""
+    data: TimeData | None = None
+    """Calibration data configuration."""
     calibration_file: Path = field(default_factory=Path)
     """Path to the calibration file."""
     baseline_color_spectrum_folder: Path = field(default_factory=Path)
@@ -439,49 +469,12 @@ class ColorPathsConfig:
                 )
             ]
         )
-        self.baseline_image_times = sorted(
-            [
-                _convert_to_hours(t)
-                for t in _get_key(
-                    sec,
-                    "baseline_image_times",
-                    default=[],
-                    required=False,
-                    type_=list[float | str],
-                )
-            ]
-        )
-        self.calibration_image_paths = sorted(
-            [
-                Path(p) if data is None else data / p
-                for p in _get_key(
-                    sec,
-                    "calibration_image_paths",
-                    default=[],
-                    required=False,
-                    type_=list[Path],
-                )
-            ]
-        )
-        self.calibration_image_times = sorted(
-            [
-                _convert_to_hours(t)
-                for t in _get_key(
-                    sec,
-                    "calibration_image_times",
-                    default=[],
-                    required=False,
-                    type_=list[float | str],
-                )
-            ]
-        )
-        if (
-            len(self.calibration_image_paths) > 0
-            and len(self.calibration_image_times) > 0
-        ):
-            raise ValueError(
-                "Provide either calibration_image_times or calibration_image_paths, not both."
-            )
+        try:
+            self.data = TimeData().load(sec, data)
+        except KeyError:
+            warn("No analysis data found. Use [color_paths.data].")
+            self.data = None
+
         self.reference_label = _get_key(
             sec, "reference_label", default=0, required=False, type_=int
         )
@@ -521,23 +514,23 @@ class ColorPathsConfig:
                "relative/path/to/baseline/image1",
                "relative/path/to/baseline/image2"
             ]
-            calibration_images = [
-               "relative/path/to/calibration/image1",
-               "relative/path/to/calibration/image2"
-            ]
             reference_label = 0
             calibration_file = "path/to/calibration/file"
-            
+
+            [color_paths.data.image_time_interval.calibration]
+            start = "00:00:00"
+            end = "10:00:00"
+            step = "01:00:00"
+            tol = "00:05:00"
+
             """
         )
 
 
 @dataclass
 class ColorToMassConfig:
-    calibration_image_paths: list[Path] = field(default_factory=list[Path])
-    """List of image paths used for calibration."""
-    calibration_image_times: list[float] = field(default_factory=list[float])
-    """List of image times used for calibration."""
+    data: TimeData | None = None
+    """Calibration data configuration."""
     calibration_folder: Path = field(default_factory=Path)
     """Path to the calibration folder."""
 
@@ -545,37 +538,11 @@ class ColorToMassConfig:
         self, path: Path, data: Path | None, results: Path | None = None
     ) -> "ColorToMassConfig":
         sec = _get_section_from_toml(path, "color_to_mass")
-        self.calibration_image_paths = sorted(
-            [
-                Path(p) if data is None else data / p
-                for p in _get_key(
-                    sec,
-                    "calibration_image_paths",
-                    default=[],
-                    required=False,
-                    type_=list[Path],
-                )
-            ]
-        )
-        self.calibration_image_times = sorted(
-            [
-                _convert_to_hours(t)
-                for t in _get_key(
-                    sec,
-                    "calibration_image_times",
-                    default=[],
-                    required=False,
-                    type_=list[float | str],
-                )
-            ]
-        )
-        if (
-            len(self.calibration_image_paths) > 0
-            and len(self.calibration_image_times) > 0
-        ):
-            raise ValueError(
-                "Provide either calibration_image_times or calibration_image_paths, not both."
-            )
+        try:
+            self.data = TimeData().load(sec, data)
+        except KeyError:
+            warn("No data found. Use [color_to_mass.data].")
+            self.data = None
         self.calibration_folder = _get_key(
             sec, "calibration_folder", required=False, type_=Path
         )
@@ -695,38 +662,6 @@ def load_image_times(
     if not include_uncertainty:
         return [t for t, _ in image_times_with_uncertainty]
     return image_times_with_uncertainty
-
-
-@dataclass
-class AnalysisData:
-    image_paths: list[Path] = field(default_factory=list)
-    """List of image paths corresponding to the image times."""
-    image_times: list[float] = field(default_factory=list)
-    """List of image times in hours since experiment start."""
-
-    def load(self, sec: dict, data: Path | None) -> "AnalysisData":
-        sub_sec = _get_section(sec, "data")
-
-        # Load image paths
-        self.image_paths = sorted(
-            [
-                Path(p) if data is None else data / p
-                for p in _get_key(
-                    sub_sec, "image_paths", default=[], required=False, type_=list[Path]
-                )
-            ]
-        )
-
-        # Load image times
-        self.image_times = load_image_times(sub_sec)
-
-        if len(self.image_paths) > 0 and len(self.image_times) > 0:
-            raise ValueError("Provide either image_times or image_paths, not both.")
-
-        return self
-
-    def error(self):
-        raise ValueError(f"Use [analysis] in the config file to load analysis data.")
 
 
 @dataclass
@@ -926,7 +861,7 @@ class AnalysisVolumeConfig:
 
 @dataclass
 class AnalysisConfig:
-    data: AnalysisData | None = None
+    data: TimeData | None = None
     """Analysis data configuration."""
     segmentation: AnalysisSegmentationConfig | None = None
     """Analysis segmentation configuration."""
@@ -942,7 +877,7 @@ class AnalysisConfig:
 
         # Config to load analysis data
         try:
-            self.data = AnalysisData().load(sec, data)
+            self.data = TimeData().load(sec, data)
         except KeyError:
             warn("No analysis data found. Use [analysis.data].")
             self.data = None
@@ -1122,7 +1057,7 @@ class FluidFlowerConfig:
         elif key == "color_paths" and not self.color_paths:
             ColorPathsConfig().error()
         elif key == "analysis.data" and (not self.analysis or not self.analysis.data):
-            AnalysisData().error()
+            TimeData().error()
         elif key == "analysis.segmentation" and (
             not self.analysis or not self.analysis.segmentation
         ):
