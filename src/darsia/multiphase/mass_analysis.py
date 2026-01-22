@@ -20,24 +20,28 @@ class CO2MassAnalysis:
         self,
         baseline: darsia.Image,
         atmospheric_pressure: float = 1.010,
-        temperature: float = 23.0,
-        path: Optional[Path] = None,
+        atmospheric_temperature: float = 23.0,
+        atmospheric_pressure_gradient: float = 0.0,
+        atmospheric_temperature_gradient: float = 0.0,
     ) -> None:
         """Initialization of mass analysis.
 
         Args:
             baseline (Image): baseline image
             atmospheric_pressure (float): atmospheric pressure in bar
-            temperature (float): temperature in Celsius
-            path (Path): path to log file
+            atmospheric_temperature (float): temperature in Celsius
 
         """
         self.baseline = baseline
         """Baseline image."""
         self.atmospheric_pressure = atmospheric_pressure
         """Atmospheric pressure in bar."""
-        self.temperature = temperature
+        self.atmospheric_temperature = atmospheric_temperature
         """Temperature in Celsius."""
+        self.atmospheric_pressure_gradient = atmospheric_pressure_gradient
+        """Atmospheric pressure gradient in bar."""
+        self.atmospheric_temperature_gradient = atmospheric_temperature_gradient
+        """Temperature gradient in Celsius."""
 
         # Setup water density at 20 and 23 degrees Celsius
         self.setup_20_degrees_celsius()
@@ -46,18 +50,64 @@ class CO2MassAnalysis:
         # Setup density of gaseous CO2
         self.setup_density_gaseous_co2()
 
-        # Log results
-        if path:
-            self.log(path)
+    def update_state(
+        self,
+        atmospheric_pressure: float | None = None,
+        atmospheric_temperature: float | None = None,
+        atmospheric_pressure_gradient: float | None = None,
+        atmospheric_temperature_gradient: float | None = None,
+    ) -> None:
+        """Update atmospheric pressure and temperature.
 
-    def log(self, path: Optional[Path]) -> None:
-        """Plot density, solubility, hydrostatic pressure, tempreature."""
+        Args:
+            atmospheric_pressure (float): atmospheric pressure in bar
+            atmospheric_temperature (float): temperature in Celsius
+
+        """
+        self.atmospheric_pressure = atmospheric_pressure or self.atmospheric_pressure
+        self.atmospheric_temperature = (
+            atmospheric_temperature or self.atmospheric_temperature
+        )
+        self.atmospheric_pressure_gradient = (
+            atmospheric_pressure_gradient or self.atmospheric_pressure_gradient
+        )
+        self.atmospheric_temperature_gradient = (
+            atmospheric_temperature_gradient or self.atmospheric_temperature_gradient
+        )
+
+        # Setup density of gaseous CO2
+        self.setup_density_gaseous_co2()
+
+    def atmospheric_temperature_map(self) -> np.ndarray:
+        """Return atmospheric temperature map due to gradient."""
+        return np.ones_like(self.height_map) * self.atmospheric_temperature + (
+            self.atmospheric_temperature_gradient * self.height_map
+        )
+
+    def top_atmospheric_pressure(self) -> float:
+        return self.atmospheric_pressure + (
+            self.atmospheric_pressure_gradient * self.baseline.dimensions[0]
+        )
+
+    @property
+    def height_map(self) -> np.ndarray:
+        return np.linspace(0, self.baseline.dimensions[0], self.baseline.num_voxels[0])[
+            :, None
+        ] * np.ones(self.baseline.num_voxels)
+
+    def log(self, path: Path) -> None:
+        """Plot density, solubility, hydrostatic pressure, temperature.
+
+        Args:
+            path (Path): path to save the plots
+
+        """
         plt.figure("density")
         plt.imshow(self.density_gaseous_co2)
         plt.colorbar()
         plt.title(
             f"density gaseous CO2 - {self.atmospheric_pressure}"
-            + f" bar - {self.temperature} deg Celsius"
+            + f" bar - {self.atmospheric_temperature} deg Celsius"
         )
         plt.savefig(path / "density_gaseous_co2.png")
         plt.close()
@@ -67,12 +117,14 @@ class CO2MassAnalysis:
         plt.colorbar()
         plt.title(
             f"solubility CO2 - {self.atmospheric_pressure}"
-            + f" bar - {self.temperature} deg Celsius"
+            + f" bar - {self.atmospheric_temperature} deg Celsius"
         )
         plt.savefig(path / "solubility_co2.png")
         plt.close()
 
     def setup_20_degrees_celsius(self) -> None:
+        """Setup water density at 20 degrees Celsius and NIST data for CO2 density."""
+
         self.water_density_20 = 998.21  # kg/m^3 at 20 deg Celsius
         """Water derisity at 20 degrees Celsius."""
 
@@ -238,20 +290,21 @@ class CO2MassAnalysis:
         """
 
         # Hydrostatic pressure distribution
-        height_map = np.linspace(
-            0, self.baseline.dimensions[0], self.baseline.num_voxels[0]
-        )[:, None] * np.ones(self.baseline.num_voxels)
         g = 9.81  # m/s^2
         pa2bar = 1e-5  # Conversion factor from Pascal to bar
 
+        # Determine the temperature distribution due to temperature gradient
+        atmospheric_temperature_map = self.atmospheric_temperature_map()
+
         # Interpolate water density depending on temperature
-        water_density = self.water_density_20 * (23 - self.temperature) / 3 + (
-            self.water_density_23 * (self.temperature - 20) / 3
-        )
+        water_density = self.water_density_20 * (
+            23 - atmospheric_temperature_map
+        ) / 3 + (self.water_density_23 * (atmospheric_temperature_map - 20) / 3)
 
         # Determine hydrostatic pressure
         hydrostatic_pressure = (
-            self.atmospheric_pressure + water_density * g * height_map * pa2bar
+            self.top_atmospheric_pressure()
+            + water_density * g * self.height_map * pa2bar
         )
 
         # Interpolate NIST data: pressure -> density
@@ -278,77 +331,20 @@ class CO2MassAnalysis:
         solubility_co2_20 = self.co2_solubility_interpolator_20(hydrostatic_pressure)
         solubility_co2_23 = self.co2_solubility_interpolator_23(hydrostatic_pressure)
 
-        # Interpolate density of gaseous CO2 depending on temperature
+        # Interpolate density of gaseous CO2 depending on atmospheric_temperature
         self.density_gaseous_co2 = (
-            density_gaseous_co2_20 * (23 - self.temperature) / 3
-            + density_gaseous_co2_23 * (self.temperature - 20) / 3
+            density_gaseous_co2_20 * (23 - atmospheric_temperature_map) / 3
+            + density_gaseous_co2_23 * (atmospheric_temperature_map - 20) / 3
         )
 
         self.solubility_co2 = (
-            solubility_co2_20 * (23 - self.temperature) / 3
-            + solubility_co2_23 * (self.temperature - 20) / 3
+            solubility_co2_20 * (23 - atmospheric_temperature_map) / 3
+            + solubility_co2_23 * (atmospheric_temperature_map - 20) / 3
         )
 
         if False:
             self.solubility_co2[:, :] = 1.8
             warn("constant solubility?")
-
-    def density_co2(self, temperature: float, pressure: float) -> float:
-        """Calculate density of pure CO2 at given temperature and pressure.
-
-        Uses linear interpolation of NIST data between 20 and 23 degrees Celsius.
-
-        Args:
-            temperature (float): temperature in degrees Celsius
-            pressure (float): pressure in bar
-
-        Returns:
-            float: density of CO2 in kg/m^3
-
-        """
-        density_co2_20 = self.co2_density_interpolator_20(pressure)
-        density_co2_23 = self.co2_density_interpolator_23(pressure)
-        return (
-            density_co2_20 * (23 - temperature) / 3
-            + density_co2_23 * (temperature - 20) / 3
-        )
-
-    def hydrostatic_pressure(self, depth: float) -> float:
-        """Calculate hydrostatic pressure at given depth, in bar.
-
-        The formula is: P = P_atm + ρ_water(T) * g * h
-
-        Uses linear interpolation of water density between 20 and 23 degrees Celsius.
-
-        Args:
-            depth (float): depth in meters
-
-        Returns:
-            float: hydrostatic pressure in bar at given depth
-
-        """
-        # Interpolate water density depending on temperature
-        water_density = self.water_density_20 * (23 - self.temperature) / 3 + (
-            self.water_density_23 * (self.temperature - 20) / 3
-        )
-
-        # Constants
-        g = 9.81  # m/s^2
-        pa2bar = 1e-5  # Conversion factor from Pascal to bar
-
-        # Height using distribution over image y-axis
-        height_map = np.linspace(
-            0, self.baseline.dimensions[0], self.baseline.num_voxels[0]
-        )[:, None]
-        index = int(depth / self.baseline.dimensions[0] * self.baseline.num_voxels[0])
-        height = height_map[index]
-
-        # Determine hydrostatic pressure
-        hydrostatic_pressure = (
-            self.atmospheric_pressure + water_density * g * height * pa2bar
-        )
-
-        return hydrostatic_pressure
 
     def __call__(
         self,
@@ -382,6 +378,31 @@ class CO2MassAnalysis:
         mass.img = mass_g.img + mass_aq.img
 
         return mass, mass_g, mass_aq
+
+    def mass_analysis(
+        self,
+        c_aq: darsia.Image,
+        s_g: darsia.Image,
+    ) -> None:  # darsia.SimpleMassAnalysisResults:
+        """Determine mass of CO2, given maps for dissolved and gaseous CO2."""
+        mass_g_array = self.density_gaseous_co2 * s_g.img
+        mass_aq_array = self.solubility_co2 * c_aq.img * np.clip(1 - s_g.img, 0, None)
+        return darsia.SimpleMassAnalysisResults(
+            name=c_aq.name,  # TODO exclude?
+            date=c_aq.date,  # TODO exclude?
+            time=c_aq.time,  # TODO exclude?
+            mass=darsia.full_like(c_aq, mass_g_array + mass_aq_array),
+            mass_g=darsia.full_like(c_aq, mass_g_array),
+            mass_aq=darsia.full_like(c_aq, mass_aq_array),
+            saturation_g=s_g,  # TODO exclude?
+            concentration_aq=c_aq,  # TODO exclude?
+            color_signal=None,  # Exclude! TODO
+        )
+
+        # mass=darsia.full_like(c_aq, mass_g_array + mass_aq_array)
+        # mass_g=darsia.full_like(c_aq, mass_g_array)
+        # mass_aq=darsia.full_like(c_aq, mass_aq_array)
+        # return mass, mass_g, mass_aq
 
 
 class AdvancedCO2MassAnalysis:
@@ -420,6 +441,7 @@ class AdvancedCO2MassAnalysis:
         c_aq = self.concentration_analysis_aq(img)
         # TODO integrate in concentration analysis!?
         # TODO any other expert knowledge somewhere?
+        # TODO add logging that stores to a file?
         c_g.img = np.clip(c_g.img, 0, 1)
         c_aq.img = np.clip(c_aq.img, 0, 1)
         if self.restoration is not None:
@@ -476,6 +498,8 @@ class MassAnalysisResults:
     """Name for the mass analysis result, e.g., name of raw image."""
     date: Optional[datetime]
     """Date of the mass analysis result."""
+    time: Optional[float]
+    """Relative time of the mass analysis result."""
     mass: darsia.Image
     """Total mass of phase."""
     mass_g: darsia.Image
@@ -505,6 +529,7 @@ class MassAnalysisResults:
         return MassAnalysisResults(
             name=self.name,
             date=self.date,
+            time=self.time,
             mass=self.mass.subregion(roi),
             mass_g=self.mass_g.subregion(roi),
             mass_aq=self.mass_aq.subregion(roi),

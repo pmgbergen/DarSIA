@@ -7,7 +7,7 @@ height and depth of pixels.
 
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -32,7 +32,7 @@ class Geometry:
     def __init__(
         self,
         space_dim: int,
-        num_voxels: Union[tuple[int], list[int]],
+        num_voxels: tuple[int] | list[int],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
         **kwargs,
@@ -75,9 +75,7 @@ class Geometry:
         self.cached_voxel_volume = self.voxel_volume.copy()
         """Internal copy of the voxel volume for efficient integration."""
 
-    def integrate(
-        self, data: Union[darsia.Image, np.ndarray]
-    ) -> Union[float, np.ndarray]:
+    def integrate(self, data: darsia.Image | np.ndarray) -> float | np.ndarray:
         """
         Integrate data over the entire geometry.
 
@@ -102,10 +100,8 @@ class Geometry:
 
         # Resize the voxel volumes using conservative resizing.
         if isinstance(self.voxel_volume, np.ndarray):
-
             cached_shape = list(self.cached_voxel_volume.shape)
             if not all([i == j for i, j in zip(fetched_shape, cached_shape)]):
-
                 if not self.space_dim == 2:
                     raise ValueError("Incompatible data format only supported in 2d.")
 
@@ -143,7 +139,7 @@ class Geometry:
 
     def normalize(
         self, img: darsia.Image, img_ref: darsia.Image, return_ratio: bool = False
-    ) -> Union[darsia.Image, tuple[darsia.Image, np.ndarray]]:
+    ) -> darsia.Image | tuple[darsia.Image, np.ndarray]:
         """Normalize image with respect to another one, such that both have the same
         integral.
 
@@ -168,15 +164,45 @@ class Geometry:
         else:
             return rescaled_img
 
+    def subregion(self, roi: darsia.CoordinateArray) -> "Geometry":
+        """Extract subregion of the geometry.
+
+        Args:
+            roi (darsia.CoordinateArray): region of interest.
+
+        Returns:
+            Geometry: subregion geometry.
+
+        """
+        # Compute new dimensions
+        new_dimensions = []
+        for i in range(self.space_dim):
+            length = np.max(roi, axis=0)[i] - np.min(roi, axis=0)[i]
+            new_dimensions.append(length)
+
+        # Compute new number of voxels
+        new_num_voxels = []
+        for i in range(self.space_dim):
+            length = np.max(roi, axis=0)[i] - np.min(roi, axis=0)[i]
+            voxel_size = self.voxel_size[i]
+            new_num_voxels.append(int(np.ceil(length / voxel_size)))
+
+        # Create sub-geometry
+        return Geometry(
+            self.space_dim,
+            new_num_voxels,
+            new_dimensions,
+        )
+
 
 class WeightedGeometry(Geometry):
     """Geometry with weighted volume."""
 
     def __init__(
         self,
-        weight: Union[float, np.ndarray],
+        weight: float | np.ndarray,
         space_dim: int,
-        num_voxels: Union[tuple[int], list[int]],
+        num_voxels: tuple[int] | list[int],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
         **kwargs,
@@ -199,13 +225,49 @@ class WeightedGeometry(Geometry):
 
         # Sanity check
         if isinstance(weight, np.ndarray) and len(weight.shape) != self.space_dim:
-            raise ValueError
+            raise ValueError(
+                "Weight must have the same number of dimensions as the geometry."
+            )
 
         # Add weight
+        self.weight = weight.copy() if isinstance(weight, np.ndarray) else weight
+        """Weight of the geometry, can be a scalar or an array."""
         self.voxel_volume = np.multiply(self.voxel_volume, weight)
         """Effective voxel volume in 3d."""
         self.cached_voxel_volume = self.voxel_volume.copy()
         """Internal copy of the voxel volume for efficient integration."""
+
+    def subregion(self, roi: darsia.CoordinateArray) -> "WeightedGeometry":
+        """Extract subregion of the geometry.
+
+        Args:
+            roi (darsia.CoordinateArray): region of interest.
+
+        Returns:
+            WeightedGeometry: subregion geometry.
+
+        """
+        # Extract sub-geometry using base class method
+        sub_geometry = super().subregion(roi)
+
+        # Extract weight
+        if isinstance(self.weight, np.ndarray):
+            weight_image = darsia.Image(
+                self.weight, dimensions=self.dimensions, space_dim=self.space_dim
+            )
+            sub_weight_image = weight_image.subregion(roi)
+            sub_weight = sub_weight_image.img
+        else:
+            sub_weight = self.weight
+
+        # Create sub-weighted geometry
+        return WeightedGeometry(
+            sub_weight,
+            sub_geometry.space_dim,
+            list(sub_weight.shape),
+            sub_geometry.dimensions,
+            sub_geometry.voxel_size,
+        )
 
 
 class ExtrudedGeometry(WeightedGeometry):
@@ -213,9 +275,9 @@ class ExtrudedGeometry(WeightedGeometry):
 
     def __init__(
         self,
-        expansion: Union[float, np.ndarray],
+        expansion: float | np.ndarray,
         space_dim: int,
-        num_voxels: Union[tuple[int], list[int]],
+        num_voxels: tuple[int] | list[int],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
         **kwargs,
@@ -234,6 +296,7 @@ class ExtrudedGeometry(WeightedGeometry):
             ValueError: if spatial dimension not 2.
 
         """
+        self.depth = expansion
         super().__init__(expansion, space_dim, num_voxels, dimensions, voxel_size)
 
 
@@ -242,9 +305,9 @@ class PorousGeometry(WeightedGeometry):
 
     def __init__(
         self,
-        porosity: Union[float, np.ndarray],
+        porosity: float | np.ndarray | darsia.Image,
         space_dim: int,
-        num_voxels: Union[tuple[int], list[int]],
+        num_voxels: tuple[int] | list[int],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
         **kwargs,
@@ -260,18 +323,19 @@ class PorousGeometry(WeightedGeometry):
             voxel_size (list): see Geometry.
 
         """
+        self.porosity = porosity
         super().__init__(porosity, space_dim, num_voxels, dimensions, voxel_size)
 
 
-class ExtrudedPorousGeometry(ExtrudedGeometry):
+class ExtrudedPorousGeometry(WeightedGeometry):
     """Class containing information of a porous geometry."""
 
     def __init__(
         self,
-        porosity: Union[float, np.ndarray, darsia.Image],
-        depth: Union[float, np.ndarray, darsia.Image],
+        porosity: float | np.ndarray | darsia.Image,
+        depth: float | np.ndarray | darsia.Image,
         space_dim: int,
-        num_voxels: Union[tuple[int], list[int]],
+        num_voxels: tuple[int] | list[int],
         dimensions: Optional[list] = None,
         voxel_size: Optional[list] = None,
         **kwargs,
@@ -288,6 +352,8 @@ class ExtrudedPorousGeometry(ExtrudedGeometry):
             voxel_size (list): see Geometry.
 
         """
+        self.porosity = porosity
+        self.depth = depth
         if isinstance(porosity, darsia.Image) and isinstance(depth, darsia.Image):
             integrated_porosity = np.multiply(porosity.img, depth.img)
         elif isinstance(depth, darsia.Image):
@@ -299,3 +365,25 @@ class ExtrudedPorousGeometry(ExtrudedGeometry):
         super().__init__(
             integrated_porosity, space_dim, num_voxels, dimensions, voxel_size
         )
+
+    def update(self, depth: float | np.ndarray | darsia.Image) -> None:
+        """Update effective depth and recompute weighted volume.
+
+        Args:
+            depth (float or array): effective depth.
+
+        """
+        self.depth = depth
+        if isinstance(self.porosity, darsia.Image) and isinstance(depth, darsia.Image):
+            integrated_porosity = np.multiply(self.porosity.img, depth.img)
+        elif isinstance(depth, darsia.Image):
+            integrated_porosity = np.multiply(self.porosity, depth.img)
+        elif isinstance(self.porosity, darsia.Image):
+            integrated_porosity = np.multiply(self.porosity.img, depth)
+        else:
+            integrated_porosity = np.multiply(self.porosity, depth)
+        self.voxel_volume = np.multiply(
+            self.voxel_volume / self.weight, integrated_porosity
+        )
+        self.cached_voxel_volume = self.voxel_volume.copy()
+        self.weight = integrated_porosity

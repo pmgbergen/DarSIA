@@ -2,24 +2,26 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
+import pandas as pd
 from scipy.interpolate import RBFInterpolator
 from scipy.optimize import least_squares
 
 import darsia
 
 
-def interpolate_measurements(
-    measurements: tuple[np.ndarray, ...],
+def interpolate_measurements_2d(
+    measurements: tuple[np.ndarray, np.ndarray, np.ndarray],
     coordinate_system: darsia.CoordinateSystem,
 ) -> np.ndarray:
     """Determine a voxeled spatial map from measurements through RBF interpolation.
 
     Arguments:
-         measurements (tuple[np.ndarray, ...]): tuple of x, y, and data measurements,
-            providing the input for interpolation.
+         measurements (tuple[np.ndarray, np.ndarray, np.ndarray]): tuple of x, y, and data
+            measurements, providing the input for interpolation.
         shape (tuple of int): target shape of the output map.
         coordinate_system (darsia.CoordinateSystem): coordinate system of the
             correspoinding physical image.
@@ -28,6 +30,7 @@ def interpolate_measurements(
         np.ndarray: map
 
     """
+    assert len(measurements) == 3, "Measurements must be a tuple of (x, y, data)."
     # Create an interpolation object from data.
     interpolator = RBFInterpolator(
         np.transpose(
@@ -191,18 +194,24 @@ def illumination_interpolation(
 
 
 def interpolate_to_image(
-    data: tuple[np.ndarray, ...],
+    data: tuple[np.ndarray, np.ndarray, np.ndarray],
     image: darsia.Image,
     method: Literal[
         "rbf", "polynomial", "linear", "quadratic", "cubic", "quartic"
     ] = "rbf",
-    **kwargs,
 ) -> darsia.Image:
     """Interpolate data to image.
 
     Args:
-        data (np.ndarray): data to be interpolated.
-        image (darsia.Image): image to which data shall be interpolated.
+        data (np.ndarray): (x,y,measurements) data to be interpolated.
+        image (darsia.Image): Image to which data shall be interpolated.
+        method (str): Interpolation method to use. Options are:
+            - "rbf": Radial Basis Function interpolation (default).
+            - "polynomial": Polynomial interpolation.
+            - "linear": Linear interpolation.
+            - "quadratic": Quadratic interpolation.
+            - "cubic": Cubic interpolation.
+            - "quartic": Quartic interpolation.
 
     Returns:
         darsia.Image: interpolated image.
@@ -211,7 +220,8 @@ def interpolate_to_image(
     # Initialize image
     interpolated_image = image.copy()
 
-    # Convert data if provided in mesh format
+    # Convert data to 1D columns if provided in mesh format
+    assert len(data) == 3, "Data must be a tuple of (x, y, data)."
     if all([len(d.shape) == 2 for d in data]):
         data = (
             np.ravel(data[0]),
@@ -221,7 +231,7 @@ def interpolate_to_image(
 
     if method.lower() == "rbf":
         # Define array through RBF interpolation
-        interpolated_image.img = interpolate_measurements(
+        interpolated_image.img = interpolate_measurements_2d(
             data,
             interpolated_image.coordinatesystem,
         )
@@ -250,3 +260,44 @@ def interpolate_to_image(
         )
 
     return interpolated_image
+
+
+def interpolate_to_image_from_csv(
+    csv_file: Path,
+    key: str,
+    image: darsia.Image,
+    method: Literal[
+        "rbf", "polynomial", "linear", "quadratic", "cubic", "quartic"
+    ] = "rbf",
+) -> darsia.Image:
+    """Interpolate data from CSV to image.
+
+    Args:
+        csv_file (Path): Path to the CSV file containing the data.
+        key (str): Key to identify the data in the CSV file.
+        image (darsia.Image): Image to which data shall be interpolated.
+        method (str): Interpolation method to use. Options are:
+            - "rbf": Radial Basis Function interpolation (default).
+            - "polynomial": Polynomial interpolation.
+            - "linear": Linear interpolation.
+            - "quadratic": Quadratic interpolation.
+            - "cubic": Cubic interpolation.
+            - "quartic": Quartic interpolation.
+
+    Returns:
+        darsia.Image: Interpolated image.
+
+    """
+    # Convert data to the format expected by interpolate_to_image
+    data = pd.read_csv(csv_file)
+    x_key = "x" if "x" in data.columns else "X"
+    y_key = "y" if "y" in data.columns else "Y"
+    x = data[x_key].to_numpy()
+    y = data[y_key].to_numpy()
+    mean = data[key].to_numpy()
+
+    return interpolate_to_image(
+        (x, y, mean),
+        image,
+        method=method,
+    )

@@ -1,6 +1,4 @@
-"""Module containing utils for segmentation of layered media.
-
-"""
+"""Module containing utils for segmentation of layered media."""
 
 from __future__ import annotations
 
@@ -510,3 +508,180 @@ def _boundary(labels: np.ndarray, thickness: int, boundary: list[str]) -> np.nda
             # Right
             labels[:, -thickness:] = labels[:, -thickness - 1 : -thickness]
     return labels
+
+
+def label_image(
+    img: Union[np.ndarray, darsia.Image],
+    map: dict | None = None,
+    tol: float = 0.01,
+    ensure_connectivity: bool = True,
+    expand_labels: bool = True,
+    significance: float | None = None,
+    max_iter: int = 10,
+) -> Union[np.ndarray, darsia.Image]:
+    """
+    Segment an image based on colors.
+
+    Args:
+        img (np.ndarray or darsia.Image): input image in RGB color space
+        map (dict, optional): dictionary mapping color names to labels and RGB values;
+            default is None, in which case a predefined map is used:
+            map = {
+                "white": (0, (1, 1, 1)),
+                "black": (1, (0, 0, 0)),
+                "red": (2, (1, 0, 0)),
+                "green": (3, (0, 1, 0)),
+                "blue": (4, (0, 0, 1)),
+                "cyan": (5, (0, 1, 1)),
+                "magenta": (6, (1, 0, 1)),
+                "yellow": (7, (1, 1, 0)),
+            }
+            the keys are the color names (currently not used), the values are tuples
+            containing the label (int) and the RGB value (tuple of floats in [0, 1]).
+        tol (float): tolerance for color matching in float format; default is 0.1.
+        max_iter (int): maximum number of iterations for filling unlabeled pixels;
+            default is 10.
+
+    The labeling is done by comparing the RGB values of the input image
+    with the RGB values in the map. If the absolute difference is less than
+    the tolerance, the corresponding label is assigned to the pixel. After the
+    labeling is complete, the connected components are identified and labeled
+    using skimage.measure.label.
+
+    Returns:
+        np.ndarray or darsia.Image: labeled regions in the same format as img.
+
+    """
+    # Work for now only with numpy arrays
+    if isinstance(img, darsia.Image):
+        return_darsia_image = True
+        meta = img.metadata()
+        img = img.img
+    else:
+        return_darsia_image = False
+
+    # Make sure the image is in RGB format
+    assert img.ndim == 3 and img.shape[2] == 3, (
+        f"Image must be in RGB format, but has shape {img.shape}."
+    )
+
+    # Initialize the labeled image with zeros. These are the unlabeled pixels.
+    labeled_image = np.zeros(img.shape[:2], dtype=np.uint8)
+
+    # Make sure the image is in float format
+    if img.dtype != np.float32 and img.dtype != np.float64:
+        img = skimage.img_as_float(img)  # type: ignore[attr-defined]
+
+    # Pre-define colors for segmentation
+    if map is None:
+        map = {
+            "white": (0, (1, 1, 1)),
+            "black": (1, (0, 0, 0)),
+            "red": (2, (1, 0, 0)),
+            "green": (3, (0, 1, 0)),
+            "blue": (4, (0, 0, 1)),
+            "cyan": (5, (0, 1, 1)),
+            "magenta": (6, (1, 0, 1)),
+            "yellow": (7, (1, 1, 0)),
+        }
+
+    # Ensure that the map does not contain zero labels.
+    if any(label == 0 for label, _ in map.values()):
+        warn(
+            "Map contains zero labels - zeros are also used to mark unlabeled regions."
+        )
+
+    for color_name, (label, color_value) in map.items():
+        # Create a mask for the current color
+        mask = np.all(np.abs(img - color_value) < tol, axis=-1)
+
+        # Label the regions
+        labeled_image[mask] = label
+
+    # Mark unlabeled pixels
+    unlabeled_mask = np.isclose(labeled_image, 0)
+
+    # Relabel the image based on connectivity. Retain zero values for
+    # unlabeled pixels.
+    if ensure_connectivity:
+        labeled_image = skimage.measure.label(labeled_image, background=0)
+
+    # Ensure unlabeled pixels remain unlabeled
+    labeled_image[unlabeled_mask] = 0
+
+    # If significance is provided, remove labels with less than the
+    # specified relative number of pixels.
+    unsignificant_labels = []
+    if significance is not None:
+        label_counts = [
+            (label, np.count_nonzero(labeled_image == label))
+            for label in np.unique(labeled_image)
+        ]
+        for label, count in label_counts:
+            if count < significance * labeled_image.size:
+                labeled_image[labeled_image == label] = 0
+                unsignificant_labels.append(label)
+
+    # Relabel the image to ensure that labels are consecutive integers
+    unique_labels = np.unique(labeled_image)
+    current_label = 1
+    labels = np.zeros_like(labeled_image, dtype=np.uint8)
+
+    for label in unique_labels:
+        if label != 0:  # Skip background
+            labels[labeled_image == label] = current_label
+            current_label += 1
+
+    # Expand labels and fill unlabeled pixels in labels.
+    if expand_labels:
+        expanded_labels = skimage.segmentation.expand_labels(labels)
+        unlabeled_mask = np.isclose(labels, 0)
+        labels[unlabeled_mask] = expanded_labels[unlabeled_mask]
+
+    num_unlabeled = np.count_nonzero(np.isclose(labels, 0))
+    if num_unlabeled > 0:
+        print(f"Number of unlabeled pixels: {num_unlabeled}")
+
+    # Ensure that the labeled image is in the optimal format
+    labels = labels.astype(np.min_scalar_type(labels))
+
+    # Convert labeled image to the same format as input image
+    if return_darsia_image:
+        return darsia.Image(labels, **meta)
+    else:
+        return labels
+
+
+def group_labels(
+    labels: darsia.Image, groups: list[list[int]], values: list[int] | None = None
+) -> darsia.Image:
+    """
+    Unite labels in the given groups.
+
+    Args:
+        labels (darsia.Image): labeled image with integer labels.
+        group (list[list[int]]): list of groups, where each group is a list of labels
+            to be united. The first label in each group is the label to which all
+            other labels in the group will be united.
+    """
+    reduced_labels = labels.copy()
+    for group_counter, group in enumerate(groups):
+        if values is None:
+            for label in group[1:]:
+                reduced_labels.img[labels.img == label] = group[0]
+        else:
+            for label in group:
+                reduced_labels.img[labels.img == label] = values[group_counter]
+
+    return reduced_labels
+
+
+def make_consecutive(labels: darsia.Image) -> darsia.Image:
+    """
+    Ensure that labels in the image are consecutive integers starting from 0.
+    """
+    unique_labels = np.unique(labels.img)
+    consecutive_labels = darsia.zeros_like(labels)
+    for i, label in enumerate(unique_labels):
+        consecutive_labels.img[labels.img == label] = i
+    return consecutive_labels

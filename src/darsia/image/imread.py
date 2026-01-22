@@ -10,6 +10,8 @@ are supported:
 
 from __future__ import annotations
 
+import logging
+import time
 from datetime import datetime
 from operator import itemgetter
 from pathlib import Path
@@ -23,6 +25,8 @@ from PIL import Image as PIL_Image
 from scipy.interpolate import NearestNDInterpolator
 
 import darsia
+
+logger = logging.getLogger(__name__)
 
 # ! ---- Interface to subroutines - general reading routine
 
@@ -40,6 +44,8 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
         Image, or list of such: image of collection of images.
 
     """
+    # Monitor time for performance analysis
+    tic = time.time()
 
     # Convert to path
     if isinstance(path, list):
@@ -77,17 +83,20 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
 
     # Depending on the ending run the corresponding routine.
     if suffix == ".npy":
-        return imread_from_numpy(path, **kwargs)
+        image = imread_from_numpy(path, **kwargs)
     elif suffix == ".npz":
-        return imread_from_npz(path)
+        image = imread_from_npz(path)
     elif suffix in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]:
-        return imread_from_optical(path, **kwargs)
+        image = imread_from_optical(path, **kwargs)
     elif suffix in [".dcm"]:
-        return imread_from_dicom(path, **kwargs)
+        image = imread_from_dicom(path, **kwargs)
     elif suffix in [".vtu"]:
-        return imread_from_vtu(path, **kwargs)
+        image = imread_from_vtu(path, **kwargs)
     else:
         raise NotImplementedError(f"Filetype {suffix} not supported.")
+
+    logger.info(f"Image reading for {path} took %.2f seconds.", time.time() - tic)
+    return image
 
 
 def imread_from_bytes(

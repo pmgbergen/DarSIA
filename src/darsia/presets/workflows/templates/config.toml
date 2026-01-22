@@ -1,0 +1,74 @@
+[id]
+comment = "Intro session based on glass beads experiments"
+
+[data]
+folder = "..."            # Folder with images
+format = "JPG"            # The format of the images
+pad = 5                   # number of relevant digits in image names, e.g. 00001.JPG
+baseline = "baseline.JPG" # The baseline image
+results = "..."           # Main output folder
+
+[specs]
+dim = 2         # dimension of the model
+width = 2.745   # width of the model in m
+height = 1.5    # height of the model in m
+porosity = 0.44 # porosity of the medium
+
+[depth]
+measurements = "./data/depth_measurements.csv"
+depth_map = "./data/depth_map.npz"
+
+[protocols]
+injection = ["./data/protocol.xlsx", "injection"]
+imaging = ["./data/protocol.xlsx", "imaging"]
+pressure_temperature = ["./data/protocol.xlsx", "pressure_temperature"]
+
+[labeling]
+colored_image = "./data/segmented_baseline.png"
+labels = "./data/labels.npz"
+water_label = 0
+
+[curvature.init]
+horizontal_bulge = 1e-9
+vertical_bulge = 0.0
+[curvature.crop]
+pts_src = [[381, 158], [4920, 137], [4938, 7732], [425, 7734]]
+width = 2.745
+height = 1.5
+[curvature.bulge]
+horizontal_bulge = -1.3244902496792662e-09
+vertical_bulge = -4.637586886784494e-09
+horizontal_center_offset = 153
+vertical_center_offset = -342
+[curvature.stretch]
+horizontal_stretch = -3.606015332647378e-09
+horizontal_center_offset = -579
+vertical_stretch = -0.0
+vertical_center_offset = 405
+
+[color_paths]
+ignore_labels = [0, 1]
+resolution = [51, 51, 51]
+threshold_baseline = 0.0
+threshold_calibration = 1e-3
+baseline_images = ["...", "...", "..."]
+calibration_images = ["...", "...", "..."]
+calibration_file = "./data/color_paths"
+reference_label = 3
+
+[color_signal]
+num_clusters = 2
+calibration_images = ["...", "...", "..."]
+calibration_file = "./data/color_signal.json"
+analysis_times = [1, 5, 10, 20, 21, 40]
+
+[mass]
+calibration_image_times = [1, 5, 10, 20]
+calibration_file = "./data/mass_calibration.json"
+
+[analysis.cropping]
+image_times = [1, 5, 10, 20, 21, 40]
+[analysis.color_signal]
+image_times = [1, 5, 10, 20, 21, 40]
+[analysis.mass]
+image_times = [1, 5, 10, 20, 21, 40]

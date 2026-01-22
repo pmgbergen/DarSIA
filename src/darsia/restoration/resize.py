@@ -63,9 +63,9 @@ class Resize:
 
         # Check if reference image is provided
         if ref_image is not None:
-            assert (
-                self.shape is None
-            ), "Provide only reference image or shape (not both)."
+            assert self.shape is None, (
+                "Provide only reference image or shape (not both)."
+            )
             self.shape = ref_image.num_voxels
 
         # Safety checks - double check resize options
@@ -96,7 +96,10 @@ class Resize:
             self.interpolation = cv2.INTER_NEAREST
         else:
             raise NotImplementedError(
-                f"Interpolation option {interpolation_pre} is not implemented."
+                f"Interpolation option {interpolation_pre} is not implemented. Pick from:\n"
+                f" - inter_area\n"
+                f" - inter_linear\n"
+                f" - inter_nearest\n"
             )
 
         # Check for conservative rescaling
@@ -186,6 +189,50 @@ class Resize:
             else:
                 # Return resized array
                 return resized_img_array
+
+    def save(self, path: str) -> None:
+        """Save parameters to npz file.
+
+        Args:
+            path (str): path to save the parameters to
+
+        """
+        np.savez(
+            path,
+            class_name=type(self).__name__,
+            shape=self.shape,
+            dsize=self.dsize,
+            fx=self.fx,
+            fy=self.fy,
+            interpolation=self.interpolation,
+            dtype=self.dtype,
+            is_conservative=self.is_conservative,
+        )
+        print(f"Resize object saved to {path}.")
+
+    def load(self, path: str) -> None:
+        """Load parameters from file.
+
+        Args:
+            path (str): path to load the parameters from
+
+        """
+        data = np.load(path, allow_pickle=True)
+        self.shape = tuple(data["shape"]) if "shape" in data else None
+        self.dsize = tuple(data["dsize"]) if "dsize" in data else None
+        if self.dsize is None and self.shape is not None:
+            self.dsize = tuple(reversed(self.shape))
+        if self.shape is None and self.dsize is not None:
+            self.shape = tuple(reversed(self.dsize))
+        self.fx = data["fx"].item() if "fx" in data else None
+        self.fy = data["fy"].item() if "fy" in data else None
+        self.interpolation = (
+            data["interpolation"].item() if "interpolation" in data else None
+        )
+        self.dtype = data["dtype"].item() if "dtype" in data else None
+        self.is_conservative = (
+            data["is_conservative"].item() if "is_conservative" in data else None
+        )
 
 
 def resize(

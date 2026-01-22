@@ -13,7 +13,7 @@ import math
 from datetime import datetime, timedelta
 from pathlib import Path
 from time import time as tm
-from typing import Any, Optional, Union
+from typing import Any, Optional
 from warnings import warn
 
 import cv2
@@ -141,9 +141,7 @@ class Image:
         # ! ---- Add absolute time data in datetime format
 
         default_date = self.time_num * [None] if self.series else None
-        date: Union[Optional[datetime], list[Optional[datetime]]] = kwargs.get(
-            "date", default_date
-        )
+        date: Optional[datetime | list[datetime]] = kwargs.get("date", default_date)
         self.date = date
         """Time in datetime format."""
         default_reference_date = date[0] if isinstance(date, list) else date
@@ -157,7 +155,7 @@ class Image:
 
         self.time = None
         """Relative time in scalar format (in seconds)."""
-        time: Optional[Union[float, int, list]] = kwargs.pop("time", None)
+        time: Optional[float | int | list] = kwargs.pop("time", None)
         self.set_time(time)
 
         # ! ---- Time related safety check
@@ -190,7 +188,6 @@ class Image:
         # NOTE: Require mapping format: darsia.Image -> darsia.Image
         # May require redefinition of the coordinate system.
         if transformations is not None:
-
             for transformation in transformations:
                 if transformation is not None and hasattr(transformation, "__call__"):
                     tic = tm()
@@ -301,7 +298,7 @@ class Image:
 
     def set_time(
         self,
-        time: Optional[Union[float, int, list]] = None,
+        time: Optional[float | int | list] = None,
     ) -> None:
         """Setter for time array.
 
@@ -332,7 +329,7 @@ class Image:
             # From argument
             self.time = time
 
-    def update_reference_time(self, reference: Union[datetime, float]) -> None:
+    def update_reference_time(self, reference: datetime | float) -> None:
         """Update reference time. Modifies the relative time.
 
         reference (datetime or float): reference date or relative reference time (in seconds)
@@ -370,7 +367,7 @@ class Image:
         """
         return copy.deepcopy(self)
 
-    def append(self, image: Image, offset: Optional[Union[float, int]] = None) -> None:
+    def append(self, image: Image, offset: Optional[float | int] = None) -> None:
         """Append other image to current image. Makes in particular
         a non-space-time image to a space-time image.
 
@@ -630,8 +627,8 @@ class Image:
 
     def slice(
         self,
-        cut: Union[float, int],
-        axis: Union[str, int],
+        cut: float | int,
+        axis: str | int,
     ) -> Image:
         """Extract of spatial slice.
 
@@ -663,7 +660,7 @@ class Image:
         return reduced_image
 
     def subregion(
-        self, roi: Union[tuple[slice], darsia.VoxelArray, darsia.CoordinateArray]
+        self, roi: tuple[slice] | darsia.VoxelArray | darsia.CoordinateArray
     ) -> Image:
         """Extraction of spatial subregion.
 
@@ -676,8 +673,9 @@ class Image:
             Image: image with restricted spatial domain.
 
         """
+
         # Manage input
-        if isinstance(roi, tuple) or isinstance(roi, darsia.VoxelArray):
+        if isinstance(roi, (tuple, darsia.VoxelArray)):
             voxels = roi
             coordinates = None
         elif isinstance(roi, darsia.CoordinateArray):
@@ -741,6 +739,18 @@ class Image:
 
         return type(self)(img=img, **metadata)
 
+    def roi(self, roi: darsia.ROI) -> Image:
+        """Extraction of spatial subregion using a darsia.ROI object.
+
+        Args:
+            roi (darsia.ROI): region of interest, defining a box in space.
+
+        Returns:
+            Image: image with restricted spatial domain.
+
+        """
+        return roi(self)
+
     # ! ---- Routines on metadata
 
     def reset_origin(self, return_image: bool = False) -> Optional[darsia.Image]:
@@ -767,6 +777,36 @@ class Image:
 
         if return_image:
             return type(self)(img=self.img.copy(), **metadata)
+
+    # ! ---- Setter/getter routines
+
+    def __getitem__(self, key):
+        """Get item using indexing syntax.
+
+        Args:
+            key: Index or mask for the image data
+
+        Returns:
+            Indexed image data
+
+        """
+        if isinstance(key, darsia.Image):
+            assert key.dtype == bool
+            return self.img[key.img]
+        return self.img[key]
+
+    def __setitem__(self, key, value):
+        """Set item using indexing syntax.
+
+        Args:
+            key: Index or mask for the image data
+            value: Value to assign to the indexed locations
+        """
+        if isinstance(key, darsia.Image):
+            assert key.dtype == bool
+            self.img[key.img] = value
+        else:
+            self.img[key] = value
 
     # ! ---- Arithmetics
 
@@ -802,22 +842,19 @@ class Image:
             metadata = self.metadata()
             return type(self)(self.img - other.img, **metadata)
 
-    def __mul__(self, scalar: Union[float, int]) -> Image:
+    def __mul__(self, weight: float | int | np.ndarray) -> Image:
         """Scaling of image.
 
         Arguments:
-            scalar (float or int): scaling parameter
+            weight (float or int): scaling parameter
 
         Returns:
             Image: scaled image
 
         """
-        if not isinstance(scalar, float) or isinstance(scalar, int):
+        if not isinstance(weight, (float, int, np.ndarray)):
             raise ValueError
-
-        result_image = self.copy()
-        result_image.img *= scalar
-        return result_image
+        return darsia.full_like(self, self.img * weight)
 
     __rmul__ = __mul__
 
@@ -1065,7 +1102,10 @@ class Image:
                     fig = plt.figure(_title)
                     cmap = kwargs.get("cmap", "viridis")
                     plt.imshow(
-                        skimage.img_as_float(array), cmap=cmap, extent=self.domain
+                        array,
+                        # skimage.img_as_float(array),
+                        cmap=cmap,
+                        extent=self.domain,
                     )
                     use_colorbar = kwargs.get("use_colorbar", False)
                     if use_colorbar:
@@ -1618,7 +1658,7 @@ class Image:
 
     # ! ---- I/O
 
-    def save(self, path: Union[str, Path], verbose=True) -> None:
+    def save(self, path: str | Path, verbose=True) -> None:
         """Save image to file.
 
         Store array and metadata in single file.
@@ -1631,11 +1671,14 @@ class Image:
         """
         # Make sure the parent directory exists
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        np.savez(str(Path(path)), array=self.img, metadata=self.metadata())
-        if verbose:
-            print(f"Image stored under {path}")
+        np.savez(
+            str(Path(path).with_suffix(".npz")),
+            array=self.img,
+            metadata=self.metadata(),
+        )
+        logger.info(f"Image stored under {path}")
 
-    def to_vtk(self, path: Union[str, Path], name: Optional[str] = None) -> None:
+    def to_vtk(self, path: str | Path, name: Optional[str] = None) -> None:
         """Save image to file in vtk format.
 
         Args:
@@ -1672,6 +1715,29 @@ class Image:
             return None in item
         else:
             return item is None
+
+    def geometry(self) -> darsia.Geometry:
+        """Generate (flat) geometry object corresponding to the image.
+
+        Returns:
+            darsia.Geometry: geometry object.
+
+        """
+        return darsia.Geometry(**self.shape_metadata())
+
+    def integral(self) -> float:
+        """Integrate the image over its spatial dimensions.
+
+        Returns:
+            float: integral of the image over space.
+
+        """
+        if not self.scalar:
+            raise NotImplementedError("Integration only implemented for scalar images.")
+        if self.series:
+            raise NotImplementedError("Integration only implemented for single images.")
+
+        return self.geometry().integrate(self)
 
 
 class ScalarImage(Image):
@@ -1728,11 +1794,21 @@ class ScalarImage(Image):
                 compression (int): number between 0 and 9, indicating
                     the level of compression used for storing in
                     png format.
+                cmap (str): color map used for storing the image.
 
         """
+        # Make sure the parent directory exists
+        path.parents[0].mkdir(parents=True, exist_ok=True)
+
         # Write image, using the conventional matrix indexing
         ubyte_image = self.img_as(np.uint8).img
         suffix = Path(path).suffix.lower()
+
+        if "cmap" in kwargs:
+            cmap = kwargs.get("cmap")
+            colored_image = cmap(self.img_as(np.float32).img)
+            ubyte_image = skimage.img_as_ubyte(colored_image[..., :3])
+            ubyte_image = ubyte_image[..., ::-1]
 
         if suffix in [".jpg", ".jpeg"]:
             quality = kwargs.get("quality", 90)
@@ -2049,7 +2125,7 @@ class OpticalImage(Image):
 
     def add_grid(
         self,
-        origin: Optional[Union[np.ndarray, list[float]]] = None,
+        origin: Optional[np.ndarray | list[float]] = None,
         dx: float = 1,
         dy: float = 1,
         color: tuple = (0, 0, 125),

@@ -1,0 +1,53 @@
+"""Standard workflow step to set up depth map from measurements."""
+
+from pathlib import Path
+
+import numpy as np
+
+import darsia
+from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
+
+
+def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> None:
+    """Set up depth map from measurements.
+
+    NOTE: This function stores the depth map in npz format according to the
+    specifications in the config file.
+
+    Args:
+        path: Path to configuration file (needs to comply with FluidFlowerConfig).
+        key: Column identifier in the csv file to use for interpolation (default: "mean").
+        show: Whether to show the resulting depth map.
+
+    """
+    print("Setting up depth map...")
+
+    # ! ---- READ CONFIG ---- ! #
+    config = FluidFlowerConfig(path, require_data=False, require_results=False)
+    config.check("depth", "rig")
+
+    # Mypy type checking
+    for c in [
+        config.depth,
+        config.rig,
+    ]:
+        assert c is not None
+
+    # Convert to depth map by interpolation
+    proxy_image = darsia.Image(
+        img=np.zeros(config.rig.resolution),
+        width=config.rig.width,
+        height=config.rig.height,
+        scalar=True,
+        space_dim=config.rig.dim,
+    )
+    depth_map = darsia.interpolate_to_image_from_csv(
+        csv_file=config.depth.measurements,
+        key=key,
+        image=proxy_image,
+        method="rbf",
+    )
+    depth_map.save(config.depth.depth_map.with_suffix(".npz"))
+
+    if show:
+        depth_map.show(title="Depth map")
