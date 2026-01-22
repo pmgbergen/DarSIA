@@ -52,7 +52,10 @@ class ColorSpectrum:
             np.ndarray: Absolute color spectrum.
 
         """
-        return self.base_color + self.relative_colors
+        if len(self.relative_colors) == 0:
+            return np.atleast_2d(self.base_color)
+        else:
+            return self.base_color + self.relative_colors
 
     @property
     def relative_colors(self) -> np.ndarray:
@@ -85,10 +88,12 @@ class ColorSpectrum:
             color (np.ndarray): The color to compare against the spectrum.
 
         Returns:
-            The computed distance.
+            np.ndarray | float: The computed distance.
 
         """
         # Compute the distance as the minimum distance to any color in the spectrum
+        if len(self.colors) == 0:
+            return 0.0  # No colors in spectrum, distance is zero
         if len(color.ravel().shape) == 1:
             return np.min(np.linalg.norm(self.colors - color, axis=1))
         else:
