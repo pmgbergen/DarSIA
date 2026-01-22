@@ -3,6 +3,7 @@ from pathlib import Path
 
 import darsia
 from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,8 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
         show: Whether to display plots during processing.
 
     """
-    config = FluidFlowerConfig(path)
+
+    config = FluidFlowerConfig(path, require_data=True, require_results=False)
     config.check("rig", "data", "protocol", "color_paths")
 
     # Mypy type checking
@@ -27,7 +29,6 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     assert config.protocol.imaging is not None
     assert config.protocol.injection is not None
     assert config.protocol.pressure_temperature is not None
-    assert config.protocol.blacklist is not None
 
     # ! ---- LOAD EXPERIMENT ----
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
@@ -40,6 +41,12 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     fluidflower.labels = fluidflower.facies.copy()
 
     # ! ---- LOAD IMAGES ----
+
+    calibration_image_paths = select_image_paths(
+        config, experiment, all=False, sub_config=config.color_paths
+    )
+
+    # Cache baseline images for performance
     baseline_images: list[darsia.Image] = []
     for p in config.color_paths.baseline_image_paths:
         cache_path = Path(".") / "tmp" / f"cache_{p.stem}.npz"
@@ -50,11 +57,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
             baseline_image = darsia.imread(cache_path)
         baseline_images.append(baseline_image)
 
-    calibration_image_paths: list[Path] = config.color_paths.calibration_image_paths
-    if len(calibration_image_paths) == 0:
-        calibration_image_paths = experiment.find_images_for_times(
-            times=config.color_paths.calibration_image_times
-        )
+    # Cache calibration images for performance
     calibration_images: list[darsia.Image] = []
     for p in calibration_image_paths:
         cache_path = Path(".") / "tmp" / f"cache_{p.stem}.npz"
