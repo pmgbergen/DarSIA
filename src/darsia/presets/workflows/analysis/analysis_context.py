@@ -52,6 +52,7 @@ def select_image_paths(
     config: FluidFlowerConfig,
     experiment: darsia.ProtocolledExperiment,
     all: bool = False,
+    sub_config=None,
 ) -> list[Path]:
     """Select image paths based on configuration and flags.
 
@@ -65,32 +66,31 @@ def select_image_paths(
 
     """
     assert config.data is not None
-    assert config.analysis is not None
 
-    if all:
+    if all or sub_config is None:
         assert config.data.data is not None
         image_paths = config.data.data
     elif (
-        hasattr(config.analysis, "data")
-        and config.analysis.data is not None
-        and len(config.analysis.data.image_paths) > 0
+        hasattr(sub_config, "data")
+        and sub_config.data is not None
+        and len(sub_config.data.image_paths) > 0
     ):
-        image_paths = config.analysis.data.image_paths
+        image_paths = sub_config.data.image_paths
     elif (
-        hasattr(config.analysis, "image_paths")
-        and config.analysis.image_paths is not None
-        and len(config.analysis.image_paths) > 0
+        hasattr(sub_config, "image_paths")
+        and sub_config.image_paths is not None
+        and len(sub_config.image_paths) > 0
     ):
-        # Fallback for cropping which uses config.analysis.image_paths directly
-        image_paths = config.analysis.image_paths
+        # Fallback for cropping which uses sub_config.image_paths directly
+        image_paths = sub_config.image_paths
     else:
         # Use times from config
-        if hasattr(config.analysis, "data") and config.analysis.data is not None:
-            times = config.analysis.data.image_times
-        elif hasattr(config.analysis, "image_times"):
-            times = config.analysis.image_times
+        if hasattr(sub_config, "data") and sub_config.data is not None:
+            times = sub_config.data.image_times
+        elif hasattr(sub_config, "image_times"):
+            times = sub_config.image_times
         else:
-            raise ValueError("No image paths or times specified in analysis config.")
+            raise ValueError("No image paths or times specified in config.")
         image_paths = experiment.find_images_for_times(times=times)
 
     assert len(image_paths) > 0, "No images found for analysis."
@@ -142,7 +142,9 @@ def prepare_analysis_context(
         fluidflower.labels = fluidflower.facies.copy()
 
     # ! ---- SELECT IMAGE PATHS ----
-    image_paths = select_image_paths(config, experiment, all=all)
+    image_paths = select_image_paths(
+        config, experiment, all=all, sub_config=config.analysis
+    )
 
     # Initialize optional components
     restoration = None
