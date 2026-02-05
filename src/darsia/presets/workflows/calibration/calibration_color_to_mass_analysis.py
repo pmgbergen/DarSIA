@@ -22,6 +22,20 @@ def calibration_color_to_mass_analysis(
     rois: dict[str, darsia.CoordinateArray] | None = None,
     use_facies: bool = True,
 ):
+    """Calibration of color to mass analysis.
+
+    This function calibrates the color to mass analysis based on the provided configuration.
+
+    Args:
+        cls: The class of the rig to be calibrated.
+        path: The path to the configuration file.
+        ref_path: The path to the reference configuration file (if any).
+        reset: Whether to reset existing calibration data.
+        show: Whether to perform a final test run to demonstrate the calibration results.
+        rois: Regions of interest for calibration (if any).
+        use_facies: Whether to use facies for analysis.
+
+    """
     # ! ---- LOAD RUN AND RIG ----
 
     config = FluidFlowerConfig(path, require_data=True, require_results=False)
@@ -293,6 +307,7 @@ def calibration_color_to_mass_analysis(
     color_analysis.save(config.color_to_mass.calibration_folder)
 
     # Test run
-    for img in calibration_images:
-        mass = color_analysis(img).mass
-        mass.show(title=f"Mass image {img.time}", cmap=custom_cmap, delay=False)
+    if show:
+        for img in calibration_images:
+            mass = color_analysis(img).mass
+            mass.show(title=f"Mass image {img.time}", cmap=custom_cmap, delay=False)
