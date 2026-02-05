@@ -467,13 +467,13 @@ class Rig:
     def setup_mass_analysis(
         self,
         atmospheric_pressure,
-        temperature,
+        atmospheric_temperature,
     ) -> None:
         # Define plain mass analysis (combining gas and aqueous phase)
         self.co2_mass_analysis = darsia.CO2MassAnalysis(
             self.baseline,
             atmospheric_pressure=atmospheric_pressure,
-            temperature=temperature,
+            atmospheric_temperature=atmospheric_temperature,
         )
         logger.info("Mass analysis setup completed.")
 
@@ -672,6 +672,6 @@ class Rig:
         self.current_temperature = state.temperature
         self.setup_mass_analysis(
             atmospheric_pressure=self.current_pressure,
-            temperature=self.current_temperature,
+            atmospheric_temperature=self.current_temperature,
         )
         logger.info(f"State updated to {self.current_date}.")
