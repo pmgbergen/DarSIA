@@ -33,9 +33,6 @@ def build_parser_for_comparison():
         "--wasserstein-assemble", action="store_true", help="Determine W1 over time."
     )
     parser.add_argument(
-        "--wasserstein-check", action="store_true", help="Determine W1 over time."
-    )
-    parser.add_argument(
         "--show",
         action="store_true",
         help="Show the labels after each step.",
@@ -55,21 +52,11 @@ def print_help_for_flags(args, parser):
 
 def run_comparison(rig: type[Rig], args, **kwargs):
     # Only allow one option at a time
-    assert (
-        args.events
-        + args.wasserstein_compute
-        + args.wasserstein_assemble
-        + args.wasserstein_check
-    ) == 1, (
+    assert (args.events + args.wasserstein_compute + args.wasserstein_assemble) == 1, (
         "Exactly one of events, wasserstein_compute, wasserstein_assemble, or wasserstein_check must be True."
     )
     # Check if none is chosen
-    if not (
-        args.events
-        or args.wasserstein_compute
-        or args.wasserstein_assemble
-        or args.wasserstein_check
-    ):
+    if not (args.events or args.wasserstein_compute or args.wasserstein_assemble):
         parser.print_help()
         sys.exit(1)
 
@@ -88,12 +75,6 @@ def run_comparison(rig: type[Rig], args, **kwargs):
             cls=Rig,
             path=args.config,
             assemble=True,
-        )
-
-    if args.wasserstein_check:
-        comparison_wasserstein(
-            path=args.config,
-            check=True,
         )
 
 

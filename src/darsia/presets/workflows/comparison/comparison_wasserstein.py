@@ -112,11 +112,10 @@ def comparison_wasserstein(
     path: Path | list[Path],
     compute: bool = False,
     assemble: bool = False,
-    check: bool = False,
     skip_existing: bool = False,
 ):
     # Only allow one of compute, assemble, check_compleletion
-    assert (compute + assemble + check) == 1, (
+    assert (compute + assemble) == 1, (
         "Exactly one of compute, assemble, or check_completion must be True."
     )
 
@@ -127,10 +126,8 @@ def comparison_wasserstein(
         _compute_wasserstein_distances(cls, config, skip_existing)
 
     if assemble:
-        _assemble_wasserstein_results(config)
-
-    if check:
-        _check_completion_status(config)
+        # _assemble_wasserstein_results(config)
+        _assemble_all_wasserstein_results(config)
 
 
 def _compute_wasserstein_distances(
@@ -542,7 +539,9 @@ def _assemble_wasserstein_results(config):
     times = config.wasserstein.times
     active_runs = config.wasserstein.runs
     results_dir = config.wasserstein.results
-    assert results_dir.exists(), f"Results directory {results_dir} does not exist. Run computation first."
+    assert results_dir.exists(), (
+        f"Results directory {results_dir} does not exist. Run computation first."
+    )
     roi_keys = list(config.wasserstein.roi.keys())
     roi_names = [config.wasserstein.roi[key].name for key in roi_keys]
 
@@ -550,7 +549,8 @@ def _assemble_wasserstein_results(config):
     output_dir = results_dir / "tables"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for time, tol in times:
+    for time, _ in times:
+        # Ignore uncertainty for assembly and associate time with matched results as done during computation.
         logger.info(f"Assembling results for time {time}")
 
         # Create DataFrame for this time
@@ -562,6 +562,7 @@ def _assemble_wasserstein_results(config):
             columns=roi_names,
         )
 
+        # Keep track of missing results for reporting
         missing_results = []
 
         # Fill DataFrame with results
@@ -573,10 +574,10 @@ def _assemble_wasserstein_results(config):
 
                 try:
                     if (results_dir / result_file).exists():
-                        result = WassersteinDistanceResult.load(results_dir / result_file)
-                        df.loc[(run_1, run_2), roi_name] = (
-                            result.distance
+                        result = WassersteinDistanceResult.load(
+                            results_dir / result_file
                         )
+                        df.loc[(run_1, run_2), roi_name] = result.distance
                     else:
                         missing_results.append(str(result_file.name))
                         df.loc[(run_1, run_2), roi_name] = np.nan
@@ -603,3 +604,109 @@ def _assemble_wasserstein_results(config):
             f"Time {time}: {completion_rate:.1f}% complete "
             f"({total_expected - missing_count}/{total_expected} results)"
         )
+
+
+def _assemble_all_wasserstein_results(config: MultiFluidFlowerConfig) -> None:
+    """Assemble all Wasserstein results into a single CSV file.
+
+    Collects all results across all times, ROIs, and run pairs into a single
+    DataFrame with columns: time, roi_name, run_1, run_2, normalization, distance.
+
+    For each result, the raw distance is stored with normalization=None, and
+    each normalized distance is stored with its key as the normalization value.
+
+    Args:
+        config: Multi-run FluidFlower configuration.
+
+    """
+    # Fetch configuration details
+    times = config.wasserstein.times
+    active_runs = config.wasserstein.runs
+    results_dir = config.wasserstein.results
+    assert results_dir.exists(), (
+        f"Results directory {results_dir} does not exist. Run computation first."
+    )
+    roi_keys = list(config.wasserstein.roi.keys())
+    roi_names = [config.wasserstein.roi[key].name for key in roi_keys]
+
+    # Create output directory
+    output_dir = results_dir / "tables"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Collect all rows, aiming at creating DataFrame df further below.
+    rows = []
+
+    for time, _ in times:
+        run_pairs = [(r1, r2) for r1 in active_runs for r2 in active_runs if r1 < r2]
+
+        for run_1, run_2 in run_pairs:
+            for roi_name in roi_names:
+                result_file = WassersteinDistanceResult.get_filename(
+                    run_1, run_2, time, roi_name
+                )
+                result_path = results_dir / result_file
+
+                if not result_path.exists():
+                    logger.warning(f"Missing result: {result_file.name}")
+                    continue
+
+                try:
+                    result = WassersteinDistanceResult.load(result_path)
+                except Exception as e:
+                    logger.warning(f"Failed to load {result_file.name}: {e}")
+                    continue
+
+                # Raw (unnormalized) distance
+                rows.append(
+                    {
+                        "time": result.time,
+                        "roi_name": result.roi_name,
+                        "run_1": result.run_1,
+                        "run_2": result.run_2,
+                        "normalization": "None",
+                        "distance": result.distance,
+                    }
+                )
+
+                # Normalized distances
+                normalized = result.normalized_distance
+                if isinstance(normalized, dict):
+                    for norm_key, norm_value in normalized.items():
+                        rows.append(
+                            {
+                                "time": result.time,
+                                "roi_name": result.roi_name,
+                                "run_1": result.run_1,
+                                "run_2": result.run_2,
+                                "normalization": norm_key,
+                                "distance": norm_value,
+                            }
+                        )
+                else:
+                    # Single normalized value (float)
+                    rows.append(
+                        {
+                            "time": result.time,
+                            "roi_name": result.roi_name,
+                            "run_1": result.run_1,
+                            "run_2": result.run_2,
+                            "normalization": "normalized",
+                            "distance": normalized,
+                        }
+                    )
+
+    # Assemble DataFrame and save
+    df = pd.DataFrame(
+        rows,
+        columns=["time", "roi_name", "run_1", "run_2", "normalization", "distance"],
+    )
+
+    output_file = output_dir / "wasserstein_distances_all.csv"
+    df.to_csv(output_file, index=False, na_rep="NaN")
+
+    logger.info(
+        f"Assembled {len(df)} rows into {output_file} "
+        f"({df['normalization'].nunique()} normalization types, "
+        f"{df['time'].nunique()} times, "
+        f"{df['roi_name'].nunique()} ROIs)"
+    )
