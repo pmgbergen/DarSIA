@@ -7,8 +7,11 @@ Setup routines:
 
 Usage (for more information run with --help and/or --info flag):
     python setup.py --all
+
+Advanced usage (activate specific steps):
     python setup.py --depth
     python setup.py --segmentation
+    python setup.py --facies
     python setup.py --rig
 
 """
