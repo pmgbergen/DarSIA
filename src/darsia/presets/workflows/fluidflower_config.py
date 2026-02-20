@@ -110,6 +110,40 @@ def _convert_none(v):
 
 
 @dataclass
+class TimeData:
+    image_paths: list[Path] = field(default_factory=list)
+    """List of image paths corresponding to the image times."""
+    image_times: list[float] = field(default_factory=list)
+    """List of image times in hours since experiment start."""
+
+    def load(self, sec: dict, data: Path | None) -> "TimeData":
+        sub_sec = _get_section(sec, "data")
+
+        # Load image paths
+        self.image_paths = sorted(
+            [
+                Path(p) if data is None else data / p
+                for p in _get_key(
+                    sub_sec, "image_paths", default=[], required=False, type_=list[Path]
+                )
+            ]
+        )
+
+        # Load image times
+        self.image_times = load_image_times(sub_sec)
+
+        if len(self.image_paths) > 0 and len(self.image_times) > 0:
+            raise ValueError("Provide either image_times or image_paths, not both.")
+
+        return self
+
+    def error(self):
+        raise ValueError(
+            f"Use key `data` within the considered subsection in the config file to load data."
+        )
+
+
+@dataclass
 class FluidFlowerRigConfig:
     """Specifications for the FluidFlower rig."""
 
@@ -169,6 +203,8 @@ class FluidFlowerDataConfig:
     """Pad for image names."""
     results: Path = field(default_factory=Path)
     """Path to the results folder."""
+    time_data: TimeData | None = None
+    """Calibration data configuration."""
 
     def load(
         self,
@@ -221,40 +257,6 @@ class FluidFlowerDataConfig:
 
     def error(self):
         raise ValueError("Use [data] in the config file to load data.")
-
-
-@dataclass
-class TimeData:
-    image_paths: list[Path] = field(default_factory=list)
-    """List of image paths corresponding to the image times."""
-    image_times: list[float] = field(default_factory=list)
-    """List of image times in hours since experiment start."""
-
-    def load(self, sec: dict, data: Path | None) -> "TimeData":
-        sub_sec = _get_section(sec, "data")
-
-        # Load image paths
-        self.image_paths = sorted(
-            [
-                Path(p) if data is None else data / p
-                for p in _get_key(
-                    sub_sec, "image_paths", default=[], required=False, type_=list[Path]
-                )
-            ]
-        )
-
-        # Load image times
-        self.image_times = load_image_times(sub_sec)
-
-        if len(self.image_paths) > 0 and len(self.image_times) > 0:
-            raise ValueError("Provide either image_times or image_paths, not both.")
-
-        return self
-
-    def error(self):
-        raise ValueError(
-            f"Use key `data` within the considered subsection in the config file to load data."
-        )
 
 
 @dataclass
