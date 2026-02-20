@@ -538,16 +538,19 @@ def _compute_wasserstein_distances(
 def _assemble_wasserstein_results(config):
     """Assemble all intermediate results into final tables."""
 
+    # Fetch configuration details
     times = config.wasserstein.times
     active_runs = config.wasserstein.runs
-    roi_names = list(config.wasserstein.roi.keys())
     results_dir = config.wasserstein.results
+    assert results_dir.exists(), f"Results directory {results_dir} does not exist. Run computation first."
+    roi_keys = list(config.wasserstein.roi.keys())
+    roi_names = [config.wasserstein.roi[key].name for key in roi_keys]
 
     # Create output directory
-    output_dir = Path("wasserstein_tables")
+    output_dir = results_dir / "tables"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for time in times:
+    for time, tol in times:
         logger.info(f"Assembling results for time {time}")
 
         # Create DataFrame for this time
@@ -560,30 +563,36 @@ def _assemble_wasserstein_results(config):
         )
 
         missing_results = []
+
         # Fill DataFrame with results
         for run_1, run_2 in run_pairs:
             for roi_name in roi_names:
-                result_file = WassersteinResult.get_filename(
-                    results_dir, run_1, run_2, time, roi_name, None
+                result_file = WassersteinDistanceResult.get_filename(
+                    run_1, run_2, time, roi_name
                 )
 
                 try:
-                    if result_file.exists():
-                        result = WassersteinResult.load(result_file)
+                    if (results_dir / result_file).exists():
+                        result = WassersteinDistanceResult.load(results_dir / result_file)
                         df.loc[(run_1, run_2), roi_name] = (
-                            result.normalized_wasserstein_distance
+                            result.distance
                         )
                     else:
                         missing_results.append(str(result_file.name))
                         df.loc[(run_1, run_2), roi_name] = np.nan
 
                 except Exception as e:
-                    logger.warning(f"Failed to load {result_file}: {e}")
+                    logger.warning(f"Failed to load {results_dir / result_file}: {e}")
                     df.loc[(run_1, run_2), roi_name] = np.nan
 
         # Save assembled table
         output_file = output_dir / f"wasserstein_distances_{time:.3f}.csv"
         df.to_csv(output_file)
+
+        # Save missing results log
+        missing_file = output_dir / f"missing_results_{time:.3f}.txt"
+        with open(missing_file, "w") as f:
+            f.write("\n".join(missing_results))
 
         # Report statistics
         total_expected = len(run_pairs) * len(roi_names)
@@ -594,28 +603,3 @@ def _assemble_wasserstein_results(config):
             f"Time {time}: {completion_rate:.1f}% complete "
             f"({total_expected - missing_count}/{total_expected} results)"
         )
-
-        if missing_results:
-            missing_file = output_dir / f"missing_results_{time:.3f}.txt"
-            with open(missing_file, "w") as f:
-                f.write("\n".join(missing_results))
-
-
-def _check_completion_status(config):
-    """Check how many computations are complete."""
-    results_dir = config.wasserstein.results
-    # Implementation to scan results_dir and report completion statistics
-    completed = 0
-    total = 0
-
-    for result_file in results_dir.glob("*.json"):
-        total += 1
-        try:
-            result = WassersteinResult.load(result_file)
-            if result:
-                completed += 1
-        except Exception as e:
-            logger.warning(f"Failed to load {result_file}: {e}")
-
-    logger.info(f"Completed {completed}/{total} computations.")
-    return completed, total
