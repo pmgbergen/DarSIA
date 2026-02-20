@@ -85,6 +85,7 @@ def run_comparison(rig: type[Rig], args, **kwargs):
 
     if args.wasserstein_assemble:
         comparison_wasserstein(
+            cls=Rig,
             path=args.config,
             assemble=True,
         )
