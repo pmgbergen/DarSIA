@@ -1,3 +1,5 @@
+"""Data configuration for the setup."""
+
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
