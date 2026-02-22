@@ -1,10 +1,13 @@
-"""
-Module containing wrappers to resize routines from skimage and cv2. Access is given
-through objects. Also contains utility routine which equalizes voxel size lengths.
+"""Module containing wrappers to resize routines from skimage and cv2.
+
+Access is given through objects. Also contains utility routine which equalizes voxel
+size lengths.
 
 """
 
-from typing import Optional, Union
+from __future__ import annotations
+
+from typing import Optional, Union, overload
 
 import cv2
 import numpy as np
@@ -30,6 +33,7 @@ class Resize:
 
     def __init__(
         self,
+        ref_image: Optional[darsia.Image] = None,
         shape: Optional[tuple[int]] = None,
         fx: Optional[float] = None,
         fy: Optional[float] = None,
@@ -40,6 +44,7 @@ class Resize:
     ) -> None:
         """
         Args:
+            ref_image (Image, optional): image whose shape is desired
             shape (tuple of int, optional): desired shape (in matrix indexing)
             fx (float, optional): resize factor in x-dimension.
             fy (float, optional): resize factor in y-dimension.
@@ -55,6 +60,13 @@ class Resize:
         self.fx = kwargs.get(key + "resize x", general_f) if fx is None else fx
         self.fy = kwargs.get(key + "resize y", general_f) if fy is None else fy
         self.dtype = kwargs.get(key + "resize dtype", None) if dtype is None else dtype
+
+        # Check if reference image is provided
+        if ref_image is not None:
+            assert (
+                self.shape is None
+            ), "Provide only reference image or shape (not both)."
+            self.shape = ref_image.num_voxels
 
         # Safety checks - double check resize options
         if self.shape is None:
@@ -72,7 +84,7 @@ class Resize:
         interpolation_pre = (
             kwargs.get(key + "resize interpolation", None)
             if interpolation is None
-            else None
+            else interpolation
         )
         if interpolation_pre is None:
             self.interpolation = None
@@ -90,8 +102,14 @@ class Resize:
         # Check for conservative rescaling
         self.is_conservative = kwargs.get(key + "resize conservative", False)
 
+    @overload
+    def __call__(self, img: np.ndarray, overwrite: bool = False) -> np.ndarray: ...
+
+    @overload
+    def __call__(self, img: darsia.Image, overwrite: bool = False) -> darsia.Image: ...
+
     def __call__(
-        self, img: Union[np.ndarray, darsia.Image]
+        self, img: Union[np.ndarray, darsia.Image], overwrite: bool = False
     ) -> Union[np.ndarray, darsia.Image]:
         """
         Wrapper to cv2.resize.
@@ -156,9 +174,54 @@ class Resize:
         # Return resized image
         if input_is_image:
             meta = img.metadata()
-            return type(img)(resized_img_array, **meta)
+            if overwrite:
+                img = type(img)(resized_img_array, **meta)
+                return img
+            else:
+                return type(img)(resized_img_array, **meta)
         else:
-            return resized_img_array
+            if overwrite:
+                img = resized_img_array
+                return img
+            else:
+                # Return resized array
+                return resized_img_array
+
+
+def resize(
+    image: darsia.Image,
+    ref_image: Optional[darsia.Image] = None,
+    shape: Optional[tuple[int]] = None,
+    fx: Optional[float] = None,
+    fy: Optional[float] = None,
+    interpolation: Optional[str] = None,
+    dtype=None,
+) -> darsia.Image:
+    """Function wrapper to Resize object.
+
+    Args:
+        image (darsia.Image): image to be resized
+        ref_image (Image, optional): reference image whose shape is desired
+        shape (tuple of int, optional): desired shape (in matrix indexing)
+        fx (float, optional): resize factor in x-dimension.
+        fy (float, optional): resize factor in y-dimension.
+        interpolation (str, optional): interpolation method, default: None, invoking
+            the default option in cv2.resize.
+        dtype: conversion dtype before resizing; noting happens if None
+
+    """
+    # Define Resize object
+    resizer = Resize(
+        ref_image=ref_image,
+        shape=shape,
+        fx=fx,
+        fy=fy,
+        interpolation=interpolation,
+        dtype=dtype,
+    )
+
+    # Return resized image
+    return resizer(image)
 
 
 def equalize_voxel_size(
@@ -206,7 +269,6 @@ def uniform_refinement(image: darsia.Image, levels: int) -> darsia.Image:
     array = image.img.copy()
 
     for level in range(abs(levels)):
-
         if levels > 0:
             # Refinement
             for i in range(image.space_dim):

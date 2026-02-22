@@ -4,6 +4,7 @@ This is essentially a correction object through wrappping
 :mod:`darsia.DiffeomorphicImageRegistration`.
 
 """
+
 from typing import Optional
 
 import numpy as np

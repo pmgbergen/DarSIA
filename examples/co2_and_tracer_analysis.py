@@ -22,15 +22,17 @@ with open(image_folder + "config.json", "r") as openfile:
 curvature_correction = darsia.CurvatureCorrection(config=config["curvature"])
 
 # Define color correction object
-roi_cc = np.array(
-    [
-        [152, 202],
-        [225, 206],
-        [226, 101],
-        [153, 98],
-    ]
-)
-color_correction = darsia.ColorCorrection(roi=roi_cc)
+config = {
+    "roi": darsia.make_voxel(
+        [
+            [152, 202],
+            [225, 206],
+            [226, 101],
+            [153, 98],
+        ]
+    )
+}
+color_correction = darsia.ColorCorrection(config=config)
 
 # !----- Main routine for co2 analysis
 
@@ -52,11 +54,10 @@ co2_image = darsia.Image(
 
 # Construct concentration analysis for detecting the co2 concentration
 co2_analysis = darsia.ConcentrationAnalysis(
-    baseline_co2,  # baseline image
-    darsia.MonochromaticReduction(color="red"),  # signal reduction
-    None,  # signal balancing
-    darsia.TVD(),  # restoration
-    darsia.CombinedModel(  # signal to data conversion
+    base=baseline_co2,  # baseline image
+    signal_reduction=darsia.MonochromaticReduction(color="red"),  # signal reduction
+    restoration=darsia.TVD(),  # restoration
+    model=darsia.CombinedModel(  # signal to data conversion
         [
             darsia.LinearModel(scaling=4.0),
             darsia.ClipModel(**{"min value": 0.0, "max value": 1.0}),
@@ -117,11 +118,10 @@ tracer_image = darsia.Image(
 
 # Construct concentration analysis for detecting the tracer concentration
 tracer_analysis = darsia.ConcentrationAnalysis(
-    baseline_tracer,
-    darsia.MonochromaticReduction(color="gray"),
-    None,
-    darsia.TVD(),
-    darsia.CombinedModel(
+    base=baseline_tracer,
+    signal_reduction=darsia.MonochromaticReduction(color="gray"),
+    restoration=darsia.TVD(),
+    model=darsia.CombinedModel(
         [darsia.LinearModel(), darsia.ClipModel(**{"min value": 0.0, "max value": 1.0})]
     ),
 )

@@ -32,8 +32,8 @@ def test_coordinate_transformation_identity_2d():
         dimensions=[3, 4],
     )
 
-    voxels_src = [[0, 0], [2, 2]]
-    voxels_dst = [[0, 0], [2, 2]]
+    voxels_src = darsia.make_voxel_center([[0, 0], [2, 2]])
+    voxels_dst = darsia.make_voxel_center([[0, 0], [2, 2]])
 
     # Define coordinate transformation
     coordinate_transformation = darsia.CoordinateTransformation(
@@ -80,8 +80,8 @@ def test_coordinate_transformation_change_meta_2d():
         origin=[0, 2],
     )
 
-    voxels_src = [[0, 0], [2, 2]]
-    voxels_dst = [[0, 0], [2, 2]]
+    voxels_src = darsia.make_voxel_center([[0, 0], [2, 2]])
+    voxels_dst = darsia.make_voxel_center([[0, 0], [2, 2]])
 
     # Define coordinate transformation
     coordinate_transformation = darsia.CoordinateTransformation(
@@ -129,8 +129,8 @@ def test_coordinate_transformation_translation(isometry):
         dimensions=[1e-3, 1e-3],
     )
 
-    voxels_src = [[0, 0], [1, 2]]
-    voxels_dst = [[1, 0], [2, 2]]
+    voxels_src = darsia.make_voxel_center([[0, 0], [1, 2]])
+    voxels_dst = darsia.make_voxel_center([[1, 0], [2, 2]])
 
     # Define coordinate transformation
     coordinate_transformation = darsia.CoordinateTransformation(
@@ -141,8 +141,8 @@ def test_coordinate_transformation_translation(isometry):
         fit_options={
             "tol": 1e-6,
             "maxiter": 10000,
+            "isometry": isometry,
         },
-        isometry=isometry,
     )
 
     # Check whether coordinate transform generates the same image
@@ -191,8 +191,8 @@ def test_coordinate_transformation_rotation(preconditioning):
         dimensions=[1e-1, 1e-1],
     )
 
-    voxels_src = [[1, 0], [1, 3]]
-    voxels_dst = [[0, 1], [3, 1]]
+    voxels_src = darsia.make_voxel_center([[1, 0], [1, 3]])
+    voxels_dst = darsia.make_voxel_center([[0, 1], [3, 1]])
 
     # Define coordinate transformation
     coordinate_transformation = darsia.CoordinateTransformation(
@@ -200,12 +200,18 @@ def test_coordinate_transformation_rotation(preconditioning):
         image_dst.coordinatesystem,
         voxels_src,
         voxels_dst,
-        fit_options={"tol": 1e-4, "maxiter": 1000, "preconditioning": preconditioning},
-        isometry=False,
+        fit_options={
+            "tol": 1e-4,
+            "maxiter": 1000,
+            "preconditioning": preconditioning,
+            "isometry": False,
+        },
     )
 
     # Check whether coordinate transform generates the same image
     transformed_image = coordinate_transformation(image_src)
+    print(transformed_image.img)
+    print(image_src.img)
     reference_arr = np.array(
         [
             [0, 1, 0, 0],

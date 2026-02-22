@@ -1,5 +1,4 @@
-"""
-Class for comparing segmented images.
+"""Class for comparing segmented images.
 
 The object contain information about the different segmentations
 as well as methods for comparing them and visualizing the result.

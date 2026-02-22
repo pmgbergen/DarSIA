@@ -1,9 +1,11 @@
-"""
-Module collecting several calibration tools,
-and in particular objective functions for calibration
-in ConcentrationAnalysis.calibrate_balancing().
+"""Module collecting several calibration tools for models.
+
+In particular provided are objective functions for calibration in
+ConcentrationAnalysis.calibrate_balancing().
 
 """
+
+from __future__ import annotations
 
 import abc
 from itertools import combinations

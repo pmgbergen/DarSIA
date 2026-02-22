@@ -8,11 +8,13 @@ they contain a coordinatesystem.
 from __future__ import annotations
 
 import copy
-import json
+import io
+import logging
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional, Union, cast
+from time import time as tm
+from typing import Any, Optional, Union
 from warnings import warn
 
 import cv2
@@ -25,6 +27,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from plotly.subplots import make_subplots
 
 import darsia
+
+logger = logging.getLogger(__name__)
 
 
 class Image:
@@ -79,18 +83,12 @@ class Image:
         self.img = img
         """Data array."""
 
-        self.shape = img.shape  # TODO - not attribute of self.
-        """Shape of the image."""
-
         self.original_dtype = img.dtype
         """Original dtype at construction of the object."""
 
         # ! ---- Spatial meta information
-        self.space_dim: int = kwargs.get("dim", 2)
+        self.space_dim: int = kwargs.get("space_dim", 2)
         """Dimension of the spatial domain."""
-
-        self.space_num: int = np.prod(self.shape[: self.space_dim])
-        """Spatial resolution, i.e., number of voxels."""
 
         self.indexing = kwargs.get("indexing", "ijk"[: self.space_dim])
         """Indexing of each axis in context of matrix indexing (ijk)
@@ -102,6 +100,9 @@ class Image:
         self.dimensions: list[float] = kwargs.get("dimensions", self.space_dim * [1])
         """Dimension in the directions corresponding to the indexings."""
 
+        self.name = kwargs.get("name", None)
+        """Name of image, e.g., used to describe the origin."""
+
         # Accept keywords 'dimensions' and 'height', 'width', 'depth', with the latter
         # over-writing the former. In both 2d and 3d, the three keywords address the
         # first, seconds, and third (if applicable) dimension.
@@ -112,14 +113,6 @@ class Image:
         if "depth" in kwargs:
             self.dimensions[2] = kwargs.get("depth")
 
-        self.num_voxels: tuple[int] = self.img.shape[: self.space_dim]
-        """Number of voxels in each dimension."""
-
-        self.voxel_size: list[float] = [
-            self.dimensions[i] / self.num_voxels[i] for i in range(self.space_dim)
-        ]
-        """Size of each voxel in each direction, ordered as indexing."""
-
         default_origin = self.space_dim * [0]
         for index_counter, index in enumerate(self.indexing):
             axis, reverse_axis = darsia.interpret_indexing(
@@ -127,13 +120,9 @@ class Image:
             )
             if reverse_axis:
                 default_origin[axis] = self.dimensions[index_counter]
-        self.origin = np.array(kwargs.pop("origin", default_origin))
+        self.origin = darsia.Coordinate(np.array(kwargs.pop("origin", default_origin)))
         """Cartesian coordinates associated to the [0,0,0] voxel (after
         applying transformations), using Cartesian indexing."""
-
-        self.coordinatesystem: darsia.CoordinateSystem = darsia.CoordinateSystem(self)
-        """Physical coordinate system with equipped transformation from voxel to
-        Cartesian space."""
 
         # ! ---- Temporal meta information
         self.series = kwargs.get("series", False)
@@ -158,15 +147,19 @@ class Image:
         )
         self.date = date
         """Time in datetime format."""
+        default_reference_date = date[0] if isinstance(date, list) else date
+        reference_date: Optional[datetime] = kwargs.pop(
+            "reference_date", default_reference_date
+        )
+        self.reference_date = reference_date
+        """Reference date (for defining relative time)."""
 
         # ! ---- Retrieve relative time from absolute date
 
         self.time = None
         """Relative time in scalar format (in seconds)."""
-
         time: Optional[Union[float, int, list]] = kwargs.pop("time", None)
-        reference_date: Optional[datetime] = kwargs.pop("reference_date", None)
-        self.set_time(time, reference_date)
+        self.set_time(time)
 
         # ! ---- Time related safety check
 
@@ -196,83 +189,178 @@ class Image:
         # ! ---- Apply transformations
 
         # NOTE: Require mapping format: darsia.Image -> darsia.Image
+        # May require redefinition of the coordinate system.
         if transformations is not None:
+
             for transformation in transformations:
                 if transformation is not None and hasattr(transformation, "__call__"):
+                    tic = tm()
                     transformation(self, overwrite=True)
-
-        # ! ---- Update spatial metadata, after shape-altering transformations
-        self.space_num: int = np.prod(self.shape[: self.space_dim])
-        """Spatial resolution, i.e., number of voxels."""
-
-        self.num_voxels: list[int] = list(self.img.shape[: self.space_dim])
-        """Number of voxels in each dimension."""
-
-        self.voxel_size: list[float] = [
-            self.dimensions[i] / self.num_voxels[i] for i in range(self.space_dim)
-        ]
-        """Size of each voxel in each direction, ordered as indexing."""
-
-        self.coordinatesystem: darsia.CoordinateSystem = darsia.CoordinateSystem(self)
-        """Physical coordinate system with equipped transformation from voxel to
-        Cartesian space."""
-
-        self.opposite_corner = self.coordinatesystem.coordinate(
-            self.shape[: self.space_dim]
-        )
-        """Cartesian coordinate of the corner opposite to origin."""
+                    logger.debug(
+                        f"{type(transformation)} transformation applied in {tm() - tic:.3f} s."
+                    )
 
         # ! ---- Safety check on dimensionality and resolution of image.
         assert len(self.shape) == self.space_dim + self.time_dim + self.range_dim
         assert np.prod(self.shape) == self.space_num * self.time_num * self.range_num
 
+    @property
+    def shape(self) -> tuple:
+        """Shape of the image array, incl. time and data dimension.
+
+        Returns:
+            tuple: shape of the image array
+
+        """
+        return self.img.shape
+
+    @property
+    def dtype(self) -> np.dtype:
+        """Data type of the (current) image array.
+
+        Returns:
+            np.dtype: data type of the image array
+
+        """
+        return self.img.dtype
+
+    @property
+    def space_num(self) -> int:
+        """Spatial resolution, i.e., number of voxels.
+
+        Returns:
+            int: spatial resolution
+
+        """
+        return np.prod(self.shape[: self.space_dim])
+
+    @property
+    def num_voxels(self) -> list[int]:
+        """Number of voxels in each dimension.
+
+        Returns:
+            list: number of voxels in each dimension
+
+        """
+        return list(self.shape[: self.space_dim])
+
+    @property
+    def voxel_size(self) -> list[float]:
+        """Size of each voxel in each direction, ordered as indexing.
+
+        Returns:
+            list: size of each voxel in each direction
+
+        """
+        return [self.dimensions[i] / self.num_voxels[i] for i in range(self.space_dim)]
+
+    @property
+    def coordinatesystem(self) -> darsia.CoordinateSystem:
+        """Physical coordinate system with equipped transformation from voxel to
+        Cartesian space.
+
+        NOTE: The definition of CoordinateSystem implicitly requires several attributes
+        to be defined. Therefore, we need to define the CoordinateSystem after
+        defining the spatial attributes, also implicitly defined as properties.
+
+        Returns:
+            CoordinateSystem: physical coordinate system
+
+        """
+        return darsia.CoordinateSystem(self)
+
+    @property
+    def opposite_corner(self) -> darsia.Coordinate:
+        """Cartesian coordinate of the corner opposite to origin.
+
+        Returns:
+            Coordinate: Cartesian coordinate of the corner opposite to origin
+
+        """
+        return self.coordinatesystem.coordinate(self.shape[: self.space_dim])
+
+    @property
+    def domain(self) -> tuple:
+        """Physical domain.
+
+        Returns:
+            tuple: collection of coordinates in matrix indexing defining domain
+
+        """
+        if self.space_dim == 1:
+            return (self.origin[0], self.opposite_corner[0])
+        elif self.space_dim == 2:
+            # 1. Row interval, 2. column interval
+            return (
+                self.origin[0],
+                self.opposite_corner[0],
+                self.opposite_corner[1],
+                self.origin[1],
+            )
+        elif self.space_dim == 3:
+            raise NotImplementedError
+
     def set_time(
         self,
         time: Optional[Union[float, int, list]] = None,
-        reference_date: Optional[datetime] = None,
-        reference_time: Optional[float] = None,
     ) -> None:
         """Setter for time array.
 
         Args:
             time (scalar or list, optional): time to be set; if None, time is retrieved
                 from date.
-            reference_date (datetime, optional): reference date.
-            reference_time (float, optional): reference_time in seconds.
 
         """
         # ! ---- Safety check
-
-        # Only allow to use one of the two input arguments.
-        if reference_date is not None and reference_time is not None:
-            raise ValueError("Choose only one reference.")
 
         if time is None:
             # From date
             if self.series:
                 if self._is_none(self.date):
-                    self.time = None
+                    self.time = self.time_num * [None]
                 else:
                     self.time = [
-                        (self.date[i] - self.date[0]).total_seconds()
+                        (self.date[i] - self.reference_date).total_seconds()
                         for i in range(self.time_num)
                     ]
             else:
-                if reference_date is None:
+                if self._is_none(self.date):
                     self.time = None
                 else:
-                    self.time = (self.date - reference_date).total_seconds()
+                    self.time = (self.date - self.reference_date).total_seconds()
 
         else:
             # From argument
             self.time = time
 
-        # Correct for reference time
-        if reference_time is not None:
-            if isinstance(self.time, list):
-                self.time = [time - reference_time for time in self.time]
-            elif self.time is not None:
-                self.time -= reference_time
+    def update_reference_time(self, reference: Union[datetime, float]) -> None:
+        """Update reference time. Modifies the relative time.
+
+        reference (datetime or float): reference date or relative reference time (in seconds)
+
+        """
+        if isinstance(reference, datetime):
+            self.reference_date = reference
+        elif isinstance(reference, float):
+            self.reference_date = self.reference_date + timedelta(seconds=reference)
+        else:
+            raise ValueError
+
+        # Update relative time
+        self.set_time()
+
+    def reset_reference_time(self) -> None:
+        """Pick date of first image in a series as reference date."""
+
+        if self._is_none(self.date):
+            # Manually reset time
+            base_time = self.time[0]
+            self.time = [time - base_time for time in self.time]
+        else:
+            self.reference_date = (
+                self.date[0] if isinstance(self.date, list) else self.date
+            )
+            self.set_time()
 
     def copy(self) -> Image:
         """Copy constructor.
@@ -352,6 +440,21 @@ class Image:
         # Update relative time
         self.set_time(time)
 
+    def update_metadata(self, meta: Optional[dict] = None, **kwargs) -> None:
+        """Update metadata of image.
+
+        Args:
+            meta (dict): metadata to be updated, with keys corresponding to
+                self.metadata().
+            **kwargs: additional keyword arguments to be updated.
+
+        """
+        if meta is not None:
+            for key, value in meta.items():
+                setattr(self, key, value)
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
     # ! ---- Transformations
 
     def resize(self, cx: float, cy: Optional[float] = None) -> None:
@@ -368,7 +471,6 @@ class Image:
             Image: image with transformed data type
 
         """
-        copy_image = self.copy()
         if data_type in [
             int,
             float,
@@ -379,10 +481,43 @@ class Image:
             np.float64,
             bool,
         ]:
+            copy_image = self.copy()
             copy_image.img = copy_image.img.astype(data_type)
         else:
-            # TODO test
-            copy_image = cast(data_type, copy_image)
+            copy_image = data_type(img=self.img.copy(), **self.metadata())
+
+        return copy_image
+
+    def img_as(self, data_type) -> Any:
+        """Change data type via skimage.
+
+        Args:
+            data_type: target data type
+
+        Returns:
+            Image: image with transformed data type
+
+        """
+        copy_image = self.copy()
+        dtype = copy_image.img.dtype
+        is_float = dtype in [float, np.float16, np.float32, np.float64]
+        if data_type in [bool]:
+            copy_image.img = skimage.img_as_bool(copy_image.img)
+        elif data_type in [float]:
+            copy_image.img = skimage.img_as_float(copy_image.img)
+        elif data_type in [np.float32]:
+            copy_image.img = skimage.img_as_float32(copy_image.img)
+        elif data_type in [np.float64]:
+            copy_image.img = skimage.img_as_float64(copy_image.img)
+        elif data_type in [int]:
+            copy_image.img = skimage.img_as_int(copy_image.img)
+        elif data_type in [np.uint8]:
+            copy_image.img = skimage.img_as_ubyte(
+                np.clip(copy_image.img, -1, 1) if is_float else copy_image.img
+            )
+        elif data_type in [np.uint16]:
+            copy_image.img = skimage.img_as_uint(copy_image.img)
+        else:
             raise NotImplementedError
 
         return copy_image
@@ -398,14 +533,16 @@ class Image:
 
         """
         metadata = {
-            "dim": self.space_dim,
+            "space_dim": self.space_dim,
             "indexing": self.indexing,
             "dimensions": self.dimensions,
             "origin": self.origin,
             "series": self.series,
             "scalar": self.scalar,
             "date": self.date,
+            "reference_date": self.reference_date,
             "time": self.time,
+            "name": self.name,
         }
         return copy.copy(metadata)
 
@@ -458,72 +595,97 @@ class Image:
         # Create image with same data type but updates image data and metadata
         return type(self)(img=img, **metadata)
 
-    def time_interval(
-        self,
-        time_indices: Optional[slice] = None,
-        reset_time: bool = False,
-    ) -> Image:
-        """Extraction of temporal subregion.
+    def time_interval(self, indices: slice) -> Image:
+        """Extraction of temporal subregion, only for space-time images.
 
         Args:
-            time_indices (slice, optional): time interval; only for space-time images.
-            reset_time (bool): flag controlling whether relative time is reset.
+            indices (slice): time interval in terms of indices.
 
         Returns:
             Image: image with restricted temporal domain.
 
         Raises:
             ValueError: if image is not a time series.
+            ValueError: if indices is not a slice
 
         """
         # ! ---- Safety checks
 
-        if time_indices is not None and not self.series:
+        if not self.series:
             raise ValueError("Image is not a time-series.")
+        if not isinstance(indices, slice):
+            raise ValueError("indices needs to be a slice")
 
-        # ! ---- Fetch data
+        # ! ---- Adapt data
         if self.scalar:
-            img = self.img[..., time_indices]
+            img = self.img[..., indices]
         else:
-            img = self.img[..., time_indices, :]
+            img = self.img[..., indices, :]
 
-        # ! ---- Update metadata
-
-        # ! ---- Fetch and adapt metadata
+        # ! ---- Adapt metadata
         metadata = self.metadata()
-        metadata["date"] = self.date[time_indices]
-        times = self.time[time_indices]
-        if reset_time:
-            metadata["time"] = [time - times[0] for time in times]
-        else:
-            metadata["time"] = times
+        metadata["date"] = self.date[indices]
+        metadata["time"] = self.time[indices]
 
         return type(self)(img=img, **metadata)
 
-    def subregion(
+    def slice(
         self,
-        voxels: Optional[tuple[slice]] = None,
-        coordinates: Optional[np.ndarray] = None,
+        cut: Union[float, int],
+        axis: Union[str, int],
+    ) -> Image:
+        """Extract of spatial slice.
+
+        Args:
+            cut (float or int): coordinate or voxel at which the slice is extracted.
+            axis (str or int): axis, normal to the slice, addressing matrix indexing or
+                Cartesian indexing if int or str, respectively.
+        """
+
+        # Translate Cartesian setting to matrix setting
+        if isinstance(axis, str):
+            full_coordinate = np.zeros(self.space_dim, dtype=float)
+            full_coordinate["xyz"[: self.space_dim].find(axis)] = cut
+            cut_voxel = self.coordinatesystem.voxel(full_coordinate)
+            axis = darsia.to_matrix_indexing(axis, "xyz"[: self.space_dim])
+            cut = cut_voxel[axis]
+
+        # Make auxiliary use of axis averaging for formatting
+        reduced_image = darsia.reduce_axis(self, axis)
+
+        # Replace array by slice
+        if axis == 0:
+            reduced_image.img = self.img[cut]
+        elif axis == 1:
+            reduced_image.img = self.img[:, cut]
+        elif axis == 2:
+            reduced_image.img = self.img[:, :, cut]
+
+        return reduced_image
+
+    def subregion(
+        self, roi: Union[tuple[slice], darsia.VoxelArray, darsia.CoordinateArray]
     ) -> Image:
         """Extraction of spatial subregion.
 
         Args:
-            voxels (tuple of slices, optional): voxel intervals in all dimensions.
-            coordinates (array, optional): points in space, in Cartesian coordinates,
-                uniquely defining a box.
+            roi (tuple of slices, VoxelArray, or CoordinateArray): voxel intervals in all
+                dimensions, or points in space, in Cartesian coordinates, uniquely defining
+                a box, i.e., at least space_dim points. Type decides interpretation.
 
         Returns:
             Image: image with restricted spatial domain.
 
-        Raises:
-            ValueError: if both voxels and coordinates are not None, or if neither
-                voxels nor coordinates are provide
-
         """
-        # ! ---- Safety checks
-
-        if (voxels is not None) == (coordinates is not None):
-            raise ValueError("Use (only) one way of specifying the subregion.")
+        # Manage input
+        if isinstance(roi, tuple) or isinstance(roi, darsia.VoxelArray):
+            voxels = roi
+            coordinates = None
+        elif isinstance(roi, darsia.CoordinateArray):
+            voxels = None
+            coordinates = roi
+        else:
+            raise ValueError
 
         # ! ---- Translate coordinates to voxels
 
@@ -539,7 +701,16 @@ class Image:
                 )
                 for d in range(self.space_dim)
             )
-
+        elif voxels is not None:
+            # Transform a VoxelArray to tuple fo slices
+            if isinstance(voxels, darsia.VoxelArray):
+                voxels: tuple[slice] = tuple(
+                    slice(
+                        max(0, np.min(voxels[:, d])),
+                        min(np.max(voxels[:, d]), self.num_voxels[d]),
+                    )
+                    for d in range(self.space_dim)
+                )
         assert len(voxels) == self.space_dim
 
         # ! ---- Extract dimensions and new origin from voxels
@@ -570,6 +741,33 @@ class Image:
         metadata["origin"] = origin
 
         return type(self)(img=img, **metadata)
+
+    # ! ---- Routines on metadata
+
+    def reset_origin(self, return_image: bool = False) -> Optional[darsia.Image]:
+        """Reset origin and coordinatesystem.
+
+        Args:
+            return_image (bool, optional): flag controlling whether a copy of the image
+                is returned. Defaults to False.
+
+        Returns:
+            Image: copy of image with reset coordinatesystem
+
+        """
+        # ! ---- Fetch and adapt metadata - simply remove origin and reinitialize
+        metadata = self.metadata()
+        origin = self.space_dim * [0]
+        for index_counter, index in enumerate(self.indexing):
+            axis, reverse_axis = darsia.interpret_indexing(
+                index, "xyz"[: self.space_dim]
+            )
+            if reverse_axis:
+                origin[axis] = self.dimensions[index_counter]
+        self.origin = darsia.Coordinate(origin)
+
+        if return_image:
+            return type(self)(img=self.img.copy(), **metadata)
 
     # ! ---- Arithmetics
 
@@ -624,8 +822,90 @@ class Image:
 
     __rmul__ = __mul__
 
-    # TODO add more standard routines with NotImplementedError
-    # TODO try TVD.
+    def __lt__(self, other: Image | int | float) -> darsia.Image:
+        """Comparison of two images, identifying where the first image is smaller.
+
+        Args:
+            other (Image, or number): image or number to compare with
+
+        Returns:
+            Image: image with boolean values
+
+        """
+        result = darsia.zeros_like(self, mode="voxels", dtype=bool)
+        if isinstance(other, Image):
+            result.img = self.img < other.img
+        else:
+            result.img = self.img < other
+        return result
+
+    def __gt__(self, other: Image | int | float) -> darsia.Image:
+        """Comparison of two images, identifying where the first image is greater.
+
+        Args:
+            other (Image, or number): image or number to compare with
+
+        Returns:
+            Image: image with boolean values
+
+        """
+        result = darsia.zeros_like(self, mode="voxels", dtype=bool)
+        if isinstance(other, Image):
+            result.img = self.img > other.img
+        else:
+            result.img = self.img > other
+        return result
+
+    def __eq__(self, other: Image | int | float) -> darsia.Image:
+        """Comparison of two images, identifying where the first image is equal.
+
+        Args:
+            other (Image, or number): image or number to compare with
+
+        Returns:
+            Image: image with boolean values
+
+        """
+        result = darsia.zeros_like(self, mode="voxels", dtype=bool)
+        if isinstance(other, Image):
+            result.img = self.img == other.img
+        else:
+            result.img = self.img == other
+        return result
+
+    def __le__(self, other: Image | int | float) -> darsia.Image:
+        """Comparison of two images, identifying where the first image is smaller or equal.
+
+        Args:
+            other (Image, or number): image or number to compare with
+
+        Returns:
+            Image: image with boolean values
+
+        """
+        result = darsia.zeros_like(self, mode="voxels", dtype=bool)
+        if isinstance(other, Image):
+            result.img = self.img <= other.img
+        else:
+            result.img = self.img <= other
+        return result
+
+    def __ge__(self, other: Image | int | float) -> darsia.Image:
+        """Comparison of two images, identifying where the first image is greater or equal.
+
+        Args:
+            other (Image, or number): image or number to compare with
+
+        Returns:
+            Image: image with boolean values
+
+        """
+        result = darsia.zeros_like(self, mode="voxels", dtype=bool)
+        if isinstance(other, Image):
+            result.img = self.img >= other.img
+        else:
+            result.img = self.img >= other
+        return result
 
     # ! ---- Display methods and I/O
 
@@ -646,12 +926,14 @@ class Image:
             **kwargs: additional arguments passed to show_matplotlib or show_plotly.
 
         """
-        assert mode in ["matplotlib", "plotly"], "Unknown mode."
-
         if mode == "matplotlib":
             self.show_matplotlib(title, duration, **kwargs)
         elif mode == "plotly":
             self.show_plotly(title, duration, **kwargs)
+        elif mode == "plain":
+            self.show_plain(title, **kwargs)
+        else:
+            raise ValueError(f"Unknown mode {mode}.")
 
     def show_matplotlib(
         self,
@@ -665,256 +947,345 @@ class Image:
             title: title in the displayed window.
             duration: display duration in seconds.
             **kwargs: additional arguments passed to matplotlib.pyplot.
-                - threshold (float): threshold for displaying 3d images.
-                - relative (bool): flag controlling whether the threshold is relative.
-                - view (str): view type; either "scatter" or "voxel"; only for 3d
-                images.
-                - side_view (str): side view type of 3d image; only for 3d images;
-                either "scatter" or "voxel".
-                - surpress_2d (bool): flag controlling whether 2d images are displayed.
-                - surpress_3d (bool): flag controlling whether 3d images are displayed.
-                - delay (bool): flag controlling whether the display is delayed; can be
-                used to display multiple images at the same time.
-
-        Note: Using mode = "voxel" is often more time-consuming.
+                threshold (float): threshold for displaying 3d images.
+                relative (bool): flag controlling whether the threshold is relative.
+                view (str): view type; either "scatter" or "voxel"; only for 3d images.
+                    NOTE: "voxel" plots are more time consuming for 3d.
+                side_view (str): side view type of 3d image; only for 3d images;
+                    either "scatter" or "voxel".
+                surpress_2d (bool): flag controlling whether 2d images are displayed.
+                surpress_3d (bool): flag controlling whether 3d images are displayed.
+                    By default true as time consuming.
+                delay (bool): flag controlling whether the display is delayed; can be
+                    used to display multiple images at the same time.
 
         """
 
-        for time_index in range(self.time_num):
-            if self.series:
-                # Fetch time for series (not used otherwise)
+        # Use different plotting styles for different spatial dimensions. In 1d, time
+        # series can be visualized in a single plot, and thus receive special treatment.
+        if self.space_dim == 1:
+            # Extract physical coordinates and flatten
+            matrix_indices = np.transpose(
+                np.indices(self.img.shape[:1]).reshape((1, -1))
+            )
+            coordinates = self.coordinatesystem.coordinate(matrix_indices)
 
-                assert self.date is None or (
-                    isinstance(self.date, list)
-                    and all([d is None or isinstance(d, datetime) for d in self.date])
-                )  # mypy
-                abs_time = (
-                    ""
-                    if not isinstance(self.date, list) or self.date[time_index] is None
-                    else " - " + str(self.date[time_index])
-                )
-
-                assert self.time is None or isinstance(self.time, list)
-                rel_time = (
-                    ""
-                    if self.time is None or self.time[time_index] is None
-                    else " - " + str(self.time[time_index])
-                )
-
-                # Append title with time
-                _title = title
-                if not _title == "":
-                    _title += " - "
-                _title += f"{time_index} - {abs_time} -  {rel_time} sec."
+            # Fetch data and make sure to expand dimensions to have explicit access to
+            # the range components - simplifies code generalization.
+            if self.scalar:
+                array = self.img[..., np.newaxis]
             else:
-                _title = title
+                array = self.img
 
-            # Plot the entire 2d image in plain mode
-            if self.space_dim == 2:
-                # Only works for scalar and optical images.
-                assert self.scalar or self.range_num in [1, 3]
+            # Generate the plot(s)
+            if self.series:
+                # Plot evolution of each component in separate plot.
+                for comp in range(self.range_num):
+                    fig, ax = plt.subplots(1)
+                    fig.suptitle(title + f" component {comp}")
+                    # Put time on y axis and start time 0 on the bottom.
+                    plt.imshow(
+                        np.flip(np.transpose(array[..., comp]), 0),
+                        extent=(
+                            *self.domain,
+                            self.time[0],
+                            self.time[-1],
+                        ),
+                    )
+                    use_colorbar = kwargs.get("use_colorbar", False)
+                    if use_colorbar:
+                        plt.colorbar(label=self.name, orientation="vertical")
+                    ax.set_xlabel("x-axis")
+                    ax.set_ylabel("time-axis")
+            else:
+                # Plot each component in same plot
+                fig = plt.figure(title)
+                for comp in range(self.range_num):
+                    plt.plot(coordinates, array[..., comp])
+                plt.legend([f"Comp. {i}" for i in range(self.range_num)])
 
-                # Fetch data array
-                if self.series:
-                    if self.scalar:
-                        array = self.img[..., time_index]
-                    else:
-                        array = self.img[..., time_index, :]
-                else:
-                    array = self.img
-
-                # Plot
-                plt.figure(_title)
-                plt.imshow(skimage.img_as_float(array))
-
-            elif self.space_dim == 3:
-                # ! --- Preliminaries
-
-                # Only works for scalar images.
-                assert self.scalar
-
-                # Fetch bounding box
-                corners = np.vstack((self.origin, self.opposite_corner))
-                bbox = np.array([np.min(corners, axis=0), np.max(corners, axis=0)])
-
-                # Extract physical coordinates and flatten
-                matrix_indices = np.transpose(
-                    np.indices(self.img.shape[:3]).reshape((3, -1))
-                )
-                coordinates = self.coordinatesystem.coordinate(matrix_indices)
-
-                # Extract values
-                if self.series:
-                    array = self.img[..., time_index]
-                    time_slice = self.time_slice(time_index)
-                else:
-                    array = self.img
-                    time_slice = self
-                flat_array = array.reshape((1, -1))[0]
-
-                # Restrict to active voxels
-                threshold = kwargs.get("threshold", np.min(self.img))
-                relative = kwargs.get("relative", False)
-                if relative:
-                    threshold = threshold * np.max(self.img)
-                active = flat_array > threshold
-
-                # Signal strength
-                alpha_min = 0.1
-                alpha = alpha_min + (
-                    (1.0 - alpha_min)
-                    * (flat_array - np.min(array))
-                    / (np.max(array) - np.min(array))
-                )
-                scaling = kwargs.get("scaling", 1)
-                s = scaling * alpha
-
-                # ! ---- 3d view
-
-                # Offer two possibilities. Either a scatter plot or a voxel plot.
-
-                surpress_3d = kwargs.get("surpress_3d", False)
-                if not surpress_3d:
-                    fig_3d = plt.figure(_title + " - 3d view")
-                    ax_3d = Axes3D(fig_3d)
-
-                    view = kwargs.get("view", "scatter").lower()
-                    assert view in ["scatter", "voxel"]
-                    if view == "scatter":
-                        ax_3d.scatter(
-                            xs=coordinates[active, 0],
-                            ys=coordinates[active, 1],
-                            zs=coordinates[active, 2],
-                            s=s[active],
-                            alpha=np.power(alpha[active], 2),
-                            c=flat_array[active],
-                            cmap="viridis",
-                        )
-
-                    elif view == "voxel":
-                        # Convert coordinates into np.indices format, listing all voxel
-                        # corners.
-                        voxel_corners = np.indices(np.array(self.img[:3].shape) + 1)
-                        reshaped_voxel_corners = np.transpose(
-                            voxel_corners.reshape((3, -1))
-                        )
-                        reshaped_voxel_coordinates = self.coordinatesystem.coordinate(
-                            reshaped_voxel_corners
-                        )
-                        voxel_coordinates = np.transpose(
-                            reshaped_voxel_coordinates
-                        ).reshape(voxel_corners.shape)
-
-                        # Convert array values to colors and transfer signal strength
-                        facecolors = plt.cm.viridis(array)
-                        alpha_voxels = alpha_min + (1.0 - alpha_min) * (
-                            array - np.min(array)
-                        ) / (np.max(array) - np.min(array))
-                        facecolors[..., -1] = alpha_voxels
-                        active_voxels = array > threshold
-
-                        ax_3d.voxels(
-                            voxel_coordinates[0],
-                            voxel_coordinates[1],
-                            voxel_coordinates[2],
-                            active_voxels,
-                            facecolors=facecolors,
-                        )
-
-                    ax_3d.set_xlabel("x-axis")
-                    ax_3d.set_ylabel("y-axis")
-                    ax_3d.set_zlabel("z-axis")
-                    ax_3d.set_xlim(bbox[0, 0], bbox[1, 0])
-                    ax_3d.set_ylim(bbox[0, 1], bbox[1, 1])
-                    ax_3d.set_zlim(bbox[0, 2], bbox[1, 2])
-
-                # ! ---- 2d side views
-
-                # Offer two possibilities. Either a scatter plot or an
-                # integrated view. The latter uses integration over the axis "into" the
-                # screen.
-
-                surpress_2d = kwargs.get("surpress_2d", False)
-                if not surpress_2d:
-                    side_view = kwargs.get("side_view", "scatter").lower()
-                    assert side_view in ["scatter", "voxel"]
-                    fig_2d, axs = plt.subplots(1, 3)
-                    fig_2d.suptitle("2d side views")
-
-                    # xy-plane
-                    axs[0].set_title(_title + " - x-y plane")
-                    if side_view == "scatter":
-                        axs[0].scatter(
-                            coordinates[active, 0],
-                            coordinates[active, 1],
-                            s=s[active],
-                            alpha=alpha[active],
-                            c=flat_array[active],
-                            cmap="viridis",
-                        )
-                        axs[0].set_xlim(bbox[0, 0], bbox[1, 0])
-                        axs[0].set_ylim(bbox[0, 1], bbox[1, 1])
-                    elif side_view == "voxel":
-                        reduction = darsia.AxisAveraging(axis="z", dim=3)
-                        reduced_image = reduction(time_slice)
-                        axs[0].imshow(skimage.img_as_float(reduced_image.img))
-                    axs[0].set_xlabel("x-axis")
-                    axs[0].set_ylabel("y-axis")
-                    axs[0].set_aspect("equal")
-
-                    # xz-plane
-                    axs[1].set_title(_title + " - x-z plane")
-                    if side_view == "scatter":
-                        axs[1].scatter(
-                            coordinates[active, 0],
-                            coordinates[active, 2],
-                            s=s[active],
-                            alpha=alpha[active],
-                            c=flat_array[active],
-                            cmap="viridis",
-                        )
-                        axs[1].set_xlim(bbox[0, 0], bbox[1, 0])
-                        axs[1].set_ylim(bbox[0, 2], bbox[1, 2])
-                    elif side_view == "voxel":
-                        reduction = darsia.AxisAveraging(axis="y", dim=3)
-                        reduced_image = reduction(time_slice)
-                        axs[1].imshow(skimage.img_as_float(reduced_image.img))
-                    axs[1].set_xlabel("x-axis")
-                    axs[1].set_ylabel("z-axis")
-                    axs[1].set_aspect("equal")
-
-                    # yz-plane
-                    axs[2].set_title(_title + " - y-z plane")
-                    if side_view == "scatter":
-                        axs[2].scatter(
-                            coordinates[active, 1],
-                            coordinates[active, 2],
-                            s=s[active],
-                            alpha=alpha[active],
-                            c=flat_array[active],
-                            cmap="viridis",
-                        )
-                        axs[2].set_xlim(bbox[0, 1], bbox[1, 1])
-                        axs[2].set_ylim(bbox[0, 2], bbox[1, 2])
-                    elif side_view == "voxel":
-                        reduction = darsia.AxisAveraging(axis="x", dim=3)
-                        reduced_image = reduction(time_slice)
-                        axs[2].imshow(skimage.img_as_float(reduced_image.img))
-                    axs[2].set_xlabel("y-axis")
-                    axs[2].set_ylabel("z-axis")
-                    axs[2].set_aspect("equal")
-
-                # Make sure that any plot is shown
-                assert not (surpress_2d and surpress_3d)
-
+            # Show the plot(s)
             delay = kwargs.get("delay", False)
-            if not delay or time_index == self.time_num - 1:
+            if not delay:
                 if duration is None:
                     plt.show()
                 else:
                     plt.show(block=False)
                     plt.pause(int(duration))
                     plt.close()
+
+        else:
+            # In 2d and 3d, plot each time slice separately.
+            for time_index in range(self.time_num):
+                if self.series:
+                    # Fetch time for series (not used otherwise)
+
+                    assert self.date is None or (
+                        isinstance(self.date, list)
+                        and all(
+                            [d is None or isinstance(d, datetime) for d in self.date]
+                        )
+                    )  # mypy
+                    abs_time = (
+                        ""
+                        if not isinstance(self.date, list)
+                        or self.date[time_index] is None
+                        else " - " + str(self.date[time_index])
+                    )
+
+                    assert self.time is None or isinstance(self.time, list)
+                    rel_time = (
+                        ""
+                        if self.time is None or self.time[time_index] is None
+                        else " - " + str(self.time[time_index])
+                    )
+
+                    # Append title with time
+                    _title = title
+                    if not _title == "":
+                        _title += " - "
+                    _title += f"{time_index} - {abs_time} -  {rel_time} sec."
+                else:
+                    _title = title
+
+                if self.space_dim == 2:
+                    # Plot the entire 2d image in plain mode
+                    # Only works for scalar and optical images.
+                    assert self.scalar or self.range_num in [1, 3]
+
+                    # Fetch data array
+                    if self.series:
+                        if self.scalar:
+                            array = self.img[..., time_index]
+                        else:
+                            array = self.img[..., time_index, :]
+                    else:
+                        array = self.img
+
+                    # Plot
+                    fig = plt.figure(_title)
+                    cmap = kwargs.get("cmap", "viridis")
+                    plt.imshow(
+                        skimage.img_as_float(array), cmap=cmap, extent=self.domain
+                    )
+                    use_colorbar = kwargs.get("use_colorbar", False)
+                    if use_colorbar:
+                        plt.colorbar(label=self.name, orientation="vertical")
+                    plt.xlabel("x")
+                    plt.ylabel("y")
+
+                elif self.space_dim == 3:
+                    # ! --- Preliminaries
+
+                    # Only works for scalar images.
+                    assert self.scalar
+
+                    # Fetch bounding box
+                    corners = np.vstack((self.origin, self.opposite_corner))
+                    bbox = np.array([np.min(corners, axis=0), np.max(corners, axis=0)])
+
+                    # Extract physical coordinates and flatten
+                    matrix_indices = np.transpose(
+                        np.indices(self.img.shape[:3]).reshape((3, -1))
+                    )
+                    coordinates = self.coordinatesystem.coordinate(matrix_indices)
+
+                    # Extract values
+                    if self.series:
+                        array = self.img[..., time_index]
+                        time_slice = self.time_slice(time_index)
+                    else:
+                        array = self.img
+                        time_slice = self
+                    flat_array = array.reshape((1, -1))[0]
+
+                    # Restrict to active voxels
+                    threshold = kwargs.get("threshold", np.min(self.img))
+                    relative = kwargs.get("relative", False)
+                    if relative:
+                        threshold = threshold * np.max(self.img)
+                    active = flat_array > threshold
+
+                    # Signal strength
+                    alpha_min = 0.1
+                    alpha = np.clip(
+                        alpha_min
+                        + (
+                            (1.0 - alpha_min)
+                            * (flat_array - np.min(array))
+                            / (np.max(array) - np.min(array))
+                        ),
+                        0,
+                        1,
+                    )
+                    scaling = kwargs.get("scaling", 1)
+                    s = scaling * alpha
+
+                    # Set color map
+                    cmap = kwargs.get("cmap", "viridis")
+
+                    # ! ---- 3d view
+
+                    # Offer two possibilities. Either a scatter plot or a voxel plot.
+
+                    surpress_3d = kwargs.get("surpress_3d", True)
+                    if not surpress_3d:
+                        fig_3d = plt.figure(_title + " - 3d view")
+                        ax_3d = Axes3D(fig_3d)
+
+                        view = kwargs.get("view", "scatter").lower()
+                        assert view in ["scatter", "voxel"]
+                        if view == "scatter":
+                            ax_3d.scatter(
+                                xs=coordinates[active, 0],
+                                ys=coordinates[active, 1],
+                                zs=coordinates[active, 2],
+                                s=s[active],
+                                alpha=np.power(alpha[active], 2),
+                                c=flat_array[active],
+                                cmap=cmap,
+                            )
+
+                        elif view == "voxel":
+                            # Convert coordinates into np.indices format, listing all voxel
+                            # corners.
+                            voxel_corners = np.indices(np.array(self.img[:3].shape) + 1)
+                            reshaped_voxel_corners = np.transpose(
+                                voxel_corners.reshape((3, -1))
+                            )
+                            reshaped_voxel_coordinates = (
+                                self.coordinatesystem.coordinate(reshaped_voxel_corners)
+                            )
+                            voxel_coordinates = np.transpose(
+                                reshaped_voxel_coordinates
+                            ).reshape(voxel_corners.shape)
+
+                            # Convert array values to colors and transfer signal strength
+                            facecolors = plt.cm.viridis(array)
+                            alpha_voxels = alpha_min + (1.0 - alpha_min) * (
+                                array - np.min(array)
+                            ) / (np.max(array) - np.min(array))
+                            facecolors[..., -1] = alpha_voxels
+                            active_voxels = array > threshold
+
+                            ax_3d.voxels(
+                                voxel_coordinates[0],
+                                voxel_coordinates[1],
+                                voxel_coordinates[2],
+                                active_voxels,
+                                facecolors=facecolors,
+                            )
+
+                        ax_3d.set_xlabel("x-axis")
+                        ax_3d.set_ylabel("y-axis")
+                        ax_3d.set_zlabel("z-axis")
+                        ax_3d.set_xlim(bbox[0, 0], bbox[1, 0])
+                        ax_3d.set_ylim(bbox[0, 1], bbox[1, 1])
+                        ax_3d.set_zlim(bbox[0, 2], bbox[1, 2])
+
+                    # ! ---- 2d side views
+
+                    # Offer two possibilities. Either a scatter plot or an
+                    # integrated view. The latter uses integration over the axis "into" the
+                    # screen.
+
+                    surpress_2d = kwargs.get("surpress_2d", False)
+                    if not surpress_2d:
+                        side_view = kwargs.get("side_view", "voxel").lower()
+                        assert side_view in ["scatter", "voxel"]
+                        fig_2d, axs = plt.subplots(1, 3)
+                        fig_2d.suptitle("2d side views")
+
+                        # xy-plane
+                        axs[0].set_title(_title + " - x-y plane")
+                        if side_view == "scatter":
+                            axs[0].scatter(
+                                coordinates[active, 0],
+                                coordinates[active, 1],
+                                s=s[active],
+                                alpha=alpha[active],
+                                c=flat_array[active],
+                                cmap=cmap,
+                            )
+                            axs[0].set_xlim(bbox[0, 0], bbox[1, 0])
+                            axs[0].set_ylim(bbox[0, 1], bbox[1, 1])
+                        elif side_view == "voxel":
+                            reduction = darsia.AxisReduction(axis="z", dim=3)
+                            reduced_image = reduction(time_slice)
+                            axs[0].imshow(
+                                skimage.img_as_float(reduced_image.img.T),
+                                cmap=cmap,
+                                extent=reduced_image.domain,
+                            )
+                        axs[0].set_xlabel("x-axis")
+                        axs[0].set_ylabel("y-axis")
+                        axs[0].set_aspect("equal")
+
+                        # xz-plane
+                        axs[1].set_title(_title + " - y-z plane")
+                        if side_view == "scatter":
+                            axs[1].scatter(
+                                coordinates[active, 0],
+                                coordinates[active, 2],
+                                s=s[active],
+                                alpha=alpha[active],
+                                c=flat_array[active],
+                                cmap=cmap,
+                            )
+                            axs[1].set_xlim(bbox[0, 0], bbox[1, 0])
+                            axs[1].set_ylim(bbox[0, 2], bbox[1, 2])
+                        elif side_view == "voxel":
+                            reduction = darsia.AxisReduction(axis="y", dim=3)
+                            reduced_image = reduction(time_slice)
+                            axs[1].imshow(
+                                skimage.img_as_float(reduced_image.img),
+                                cmap=cmap,
+                                extent=reduced_image.domain,
+                            )
+                        axs[1].set_xlabel("y-axis")
+                        axs[1].set_ylabel("z-axis")
+                        axs[1].set_aspect("equal")
+
+                        # yz-plane
+                        axs[2].set_title(_title + " - x-z plane")
+                        if side_view == "scatter":
+                            axs[2].scatter(
+                                coordinates[active, 1],
+                                coordinates[active, 2],
+                                s=s[active],
+                                alpha=alpha[active],
+                                c=flat_array[active],
+                                cmap=cmap,
+                            )
+                            axs[2].set_xlim(bbox[0, 1], bbox[1, 1])
+                            axs[2].set_ylim(bbox[0, 2], bbox[1, 2])
+                        elif side_view == "voxel":
+                            reduction = darsia.AxisReduction(axis="x", dim=3)
+                            reduced_image = reduction(time_slice)
+                            axs[2].imshow(
+                                skimage.img_as_float(
+                                    np.flip(reduced_image.img, axis=1)
+                                ),
+                                cmap=cmap,
+                                extent=reduced_image.domain,
+                            )
+                        axs[2].set_xlabel("x-axis")
+                        axs[2].set_ylabel("z-axis")
+                        axs[2].set_aspect("equal")
+
+                    # Make sure that any plot is shown
+                    assert not (surpress_2d and surpress_3d)
+
+                delay = kwargs.get("delay", False)
+                if (not delay and not self.series) or (
+                    not delay and self.series and time_index == self.time_num - 1
+                ):
+                    if duration is None:
+                        plt.show()
+                    else:
+                        plt.show(block=False)
+                        plt.pause(int(duration))
+                        plt.close()
 
     def show_plotly(
         self,
@@ -1102,13 +1473,13 @@ class Image:
 
                 surpress_2d = kwargs.get("surpress_2d", False)
                 if not surpress_2d:
-                    side_view = kwargs.get("side_view", "scatter").lower()
+                    side_view = kwargs.get("side_view", "voxel").lower()
                     assert side_view in ["scatter", "voxel"]
 
                     fig_2d = make_subplots(
                         rows=1,
                         cols=3,
-                        subplot_titles=["x-y plane", "x-z plane", "y-z plane"],
+                        subplot_titles=["x-y plane", "y-z plane", "x-z plane"],
                     )
                     fig_2d.update_layout(title_text="2d side views")
 
@@ -1178,7 +1549,7 @@ class Image:
                             )
 
                         # xy-plane
-                        reduction = darsia.AxisAveraging(axis="z", dim=3)
+                        reduction = darsia.AxisReduction(axis="z", dim=3)
                         reduced_image = reduction(time_slice)
                         fig_2d.add_trace(
                             go.Heatmap(
@@ -1191,7 +1562,7 @@ class Image:
                         )
 
                         # xz-plane
-                        reduction = darsia.AxisAveraging(axis="y", dim=3)
+                        reduction = darsia.AxisReduction(axis="y", dim=3)
                         reduced_image = reduction(time_slice)
                         fig_2d.add_trace(
                             go.Heatmap(
@@ -1204,7 +1575,7 @@ class Image:
                         )
 
                         # yz-plane
-                        reduction = darsia.AxisAveraging(axis="x", dim=3)
+                        reduction = darsia.AxisReduction(axis="x", dim=3)
                         reduced_image = reduction(time_slice)
                         fig_2d.add_trace(
                             go.Heatmap(
@@ -1218,45 +1589,74 @@ class Image:
 
                     fig_2d.show()
 
-    def write_metadata(self, path: Union[str, Path]) -> None:
-        """
-        Writes the metadata dictionary to a json-file.
-
-        Arguments:
-            path (str): path to the json file
-
-        """
-        metadata = self.extract_metadata()
-        with open(Path(path), "w") as outfile:
-            json.dump(metadata, outfile, indent=4)
-
-    def write_array(
+    def show_plain(
         self,
-        path: Union[str, Path],
-        indexing: str = "matrix",
-        allow_pickle: bool = True,
+        title: str = "",
+        **kwargs,
     ) -> None:
-        """Auxiliary routine for storing the current image array as npy array.
+        """Show image using matplotlib.pyplots in plain mode.
+
+        NOTE: Only applicable for 2d images, which are not scalar. The image array is
+        plotted without any additional information and modifications.
 
         Args:
-            path (Path): path to file.
-            indexing (str): If "matrix", the array is stored using matrix indexing,
-                if "Cartesian", the array is stored using Cartesian indexing.
-            allow_pickle (bool): Flag controlling whether pickle is allowed.
+            title (str): title in the displayed window.
+            **kwargs: additional arguments passed to show_matplotlib or show_plotly.
 
         """
-        assert indexing.lower() in ["matrix", "cartesian"]
+        # Make sure the image is 2d and not a series
+        assert self.space_dim == 2, "Only applicable for 2d images."
+        assert not self.series, "Only applicable for single images."
 
-        Path(path).parents[0].mkdir(parents=True, exist_ok=True)
+        # Plot
+        plt.figure(title)
+        cmap = kwargs.get("cmap", "viridis")
+        plt.imshow(
+            self.img,
+            cmap=cmap,
+        )
+        plt.show(block=True)
 
-        plain_path = Path(path).with_suffix("")
+    # ! ---- I/O
 
-        np.save(
-            str(plain_path) + ".npy",
-            darsia.matrixToCartesianIndexing(self.img)
-            if indexing.lower() == "cartesian"
-            else self.img,
-            allow_pickle=allow_pickle,
+    def save(self, path: Union[str, Path], verbose=True) -> None:
+        """Save image to file.
+
+        Store array and metadata in single file.
+
+        NOTE: Keywords are compatible with imread_from_npz.
+
+        Args:
+            path (Path): full path to image. Use ending "npz".
+
+        """
+        # Make sure the parent directory exists
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        np.savez(str(Path(path)), array=self.img, metadata=self.metadata())
+        if verbose:
+            print(f"Image stored under {path}")
+
+    def to_vtk(self, path: Union[str, Path], name: Optional[str] = None) -> None:
+        """Save image to file in vtk format.
+
+        Args:
+            path (Path): full path to image, without ending.
+            name (str, optional): name of the data. Defaults to None.
+
+        """
+        if name is None:
+            name = self.name
+        if name is None:
+            name = "data"
+        darsia.plotting.to_vtk(
+            path,
+            [
+                (
+                    name,
+                    self,
+                    darsia.Format.SCALAR if self.scalar else darsia.Format.TENSOR,
+                )
+            ],
         )
 
     # ! ---- Auxiliary routines
@@ -1302,9 +1702,6 @@ class ScalarImage(Image):
         }
         kwargs.pop("scalar", None)
 
-        self.name = kwargs.get("name", None)
-        """Name of image, e.g., used to describe the origin."""
-
         # Construct a general image with the specs of an optical image
         super().__init__(img, transformations, **scalar_metadata, **kwargs)
 
@@ -1318,24 +1715,6 @@ class ScalarImage(Image):
 
         """
         return copy.deepcopy(self)
-
-    # ! ---- Fast access.
-
-    def metadata(self) -> dict:
-        """Generator of metadata; can be used to init a new optical image with same
-        specs.
-
-        Returns:
-            dict: metadata with keys equal to all keywords agurments.
-
-        """
-        # Start with generic metadata.
-        metadata = super().metadata()
-
-        # Add specs specific to optical images.
-        metadata["name"] = self.name
-
-        return copy.copy(metadata)
 
     # ! ---- I/O
 
@@ -1353,7 +1732,7 @@ class ScalarImage(Image):
 
         """
         # Write image, using the conventional matrix indexing
-        ubyte_image = skimage.img_as_ubyte(self.img)
+        ubyte_image = self.img_as(np.uint8).img
         suffix = Path(path).suffix.lower()
 
         if suffix in [".jpg", ".jpeg"]:
@@ -1395,18 +1774,13 @@ class OpticalImage(Image):
         """
         # Define metadata specific for optical images
         optical_metadata = {
-            "dim": 2,
+            "space_dim": 2,
             "indexing": "ij",
             "scalar": False,
         }
-        kwargs.pop("dim", None)
+        kwargs.pop("space_dim", None)
         kwargs.pop("indexing", None)
         kwargs.pop("scalar", None)
-
-        # Construct a general image with the specs of an optical image
-        super().__init__(img, transformations, **optical_metadata, **kwargs)
-
-        assert self.range_dim == 1 and self.range_num == 3
 
         # Add info on color space
         self.color_space = kwargs.get("color_space", "RGB").upper()
@@ -1417,6 +1791,11 @@ class OpticalImage(Image):
 
         if "color_space" not in kwargs:
             warn("No color space provided. The color space RGB is implicitly assumed.")
+
+        # Construct a general image with the specs of an optical image
+        super().__init__(img, transformations, **optical_metadata, **kwargs)
+
+        assert self.range_dim == 1 and self.range_num == 3
 
     def copy(self) -> OpticalImage:
         """Copy constructor.
@@ -1463,12 +1842,12 @@ class OpticalImage(Image):
         Path(path).parents[0].mkdir(parents=True, exist_ok=True)
 
         # To prepare for the use of cv2.imwrite, convert to BGR color space.
-        bgr_image = self.to_bgr(return_image=True)
+        bgr_image = self.to_trichromatic("BGR", return_image=True)
         bgr_array = bgr_image.img
 
         # Write image, using the conventional matrix indexing
         if self.original_dtype == np.uint8:
-            ubyte_image = skimage.img_as_ubyte(bgr_array)
+            ubyte_image = bgr_image.img_as(np.uint8).img
             suffix = Path(path).suffix.lower()
 
             if suffix in [".jpg", ".jpeg"]:
@@ -1508,6 +1887,65 @@ class OpticalImage(Image):
 
         print("Image saved as: " + str(Path(path)))
 
+    def encode(self, suffix: str, **kwargs) -> bytes:
+        """Encode image without writing to file.
+
+        Arguments:
+            suffix (str): file format extension.
+            keyword arguments:
+                quality (int): number between 0 and 100, indicating
+                    the resolution used to store a jpg image
+                compression (int): number between 0 and 9, indicating
+                    the level of compression used for storing in
+                    png format.
+
+        """
+        # To prepare for the use of cv2.imwrite, convert to BGR color space.
+        bgr_image = self.to_trichromatic("BGR", return_image=True)
+        bgr_array = bgr_image.img
+        suffix = suffix.lower()
+
+        # Write image, using the conventional matrix indexing
+        if self.original_dtype == np.uint8:
+            ubyte_image = bgr_image.img_as(np.uint8).img
+
+            if suffix in [".jpg", ".jpeg"]:
+                quality = kwargs.get("quality", 90)
+                _, data = cv2.imencode(
+                    suffix,
+                    ubyte_image,
+                    [int(cv2.IMWRITE_JPEG_QUALITY), quality],
+                )
+            elif suffix == ".png":
+                compression = kwargs.get("compression", 6)
+                _, data = cv2.imencode(
+                    suffix,
+                    ubyte_image,
+                    [cv2.IMWRITE_PNG_COMPRESSION, compression],
+                )
+            else:
+                _, data = cv2.imencode(suffix, ubyte_image)
+
+        elif self.original_dtype == np.uint16:
+            ubyte_image = skimage.img_as_uint(bgr_array)
+            _, data = cv2.imencode(
+                suffix,
+                ubyte_image,
+                [
+                    cv2.IMWRITE_TIFF_COMPRESSION,
+                    1,
+                    cv2.IMWRITE_TIFF_XDPI,
+                    350,
+                    cv2.IMWRITE_TIFF_YDPI,
+                    350,
+                ],
+            )
+
+        else:
+            raise NotImplementedError
+
+        return io.BytesIO(data).read()
+
     # ! ---- Color transformations
 
     def to_trichromatic(self, color_space: str, return_image: bool = False) -> None:
@@ -1523,12 +1961,15 @@ class OpticalImage(Image):
 
         """
 
-        if color_space.upper() not in ["RGB", "BGR", "HSV"]:
+        if color_space.upper() not in ["RGB", "BGR", "HSV", "HLS", "LAB"]:
             raise NotImplementedError
 
         if color_space.upper() == self.color_space:
             img: np.ndarray = self.img.copy()
         else:
+            # Ensure cv2 compatible format
+            if self.img.dtype == np.float64:
+                self = self.astype(np.float32)
             option = eval("cv2.COLOR_" + self.color_space + "2" + color_space.upper())
             if self.series:
                 slices = []
@@ -1564,15 +2005,19 @@ class OpticalImage(Image):
 
         # Adapt data array
         if key == "gray":
+            # Ensure the image is in cv2 compatible format
+            if self.img.dtype == np.float64:
+                image = image.astype(np.float32)
+
             option = eval("cv2.COLOR_" + self.color_space + "2GRAY")
             if self.series:
                 slices = []
                 for time_index in range(self.time_num):
-                    slices.append(cv2.cvtColor(self.img[..., time_index, :], option))
+                    slices.append(cv2.cvtColor(image.img[..., time_index, :], option))
                 img = np.stack(slices, axis=self.space_dim)
 
             else:
-                img = cv2.cvtColor(self.img, option)
+                img = cv2.cvtColor(image.img, option)
 
         elif key in ["red", "green", "blue"]:
             image.to_trichromatic("rgb")

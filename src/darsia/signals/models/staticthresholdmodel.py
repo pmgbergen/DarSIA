@@ -1,13 +1,15 @@
-"""
-Module converting signals to binary data by applying thresholding.
+"""Module converting signals to binary data by applying thresholding.
 
 A distinction between heterogeneous and homogeneous thresholding
 is performed automatically.
 """
 
+from __future__ import annotations
+
 from typing import Optional, Union
 
 import numpy as np
+import skimage
 
 import darsia
 
@@ -22,6 +24,7 @@ class StaticThresholdModel(darsia.Model):
         threshold_lower: Union[float, list[float]] = 0.0,
         threshold_upper: Optional[Union[float, list[float]]] = None,
         labels: Optional[np.ndarray] = None,
+        return_float: bool = False,
     ) -> None:
         """
         Constructor of StaticThresholdModel.
@@ -30,7 +33,10 @@ class StaticThresholdModel(darsia.Model):
             threshold_lower (float or list of float): lower threshold value(s)
             threshold_upper (float or list of float): upper threshold value(s)
             labels (array): labeled domain
+            return_float (bool): flag controlling whether the output is a float or boolean
+
         """
+        self.return_float = return_float
 
         # The argument label decides whether a homogeneous or heterogeneous
         # threatment is considered.
@@ -41,6 +47,7 @@ class StaticThresholdModel(darsia.Model):
             assert isinstance(threshold_upper, float) or threshold_upper is None
             self._threshold_lower = threshold_lower
             self._threshold_upper = threshold_upper
+            self.num_parameters = 2
 
         else:
             # Heterogeneous case
@@ -80,6 +87,8 @@ class StaticThresholdModel(darsia.Model):
             else:
                 raise ValueError(f"Type {type(threshold_upper)} not supported.")
 
+            self.num_parameters = 2 * num_labels
+
     def __call__(
         self, img: np.ndarray, mask: Optional[np.ndarray] = None
     ) -> np.ndarray:
@@ -101,7 +110,10 @@ class StaticThresholdModel(darsia.Model):
 
         # Restrict data to the provided mask
         if mask is None:
-            return threshold_mask
+            if self.return_float:
+                return skimage.img_as_float32(threshold_mask)
+            else:
+                return threshold_mask
         else:
             return np.logical_and(threshold_mask, mask)
 
@@ -144,11 +156,10 @@ class StaticThresholdModel(darsia.Model):
             threshold_mask[roi] = True
         return threshold_mask
 
-    def calibrate(self, img: list[np.ndarray]) -> None:
-        """
-        Empty calibration.
-
-        Args:
-            img (list of arrays): images.
-        """
-        pass
+    def update_model_parameters(
+        self,
+        *args: tuple,
+    ) -> None:
+        raise NotImplementedError(
+            "StaticThresholdModel does not support parameter updates."
+        )

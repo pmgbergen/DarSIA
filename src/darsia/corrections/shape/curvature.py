@@ -100,11 +100,7 @@ class CurvatureCorrection(darsia.BaseCorrection):
             self.height = kwargs.get("height", 1.0)
 
         else:
-            if config is None:
-                raise Exception(
-                    "Please provide either an image as 'image' \
-                        or a config file as 'config'."
-                )
+            warn("No image provided. Please provide an image or a config file.")
 
         # The internally stored config file is tailored to when resize_factor is equal to 1.
         # For other values, it has to be adapted.
@@ -149,8 +145,47 @@ class CurvatureCorrection(darsia.BaseCorrection):
             path (Path): path to the json-file.
         """
         with open(str(path), "r") as openfile:
-
             self.config = json.load(openfile)
+
+    def save(self, path: Path) -> None:
+        """Save the curvature correction to a file.
+
+        Arguments:
+            path (Path): path to the file
+
+        """
+        # Make sure the parent directory exists
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Store color space and local scaling images as npz files
+        np.savez(
+            path,
+            class_name=type(self).__name__,
+            config=self.config,
+            cache=self.cache if hasattr(self, "cache") else None,
+        )
+
+        print(f"Curvature correction saved to {path}.")
+
+    def load(self, path: Path) -> None:
+        """Load the curvature correction from a file.
+
+        Arguments:
+            path (Path): path to the file
+
+        """
+        # Make sure the file exists
+        if not path.is_file():
+            raise FileNotFoundError(f"File {path} not found.")
+
+        # Load color space and local scaling images from npz file
+        data = np.load(path, allow_pickle=True)
+        if "config" not in data:
+            raise ValueError("Invalid file format.")
+        self.config = data["config"].item()
+        pre_cache = data.get("cache", None)
+        if pre_cache is not None:
+            self.cache = pre_cache.item()
 
     def return_image(self) -> darsia.Image:
         """
@@ -200,7 +235,7 @@ class CurvatureCorrection(darsia.BaseCorrection):
             self.current_image, **self.config["init"]
         )
 
-    def crop(self, corner_points: list) -> None:
+    def crop(self, corner_points: darsia.VoxelArray) -> None:
         """
         Crop the image along the corners of the image.
 
@@ -208,10 +243,13 @@ class CurvatureCorrection(darsia.BaseCorrection):
         will update the config file and modify the current image.
 
         Arguments:
-            corner_points (list): list of the corner points. Preferably the list
+            corner_points (VoxelArray): list of the corner points. Preferably the list
                         should be ordered starting from the upper left corner
                         and going counter clockwise.
         """
+
+        if not isinstance(corner_points, darsia.VoxelArray):
+            corner_points = darsia.make_voxels(corner_points)
 
         self.config["crop"] = {
             "pts_src": corner_points,
@@ -224,7 +262,7 @@ class CurvatureCorrection(darsia.BaseCorrection):
             self.current_image, **self.config["crop"]
         )
 
-    def bulge_corection(
+    def bulge_correction(
         self, left: int = 0, right: int = 0, top: int = 0, bottom: int = 0
     ) -> None:
         """
@@ -517,7 +555,6 @@ class CurvatureCorrection(darsia.BaseCorrection):
                 np.save(self.cache_path, self.cache)
 
         elif self.use_cache and self.cache_path.exists():
-
             # Reache cache from file
             self.cache = np.load(self.cache_path, allow_pickle=True).item()
 
@@ -747,7 +784,41 @@ class CurvatureCorrection(darsia.BaseCorrection):
             im_array_as_vector = map_coordinates(
                 in_data, grid, order=self.interpolation_order
             )
-            # Convert to correct shape and data type
-            corrected_img[:, :, i] = im_array_as_vector.reshape(shape).astype(img.dtype)
+            # Convert to correct shape and data type (if necessary)
+            if im_array_as_vector.dtype == img.dtype:
+                corrected_img[:, :, i] = im_array_as_vector.reshape(shape)
+            else:
+                corrected_img[:, :, i] = im_array_as_vector.reshape(shape).astype(
+                    img.dtype
+                )
 
         return np.squeeze(corrected_img)
+
+    def correct_metadata(self, metadata: dict = {}) -> dict:
+        """Extract metadata from the config file.
+
+        Args:
+            metadata (dict, optional): metadata dictionary to be updated. Defaults to {}.
+
+        Returns:
+            dict: metadata
+
+        """
+        # Initialize metadata
+        meta = {}
+
+        # Read physical dimensions from config file
+        if "crop" in self.config:
+            # Update the metadata
+            if all([key in self.config["crop"] for key in ["width", "height"]]):
+                # NOTE: Dimensions of Image uses matrix convention, i.e. (rows, cols).
+                dimensions = [
+                    self.config["crop"]["height"],
+                    self.config["crop"]["width"],
+                ]
+                meta["dimensions"] = dimensions
+                meta["origin"] = darsia.CoordinateArray(
+                    [0, self.config["crop"]["height"]]
+                )
+
+        return meta

@@ -1,7 +1,9 @@
+"""Module containing analysis tools for segmented images.
+
+This includes measuring lengths of contours, weighted sums (generalized mass analysis).
+
 """
-Module containing analysis tools for segmented images. This includes
-measuring lengths of contours, weighted sums (generalized mass analysis).
-"""
+
 from __future__ import annotations
 
 from collections import namedtuple
@@ -20,7 +22,7 @@ import darsia
 
 def contour_length(
     img: darsia.Image,
-    roi: Optional[np.ndarray] = None,
+    roi: Optional[darsia.CoordinateArray] = None,
     values_of_interest: Optional[Union[int, list[int]]] = None,
     fill_holes: bool = True,
     verbosity: bool = False,
@@ -45,11 +47,7 @@ def contour_length(
             input image.
     """
     # Make copy of image and restrict to region of interest
-    img_roi = (
-        img.copy()
-        if roi is None
-        else cast(darsia.Image, img.subregion(coordinates=roi))
-    )
+    img_roi = img.copy() if roi is None else cast(darsia.Image, img.subregion(roi))
 
     # Extract boolean mask covering pixels of interest.
     if img_roi.img.dtype == bool:
@@ -121,7 +119,7 @@ class ContourAnalysis:
     def load_labels(
         self,
         img: darsia.Image,
-        roi: Optional[np.ndarray] = None,
+        roi: Optional[darsia.CoordinateArray] = None,
         values_of_interest: Optional[Union[int, list[int]]] = None,
         fill_holes: bool = True,
     ) -> None:
@@ -136,11 +134,7 @@ class ContourAnalysis:
         """
 
         # Make copy of image and restrict to region of interest
-        img_roi = (
-            img.copy()
-            if roi is None
-            else cast(darsia.Image, img.subregion(coordinates=roi))
-        )
+        img_roi = img.copy() if roi is None else cast(darsia.Image, img.subregion(roi))
 
         # Extract boolean mask covering values of interest.
         if img_roi.img.dtype == bool:
@@ -654,7 +648,7 @@ class ContourEvolutionAnalysis:
 
             if self.verbosity:
                 print(
-                    f"""final: {time_index} vs. {time_index+1}. Found
+                    f"""final: {time_index} vs. {time_index + 1}. Found
                     {len(prev_next_pairs)} many pairs among {len(peaks_prev)}
                     and {len(peaks_next)} fingers, respectively."""
                 )

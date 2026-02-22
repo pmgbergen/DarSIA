@@ -1,9 +1,11 @@
-"""
-Module collecting several calibration tools,
-and in particular objective functions for calibration
-in ConcentrationAnalysis.calibrate_model()
+"""Calibration tools.
+
+In particular objective functions for calibration in
+ConcentrationAnalysis.calibrate_model()
 
 """
+
+from __future__ import annotations
 
 import abc
 from typing import Union
@@ -50,16 +52,13 @@ class AbstractModelObjective:
 
         Args:
             parameters (np.ndarray): model parameters,
-            options (dict): further tuning parameters and extra info.
+            options (dict): further tuning parameters and extra info;
+                here, the key "dofs" is used to determine which dofs to
+                update.
 
         """
-        # Check whether the model is part of a combined model,
-        # and possibly determine position of the model
-        if isinstance(self.model, darsia.CombinedModel):
-            pos_model = options.get("model_position")
-            self.model.update_model_parameters(parameters, pos_model)
-        else:
-            self.model.update_model_parameters(parameters)
+        dofs = options.get("dofs", None)
+        self.model.update_model_parameters(parameters, dofs)
 
     def calibrate_model(
         self,
@@ -96,7 +95,7 @@ class AbstractModelObjective:
         images_diff = [self._subtract_background(img) for img in images]
 
         # Extract monochromatic version and take difference wrt the baseline image
-        images_signal = [self._extract_scalar_information(diff) for diff in images_diff]
+        images_signal = [self._reduce_signal(diff) for diff in images_diff]
 
         # Clean signal
         images_clean_signal = [self._clean_signal(signal) for signal in images_signal]
@@ -106,15 +105,18 @@ class AbstractModelObjective:
             self._balance_signal(clean_signal) for clean_signal in images_clean_signal
         ]
 
-        # Smoothen the signals
+        # Smoothen/restore the signals
+        assert (
+            self.first_restoration_then_model
+        ), "calibration only implemented for this"
         images_smooth_signal = [
-            self._prepare_signal(balanced_signal)
+            self._restore_signal(balanced_signal)
             for balanced_signal in images_balanced_signal
         ]
 
         # NOTE: The only step missing from __call__ is the conversion of the signal
         # applying the provided model. This step will be used to tune the
-        # model -> calibration.
+        # model -> calibration. (This is not true when not self.first_restoration_then_model)
 
         # Fetch calibration options - default option chosen if None provided.
         initial_guess = options["initial_guess"]
@@ -123,8 +125,7 @@ class AbstractModelObjective:
         method = options.get("method")
 
         # Define reference time (not important which image serves as basis)
-        SECONDS_TO_HOURS = 1.0 / 3600
-        times = [img.time * SECONDS_TO_HOURS for img in images]
+        times = [img.time for img in images]
         if any([time is None for time in times]):
             raise ValueError("Provide images with well-defined reference time.")
 
@@ -151,7 +152,9 @@ class AbstractModelObjective:
                 f"Calibration successful with obtained model parameters {opt_result.x}."
             )
         else:
-            print("Calibration not successful.")
+            print(
+                f"Calibration not successful with obtained model parameters {opt_result.x}."
+            )
 
         # Update model (use functionality from calibration)
         self.update_model_for_calibration(opt_result.x, options)
@@ -205,7 +208,7 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
         Args:
             input_images (list of np.ndarray): input for _convert_signal
             images_diff (list of np.ndarray): plain differences wrt background image
-            times (list of float): times in hrs
+            times (list of float): times (units assumed to be compatible)
             options (dict): dictionary with objective value, here the injection rate
 
         Returns:
@@ -214,7 +217,7 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
         """
 
         # Fetch the injection rate and geometry
-        injection_rate = options["injection_rate"]  # in ml/hrs
+        injection_rate = options["injection_rate"]  # in same units as geometry
         geometry = options["geometry"]
         regression_type = options.get("regression_type", "ransac").lower()
         assert regression_type in ["ransac", "linear"]
@@ -235,22 +238,19 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
 
             # For each image, compute the total concentration, based on the currently
             # set tuning parameters, and compute the relative time.
-            M3_TO_ML = 1e6
             volumes = [
-                geometry.integrate(self._convert_signal(img, diff)) * M3_TO_ML
+                geometry.integrate(self._convert_signal(img, diff))
                 for img, diff in zip(input_images, images_diff)
             ]
 
             # Determine slope in time by linear regression. Allow for different
             # regression types.
             if regression_type == "ransac":
-
                 ransac = RANSACRegressor()
                 ransac.fit(np.array(times).reshape(-1, 1), np.array(volumes))
                 regression = ransac.estimator_
 
             elif regression_type == "linear":
-
                 regression = LinearRegression()
                 regression.fit(np.array(times).reshape(-1, 1), np.array(volumes))
 
@@ -259,10 +259,13 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
 
             # Cache result for possible post-analysis
             self._slope = regression.coef_[0]
+            self._reference_slope = injection_rate
             self._intercept = regression.intercept_
 
-            # Measure deffect
+            # Measure relative defect
             defect = effective_injection_rate - injection_rate
+            if abs(injection_rate) > 1e-15:
+                defect /= injection_rate
             return defect**2
 
         return objective_function
@@ -280,7 +283,7 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
         Args:
             input_images (list of np.ndarray): input for _convert_signal
             images_diff (list of np.ndarray): plain differences wrt background image
-            times (list of float): times in hrs
+            times (list of float): times (unit assumed to be compatible)
             options (dict): dictionary with objective value, here the injection rate
 
         """
@@ -289,9 +292,8 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
 
         # For each image, compute the total concentration, based on the currently
         # set tuning parameters, and compute the relative time.
-        M3_TO_ML = 1e6
         volumes = [
-            geometry.integrate(self._convert_signal(img, diff)) * M3_TO_ML
+            geometry.integrate(self._convert_signal(img, diff))
             for img, diff in zip(input_images, images_diff)
         ]
 
@@ -307,9 +309,15 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
             color="black",
             linestyle=(0, (5, 5)),
         )
-        plt.xlabel("time [hrs]")
-        plt.ylabel("volume [ml]")
-        plt.legend(["rescaled signal", "reference"])
+        plt.plot(
+            times,
+            [self._intercept + self._reference_slope * time for time in times],
+            color="green",
+            linestyle=(0, (5, 5)),
+        )
+        plt.xlabel("time [s]")
+        plt.ylabel("volume [m**3]")
+        plt.legend(["rescaled signal", "regression", "reference"])
         plt.show()
 
     def model_calibration_postanalysis(self) -> float:
@@ -322,16 +330,22 @@ class InjectionRateModelObjectiveMixin(AbstractModelObjective):
 
         # Interpret the results of the regression
         print(
-            f"The effective injection rate for the calibration images is {self._slope} ml/hrs."
+            f"""The effective injection rate for the calibration images is """
+            f"""{self._slope} (in volumetric units per time compatible with images)."""
         )
-        print(f"The signal at absolute time 0 is {self._intercept} ml.")
+        print(
+            f"""The signal at absolute time 0 is {self._intercept} (in volumetric """
+            """units compatible with images)."""
+        )
 
         # Determine the time of zero signal
         time_zero_signal = -self._intercept / self._slope
-        print(f"The time of zero signal is deducted to be {time_zero_signal} hrs.")
+        print(
+            f"""The time of zero signal is deducted to be {time_zero_signal} """
+            """(in time units compatible with images)."""
+        )
 
-        HOURS_TO_SECONDS = 3600
-        return time_zero_signal * HOURS_TO_SECONDS
+        return time_zero_signal
 
 
 class AbsoluteVolumeModelObjectiveMixin(AbstractModelObjective):

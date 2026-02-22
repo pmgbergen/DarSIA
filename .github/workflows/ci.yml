@@ -4,11 +4,10 @@ on:
   push:
     branches:
      - main
-     - development
   pull_request:
     branches:
      - main
-     - development
+
 #  schedule:
     # Do a nightly run of the tests
 #    - cron: '0 1 * * *'
@@ -23,8 +22,7 @@ jobs:
     # https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#specifying-a-python-version
     strategy:
       matrix:
-        # python-version:  ["3.7", "3.8", "3.9", "3.10"]
-        python-version:  ["3.10"]
+        python-version:  ["3.12"]
       # Complete all versions in matrix even if one fails.
       fail-fast: false
 
@@ -40,9 +38,16 @@ jobs:
         python-version: ${{ matrix.python-version}}
         architecture: x64
 
+    - name: Install dependencies
+      if: github.event_name == 'push'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libhypre-dev libmumps-seq-dev
+        pip install numpy mpi4py
+        PETSC_CONFIGURE_OPTIONS="--download-hypre --download-mumps --download-parmetis --download-ml --download-metis --download-scalapack" pip install petsc petsc4py
+
     - name: Install DarSIA
       run: pip install .[dev]
-
 
     - name: black
       if: ${{ always() }}

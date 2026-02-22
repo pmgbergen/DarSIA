@@ -1,24 +1,32 @@
-"""Module containing coordinate transformation, restricted to affine transformations
-(translation, rotation, scaling). A coordinate transformation alters the voxel data and
-the metadata.
+"""Module containing coordinate transformation.
+
+The transformatiosn are restricted to affine transformations (translation, rotation,
+scaling). A coordinate transformation alters the voxel data and the metadata.
 
 """
+
+from __future__ import annotations
+
 import copy
+
+# Check if on a windows machine
+import platform
 from typing import Union
 
-import largestinteriorrectangle as lir
+if platform.system() == "Windows":
+    lir = None
+else:
+    import largestinteriorrectangle as lir
+
 import numpy as np
 
 import darsia
-
-# Shortcut for coordinate type (voxel and Cartesian)
-CoordinateType = list[Union[float, int]]
 
 
 class CoordinateTransformation:
     """
     General affine transformation (translation, scaling, rotation),
-    applicable for general (up to 4d) images. # TODO is it? check comments below!
+    applicable for general (up to 4d) images.
 
     NOTE: Inherit from base correction to make use of the plain array correction
     routines but complement with meta corrections.
@@ -29,28 +37,22 @@ class CoordinateTransformation:
         self,
         coordinatesystem_src: darsia.CoordinateSystem,
         coordinatesystem_dst: darsia.CoordinateSystem,
-        voxels_src: list[Union[np.ndarray, list[int]]],
-        voxels_dst: list[Union[np.ndarray, list[int]]],
-        isometry: bool = False,
-        use_cartesian: bool = False,
-        **kwargs,
+        pts_src: Union[
+            darsia.CoordinateArray, darsia.VoxelArray, darsia.VoxelCenterArray
+        ],
+        pts_dst: Union[
+            darsia.CoordinateArray, darsia.VoxelArray, darsia.VoxelCenterArray
+        ],
+        fit_options: dict = {},
     ) -> None:
         """Constructor.
 
         Args:
-            coordinatesystem_src (CoordinateSystem): coordinate system corresponding
-                to voxels_src
-            coordinatesystem_dst (CoordinateSystem): coordinate system corresponding
-                to voxels_dst
-            voxels_src (list): voxel coordinates corresponding to source data; in matrix
-                indexing
-            voxels_dst (list): voxel coordinates corresponding to destination data; use
-                matrix indexing
-            isoemtry (bool): Flag controlling whether the underlying transformation is
-                an isometry.
-            use_cartesian (bool): Flag controlling whether the coordinate transformation
-                uses Cartesian or  voxel coordinates for the actual map; will be set to
-                True if isometry is activated.
+            coordinatesystem_src (CoordinateSystem): source coordinate system
+            coordinatesystem_dst (CoordinateSystem): target coordinate system
+            pts_src (CoordinateArray, VoxelArray, VoxelCenterArray): source points
+            pts_dst (CoordinateArray, VoxelArray, VoxelCenterArray): target points
+            fit_options (dict): options for the affine fit
 
         """
         # Cache coordinate systems
@@ -68,11 +70,9 @@ class CoordinateTransformation:
         self.affine_correction = darsia.AffineCorrection(
             coordinatesystem_src,
             coordinatesystem_dst,
-            voxels_src,
-            voxels_dst,
-            isometry=isometry,
-            use_cartesian=use_cartesian,
-            **kwargs,
+            pts_src,
+            pts_dst,
+            fit_options,
         )
         """Correction object for the array data."""
 
@@ -92,27 +92,51 @@ class CoordinateTransformation:
 
         """
 
-        if not self.dim == 2:
-            raise NotImplementedError("Intersection option only supported in 2d.")
+        if self.dim not in [2, 3]:
+            raise NotImplementedError(
+                "Intersection option only supported in 2d and 3d."
+            )
 
         # Find the voxel locations of the corners in the source array - need them
         # sorted.
         shape_src = self.coordinatesystem_src.shape
-        corner_voxels_src = np.array(
-            [
-                [0, 0],
-                [shape_src[0], 0],
-                [shape_src[0], shape_src[1]],
-                [0, shape_src[1]],
-            ]
-        )
+        if self.dim == 2:
+            corner_voxels_src: darsia.VoxelArray = darsia.make_voxel(
+                [
+                    [0, 0],
+                    [shape_src[0], 0],
+                    [shape_src[0], shape_src[1]],
+                    [0, shape_src[1]],
+                ]
+            )
+        elif self.dim == 3:
+            corner_voxels_src: darsia.VoxelArray = darsia.make_voxel(
+                [
+                    [0, 0, 0],
+                    [shape_src[0], 0, 0],
+                    [shape_src[0], shape_src[1], 0],
+                    [0, shape_src[1], 0],
+                    [0, 0, shape_src[2]],
+                    [shape_src[0], 0, shape_src[2]],
+                    [shape_src[0], shape_src[1], shape_src[2]],
+                    [0, shape_src[1], shape_src[2]],
+                ]
+            )
 
         # Map these to the target canvas
-        corner_coordinates_src = self.coordinatesystem_src.coordinate(corner_voxels_src)
-        corner_coordinates_dst = self.affine_correction.affine_transformation(
-            corner_coordinates_src
-        )
-        corner_voxels_dst = self.coordinatesystem_dst.voxel(corner_coordinates_dst)
+        assert False, "TODO: Use 3 stage recipe from BaseTransformationorrection"
+        if self.affine_correction.use_cartesian:
+            corner_coordinates_src = corner_voxels_src.to_coordinate(
+                self.coordinatesystem_src
+            )
+            corner_coordinates_dst = self.affine_correction.transformation(
+                corner_coordinates_src
+            )
+            corner_voxels_dst = corner_coordinates_dst.to_voxel(
+                self.coordinatesystem_dst
+            )
+        else:
+            corner_voxels_dst = self.affine_correction.transformation(corner_voxels_src)
 
         # Clip to active canvas
         num_corners = len(corner_voxels_src)
@@ -125,13 +149,39 @@ class CoordinateTransformation:
 
         # Determine the largest interior rectangle - require to transform to format
         # expected by lir
-        lir_dst = lir.lir(np.array([active_corner_voxels_dst]).astype(np.int32))
-        rectangle_mask_corners = [lir.pt1(lir_dst), lir.pt2(lir_dst)]
+        if self.dim == 2:
+            if lir is None:
+                raise ImportError(
+                    "Python package largestinteriorrectangle not installed."
+                )
+            else:
+                lir_dst = lir.lir(np.array([active_corner_voxels_dst]).astype(np.int32))
+                rectangle_mask_corners = [lir.pt1(lir_dst), lir.pt2(lir_dst)]
+                return (
+                    slice(rectangle_mask_corners[0][0], rectangle_mask_corners[1][0]),
+                    slice(rectangle_mask_corners[0][1], rectangle_mask_corners[1][1]),
+                )
+        elif self.dim == 3:
+            # NOTE: In 3d, not the largest interior but smallest exterior rectangle is
+            # returned, which is not ideal, but is easier to access. The application of
+            # lir requires the input to be ordered and oriented in a specific way. In
+            # addition, it only works for 2d arrays. Therefore, we need to apply lir
+            # for each plane separately. After all, it is not straightforward: FIXME.
 
-        return (
-            slice(rectangle_mask_corners[0][0], rectangle_mask_corners[1][0]),
-            slice(rectangle_mask_corners[0][1], rectangle_mask_corners[1][1]),
-        )
+            return (
+                slice(
+                    int(np.min(active_corner_voxels_dst[:, 0])),
+                    int(np.max(active_corner_voxels_dst[:, 0])),
+                ),
+                slice(
+                    int(np.min(active_corner_voxels_dst[:, 1])),
+                    int(np.max(active_corner_voxels_dst[:, 1])),
+                ),
+                slice(
+                    int(np.min(active_corner_voxels_dst[:, 2])),
+                    int(np.max(active_corner_voxels_dst[:, 2])),
+                ),
+            )
 
     def correct_metadata(self, image: darsia.Image) -> dict:
         """Correction routine of metadata.
@@ -167,8 +217,7 @@ class CoordinateTransformation:
             darsia.Image: transformed image
 
         """
-        # Transform the image data (without touching the meta) - essentially call
-        # correct_array().
+        # Transform the image data (without touching the meta)
         transformed_image_with_original_meta = self.affine_correction(
             image, overwrite=False
         )

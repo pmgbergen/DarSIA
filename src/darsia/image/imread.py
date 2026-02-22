@@ -8,6 +8,8 @@ are supported:
 
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 from operator import itemgetter
 from pathlib import Path
@@ -18,6 +20,7 @@ import cv2
 import numpy as np
 import pydicom
 from PIL import Image as PIL_Image
+from scipy.interpolate import NearestNDInterpolator
 
 import darsia
 
@@ -53,6 +56,12 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
             tmp_path = tmp_path + list(p.glob("*"))
         path = sorted(tmp_path)
 
+    # Check if files exist
+    if isinstance(path, list):
+        assert all([p.exists() for p in path]), "Not all files exist."
+    else:
+        assert path.exists(), f"File {path} does not exist."
+
     # Determine file type of images
     suffix = kwargs.get("suffix", None)
 
@@ -69,12 +78,49 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
     # Depending on the ending run the corresponding routine.
     if suffix == ".npy":
         return imread_from_numpy(path, **kwargs)
+    elif suffix == ".npz":
+        return imread_from_npz(path)
     elif suffix in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]:
         return imread_from_optical(path, **kwargs)
     elif suffix in [".dcm"]:
         return imread_from_dicom(path, **kwargs)
     elif suffix in [".vtu"]:
         return imread_from_vtu(path, **kwargs)
+    else:
+        raise NotImplementedError(f"Filetype {suffix} not supported.")
+
+
+def imread_from_bytes(
+    data: bytes,
+    transformations: Optional[list] = None,
+    **kwargs,
+) -> darsia.Image:
+    """Initialization of Image by reading from byte string.
+
+    Args:
+        data (bytes): byte string of image.
+        transformations (list of callables): transformations.
+        kwargs: keyword arguments.
+
+    Returns:
+        darsia.Image: image; scalar or optical, depending on the number of channels.
+
+    """
+    # Read image from byte string, convert to RGB
+    array = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_UNCHANGED)
+
+    if len(array.shape) == 3 and array.shape[-1] == 3:
+        # If multichromatic, convert to RGB (Assume BGR format from cv2)
+        array = cv2.cvtColor(array, cv2.COLOR_BGR2RGB)
+        return darsia.OpticalImage(img=array, transformations=transformations, **kwargs)
+    elif len(array.shape) == 2:
+        return darsia.ScalarImage(img=array, transformations=transformations, **kwargs)
+    elif len(array.shape) == 3 and array.shape[-1] == 1:
+        return darsia.ScalarImage(
+            img=array[..., 0], transformations=transformations, **kwargs
+        )
+    else:
+        raise NotImplementedError
 
 
 # ! ---- Numpy arrays
@@ -99,6 +145,20 @@ def imread_from_numpy(
     return image
 
 
+def imread_from_npz(path: Union[Path, list[Path]]) -> darsia.Image:
+    """Converter from npz format to darsia.Image.
+
+    Args:
+        path (Path or list of Path): path(s) to npz files.
+
+    """
+    npzdata = np.load(path, allow_pickle=True)
+    array = npzdata["array"]
+    metadata = npzdata["metadata"].item()
+    image = darsia.Image(array, **metadata)
+    return image
+
+
 # ! ---- Optical images
 
 
@@ -116,8 +176,9 @@ def imread_from_optical(
             automatically detected from metadata if 'None'.
         transformations (list of callables): transformations for 2d images.
         keyword arguments:
-            series (bool): flag controlling whether a time series of images
-                is created.
+            date (datetime): custom datetime; otherwise read from metadata
+            color_space (str): custom color space; RGB is assumed otherwise
+            any arguments accepted by Image
 
     Returns:
         OpticalImage (or list of such): converted image, list of such, or
@@ -127,22 +188,25 @@ def imread_from_optical(
     # TODO check method for grayscale images. shape of array?
 
     if isinstance(path, Path):
-        # Single image
-
+        # Read single image incl. date from metadata of the image
         array, date = _read_single_optical_image(path)
 
-        # Fix metadata
+        # Use the date only if not provided separately
+        if "date" not in kwargs:
+            kwargs["date"] = date
+
+        # Enhance metadata
         kwargs["series"] = False
-        kwargs["color_space"] = "RGB"
+        if "color_space" not in kwargs:
+            kwargs["color_space"] = "RGB"
 
         # Define image
         image = darsia.OpticalImage(
             img=array,
-            date=date,
             time=time,
             transformations=transformations,
             **kwargs,
-        )
+        ).img_as(float)
 
         return image
 
@@ -167,7 +231,7 @@ def imread_from_optical(
             time=time,
             transformations=transformations,
             **kwargs,
-        )
+        ).img_as(float)
         return image
 
     else:
@@ -421,7 +485,8 @@ def imread_from_dicom(
     # Collect all meta information for a space time image
     dimensions = [voxel_size[i] * shape[i] for i in range(dim)]
     meta = {
-        "dim": dim,
+        # "name": series_description[0],
+        "space_dim": dim,
         "indexing": "ijk"[:dim],
         "dimensions": dimensions,
         "series": series,
@@ -435,9 +500,6 @@ def imread_from_dicom(
 
 # ! ---- VTU images
 
-# NOTE: Actually since meshio is used here, any format should work, but it is only
-# tested for vtu images.
-
 
 def imread_from_vtu(
     path: Union[Path, list[Path]],
@@ -445,9 +507,10 @@ def imread_from_vtu(
     shape: tuple[int],
     **kwargs,
 ) -> darsia.Image:
-    """Reading routine for vtu input.
+    """Reading routine for data readible with meshio.
 
-    NOTE: Only for 1d and 2d vtu images.
+    NOTE: Only for 1d and 2d vtu images. Actually since meshio is used here, any format
+    should work, but it is only tested for vtu images.
 
     Includes mapping onto a pixelated grid.
 
@@ -477,13 +540,13 @@ def imread_from_vtu(
 
         # Create a space-time optical image through stacking along the time axis
         meta = data_collection[0][1]  # NOTE: No safety check
-        dim = meta["dim"]
+        dim = meta["space_dim"]
         data = np.stack([d[0] for d in data_collection], axis=dim)
 
         # Fix metadata
         meta["series"] = True
 
-    meta["time"] = kwargs.get("time", None)  # TODO from pvd file
+    meta["time"] = kwargs.get("time", None)
 
     # Define image
     return darsia.ScalarImage(data, **meta)
@@ -555,7 +618,7 @@ def _read_single_vtu_image(
 
     # Collect all metadata
     meta = {
-        "dim": dim,
+        "space_dim": dim,
         "indexing": indexing,
         "dimensions": dimensions,
         "origin": origin,
@@ -582,8 +645,7 @@ def _resample_data(
     shape: tuple[int],
     meta: dict,
 ) -> np.ndarray:
-    """
-    Projection of data on arbitrary mesh to regular voxel grids (in 2d and 3d).
+    """Sampling of data on arbitrary mesh to regular voxel grids (in 2d and 3d).
 
     Args:
         data (array): data array.
@@ -594,7 +656,7 @@ def _resample_data(
 
     """
     # Fetch meta data
-    dim = meta["dim"]
+    dim = meta["space_dim"]
     indexing = meta["indexing"]
 
     # Problem size
@@ -642,6 +704,34 @@ def _resample_data(
     voxels_indexing = tuple(voxels[:, j] for j in range(dim))
     pixelated_data[voxels_indexing] += data
 
+    # Fill-in values if required.
+    fill_in = np.ones(shape, dtype=bool)
+    fill_in[voxels_indexing] = False
+    have_value = np.logical_not(fill_in)
+    if np.any(fill_in):
+        # Interpolate for all pixels
+        pixels = np.nonzero(have_value)
+        pixel_data = pixelated_data[pixels]
+        interpolator = NearestNDInterpolator(
+            np.transpose(np.vstack(pixels)), pixel_data
+        )
+
+        # Define mesh as input for interpolation
+        Ny, Nx = shape
+        x = np.arange(Nx)
+        y = np.arange(Ny)
+        X_pixel, Y_pixel = np.meshgrid(x, y)
+        full_pixel_vector = np.transpose(
+            np.vstack((np.ravel(Y_pixel), np.ravel(X_pixel)))
+        )
+
+        # Evaluate interpolation
+        full_data_vector = interpolator(full_pixel_vector)
+        full_data = full_data_vector.reshape(shape)
+
+        # Assign to pixelated data
+        pixelated_data = full_data
+
     return pixelated_data
 
 
@@ -687,7 +777,7 @@ def _embed_data(
 
     """
     # Fetch meta data
-    dim = meta["dim"]
+    dim = meta["space_dim"]
     if dim != 2:
         raise NotImplementedError
     indexing = meta["indexing"]

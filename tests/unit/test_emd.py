@@ -24,9 +24,10 @@ def test_emd_2d_single_pixel():
     # Determine the EMD
     distance = emd(mass1, mass2)
 
-    # Test whether the distance is essentially the Euclidean distance
+    # Test whether the distance is essentially the Euclidean distance, times the pixel size.
     euclidean_distance = ((0.4 * 1) ** 2 + (0.5 * 2) ** 2) ** 0.5
-    assert np.isclose(distance, euclidean_distance)
+    cell_volume = np.prod(mass1.voxel_size)
+    assert np.isclose(distance, euclidean_distance * cell_volume)
 
 
 def test_emd_2d_resize():
@@ -55,6 +56,10 @@ def test_emd_2d_resize():
     # Determine the EMD
     distance = emd(mass1, mass2)
 
+    # Determine cell volume of resized array
+    resized_mass1 = resize(mass1)
+    resized_cell_volume = np.prod(resized_mass1.voxel_size)
+
     # Test whether the distance is essentially the Euclidean distance
     euclidean_distance = ((0.4 * 1) ** 2 + (0.5 * 2) ** 2) ** 0.5
-    assert np.isclose(distance, euclidean_distance)
+    assert np.isclose(distance, euclidean_distance * resized_cell_volume)

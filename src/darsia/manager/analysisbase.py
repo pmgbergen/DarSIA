@@ -1,9 +1,12 @@
-"""
-Module providing structures for common analyses. In practice, such may
-have to be tailored to the specific scenario. Yet, they already provide
-many of the most relevant functionalities. If not applicable, they also
+"""Module providing structures for common analyses.
+
+In practice, such may have to be tailored to the specific scenario. Yet, they already
+provide many of the most relevant functionalities. If not applicable, they also
 provide the approach for how to set up tailored analysis classes.
+
 """
+
+from __future__ import annotations
 
 import json
 import time
@@ -221,4 +224,4 @@ class AnalysisBase:
 
             # Information to the user
             if self.verbosity:
-                print(f"Elapsed time for {img.name}: {time.time()- tic}.")
+                print(f"Elapsed time for {img.name}: {time.time() - tic}.")

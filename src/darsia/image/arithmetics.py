@@ -1,7 +1,8 @@
-"""Utils for non-standard arithmetics of images,
-as weighted superposition.
+"""Utils for non-standard arithmetics of images, as weighted superposition.
 
 """
+
+from __future__ import annotations
 
 from typing import Union
 
@@ -32,9 +33,10 @@ def weight(img: darsia.Image, weight: Union[float, int, darsia.Image]) -> darsia
         weighted_img.img *= weight
 
     elif isinstance(weight, darsia.Image):
-        assert darsia.check_equal_coordinatesystems(
+        equal_coordinate_system, log = darsia.check_equal_coordinatesystems(
             img.coordinatesystem, weight.coordinatesystem, exclude_size=True
         )
+        assert equal_coordinate_system, f"{log}"
         space_dim = img.space_dim
         assert len(weight.img.shape) == space_dim
 
@@ -148,7 +150,7 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
     dimensions = [cartesian_dimensions[i] for i in to_matrix_indexing]
 
     meta = {
-        "dim": space_dim,
+        "space_dim": space_dim,
         "indexing": indexing,
         "dimensions": dimensions,
         "origin": origin,
@@ -186,7 +188,7 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
         mapped_voxel_origin = image.coordinatesystem.voxel(origin)
         mapped_voxel_opposite_corner = image.coordinatesystem.voxel(opposite_corner)
 
-        pts_dst = np.array(
+        pts_dst = darsia.make_voxel(
             [
                 [mapped_voxel_origin[0], mapped_voxel_origin[1]],
                 [mapped_voxel_opposite_corner[0], mapped_voxel_origin[1]],
@@ -203,7 +205,7 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
             rows, cols = array.shape
 
             # Use corners as pts_src
-            pts_src = np.array(
+            pts_src = darsia.make_voxel(
                 [
                     [0, 0],
                     [rows, 0],
@@ -217,7 +219,6 @@ def superpose(images: list[darsia.Image]) -> darsia.Image:
                 img_src=array,
                 pts_src=pts_src,
                 pts_dst=pts_dst,
-                indexing="matrix",
                 interpolation="inter_area",
                 shape=space_shape,
             )

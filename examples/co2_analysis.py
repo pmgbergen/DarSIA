@@ -18,11 +18,12 @@ class TailoredTracerAnalysis(darsia.TracerAnalysis):
         """Definition of signal to data conversion."""
 
         return darsia.ConcentrationAnalysis(
-            self.base,  # baseline image
-            darsia.MonochromaticReduction(color="red"),  # signal reduction
-            None,  # signal balancing
-            darsia.TVD(),  # restoration
-            darsia.CombinedModel(  # signal to data conversion
+            base=self.base,  # baseline image
+            signal_reduction=darsia.MonochromaticReduction(
+                color="red"
+            ),  # signal reduction
+            restoration=darsia.TVD(),  # restoration
+            model=darsia.CombinedModel(  # signal to data conversion
                 [
                     darsia.LinearModel(scaling=4.0),
                     darsia.ClipModel(**{"min value": 0.0, "max value": 1.0}),
@@ -56,5 +57,4 @@ test_image = image_folder + "co2_2.jpg"
 test_co2 = co2_analysis.single_image_analysis(test_image)
 
 # Store the final results
-test_co2.write_array("co2_test")
-test_co2.write("co2_test.jpg", quality=20)
+test_co2.write("co2_test.jpg")

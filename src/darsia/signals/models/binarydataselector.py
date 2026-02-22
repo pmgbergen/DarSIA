@@ -1,6 +1,8 @@
+"""Module containing several utils operating on binary signals.
+
 """
-Module containing several utils operating on binary signals.
-"""
+
+from __future__ import annotations
 
 import abc
 from typing import Callable, Optional, Union
