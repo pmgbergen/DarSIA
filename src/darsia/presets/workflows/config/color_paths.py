@@ -1,0 +1,122 @@
+"""Color paths configuration for the calibration workflow."""
+
+import logging
+from dataclasses import dataclass, field
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+from .utils import (
+    _get_key,
+    _get_section_from_toml,
+)
+
+
+@dataclass
+class ColorPathsConfig:
+    """Configuration for color paths calibration."""
+
+    num_segments: int = 1
+    """Number of segments for the color path."""
+    ignore_labels: list[int] = field(default_factory=list)
+    """List of labels to ignore in color analysis."""
+    resolution: int = 51
+    """Resolution for the color spectrum."""
+    threshold_baseline: float = 0.0
+    """Threshold for baseline images."""
+    threshold_calibration: float = 0.0
+    """Threshold for calibration images."""
+    baseline_image_paths: list[Path] = field(default_factory=list[Path])
+    """List of image paths used for baseline."""
+    data: TimeData | None = None
+    """Calibration data configuration."""
+    calibration_file: Path = field(default_factory=Path)
+    """Path to the calibration file."""
+    baseline_color_spectrum_folder: Path = field(default_factory=Path)
+    """Path to the baseline color spectrum file."""
+    color_range_file: Path = field(default_factory=Path)
+    """Path to the color range file."""
+    reference_label: int = 0
+    """Label to use as reference for visualization."""
+
+    def load(
+        self, path: Path, data: Path | None, results: Path | None = None
+    ) -> "ColorPathsConfig":
+        """Load color paths config from a toml file from [section]."""
+        # Get section
+        sec = _get_section_from_toml(path, "color_paths")
+
+        # Get parameters
+        self.num_segments = _get_key(
+            sec, "num_segments", default=1, required=False, type_=int
+        )
+        self.ignore_labels = _get_key(sec, "ignore_labels", required=False, type_=list)
+        self.resolution = _get_key(
+            sec, "resolution", default=51, required=False, type_=int
+        )
+        self.threshold_baseline = _get_key(
+            sec, "threshold_baseline", default=0.0, required=False, type_=float
+        )
+        self.threshold_calibration = _get_key(
+            sec, "threshold_calibration", default=0.0, required=False, type_=float
+        )
+        self.reference_label = _get_key(
+            sec, "reference_label", default=0, required=False, type_=int
+        )
+
+        # Data management
+        self.baseline_image_paths = TimeData().load(sec["baseline"], data).image_paths
+
+        self.data = TimeData().load(sec["data"], data)
+
+        self.calibration_file = _get_key(
+            sec, "calibration_file", required=False, type_=Path
+        )
+        if not self.calibration_file:
+            assert results is not None
+            self.calibration_file = results / "calibration" / "color_paths"
+        self.baseline_color_spectrum_folder = _get_key(
+            sec, "baseline_color_spectrum_folder", required=False, type_=Path
+        )
+        if not self.baseline_color_spectrum_folder:
+            assert results is not None
+            self.baseline_color_spectrum_folder = (
+                results / "calibration" / "baseline_color_spectrum"
+            )
+        self.color_range_file = _get_key(
+            sec, "color_range_file", required=False, type_=Path
+        )
+        if not self.color_range_file:
+            assert results is not None
+            self.color_range_file = results / "calibration" / "color_range"
+        return self
+
+    def error(self):
+        raise ValueError(
+            """Use [color_paths] in the config file to load color paths.
+            
+            Example:
+            --------------
+
+            [color_paths]
+            ignore_labels = [0, 1]
+            resolution = 51
+            threshold_baseline = 0.0
+            threshold_calibration = 0.0
+            reference_label = 0
+            calibration_file = "path/to/calibration/file"
+
+            [color_paths.baseline.image_paths.calibration]
+            paths = [
+                "relative/path/to/calibration/image1",
+                "relative/path/to/calibration/image2"
+            ]
+
+            [color_paths.data.image_time_interval.calibration]
+            start = "00:00:00"
+            end = "10:00:00"
+            step = "01:00:00"
+            tol = "00:05:00"
+
+            """
+        )
