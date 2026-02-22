@@ -4,14 +4,10 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-from .utils import (
-    _get_key,
-    _get_section_from_toml,
-)
-
 from .fluidflower_config import FluidFlowerConfig
-from .wasserstein import WassersteinDistancesConfig
 from .roi import MultiRoiConfig
+from .utils import _get_key, _get_section_from_toml
+from .wasserstein import WassersteinDistancesConfig
 
 
 @dataclass

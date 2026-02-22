@@ -1,20 +1,16 @@
 """Configuration for data handling in FluidFlower workflows."""
 
 # Add imports
-from dataclasses import dataclass, field
-from pathlib import Path
 import logging
 import warnings
+from dataclasses import dataclass, field
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-from .utils import (
-    _get_section,
-    _get_key,
-    _convert_to_hours,
-)
-
 import numpy as np
+
+from .utils import _convert_to_hours, _get_key, _get_section
 
 
 @dataclass

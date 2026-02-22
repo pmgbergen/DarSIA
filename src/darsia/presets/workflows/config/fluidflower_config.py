@@ -9,17 +9,17 @@ from warnings import warn
 
 logger = logging.getLogger(__name__)
 
-from .rig import RigConfig
-from .time_data import TimeData
-from .data import DataConfig
-from .labeling import LabelingConfig
-from .facies import FaciesConfig
-from .depth import DepthConfig
-from .protocol import ProtocolConfig
+from .analysis import AnalysisConfig
 from .color_paths import ColorPathsConfig
 from .color_to_mass import ColorToMassConfig
+from .data import DataConfig
+from .depth import DepthConfig
+from .facies import FaciesConfig
+from .labeling import LabelingConfig
+from .protocol import ProtocolConfig
+from .rig import RigConfig
 from .segmentation import SegmentationConfig
-from .analysis import AnalysisConfig
+from .time_data import TimeData
 
 
 @dataclass

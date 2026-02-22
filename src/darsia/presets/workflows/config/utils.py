@@ -1,9 +1,9 @@
 """Utility functions for TOML parsing"""
 
 import tomllib
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
-from datetime import timedelta
 
 
 def _get_section(data: dict, section: str) -> dict:
