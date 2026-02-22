@@ -1,3 +1,1 @@
-"""Smoothness and shape altering restoration algorithms.
-
-"""
+"""Smoothness and shape altering restoration algorithms."""

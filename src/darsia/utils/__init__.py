@@ -1,3 +1,1 @@
-"""Utility functionalities.
-
-"""
+"""Utility functionalities."""

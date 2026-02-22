@@ -1,3 +1,1 @@
-"""Post-processing tools for physical data.
-
-"""
+"""Post-processing tools for physical data."""

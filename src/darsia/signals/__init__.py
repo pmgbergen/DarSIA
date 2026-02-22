@@ -1,3 +1,1 @@
-"""Dimensionsional reduction and transformation of signals.
-
-"""
+"""Dimensionsional reduction and transformation of signals."""
