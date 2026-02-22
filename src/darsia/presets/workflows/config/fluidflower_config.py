@@ -20,27 +20,7 @@ from .time_data import TimeData
 from .data import DataConfig
 from .labeling import LabelingConfig
 from .facies import FaciesConfig
-
-
-@dataclass
-class FluidFlowerDepthConfig:
-    measurements: Path = field(default_factory=Path)
-    """Path to the csv file containing the depth measurements."""
-    depth_map: Path = field(default_factory=Path)
-    """Path to the depth map file."""
-
-    def load(self, path: Path, results: Path | None = None) -> "FluidFlowerDepthConfig":
-        """Load depth config from a toml file from [section]."""
-        sec = _get_section_from_toml(path, "depth")
-        self.measurements = _get_key(sec, "measurements", required=True, type_=Path)
-        self.depth_map = _get_key(sec, "depth_map", required=False, type_=Path)
-        if not self.depth_map:
-            assert results is not None
-            self.depth_map = results / "setup" / "depth_map.npz"
-        return self
-
-    def error(self):
-        raise ValueError("Use [depth] in the config file to load depth.")
+from .depth import DepthConfig
 
 
 @dataclass
@@ -579,7 +559,7 @@ class FluidFlowerConfig:
 
         # ! ---- DEPTH ---- ! #
         try:
-            self.depth: FluidFlowerDepthConfig | None = FluidFlowerDepthConfig()
+            self.depth: DepthConfig | None = DepthConfig()
             self.depth.load(
                 path=path,
                 results=self.data.results if self.data else None,
@@ -656,7 +636,7 @@ class FluidFlowerConfig:
         elif key == "labeling" and not self.labeling:
             LabelingConfig().error()
         elif key == "depth" and not self.depth:
-            FluidFlowerDepthConfig().error()
+            DepthConfig().error()
         elif key == "rig" and not self.rig:
             RigConfig().error()
         elif key == "protocol" and not self.protocol:
