@@ -1,6 +1,5 @@
-"""Root directory for DarSIA.
-
-isort:skip_file
+"""DarSIA provides tools for quantitative image processing with support for various and
+common data types in computational and laboratory porous media research.
 
 """
 

@@ -1,9 +1,10 @@
-"""Image class.
+"""Image module defining various image types.
 
-Images contain the image array, and in addition metadata about origin and dimensions.
+A central concept in DarSIA is that images (``Image`` objects) have a physical
+interpretation. These are enhanced by physical scales in space and time. Thus
+they contain a coordinatesystem.
 
 """
-
 from __future__ import annotations
 
 import copy
@@ -943,8 +944,8 @@ class Image:
         """Show routine using matplotlib.pyplot built-in methods.
 
         Args:
-            title (str): title in the displayed window.
-            duration (int, optional): display duration in seconds.
+            title: title in the displayed window.
+            duration: display duration in seconds.
             **kwargs: additional arguments passed to matplotlib.pyplot.
                 threshold (float): threshold for displaying 3d images.
                 relative (bool): flag controlling whether the threshold is relative.
