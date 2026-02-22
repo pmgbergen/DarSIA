@@ -19,33 +19,7 @@ from .rig import RigConfig
 from .time_data import TimeData
 from .data import DataConfig
 from .labeling import LabelingConfig
-
-
-@dataclass
-class FluidFlowerFaciesConfig:
-    id: list[int] = field(default_factory=list)
-    """List of facies IDs."""
-    props: Path = field(default_factory=Path)
-    """Path to the facies properties file."""
-    path: Path = field(default_factory=Path)
-    """Path to the facies file."""
-    groups: dict[int, str] = field(default_factory=dict)
-    """Mapping from facies ID to facies."""
-
-    def load(
-        self, path: Path, results: Path | None = None
-    ) -> "FluidFlowerFaciesConfig":
-        """Load facies config from a toml file from [section]."""
-        sec = _get_section_from_toml(path, "facies")
-        self.id = _get_key(sec, "id", required=True, type_=list)
-        self.props = _get_key(sec, "props", required=True, type_=Path)
-        self.path = _get_key(sec, "path", required=False, type_=Path)
-        self.id_label_map = {i: sec[str(i)]["labels"] for i in self.id}
-        if not self.path:
-            assert results is not None
-            self.path = results / "setup" / "facies.npz"
-
-        return self
+from .facies import FaciesConfig
 
 
 @dataclass
@@ -594,7 +568,7 @@ class FluidFlowerConfig:
 
         # ! ---- FACIES ---- ! #
         try:
-            self.facies: FluidFlowerFaciesConfig | None = FluidFlowerFaciesConfig()
+            self.facies: FaciesConfig | None = FaciesConfig()
             self.facies.load(
                 path=path,
                 results=self.data.results if self.data else None,
