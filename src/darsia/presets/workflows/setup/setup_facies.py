@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 import darsia
-from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)

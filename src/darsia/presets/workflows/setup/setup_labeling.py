@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 
 logger = logging.getLogger(__name__)
 

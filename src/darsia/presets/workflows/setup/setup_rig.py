@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Type
 
 import darsia
-from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.rig import Rig
 
 # Set logging level

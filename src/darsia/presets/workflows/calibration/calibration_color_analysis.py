@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 
 import darsia
-from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_analysis import (
     HeterogeneousColorAnalysis,
 )

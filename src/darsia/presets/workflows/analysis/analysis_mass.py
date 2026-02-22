@@ -11,7 +11,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
-from darsia.presets.workflows.fluidflower_config import AnalysisMassConfig
+from darsia.presets.workflows.config.fluidflower_config import AnalysisMassConfig
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import darsia
-from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )

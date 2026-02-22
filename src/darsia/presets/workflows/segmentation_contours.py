@@ -4,7 +4,7 @@ import logging
 
 import darsia
 from darsia.utils.augmented_plotting import plot_contour_on_image
-from darsia.presets.workflows.fluidflower_config import SegmentationConfig
+from darsia.presets.workflows.config.fluidflower_config import SegmentationConfig
 
 logger = logging.getLogger(__name__)
 
