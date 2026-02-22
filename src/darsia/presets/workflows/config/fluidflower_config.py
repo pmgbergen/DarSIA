@@ -23,31 +23,7 @@ from .facies import FaciesConfig
 from .depth import DepthConfig
 from .protocol import ProtocolConfig
 from .color_paths import ColorPathsConfig
-
-
-@dataclass
-class ColorToMassConfig:
-    data: TimeData | None = None
-    """Calibration data configuration."""
-    calibration_folder: Path = field(default_factory=Path)
-    """Path to the calibration folder."""
-
-    def load(
-        self, path: Path, data: Path | None, results: Path | None = None
-    ) -> "ColorToMassConfig":
-        sec = _get_section_from_toml(path, "color_to_mass")
-        try:
-            self.data = TimeData().load(sec["data"], data)
-        except KeyError:
-            warn("No data found. Use [color_to_mass.data].")
-            self.data = None
-        self.calibration_folder = _get_key(
-            sec, "calibration_folder", required=False, type_=Path
-        )
-        if not self.calibration_folder:
-            assert results is not None
-            self.calibration_folder = results / "calibration" / "color_to_mass"
-        return self
+from .color_to_mass import ColorToMassConfig
 
 
 @dataclass
