@@ -3,144 +3,20 @@
 import json
 import logging
 import tomllib
-import numpy as np
 from dataclasses import dataclass, field
 from pathlib import Path
 from warnings import warn
-from typing import Any
-from datetime import timedelta
 from darsia import CoordinateArray
 
 logger = logging.getLogger(__name__)
 
+from .utils import (
+    _get_section,
+    _get_key,
+    _get_section_from_toml,
+)
 
-# Utility functions for TOML parsing
-def _get_section(data: dict, section: str) -> dict:
-    """Utility to get a section from a toml-loaded dictionary."""
-    try:
-        return data[section]
-    except KeyError:
-        raise KeyError(f"Section {section} not found.")
-
-
-def _get_section_from_toml(path: Path | list[Path], section: str) -> dict:
-    if isinstance(path, Path):
-        data = tomllib.loads(path.read_text())
-    elif isinstance(path, list):
-        data = {}
-        for p in path:
-            part = tomllib.loads(p.read_text())
-            data.update(part)
-    else:
-        raise TypeError(f"Path must be a Path or list of Paths. It is {type(path)}.")
-    sec = _get_section(data, section)
-    return sec
-
-
-def _get_key(section: dict, key: str, default=None, required=True, type_=None) -> Any:
-    """Utility to get a key from a section with type conversion and default value."""
-    if required and key not in section:
-        raise KeyError(f"Missing key '{key}' in section {section}.")
-
-    if key in section:
-        value = section[key]
-        return type_(value) if type_ else value
-    else:
-        return default
-
-
-def _convert_to_hours(time_value: float | str) -> float:
-    """Convert time value to hours.
-
-    Args:
-        time_value: Time as float (hours) or string in "DD:HH:MM:SS" format
-
-    Returns:
-        Time in hours as float
-
-    """
-    if isinstance(time_value, (int, float)):
-        return float(time_value)
-
-    if isinstance(time_value, str):
-        # Handle "DD:HH:MM:SS", "HH:MM:SS", "HH:MM", or "HH" format
-        assert ":" in time_value
-        parts = time_value.split(":")
-        if len(parts) == 4:
-            # DD:HH:MM:SS format
-            days = int(parts[0])
-            hours = int(parts[1])
-            minutes = int(parts[2])
-            seconds = int(parts[3])
-        elif len(parts) == 3:
-            # HH:MM:SS format
-            days = 0
-            hours = int(parts[0])
-            minutes = int(parts[1])
-            seconds = int(parts[2])
-        elif len(parts) == 2:
-            # HH:MM format
-            days = seconds = 0
-            hours = int(parts[0])
-            minutes = int(parts[1])
-        elif len(parts) == 1:
-            # HH format
-            days = minutes = seconds = 0
-            hours = int(parts[0])
-            total_hours = hours
-        else:
-            raise ValueError(
-                f"Invalid time format: {time_value}. Use DD:HH:MM:SS, HH:MM:SS, HH:MM, or HH"
-            )
-        total_hours = (
-            timedelta(
-                days=days, hours=hours, minutes=minutes, seconds=seconds
-            ).total_seconds()
-            / 3600
-        )
-        return total_hours
-
-    raise ValueError(
-        f"Invalid time value: {time_value}. Must be float or DD:HH:MM:SS format"
-    )
-
-
-def _convert_none(v):
-    return None if ((isinstance(v, str) and v.lower() == "none") or v is None) else v
-
-
-@dataclass
-class TimeData:
-    image_paths: list[Path] = field(default_factory=list)
-    """List of image paths corresponding to the image times."""
-    image_times: list[float] = field(default_factory=list)
-    """List of image times in hours since experiment start."""
-
-    def load(self, sec: dict, data: Path | None) -> "TimeData":
-        sub_sec = _get_section(sec, "data")
-
-        # Load image paths
-        self.image_paths = sorted(
-            [
-                Path(p) if data is None else data / p
-                for p in _get_key(
-                    sub_sec, "image_paths", default=[], required=False, type_=list[Path]
-                )
-            ]
-        )
-
-        # Load image times
-        self.image_times = load_image_times(sub_sec)
-
-        if len(self.image_paths) > 0 and len(self.image_times) > 0:
-            raise ValueError("Provide either image_times or image_paths, not both.")
-
-        return self
-
-    def error(self):
-        raise ValueError(
-            f"Use key `data` within the considered subsection in the config file to load data."
-        )
+from .data import TimeData
 
 
 @dataclass
@@ -445,7 +321,10 @@ class ColorPathsConfig:
         self, path: Path, data: Path | None, results: Path | None = None
     ) -> "ColorPathsConfig":
         """Load color paths config from a toml file from [section]."""
+        # Get section
         sec = _get_section_from_toml(path, "color_paths")
+
+        # Get parameters
         self.num_segments = _get_key(
             sec, "num_segments", default=1, required=False, type_=int
         )
@@ -459,27 +338,15 @@ class ColorPathsConfig:
         self.threshold_calibration = _get_key(
             sec, "threshold_calibration", default=0.0, required=False, type_=float
         )
-        self.baseline_image_paths = sorted(
-            [
-                Path(p) if data is None else data / p
-                for p in _get_key(
-                    sec,
-                    "baseline_image_paths",
-                    default=[],
-                    required=False,
-                    type_=list[Path],
-                )
-            ]
-        )
-        try:
-            self.data = TimeData().load(sec, data)
-        except KeyError:
-            warn("No analysis data found. Use [color_paths.data].")
-            self.data = None
-
         self.reference_label = _get_key(
             sec, "reference_label", default=0, required=False, type_=int
         )
+
+        # Data management
+        self.baseline_image_paths = TimeData().load(sec["baseline"], data).image_paths
+
+        self.data = TimeData().load(sec["data"], data)
+
         self.calibration_file = _get_key(
             sec, "calibration_file", required=False, type_=Path
         )
@@ -512,12 +379,14 @@ class ColorPathsConfig:
             resolution = 51
             threshold_baseline = 0.0
             threshold_calibration = 0.0
-            baseline_images = [
-               "relative/path/to/baseline/image1",
-               "relative/path/to/baseline/image2"
-            ]
             reference_label = 0
             calibration_file = "path/to/calibration/file"
+
+            [color_paths.baseline.image_paths.calibration]
+            paths = [
+                "relative/path/to/calibration/image1",
+                "relative/path/to/calibration/image2"
+            ]
 
             [color_paths.data.image_time_interval.calibration]
             start = "00:00:00"
@@ -541,7 +410,7 @@ class ColorToMassConfig:
     ) -> "ColorToMassConfig":
         sec = _get_section_from_toml(path, "color_to_mass")
         try:
-            self.data = TimeData().load(sec, data)
+            self.data = TimeData().load(sec["data"], data)
         except KeyError:
             warn("No data found. Use [color_to_mass.data].")
             self.data = None
@@ -552,118 +421,6 @@ class ColorToMassConfig:
             assert results is not None
             self.calibration_folder = results / "calibration" / "color_to_mass"
         return self
-
-
-@dataclass
-class ImageTimeInterval:
-    start: float
-    """Start time of the interval, relative to experiment start, in hours."""
-    end: float
-    """End time of the interval, relative to experiment start, in hours."""
-    step: float
-    """Step size between images, in hours."""
-    num: int
-    """Number of images in the interval."""
-    tol: float | None = None
-    """Tolerance for time matching, in hours."""
-
-    def __init__(
-        self,
-        start: float | str,
-        end: float | str,
-        step: float | str | None = None,
-        num: int = 0,
-        tol: float | None = None,
-    ):
-        self.start = _convert_to_hours(start)
-        self.end = _convert_to_hours(end)
-        self.step = _convert_to_hours(step or 0.0)
-        self.num = num
-        self.tol = _convert_to_hours(tol or 0.0)
-
-    def __post_init__(self):
-        self.step = (self.end - self.start) / self.num if self.num > 0 else 0
-        self.num = (
-            int((self.end - self.start) / self.step) + 1
-            if not np.isclose(self.step, 0)
-            else 0
-        )
-
-    def generate_times(self) -> list[float]:
-        return np.unique(np.linspace(self.start, self.end, self.num)).tolist()
-
-    def generate_times_with_uncertainty(self) -> list[tuple[float, float]]:
-        times = self.generate_times()
-        return [(t, self.tol) for t in times]
-
-
-def load_image_times(
-    sec: dict, include_uncertainty: bool = False
-) -> list[tuple[float, float]]:
-    """Load image times from a toml section together with tolerance."""
-
-    # Start with explicit times
-    image_times = sorted(
-        [
-            _convert_to_hours(t)
-            for t in _get_key(
-                sec,
-                "image_times",
-                default=[],
-                required=False,
-                type_=list[float | str],
-            )
-        ]
-    )
-    image_time_tolerance = _convert_to_hours(
-        _get_key(sec, "image_time_tolerance", required=False, type_=str | float) or 0.0
-    )
-    image_times_with_uncertainty = [(t, image_time_tolerance) for t in image_times]
-
-    # Add times provided as intervals
-    try:
-        intervals_sec = _get_section(sec, "image_time_interval")
-
-        # Loop through interval sections
-        interval_times_with_uncertainty = []
-        for interval_key in intervals_sec.keys():
-            interval_data = intervals_sec[interval_key]
-
-            # Create ImageTimeInterval object
-            # Allow start/end/step to be either float or string (HH:MM:SS format)
-            start = _get_key(interval_data, "start", required=True)
-            end = _get_key(interval_data, "end", required=True)
-            step = _get_key(interval_data, "step", required=False)
-            num = _get_key(interval_data, "num", required=False, type_=int)
-            tol = _get_key(interval_data, "tol", required=False)
-
-            # Create interval and generate times
-            interval = ImageTimeInterval(
-                start=start, end=end, step=step, num=num, tol=tol
-            )
-            interval_times_with_uncertainty.extend(
-                interval.generate_times_with_uncertainty()
-            )
-
-        # Append interval times to existing image_times and sort
-        image_times_with_uncertainty.extend(interval_times_with_uncertainty)
-
-    except KeyError:
-        # No image_time_interval section found, which is okay
-        pass
-
-    # TODO Add events.
-    ...
-
-    # Remove duplicates and sort based on first entry of the tuple
-    image_times_with_uncertainty = sorted(
-        list(set(image_times_with_uncertainty)), key=lambda x: x[0]
-    )
-
-    # Return based on user preference
-    if not include_uncertainty:
-        return [t for t, _ in image_times_with_uncertainty]
-    return image_times_with_uncertainty
 
 
 @dataclass
@@ -904,7 +661,7 @@ class AnalysisConfig:
 
         # Config to load analysis data
         try:
-            self.data = TimeData().load(sec, data)
+            self.data = TimeData().load(sec["data"], data)
         except KeyError:
             warn("No analysis data found. Use [analysis.data].")
             self.data = None
@@ -1025,7 +782,7 @@ class FluidFlowerConfig:
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
             )
-        except KeyError:
+        except ValueError:
             self.color_paths = None
             warn(f"Section color_paths not found in {path}.")
 
@@ -1037,7 +794,7 @@ class FluidFlowerConfig:
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
             )
-        except KeyError:
+        except ValueError:
             self.color_to_mass = None
             warn(f"Section color_to_mass not found in {path}.")
 
@@ -1329,15 +1086,17 @@ class WassersteinDistancesConfig:
         )
 
         # Load times.
-        self.times = []
         try:
-            self.times = load_image_times(data_section, include_uncertainty=True)
+            time_data = TimeData()
+            time_data.load(data_section["data"], data_folder=None)
+            self.times = time_data.get_times_with_uncertainty()
         except KeyError:
-            pass
+            logger.info("No times specified in Wasserstein config.")
+            self.times = []
 
         # Load ROIs
-        roi_name = _get_key(data_section, "roi", required=True, type_=list)
-        self.roi = {name: roi.roi[name] for name in roi_name}
+        roi_names = _get_key(data_section, "roi", required=True, type_=list)
+        self.roi = {name: roi.roi[name] for name in roi_names}
 
         return self
 
