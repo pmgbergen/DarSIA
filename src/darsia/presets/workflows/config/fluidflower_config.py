@@ -16,7 +16,7 @@ from .utils import (
     _get_section_from_toml,
 )
 from .rig import RigConfig
-from .data import TimeData
+from .time_data import TimeData
 
 
 @dataclass
