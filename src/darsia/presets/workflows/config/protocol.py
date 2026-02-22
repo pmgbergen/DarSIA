@@ -12,7 +12,9 @@ from .utils import (
 
 
 @dataclass
-class FluidFlowerProtocolConfig:
+class ProtocolConfig:
+    """Protocol configuration for the setup."""
+
     imaging: Path | tuple[Path, str] | None = None
     """Path to the imaging protocol file or (file, sheet)."""
     injection: Path | tuple[Path, str] | None = None
@@ -22,7 +24,7 @@ class FluidFlowerProtocolConfig:
     pressure_temperature: Path | tuple[Path, str] | None = None
     """Path to the pressure-temperature protocol file or (file, sheet)."""
 
-    def load(self, path: Path) -> "FluidFlowerProtocolConfig":
+    def load(self, path: Path) -> "ProtocolConfig":
         sec = _get_section_from_toml(path, "protocols")
         try:
             imaging_protocol = sec["imaging"]

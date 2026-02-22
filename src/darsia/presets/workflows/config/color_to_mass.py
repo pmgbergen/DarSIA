@@ -1,5 +1,23 @@
+"""Configuration for color to mass calibration"""
+
+import logging
+from dataclasses import dataclass, field
+from pathlib import Path
+from warnings import warn
+
+logger = logging.getLogger(__name__)
+
+from .utils import (
+    _get_key,
+    _get_section_from_toml,
+)
+from .time_data import TimeData
+
+
 @dataclass
 class ColorToMassConfig:
+    """Configuration for color to mass calibration"""
+
     mode: str = "manual"
     """Calibration mode (e.g., 'manual', 'automatic')."""
     fluid: str | None = "co2"

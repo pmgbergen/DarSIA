@@ -10,7 +10,7 @@ from .utils import (
     _get_key,
     _get_section_from_toml,
 )
-
+ifrom .time_data import TimeData
 
 @dataclass
 class ColorPathsConfig:
