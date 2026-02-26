@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Optional
 from warnings import warn
@@ -8,8 +9,6 @@ import pandas as pd
 from scipy import interpolate
 
 import darsia
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +49,9 @@ class PWTransformation:
             warn("No supports or values provided. Interpolator not updated.")
         else:
             # Sanity checks
-            assert len(self.values) == len(self.supports), (
-                f"wrong size: {len(values)} vs. {len(self.supports)}"
-            )
+            assert len(self.values) == len(
+                self.supports
+            ), f"wrong size: {len(values)} vs. {len(self.supports)}"
             values_diff = np.diff(values)
             assert np.all(values_diff > -1e-12), f"monotonicity broken {values_diff}"
 

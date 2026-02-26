@@ -63,9 +63,9 @@ class HeterogeneousModel(Model):
         """Dictionary of models for each label."""
         for j, label in enumerate(self.masks.unique_labels):
             if isinstance(obj, list):
-                assert len(obj) == len(self.masks.unique_labels), (
-                    "Length of model list must match number of unique labels."
-                )
+                assert len(obj) == len(
+                    self.masks.unique_labels
+                ), "Length of model list must match number of unique labels."
                 self.obj[label] = copy.copy(obj[j])
             elif isinstance(obj, dict):
                 assert label in obj, f"Label {label} not found in model dictionary."

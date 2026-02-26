@@ -3,7 +3,7 @@
 import abc
 import json
 from pathlib import Path
-from typing import overload, Literal
+from typing import Literal, overload
 
 import numpy as np
 
@@ -137,7 +137,8 @@ class ColorPathInterpolation(ColorPathFunction):
         """Load the ColorPathInterpolation from a file.
 
         Args:
-            path (Path): The path to the file from which the ColorPathInterpolation should be loaded.
+            path (Path): The path to the file from which the ColorPathInterpolation should be
+                loaded.
 
         Returns:
             ColorPathInterpolation: Loaded ColorPathInterpolation instance.
