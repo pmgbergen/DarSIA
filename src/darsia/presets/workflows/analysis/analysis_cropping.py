@@ -39,6 +39,10 @@ def analysis_cropping_from_context(
     """
     assert ctx.config.data is not None
 
+    assert (show + save_jpg + save_npz) > 0, (
+        "At least one of show, save_jpg, save_npz must be True"
+    )
+
     # ! ---- CROPPING ----
     plot_folder = ctx.config.data.results / "cropped_images"
     plot_folder.mkdir(parents=True, exist_ok=True)
