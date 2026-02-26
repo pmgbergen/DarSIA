@@ -1,6 +1,7 @@
-"""Module for managing a mapping between integer labels and their corresponding color spectrum."""
+"""Module for a mapping between integer labels and their corresponding color spectrum."""
 
 import logging
+
 import darsia
 
 logger = logging.getLogger(__name__)

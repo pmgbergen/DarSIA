@@ -2,17 +2,17 @@
 
 import copy
 import logging
-
-import numpy as np
 from pathlib import Path
-
-from sklearn.decomposition import PCA
-from sklearn.manifold import LocallyLinearEmbedding
-from sklearn.linear_model import LinearRegression
-import matplotlib.pyplot as plt
 from warnings import warn
 
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.linear_model import LinearRegression
+from sklearn.manifold import LocallyLinearEmbedding
+
 import darsia
+
 from .utils import get_mean_color
 
 logger = logging.getLogger(__name__)
@@ -267,9 +267,11 @@ class LabelColorPathMapRegression:
                 # Mark the ignored colors
                 if ignore is not None:
                     ax.voxels(
-                        ignore[label].spectrum
-                        if isinstance(ignore, darsia.LabelColorSpectrumMap)
-                        else ignore.spectrum,
+                        (
+                            ignore[label].spectrum
+                            if isinstance(ignore, darsia.LabelColorSpectrumMap)
+                            else ignore.spectrum
+                        ),
                         facecolors="red",
                         alpha=0.1,
                     )
@@ -502,9 +504,9 @@ class LabelColorPathMapRegression:
             darsia.ColorPath: The relative color path through the significant boxes.
 
         """
-        assert spectrum.color_range.color_mode == darsia.ColorMode.RELATIVE, (
-            "Color path regression only implemented for RELATIVE color mode."
-        )
+        assert (
+            spectrum.color_range.color_mode == darsia.ColorMode.RELATIVE
+        ), "Color path regression only implemented for RELATIVE color mode."
         # Step 0: Prepare
         num_dofs = num_segments + 1
 
@@ -559,7 +561,9 @@ class LabelColorPathMapRegression:
         sorted_relative_colors = np.vstack((origin, sorted_relative_colors))
 
         # Initialize segments
-        segments = []  # Find the two representative key colors representing the start and end of the path
+        segments = (
+            []
+        )  # Find the two representative key colors representing the start and end of the path
 
         def segment_error(segment_range):
             segment_embedding = sorted_embedding[segment_range]
@@ -805,7 +809,8 @@ class LabelColorPathMapRegression:
         """Find relative color paths for each label in the spectrum map.
 
         Args:
-            label_color_spectrum_map (LabelColorSpectrumMap): The color spectrum map to analyze.
+            label_color_spectrum_map (LabelColorSpectrumMap): The color spectrum map to
+                analyze.
             ignore (LabelColorSpectrumMap | None): The color spectrum map to ignore.
             num_segments (int): The number of segments for the color path.
             verbose (bool): Whether to print additional information.

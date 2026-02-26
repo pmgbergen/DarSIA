@@ -1,12 +1,13 @@
 """Module defining the ColorSpectrum data structure."""
 
-import numpy as np
-from dataclasses import dataclass
-import darsia
-from pathlib import Path
 import json
-
 import logging
+from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
+
+import darsia
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +150,8 @@ class ColorSpectrum:
         """Load the color spectrum from a file.
 
         Args:
-            file_path (Path): The path to the file from which the color spectrum will be loaded.
+            file_path (Path): The path to the file from which the color spectrum will be
+                loaded.
 
         Returns:
             ColorSpectrum: The loaded color spectrum.

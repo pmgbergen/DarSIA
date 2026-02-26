@@ -1,5 +1,6 @@
-import darsia
 import numpy as np
+
+import darsia
 
 try:
     from numba import jit
@@ -47,9 +48,9 @@ class DiscreteColorRange(darsia.ColorRange):
         if len(color.shape) == 1:
             shape = color.shape
             color = color.reshape((1, 3))
-        assert len(color.shape) == 2 and color.shape[1] == 3, (
-            f"Color array must have shape (N,3), got {color.shape}"
-        )
+        assert (
+            len(color.shape) == 2 and color.shape[1] == 3
+        ), f"Color array must have shape (N,3), got {color.shape}"
         if NUMBA_AVAILABLE:
             min_color = self.min_color.astype(np.float64)
             extent = self.extent.astype(np.float64)
@@ -126,9 +127,9 @@ def color_to_index_numba(
         color (np.ndarray): Color array of shape (N,3).
 
     """
-    assert len(color.shape) == 2 and color.shape[1] == 3, (
-        f"Color array must have shape (N,3), got {color.shape}"
-    )
+    assert (
+        len(color.shape) == 2 and color.shape[1] == 3
+    ), f"Color array must have shape (N,3), got {color.shape}"
     num_colors = color.shape[0]
     indices = np.zeros((num_colors, 3), dtype=np.int32)
     for n in range(num_colors):

@@ -1,10 +1,12 @@
 """Module for tracking the range of active colors in an image."""
 
-import darsia
-import numpy as np
-from pathlib import Path
 import json
 import logging
+from pathlib import Path
+
+import numpy as np
+
+import darsia
 
 logger = logging.getLogger(__name__)
 

@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 

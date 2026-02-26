@@ -1,8 +1,9 @@
 """Module to find events."""
 
-import darsia
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+import darsia
 
 
 def find_images_for_datetimes(

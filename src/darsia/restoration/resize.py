@@ -63,9 +63,9 @@ class Resize:
 
         # Check if reference image is provided
         if ref_image is not None:
-            assert self.shape is None, (
-                "Provide only reference image or shape (not both)."
-            )
+            assert (
+                self.shape is None
+            ), "Provide only reference image or shape (not both)."
             self.shape = ref_image.num_voxels
 
         # Safety checks - double check resize options
@@ -104,6 +104,10 @@ class Resize:
 
         # Check for conservative rescaling
         self.is_conservative = kwargs.get(key + "resize conservative", False)
+
+    def __str__(self) -> str:
+        """String representation of the resize correction."""
+        return "resize"
 
     @overload
     def __call__(self, img: np.ndarray, overwrite: bool = False) -> np.ndarray: ...

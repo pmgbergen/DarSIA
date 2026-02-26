@@ -2,8 +2,9 @@
 
 import logging
 from pathlib import Path
-import darsia
 from typing import Literal
+
+import darsia
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,8 @@ class LabelColorPathMap(dict[int, darsia.ColorPath]):
         Args:
             color_path_map (LabelColorPathMap): The original color path map.
             num_segments (int): The number of segments to use for refinement.
-            distance_to_left (float, optional): Value to extend the color path to the left (inter).
+            distance_to_left (float, optional): Value to extend the color path to the left
+                (inter).
             distance_to_right (float, optional): Value to extend the color path to the right.
 
         Returns:

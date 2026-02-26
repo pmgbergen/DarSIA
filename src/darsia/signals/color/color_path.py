@@ -10,6 +10,7 @@ import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 
 import darsia
+
 from .utils import get_mean_color
 
 logger = logging.getLogger(__name__)

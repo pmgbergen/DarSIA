@@ -5,10 +5,12 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
-import pandas as pd
-import darsia
 from warnings import warn
+
 import numpy as np
+import pandas as pd
+
+import darsia
 
 
 @dataclass
@@ -403,7 +405,8 @@ class InjectionProtocol:
                     "ROI must be either a darsia.Image or darsia.CoordinateArray."
                 )
 
-            # Determine how much time of the interval has passed (between 0 and the full interval)
+            # Determine how much time of the interval has passed (between 0 and the full
+            # interval)
             if date is not None:
                 if date <= start:
                     # No time has passed in this interval
@@ -578,7 +581,8 @@ class PressureTemperatureProtocol:
             date (datetime): Date to get the pressure and temperature gradient for.
 
         Returns:
-            ThermodynamicState: Pressure [bar] and temperature [Celsius] gradient at the given date.
+            ThermodynamicState: Pressure [bar] and temperature [Celsius] gradient at the given
+                date.
 
         """
         # Find the two rows surrounding the date
