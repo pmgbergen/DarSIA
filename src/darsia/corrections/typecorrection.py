@@ -1,3 +1,5 @@
+"""Type correction for images."""
+
 from pathlib import Path
 
 import numpy as np
@@ -7,11 +9,12 @@ import darsia
 
 
 class TypeCorrection(darsia.BaseCorrection):
+    """Correction to convert image to a specified data type."""
+
     def __init__(self, data_type=None):
         self.data_type = data_type
 
     def correct_array(self, img: np.ndarray) -> np.ndarray:
-
         assert self.data_type is not None, "data_type is not defined"
 
         copy_image = img.copy()
