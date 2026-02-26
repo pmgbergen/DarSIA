@@ -69,20 +69,23 @@ def select_image_paths(
 
     if all or sub_config is None:
         assert config.data.data is not None
-        image_paths = config.data.data
+        paths = config.data.data
+        image_paths = experiment.find_images_for_paths(paths=paths)
     elif (
         hasattr(sub_config, "data")
         and sub_config.data is not None
         and len(sub_config.data.image_paths) > 0
     ):
-        image_paths = sub_config.data.image_paths
+        paths = sub_config.data.image_paths
+        image_paths = experiment.find_images_for_paths(paths=paths)
     elif (
         hasattr(sub_config, "image_paths")
         and sub_config.image_paths is not None
         and len(sub_config.image_paths) > 0
     ):
         # Fallback for cropping which uses sub_config.image_paths directly
-        image_paths = sub_config.image_paths
+        paths = sub_config.image_paths
+        image_paths = experiment.find_images_for_paths(paths=paths)
     else:
         # Use times from config
         if hasattr(sub_config, "data") and sub_config.data is not None:
@@ -136,7 +139,7 @@ def prepare_analysis_context(
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
 
     # ! ---- LOAD RIG ----
-    fluidflower = cls.load(config.rig.path)
+    fluidflower = cls.load(config.rig.path, config.corrections)
     fluidflower.load_experiment(experiment)
     if use_facies:
         fluidflower.labels = fluidflower.facies.copy()
