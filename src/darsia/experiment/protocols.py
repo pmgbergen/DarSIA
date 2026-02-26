@@ -146,7 +146,10 @@ class ImagingProtocol:
 
     def image_id(self, path: Path) -> int:
         """Extract image id from file name."""
-        return int(path.stem[-self.pad :])
+        try:
+            return int(path.stem[-self.pad :])
+        except ValueError:
+            raise ValueError(f"Invalid image id in file name: {path.stem}")
 
     def is_blacklisted(self, file_name: Path) -> bool:
         """Check if the image is blacklisted based on the file name.
