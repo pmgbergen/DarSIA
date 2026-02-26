@@ -82,6 +82,18 @@ class ProtocolledExperiment:
         """
         return (date - self.experiment_start).total_seconds() / 3600
 
+    def find_images_for_paths(self, paths: list[Path]) -> list[Path]:
+        """Find image paths for given paths.
+
+        Args:
+            paths (list[Path]): Paths to search for.
+
+        Returns:
+            list[Path]: Image paths found for the given paths.
+
+        """
+        return self.imaging_protocol.find_images_for_paths(paths=paths)
+
     def find_images_for_times(
         self,
         times: float | list[float],

@@ -1,6 +1,7 @@
 """Module for organizing data with equi-distant time intervals."""
 
 import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -11,6 +12,8 @@ import numpy as np
 import pandas as pd
 
 import darsia
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -218,12 +221,12 @@ class ImagingProtocol:
 
         # Associate image id and time
         # assert "path" in df.columns, "Column 'Path' not found in the protocol file."
-        assert "image_id" in df.columns, (
-            "Column 'Image_id' not found in the protocol file."
-        )
-        assert "datetime" in df.columns, (
-            "Column 'Datetime' not found in the protocol file."
-        )
+        assert (
+            "image_id" in df.columns
+        ), "Column 'Image_id' not found in the protocol file."
+        assert (
+            "datetime" in df.columns
+        ), "Column 'Datetime' not found in the protocol file."
         if "path" in df.columns:
             paths = df["path"]
         else:
@@ -254,12 +257,26 @@ class ImagingProtocol:
             raise ValueError("Unsupported file format. Use CSV or Excel files.")
 
         # Expect only one column without any header
-        assert df.shape[1] == 1, (
-            "Blacklist protocol file should contain only one column."
-        )
+        assert (
+            df.shape[1] == 1
+        ), "Blacklist protocol file should contain only one column."
         df.columns = ["image_id"]
         images = df["image_id"]
         return pd.DataFrame({"image_id": images})
+
+    def find_images_for_paths(self, paths: list[Path]) -> list[Path]:
+        """Find image paths for given paths.
+
+        Args:
+            paths (list[Path]): Paths to search for.
+
+        Returns:
+            list[Path]: Image paths found for the given paths skipping blacklisted.
+
+        """
+        available_paths = [p for p in paths if not self.is_blacklisted(p)]
+        logger.info(f"Skipping {len(paths) - len(available_paths)} blacklisted paths.")
+        return available_paths
 
     def find_images_for_datetimes(
         self,
@@ -285,7 +302,7 @@ class ImagingProtocol:
             all_paths = list(paths.glob("*"))
 
         # Remove blacklisted paths
-        available_paths = [p for p in all_paths if not self.is_blacklisted(p)]
+        available_paths = self.find_images_for_paths(all_paths)
 
         # Convert to ID.
         available_image_ids = {self.image_id(p): p for p in available_paths}
@@ -460,25 +477,25 @@ class InjectionProtocol:
 
         # Expect columns 'id', 'start', 'end', 'rate_mass'
         assert "id" in df.columns, "Column 'ID' not found in the protocol file."
-        assert "location_x" in df.columns, (
-            "Column 'Location_X' not found in the protocol file."
-        )
-        assert "location_y" in df.columns, (
-            "Column 'Location_Y' not found in the protocol file."
-        )
+        assert (
+            "location_x" in df.columns
+        ), "Column 'Location_X' not found in the protocol file."
+        assert (
+            "location_y" in df.columns
+        ), "Column 'Location_Y' not found in the protocol file."
         assert "start" in df.columns, "Column 'Start' not found in the protocol."
         assert "end" in df.columns, "Column 'End' not found in the protocol file."
         if "rate_sccm" in df.columns:
-            assert "density kg/m3" in df.columns, (
-                "Column 'Density kg/m3' not found in the protocol file."
-            )
+            assert (
+                "density kg/m3" in df.columns
+            ), "Column 'Density kg/m3' not found in the protocol file."
             rate = df["rate_sccm"].astype(float)
             density = df["density kg/m3"].astype(float)
             mass_rate_kg_s = rate * density * 1e-6 / 60.0  # kg/s
         elif "rate_ml/min" in df.columns:
-            assert "density kg/m3" in df.columns, (
-                "Column 'Density kg/m3' not found in the protocol file."
-            )
+            assert (
+                "density kg/m3" in df.columns
+            ), "Column 'Density kg/m3' not found in the protocol file."
             rate = df["rate_ml/min"].astype(float)
             density = df["density kg/m3"].astype(float)
             mass_rate_kg_s = rate * density * 1e-6 / 60.0  # kg/s
@@ -488,9 +505,9 @@ class InjectionProtocol:
         elif "rate_g/s" in df.columns:
             mass_rate_kg_s = df["rate_g/s"].astype(float) * 1e-3  # kg/s
         else:
-            assert "rate_kg/s" in df.columns, (
-                "Column 'Rate kg/s' not found in the protocol file."
-            )
+            assert (
+                "rate_kg/s" in df.columns
+            ), "Column 'Rate kg/s' not found in the protocol file."
             mass_rate_kg_s = df["rate_kg/s"].astype(float)
 
         # Generate a new dataframe with correct types
@@ -653,21 +670,21 @@ class PressureTemperatureProtocol:
         df.columns = [col.lower() for col in df.columns]
 
         # Expect columns 'datetime', 'pressure_bar, 'temperature_celsius'
-        assert "datetime" in df.columns, (
-            "Column 'Datetime' not found in the protocol file."
-        )
-        assert "pressure_bar" in df.columns, (
-            "Column 'Pressure_Bar' not found in the protocol file."
-        )
-        assert "temperature_celsius" in df.columns, (
-            "Column 'Temperature_Celsius' not found in the protocol file."
-        )
-        assert "pressure_gradient_bar" in df.columns, (
-            "Column 'Pressure_Gradient_Bar' not found in the protocol file."
-        )
-        assert "temperature_gradient_celsius" in df.columns, (
-            "Column 'Temperature_Gradient_Celsius' not found in the protocol file."
-        )
+        assert (
+            "datetime" in df.columns
+        ), "Column 'Datetime' not found in the protocol file."
+        assert (
+            "pressure_bar" in df.columns
+        ), "Column 'Pressure_Bar' not found in the protocol file."
+        assert (
+            "temperature_celsius" in df.columns
+        ), "Column 'Temperature_Celsius' not found in the protocol file."
+        assert (
+            "pressure_gradient_bar" in df.columns
+        ), "Column 'Pressure_Gradient_Bar' not found in the protocol file."
+        assert (
+            "temperature_gradient_celsius" in df.columns
+        ), "Column 'Temperature_Gradient_Celsius' not found in the protocol file."
 
         # Generate a new dataframe with correct types
         datetimes = pd.to_datetime(df["datetime"])
