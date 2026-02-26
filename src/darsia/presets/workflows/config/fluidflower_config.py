@@ -18,6 +18,7 @@ from .facies import FaciesConfig
 from .labeling import LabelingConfig
 from .protocol import ProtocolConfig
 from .rig import RigConfig
+from .corrections import CorrectionsConfig
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
 
@@ -60,6 +61,14 @@ class FluidFlowerConfig:
         except KeyError:
             self.rig = None
             warn(f"Section rig not found in {path}, use [rig].")
+
+        # ! ---- CORRECTIONS ---- ! #
+        try:
+            self.corrections: CorrectionsConfig | None = CorrectionsConfig()
+            self.corrections.load(path=path)
+        except KeyError:
+            self.corrections = None
+            warn(f"Section corrections not found in {path}, use [corrections].")
 
         # ! ---- LABELING ---- ! #
         try:

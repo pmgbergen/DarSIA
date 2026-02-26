@@ -1,8 +1,5 @@
-import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-
-logger = logging.getLogger(__name__)
 
 from .utils import _get_key, _get_section_from_toml
 

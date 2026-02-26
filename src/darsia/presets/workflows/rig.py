@@ -1,5 +1,6 @@
 # TODO: Any connections to darsia.SimpleFluidFlower?
 # TODO: integrate into darsia4porotwin.FluidFlower?
+# TODO: Clean up concentration analyses. Can be removed?
 
 import json
 import logging
@@ -11,6 +12,7 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.facies_props import FaciesProps
+from darsia.presets.workflows.config.corrections import CorrectionsConfig
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +27,19 @@ class Rig:
         baseline_path: Path,
         imaging_protocol: darsia.ImagingProtocol,
         config_path: Path | list[Path] | None = None,
+        corrections_config: CorrectionsConfig | None = None,
         log: Path | None = None,
     ):
-        # Cache imaging protocol
+        # Cache imaging_protocol
         self.imaging_protocol = imaging_protocol
 
         # Setup (based on baseline image without any corrections applied)
         pre_baseline = darsia.imread(baseline_path)
-        self.setup_corrections(pre_baseline=pre_baseline, config_path=config_path)
+        self.setup_corrections(
+            pre_baseline=pre_baseline,
+            config_path=config_path,
+            corrections_config=corrections_config,
+        )
 
         # Define reference baseline (with corrections applied)
         self.baseline = self.read_image(baseline_path)
@@ -56,77 +63,96 @@ class Rig:
 
     def setup_corrections(
         self,
-        path: Path | None = None,
+        folder: Path | None = None,
         pre_baseline: darsia.Image | None = None,
         config_path: Path | list[Path] | None = None,
+        corrections_config: CorrectionsConfig | None = None,
     ) -> None:
         """Setup corrections for the rig.
 
         Prioritize loading existing corrections from the specified path.
 
         Args:
-            path (Path | None): Path to the folder containing correction files.
+            folder (Path | None): Path to the folder containing correction files.
                 If provided, it will load existing corrections from this path.
             pre_baseline (darsia.Image | None): Pre-baseline image used for defining
-                corrections. If `path` is provided and exists, this argument is ignored.
+                corrections. If `folder` is provided and exists, this argument is ignored.
             config_path (Path | list[Path] | None): Path to curvature correction config.
 
         """
-        if path and path.exists():
+        # Use defaults if no config provided.
+        if corrections_config is None:
+            corrections_config = CorrectionsConfig()
+
+        if folder and folder.exists():
             self.corrections = []
-            for correction_path in sorted(path.glob("correction_*.npz")):
+            for correction_path in sorted(folder.glob("correction_*.npz")):
                 correction = darsia.read_correction(correction_path)
                 self.corrections.append(correction)
             logger.info("Corrections setup complete.")
             return
 
         # ! ---- CORRECTIONS ----
+
+        # Initialize corrections workflow as empty list, to be filled based on config and available files.
+        self.corrections = []
+        """Corrections workflow for the rig object, applied in sequence to images."""
+
+        # Sanity check.
         assert pre_baseline is not None, "Pre-baseline image is not set."
 
-        # Aux: needed for rescaling not leaving the range of color space
-        self.type_converter = darsia.TypeCorrection(np.float32)
-        pre_baseline = self.type_converter(pre_baseline)
+        if corrections_config.type:
+            # Aux: needed for rescaling not leaving the range of color space
+            self.type_converter = darsia.TypeCorrection(np.float32)
+            """Type correction to convert images to float32."""
+            pre_baseline = self.type_converter(pre_baseline)
 
-        # Define resize correction that resizes to the shape of the baseline image.
-        # This is needed to ensure that later curvature corrrections or concentration
-        # analysis work correctly.
-        self.resize_correction = darsia.Resize(
-            shape=pre_baseline.shape[: pre_baseline.space_dim]
-        )
-        """Resize correction to baseline shape."""
+            # Update corrections workflow
+            self.corrections.append(self.type_converter)
 
-        self.resize_correction_inter_nearest = darsia.Resize(
-            shape=pre_baseline.shape[: pre_baseline.space_dim],
-            interpolation="inter_nearest",
-        )
-        """Resize for int data."""
-
-        # Define translation correction object based on color checker
-        try:
-            _, cc_voxels = darsia.find_colorchecker(pre_baseline, "upper_left")
-            self.drift_correction = darsia.DriftCorrection(
-                pre_baseline, config={"roi": cc_voxels}
+        if corrections_config.resize:
+            # Define resize correction that resizes to the shape of the baseline image.
+            # This is needed to ensure that later curvature corrrections or concentration
+            # analysis work correctly.
+            self.resize_correction = darsia.Resize(
+                shape=pre_baseline.shape[: pre_baseline.space_dim]
             )
-        except Exception as e:
-            warn(
-                f"Color checker not found. Drift correction not setup. Error: {e}",
-                UserWarning,
+            """Resize correction to baseline shape."""
+
+            self.resize_correction_inter_nearest = darsia.Resize(
+                shape=pre_baseline.shape[: pre_baseline.space_dim],
+                interpolation="inter_nearest",
             )
-            self.drift_correction = darsia.DriftCorrection(pre_baseline)
-        """Drift correction based on color checker alignment."""
+            """Resize for int data."""
 
-        # Define curvature correction as derived from analysis of laser grid images
-        self.curvature_correction = darsia.CurvatureCorrection(config=config_path)
-        """Curvature correction based on laser grid analysis."""
+            # Update corrections workflow
+            self.corrections.append(self.resize_correction)
 
-        # Define workflow of corrections
-        self.corrections = [
-            self.type_converter,
-            self.resize_correction,
-            self.drift_correction,
-            self.curvature_correction,
-        ]
-        """Workflow of corrections applied to the baseline image."""
+        if corrections_config.drift:
+            # Define translation correction object based on color checker
+            try:
+                _, cc_voxels = darsia.find_colorchecker(pre_baseline, "upper_left")
+                self.drift_correction = darsia.DriftCorrection(
+                    pre_baseline, config={"roi": cc_voxels}
+                )
+            except Exception as e:
+                warn(
+                    f"Color checker not found. Drift correction not setup. Error: {e}",
+                    UserWarning,
+                )
+                self.drift_correction = darsia.DriftCorrection(pre_baseline)
+            """Drift correction based on color checker alignment."""
+
+            # Update corrections workflow
+            self.corrections.append(self.drift_correction)
+
+        if corrections_config.curvature:
+            # Define curvature correction as derived from analysis of laser grid images
+            self.curvature_correction = darsia.CurvatureCorrection(config=config_path)
+            """Curvature correction based on laser grid analysis."""
+
+            # Update corrections workflow
+            self.corrections.append(self.curvature_correction)
 
         logger.info("Corrections setup complete.")
 
@@ -367,6 +393,7 @@ class Rig:
         facies_path: Path | None = None,
         facies_props_path: Path | None = None,
         config_path: Path | list[Path] | None = None,
+        corrections_config: CorrectionsConfig | None = None,
         # ref_colorchecker_path: Path,
         log: Path | None = None,
     ) -> None:
@@ -383,6 +410,7 @@ class Rig:
             baseline_path,
             experiment.imaging_protocol,
             config_path,
+            corrections_config=corrections_config,
             log=log,
         )
 
@@ -507,10 +535,11 @@ class Rig:
 
         # Save reading information
         self.baseline.save(folder / "baseline.npz")
-        # TODO? At the moment, on needs to load the experiment to get the imaging protocol.
-        # self.imaging_protocol.save(folder / "imaging_protocol.json")
+
+        # Save corrections
         for i, correction in enumerate(self.corrections):
-            correction.save(folder / f"correction_{i}.npz")
+            correction_name = type(correction).__name__.lower()
+            correction.save(folder / f"correction_{i}_{correction_name}.npz")
 
         # Save geometry information
         try:
@@ -548,7 +577,11 @@ class Rig:
         except Exception:
             warn("Image porosity not available for saving.", UserWarning)
 
-        logger.info(f"Rig object saved to {folder}.")
+        # Use green color and hyperlink
+        folder_uri = Path(folder).absolute().as_uri()
+        logger.info(
+            f"\033[92mRig object saved to \033]8;;{folder_uri}\033\\{folder}\033]8;;\033\\\033[0m"
+        )
 
     @classmethod
     def load(cls, folder: Path) -> "Rig":
