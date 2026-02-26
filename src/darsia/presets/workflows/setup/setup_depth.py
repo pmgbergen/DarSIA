@@ -7,6 +7,10 @@ import numpy as np
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> None:
     """Set up depth map from measurements.
@@ -20,7 +24,7 @@ def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> 
         show: Whether to show the resulting depth map.
 
     """
-    print("Setting up depth map...")
+    logger.info("\033[92mSetting up depth map from measurements...\033[0m")
 
     # ! ---- READ CONFIG ---- ! #
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
