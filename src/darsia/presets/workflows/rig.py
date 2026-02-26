@@ -88,7 +88,43 @@ class Rig:
             self.corrections = []
             for correction_path in sorted(folder.glob("correction_*.npz")):
                 correction = darsia.read_correction(correction_path)
-                self.corrections.append(correction)
+                if (
+                    (
+                        isinstance(correction, darsia.TypeCorrection)
+                        and corrections_config.type
+                    )
+                    or (
+                        isinstance(correction, darsia.Resize)
+                        and corrections_config.resize
+                    )
+                    or (
+                        isinstance(correction, darsia.DriftCorrection)
+                        and corrections_config.drift
+                    )
+                    or (
+                        isinstance(correction, darsia.CurvatureCorrection)
+                        and corrections_config.curvature
+                    )
+                    or (
+                        isinstance(correction, darsia.ColorCorrection)
+                        and corrections_config.color
+                    )
+                    or (
+                        isinstance(correction, darsia.RelativeColorCorrection)
+                        and corrections_config.relative_color
+                    )
+                    or (
+                        isinstance(correction, darsia.IlluminationCorrection)
+                        and corrections_config.illumination
+                    )
+                ):
+                    logger.info(f"Loaded {type(correction).__name__}")
+                    self.corrections.append(correction)
+                else:
+                    logger.warning(
+                        f"Skipping {type(correction).__name__} (not enabled in config)."
+                    )
+
             logger.info("Corrections setup complete.")
             return
 
@@ -150,9 +186,32 @@ class Rig:
             # Define curvature correction as derived from analysis of laser grid images
             self.curvature_correction = darsia.CurvatureCorrection(config=config_path)
             """Curvature correction based on laser grid analysis."""
+            baseline = self.curvature_correction(pre_baseline)
 
             # Update corrections workflow
             self.corrections.append(self.curvature_correction)
+
+        if corrections_config.color:
+            # Define color correction based on color checker
+            try:
+                _, cc_voxels = darsia.find_colorchecker(baseline, "upper_left")
+                self.color_correction = darsia.ColorCorrection(
+                    baseline,
+                    config={
+                        "roi": cc_voxels,
+                        "clip": False,
+                    },
+                )
+            except Exception as e:
+                warn(
+                    f"Color checker not found. Color correction not setup. Error: {e}",
+                    UserWarning,
+                )
+                self.color_correction = darsia.ColorCorrection(baseline)
+            """Color correction based on color checker alignment."""
+
+            # Update corrections workflow
+            self.corrections.append(self.color_correction)
 
         logger.info("Corrections setup complete.")
 
@@ -584,7 +643,9 @@ class Rig:
         )
 
     @classmethod
-    def load(cls, folder: Path) -> "Rig":
+    def load(
+        cls, folder: Path, corrections_config: CorrectionsConfig | None = None
+    ) -> "Rig":
         """Load rig object from file.
 
         Mimick the save method.
@@ -607,7 +668,7 @@ class Rig:
         logger.info("Baseline setup complete.")
 
         # Load corrections
-        rig.setup_corrections(folder)
+        rig.setup_corrections(folder, corrections_config=corrections_config)
 
         # Load depth map
         rig.setup_depth(path=folder / "depth.npz")
@@ -660,7 +721,7 @@ class Rig:
         # Read image from file and apply corrections
         img = darsia.imread(
             path,
-            transformations=self.corrections[:4],
+            transformations=self.corrections,
             date=date,
             reference_date=self.reference_date,
             name=path.name,
