@@ -155,6 +155,9 @@ class ImagePathData:
                 paths_data = paths_sec[paths_key]
                 paths = paths_data.get("paths", [])
 
+                if not isinstance(paths, list) and isinstance(paths, str):
+                    paths = [paths]
+
                 # Treat paths containing '*' as glob patterns
                 for p in paths:
                     if "*" in p:
