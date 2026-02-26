@@ -1825,7 +1825,7 @@ class ScalarImage(Image):
         else:
             cv2.imwrite(str(Path(path)), ubyte_image)
 
-        print("Image saved as: " + str(Path(path)))
+        logger.info("\033[92mImage saved as: " + str(Path(path)) + "\033[0m")
 
 
 class OpticalImage(Image):
