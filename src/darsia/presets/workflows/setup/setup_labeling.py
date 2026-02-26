@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 def segment_colored_image(path: Path, show: bool = False):
     """Segment colored image based on config file."""
 
+    logger.info("\033[92mSegmenting colored image...\033[0m")
+
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
     config.check("labeling", "rig")
 

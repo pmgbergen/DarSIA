@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 def setup_facies(cls: Rig, path: Path, show: bool = False):
     """Setup facies based on config file."""
 
+    logger.info("\033[92mSetting up facies...\033[0m")
+
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
     config.check("facies", "labeling")
 

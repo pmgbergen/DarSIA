@@ -29,6 +29,9 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
         show (bool): Whether to show intermediate results.
 
     """
+
+    logger.info("\033[92mSetting up rig...\033[0m")
+
     # Monitoring time of execution
     tic = time.time()
 
