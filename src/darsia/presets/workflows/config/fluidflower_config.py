@@ -63,6 +63,7 @@ class FluidFlowerConfig:
             warn(f"Section rig not found in {path}, use [rig].")
 
         # ! ---- CORRECTIONS ---- ! #
+
         try:
             self.corrections: CorrectionsConfig | None = CorrectionsConfig()
             self.corrections.load(path=path)
