@@ -1669,14 +1669,16 @@ class Image:
             path (Path): full path to image. Use ending "npz".
 
         """
-        # Make sure the parent directory exists
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        file_path = Path(path).with_suffix(".npz")
+        file_path.parent.mkdir(parents=True, exist_ok=True)
         np.savez(
-            str(Path(path).with_suffix(".npz")),
+            str(file_path),
             array=self.img,
             metadata=self.metadata(),
         )
-        logger.info(f"Image stored under {path}")
+        logger.info(
+            f"\033[92mImage saved as: \033]8;;file://{file_path.absolute()}\033\\{file_path}\033]8;;\033\\\033[0m"
+        )
 
     def to_vtk(self, path: str | Path, name: Optional[str] = None) -> None:
         """Save image to file in vtk format.
