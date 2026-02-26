@@ -48,9 +48,6 @@ def analysis_cropping_from_context(
     plot_folder.mkdir(parents=True, exist_ok=True)
 
     for path in ctx.image_paths:
-        # Update
-        ctx.fluidflower.update(path)
-
         # Read image
         img = ctx.fluidflower.read_image(path)
 
