@@ -112,10 +112,11 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         tracemalloc.start()
 
         # Convert mass diff to full right hand side
+        self.integrated_mass_diff = self.mass_matrix_cells.dot(mass_diff)
         beckmann_problem_rhs = np.concatenate(
             [
                 np.zeros(self.grid.num_faces, dtype=float),
-                self.mass_matrix_cells.dot(mass_diff),
+                self.integrated_mass_diff,
                 np.zeros(1, dtype=float),
             ]
         )
@@ -125,12 +126,18 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
         solution, _ = self.linear_solve(
             self.darcy_init.copy(), beckmann_problem_rhs.copy(), solution
         )
+        print("Initialized solution with Darcy solution for unitary mobility.")
+        # self.solution = solution
+        # pointer created for callbacks and convergence history, updated in-place during iteration.
+
+
 
         # Initialize distance in case below iteration fails
         distance = 0
 
         # Initialize container for storing the convergence history
-        convergence_history = darsia.BeckmannConvergenceHistory()
+        self.convergence_history = darsia.BeckmannConvergenceHistory()
+        convergence_history = self.convergence_history
 
         # Print  header for later printing performance to screen
         # - distance
@@ -195,7 +202,12 @@ class BeckmannNewtonSolver(darsia.BeckmannProblem):
 
             # Update discrete W1 distance
             flux = self.flux_view(solution)
+            pressure = self.pressure_view(solution)
             distance = self.l1_dissipation(flux)
+
+            print(f"pressure min={pressure.min():.2e} max={pressure.max():.2e}")
+            print(f"flux min={flux.min():.2e} max={flux.max():.2e}")
+
 
             # Update statistics
             timings["time_assemble"] = time_assemble

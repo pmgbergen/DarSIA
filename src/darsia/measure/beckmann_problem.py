@@ -304,9 +304,12 @@ class BeckmannProblem(darsia.EMD):
         """sps.csc_matrix: mass matrix on cells: flat pressures -> flat pressures"""
 
         lumping = self.options.get("lumping", True)
+        print(f"{self.face_weights.min()} <= face weights <= {self.face_weights.max()}")
+        
         self.weighted_mass_matrix_faces_init = sps.diags(
             self.face_weights, format="csc"
         ) @ (darsia.FVMass(self.grid, "faces", lumping).mat)
+        print(f"{self.weighted_mass_matrix_faces_init.diagonal().min()} <= weighted mass matrix on faces <= {self.weighted_mass_matrix_faces_init.diagonal().max()}")
         """sps.csc_matrix: weighted mass matrix on faces: flat fluxes -> flat fluxes"""
         self.mass_matrix_faces = darsia.FVMass(self.grid, "faces", lumping).mat
         """sps.csc_matrix: mass matrix on faces: flat fluxes -> flat fluxes"""
@@ -322,6 +325,7 @@ class BeckmannProblem(darsia.EMD):
         """sps.csc_matrix: linear part of the Darcy operator with pressure constraint"""
 
         L_init = self.options.get("L_init", 1.0)
+
         self.darcy_init = self.broken_darcy_with_custom_flux_block(
             L_init * self.weighted_mass_matrix_faces_init
         )
@@ -1007,7 +1011,8 @@ class BeckmannProblem(darsia.EMD):
         # ! ---- Eliminate flux block ----
 
         # Build Schur complement wrt. flux-flux block
-        J_inv = sps.diags(self.flux_view(1.0 / jacobian.diagonal()))
+        print(f"Jacobian diagonal: {self.flux_view(jacobian.diagonal()).min()=} - {self.flux_view(jacobian.diagonal()).max()=}")
+        J_inv = sps.diags(1.0 / self.flux_view(jacobian.diagonal()))
         schur_complement = D.dot(J_inv.dot(D.T))
 
         # Add Schur complement - use this to identify sparsity structure
