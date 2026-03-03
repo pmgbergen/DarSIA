@@ -1,25 +1,25 @@
 """
-Tests to compare Wasserstein error to an analytical solution. This tests the transport of two blocks of mass in 2D
-with different positions.
+Tests to compare Wasserstein error to an analytical solution. This tests
+the transport of two blocks of mass in 2D with different positions.
 """
 
 import numpy as np
 import pytest
+
 import darsia
 from darsia.utils.wasserstein_analytical_sol_block import analytic_solution
 
 
-
-
-
 def L_dist(x, n=1):
-    return (np.sum(np.abs(x)**n))**(1/n)/(x.shape[0]*x.shape[1])
+    return (np.sum(np.abs(x) ** n)) ** (1 / n) / (x.shape[0] * x.shape[1])
 
-angles = [0, np.pi/4, 3*np.pi/8, np.pi/2]
+
+angles = [0, np.pi / 4, 3 * np.pi / 8, np.pi / 2]
 factors = [5, 20]
 
 distances_angles = []
 distances_factors = []
+
 
 def block_test(factor, block1, block2, options, weights=None, method="newton"):
     dim = 2
@@ -28,10 +28,20 @@ def block_test(factor, block1, block2, options, weights=None, method="newton"):
 
     mass1_array = np.zeros(shape, dtype=float)
     mass2_array = np.zeros(shape, dtype=float)
-    block1_help = [int(round(factor * (8-block1[1]-block1[2]))), int(round(factor * (8-block1[1]+block1[2]))), int(round(factor * (block1[0]-block1[2]))), int(round(factor * (block1[0]+block1[2])))]
-    block2_help = [int(round(factor * (8-block2[1]-block2[2]))), int(round(factor * (8-block2[1]+block2[2]))), int(round(factor * (block2[0]-block2[2]))), int(round(factor * (block2[0]+block2[2])))]
-    mass1_array[block1_help[0]:block1_help[1], block1_help[2]:block1_help[3]] = 1
-    mass2_array[block2_help[0]:block2_help[1], block2_help[2]:block2_help[3]] = 1
+    block1_help = [
+        int(round(factor * (8 - block1[1] - block1[2]))),
+        int(round(factor * (8 - block1[1] + block1[2]))),
+        int(round(factor * (block1[0] - block1[2]))),
+        int(round(factor * (block1[0] + block1[2]))),
+    ]
+    block2_help = [
+        int(round(factor * (8 - block2[1] - block2[2]))),
+        int(round(factor * (8 - block2[1] + block2[2]))),
+        int(round(factor * (block2[0] - block2[2]))),
+        int(round(factor * (block2[0] + block2[2]))),
+    ]
+    mass1_array[block1_help[0] : block1_help[1], block1_help[2] : block1_help[3]] = 1
+    mass2_array[block2_help[0] : block2_help[1], block2_help[2] : block2_help[3]] = 1
 
     width = shape[1] * voxel_size[1]
     height = shape[0] * voxel_size[0]
@@ -84,7 +94,6 @@ def block_test(factor, block1, block2, options, weights=None, method="newton"):
 
     flux = info["flux"]
 
-
     flux_restructured = np.copy(flux)
     flux_restructured[:, :, 0] = -flux[:, :, 1]
     flux_restructured[:, :, 1] = flux[:, :, 0]
@@ -92,7 +101,7 @@ def block_test(factor, block1, block2, options, weights=None, method="newton"):
     return distance, flux_restructured
 
 
-L=1e-2
+L = 1e-2
 scaling = 3e1
 regularization = 1e-16
 num_iter = int(3e3)
@@ -109,15 +118,20 @@ options = {
     "scaling": scaling,
     "depth": 0,
     "verbose": False,
-    "return_info": True
+    "return_info": True,
 }
-results = np.array([[ 0.00416437,  0.0039679 ],
- [ 0.00474455,  0.00259308],
- [ 0.0048696,   0.00369112],
- [ 0.00416437,  0.0039679 ],])
+results = np.array(
+    [
+        [0.00416437, 0.0039679],
+        [0.00474455, 0.00259308],
+        [0.0048696, 0.00369112],
+        [0.00416437, 0.0039679],
+    ]
+)
 
-@pytest.mark.parametrize('a_key', range(len(angles)))
-@pytest.mark.parametrize('f_key', range(len(factors)))
+
+@pytest.mark.parametrize("a_key", range(len(angles)))
+@pytest.mark.parametrize("f_key", range(len(factors)))
 def test_wasserstein_block_transport(a_key, f_key):
     angle = angles[a_key]
     factor = factors[f_key]
@@ -127,10 +141,13 @@ def test_wasserstein_block_transport(a_key, f_key):
     block1 = [4 - cos_approx, 4 - sin_approx, 1]
     block2 = [4 + cos_approx, 4 + sin_approx, 1]
     true_distance, true_flux = analytic_solution(block1, block2, factor)
-    computed_distance, computed_flux = block_test(factor, block1, block2, options, method="newton")
+    computed_distance, computed_flux = block_test(
+        factor, block1, block2, options, method="newton"
+    )
     error_distance = np.abs(true_distance - computed_distance) / true_distance
 
     assert np.isclose(error_distance, results[a_key, f_key], rtol=1e-6)
+
 
 def make_wall(factor, L=6, K=10):
     shape = (factor * 8, factor * 8)
@@ -144,17 +161,17 @@ def make_wall(factor, L=6, K=10):
     wall = np.ones_like(x)
 
     # Assume the wall is vertical at x=4
-    dx = x[0, 1] - x[0, 0] # Assuming uniform spacing
-    wall[(np.abs(x - 4) <= dx) & (np.abs(y - 4) <= L/2)] = 0.5*K/dx
+    dx = x[0, 1] - x[0, 0]  # Assuming uniform spacing
+    wall[(np.abs(x - 4) <= dx) & (np.abs(y - 4) <= L / 2)] = 0.5 * K / dx
     return wall
+
+
 wall_results = [27.6990888314, 26.4370564953]
 
-@pytest.mark.parametrize('f_key', range(len(factors)))
+
+@pytest.mark.parametrize("f_key", range(len(factors)))
 def test_wall(f_key):
     factor = factors[f_key]
-    dim = 2
-    shape = (factor * 8, factor * 8)
-    voxel_size = [1 / factor, 1 / factor]
 
     wall_array = make_wall(factor)
 
