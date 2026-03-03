@@ -1,8 +1,9 @@
 """Load data from FluidFlowerConfig experiments."""
 
+from typing import Literal
+
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
-from typing import Literal
 
 
 def load_data(

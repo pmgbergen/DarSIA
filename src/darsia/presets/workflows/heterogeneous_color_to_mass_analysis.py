@@ -1,18 +1,19 @@
+import json
 import logging
 from pathlib import Path
 from typing import Tuple
-import json
+
+import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.widgets import Button, Slider
 from scipy.optimize import minimize
+
+import darsia
 from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
 )
-import matplotlib.gridspec as gridspec
-
-import darsia
 
 logger = logging.getLogger(__name__)
 

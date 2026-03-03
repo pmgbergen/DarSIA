@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.facies_props import FaciesProps
 from darsia.presets.workflows.config.corrections import CorrectionsConfig
+from darsia.presets.workflows.facies_props import FaciesProps
 
 logger = logging.getLogger(__name__)
 

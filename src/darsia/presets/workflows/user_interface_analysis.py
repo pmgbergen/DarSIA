@@ -7,11 +7,9 @@ from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_
 from darsia.presets.workflows.analysis.analysis_cropping import (
     analysis_cropping_from_context,
 )
+from darsia.presets.workflows.analysis.analysis_mass import analysis_mass_from_context
 from darsia.presets.workflows.analysis.analysis_segmentation import (
     analysis_segmentation_from_context,
-)
-from darsia.presets.workflows.analysis.analysis_mass import (
-    analysis_mass_from_context,
 )
 from darsia.presets.workflows.analysis.analysis_volume import (
     analysis_volume_from_context,

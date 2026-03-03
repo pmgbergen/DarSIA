@@ -1,13 +1,12 @@
 """Standard workflow step to set up depth map from measurements."""
 
+import logging
 from pathlib import Path
 
 import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
-
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 from .analysis import AnalysisConfig
 from .color_paths import ColorPathsConfig
 from .color_to_mass import ColorToMassConfig
+from .corrections import CorrectionsConfig
 from .data import DataConfig
 from .depth import DepthConfig
 from .facies import FaciesConfig
 from .labeling import LabelingConfig
 from .protocol import ProtocolConfig
 from .rig import RigConfig
-from .corrections import CorrectionsConfig
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
 

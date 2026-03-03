@@ -1,6 +1,8 @@
-import darsia
 from pathlib import Path
+
 import pandas as pd
+
+import darsia
 
 
 class FaciesProps:

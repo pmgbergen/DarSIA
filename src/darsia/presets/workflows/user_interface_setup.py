@@ -19,11 +19,11 @@ Advanced usage (activate specific steps):
 import argparse
 import logging
 
-from darsia.presets.workflows.setup.setup_rig import setup_rig
-from darsia.presets.workflows.setup.setup_depth import setup_depth_map
-from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
-from darsia.presets.workflows.setup.setup_facies import setup_facies
 from darsia.presets.workflows.rig import Rig
+from darsia.presets.workflows.setup.setup_depth import setup_depth_map
+from darsia.presets.workflows.setup.setup_facies import setup_facies
+from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
+from darsia.presets.workflows.setup.setup_rig import setup_rig
 
 # Set logging level
 logger = logging.getLogger(__name__)
@@ -48,6 +48,11 @@ def build_parser_for_setup():
     )
     parser.add_argument("--rig", action="store_true", help="Activate setup of rig.")
     parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Reset existing results. Use with caution as this will delete existing results.",
+    )
+    parser.add_argument(
         "--show",
         action="store_true",
         help="Show intermediate results.",
@@ -70,3 +75,8 @@ def preset_setup(rig=Rig):
         setup_facies(rig, args.config, args.show)
     if args.all or args.rig:
         setup_rig(rig, args.config, args.show)
+    if args.reset:
+        logger.warning(
+            "\033[91mResetting existing results. Use with caution as this will delete existing results.\033[0m"
+        )
+        raise NotImplementedError("Reset functionality not implemented yet.")

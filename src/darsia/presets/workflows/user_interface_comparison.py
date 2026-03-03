@@ -1,18 +1,14 @@
 """User interface to comparative analysis workflows."""
 
 import argparse
+import logging
 from pathlib import Path
 
-import logging
-
-from darsia.presets.workflows.comparison.comparison_events import (
-    comparison_events,
-)
+from darsia.presets.workflows.comparison.comparison_events import comparison_events
 from darsia.presets.workflows.comparison.comparison_wasserstein import (
     comparison_wasserstein,
 )
 from darsia.presets.workflows.rig import Rig
-
 
 logger = logging.getLogger(__name__)
 

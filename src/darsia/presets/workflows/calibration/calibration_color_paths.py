@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 
 import darsia
-from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
+from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 
 logger = logging.getLogger(__name__)
 

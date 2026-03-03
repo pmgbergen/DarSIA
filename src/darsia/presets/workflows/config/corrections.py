@@ -1,8 +1,9 @@
 """Configuration for corrections."""
 
 from dataclasses import dataclass
-from .utils import _get_section_from_toml
 from pathlib import Path
+
+from .utils import _get_section_from_toml
 
 
 @dataclass

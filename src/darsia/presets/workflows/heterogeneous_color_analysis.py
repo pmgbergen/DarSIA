@@ -1,20 +1,20 @@
 import copy
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.widgets import Button, Slider
+
+import darsia
 from darsia.presets.workflows.mass_computation import MassComputation
 from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
 )
-import time
-
-import darsia
 
 logger = logging.getLogger(__name__)
 

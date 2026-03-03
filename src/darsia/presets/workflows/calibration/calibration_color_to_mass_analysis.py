@@ -4,11 +4,11 @@ from pathlib import Path
 import numpy as np
 
 import darsia
+from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
-from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 
 logger = logging.getLogger(__name__)
 

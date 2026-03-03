@@ -1,20 +1,19 @@
 """Comparison of two runs using Wasserstein distance."""
 
+import json
 import logging
+from dataclasses import asdict, dataclass
+from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 import darsia
 from darsia.presets.workflows.fluidflower_config import MultiFluidFlowerConfig
-from darsia.presets.workflows.utils.mass import load_data
 from darsia.presets.workflows.rig import Rig
-
-
-import json
-from dataclasses import dataclass, asdict
-from typing import Literal
-from datetime import datetime
+from darsia.presets.workflows.utils.mass import load_data
 
 logger = logging.getLogger(__name__)
 
