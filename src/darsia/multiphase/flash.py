@@ -1,13 +1,13 @@
 """Flash calculation for two-phase flow analysis."""
 
+import json
+import logging
+from pathlib import Path
 from warnings import warn
 
 import numpy as np
-from pathlib import Path
-import json
 
 import darsia
-import logging
 
 logger = logging.getLogger(__name__)
 
