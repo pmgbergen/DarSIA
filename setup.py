@@ -33,9 +33,10 @@ setup(
     },
     python_requires=">=3",
     url="https://github.com/pmgbergen/DarSIA.git",
-    author="Erlend Storvik, Jan Nordbotten and Jakub Wiktor Both",
-    maintainer="Erlend Storvik",
-    maintainer_email="erlend.storvik@uib.no",
+    author="Jakub Wiktor Both",
+    author_email="jakub.both@uib.no",
+    maintainer="Jakub Wiktor Both",
+    maintainer_email="jakub.both@uib.no",
     platforms=["Linux", "Windows"],
     license="Apache v2",
 )
