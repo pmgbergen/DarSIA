@@ -9,3 +9,8 @@ build-backend = "setuptools.build_meta"
 line-length = 88
 target-version = ["py312"]
 required-version = "24.10.0"
+
+[tool.isort]
+profile = "black"
+line_length = 88
+skip = ["src/darsia/__init__.py"]
