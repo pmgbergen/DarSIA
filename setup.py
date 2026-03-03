@@ -29,6 +29,7 @@ setup(
     install_requires=required,
     extras_require={
         "dev": required_dev,
+        "petsc": ["petsc4py"],
     },
     python_requires=">=3",
     url="https://github.com/pmgbergen/DarSIA.git",
