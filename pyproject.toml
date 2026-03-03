@@ -4,3 +4,8 @@ requires = [
   "setuptools",
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.isort]
+profile = "black"
+line_length = 79
+skip = ["src/darsia/__init__.py"]
