@@ -202,7 +202,7 @@ class CustomColorChecker(ColorChecker):
 
 
 class ColorCorrection(darsia.BaseCorrection):
-    """ML-free color correction.
+    """Color correction with user-specified location of a color checker.
 
     Precise user-input is required for detecting the color checker. The Calibrite/
     X-rite color checker has four corner landmarks on the colorchecker. The pixel
@@ -211,6 +211,7 @@ class ColorCorrection(darsia.BaseCorrection):
     The color correction is applied prior to curvature correction in
     the darsia.Image initialization, and therefore, the roi should be with respect to
     the uncorrected image.
+
     """
 
     def __init__(

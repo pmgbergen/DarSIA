@@ -1,5 +1,10 @@
-darsia.restoration package
-==========================
+Restoration (:mod:`darsia.restoration`)
+=======================================
+
+.. automodule:: darsia.restoration
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Submodules
 ----------
@@ -40,14 +45,6 @@ darsia.restoration.tvd module
 -----------------------------
 
 .. automodule:: darsia.restoration.tvd
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: darsia.restoration
    :members:
    :undoc-members:
    :show-inheritance:

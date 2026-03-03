@@ -1,5 +1,10 @@
-darsia.manager package
-======================
+Analysis managers (:mod:`darsia.manager`)
+=========================================
+
+.. automodule:: darsia.manager
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Submodules
 ----------
@@ -32,14 +37,6 @@ darsia.manager.traceranalysis module
 ------------------------------------
 
 .. automodule:: darsia.manager.traceranalysis
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: darsia.manager
    :members:
    :undoc-members:
    :show-inheritance:

@@ -22,8 +22,7 @@ class DriftCorrection(darsia.BaseCorrection):
         base: Optional[Union[np.ndarray, darsia.Image]] = None,
         config: Optional[dict] = None,
     ) -> None:
-        """
-        Constructor for DriftCorrection.
+        """Constructor.
 
         Args:
             base (array or Image): baseline.
@@ -105,6 +104,7 @@ class DriftCorrection(darsia.BaseCorrection):
 
         Returns:
             np.ndarray: aligned image array.
+
         """
         if self.active:
             # Define roi for source image. Let input argument be dominating over self.roi.
