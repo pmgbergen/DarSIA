@@ -60,7 +60,7 @@ co2_analysis = darsia.ConcentrationAnalysis(
     model=darsia.CombinedModel(  # signal to data conversion
         [
             darsia.LinearModel(scaling=4.0),
-            darsia.ClipModel(**{"min value": 0.0, "max value": 1.0}),
+            darsia.ClipModel(**{"min_value": 0.0, "max_value": 1.0}),
         ]
     ),
 )
@@ -122,7 +122,7 @@ tracer_analysis = darsia.ConcentrationAnalysis(
     signal_reduction=darsia.MonochromaticReduction(color="gray"),
     restoration=darsia.TVD(),
     model=darsia.CombinedModel(
-        [darsia.LinearModel(), darsia.ClipModel(**{"min value": 0.0, "max value": 1.0})]
+        [darsia.LinearModel(), darsia.ClipModel(**{"min_value": 0.0, "max_value": 1.0})]
     ),
 )
 

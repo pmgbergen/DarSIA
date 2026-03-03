@@ -90,7 +90,7 @@ class FluidFlowerTracerAnalysis(darsia.TracerAnalysis):
         model = darsia.CombinedModel(
             [
                 darsia.LinearModel(key="model ", **self.config["tracer"]),
-                darsia.ClipModel(**{"min value": 0.0, "max value": 1.0}),
+                darsia.ClipModel(**{"min_value": 0.0, "max_value": 1.0}),
             ]
         )
 
