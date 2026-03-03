@@ -1,5 +1,5 @@
 pytest>=7.1
-black == 24.*
+black == 24.10.0
 isort
 flake8
 mypy
