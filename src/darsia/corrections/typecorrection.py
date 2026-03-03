@@ -1,11 +1,14 @@
 """Type correction for images."""
 
+import logging
 from pathlib import Path
 
 import numpy as np
 import skimage
 
 import darsia
+
+logger = logging.getLogger(__name__)
 
 
 class TypeCorrection(darsia.BaseCorrection):
@@ -46,6 +49,8 @@ class TypeCorrection(darsia.BaseCorrection):
 
         """
         np.savez(path, class_name=type(self).__name__, data_type=self.data_type)
+
+        logger.info("\033[92mTypeCorrection saved as: " + str(Path(path)) + "\033[0m")
 
     def load(self, path: Path) -> None:
         """Load the data type from a npz file."""
