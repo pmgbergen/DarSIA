@@ -239,7 +239,7 @@ def stack(images: list[darsia.Image]) -> darsia.Image:
         images (list of images): images
 
     Returns:
-        darsia.Image: stackes image
+        Image: stacked image
 
     """
     image = images[0]

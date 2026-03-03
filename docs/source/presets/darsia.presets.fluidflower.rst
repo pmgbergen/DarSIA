@@ -1,5 +1,10 @@
-darsia.presets.fluidflower package
-==================================
+Heteroegenous media analysis workflows (:mod:`darsia.presets.fluidflower`)
+==========================================================================
+
+.. automodule:: darsia.presets.fluidflower
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Submodules
 ----------
@@ -32,14 +37,6 @@ darsia.presets.fluidflower.fluidflowertraceranalysis module
 -----------------------------------------------------------
 
 .. automodule:: darsia.presets.fluidflower.fluidflowertraceranalysis
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: darsia.presets.fluidflower
    :members:
    :undoc-members:
    :show-inheritance:

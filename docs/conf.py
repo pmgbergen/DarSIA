@@ -31,13 +31,13 @@ root_doc = "index"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
     'sphinx.ext.napoleon'
 ]
 
 # Removes the module name space in front of classes and functions
-# i.e. porepy.ad.Scalar() -> Scalar()
 add_module_names = False
 
 # Add any paths that contain templates here, relative to this directory.
@@ -62,6 +62,10 @@ html_copy_source = False
 html_show_sourcelink = False
 html_show_sphinx = False
 
+html_theme_options = {
+  "show_toc_level": 4 # TODO
+}
+
 # -- Autodoc Settings -------------------------------------------------------------------------
 
 # autoclass concatenates docs strings from init and class.
@@ -73,7 +77,7 @@ autodoc_class_signature = "mixed"  # mixed-separated
 # orders the members of an object group wise, e.g. private, special or public methods
 autodoc_member_order = "groupwise"  # alphabetical-groupwise-bysource
 
-# type hints will be shortened: porepy.grids.grid.Grid -> Grid
+# type hints will be shortened:
 autodoc_typehints_format = "short"
 
 # default configurations for all autodoc directives
@@ -82,12 +86,12 @@ autodoc_default_options = {
     "special-members": False,
     "private-members": False,
     "show-inheritance": True,
-    "inherited-members": False,
+    "inherited-members": True,
     "no-value": False
 }
 
 # uses type hints in signatures for e.g. linking (default)
-autodoc_typehints = "signature"
+autodoc_typehints = "none" #TODO "description"
 
 # Avoid double appearance of documentation if child member has no docs
 autodoc_inherit_docstrings = False
@@ -102,6 +106,7 @@ intersphinx_mapping = {
     'numpy': ('https://numpy.org/doc/stable', None),
     'scipy': ('https://docs.scipy.org/doc/scipy', None),
     'matplotlib': ('https://matplotlib.org/stable', None),
-    'skimage': ('https://scikit-image.org/docs/stabe', None)
+    'skimage': ('https://scikit-image.org/docs/stabe', None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
 }
 

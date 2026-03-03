@@ -1,5 +1,5 @@
-darsia.mathematics package
-==========================
+Mathematical algorithms (:mod:`darsia.mathematics`)
+===================================================
 
 Submodules
 ----------

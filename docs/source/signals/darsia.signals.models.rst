@@ -1,5 +1,10 @@
-darsia.signals.models package
-=============================
+Signal conversion models (:mod:`darsia.signals.models`)
+=======================================================
+
+.. automodule:: darsia.signals.models
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Submodules
 ----------
@@ -64,14 +69,6 @@ darsia.signals.models.thresholdmodel module
 -------------------------------------------
 
 .. automodule:: darsia.signals.models.thresholdmodel
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: darsia.signals.models
    :members:
    :undoc-members:
    :show-inheritance:
