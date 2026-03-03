@@ -899,21 +899,17 @@ class BeckmannProblem(darsia.EMD):
                 )
 
             # 1. Reduce flux block
-            (
-                self.reduced_matrix,
-                self.reduced_rhs,
-                self.matrix_flux_inv,
-            ) = self.eliminate_flux(matrix, rhs)
-
+            if setup_linear_solver:
+                self.reduced_matrix, self.matrix_flux_inv = self.eliminate_flux_lhs(matrix)
+            self.reduced_rhs = self.eliminate_flux_rhs(self.matrix_flux_inv, rhs)
+            
             # 2. Reduce to pure pressure system
-            (
-                self.fully_reduced_matrix,
-                self.fully_reduced_rhs,
-            ) = self.eliminate_lagrange_multiplier(
-                self.reduced_matrix,
+            if setup_linear_solver:
+                self.fully_reduced_matrix = self.eliminate_lagrange_multiplier_lhs(self.reduced_matrix)
+            self.fully_reduced_rhs = self.eliminate_lagrange_multiplier_rhs(
                 self.reduced_rhs,
             )
-
+            
             # 3. Build linear solver for pure pressure system
             if setup_linear_solver:
                 self.linear_solver.setup(self.fully_reduced_matrix)
@@ -926,6 +922,10 @@ class BeckmannProblem(darsia.EMD):
             solution[self.fully_reduced_system_indices_full] = self.linear_solver(
                 self.fully_reduced_rhs
             )
+            res = self.fully_reduced_matrix.dot(
+                solution[self.fully_reduced_system_indices_full]
+            ) - self.fully_reduced_rhs
+            print(f"Pure pressure system residual: {np.linalg.norm(res)}")
 
             # 5. Compute lagrange multiplier - not required, as it is zero
             pass
@@ -976,6 +976,43 @@ class BeckmannProblem(darsia.EMD):
         reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
 
         return reduced_jacobian, reduced_residual, J_inv
+    
+    def eliminate_flux_lhs(self, jacobian: sps.csc_matrix) -> tuple:
+        """Eliminate the flux block from the jacobian and residual.
+
+        Employ a Schur complement/block Gauss elimination approach.
+
+        Args:
+            jacobian (sps.csc_matrix): jacobian
+            residual (np.ndarray): residual
+
+        Returns:
+            tuple: reduced jacobian, reduced residual, inverse of flux block
+
+        """
+        # Make sure the setup routine has been called
+        if not hasattr(self, "jacobian_subblock"):
+            self._setup_eliminate_flux(jacobian)
+            assert hasattr(self, "jacobian_subblock")
+
+        # Build Schur complement wrt flux-block
+        diag = jacobian.diagonal()[self.flux_slice]
+        print(f"Jacobian diagonal: {diag.min()=} - {diag.max()=}")
+        J_inv = sps.diags(1.0 / jacobian.diagonal()[self.flux_slice])
+        schur_complement = self.D.dot(J_inv.dot(self.DT))
+
+        # Gauss eliminiation on matrices
+        reduced_jacobian = self.jacobian_subblock + schur_complement
+
+        return reduced_jacobian, J_inv
+
+    def eliminate_flux_rhs(self, J_inv: sps.diags, residual: np.ndarray) -> np.ndarray:
+        # Gauss elimination on vectors
+        reduced_residual = residual[self.reduced_system_slice].copy()
+        reduced_residual -= self.D.dot(J_inv.dot(residual[self.flux_slice]))
+        return reduced_residual
+
+
 
     def _setup_eliminate_flux(self, matrix: sps.csc_matrix) -> None:
         """Setup the infrastructure for reduced systems through Gauss elimination.
@@ -1063,6 +1100,53 @@ class BeckmannProblem(darsia.EMD):
         ].copy()
 
         return self.fully_reduced_jacobian, fully_reduced_residual
+    
+    def eliminate_lagrange_multiplier_lhs(
+        self, reduced_jacobian
+    ) -> tuple:
+        """Eliminate the lagrange multiplier from the reduced system.
+
+        Employ a Schur complement/block Gauss elimination approach.
+
+        Args:
+            reduced_jacobian (sps.csc_matrix): reduced jacobian
+            reduced_residual (np.ndarray): reduced residual
+
+        Returns:
+            tuple: fully reduced jacobian, fully reduced residual
+
+        """
+        # Make sure the setup routine has been called
+        if not hasattr(self, "fully_reduced_jacobian"):
+            self._setup_eliminate_lagrange_multiplier()
+            assert hasattr(self, "fully_reduced_jacobian")
+
+        # Make sure the jacobian is a CSC matrix
+        assert isinstance(
+            reduced_jacobian, sps.csc_matrix
+        ), "Jacobian should be a CSC matrix."
+
+        # Effective Gauss-elimination for the particular case of the lagrange multiplier
+        self.fully_reduced_jacobian.data[:] = np.delete(
+            reduced_jacobian.data.copy(), self.rm_indices
+        )
+        # NOTE: The indices have to be restored if the LU factorization is to be used
+        # FIXME omit if not required
+        self.fully_reduced_jacobian.indices = self.fully_reduced_jacobian_indices.copy()
+        return self.fully_reduced_jacobian
+    
+    def eliminate_lagrange_multiplier_rhs(
+        self, reduced_residual
+        ) -> np.ndarray:
+        # Rhs is not affected by Gauss elimination as it is assumed that the residual
+        # is zero in the constrained cell, and the pressure is zero there as well.
+        # If not, we need to do a proper Gauss elimination on the right hand side!
+        if abs(reduced_residual[-1]) > 1e-6:
+            raise NotImplementedError("Implementation requires residual to be zero.")
+        fully_reduced_residual = reduced_residual[
+            self.fully_reduced_system_indices
+        ].copy()
+        return fully_reduced_residual
 
     def _setup_eliminate_lagrange_multiplier(self) -> None:
         """Additional setup of infrastructure for fully reduced systems.
