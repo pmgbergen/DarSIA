@@ -257,6 +257,8 @@ class BeckmannKSPSolver(BeckmannLinearSolver):
         maxiter = linear_solver_options.get("maxiter", 100)
         approach = linear_solver_options.get("approach", "direct")
 
+        print(linear_solver_options)
+
         if approach == "direct":
             self.solver_options = {
                 "ksp_type": "preonly",
@@ -280,7 +282,7 @@ class BeckmannKSPSolver(BeckmannLinearSolver):
         # self.nullspace = None
         # """ list of nullspace vectors of the matrix"""
 
-    def _setup(
+    def setup(
         self,
         matrix: sps.csc_matrix,
     ) -> None:
@@ -293,6 +295,9 @@ class BeckmannKSPSolver(BeckmannLinearSolver):
             PETSc.ksp: KSP solver
             dict: options for the KSP solver
         """
+        if hasattr(self, "linear_solver"):
+            self.linear_solver.kill()
+        
         # Define CG solver
         self.linear_solver = darsia.linalg.KSP(
             matrix
@@ -300,27 +305,6 @@ class BeckmannKSPSolver(BeckmannLinearSolver):
         )
         self.linear_solver.setup(self.solver_options)
         """dict: options for the iterative linear solver"""
-
-    def setup(self, matrix: sps.csc_matrix) -> None:
-        """Setup KSP solver for the given matrix.
-
-        Args:
-            matrix (sps.csc_matrix): system matrix
-
-        """
-        if not hasattr(self, "linear_solver"):
-            self._setup(matrix)
-
-        # if reuse_solver:
-        #    self.linear_solver.setup(self.solver_options)
-
-        ## Free memory if solver needs to be re-setup
-        # if hasattr(self, "linear_solver"):
-        #    if not reuse_solver:
-        #        self.linear_solver.kill()
-        #        self._setup(self.fully_reduced_matrix)
-        # else:
-        #    self._setup(self.fully_reduced_matrix)
 
     def __call__(
         self,
