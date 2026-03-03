@@ -1,5 +1,6 @@
 """
-Analytical solution to the Wasserstein distance problem for two rectangular blocks of mass in 2D (Given that they do not overlap).
+Analytical solution to the Wasserstein distance problem for two rectangular blocks of mass in 2D
+(Given that they do not overlap).
 """
 
 import numpy as np
@@ -16,7 +17,8 @@ def analytic_solution(block1, block2, factor):
     Returns
     -------
     distance: float, the analytical Wasserstein distance between the two blocks
-    transport_map: np.ndarray of shape (factor*8, factor*8, 2), the transport map from block1 to block2
+    transport_map: np.ndarray of shape (factor*8, factor*8, 2), the transport
+    map from block1 to block2
     """
     shape = (factor * 8, factor * 8)
     voxel_size = [1 / factor, 1 / factor]
@@ -58,8 +60,6 @@ def analytic_solution(block1, block2, factor):
         & (block2[1] - width <= y)
         & (y <= block2[1] + width)
     )
-
-    # mask3 = np.logical_not(mask1) & np.logical_not(mask2) & (b - width <= y - a * x) & (y - a * x <= b + width) & (x >= min(block1[0] - width, block1[1] - width)) & (x <= max(block2[0] + width, block2[1] + width)) & (y >= min(block1[1] - width, block1[1] - width)) & (y <= max(block2[1] + width, block2[1] + width)) & (y >= min(block1[1] - width, block2[1] - width)) & (y <= max(block1[1] + width, block2[1] + width))
 
     scaling1 = np.minimum(
         np.abs(x[mask1] - (block1[0] - np.sign(dx) * width)) / abs(cos),
