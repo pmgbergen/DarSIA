@@ -237,7 +237,8 @@ try:
                 Solution of the linear system
             """
             # check if x0 is provided as kwargs
-            if "x0" in kwargs:
+            # if the solver is not "preonly", otherwise petsc does not accept an initial guess
+            if "x0" in kwargs and not (self.ksp.getType() == "preonly"): 
                 x0 = kwargs["x0"]
                 self.ksp.setInitialGuessNonzero(True)
                 if isinstance(x0, np.ndarray):
