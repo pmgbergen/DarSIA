@@ -1,5 +1,6 @@
 """
-Analytical solution to the Wasserstein distance problem for two rectangular blocks of mass in 2D
+Analytical solution to the Wasserstein distance problem for
+two rectangular blocks of mass in 2D
 (Given that they do not overlap).
 """
 
