@@ -34,7 +34,7 @@ class LabelingConfig:
         self.labels = _get_key(sec, "labels", required=False, type_=Path)
         if not self.labels:
             assert results is not None
-            self.labels = results / "setup" / "labels.npz"
+            self.labels = results / "rig" / "labels.npz"
         return self
 
     def error(self):

@@ -31,6 +31,6 @@ class FaciesConfig:
         self.id_label_map = {i: sec[str(i)]["labels"] for i in self.id}
         if not self.path:
             assert results is not None
-            self.path = results / "setup" / "facies.npz"
+            self.path = results / "rig" / "facies.npz"
 
         return self

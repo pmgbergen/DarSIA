@@ -1,6 +1,4 @@
-"""Step 3 of workflow.
-
-Setup and storing of fluidflower object. This routine is time consuming and should be run only
+"""Setup/storing/deleting main rig object. This routine is time consuming and should be run only
 once per run. It stores the baseline image, necessary corrections, the image porosity and the
 depth map, adapted to the corrected baseline image etc.
 
@@ -21,7 +19,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> None:
-    """Setup and store fluidflower object.
+    """Setup and store rig object.
 
     Args:
         cls: Class of the rig to be setup, e.g. ffum.MuseumRig
@@ -72,7 +70,7 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
         corrections_config=config.corrections,
         log=config.data.results,
     )
-    rig.save(config.data.results / "setup" / "rig")
+    rig.save(config.data.results / "rig")
 
     # Monitoring time of execution
     logger.info(f"Rig setup in {time.time() - tic:.2f} s.")

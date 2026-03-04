@@ -30,7 +30,7 @@ class RigConfig:
         self.path = _get_key(sec, "path", required=False, type_=Path)
         if not self.path:
             assert results is not None
-            self.path = results / "setup" / "rig"
+            self.path = results / "rig" / "rig"
 
         return self
 

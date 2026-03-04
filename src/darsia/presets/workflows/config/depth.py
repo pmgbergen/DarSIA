@@ -25,7 +25,7 @@ class DepthConfig:
         self.depth_map = _get_key(sec, "depth_map", required=False, type_=Path)
         if not self.depth_map:
             assert results is not None
-            self.depth_map = results / "setup" / "depth_map.npz"
+            self.depth_map = results / "rig" / "depth_map.npz"
         return self
 
     def error(self):
