@@ -12,6 +12,7 @@ from typing import Type
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.rig import Rig
+import shutil
 
 # Set logging level
 logger = logging.getLogger(__name__)
@@ -77,3 +78,19 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
 
     if show:
         rig.baseline.show()
+
+
+def delete_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> None:
+    """Reset rig by deleting existing results and re-running setup."""
+    logger.warning(
+        "\033[91mResetting existing results. Use with caution as this will delete existing results.\033[0m"
+    )
+    rig_path = (
+        FluidFlowerConfig(path, require_data=False, require_results=True).data.results
+        / "rig"
+    )
+    if rig_path.exists():
+        shutil.rmtree(rig_path, ignore_errors=True)
+        logger.info("Existing rig found and deleted.")
+    else:
+        logger.info("No existing rig found to reset.")
