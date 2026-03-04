@@ -71,7 +71,7 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
         corrections_config=config.corrections,
         log=config.data.results,
     )
-    rig.save(config.data.results / "rig")
+    rig.save(config.rig.path)
 
     # Monitoring time of execution
     logger.info(f"Rig setup in {time.time() - tic:.2f} s.")
@@ -85,10 +85,9 @@ def delete_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> N
     logger.warning(
         "\033[91mResetting existing results. Use with caution as this will delete existing results.\033[0m"
     )
-    rig_path = (
-        FluidFlowerConfig(path, require_data=False, require_results=True).data.results
-        / "rig"
-    )
+    rig_path = FluidFlowerConfig(
+        path, require_data=False, require_results=True
+    ).rig.path
     if rig_path.exists():
         shutil.rmtree(rig_path, ignore_errors=True)
         logger.info("Existing rig found and deleted.")
