@@ -1874,12 +1874,7 @@ class HeterogeneousColorToMassAnalysis:
                     nonlocal done_tuning_values, done_calibration
 
                     def update_analysis(event=None):
-                        nonlocal \
-                            done_tuning_values, \
-                            sliders_color_to_signal, \
-                            sliders_flash, \
-                            sliders_threshold, \
-                            _label_idx
+                        nonlocal done_tuning_values, sliders_color_to_signal, sliders_flash, sliders_threshold, _label_idx
 
                         # Check if any slider value has changed that requires updating mass analysis
                         need_update = False
@@ -2035,12 +2030,7 @@ class HeterogeneousColorToMassAnalysis:
 
                     def update_label_analysis(event=None):
                         """Update analysis for current label only (copy of update_analysis for now)"""
-                        nonlocal \
-                            done_tuning_values, \
-                            sliders_color_to_signal, \
-                            sliders_flash, \
-                            sliders_threshold, \
-                            _label_idx
+                        nonlocal done_tuning_values, sliders_color_to_signal, sliders_flash, sliders_threshold, _label_idx
 
                         # Update parameters
                         self.signal_model.model[1][_label_idx].update(

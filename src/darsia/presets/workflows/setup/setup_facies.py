@@ -44,9 +44,9 @@ def setup_facies(cls: Rig, path: Path, show: bool = False):
     facies_props = pd.read_excel(config.facies.props)
     facies_ids = facies_props["id"].tolist()
     for facies_id in ids:
-        assert facies_id in facies_ids, (
-            f"Facies id {facies_id} not found in facies properties."
-        )
+        assert (
+            facies_id in facies_ids
+        ), f"Facies id {facies_id} not found in facies properties."
 
     # Sanity check - groups. Check that all labels are assigned to a facies.
     unique_labels = set(np.unique(labels.img))

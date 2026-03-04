@@ -228,9 +228,9 @@ def calibration_color_to_mass_analysis(
     if not reset and ref_path is not None:
         # Start from reference calibration if available
         ref_config = FluidFlowerConfig(ref_path)
-        assert ref_config.color_to_mass.calibration_folder.exists(), (
-            "Reference calibration folder does not exist."
-        )
+        assert (
+            ref_config.color_to_mass.calibration_folder.exists()
+        ), "Reference calibration folder does not exist."
         color_analysis = HeterogeneousColorToMassAnalysis.load(
             folder=ref_config.color_to_mass.calibration_folder,
             baseline=fluidflower.baseline,

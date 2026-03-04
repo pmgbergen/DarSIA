@@ -42,15 +42,15 @@ class SimpleMassAnalysisResults:
             mass=self.mass.subregion(roi) if self.mass else None,
             mass_g=self.mass_g.subregion(roi) if self.mass_g else None,
             mass_aq=self.mass_aq.subregion(roi) if self.mass_aq else None,
-            saturation_g=self.saturation_g.subregion(roi)
-            if self.saturation_g
-            else None,
-            color_signal=self.color_signal.subregion(roi)
-            if self.color_signal
-            else None,
-            concentration_aq=self.concentration_aq.subregion(roi)
-            if self.concentration_aq
-            else None,
+            saturation_g=(
+                self.saturation_g.subregion(roi) if self.saturation_g else None
+            ),
+            color_signal=(
+                self.color_signal.subregion(roi) if self.color_signal else None
+            ),
+            concentration_aq=(
+                self.concentration_aq.subregion(roi) if self.concentration_aq else None
+            ),
         )
 
 

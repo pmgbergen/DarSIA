@@ -48,9 +48,9 @@ def print_help_for_flags(args, parser):
 
 def run_comparison(rig: type[Rig], args, **kwargs):
     # Only allow one option at a time
-    assert (args.events + args.wasserstein_compute + args.wasserstein_assemble) == 1, (
-        "Exactly one of events, wasserstein_compute, wasserstein_assemble, or wasserstein_check must be True."
-    )
+    assert (
+        args.events + args.wasserstein_compute + args.wasserstein_assemble
+    ) == 1, "Exactly one of events, wasserstein_compute, wasserstein_assemble, or wasserstein_check must be True."
     # Check if none is chosen
     if not (args.events or args.wasserstein_compute or args.wasserstein_assemble):
         parser.print_help()

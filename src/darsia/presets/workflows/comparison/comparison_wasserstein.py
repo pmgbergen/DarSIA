@@ -114,9 +114,9 @@ def comparison_wasserstein(
     skip_existing: bool = False,
 ):
     # Only allow one of compute, assemble, check_compleletion
-    assert (compute + assemble) == 1, (
-        "Exactly one of compute, assemble, or check_completion must be True."
-    )
+    assert (
+        compute + assemble
+    ) == 1, "Exactly one of compute, assemble, or check_completion must be True."
 
     config = MultiFluidFlowerConfig(path, require_data=False, require_results=True)
     assert config.wasserstein is not None
@@ -584,9 +584,9 @@ def _assemble_wasserstein_results(config):
     times = config.wasserstein.times
     active_runs = config.wasserstein.runs
     results_dir = config.wasserstein.results
-    assert results_dir.exists(), (
-        f"Results directory {results_dir} does not exist. Run computation first."
-    )
+    assert (
+        results_dir.exists()
+    ), f"Results directory {results_dir} does not exist. Run computation first."
     roi_keys = list(config.wasserstein.roi.keys())
     roi_names = [config.wasserstein.roi[key].name for key in roi_keys]
 
@@ -668,9 +668,9 @@ def _assemble_all_wasserstein_results(config: MultiFluidFlowerConfig) -> None:
     times = config.wasserstein.times
     active_runs = config.wasserstein.runs
     results_dir = config.wasserstein.results
-    assert results_dir.exists(), (
-        f"Results directory {results_dir} does not exist. Run computation first."
-    )
+    assert (
+        results_dir.exists()
+    ), f"Results directory {results_dir} does not exist. Run computation first."
     roi_keys = list(config.wasserstein.roi.keys())
     roi_names = [config.wasserstein.roi[key].name for key in roi_keys]
 

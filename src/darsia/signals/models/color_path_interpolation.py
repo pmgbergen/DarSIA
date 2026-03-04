@@ -56,9 +56,9 @@ class ColorPathInterpolation(ColorPathFunction):
         self.values = np.array(
             values if values is not None else color_path.equidistant_distances
         )
-        assert len(self.values) == self.color_path.num_segments + 1, (
-            "Length of values must match number of segments + 1."
-        )
+        assert (
+            len(self.values) == self.color_path.num_segments + 1
+        ), "Length of values must match number of segments + 1."
         self.ignore_spectrum = ignore_spectrum
         """Spectrum to ignore during parametrization."""
 
