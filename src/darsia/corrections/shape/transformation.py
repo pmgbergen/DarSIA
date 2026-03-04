@@ -88,7 +88,7 @@ class BaseTransformation(ABC):
         pts_dst: Union[
             darsia.CoordinateArray, darsia.VoxelArray, darsia.VoxelCenterArray
         ],
-        **kwargs
+        **kwargs,
     ) -> None:
         """Fit parameters of transformation.
 

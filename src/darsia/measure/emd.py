@@ -80,7 +80,7 @@ class EMD:
         # Put the EMD in physical units, and rescale to the original sum.
         rescaled_distance = np.multiply(dist, integral * cell_volume)
 
-        return float(rescaled_distance) if time_num == 1 else rescaled_distance
+        return rescaled_distance[0] if time_num == 1 else rescaled_distance
 
     def _preprocess(self, img: darsia.Image) -> darsia.Image:
         """
