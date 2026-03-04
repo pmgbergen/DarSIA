@@ -6,9 +6,9 @@ from pathlib import Path
 
 from darsia import CoordinateArray
 
-logger = logging.getLogger(__name__)
-
 from .utils import _get_key, _get_section, _get_section_from_toml
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

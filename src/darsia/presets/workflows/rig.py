@@ -130,7 +130,8 @@ class Rig:
 
         # ! ---- CORRECTIONS ----
 
-        # Initialize corrections workflow as empty list, to be filled based on config and available files.
+        # Initialize corrections workflow as empty list, to be filled based on config and
+        # available files.
         self.corrections = []
         """Corrections workflow for the rig object, applied in sequence to images."""
 
@@ -424,7 +425,8 @@ class Rig:
             threshold (float): Threshold for defining boolean porosity.
                 Default is 0.9, meaning that porosity values above 0.9 are considered
                 as porous (True), and below or equal to 0.9 as non-porous (False).
-            log (Path | None): Path to the log folder where boolean porosity images will be saved.
+            log (Path | None): Path to the log folder where boolean porosity images will be
+                saved.
 
         """
         self.boolean_porosity = self.image_porosity > threshold
@@ -639,7 +641,8 @@ class Rig:
         # Use green color and hyperlink
         folder_uri = Path(folder).absolute().as_uri()
         logger.info(
-            f"\033[92mRig object saved to \033]8;;{folder_uri}\033\\{folder}\033]8;;\033\\\033[0m"
+            """\033[92mRig object saved to \033]8;;"""
+            f"""{folder_uri}\033\\{folder}\033]8;;\033\\\033[0m"""
         )
 
     @classmethod
@@ -712,9 +715,9 @@ class Rig:
             darsia.Image: Image object with applied corrections.
 
         """
-        assert hasattr(
-            self, "imaging_protocol"
-        ), "Imaging protocol not defined. Run load_experiment() first."
+        assert hasattr(self, "imaging_protocol"), (
+            "Imaging protocol not defined. Run load_experiment() first."
+        )
         # Convert date from path
         date = self.imaging_protocol.get_datetime(path)
 

@@ -77,6 +77,7 @@ def preset_setup(rig=Rig):
         setup_rig(rig, args.config, args.show)
     if args.reset:
         logger.warning(
-            "\033[91mResetting existing results. Use with caution as this will delete existing results.\033[0m"
+            """\033[91mResetting existing results. Use with caution as this \033[0m"""
+            """\033[91mwill delete existing results.\033[0m"""
         )
         raise NotImplementedError("Reset functionality not implemented yet.")

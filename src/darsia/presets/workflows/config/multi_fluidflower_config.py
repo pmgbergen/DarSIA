@@ -2,12 +2,12 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
-
 from .fluidflower_config import FluidFlowerConfig
 from .roi import MultiRoiConfig
 from .utils import _get_key, _get_section_from_toml
 from .wasserstein import WassersteinDistancesConfig
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

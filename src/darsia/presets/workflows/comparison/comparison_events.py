@@ -71,7 +71,8 @@ def comparison_events(
             else:
                 raise NotImplementedError(f"Event type {event.mode} not implemented.")
             logger.info(
-                f"Event {event.event_id} for run {run} occurred at time {events.at[run, event.event_id]}."
+                f"""Event {event.event_id} for run {run} occurred at time """
+                f"""{events.at[run, event.event_id]}."""
             )
 
     # Store to file.

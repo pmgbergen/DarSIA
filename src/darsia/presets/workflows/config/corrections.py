@@ -16,7 +16,8 @@ class CorrectionsConfig:
         drift: Enable drift correction based on color checker (default: True).
         curvature: Enable curvature correction from laser grid (default: True).
         color: Enable color correction based on color checker (default: False).
-        relative_color: Enable relative color correction based on color checker (default: False).
+        relative_color: Enable relative color correction based on color checker
+            (default: False).
         illumination: Enable illumination correction based on color checker (default: False).
 
     """

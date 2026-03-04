@@ -1679,7 +1679,8 @@ class Image:
             metadata=self.metadata(),
         )
         logger.info(
-            f"\033[92mImage saved as: \033]8;;file://{file_path.absolute()}\033\\{file_path}\033]8;;\033\\\033[0m"
+            f"""\033[92mImage saved as: \033]8;;file://{file_path.absolute()}"""
+            f"""\033\\{file_path}\033]8;;\033\\\033[0m"""
         )
 
     def to_vtk(self, path: str | Path, name: Optional[str] = None) -> None:

@@ -3,7 +3,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.cluster import KMeans
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
@@ -141,8 +140,8 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
                 _img.img[mask.img] = np.mean(_img.img[mask.img], axis=1, keepdims=True)
             _img.show(cmap=custom_cmap, title="Ignored labels")
 
-    # Utils II. Determine distance to baseline spectrum and use that for the first interpolation value
-    # Helps to tone down fluctuations in the baseline color spectrum
+    # Utils II. Determine distance to baseline spectrum and use that for the first
+    # interpolation value. Helps to tone down fluctuations in the baseline color spectrum
     for label in baseline_color_spectrum:
         color_path = color_paths[label]
         min_distance = baseline_color_spectrum[label].distance(

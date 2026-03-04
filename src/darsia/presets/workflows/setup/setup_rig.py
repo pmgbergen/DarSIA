@@ -1,8 +1,8 @@
 """Step 3 of workflow.
 
-Setup and storing of fluidflower object. This routine is time consuming and should be run only once per run.
-It stores the baseline image, necessary corrections, the image porosity and the depth map,
-adapted to the corrected baseline image etc.
+Setup and storing of fluidflower object. This routine is time consuming and should be run only
+once per run. It stores the baseline image, necessary corrections, the image porosity and the
+depth map, adapted to the corrected baseline image etc.
 
 """
 

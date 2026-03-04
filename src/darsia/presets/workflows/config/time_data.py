@@ -6,11 +6,11 @@ import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
-
 import numpy as np
 
 from .utils import _convert_to_hours, _get_key, _get_section
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

@@ -231,7 +231,8 @@ class SimpleRunAnalysis(darsia.MultiphaseTimeSeriesAnalysis):
 
         Args:
             img (darsia.Image): The image on which to plot the contours.
-            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results containing the component data.
+            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results
+                containing the component data.
             path (Path): Path to save the contour plot image.
 
         Returns:
@@ -257,7 +258,8 @@ class SimpleRunAnalysis(darsia.MultiphaseTimeSeriesAnalysis):
 
         Args:
             img (darsia.Image): The image on which to plot the contours.
-            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results containing the component data.
+            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results
+                containing the component data.
             path (Path): Path to save the contour plot image.
 
         Returns:

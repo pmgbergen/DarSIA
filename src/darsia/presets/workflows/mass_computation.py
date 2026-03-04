@@ -1,4 +1,3 @@
-import json
 import logging
 from pathlib import Path
 
@@ -12,6 +11,7 @@ from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
 )
+
 # from darsia.presets.workflows.heterogeneous_color_analysis import (
 #    HeterogeneousColorAnalysis,
 # )
@@ -90,7 +90,7 @@ class MassComputation:
 
         def update_analysis():
             """Auxiliary function to update multiphase time series analysis."""
-            nonlocal analysis
+            nonlocal analysis  # noqa: F824
             nonlocal integrated_mass
             nonlocal integrated_mass_g
             nonlocal integrated_mass_aq
@@ -127,8 +127,6 @@ class MassComputation:
 
         def log_iteration():
             """Auxiliary function to log calibration iteration."""
-            nonlocal num_values  # not modified
-            nonlocal log_error
             nonlocal log_transformation_supports
             nonlocal log_transformation_values
 

@@ -19,7 +19,7 @@ class RigConfig:
     path: Path = field(default_factory=Path)
     """Path to the rig cache file."""
 
-    def load(self, path: Path, results: Path | None = None) -> "FluidFlowerRigConfig":
+    def load(self, path: Path, results: Path | None = None) -> "RigConfig":
         sec = _get_section_from_toml(path, "rig")
         self.width = _get_key(sec, "width", required=True, type_=float)
         self.height = _get_key(sec, "height", required=True, type_=float)

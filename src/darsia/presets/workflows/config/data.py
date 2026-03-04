@@ -4,10 +4,10 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
-
 from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -68,7 +68,8 @@ class DataConfig:
             self.data = list(sorted(self.folder.glob(f"*{self.baseline.suffix}")))
             if len(self.data) == 0:
                 raise FileNotFoundError(
-                    f"No image files with suffix {self.baseline.suffix} found in {self.folder}."
+                    f"""No image files with suffix {self.baseline.suffix} found in """
+                    f"""{self.folder}."""
                 )
         else:
             self.data = None

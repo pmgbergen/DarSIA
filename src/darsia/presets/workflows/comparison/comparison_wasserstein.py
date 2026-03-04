@@ -114,9 +114,9 @@ def comparison_wasserstein(
     skip_existing: bool = False,
 ):
     # Only allow one of compute, assemble, check_compleletion
-    assert (
-        compute + assemble
-    ) == 1, "Exactly one of compute, assemble, or check_completion must be True."
+    assert (compute + assemble) == 1, (
+        "Exactly one of compute, assemble, or check_completion must be True."
+    )
 
     config = MultiFluidFlowerConfig(path, require_data=False, require_results=True)
     assert config.wasserstein is not None
@@ -299,7 +299,8 @@ def _compute_wasserstein_distances(
         rig_based_reference_distance = exact_mass * avg_rig_dimension
 
         print(
-            f"Example reference distances {plume_based_reference_distance=} and {rig_based_reference_distance=}"
+            f"""Example reference distances {plume_based_reference_distance=} """
+            f"""and {rig_based_reference_distance=}"""
         )
 
         # Outer loop over runs (only load mass data once per run and time)
@@ -345,7 +346,7 @@ def _compute_wasserstein_distances(
                     # TODO condense to single function?
                     # distance, info = _compute_single_wasserstein(...)
                     roi_name = roi_config.name
-                    sub_roi_name = None
+                    # sub_roi_name = None # TODO rm?
 
                     # Obtain expected mass from injection profile at given time
                     roi_exact_mass = (
@@ -374,7 +375,8 @@ def _compute_wasserstein_distances(
                     elif (coarse_mass_1 is None) or (coarse_mass_2 is None):
                         # Stop if mass data is missing
                         logger.warning(
-                            f"Mass data for run {run_1} or {run_2} at time {time} not found. Skipping."
+                            f"""Mass data for run {run_1} or {run_2} at time {time} """
+                            """not found. Skipping."""
                         )
                         result = WassersteinDistanceResult(
                             run_1=run_1,
@@ -401,7 +403,7 @@ def _compute_wasserstein_distances(
                             f"Skipping unsuccessful Wasserstein distance: {result_file.name}"
                         )
                     else:
-                        # Extract roi
+                        # Extract roi.
                         roi_mass_1 = coarse_mass_1.subregion(roi_config.roi)
                         roi_mass_2 = coarse_mass_2.subregion(roi_config.roi)
                         roi_wasserstein_weight = coarse_wasserstein_weight.subregion(
@@ -410,7 +412,8 @@ def _compute_wasserstein_distances(
                         roi_integral_1 = roi_mass_1.integral()
                         roi_integral_2 = roi_mass_2.integral()
 
-                        # Compute relative mass difference and average for control and normalization
+                        # Compute relative mass difference and average for control and
+                        # normalization.
                         roi_integral_average = 0.5 * (roi_integral_1 + roi_integral_2)
                         relative_mass_difference = (
                             abs(roi_integral_1 - roi_integral_2) / roi_integral_average
@@ -502,10 +505,10 @@ def _compute_wasserstein_distances(
                             }
 
                             # Control evaluation of the transport density over sub-rois
-                            weighted_transport_density = darsia.full_like(
-                                roi_mass_1,
-                                info.get("weighted_transport_density"),
-                            )
+                            # weighted_transport_density = darsia.full_like(
+                            #    roi_mass_1,
+                            #    info.get("weighted_transport_density"),
+                            # )
                             # transport_density.show()
                             # for sub_roi_name in roi_config.sub_roi:
                             #    sub_roi_config = config.wasserstein.sub_roi[sub_roi_name]
@@ -518,8 +521,8 @@ def _compute_wasserstein_distances(
                             #    skip_existing,
                             # )
 
-                            sub_roi_result = None
-                            ...
+                            # sub_roi_result = None
+                            # ...
 
                             computation_time = time_.time() - start_time
 
@@ -584,9 +587,9 @@ def _assemble_wasserstein_results(config):
     times = config.wasserstein.times
     active_runs = config.wasserstein.runs
     results_dir = config.wasserstein.results
-    assert (
-        results_dir.exists()
-    ), f"Results directory {results_dir} does not exist. Run computation first."
+    assert results_dir.exists(), (
+        f"Results directory {results_dir} does not exist. Run computation first."
+    )
     roi_keys = list(config.wasserstein.roi.keys())
     roi_names = [config.wasserstein.roi[key].name for key in roi_keys]
 
@@ -595,7 +598,8 @@ def _assemble_wasserstein_results(config):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for time, _ in times:
-        # Ignore uncertainty for assembly and associate time with matched results as done during computation.
+        # Ignore uncertainty for assembly and associate time with matched results as done
+        # during computation.
         logger.info(f"Assembling results for time {time}")
 
         # Create DataFrame for this time
@@ -668,9 +672,9 @@ def _assemble_all_wasserstein_results(config: MultiFluidFlowerConfig) -> None:
     times = config.wasserstein.times
     active_runs = config.wasserstein.runs
     results_dir = config.wasserstein.results
-    assert (
-        results_dir.exists()
-    ), f"Results directory {results_dir} does not exist. Run computation first."
+    assert results_dir.exists(), (
+        f"Results directory {results_dir} does not exist. Run computation first."
+    )
     roi_keys = list(config.wasserstein.roi.keys())
     roi_names = [config.wasserstein.roi[key].name for key in roi_keys]
 

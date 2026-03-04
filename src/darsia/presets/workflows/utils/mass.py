@@ -18,7 +18,8 @@ def load_data(
         config (FluidFlowerConfig): Configuration of the experiment.
         data (Literal["mass"]): Type of data to load. Currently only "mass" is supported.
         time (float): Time point at which to load the data (in seconds).
-        tol (float | None): Tolerance for time matching (in hours). If None, exact match is required.
+        tol (float | None): Tolerance for time matching (in hours). If None, exact match is
+            required.
 
     Returns:
         darsia.Image: Loaded data image.

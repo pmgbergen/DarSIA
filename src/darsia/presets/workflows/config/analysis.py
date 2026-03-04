@@ -5,12 +5,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from warnings import warn
 
-logger = logging.getLogger(__name__)
-
 from .roi import RoiAndLabelConfig, RoiConfig
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -39,7 +39,7 @@ class AnalysisSegmentationConfig:
                     )
             except KeyError as e:
                 raise KeyError(
-                    "Segmentation config must be either a single segmentation or multiple segmentations."
+                    "Segmentation config must be either a single or multiple segmentations."
                 ) from e
 
         folder = _get_key(sub_sec, "folder", required=False, type_=Path)

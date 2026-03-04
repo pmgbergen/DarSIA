@@ -28,9 +28,9 @@ class ROI:
 
         """
         # Check type of coordinates
-        assert all(
-            [isinstance(c, darsia.Coordinate) for c in coordinates]
-        ), "All coordinates must be of the same type (Voxel or Coordinate)."
+        assert all([isinstance(c, darsia.Coordinate) for c in coordinates]), (
+            "All coordinates must be of the same type (Voxel or Coordinate)."
+        )
 
         # Test for dimensionality
         dim = coordinates[0].dim
@@ -56,7 +56,8 @@ class ROI:
         """Apply the ROI to an image, returning a new image with the ROI applied.
 
         If provided, the exterior_value will be used to fill the area outside the polygon.
-        If not provided, the area outside the polygon will be filled with values from the image.
+        If not provided, the area outside the polygon will be filled with values from the
+        image.
 
         """
 

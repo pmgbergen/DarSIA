@@ -4,9 +4,9 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
-
 from .utils import _get_section_from_toml
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -75,7 +75,8 @@ class ProtocolConfig:
                 self.pressure_temperature = Path(pressure_temperature_protocol)
             else:
                 raise ValueError(
-                    "Pressure-temperature protocol must be a string or a list of [path, sheet]."
+                    """Pressure-temperature protocol must be a string or a list of """
+                    """[path, sheet]."""
                 )
         except KeyError:
             self.pressure_temperature = None

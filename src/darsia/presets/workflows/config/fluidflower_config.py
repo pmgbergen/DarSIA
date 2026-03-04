@@ -7,8 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from warnings import warn
 
-logger = logging.getLogger(__name__)
-
 from .analysis import AnalysisConfig
 from .color_paths import ColorPathsConfig
 from .color_to_mass import ColorToMassConfig
@@ -21,6 +19,8 @@ from .protocol import ProtocolConfig
 from .rig import RigConfig
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -185,7 +185,7 @@ class FluidFlowerConfig:
             SegmentationConfig().error()
         elif key == "analysis.mass" and (not self.analysis or not self.analysis.mass):
             raise ValueError(
-                "No mass analysis loaded. Use [analysis.mass] in the config file to load mass analysis."
+                "No mass analysis loaded. Use [analysis.mass] in the config file."
             )
 
     def check(self, *args: str) -> None:
