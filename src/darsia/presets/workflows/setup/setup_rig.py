@@ -5,6 +5,7 @@ depth map, adapted to the corrected baseline image etc.
 """
 
 import logging
+import shutil
 import time
 from pathlib import Path
 from typing import Type
@@ -12,7 +13,6 @@ from typing import Type
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.rig import Rig
-import shutil
 
 # Set logging level
 logger = logging.getLogger(__name__)

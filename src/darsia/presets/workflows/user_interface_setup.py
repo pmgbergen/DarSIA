@@ -23,7 +23,7 @@ from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.setup.setup_depth import setup_depth_map
 from darsia.presets.workflows.setup.setup_facies import setup_facies
 from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
-from darsia.presets.workflows.setup.setup_rig import setup_rig, delete_rig
+from darsia.presets.workflows.setup.setup_rig import delete_rig, setup_rig
 
 # Set logging level
 logger = logging.getLogger(__name__)
