@@ -29,6 +29,27 @@ To install DarSIA as editable (recommended), along with the tools to develop and
 ```bash
 $ pip install -e .[dev]
 ```
+
+### Optional: `petsc4py` (recommended for performance-critical solvers)
+
+`petsc4py` is an optional but recommended dependency for performance-critical solvers such as Wasserstein distance computation. It is not installed by default.
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get install -y libhypre-dev libmumps-seq-dev build-essential gcc gfortran mpich cmake
+pip install numpy mpi4py
+PETSC_CONFIGURE_OPTIONS="--download-hypre --download-mumps --download-parmetis --download-ml --download-metis --download-scalapack" pip install petsc petsc4py
+# Then install DarSIA with petsc extra
+pip install .[petsc]
+# Or combined with dev dependencies:
+pip install .[dev,petsc]
+```
+
+**macOS / conda:**
+```bash
+conda install -c conda-forge petsc petsc4py
+```
+See also `conda_env.yaml` for a complete conda environment.
 ## Usage
 
 The following Python script can be applied to the test image in the examples/images folder.

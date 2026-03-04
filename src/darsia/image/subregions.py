@@ -33,7 +33,7 @@ def extract_quadrilateral_ROI(
     pts_src: Optional[Union[list, darsia.VoxelArray, np.ndarray]] = None,
     indexing: Literal["matrix", "reverse matrix"] = "reverse matrix",
     interpolation: InterpolationOption = "inter_linear",
-    **kwargs
+    **kwargs,
 ) -> np.ndarray:
     """
     Extract quadrilateral ROI using a perspective transform,
