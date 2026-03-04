@@ -28,9 +28,9 @@ class ROI:
 
         """
         # Check type of coordinates
-        assert all([isinstance(c, darsia.Coordinate) for c in coordinates]), (
-            "All coordinates must be of the same type (Voxel or Coordinate)."
-        )
+        assert all(
+            [isinstance(c, darsia.Coordinate) for c in coordinates]
+        ), "All coordinates must be of the same type (Voxel or Coordinate)."
 
         # Test for dimensionality
         dim = coordinates[0].dim
