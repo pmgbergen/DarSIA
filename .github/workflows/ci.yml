@@ -31,40 +31,38 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
 
-    - name: Setup Python ${{ matrix.python-version}}
-      uses: actions/setup-python@v2
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
       with:
-        # Version range or exact version of a Python version to use, using SemVer's version range syntax.
         python-version: ${{ matrix.python-version}}
-        architecture: x64
 
     - name: Install petsc dependencies
       if: github.event_name == 'push'
       run: |
         sudo apt-get update
         sudo apt-get install -y libhypre-dev libmumps-seq-dev
-        pip install numpy mpi4py
-        PETSC_CONFIGURE_OPTIONS="--download-hypre --download-mumps --download-parmetis --download-ml --download-metis --download-scalapack" pip install petsc petsc4py
+        uv pip install numpy mpi4py
+        PETSC_CONFIGURE_OPTIONS="--download-hypre --download-mumps --download-parmetis --download-ml --download-metis --download-scalapack" uv pip install petsc petsc4py
 
     - name: Install DarSIA
-      run: pip install .[dev]
+      run: uv sync --extra dev
 
     - name: black
       if: ${{ always() }}
-      run: black --check src
+      run: uv run black --check src
 
     - name: flake8
       if: ${{ always() }}
-      run: flake8 src
+      run: uv run flake8 src
 
     # - name: mypy
     #   if: ${{ always() }}
-    #   run: mypy src
+    #   run: uv run mypy src
 
     - name: isort
       if: ${{always()}}
-      run: isort --check src
+      run: uv run isort --check src
 
     - name: pytest
       if: ${{always()}}
-      run: pytest
+      run: uv run pytest
