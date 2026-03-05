@@ -100,7 +100,7 @@ def calibration_color_to_mass_analysis(
     # Store cached versions of calibration images to speed up development
     calibration_images = []
     for p in calibration_image_paths:
-        cache_path = config.data.results / "tmp" / f"cache_{p.stem}.npz"
+        cache_path = config.data.cache / f"cache_{p.stem}.npz"
         if not cache_path.exists():
             calibration_image = fluidflower.read_image(p)
             calibration_image.save(cache_path)

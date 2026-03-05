@@ -36,6 +36,8 @@ class DataConfig:
     """Pad for image names."""
     results: Path = field(default_factory=Path)
     """Path to the results folder."""
+    cache: Path = field(default_factory=Path)
+    """Path to the cache folder."""
     time_data: TimeData | None = None
     """Calibration data configuration."""
 
@@ -86,6 +88,15 @@ class DataConfig:
                 raise PermissionError(
                     f"Cannot create results directory at {self.results}."
                 ) from e
+
+        # Define cache folder
+        self.cache = self.results / "cache"
+        try:
+            self.cache.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            raise PermissionError(
+                f"Cannot create cache directory at {self.cache}."
+            ) from e
 
         return self
 

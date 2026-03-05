@@ -46,15 +46,12 @@ class Rig:
 
         # Log corrected baseline image
         if log:
-            # Create folder
-            (Path(log) / "rig" / "corrections").mkdir(parents=True, exist_ok=True)
-
             # Plot corrected baseline
             plt.figure()
             plt.imshow(self.baseline.img)
             plt.title("Corrected baseline")
             plt.savefig(
-                Path(log) / "rig" / "corrections" / "corrected_baseline.png",
+                log / "corrected_baseline.png",
                 dpi=500,
             )
             plt.close()
@@ -239,16 +236,12 @@ class Rig:
 
         # Log results
         if log:
-            # Create folder for geometry
-            geometry_folder = Path(log) / "rig" / "geometry"
-            geometry_folder.mkdir(parents=True, exist_ok=True)
-
             # Plot depth map
             plt.figure()
             plt.imshow(self.depth.img)
             plt.colorbar()
             plt.title("Depth map")
-            plt.savefig(geometry_folder / "depth_map.png", dpi=500)
+            plt.savefig(log / "depth_map.png", dpi=500)
             plt.close()
 
         logging.info("Depth map setup completed.")
@@ -296,15 +289,12 @@ class Rig:
             )
 
         if log:
-            # Create folder for label images
-            (Path(log) / "rig" / "labels").mkdir(parents=True, exist_ok=True)
-
             # Plot labels
             plt.figure()
             plt.imshow(self.labels.img)
             plt.colorbar()
             plt.title("Labels")
-            plt.savefig(Path(log) / "rig" / "labels" / "labels.png", dpi=500)
+            plt.savefig(Path(log) / "labels.png", dpi=500)
             plt.close()
 
         logger.info("Labels setup completed.")
@@ -341,15 +331,12 @@ class Rig:
             )
 
         if log:
-            # Create folder for facies images
-            (Path(log) / "rig" / "facies").mkdir(parents=True, exist_ok=True)
-
             # Plot facies
             plt.figure()
             plt.imshow(self.facies.img)
             plt.colorbar()
             plt.title("Facies")
-            plt.savefig(Path(log) / "rig" / "facies" / "facies.png", dpi=500)
+            plt.savefig(log / "facies.png", dpi=500)
             plt.close()
 
         logger.info("Facies setup completed.")
@@ -432,15 +419,12 @@ class Rig:
         self.boolean_porosity = self.image_porosity > threshold
 
         if log:
-            # Create folder for porosity images
-            (Path(log) / "rig" / "porosity").mkdir(parents=True, exist_ok=True)
-
             # Plot boolean porosity
             plt.figure()
             plt.imshow(self.boolean_porosity.img)
             plt.colorbar()
             plt.title("Boolean porosity")
-            plt.savefig(Path(log) / "rig" / "porosity" / "boolean_porosity.png")
+            plt.savefig(Path(log) / "boolean_porosity.png")
             plt.close()
 
         logger.info("Porosity setup completed.")
@@ -459,6 +443,10 @@ class Rig:
         log: Path | None = None,
     ) -> None:
         """Fast setup."""
+        # Create log directory if it doesn't exist
+        if log:
+            assert isinstance(log, Path), "Log path must be a Path object."
+            log.mkdir(parents=True, exist_ok=True)
 
         # Cache baseline path - TODO: Really needed?
         self.baseline_path = baseline_path

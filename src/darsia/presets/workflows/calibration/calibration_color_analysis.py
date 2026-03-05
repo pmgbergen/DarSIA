@@ -50,7 +50,7 @@ def calibration_color_analysis(cls, path: Path, show: bool = False):
         )
     calibration_images = []
     for p in calibration_image_paths:
-        cache_path = Path(".") / "tmp" / f"cache_{p.stem}.npz"
+        cache_path = Path(".") / "cache" / f"cache_{p.stem}.npz"
         if not cache_path.exists():
             calibration_image = fluidflower.read_image(p)
             calibration_image.save(cache_path)
