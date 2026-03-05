@@ -4,9 +4,6 @@ on:
   push:
     branches:
      - main
-  pull_request:
-    branches:
-     - main
 
 #  schedule:
     # Do a nightly run of the tests
