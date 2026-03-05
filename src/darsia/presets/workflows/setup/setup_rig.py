@@ -92,7 +92,8 @@ def delete_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> N
     if rig_path.exists():
         logger.info("Deleting existing rig...")
         user_input = input(
-            "Are you sure you want to delete the existing rig? This action cannot be undone. (y/n): "
+            """Are you sure you want to delete the existing rig? """
+            """This action cannot be undone. (y/n): """
         )
         if user_input.lower() == "y":
             shutil.rmtree(rig_path, ignore_errors=True)
