@@ -36,6 +36,11 @@ jobs:
         python-version: ${{ matrix.python-version}}
         architecture: x64
 
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+
     - name: Install petsc dependencies
       run: |
         sudo apt-get update
@@ -43,67 +48,30 @@ jobs:
         pip install numpy mpi4py
         PETSC_CONFIGURE_OPTIONS="--download-hypre --download-mumps --download-parmetis --download-ml --download-metis --download-scalapack" pip install petsc petsc4py
 
+    - name: Install DarSIA (with petsc, push only)
+      if: github.event_name == 'push'
+      run: uv sync --extra dev --extra petsc
+
     - name: Install DarSIA
-      run: pip install .[dev]
+      if: github.event_name != 'push'
+      run: uv sync --extra dev
 
     - name: black
       if: ${{ always() }}
-      run: black --check src
+      run: uv run black --check src
 
     - name: flake8
       if: ${{ always() }}
-      run: flake8 src
+      run: uv run flake8 src
 
     # - name: mypy
     #   if: ${{ always() }}
-    #   run: mypy src
+    #   run: uv run mypy src
 
     - name: isort
       if: ${{always()}}
-      run: isort --check src
+      run: uv run isort --check src
 
     - name: pytest
       if: ${{always()}}
-      run: pytest
-
-  build-without-petsc:
-    runs-on: ubuntu-latest
-
-    # https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#specifying-a-python-version
-    strategy:
-      matrix:
-        python-version:  ["3.12"]
-      # Complete all versions in matrix even if one fails.
-      fail-fast: false
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Setup Python ${{ matrix.python-version}}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version}}
-        architecture: x64
-
-    - name: Install DarSIA
-      run: pip install .[dev]
-
-    - name: black
-      if: ${{ always() }}
-      run: black --check src
-
-    - name: flake8
-      if: ${{ always() }}
-      run: flake8 src
-
-    # - name: mypy
-    #   if: ${{ always() }}
-    #   run: mypy src
-
-    - name: isort
-      if: ${{always()}}
-      run: isort --check src
-
-    - name: pytest
-      if: ${{always()}}
-      run: pytest
+      run: uv run pytest
