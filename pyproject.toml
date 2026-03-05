@@ -1,16 +1,103 @@
+# ── Build system ──────────────────────────────────────────────────────────────
 [build-system]
-requires = [
-  "numpy",
-  "setuptools",
-]
+requires = ["setuptools>=64", "numpy"]
 build-backend = "setuptools.build_meta"
 
+# ── Project metadata (replaces setup.py) ──────────────────────────────────────
+[project]
+name = "darsia"
+version = "1.1.0"
+description = "Darcy scale image analysis toolbox"
+readme = "README.md"
+license = { file = "LICENSE.txt" }
+requires-python = ">=3.10"
+keywords = ["darcy", "image analysis", "porous media", "flow"]
+
+authors = [
+  { name = "Jakub Wiktor Both",  email = "jakub.both@uib.no" },
+  { name = "Trygve Tegnander" },
+  { name = "Enrico Facca" },
+  { name = "Erlend Storvik" },
+  { name = "Jan Martin Nordbotten" },
+]
+
+maintainers = [
+  { name = "Jakub Wiktor Both", email = "jakub.both@uib.no" },
+]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering",
+]
+
+dependencies = [
+  "numpy",
+  "opencv-python",
+  "scipy",
+  "matplotlib",
+  "scikit-image",
+  "future",
+  "colour-science",
+  "colour-checker-detection",
+  "ipympl",
+  "pillow",
+  "scikit-learn",
+  "pandas",
+  "plotly",
+  "largestinteriorrectangle",
+  "pydicom",
+  "pyamg",
+  "shapely",
+  "openpyxl",
+]
+
+[project.urls]
+Homepage    = "https://github.com/pmgbergen/DarSIA"
+Repository  = "https://github.com/pmgbergen/DarSIA.git"
+Issues      = "https://github.com/pmgbergen/DarSIA/issues"
+
+# ── Optional dependencies (replaces extras_require in setup.py) ───────────────
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.1",
+  "black==24.10.0",
+  "isort",
+  "flake8",
+  "mypy",
+  "meshio",
+  "deepdiff",
+  "pyamg",
+]
+petsc = ["petsc4py"]
+
+# ── Setuptools package discovery (replaces find_packages in setup.py) ─────────
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+darsia = ["py.typed"]
+
+# ── pytest (migrated from setup.cfg [tool:pytest]) ───────────────────────────
+[tool.pytest.ini_options]
+python_files = ["tests/*.py"]
+
+# ── Black ─────────────────────────────────────────────────────────────────────
 [tool.black]
 line-length = 88
 target-version = ["py312"]
 required-version = "24.10.0"
 
+# ── isort ─────────────────────────────────────────────────────────────────────
 [tool.isort]
 profile = "black"
 line_length = 88
 skip = ["src/darsia/__init__.py"]
+
+# ── flake8 does not natively support pyproject.toml; config remains in setup.cfg
