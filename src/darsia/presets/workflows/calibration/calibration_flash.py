@@ -1,3 +1,10 @@
+# TODO: File may be obsolete - consider removing.
+# Currently, the functionality is not used anywhere.
+# This an initial version of a calibration workflow for the FluidFlower experiment.
+# It is still a work in progress and may be subject to significant changes.
+# The main goal is to set up a calibration workflow that allows for interactive tuning
+# of color paths and mass analysis based on the provided configuration and calibration
+# images.
 import logging
 from pathlib import Path
 
@@ -5,12 +12,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_analysis import (
     HeterogeneousColorAnalysis,
 )
 from darsia.presets.workflows.mass_computation import MassComputation
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -58,26 +64,29 @@ def calibration_flash(cls, path: Path, show: bool = False):
             calibration_image = darsia.imread(cache_path)
         calibration_images.append(calibration_image)
 
-    # ! ---- COLOR PATH TOOL ----
-    # color_path_regression = darsia.LabelColorPathMapRegression(
-    #    labels=fluidflower.labels,
-    #    mask=fluidflower.boolean_porosity,
-    #    color_range=color_range,
-    #    resolution=config.color_paths.resolution,
-    #    ignore_labels=config.color_paths.ignore_labels,  # TODO move somewhere else?
-    # )
-
     # ! ---- LOAD COLOR PATHS ----
     color_paths = darsia.LabelColorPathMap.load(config.color_paths.calibration_file)
 
     # ! ---- LOAD COLOR RANGE ----
-    color_range = darsia.ColorRange.load(config.color_paths.color_range_file)
-    color_paths.parametrize_color_range(
-        color_range, config.color_paths.resolution, relative=True
-    )
+    # TODO: rm? Not used?
+    # color_range = darsia.ColorRange.load(config.color_paths.color_range_file)
+    # discrete_color_range = darsia.DiscreteColorRange(
+    #    color_range, config.color_paths.resolution
+    # )
+
+    # ! ---- ALLOCATE EMPTY INTERPOLATIONS ----
+    color_path_interpolation = {
+        label: darsia.ColorPathInterpolation(
+            color_path=color_path,
+            color_mode=darsia.ColorMode.RELATIVE,
+            values=color_path.relative_distances,
+        )
+        for label, color_path in color_paths.items()
+    }
 
     # Pick a reference color path - merely for visualization
-    reference_color_path = color_paths[config.color_paths.reference_label]
+    reference_label = config.color_paths.reference_label
+    reference_color_path = color_paths[reference_label]
     custom_cmap = reference_color_path.get_color_map()
     if show and False:
         reference_color_path.show()
@@ -92,25 +101,29 @@ def calibration_flash(cls, path: Path, show: bool = False):
     baseline_color_spectrum = darsia.LabelColorSpectrumMap.load(
         config.color_paths.baseline_color_spectrum_file
     )
-    distances = {}
-    for label, color_path in color_paths.items():
-        distances[label] = max(
+    distances = {
+        label: max(
             [baseline_color_spectrum[label].distance(c) for c in color_path.colors]
         )
+        for label, color_path in color_paths.items()
+    }
 
     # Metric II.
     # Determine distance from color path to reference color path.
     reference_interpolation = darsia.ColorPathInterpolation(
-        color_path=reference_color_path, interpolation="relative"
+        color_path=reference_color_path,
+        color_mode=darsia.ColorMode.RELATIVE,
+        values=reference_color_path.relative_distances,
     )
-    interpolation_values = {}
-    for label, color_path in color_paths.items():
-        interpolation_values[label] = max(
+    interpolation_values = {
+        label: max(
             [
                 max(0.0, float(reference_interpolation(c)))
                 for c in color_path.relative_colors
             ]
         )
+        for label, color_path in color_paths.items()
+    }
 
     # Decide which labels to ignore based on the two metrics
     threshold = 0.5  # TODO include in config.
@@ -120,35 +133,87 @@ def calibration_flash(cls, path: Path, show: bool = False):
         relative_max_interpolation = interpolation_values[label] / max(
             interpolation_values.values()
         )
+        print(label, relative_distance, relative_max_interpolation)
         if min(relative_distance, relative_max_interpolation) < threshold:
             ignore_labels.append(label)
 
+    print("Ignoring labels:", ignore_labels)
+
+    # Illustrate the ignored labels for the calibration images throgh grayscaling
+    for img in calibration_images[-1:]:
+        _img = img.copy()
+        for mask, label in darsia.Masks(fluidflower.labels, return_label=True):
+            if label not in ignore_labels:
+                continue
+            _img.img[mask.img] = np.mean(_img.img[mask.img], axis=1, keepdims=True)
+        _img.show(cmap=custom_cmap, title="Ignored labels")
+
     # Rescale color paths based on reference interpolation
-    for label, color_path in color_paths.items():
-        color_paths[label].values = (
-            np.array(color_path.values)
-            * interpolation_values[label]
-            / max(color_path.values)
-        ).tolist()
+    for label in color_path_interpolation:
+        color_path_interpolation[label].values *= interpolation_values[label]
+        # color_path = color_paths[label]
+        # color_path_interpolation[label].values = (
+        #    np.array(color_path.relative_distances)
+        #    * interpolation_values[label]
+        #    / max(
+        #        color_path.relative_distances
+        #    )  # Normalization not needed as relative distances are normalized # TODO
+        # ).tolist()
 
     # Overwrite the color paths with updated interpolation values
     for label in np.unique(fluidflower.labels.img):
         if label in config.color_paths.ignore_labels or label in ignore_labels:
-            color_paths[label] = reference_color_path
+            color_path_interpolation[label] = color_path_interpolation[reference_label]
             # TODO: Set an empty color path based on the mean background color.
             # color_paths[label] = darsia.ColorPath()
-        else:
-            print(color_paths[label].values)
-    if show and False:
-        color_paths.show()
+        elif False:
+            print(color_path_interpolation[label].values)
+            color_paths[label].show()
 
     # ! ---- CONCENTRATION ANALYSIS ---- ! #
+
+    # TODO: rm? Not used?
+    # color_path_interpolation_lut = {
+    #    label: darsia.ColorPathLUT(
+    #        color_path_interpolation[label], discrete_color_range
+    #    )
+    #    for label in color_path_interpolation
+    # }
+
+    # Plain color path interpretation - basis for concentration analysis
+    color_path_interpretation = {
+        label: darsia.ColorPathInterpolation(
+            color_path=color_path,
+            color_mode=darsia.ColorMode.RELATIVE,
+            # values=color_path.equidistant_distances,
+            values=color_path.relative_distances,
+        )
+        for label, color_path in color_paths.items()
+    }
+    color_analysis = HeterogeneousColorAnalysis(
+        baseline=fluidflower.baseline,
+        labels=fluidflower.labels,
+        color_mode=darsia.ColorMode.RELATIVE,
+        color_path_functions=color_path_interpretation,
+        # restoration=fluidflower.restoration,
+        ignore_labels=config.color_paths.ignore_labels + ignore_labels,
+    )
+
+    color_images = []
+    for img in calibration_images:
+        color_image = color_analysis(img)
+        color_image.show(title="Color analysis", cmap=custom_cmap, delay=False)
+        color_images.append(color_image)
+
+    # TODO: rm? Not used?
+    # signal_analysis = HeterogeneousSignalAnalysis()
 
     concentration_analysis = HeterogeneousColorAnalysis(
         baseline=fluidflower.baseline,
         labels=fluidflower.labels,
+        color_mode=darsia.ColorMode.RELATIVE,
+        color_path_functions=color_path_interpolation,
         # restoration=fluidflower.restoration,
-        label_color_path_map=color_paths,
         ignore_labels=config.color_paths.ignore_labels + ignore_labels,
     )
 
@@ -184,9 +249,9 @@ def calibration_flash(cls, path: Path, show: bool = False):
 
     # TODO include! one should allow for manual color signal tuning!
 
-    ## Start from existing calibration if available
-    # if config.color_signal.calibration_file.exists():
-    #    concentration_analysis.load(config.color_signal.calibration_file)
+    # Start from existing calibration if available
+    if config.color_signal.calibration_file.exists():
+        concentration_analysis.load(config.color_signal.calibration_file)
 
     # Perform global and local calibration
     concentration_analysis.global_calibration_flash(
@@ -198,7 +263,6 @@ def calibration_flash(cls, path: Path, show: bool = False):
         show=show,
     )
 
-    assert False
     concentration_analysis.local_calibration_flash(
         mass_computation=mass_computation,
         mask=fluidflower.boolean_porosity,
@@ -207,10 +271,8 @@ def calibration_flash(cls, path: Path, show: bool = False):
         show=show,
     )
 
-    assert False
-
     # Free memory for performance
-    del calibration_images
+    # del calibration_images
 
     # Use reference color path for ignored labels (as a de)
     for label in np.unique(fluidflower.labels.img):
@@ -221,7 +283,9 @@ def calibration_flash(cls, path: Path, show: bool = False):
     concentration_analysis.save(config.color_signal.calibration_file)
     # mass_computation.transformation.save(config.mass.calibration_file)
 
+    ###################################################
     # Test run
+    ###################################################
     concentration_images = [concentration_analysis(img) for img in calibration_images]
 
     for i in range(len(calibration_images)):
