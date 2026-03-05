@@ -36,14 +36,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version}}
 
-    - name: Install petsc dependencies
-      if: github.event_name == 'push'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libhypre-dev libmumps-seq-dev
-        uv pip install numpy mpi4py
-        PETSC_CONFIGURE_OPTIONS="--download-hypre --download-mumps --download-parmetis --download-ml --download-metis --download-scalapack" uv pip install petsc petsc4py
-
     - name: Install DarSIA
       run: uv sync --extra dev
 
