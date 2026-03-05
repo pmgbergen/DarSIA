@@ -20,14 +20,32 @@ The first release can be also found on Zenodo:
 10.5281/zenodo.7515016
 
 ## Installation
-DarSIA is developed under Python 3.10. Clone the repository from github and enter the DarSIA folder. Then, run the following command to install:
+
+DarSIA is developed under Python 3.10+. Clone the repository from GitHub and enter the DarSIA folder.
+
+### Using uv (recommended)
+
+[uv](https://github.com/astral-sh/uv) is a fast Python package manager. Install it once, then use it for all DarSIA installs:
 
 ```bash
-pip install .
+# Install uv if you don't have it
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone & install (editable, with dev dependencies)
+git clone https://github.com/pmgbergen/DarSIA.git
+cd DarSIA
+uv sync --extra dev
+
+# Or non-editable / end-user install
+uv pip install .
 ```
-To install DarSIA as editable (recommended), along with the tools to develop and run tests, run the following in your virtual environment:
+
+### Using pip (still supported)
+
 ```bash
-$ pip install -e .[dev]
+git clone https://github.com/pmgbergen/DarSIA.git
+cd DarSIA
+pip install -e .[dev]
 ```
 
 ### Optional: `petsc4py` (recommended for performance-critical solvers)
@@ -39,9 +57,14 @@ $ pip install -e .[dev]
 sudo apt-get install -y libhypre-dev libmumps-seq-dev build-essential gcc gfortran mpich cmake
 pip install numpy mpi4py
 PETSC_CONFIGURE_OPTIONS="--download-hypre --download-mumps --download-parmetis --download-ml --download-metis --download-scalapack" pip install petsc petsc4py
-# Then install DarSIA with petsc extra
+# Then install DarSIA with petsc extra:
+# With uv (editable environment):
+uv sync --extra petsc
+# With uv (non-editable install):
+uv pip install .[petsc]
+# With pip:
 pip install .[petsc]
-# Or combined with dev dependencies:
+# Combined with dev dependencies (pip):
 pip install .[dev,petsc]
 ```
 
