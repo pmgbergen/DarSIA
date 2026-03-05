@@ -57,6 +57,8 @@ class BaseAssistant(ABC):
         """Flag controlling whether plots use physical coordinates."""
         self.verbosity = kwargs.get("verbosity", False)
         """Flag controlling verbosity."""
+        self.cmap = kwargs.get("cmap", "viridis")
+        """Colormap for plotting."""
 
     @abstractmethod
     def _print_instructions() -> None:
@@ -152,9 +154,10 @@ class BaseAssistant(ABC):
                 arr,
                 extent=(origin[0], opposite_corner[0], opposite_corner[1], origin[1]),
                 alpha=alpha,
+                cmap=self.cmap if img.scalar else None,
             )
         else:
-            self.ax.imshow(arr, alpha=alpha)
+            self.ax.imshow(arr, alpha=alpha, cmap=self.cmap if img.scalar else None)
 
         # Plot grid
         plot_grid = self.plot_grid

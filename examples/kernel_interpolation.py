@@ -84,7 +84,7 @@ analysis.model = darsia.CombinedModel(
             supports=colors_RGB,
             values=concentrations,
         ),
-        darsia.ClipModel(**{"max value": 100.0}),
+        darsia.ClipModel(**{"max_value": 100.0}),
     ]
 )
 

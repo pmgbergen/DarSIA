@@ -1,0 +1,229 @@
+"""Standardized configuration for FluidFlower analysis with parsing from TOML."""
+
+import json
+import logging
+import tomllib
+from dataclasses import dataclass
+from pathlib import Path
+from warnings import warn
+
+from .analysis import AnalysisConfig
+from .color_paths import ColorPathsConfig
+from .color_to_mass import ColorToMassConfig
+from .corrections import CorrectionsConfig
+from .data import DataConfig
+from .depth import DepthConfig
+from .facies import FaciesConfig
+from .labeling import LabelingConfig
+from .protocol import ProtocolConfig
+from .rig import RigConfig
+from .segmentation import SegmentationConfig
+from .time_data import TimeData
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class FluidFlowerConfig:
+    """Meta data for FluidFlower CO2 analysis."""
+
+    def __init__(
+        self,
+        path: Path | list[Path],
+        require_data: bool,
+        require_results: bool,
+    ):
+        # Make sure that path is compatible
+        if isinstance(path, list):
+            path = [Path(p) for p in path]
+        else:
+            path = Path(path)
+
+        # ! ---- DATA ---- ! #
+        try:
+            self.data: DataConfig | None = DataConfig()
+            self.data.load(
+                path,
+                require_data=require_data,
+                require_results=require_results,
+            )
+        except KeyError:
+            self.data = None
+            warn(f"Section data not found in {path}, use [data].")
+
+        # ! ---- RIG ---- ! #
+        try:
+            self.rig: RigConfig | None = RigConfig()
+            self.rig.load(
+                path=path,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.rig = None
+            warn(f"Section rig not found in {path}, use [rig].")
+
+        # ! ---- CORRECTIONS ---- ! #
+
+        try:
+            self.corrections: CorrectionsConfig | None = CorrectionsConfig()
+            self.corrections.load(path=path)
+        except KeyError:
+            self.corrections = None
+            warn(f"Section corrections not found in {path}, use [corrections].")
+
+        # ! ---- LABELING ---- ! #
+        try:
+            self.labeling: LabelingConfig | None = LabelingConfig()
+            self.labeling.load(
+                path=path,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.labeling = None
+            warn(f"Section labeling not found in {path}, use [labeling].")
+
+        # ! ---- FACIES ---- ! #
+        try:
+            self.facies: FaciesConfig | None = FaciesConfig()
+            self.facies.load(
+                path=path,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.facies = None
+            warn(f"Section facies not found in {path}, use [facies].")
+
+        # ! ---- DEPTH ---- ! #
+        try:
+            self.depth: DepthConfig | None = DepthConfig()
+            self.depth.load(
+                path=path,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.depth = None
+            warn(f"Section depth not found in {path}, use [depth].")
+
+        # ! ---- PROTOCOLS ---- ! #
+        try:
+            self.protocol: ProtocolConfig | None = ProtocolConfig()
+            self.protocol.load(path)
+        except KeyError:
+            self.protocol = None
+            warn(f"Section protocols not found in {path}, use [protocols].")
+
+        # ! ---- COLOR PATHS ---- ! #
+        try:
+            self.color_paths: ColorPathsConfig | None = ColorPathsConfig()
+            self.color_paths.load(
+                path=path,
+                data=self.data.folder if self.data else None,
+                results=self.data.results if self.data else None,
+            )
+        except ValueError:
+            self.color_paths = None
+            warn(f"Section color_paths not found in {path}.")
+
+        # ! ---- COLOR TO MASS ---- ! #
+        try:
+            self.color_to_mass: ColorToMassConfig | None = ColorToMassConfig()
+            self.color_to_mass.load(
+                path=path,
+                data=self.data.folder if self.data else None,
+                results=self.data.results if self.data else None,
+            )
+        except ValueError:
+            self.color_to_mass = None
+            warn(f"Section color_to_mass not found in {path}.")
+
+        # ! ---- ANALYSIS DATA ---- ! #
+        try:
+            self.analysis = AnalysisConfig()
+            self.analysis.load(
+                path,
+                data=self.data.folder if self.data else None,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.analysis = None
+            warn(f"Section analysis not found in {path}, use [analysis].")
+
+        ## Reference colorchecker
+        # try:
+        #    self.ref_colorchecker = (
+        #        common_folder / meta_data["common"]["ref_colorchecker"]
+        #    )
+        # except KeyError:
+        #    self.ref_colorchecker = None
+
+        ## ! ---- CALIBRATION DATA ---- ! #
+        # self.calibration = {
+        #    "format": None,
+        #    "scaling_image": None,
+        #    "mass_images": None,
+        # }
+        # self.calibration["format"] = meta_data["calibration"].get("format", "JPG")
+
+    def _check(self, key: str):
+        if key == "data" and not self.data:
+            DataConfig().error()
+        elif key == "labeling" and not self.labeling:
+            LabelingConfig().error()
+        elif key == "depth" and not self.depth:
+            DepthConfig().error()
+        elif key == "rig" and not self.rig:
+            RigConfig().error()
+        elif key == "protocol" and not self.protocol:
+            ProtocolConfig().error()
+        elif key == "color_paths" and not self.color_paths:
+            ColorPathsConfig().error()
+        elif key == "analysis.data" and (not self.analysis or not self.analysis.data):
+            TimeData().error()
+        elif key == "analysis.segmentation" and (
+            not self.analysis or not self.analysis.segmentation
+        ):
+            SegmentationConfig().error()
+        elif key == "analysis.mass" and (not self.analysis or not self.analysis.mass):
+            raise ValueError(
+                "No mass analysis loaded. Use [analysis.mass] in the config file."
+            )
+
+    def check(self, *args: str) -> None:
+        """Check that required components are loaded.
+
+        Args:
+            keys (list[str]): List of keys to check. Possible keys are:
+                "specs", "data", "labeling", "depth", "protocol", "color_paths",
+                "analysis".
+
+        Raises:
+            ValueError: If a required component is not loaded.
+
+        """
+        for key in args:
+            assert key in [
+                "analysis",
+                "analysis.data",
+                "analysis.segmentation",
+                "color_paths",
+                "color_to_mass",
+                "data",
+                "depth",
+                "facies",
+                "labeling",
+                "protocol",
+                "rig",
+            ], f"Key {key} not recognized for checking."
+            self._check(key)
+
+    # Loading
+    def load_meta(self, meta: Path) -> dict:
+        """Load meta data from file. Supports JSON and TOML formats."""
+        if meta.suffix == ".json":
+            with open(meta, "r") as f:
+                meta_data = json.load(f)
+        elif meta.suffix == ".toml":
+            meta_data = tomllib.loads(meta.read_text())
+        else:
+            raise ValueError(f"Unsupported meta file format: {meta.suffix}")
+        return meta_data

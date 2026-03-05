@@ -1,6 +1,4 @@
-"""Functionality to determine the Earth Mover's distance between images via cv2.
-
-"""
+"""Functionality to determine the Earth Mover's distance between images via cv2."""
 
 from __future__ import annotations
 
