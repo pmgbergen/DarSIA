@@ -26,8 +26,15 @@ DarSIA is developed under Python 3.10. Clone the repository from github and ente
 pip install .
 ```
 To install DarSIA as editable (recommended), along with the tools to develop and run tests, run the following in your virtual environment:
+
+**With pip:**
 ```bash
-$ pip install -e .[dev]
+pip install -e ".[dev]"
+```
+
+**With uv (recommended for developers):**
+```bash
+uv sync --extra dev
 ```
 
 ### Optional: `petsc4py` (recommended for performance-critical solvers)

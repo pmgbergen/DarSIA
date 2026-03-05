@@ -1,14 +1,77 @@
 [build-system]
-requires = [
-  "numpy",
-  "setuptools",
-]
+requires = ["setuptools", "numpy"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "darsia"
+version = "0.0.1"
+description = "Darcy scale image analysis toolbox"
+keywords = ["darcy", "image analysis", "porous media", "flow"]
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache v2" }
+authors = [
+  { name = "Jakub Wiktor Both", email = "jakub.both@uib.no" },
+]
+maintainers = [
+  { name = "Jakub Wiktor Both", email = "jakub.both@uib.no" },
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "numpy",
+  "opencv-python",
+  "scipy",
+  "matplotlib",
+  "scikit-image",
+  "future",
+  "colour-science",
+  "colour-checker-detection",
+  "ipympl",
+  "pillow",
+  "scikit-learn",
+  "pandas",
+  "plotly",
+  "largestinteriorrectangle",
+  "pydicom",
+  "pyamg",
+  "shapely",
+  "openpyxl",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.1",
+  "black==24.10.0",
+  "isort",
+  "flake8",
+  "mypy",
+  "meshio",
+  "deepdiff",
+]
+petsc = ["petsc4py"]
+
+[project.urls]
+Homepage = "https://github.com/pmgbergen/DarSIA"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+darsia = ["py.typed"]
 
 [tool.black]
 line-length = 88
 target-version = ["py312"]
 required-version = "24.10.0"
+
+[tool.pytest.ini_options]
+python_files = ["tests/*.py"]
 
 [tool.isort]
 profile = "black"
