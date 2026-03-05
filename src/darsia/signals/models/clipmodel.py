@@ -1,7 +1,4 @@
-"""
-Module containing clipping operations.
-
-"""
+"""Module containing clipping operations."""
 
 from typing import Literal, Optional
 
@@ -11,25 +8,35 @@ import darsia
 
 
 class ClipModel(darsia.Model):
-    """
-    Model clipping away signal at some
-    min and max values.
+    """Model clipping away signal at some min and max values."""
 
-    """
-
-    def __init__(self, key: str = "", **kwargs) -> None:
+    def __init__(
+        self,
+        min_value: float | None = None,
+        max_value: float | None = None,
+        key: str | None = None,
+        **kwargs,
+    ) -> None:
         """
-        Constructor.
+        Clipping model initialization.
 
         Args:
-            key (str): additional key
+            min_value (float | None): lower clip value
+            max_value (float | None): upper clip value
+            key (str): additional key (prefix) for kwargs
             kwargs (keyword arguments):
-                'min value': lower clip value
-                'max value': upper clip value
+                key + '_min_value': lower clip value
+                key + '_max_value': upper clip value
 
         """
-        self._min_value = kwargs.get(key + "min value", 0)
-        self._max_value = kwargs.get(key + "max value", None)
+        if key is None:
+            self._min_value = min_value
+            self._max_value = max_value
+        else:
+            self._min_value = kwargs.get(key + "_min_value", None)
+            self._max_value = kwargs.get(key + "_max_value", None)
+        if self._min_value is None and self._max_value is None:
+            raise ValueError("at least one of min_value or max_value must be provided")
         self.num_parameters = 2
 
     def update(

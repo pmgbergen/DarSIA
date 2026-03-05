@@ -1,3 +1,6 @@
+"""Type correction for images."""
+
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -5,13 +8,16 @@ import skimage
 
 import darsia
 
+logger = logging.getLogger(__name__)
+
 
 class TypeCorrection(darsia.BaseCorrection):
+    """Correction to convert image to a specified data type."""
+
     def __init__(self, data_type=None):
         self.data_type = data_type
 
     def correct_array(self, img: np.ndarray) -> np.ndarray:
-
         assert self.data_type is not None, "data_type is not defined"
 
         copy_image = img.copy()
@@ -43,6 +49,8 @@ class TypeCorrection(darsia.BaseCorrection):
 
         """
         np.savez(path, class_name=type(self).__name__, data_type=self.data_type)
+
+        logger.info("\033[92mTypeCorrection saved as: " + str(Path(path)) + "\033[0m")
 
     def load(self, path: Path) -> None:
         """Load the data type from a npz file."""
