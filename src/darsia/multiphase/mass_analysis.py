@@ -354,9 +354,9 @@ class CO2MassAnalysis:
         """Determine mass of CO2, given maps for dissolved and gaseous CO2.
 
         Formulas are:
-        - Mass of gaseous CO2: \( m_g = chi_g \cdot \rho_co2_g \)
-        - Mass of dissolved CO2: \( m_aq = chi_aq \cdot solubility_co2 \)
-        - Total mass of CO2: \( m = m_g + m_aq \)
+        - Mass of gaseous CO2: ( m_g = chi_g \cdot \rho_co2_g )
+        - Mass of dissolved CO2: ( m_aq = chi_aq \cdot solubility_co2 )
+        - Total mass of CO2: ( m = m_g + m_aq )
 
         Args:
             chi_g (Image): volumetric concentration in gas phase

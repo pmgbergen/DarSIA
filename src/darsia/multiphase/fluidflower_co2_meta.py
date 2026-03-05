@@ -199,7 +199,8 @@ class FluidFlowerCO2Meta:
                 self.pressure_temperature_protocol = Path(pressure_temperature_protocol)
             else:
                 raise ValueError(
-                    "Pressure temperature protocol must be a string or a list of [path, sheet]."
+                    """Pressure temperature protocol must be a string or a list of """
+                    """[path, sheet]."""
                 )
         except KeyError:
             self.pressure_temperature_protocol = None

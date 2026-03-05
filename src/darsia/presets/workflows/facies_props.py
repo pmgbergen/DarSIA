@@ -59,5 +59,6 @@ class FaciesProps:
             return cls(facies, porosity=porosity, permeability=permeability)
         else:
             raise ValueError(
-                "Facies properties file must contain 'id', 'porosity', and 'permeability' columns."
+                """Facies properties file must contain columns: 'id', 'porosity', and """
+                """'permeability'."""
             )

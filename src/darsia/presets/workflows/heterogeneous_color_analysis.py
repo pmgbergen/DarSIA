@@ -282,15 +282,23 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
         image_idx = 0
 
         def image_idx_selector() -> int:
-            """Interactive selection of plotted images - allow to click for showing the next coarse images - keep track of the idx in the list and return when finishing."""
-            nonlocal image_idx
+            """Interactive selection of plotted images - allow to click for showing the
+            next coarse images - keep track of the idx in the list and return when
+            finishing.
+
+            Returns:
+                int: The index of the last selected image in the list of images.
+
+            """
+            nonlocal image_idx  # noqa: F824
 
             # Create a simple figure for image selection
             fig, ax = plt.subplots(figsize=(8, 6))
             current_image = coarse_images[image_idx]
             img_display = ax.imshow(current_image.img)
             ax.set_title(
-                f"Image {image_idx + 1}/{len(images)} - Click to cycle through images, close window to finish"
+                f"""Image {image_idx + 1}/{len(images)} - Click to cycle through """
+                """images, close window to finish"""
             )
             ax.axis("off")
 
@@ -302,7 +310,8 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
                     current_image = coarse_images[image_idx]
                     img_display.set_data(current_image.img)
                     ax.set_title(
-                        f"Image {image_idx + 1}/{len(images)} - Click to cycle through images, close window to finish"
+                        f"""Image {image_idx + 1}/{len(images)} - Click to cycle through """
+                        """images, close window to finish"""
                     )
                     fig.canvas.draw_idle()
 
@@ -335,7 +344,8 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
             while not done_tuning_values:
 
                 def show_tuner(idx):
-                    nonlocal done_tuning_values, done_picking_new_labels
+                    nonlocal done_tuning_values  # noqa: F824
+                    nonlocal done_picking_new_labels  # noqa: F824
                     fig, ax_conc = plt.subplots(figsize=(8, 4))
                     ax_image = plt.axes([0.05, 0.5, 0.15, 0.4])
                     plt.subplots_adjust(left=0.25, bottom=0.25)
@@ -445,7 +455,7 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
 
         def update_analysis():
             """Auxiliary function to update multiphase time series analysis."""
-            nonlocal analysis
+            nonlocal analysis  # noqa: F824
             nonlocal times
             nonlocal expected_mass
             nonlocal integrated_mass
@@ -456,8 +466,8 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
             analysis.reset()
             for img in calibration_images:
                 # Preliminaries
-                img_time = img.time
                 # TODO update co2_mass_analysis/flash etc based on img_time.
+                # img_time = img.time
 
                 # Signal analysis
                 tic_local = time.time()
@@ -515,7 +525,7 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
         # 4. Integrated mass over time, first 12 hours, updated upon activation
 
         # Set up the figure layout: sliders on the left, plots on the right
-        fig = plt.figure(figsize=(18, 10))
+        plt.figure(figsize=(18, 10))
 
         # Use gridspec to allocate space for sliders and plots
         import matplotlib.gridspec as gridspec
@@ -550,19 +560,19 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
         # expected mass using a dashed line.
         ax[1].set_xlabel("Time (h)")
         ax[1].set_ylabel("Mass (g)")
-        [integrated_mass_plot] = ax[1].plot(
+        ax[1].plot(
             times,
             integrated_mass,
             color="blue",
             label="total",
         )
-        [integrated_mass_plot_g] = ax[1].plot(
+        ax[1].plot(
             times,
             integrated_mass_g,
             color="green",
             label="gas",
         )
-        [integrated_mass_plot_aq] = ax[1].plot(
+        ax[1].plot(
             times,
             integrated_mass_aq,
             color="orange",
@@ -575,17 +585,17 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
             color="red",
             label="injected",
         )
-        integrated_mass_scatter = ax[1].scatter(
+        ax[1].scatter(
             times,
             integrated_mass,
             color="blue",
         )
-        integrated_mass_scatter_g = ax[1].scatter(
+        ax[1].scatter(
             times,
             integrated_mass_g,
             color="green",
         )
-        integrated_mass_scatter_aq = ax[1].scatter(
+        ax[1].scatter(
             times,
             integrated_mass_aq,
             color="orange",
@@ -677,7 +687,7 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
             while not done:
 
                 def show_tuner(idx):
-                    nonlocal done
+                    nonlocal done  # noqa: F824
                     color_path = self.color_paths[idx]
                     fig, ax_conc = plt.subplots(figsize=(8, 4))
                     ax_image = plt.axes([0.05, 0.5, 0.15, 0.4])
@@ -773,7 +783,8 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
             # Show the tuner for the current color path
 
             def show_tuner(idx):
-                nonlocal done, color_path_idx
+                nonlocal done  # noqa: F824
+                nonlocal color_path_idx  # noqa: F824
                 color_path = self.color_paths[idx]
                 fig, ax_conc = plt.subplots(figsize=(8, 4))
                 ax_image = plt.axes([0.05, 0.5, 0.15, 0.4])
@@ -821,7 +832,8 @@ class HeterogeneousColorAnalysis(darsia.ConcentrationAnalysis):
                 btn_update.on_clicked(update_concentration)
 
                 def switch_path(event, direction):
-                    nonlocal done, color_path_idx
+                    nonlocal done  # noqa: F824
+                    nonlocal color_path_idx
                     color_path_idx = (idx + direction) % len(self.color_paths)
                     plt.close(fig)
 

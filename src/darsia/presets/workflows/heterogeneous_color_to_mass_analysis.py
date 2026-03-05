@@ -1,3 +1,5 @@
+# TODO review noqa F824 usage
+
 import json
 import logging
 from pathlib import Path
@@ -257,15 +259,19 @@ class HeterogeneousColorToMassAnalysis:
         # ! ----- IMAGE SELECTION -----
 
         def image_idx_selector() -> int:
-            """Interactive selection of plotted images - allow to click for showing the next coarse images - keep track of the idx in the list and return when finishing."""
-            nonlocal image_idx
+            """Interactive selection of plotted images - allow to click for showing the next
+            coarse images - keep track of the idx in the list and return when finishing.
+
+            """
+            nonlocal image_idx  # noqa: F824
 
             # Create a simple figure for image selection
             fig, ax = plt.subplots(figsize=(8, 6))
             current_image = coarse_images[image_idx]
             img_display = ax.imshow(current_image.img)
             ax.set_title(
-                f"Image {image_idx + 1}/{len(images)} - Click to cycle through images, close window to finish"
+                f"""Image {image_idx + 1}/{len(images)} - Click to cycle through """
+                f"""images, close window to finish"""
             )
             ax.axis("off")
 
@@ -277,7 +283,8 @@ class HeterogeneousColorToMassAnalysis:
                     current_image = coarse_images[image_idx]
                     img_display.set_data(current_image.img)
                     ax.set_title(
-                        f"Image {image_idx + 1}/{len(images)} - Click to cycle through images, close window to finish"
+                        f"""Image {image_idx + 1}/{len(images)} - Click to cycle through """
+                        f"""images, close window to finish"""
                     )
                     fig.canvas.draw_idle()
 
@@ -321,12 +328,11 @@ class HeterogeneousColorToMassAnalysis:
         @darsia.timing_decorator
         def update_mass_analysis() -> None:
             """Auxiliary function to update multiphase time series analysis."""
-            # nonlocal analysis
-            nonlocal times
-            nonlocal expected_mass
-            nonlocal integrated_mass
-            nonlocal integrated_mass_g
-            nonlocal integrated_mass_aq
+            nonlocal times  # noqa: F824
+            nonlocal expected_mass  # noqa: F824
+            nonlocal integrated_mass  # noqa: F824
+            nonlocal integrated_mass_g  # noqa: F824
+            nonlocal integrated_mass_aq  # noqa: F824
 
             analysis = {
                 roi_key: SimpleRunAnalysis(self.geometry.subregion(roi))
@@ -384,7 +390,8 @@ class HeterogeneousColorToMassAnalysis:
                 ) / np.abs(expected_mass[roi_key]).clip(min=1e-8)
 
                 logging.info(
-                    f"Mass analysis for roi {roi_key} updated.\nNew relative error: {relative_error}"
+                    f"""Mass analysis for roi {roi_key} updated.\nNew relative """
+                    f"""error: {relative_error}"""
                 )
 
         # ! ---- GRID FOR PLOTTING ----
@@ -661,7 +668,9 @@ class HeterogeneousColorToMassAnalysis:
                     zorder=1,
                 )
 
-                # Find the corresponding x-values for the cut-off and max value lines as solution to the signal_function(x) = cut_off and signal_function(x) = max_value
+                # Find the corresponding x-values for the cut-off and max value lines as
+                # solution to the signal_function(x) = cut_off and
+                # signal_function(x) = max_value
                 aq_min_x = signal_func.inverse(self.flash.min_value_aq)
                 aq_max_x = signal_func.inverse(self.flash.max_value_aq)
                 g_max_x = signal_func.inverse(self.flash.max_value_g)
@@ -698,7 +707,7 @@ class HeterogeneousColorToMassAnalysis:
                 )
 
                 # Make text annotations "CO2(aq)" and "CO2(g)" below and above the cut-off line
-                signal_function_co2_aq = ax_signal_function.text(
+                ax_signal_function.text(
                     x=aq_max_x - 0.05,
                     y=0.04,
                     s="CO2(aq)",
@@ -707,7 +716,7 @@ class HeterogeneousColorToMassAnalysis:
                     fontsize=8,
                     color="k",
                 )
-                signal_function_co2_g = ax_signal_function.text(
+                ax_signal_function.text(
                     x=aq_max_x + 0.05,
                     y=0.04,
                     s="CO2(g)",
@@ -716,7 +725,7 @@ class HeterogeneousColorToMassAnalysis:
                     fontsize=8,
                     color="k",
                 )
-                signal_function_co2_g_full = ax_signal_function.text(
+                ax_signal_function.text(
                     x=g_max_x + 0.1,
                     y=0.04,
                     s="CO2(g) - 100%",
@@ -1436,28 +1445,29 @@ class HeterogeneousColorToMassAnalysis:
             ]
 
             # Add depth scaling slider
+            # TODO: remove depth slider? Not in use anywhere?
             slider_x = slider_left + (flash_slider_start_idx + 6) * (
                 slider_width_individual + spacing
             )
-            ax_slider_depth = fig.add_axes(
-                [
-                    slider_x,
-                    slider_y,
-                    slider_width_individual,
-                    slider_height_individual,
-                ]
-            )
-            slider_depth = Slider(
-                ax_slider_depth,
-                "Depth\ncorr.(+/-)",
-                -0.01,
-                0.01,
-                valinit=0.0,
-                valstep=0.001,
-                color=(0, 0, 1),  # Blue color
-                orientation="vertical",
-            )
-            sliders_depth = [slider_depth]
+            # ax_slider_depth = fig.add_axes(
+            #    [
+            #        slider_x,
+            #        slider_y,
+            #        slider_width_individual,
+            #        slider_height_individual,
+            #    ]
+            # )
+            # slider_depth = Slider(
+            #    ax_slider_depth,
+            #    "Depth\ncorr.(+/-)",
+            #    -0.01,
+            #    0.01,
+            #    valinit=0.0,
+            #    valstep=0.001,
+            #    color=(0, 0, 1),  # Blue color
+            #    orientation="vertical",
+            # )
+            # sliders_depth = [slider_depth]
 
             # Add arrow buttons for flash sliders (cut-off and max)
             flash_arrow_buttons_up = []
@@ -1563,7 +1573,8 @@ class HeterogeneousColorToMassAnalysis:
 
             # Create empty functions for flash slider arrow button callbacks
             def flash_slider_up_arrow(slider_index):
-                """Increment flash slider by one step. And all signal function sliders across all labels.
+                """Increment flash slider by one step. And all signal function sliders across
+                all labels.
 
                 Args:
                     slider_index (int): Index of the flash slider (0=cut-off, 1=max)
@@ -1871,12 +1882,18 @@ class HeterogeneousColorToMassAnalysis:
             while not done_tuning_values:
 
                 def show_tuner(_label_idx):
-                    nonlocal done_tuning_values, done_calibration
+                    nonlocal done_tuning_values  # noqa: F824
+                    nonlocal done_calibration  # noqa: F824
 
                     def update_analysis(event=None):
-                        nonlocal done_tuning_values, sliders_color_to_signal, sliders_flash, sliders_threshold, _label_idx
+                        nonlocal done_tuning_values  # noqa: F824
+                        nonlocal sliders_color_to_signal  # noqa: F824
+                        nonlocal sliders_flash  # noqa: F824
+                        nonlocal sliders_threshold  # noqa: F824
+                        nonlocal _label_idx  # noqa: F824
 
-                        # Check if any slider value has changed that requires updating mass analysis
+                        # Check if any slider value has changed that requires updating
+                        # mass analysis.
                         need_update = False
                         need_update = need_update or any(
                             [
@@ -2029,8 +2046,15 @@ class HeterogeneousColorToMassAnalysis:
                         fig.canvas.draw_idle()
 
                     def update_label_analysis(event=None):
-                        """Update analysis for current label only (copy of update_analysis for now)"""
-                        nonlocal done_tuning_values, sliders_color_to_signal, sliders_flash, sliders_threshold, _label_idx
+                        """Update analysis for current label only (copy of update_analysis for
+                        now)
+
+                        """
+                        nonlocal done_tuning_values  # noqa: F824
+                        nonlocal sliders_color_to_signal  # noqa: F824
+                        nonlocal sliders_flash  # noqa: F824
+                        nonlocal sliders_threshold  # noqa: F824
+                        nonlocal _label_idx  # noqa: F824
 
                         # Update parameters
                         self.signal_model.model[1][_label_idx].update(
@@ -2579,7 +2603,8 @@ class HeterogeneousColorToMassAnalysis:
                 max_value_g=dofs[-1] + dofs[-2],
             )
             logging.info(
-                f"Flash min: {self.flash.min_value_aq}, max: {self.flash.max_value_aq}, min g: {self.flash.min_value_g}, max g: {self.flash.max_value_g}"
+                f"""Flash min: {self.flash.min_value_aq}, max: {self.flash.max_value_aq}, """
+                f"""min g: {self.flash.min_value_g}, max g: {self.flash.max_value_g}"""
             )
 
             # Allocate variables for mass analysis
@@ -2723,7 +2748,8 @@ class HeterogeneousColorToMassAnalysis:
             max_value_g=result.x[-1] + result.x[-2],
         )
         logging.info(
-            f"Flash min: {self.flash.min_value_aq}, max: {self.flash.max_value_aq}, min g: {self.flash.min_value_g}, max g: {self.flash.max_value_g}"
+            f"""Flash min: {self.flash.min_value_aq}, max: {self.flash.max_value_aq}, """
+            f"""min g: {self.flash.min_value_g}, max g: {self.flash.max_value_g}"""
         )
 
     def save(self, folder: Path) -> None:

@@ -57,7 +57,8 @@ class MultiphaseTimeSeriesAnalysis:
         Use: self.data.append(...) to add data to the time series.
 
         Args:
-            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results containing the component data.
+            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results
+                containing the component data.
             This should include the mass and volume data for gaseous and aqueous phases.
 
         """
@@ -67,7 +68,8 @@ class MultiphaseTimeSeriesAnalysis:
         """Remove faulty data from tracked time series data.
 
         Args:
-            threshold (float): Threshold for cleaning the data. Data points with absolute values below this threshold will be removed.
+            threshold (float): Threshold for cleaning the data. Data points with absolute
+                values below this threshold will be removed.
 
         """
         self.data.clean(tol=threshold)
@@ -79,7 +81,8 @@ class MultiphaseTimeSeriesAnalysis:
 
         Args:
             path (Path): Path to save the plot.
-            **kwargs: Additional keyword arguments, e.g., 'upper_time_limit' to limit the time range.
+            **kwargs: Additional keyword arguments, e.g., 'upper_time_limit' to limit the time
+                range.
 
         """
         self.data.plot_mass_over_time(
@@ -91,7 +94,8 @@ class MultiphaseTimeSeriesAnalysis:
 
         Args:
             path (Path): Path to save the plot.
-            **kwargs: Additional keyword arguments, e.g., 'upper_time_limit' to limit the time range.
+            **kwargs: Additional keyword arguments, e.g., 'upper_time_limit' to limit the time
+                range.
 
         """
         self.data.plot_volume_over_time(
@@ -110,10 +114,13 @@ class MultiphaseTimeSeriesAnalysis:
         """Plot the result of the mass analysis for a specific component.
 
         Args:
-            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results containing the component data.
-            component (str): The component to plot, e.g., 'normalized_signal_aq', 'normalized_signal_g', or 'mass'.
+            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results
+                containing the component data.
+            component (str): The component to plot, e.g., 'normalized_signal_aq',
+                'normalized_signal_g', or 'mass'.
             path (darsia.Path): Path to save the plot.
-            vmax (Optional[float]): Maximum value for the color scale. If None, the maximum value of the image is used.
+            vmax (Optional[float]): Maximum value for the color scale. If None, the maximum
+                value of the image is used.
 
         """
         plt.figure()
@@ -137,7 +144,8 @@ class MultiphaseTimeSeriesAnalysis:
 
         Args:
             img (darsia.Image): The image on which to plot the contours.
-            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results containing the signals.
+            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results
+                containing the signals.
             values_aq (list[float]): List of aqueous signal values to create contours for.
             values_g (list[float]): List of gaseous signal values to create contours for.
             path (Path): Path to save the contour image.
@@ -174,7 +182,8 @@ class MultiphaseTimeSeriesAnalysis:
 
         Args:
             img (darsia.Image): The image on which to plot the contours.
-            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results containing the mass data.
+            mass_analysis_result (darsia.MassAnalysisResults): The mass analysis results
+                containing the mass data.
             values (list[float]): List of mass values to create contours for.
             path (Path): Path to save the contour image.
             thickness (int, optional): Thickness of the contour lines. Defaults to 5.

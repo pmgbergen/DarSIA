@@ -1,6 +1,6 @@
-"""Setup/storing/deleting main rig object. This routine is time consuming and should be run only
-once per run. It stores the baseline image, necessary corrections, the image porosity and the
-depth map, adapted to the corrected baseline image etc.
+"""Setup/storing/deleting main rig object. This routine is time consuming and should be run
+only once per run. It stores the baseline image, necessary corrections, the image porosity
+and the depth map, adapted to the corrected baseline image etc.
 
 """
 
@@ -83,7 +83,8 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
 def delete_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> None:
     """Reset rig by deleting existing results and re-running setup."""
     logger.warning(
-        "\033[91mResetting existing results. Use with caution as this will delete existing results.\033[0m"
+        """\033[91mResetting existing results. Use with caution as this will delete """
+        """existing results.\033[0m"""
     )
     rig_path = FluidFlowerConfig(
         path, require_data=False, require_results=True

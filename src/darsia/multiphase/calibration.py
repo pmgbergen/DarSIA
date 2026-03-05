@@ -31,18 +31,22 @@ def calibrate_transformations(
     of CO2 over time. The transformation_g and transformation_aq
     will be adjusted iteratively to minimize the difference between
     the detected and expected masses. The routine requires three callables:
-    - `read_image`: a function to read an image from a given path and convert to a darsia.Image,
+    - `read_image`: a function to read an image from a given path and convert to a
+        darsia.Image,
     - `pre_mass_analysis`: a function to perform pre-mass analysis on the image,
-    - `mass_analysis_from_pre`: a function to perform mass analysis from the pre-mass analysis results.
+    - `mass_analysis_from_pre`: a function to perform mass analysis from the pre-mass analysis
+        results.
 
     Args:
         transformation_g (darsia.PWTransformation): Transformation for gas phase.
         transformation_aq (darsia.PWTransformation): Transformation for aqueous phase.
         paths (list[Path]): List of paths to images to be analyzed.
-        multiphase_time_series_analysis (darsia.MultiphaseTimeSeriesAnalysis): Analysis object to track results.
+        multiphase_time_series_analysis (darsia.MultiphaseTimeSeriesAnalysis): Analysis object
+            to track results.
         upper_time_limit (float): Upper time limit for the analysis in hours.
         read_image (Callable[[Path], darsia.Image]): Function to read an image from a path.
-        pre_mass_analysis (Callable[[darsia.Image], dict]): Function to perform pre-mass analysis on
+        pre_mass_analysis (Callable[[darsia.Image], dict]): Function to perform pre-mass
+            analysis on
 
     """
 
@@ -74,7 +78,7 @@ def calibrate_transformations(
 
     def update_multiphase_time_series_analysis():
         """Auxiliary function to update multiphase time series analysis."""
-        nonlocal multiphase_time_series_analysis
+        nonlocal multiphase_time_series_analysis  # noqa: F824
         nonlocal run_time
         nonlocal ind
         nonlocal integrated_mass
@@ -121,11 +125,11 @@ def calibrate_transformations(
 
     def log_iteration():
         """Auxiliary function to log calibration iteration."""
-        nonlocal num_values_g  # not modified
-        nonlocal num_values_aq  # not modified
-        nonlocal log_error
-        nonlocal log_early_error
-        nonlocal log_late_error
+        # nonlocal num_values_g  # not modified
+        # nonlocal num_values_aq  # not modified
+        nonlocal log_error  # noqa: F824
+        nonlocal log_early_error  # noqa: F824
+        nonlocal log_late_error  # noqa: F824
         nonlocal log_transformation_g_supports
         nonlocal log_transformation_g_values
         nonlocal log_transformation_aq_supports
@@ -428,7 +432,8 @@ def calibrate_transformations(
         nonlocal log_calibration_iteration
         log_calibration_iteration += 1
 
-        # Deactivate the mass plots by plotting additional text 'Loading...' in the center of the plot
+        # Deactivate the mass plots by plotting additional text 'Loading...' in the center of
+        # the plot
         loading_txt = ax[2].text(
             np.max(run_time) // 2,
             0.008,
