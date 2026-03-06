@@ -1,0 +1,19 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+title: "DarSIA: Darcy Scale Image Analysis Toolbox"
+version: "1.1.0"
+date-released: "2023-12-20"
+url: "https://github.com/pmgbergen/DarSIA"
+license: Apache-2.0
+authors:
+  - family-names: Both
+    given-names: Jakub Wiktor
+    email: jakub.both@uib.no
+  - family-names: Tegnander
+    given-names: Trygve
+  - family-names: Facca
+    given-names: Enrico
+  - family-names: Storvik
+    given-names: Erlend
+  - family-names: Nordbotten
+    given-names: Jan Martin
