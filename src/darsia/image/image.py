@@ -684,7 +684,9 @@ class Image:
             voxels = None
             coordinates = roi
         else:
-            raise ValueError
+            raise ValueError(
+                f"roi is of type {type(roi)}, but needs to be tuple of slices, VoxelArray, or CoordinateArray."
+            )
 
         # ! ---- Translate coordinates to voxels
 
