@@ -14,6 +14,9 @@ from darsia.presets.workflows.analysis.analysis_segmentation import (
 from darsia.presets.workflows.analysis.analysis_volume import (
     analysis_volume_from_context,
 )
+from darsia.presets.workflows.analysis.analysis_fingers import (
+    analysis_fingers_from_context,
+)
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -33,6 +36,9 @@ def build_parser_for_analysis():
     )
     parser.add_argument(
         "--segmentation", action="store_true", help="Perform segmentation analysis."
+    )
+    parser.add_argument(
+        "--fingers", action="store_true", help="Perform finger analysis."
     )
     parser.add_argument(
         "--mass", action="store_true", help="Perform color to mass analysis."
@@ -85,14 +91,18 @@ def print_help_for_flags(args, parser):
 
 
 def run_analysis(rig: type[Rig], args, **kwargs):
-    if not (args.cropping or args.mass or args.volume or args.segmentation):
+    if not (
+        args.cropping or args.mass or args.volume or args.segmentation or args.fingers
+    ):
         raise ValueError(
             """No analysis type specified. Please select at least one analysis."""
-            """Choose from --cropping, --mass, --volume, or --segmentation."""
+            """Choose from --cropping, --mass, --volume, --segmentation, --fingers."""
         )
 
     # Determine if we need color-to-mass analysis (expensive initialization)
-    require_color_to_mass = args.mass or args.volume or args.segmentation
+    require_color_to_mass = (
+        args.mass or args.volume or args.segmentation or args.fingers
+    )
 
     # Determine if we need facies (only for mass/volume/segmentation)
     use_facies = require_color_to_mass
@@ -129,6 +139,12 @@ def run_analysis(rig: type[Rig], args, **kwargs):
 
     if args.segmentation:
         analysis_segmentation_from_context(
+            ctx,
+            show=args.show,
+        )
+
+    if args.fingers:
+        analysis_fingers_from_context(
             ctx,
             show=args.show,
         )
