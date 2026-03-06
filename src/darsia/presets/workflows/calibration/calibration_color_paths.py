@@ -49,7 +49,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     # Cache baseline images for performance
     baseline_images: list[darsia.Image] = []
     for p in config.color_paths.baseline_image_paths:
-        cache_path = Path(".") / "cache" / f"cache_{p.stem}.npz"
+        cache_path = config.data.cache / f"cache_{p.stem}.npz"
         if not cache_path.exists():
             baseline_image = fluidflower.read_image(p)
             baseline_image.save(cache_path)
@@ -60,7 +60,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     # Cache calibration images for performance
     calibration_images: list[darsia.Image] = []
     for p in calibration_image_paths:
-        cache_path = Path(".") / "cache" / f"cache_{p.stem}.npz"
+        cache_path = config.data.cache / f"cache_{p.stem}.npz"
         if not cache_path.exists():
             calibration_image = fluidflower.read_image(p)
             calibration_image.save(cache_path)
