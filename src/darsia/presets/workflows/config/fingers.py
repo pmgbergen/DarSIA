@@ -2,9 +2,9 @@
 
 import logging
 from dataclasses import dataclass
-from .utils import _get_key, _get_section
+
 from .roi import RoiConfig
-from pathlib import Path
+from .utils import _get_key, _get_section
 
 logger = logging.getLogger(__name__)
 
