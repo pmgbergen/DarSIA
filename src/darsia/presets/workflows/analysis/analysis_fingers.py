@@ -11,7 +11,10 @@ from darsia.presets.workflows.analysis.analysis_context import (
 )
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SimpleSegmentation
-from darsia.single_image_analysis.contouranalysis import ContourAnalysis
+from darsia.single_image_analysis.contouranalysis import (
+    ContourAnalysis,
+    ContourEvolutionAnalysis,
+)
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -42,17 +45,17 @@ def analysis_fingers_from_context(
         mode=fingers_config.mode, threshold=fingers_config.threshold
     )
     contour_analysis = ContourAnalysis()
+    contour_evolution_analysis = ContourEvolutionAnalysis()
 
     # Data management.
     results_folder = ctx.config.analysis.fingers.folder
-    img_folder = ctx.config.analysis.fingers.img_folder
     results_folder.mkdir(parents=True, exist_ok=True)
-    img_folder.mkdir(parents=True, exist_ok=True)
+    for key in fingers_config.roi:
+        (results_folder / "tips" / key).mkdir(parents=True, exist_ok=True)
+        (results_folder / "paths" / key).mkdir(parents=True, exist_ok=True)
 
     # DataFrame to store results.
-    df = pd.DataFrame(
-        columns=["time", "key", "image", "contour_length", "number_peaks"]
-    )
+    df = pd.DataFrame(columns=["time", "key", "image", "contour_length", "number_tips"])
 
     # Loop over images and analyze
     for path in image_paths:
@@ -81,16 +84,17 @@ def analysis_fingers_from_context(
 
             # Determine various contour values.
             contour_length = contour_analysis.length()
-            peaks, _ = contour_analysis.fingers()
+            peaks, valleys = contour_analysis.fingers()
             number_peaks = contour_analysis.number_peaks()
             contour_analysis.plot_finger_peaks(
                 img,
                 peaks,
                 roi_config.roi,
                 contours=contours,
-                path=img_folder / f"{path.stem}_{key}.png",
+                path=results_folder / "tips" / key / f"{path.stem}.png",
                 show=show,
                 **{
+                    # TODO enable control from config.
                     "peak_color": "r",
                     "peak_size": 10,
                     "contour_color": "w",
@@ -102,6 +106,19 @@ def analysis_fingers_from_context(
                 },
             )
 
+            # Update evolution analysis.
+            contour_evolution_analysis.add(peaks=peaks, valleys=valleys, time=img.time)
+            contour_evolution_analysis.find_paths()
+            # contour_evolution_analysis.plot(img, roi=roi_config.roi)
+
+            contour_evolution_analysis.plot_paths(
+                img,
+                roi=roi_config.roi,
+                path=results_folder / "paths" / key / f"{path.stem}.png",
+                show=show,
+            )
+            # number_paths = contour_evolution_analysis.number_paths
+
             df = pd.concat(
                 [
                     df,
@@ -112,6 +129,8 @@ def analysis_fingers_from_context(
                             "image": path.name,
                             "contour_length": contour_length,
                             "number_peaks": number_peaks,
+                            # "number_merged_paths": ...,
+                            # "number_new_paths": ...,
                         },
                         index=[0],
                     ),
