@@ -26,7 +26,7 @@ class Rig:
         self,
         baseline_path: Path,
         imaging_protocol: darsia.ImagingProtocol,
-        config_path: Path | list[Path] | None = None,
+        # config_path: Path | list[Path] | None = None,
         corrections_config: CorrectionsConfig | None = None,
         log: Path | None = None,
     ):
@@ -37,7 +37,7 @@ class Rig:
         pre_baseline = darsia.imread(baseline_path)
         self.setup_corrections(
             pre_baseline=pre_baseline,
-            config_path=config_path,
+            # config_path=config_path,
             corrections_config=corrections_config,
         )
 
@@ -62,7 +62,7 @@ class Rig:
         self,
         folder: Path | None = None,
         pre_baseline: darsia.Image | None = None,
-        config_path: Path | list[Path] | None = None,
+        # config_path: Path | list[Path] | None = None,
         corrections_config: CorrectionsConfig | None = None,
     ) -> None:
         """Setup corrections for the rig.
@@ -85,34 +85,35 @@ class Rig:
             self.corrections = []
             for correction_path in sorted(folder.glob("correction_*.npz")):
                 correction = darsia.read_correction(correction_path)
+                print(type(correction).__name__)
                 if (
                     (
                         isinstance(correction, darsia.TypeCorrection)
-                        and corrections_config.type
+                        # and corrections_config.type
                     )
                     or (
                         isinstance(correction, darsia.Resize)
-                        and corrections_config.resize
+                        # and corrections_config.resize
                     )
                     or (
                         isinstance(correction, darsia.DriftCorrection)
-                        and corrections_config.drift
+                        # and corrections_config.drift
                     )
                     or (
                         isinstance(correction, darsia.CurvatureCorrection)
-                        and corrections_config.curvature
+                        # and corrections_config.curvature
                     )
                     or (
                         isinstance(correction, darsia.ColorCorrection)
-                        and corrections_config.color
+                        # and corrections_config.color
                     )
                     or (
                         isinstance(correction, darsia.RelativeColorCorrection)
-                        and corrections_config.relative_color
+                        # and corrections_config.relative_color
                     )
                     or (
                         isinstance(correction, darsia.IlluminationCorrection)
-                        and corrections_config.illumination
+                        # and corrections_config.illumination
                     )
                 ):
                     logger.info(f"Loaded {type(correction).__name__}")
@@ -137,14 +138,16 @@ class Rig:
 
         if corrections_config.type:
             # Aux: needed for rescaling not leaving the range of color space
-            self.type_converter = darsia.TypeCorrection(np.float32)
+            self.type_converter = darsia.TypeCorrection(
+                corrections_config.type.target_type
+            )
             """Type correction to convert images to float32."""
             pre_baseline = self.type_converter(pre_baseline)
 
             # Update corrections workflow
             self.corrections.append(self.type_converter)
 
-        if corrections_config.resize:
+        if True:  # corrections_config.resize:
             # Define resize correction that resizes to the shape of the baseline image.
             # This is needed to ensure that later curvature corrrections or concentration
             # analysis work correctly.
@@ -152,6 +155,15 @@ class Rig:
                 shape=pre_baseline.shape[: pre_baseline.space_dim]
             )
             """Resize correction to baseline shape."""
+
+            # TODO: Allow for config options for resizing, e.g. scaling or target shape. This is
+            if corrections_config.resize:
+                raise NotImplementedError("Custom resize options not implemented yet.")
+                self.rescale_correction = darsia.Resize(
+                    fx=corrections_config.resize.scale,
+                    fy=corrections_config.resize.scale,
+                    shape=corrections_config.resize.target_shape,
+                )
 
             self.resize_correction_inter_nearest = darsia.Resize(
                 shape=pre_baseline.shape[: pre_baseline.space_dim],
@@ -165,24 +177,28 @@ class Rig:
         if corrections_config.drift:
             # Define translation correction object based on color checker
             try:
-                _, cc_voxels = darsia.find_colorchecker(pre_baseline, "upper_left")
+                _, cc_voxels = darsia.find_colorchecker(
+                    pre_baseline, corrections_config.drift.colorchecker
+                )
                 self.drift_correction = darsia.DriftCorrection(
                     pre_baseline, config={"roi": cc_voxels}
                 )
+                """Drift correction based on color checker alignment."""
             except Exception as e:
                 warn(
                     f"Color checker not found. Drift correction not setup. Error: {e}",
                     UserWarning,
                 )
                 self.drift_correction = darsia.DriftCorrection(pre_baseline)
-            """Drift correction based on color checker alignment."""
 
             # Update corrections workflow
             self.corrections.append(self.drift_correction)
 
         if corrections_config.curvature:
             # Define curvature correction as derived from analysis of laser grid images
-            self.curvature_correction = darsia.CurvatureCorrection(config=config_path)
+            self.curvature_correction = darsia.CurvatureCorrection(
+                config=corrections_config.curvature.config
+            )
             """Curvature correction based on laser grid analysis."""
             baseline = self.curvature_correction(pre_baseline)
 
@@ -192,7 +208,9 @@ class Rig:
         if corrections_config.color:
             # Define color correction based on color checker
             try:
-                _, cc_voxels = darsia.find_colorchecker(baseline, "upper_left")
+                _, cc_voxels = darsia.find_colorchecker(
+                    baseline, corrections_config.color.colorchecker
+                )
                 self.color_correction = darsia.ColorCorrection(
                     baseline,
                     config={
@@ -437,7 +455,7 @@ class Rig:
         labels_path: Path,
         facies_path: Path | None = None,
         facies_props_path: Path | None = None,
-        config_path: Path | list[Path] | None = None,
+        # config_path: Path | list[Path] | None = None,
         corrections_config: CorrectionsConfig | None = None,
         # ref_colorchecker_path: Path,
         log: Path | None = None,
@@ -458,7 +476,7 @@ class Rig:
         self.setup_reading(
             baseline_path,
             experiment.imaging_protocol,
-            config_path,
+            # config_path,
             corrections_config=corrections_config,
             log=log,
         )
@@ -703,9 +721,9 @@ class Rig:
             darsia.Image: Image object with applied corrections.
 
         """
-        assert hasattr(
-            self, "imaging_protocol"
-        ), "Imaging protocol not defined. Run load_experiment() first."
+        assert hasattr(self, "imaging_protocol"), (
+            "Imaging protocol not defined. Run load_experiment() first."
+        )
         # Convert date from path
         date = self.imaging_protocol.get_datetime(path)
 
