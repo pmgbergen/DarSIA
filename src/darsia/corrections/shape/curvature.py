@@ -1,6 +1,4 @@
-"""Module containing polynomical Curvature correction.
-
-"""
+"""Module containing polynomical Curvature correction."""
 
 from __future__ import annotations
 
@@ -39,6 +37,75 @@ def load_curvature_correction_config_from_toml(path: Path) -> dict:
     except KeyError:
         warn(f"No 'curvature' section found in {path}.")
         return config
+
+    # Fetch sub-sections:
+    # - init
+    # - crop
+    # - bulge
+    # - stretch
+    try:
+        sec_init = sec["init"]
+        if sec_init is not None:
+            config["init"] = {
+                "horizontal_bulge": sec_init.get("horizontal_bulge", 0.0),
+                "vertical_bulge": sec_init.get("vertical_bulge", 0.0),
+            }
+    except KeyError:
+        raise UserWarning(f"No 'curvature.init' section found in {path}.")
+
+    try:
+        sec_crop = sec["crop"]
+        if sec_crop is not None:
+            config["crop"] = {
+                "pts_src": darsia.make_voxel(sec_crop.get("pts_src", [])),
+                "width": sec_crop.get("width", 1.0),
+                "height": sec_crop.get("height", 1.0),
+                "in meters": sec_crop.get("in meters", True),
+            }
+    except KeyError:
+        raise UserWarning(f"No 'curvature.crop' section found in {path}.")
+
+    try:
+        sec_bulge = sec["bulge"]
+        if sec_bulge is not None:
+            config["bulge"] = {
+                "horizontal_bulge": sec_bulge.get("horizontal_bulge", 0.0),
+                "horizontal_center_offset": sec_bulge.get(
+                    "horizontal_center_offset", 0
+                ),
+                "vertical_bulge": sec_bulge.get("vertical_bulge", 0.0),
+                "vertical_center_offset": sec_bulge.get("vertical_center_offset", 0),
+            }
+    except KeyError:
+        raise UserWarning(f"No 'curvature.bulge' section found in {path}.")
+
+    try:
+        sec_stretch = sec["stretch"]
+        if sec_stretch is not None:
+            config["stretch"] = {
+                "horizontal_stretch": sec_stretch.get("horizontal_stretch", 0.0),
+                "horizontal_center_offset": sec_stretch.get(
+                    "horizontal_center_offset", 0
+                ),
+                "vertical_stretch": sec_stretch.get("vertical_stretch", 0.0),
+                "vertical_center_offset": sec_stretch.get("vertical_center_offset", 0),
+            }
+    except KeyError:
+        raise UserWarning(f"No 'curvature.stretch' section found in {path}.")
+    return config
+
+
+def load_curvature_correction_config_from_dict(sec: dict) -> dict:
+    """Load curvature correction config from a dictionary.
+
+    Arguments:
+        path (Path): path to the toml file.
+
+    Returns:
+        config (dict): config dictionary for curvature correction.
+
+    """
+    config = {}
 
     # Fetch sub-sections:
     # - init
@@ -207,7 +274,8 @@ class CurvatureCorrection(darsia.BaseCorrection):
         if config is not None:
             # Read config directly from argument list
             if isinstance(config, dict):
-                self.config = copy.deepcopy(config)
+                # self.config = copy.deepcopy(config)
+                self.config = load_curvature_correction_config_from_dict(config)
             elif isinstance(config, (str, Path)):
                 path = Path(config)
                 self.config = _read_from_single_file(path)
