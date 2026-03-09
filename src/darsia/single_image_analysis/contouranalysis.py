@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections import namedtuple
 from typing import Optional, Union, cast
+from pathlib import Path
 
 import cv2
 import matplotlib.pyplot as plt
@@ -102,10 +103,31 @@ def contour_length(
     return metric_contour_length
 
 
+def _corners_of_roi(
+    img: darsia.Image,
+    roi: darsia.CoordinateArray,
+):
+    # Extract the top left pixel of the roi. NOTE: Need to swap for matplotlib,
+    # which uses (x, y) convention for pixels, while the image uses (row, column)
+    # convention.
+    if roi is not None:
+        roi_pixels = roi.to_voxel(img.coordinatesystem)
+        top_left_roi_pixel = [np.min(roi_pixels[:, 1]), np.min(roi_pixels[:, 0])]
+        bottom_right_roi_pixel = [
+            np.max(roi_pixels[:, 1]),
+            np.max(roi_pixels[:, 0]),
+        ]
+    else:
+        top_left_roi_pixel = [0, 0]
+        bottom_right_roi_pixel = [img.img.shape[1], img.img.shape[0]]
+
+    return top_left_roi_pixel, bottom_right_roi_pixel
+
+
 class ContourAnalysis:
     """Contour analysis object."""
 
-    def __init__(self, verbosity: bool) -> None:
+    def __init__(self, verbosity: bool = False) -> None:
         """Constructor.
 
         Args:
@@ -141,7 +163,6 @@ class ContourAnalysis:
             mask: np.ndarray = img_roi.img
 
         elif img_roi.img.dtype in [np.uint8, np.int32, np.int64]:
-
             assert values_of_interest is not None
 
             # Check values of interest
@@ -178,6 +199,69 @@ class ContourAnalysis:
             plt.figure("Mask for values of interest")
             plt.imshow(mask)
             plt.show()
+
+    def load(
+        self,
+        img: darsia.Image,
+        mask: darsia.Image,
+        roi: Optional[darsia.CoordinateArray] = None,
+        fill_holes: bool = True,
+    ) -> None:
+        """Read labeled image and restrict to values of interest.
+
+        Args:
+            img (Image): labeled image.
+            roi (array, optional): set of points defining a box.
+            values_of_interest (int, list of int, optional): label values of interest.
+            fill_holes (bool): flag controlling whether holes in labels are filles.
+
+        """
+
+        # Make copy of image and restrict to region of interest
+        mask_roi: darsia.Image = (
+            mask.copy() if roi is None else cast(darsia.Image, mask.subregion(roi))
+        )
+
+        # Extract boolean mask covering values of interest.
+        mask_roi_array = mask_roi.img
+
+        # Fill all holes
+        if fill_holes:
+            mask = ndi.binary_fill_holes(mask)
+
+        self.coordinatesystem = mask_roi.coordinatesystem
+        """Coordinate system of subimage."""
+
+        self.mask = mask_roi_array
+        """Mask."""
+
+        self.roi = roi
+        """Region of interest."""
+
+        self.img = mask_roi
+        """Subimage."""
+
+        # Plot masks and print contour length if requested.
+        # if self.verbosity:
+        #    mask_roi.show()
+        #    # plt.figure("Restricted image")
+        #    # plt.imshow(mask_roi.as.img)
+        #    # plt.figure("Mask for values of interest")
+        #    # plt.imshow(mask)
+        #    # plt.show()
+
+    def contours(self) -> list[np.ndarray]:
+        """Determine contour of loaded labeled image.
+
+        Returns:
+            list[np.ndarray]: list of contours, where each contour is given as an array of pixels.
+
+        """
+        contours, _ = cv2.findContours(
+            skimage.img_as_ubyte(self.mask), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
+        )
+
+        return contours
 
     def length(self) -> float:
         """Determine length of loaded labeled image.
@@ -242,6 +326,8 @@ class ContourAnalysis:
         is defined by a direction.
 
         Args:
+            contours (np.ndarray | None): contours to analyze. If None, contours are determined
+                from the mask; default is None.
             direction (np.ndarray): direction vector with orientation
 
         Returns:
@@ -249,26 +335,25 @@ class ContourAnalysis:
             array: pixels of valleys.
 
         """
-        # TODO extend to directions other than [0., -1.]
-        assert np.isclose(direction, np.array([0, -1])).all()
+        # Sanity check
+        if not np.isclose(direction, np.array([0, -1])).all():
+            # TODO extend to directions other than [0., -1.]
+            raise NotImplementedError(
+                """Currently only direction [0., -1.] supported, i.e., vertical direction """
+                """with peaks pointing downwards."""
+            )
 
         # Extract interface - extract the boundary
-        contours, _ = cv2.findContours(
-            skimage.img_as_ubyte(self.mask),
-            cv2.RETR_TREE,
-            cv2.CHAIN_APPROX_NONE,
-        )
+        contours = self.contours()
 
         # Special case of no contour
         if len(contours) == 0:
             return np.zeros((0, 1, 2), dtype=int), np.zeros((0, 1, 2), dtype=int)
 
-        # NOTE: Only possible to continue with one contour
-        # assert len(contours) == 1
+        # Continue with each contour separately.
         peaks_pixels = np.zeros((0, 2), dtype=int)
         valleys_pixels = np.zeros((0, 2), dtype=int)
         for contour in contours:
-
             # Exclude pixels on the boundary
             rows, cols = self.mask.shape
             left_boundary = contour[:, :, 0] == 0
@@ -344,18 +429,95 @@ class ContourAnalysis:
         reshaped_valleys_pixels = np.reshape(sorted_valleys_pixels, (-1, 1, 2))
 
         if self.verbosity:
-            plt.figure("Original image with peaks")
-            plt.imshow(self.img.img)
-            plt.scatter(
-                reshaped_peaks_pixels[:, 0, 0],
-                reshaped_peaks_pixels[:, 0, 1],
-                c="r",
-                s=20,
-            )
-            plt.show()
+            self.plot_finger_peaks(self.img, reshaped_peaks_pixels)
 
-        # Return peaks and valley pixels
         return reshaped_peaks_pixels, reshaped_valleys_pixels
+
+    def plot_finger_peaks(
+        self,
+        img: darsia.Image,
+        peaks_pixels: np.ndarray,
+        roi: darsia.CoordinateArray | None = None,
+        contours: list[np.ndarray] | None = None,
+        path: Path | None = None,
+        show: bool = True,
+        **kwargs,
+    ) -> None:
+        """Plot peaks on top of the provided image.
+
+        Args:
+            img (darsia.Image): image to plot on.
+            peaks_pixels (np.ndarray): pixels of peaks.
+            contours (list[np.ndarray], optional): contours to plot; if None, no contours are
+                plotted; default is None.
+            roi (darsia.CoordinateArray | None): region of interest. If provided, peaks are
+                translated to the top left corner of the ROI; default is None.
+            path (Path, optional): path to save the plot; if None, no saving is performed.
+            show (bool): flag controlling whether the plot is shown; default is True.
+            **kwargs: additional keyword arguments for plotting.
+                - color (str): color for the peaks; default is "r".
+                - size (int): size for the peaks; default is 20.
+
+        """
+
+        # Extract the top left pixel of the roi. NOTE: Need to swap for matplotlib,
+        # which uses (x, y) convention for pixels, while the image uses (row, column)
+        # convention.
+        top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
+
+        plt.figure("Original image with peaks")
+        plt.imshow(img.img)
+        if contours is not None:
+            for contour in contours:
+                plt.plot(
+                    contour[:, 0, 0] + top_left_roi_pixel[0],
+                    contour[:, 0, 1] + top_left_roi_pixel[1],
+                    c=kwargs.get("contour_color", "w"),
+                    linewidth=kwargs.get("contour_linewidth", 1),
+                )
+        plt.scatter(
+            # Translate pixels to the top left corner of the ROI
+            peaks_pixels[:, 0, 0] + top_left_roi_pixel[0],
+            peaks_pixels[:, 0, 1] + top_left_roi_pixel[1],
+            c=kwargs.get("peak_color", "r"),
+            s=kwargs.get("peak_size", 20),
+        )
+        if kwargs.get("plot_boundary", False):
+            plt.gca().add_patch(
+                plt.Rectangle(
+                    top_left_roi_pixel[0],
+                    top_left_roi_pixel[1],
+                    bottom_right_roi_pixel[0] - top_left_roi_pixel[0],
+                    bottom_right_roi_pixel[1] - top_left_roi_pixel[1],
+                    linewidth=kwargs.get("boundary_linewidth", 2),
+                    edgecolor=kwargs.get("boundary_color", "y"),
+                    facecolor="none",
+                )
+            )
+        if kwargs.get("highlight_roi", False):
+            # Add dark overlay to the area outside the ROI
+            plt.gca().add_patch(
+                plt.Rectangle(
+                    (0, 0), img.img.shape[1], img.img.shape[0], color="black", alpha=0.5
+                )
+            )
+            plt.gca().add_patch(
+                plt.Rectangle(
+                    (top_left_roi_pixel[0], top_left_roi_pixel[1]),
+                    bottom_right_roi_pixel[0] - top_left_roi_pixel[0],
+                    bottom_right_roi_pixel[1] - top_left_roi_pixel[1],
+                    color="white",
+                    alpha=0.5,
+                )
+            )
+        if path is not None:
+            plt.tight_layout()
+            plt.savefig(path, format="png", dpi=1000)
+
+        if show:
+            plt.show()
+        else:
+            plt.close()
 
     def number_peaks(self) -> int:
         """Determine number of peaks.
@@ -395,68 +557,93 @@ class ContourEvolutionAnalysis:
     def add(
         self, peaks: np.ndarray, valleys: np.ndarray, time: Optional[float] = None
     ) -> None:
-
-        # TODO use time
         self.peaks[self.index] = peaks.copy()
         self.valleys[self.index] = valleys.copy()
+        self.time = time
         self.index += 1
 
         self.total_time = self.index
 
-    def plot(self, img: Optional[darsia.Image] = None) -> None:
-
+    def plot(
+        self,
+        img: Optional[darsia.Image] = None,
+        roi: Optional[darsia.CoordinateArray] = None,
+    ) -> None:
+        # TODO.
         if img is None:
             raise False
 
+        top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
         background = np.zeros(img.img.shape[:2], dtype=int)
         plt.figure("Tips and valleys - evolution")
         plt.imshow(background)
         for peaks in self.peaks.values():
-            plt.scatter(peaks[:, 0, 0], peaks[:, 0, 1], c="y", s=20, label="peaks")
+            plt.scatter(
+                peaks[:, 0, 0] + top_left_roi_pixel[0],
+                peaks[:, 0, 1] + top_left_roi_pixel[1],
+                c="y",
+                s=20,
+                label="peaks",
+            )
         for valleys in self.valleys.values():
             plt.scatter(
-                valleys[:, 0, 0], valleys[:, 0, 1], c="r", s=10, label="valleys"
+                valleys[:, 0, 0] + top_left_roi_pixel[0],
+                valleys[:, 0, 1] + top_left_roi_pixel[1],
+                c="r",
+                s=10,
+                label="valleys",
             )
         plt.show()
 
-    def plot_paths(self, img: Optional[darsia.Image] = None) -> None:
-
+    def plot_paths(
+        self,
+        img: Optional[darsia.Image] = None,
+        roi: darsia.CoordinateArray | None = None,
+        path: Path | None = None,
+        show: bool = False,
+    ) -> None:
         if img is None:
             raise False
+
+        top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
 
         # Draw provided image in the background
         plt.figure("Paths")
         plt.imshow(img.img)
 
-        # Determine longest path
+        # Determine longest (finger) path
         max_path_length = 0
-        for i, path in enumerate(self.paths):
+        for i, finger_path in enumerate(self.paths):
             # Assemble path by connecting positions
             path_pos = np.zeros((0, 2), dtype=int)
-            for unit in path:
+            for unit in finger_path:
                 path_pos = np.vstack((path_pos, unit.position))
             max_path_length = max(max_path_length, path_pos.shape[0])
 
         # Add paths
         cmap = plt.cm.get_cmap("viridis")
         num_paths = len(self.paths)
-        for i, path in enumerate(self.paths):
+        for i, finger_path in enumerate(self.paths):
             # Assemble path by connecting positions
             path_pos = np.zeros((0, 2), dtype=int)
-            for unit in path:
+            for unit in finger_path:
                 path_pos = np.vstack((path_pos, unit.position))
             path_length = path_pos.shape[0]
             plt.plot(
-                path_pos[:, 0],
-                path_pos[:, 1],
+                path_pos[:, 0] + top_left_roi_pixel[0],
+                path_pos[:, 1] + top_left_roi_pixel[1],
                 color=cmap(i / (num_paths - 1)),
                 linewidth=path_length / max_path_length * 2,
             )
 
-        plt.savefig("paths.svg", format="svg", dpi=1000)
+        if path is not None:
+            plt.savefig(path.with_suffix(".svg"), format="svg", dpi=1000)
 
         # Finalize plot
-        plt.show()
+        if show:
+            plt.show()
+        else:
+            plt.close()
 
     def find_paths(self, reset: bool = True) -> None:
         """
@@ -485,7 +672,6 @@ class ContourEvolutionAnalysis:
 
             # Consider each segment separately:
             for segment in segments:
-
                 # Define a path unit for the start point - ignore
                 path_unit_prev = PathUnit(
                     time_prev, segment[0], pts_prev[segment[0], :]
@@ -500,7 +686,6 @@ class ContourEvolutionAnalysis:
                 # the start of the segment.
                 added_to_preexisting_path = False
                 for path in self.paths:
-
                     # Check last element in the path
                     last_unit = path[-1]
                     identical_units = _same_path_unit(last_unit, path_unit_prev)
@@ -522,14 +707,12 @@ class ContourEvolutionAnalysis:
 
             # Consider each segment separately:
             for point in points:
-
                 # Define a path unit for the end point
                 path_unit_next = PathUnit(time_next, point, pts_next[point, :])
                 self.paths.append([path_unit_next])
 
         # TODO replace time_index with something global?
         for time_index in range(self.total_time - 1):
-
             # Fetch peak indices
             peaks_prev = np.squeeze(self.peaks[time_index]).reshape(-1, 2)
             peaks_next = np.squeeze(self.peaks[time_index + 1]).reshape(-1, 2)
@@ -553,7 +736,6 @@ class ContourEvolutionAnalysis:
             dist = distance_matrix(peaks_prev, peaks_next)
 
             for iteration in range(max(len(peaks_prev), len(peaks_next))):
-
                 # Stopping criterion.
                 if len(paired_slices) == 0:
                     break
