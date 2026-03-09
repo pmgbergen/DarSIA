@@ -21,6 +21,7 @@ def calibration_color_to_mass_analysis(
     show: bool = False,
     rois: dict[str, darsia.CoordinateArray] | None = None,
     use_facies: bool = True,
+    default: bool = False,
 ):
     """Calibration of color to mass analysis.
 
@@ -34,6 +35,7 @@ def calibration_color_to_mass_analysis(
         show: Whether to perform a final test run to demonstrate the calibration results.
         rois: Regions of interest for calibration (if any).
         use_facies: Whether to use facies for analysis.
+        default: Whether to perform default calibration without interactive steps.
 
     """
     # ! ---- LOAD RUN AND RIG ----
@@ -99,14 +101,15 @@ def calibration_color_to_mass_analysis(
 
     # Store cached versions of calibration images to speed up development
     calibration_images = []
-    for p in calibration_image_paths:
-        cache_path = config.data.cache / f"cache_{p.stem}.npz"
-        if not cache_path.exists():
-            calibration_image = fluidflower.read_image(p)
-            calibration_image.save(cache_path)
-        else:
-            calibration_image = darsia.imread(cache_path)
-        calibration_images.append(calibration_image)
+    if not default:
+        for p in calibration_image_paths:
+            cache_path = config.data.cache / f"{p.stem}.npz"
+            if not cache_path.exists():
+                calibration_image = fluidflower.read_image(p)
+                calibration_image.save(cache_path)
+            else:
+                calibration_image = darsia.imread(cache_path)
+            calibration_images.append(calibration_image)
 
     # ! ---- ALLOCATE EMPTY INTERPOLATIONS ----
 
@@ -292,12 +295,18 @@ def calibration_color_to_mass_analysis(
     )
 
     # Perform local calibration
-    color_analysis.manual_calibration(
-        images=calibration_images,
-        experiment=experiment,
-        rois=rois,
-        cmap=custom_cmap,
-    )
+    if default:
+        logger.info(
+            "\033[93mSkipping interactive calibration. "
+            "Using default signal functions.\033[0m"
+        )
+    else:
+        color_analysis.manual_calibration(
+            images=calibration_images,
+            experiment=experiment,
+            rois=rois,
+            cmap=custom_cmap,
+        )
 
     for label in np.unique(fluidflower.labels.img):
         if label in config.color_paths.ignore_labels or label in ignore_labels:
