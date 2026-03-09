@@ -36,12 +36,13 @@ def build_parser_for_calibration():
         help="Path to reference/global config file.",
     )
     parser.add_argument(
-        "--all", action="store_true", help="Activate all calibration steps."
+        "--color-paths", action="store_true", help="Calibrate color paths."
     )
+    parser.add_argument("--mass", action="store_true", help="Calibrate mass.")
     parser.add_argument(
-        "--color-paths", action="store_true", help="Calibrate color paths (step 1)."
+        "--default-mass", action="store_true", help="Calibrate default mass."
     )
-    parser.add_argument("--mass", action="store_true", help="Calibrate mass (step 3).")
+    parser.add_argument("--volume", action="store_true", help="Calibrate volume.")
     parser.add_argument(
         "--reset", action="store_true", help="Reset existing calibration data."
     )
@@ -56,8 +57,6 @@ def build_parser_for_calibration():
 
 def print_help_for_flags(args, parser):
     if args.info:
-        if args.all:
-            parser.print_help()
         if args.color_path:
             print(
                 "The --color-path flag activates the setup of color paths. "
@@ -66,6 +65,8 @@ def print_help_for_flags(args, parser):
             )
         if args.mass:
             print("The --mass flag activates the calibration of mass. ")
+        if args.volume:
+            print("The --volume flag activates the calibration of volume. ")
 
 
 def preset_calibration(rig=Rig, **kwargs):
@@ -74,10 +75,10 @@ def preset_calibration(rig=Rig, **kwargs):
 
     print_help_for_flags(args, parser)
 
-    if args.all or args.color_paths:
+    if args.color_paths:
         calibration_color_paths(rig, args.config, args.show)
 
-    if args.all or args.mass:
+    if args.mass or args.default_mass:
         ref_config = Path(args.ref_config) if args.ref_config else None
         calibration_color_to_mass_analysis(
             rig,
@@ -86,4 +87,5 @@ def preset_calibration(rig=Rig, **kwargs):
             reset=args.reset,
             show=args.show,
             rois=kwargs.get("rois"),
+            default=args.default_mass,
         )
