@@ -7,6 +7,7 @@ from warnings import warn
 
 from .roi import RoiAndLabelConfig, RoiConfig
 from .segmentation import SegmentationConfig
+from .fingers import FingersConfig
 from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
 
@@ -133,6 +134,43 @@ class AnalysisVolumeConfig:
 
 
 @dataclass
+class AnalysisFingersConfig:
+    config: FingersConfig | dict[str, FingersConfig] = field(
+        default_factory=lambda: FingersConfig()
+    )
+    folder: Path = field(default_factory=Path)
+    """Path to the results folder for segmentation."""
+
+    def load(self, sec: dict, results: Path | None) -> "AnalysisFingersConfig":
+        # Allow for two scenarios: single fingers or multiple fingers
+        sub_sec = _get_section(sec, "fingers")
+
+        try:
+            self.config = FingersConfig().load(sub_sec)
+        except KeyError:
+            self.config = {}
+            for key in sub_sec.keys():
+                self.config[key] = FingersConfig().load(_get_section(sub_sec, key))
+            try:
+                self.config = {}
+                for key in sub_sec.keys():
+                    self.config[key] = FingersConfig().load(_get_section(sub_sec, key))
+            except KeyError as e:
+                raise KeyError(
+                    "Fingers config must be either a single or multiple fingers."
+                ) from e
+
+        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
+        if not folder:
+            assert results is not None
+            self.folder = results / "fingers"
+        return self
+
+    def error(self):
+        raise ValueError(f"Use [analysis.fingers] in the config file to load fingers.")
+
+
+@dataclass
 class AnalysisConfig:
     data: TimeData | None = None
     """Analysis data configuration."""
@@ -142,6 +180,8 @@ class AnalysisConfig:
     """Analysis mass configuration."""
     volume: AnalysisVolumeConfig | None = None
     """Analysis volume configuration."""
+    fingers: AnalysisFingersConfig | None = None
+    """Analysis fingers configuration."""
 
     def load(
         self, path: Path, data: Path | None, results: Path | None
@@ -175,5 +215,12 @@ class AnalysisConfig:
         except KeyError:
             warn("No analysis volume found. Use [analysis.volume].")
             self.volume = None
+
+        # Config to load analysis fingers
+        try:
+            self.fingers = AnalysisFingersConfig().load(sec, results)
+        except KeyError:
+            warn("No analysis fingers found. Use [analysis.fingers].")
+            self.fingers = None
 
         return self
