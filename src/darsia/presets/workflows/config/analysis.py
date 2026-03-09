@@ -140,6 +140,8 @@ class AnalysisFingersConfig:
     )
     folder: Path = field(default_factory=Path)
     """Path to the results folder for segmentation."""
+    img_folder: Path = field(default_factory=Path)
+    """Path to the image results folder."""
 
     def load(self, sec: dict, results: Path | None) -> "AnalysisFingersConfig":
         # Allow for two scenarios: single fingers or multiple fingers
@@ -165,6 +167,7 @@ class AnalysisFingersConfig:
             assert results is not None
             self.folder = results / "fingers"
         return self
+        self.img_folder = self.folder / "img"
 
     def error(self):
         raise ValueError(f"Use [analysis.fingers] in the config file to load fingers.")
