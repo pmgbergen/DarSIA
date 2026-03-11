@@ -1,4 +1,4 @@
-"""Configuration for analysis."""
+"""Configuration for data download within analysis workflows."""
 
 import logging
 from dataclasses import dataclass
@@ -29,7 +29,14 @@ class DownloadConfig:
         sec = _get_section_from_toml(path, "download")
 
         # Config to source folder
-        self.source = Path(sec.get("source", data))
+        raw_source = sec.get("source", data)
+        if raw_source is None:
+            raise ValueError(
+                """No source folder specified. Provide a valid source folder """
+                """in [download.source] when no [data] section (and thus no """
+                """data path) is available."""
+            )
+        self.source = Path(raw_source)
         if not self.source.exists():
             raise ValueError(
                 f"""Source folder {self.source} does not exist. """
@@ -58,6 +65,10 @@ class DownloadConfig:
             if results is not None:
                 self.folder = results / "raw_data"
             else:
-                self.folder = None
+                raise ValueError(
+                    "No download folder configured and no results path provided. "
+                    "Specify [download.folder] in the configuration or provide a "
+                    "valid results path to determine a default download folder."
+                )
 
         return self

@@ -155,7 +155,7 @@ class FluidFlowerConfig:
             self.download = DownloadConfig()
             self.download.load(
                 path,
-                data=self.data.folder,
+                data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
             )
         except KeyError:
