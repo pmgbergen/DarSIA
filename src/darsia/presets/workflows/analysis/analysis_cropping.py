@@ -57,6 +57,8 @@ def analysis_cropping_from_context(
     # Default: interactive only when stdin is a real terminal
     if interactive is None:
         interactive = sys.stdin.isatty()
+    # Sanity checks
+    assert ctx.config.data is not None
 
     # Require that output options are selected
     if not (show or save_jpg or save_npz):
@@ -66,8 +68,8 @@ def analysis_cropping_from_context(
                 "Set at least one of show, save_jpg, or save_npz to True."
             )
         logger.warning(
-            "\033[33mNo output options selected. The images will be read but not shown or saved. "
-            "Please set at least one of show, save_jpg, or save_npz to True to see results.\033[0m"
+            "\033[33mNo output options selected. At least one output option must be chosen "
+            "before proceeding. Please select one or more options below.\033[0m"
         )
         try:
             user_input = input(
@@ -81,9 +83,6 @@ def analysis_cropping_from_context(
         show = "1" in user_input
         save_jpg = "2" in user_input
         save_npz = "3" in user_input
-
-    # Sanity checks
-    assert ctx.config.data is not None
 
     # ! ---- CROPPING ----
     plot_folder = ctx.config.data.results / "cropped_images"
