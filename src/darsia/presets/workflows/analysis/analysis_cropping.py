@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -27,6 +28,7 @@ def analysis_cropping_from_context(
     show: bool = False,
     save_jpg: bool = False,
     save_npz: bool = False,
+    interactive: bool | None = None,
 ) -> None:
     """Cropping analysis using pre-prepared context.
 
@@ -35,17 +37,47 @@ def analysis_cropping_from_context(
         show: Whether to show the images.
         save_jpg: Whether to save the images as JPG.
         save_npz: Whether to save the images as NPZ.
+        interactive: Whether to prompt for output options when none are set.
+            Defaults to ``True`` when stdin is a TTY, ``False`` otherwise.
+            When ``False`` and no output option is set, a ``ValueError`` is raised.
+
+    Raises:
+        ValueError: If no output options are set and not in interactive mode.
+
+    Note:
+        The interactive prompt is only suitable for direct terminal use. In
+        non-interactive contexts (CI pipelines, notebooks, tests, redirected
+        stdin) ``interactive`` should be left as ``None`` (auto-detected) or
+        explicitly set to ``False`` to receive a clear error instead of a hang
+        or ``EOFError``. Similar considerations apply to other workflow
+        functions that use ``input()``; see ``setup_rig.delete_rig`` and
+        ``heterogeneous_color_analysis`` for examples.
 
     """
+    # Default: interactive only when stdin is a real terminal
+    if interactive is None:
+        interactive = sys.stdin.isatty()
+
     # Require that output options are selected
-    while not (show or save_jpg or save_npz):
+    if not (show or save_jpg or save_npz):
+        if not interactive:
+            raise ValueError(
+                "No output options selected and not running interactively. "
+                "Set at least one of show, save_jpg, or save_npz to True."
+            )
         logger.warning(
             "\033[33mNo output options selected. The images will be read but not shown or saved. "
             "Please set at least one of show, save_jpg, or save_npz to True to see results.\033[0m"
         )
-        user_input = input(
-            "Enter a number to select output options (1=show, 2=save_jpg, 3=save_npz, e.g. 13 for show and save_npz): "
-        )
+        try:
+            user_input = input(
+                "Enter a number to select output options (1=show, 2=save_jpg, 3=save_npz, e.g. 13 for show and save_npz): "
+            )
+        except EOFError:
+            raise ValueError(
+                "No output options selected and stdin is not available for interactive input. "
+                "Set at least one of show, save_jpg, or save_npz to True."
+            )
         show = "1" in user_input
         save_jpg = "2" in user_input
         save_npz = "3" in user_input
@@ -85,6 +117,7 @@ def analysis_cropping(
     save_jpg: bool = False,
     save_npz: bool = False,
     all: bool = False,
+    interactive: bool | None = None,
 ) -> None:
     """Cropping analysis (standalone entry point).
 
@@ -97,6 +130,8 @@ def analysis_cropping(
         save_jpg: Whether to save the images as JPG.
         save_npz: Whether to save the images as NPZ.
         all: Whether to use all images or only the ones specified in the config.
+        interactive: Whether to prompt for output options when none are set.
+            Defaults to ``True`` when stdin is a TTY, ``False`` otherwise.
 
     """
     ctx = prepare_analysis_context(
@@ -106,4 +141,10 @@ def analysis_cropping(
         use_facies=False,
         require_color_to_mass=False,
     )
-    analysis_cropping_from_context(ctx, show=show, save_jpg=save_jpg, save_npz=save_npz)
+    analysis_cropping_from_context(
+        ctx,
+        show=show,
+        save_jpg=save_jpg,
+        save_npz=save_npz,
+        interactive=interactive,
+    )
