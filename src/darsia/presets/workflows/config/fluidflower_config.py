@@ -13,6 +13,7 @@ from .color_to_mass import ColorToMassConfig
 from .corrections import CorrectionsConfig
 from .data import DataConfig
 from .depth import DepthConfig
+from .download import DownloadConfig
 from .facies import FaciesConfig
 from .labeling import LabelingConfig
 from .protocol import ProtocolConfig
@@ -156,6 +157,19 @@ class FluidFlowerConfig:
         except KeyError:
             self.analysis = None
             warn(f"Section analysis not found in {path}, use [analysis].")
+
+        # ! ---- DOWNLOAD CONFIG ---- ! #
+        # TODO make utils config
+        try:
+            self.download = DownloadConfig()
+            self.download.load(
+                path,
+                data=self.data.folder,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.download = None
+            warn(f"Section download not found in {path}, use [download].")
 
         ## Reference colorchecker
         # try:
