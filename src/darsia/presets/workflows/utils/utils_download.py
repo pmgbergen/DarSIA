@@ -53,7 +53,7 @@ def download_data(path: Path):
         f"{total_size_MB:.2f} MB" if total_size_MB < 1024 else f"{total_size_GB:.2f} GB"
     )
 
-    # Ask user for confirmation if the total size is larger than 1 GB
+    # Ask user for confirmation
     response = input(
         f"""The total size of the data to download is {total_size_string}. """
         """Do you want to proceed? (y/n): """
