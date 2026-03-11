@@ -53,6 +53,7 @@ def select_image_paths(
     experiment: darsia.ProtocolledExperiment,
     all: bool = False,
     sub_config=None,
+    source: Path | None = None,
 ) -> list[Path]:
     """Select image paths based on configuration and flags.
 
@@ -94,7 +95,7 @@ def select_image_paths(
             times = sub_config.image_times
         else:
             raise ValueError("No image paths or times specified in config.")
-        image_paths = experiment.find_images_for_times(times=times)
+        image_paths = experiment.find_images_for_times(times=times, data=source)
 
     assert len(image_paths) > 0, "No images found for analysis."
     return image_paths
