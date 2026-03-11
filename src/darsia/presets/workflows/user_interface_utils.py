@@ -7,6 +7,7 @@ To cache raw images:
 
 import argparse
 import logging
+from pathlib import Path
 
 from darsia.presets.workflows.utils.utils_download import download_data
 
@@ -46,4 +47,4 @@ def preset_utils():
 
     if args.download_data:
         logger.info("Downloading raw data...")
-        download_data(args.config)
+        download_data([Path(p) for p in args.config])

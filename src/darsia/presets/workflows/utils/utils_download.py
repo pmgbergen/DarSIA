@@ -11,7 +11,7 @@ from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 logger = logging.getLogger(__name__)
 
 
-def download_data(path: Path):
+def download_data(path: Path | list[Path]):
     """Download raw data for preset workflows."""
 
     config = FluidFlowerConfig(path, require_data=True, require_results=False)
