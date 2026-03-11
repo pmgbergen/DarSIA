@@ -167,7 +167,6 @@ class AnalysisFingersConfig:
             assert results is not None
             self.folder = results / "fingers"
         return self
-        self.img_folder = self.folder / "img"
 
     def error(self):
         raise ValueError(f"Use [analysis.fingers] in the config file to load fingers.")
