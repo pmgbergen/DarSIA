@@ -9,6 +9,64 @@ from darsia.utils.augmented_plotting import plot_contour_on_image
 logger = logging.getLogger(__name__)
 
 
+class SimpleSegmentation:
+    """Simple threshold based segmentation."""
+
+    def __init__(self, mode: str, threshold: float) -> None:
+        self.mode = mode
+        """Type for segmentation."""
+        self.threshold = threshold
+        """Threshold for segmentation."""
+
+    def extract_mask(
+        self, img: darsia.ScalarImage, thresholds: list[float]
+    ) -> list[darsia.ScalarImage]:
+        """Extract phase based on thresholding.
+
+        Args:
+            img: Signal to segment.
+            label: Label to extract.
+
+        Returns:
+            darsia.Image: Segmented phase (boolean) image.
+
+        """
+        masks = []
+        for i in range(len(thresholds)):
+            lower = thresholds[i]
+            next = i + 1
+            upper = thresholds[next] if next < len(thresholds) else float("inf")
+            mask = (img.img >= lower) & (img.img <= upper)
+            masks.append(darsia.ScalarImage(img=mask, **img.metadata()))
+        return masks
+
+    def __call__(
+        self,
+        img: darsia.Image,
+        saturation_g: darsia.Image | None,
+        concentration_aq: darsia.Image | None,
+        mass: darsia.Image | None,
+    ) -> darsia.Image:
+        if self.mode == "saturation_g":
+            if saturation_g is None:
+                raise ValueError(f"Missing image for mode {self.mode}")
+            values = saturation_g
+        elif self.mode == "concentration_aq":
+            if concentration_aq is None:
+                raise ValueError(f"Missing image for mode {self.mode}")
+            values = concentration_aq
+        elif self.mode == "mass":
+            if mass is None:
+                raise ValueError(f"Missing image for mode {self.mode}")
+                values = mass
+            else:
+                raise ValueError(f"Unknown label {self.mode} in segmentation config.")
+
+        # Extract masks based on thresholds
+        mask = self.extract_mask(values, [self.threshold])[0]
+        return mask
+
+
 class SegmentationContours:
     """Threshold based segmentation analysis."""
 
