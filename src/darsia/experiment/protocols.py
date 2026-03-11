@@ -305,7 +305,13 @@ class ImagingProtocol:
         available_paths = self.find_images_for_paths(all_paths)
 
         # Convert to ID.
-        available_image_ids = {self.image_id(p): p for p in available_paths}
+        available_image_ids = {}
+        for p in available_paths:
+            try:
+                available_image_ids[self.image_id(p)] = p
+            except ValueError:
+                ...
+
         df = self.df[self.df["image_id"].isin(available_image_ids.keys())]
 
         # Safety check.
