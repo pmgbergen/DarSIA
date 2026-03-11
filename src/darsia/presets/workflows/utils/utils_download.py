@@ -36,15 +36,15 @@ def download_data(path: Path):
 
     # Reduce to paths that do not exist yet in the destination folder if skip_existing is True
     if config.download.skip_existing:
-        destination_dir = config.download.folder
         image_paths = [
             p for p in image_paths if not (destination_dir / p.name).exists()
         ]
-        destination_paths = [destination_dir / p.name for p in image_paths]
         logger.info(
             f"Found {len(image_paths)} files to download after skipping existing files."
         )
 
+    # Define destination paths for all images to be copied
+    destination_paths = [destination_dir / p.name for p in image_paths]
     # Estimate the size of the data to be downloaded
     total_size = sum(p.stat().st_size for p in image_paths)
     total_size_MB = total_size / (1024 * 1024)
