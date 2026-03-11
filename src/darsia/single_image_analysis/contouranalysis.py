@@ -254,7 +254,8 @@ class ContourAnalysis:
         """Determine contour of loaded labeled image.
 
         Returns:
-            list[np.ndarray]: list of contours, where each contour is given as an array of pixels.
+            list[np.ndarray]: list of contours, where each contour is given as an
+                array of pixels.
 
         """
         contours, _ = cv2.findContours(
