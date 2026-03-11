@@ -156,7 +156,8 @@ class Rig:
             )
             """Resize correction to baseline shape."""
 
-            # TODO: Allow for config options for resizing, e.g. scaling or target shape. This is
+            # TODO: Allow for config options for resizing, e.g. scaling or target shape.
+            # This is in part covered by the curvature correction.
             if corrections_config.resize:
                 raise NotImplementedError("Custom resize options not implemented yet.")
                 self.rescale_correction = darsia.Resize(
@@ -721,9 +722,9 @@ class Rig:
             darsia.Image: Image object with applied corrections.
 
         """
-        assert hasattr(
-            self, "imaging_protocol"
-        ), "Imaging protocol not defined. Run load_experiment() first."
+        assert hasattr(self, "imaging_protocol"), (
+            "Imaging protocol not defined. Run load_experiment() first."
+        )
         # Convert date from path
         date = self.imaging_protocol.get_datetime(path)
 

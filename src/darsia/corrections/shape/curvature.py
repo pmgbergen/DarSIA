@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import json
 import math
 import tomllib
@@ -120,7 +119,7 @@ def load_curvature_correction_config_from_dict(sec: dict) -> dict:
                 "vertical_bulge": sec_init.get("vertical_bulge", 0.0),
             }
     except KeyError:
-        raise UserWarning(f"No 'curvature.init' section found in {path}.")
+        raise UserWarning(f"No 'curvature.init' section found in config.")
 
     try:
         sec_crop = sec["crop"]
@@ -132,7 +131,7 @@ def load_curvature_correction_config_from_dict(sec: dict) -> dict:
                 "in meters": sec_crop.get("in meters", True),
             }
     except KeyError:
-        raise UserWarning(f"No 'curvature.crop' section found in {path}.")
+        raise UserWarning(f"No 'curvature.crop' section found in config.")
 
     try:
         sec_bulge = sec["bulge"]
@@ -146,7 +145,7 @@ def load_curvature_correction_config_from_dict(sec: dict) -> dict:
                 "vertical_center_offset": sec_bulge.get("vertical_center_offset", 0),
             }
     except KeyError:
-        raise UserWarning(f"No 'curvature.bulge' section found in {path}.")
+        raise UserWarning(f"No 'curvature.bulge' section found in config.")
 
     try:
         sec_stretch = sec["stretch"]
@@ -160,7 +159,7 @@ def load_curvature_correction_config_from_dict(sec: dict) -> dict:
                 "vertical_center_offset": sec_stretch.get("vertical_center_offset", 0),
             }
     except KeyError:
-        raise UserWarning(f"No 'curvature.stretch' section found in {path}.")
+        raise UserWarning(f"No 'curvature.stretch' section found in config.")
     return config
 
 
