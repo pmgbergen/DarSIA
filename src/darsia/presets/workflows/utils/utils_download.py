@@ -55,7 +55,8 @@ def download_data(path: Path):
 
     # Ask user for confirmation if the total size is larger than 1 GB
     response = input(
-        f"The total size of the data to download is {total_size_string}. Do you want to proceed? (y/n): "
+        f"""The total size of the data to download is {total_size_string}. """
+        """Do you want to proceed? (y/n): """
     )
     if response.lower() != "y":
         print("Download cancelled.")
