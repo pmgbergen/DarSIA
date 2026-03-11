@@ -7,8 +7,8 @@ This includes measuring lengths of contours, weighted sums (generalized mass ana
 from __future__ import annotations
 
 from collections import namedtuple
-from typing import Optional, Union, cast
 from pathlib import Path
+from typing import Optional, Union, cast
 
 import cv2
 import matplotlib.pyplot as plt

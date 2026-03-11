@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+import pandas as pd
+
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
@@ -15,7 +17,6 @@ from darsia.single_image_analysis.contouranalysis import (
     ContourAnalysis,
     ContourEvolutionAnalysis,
 )
-import pandas as pd
 
 logger = logging.getLogger(__name__)
 
