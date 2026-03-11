@@ -16,7 +16,7 @@ class DownloadConfig:
     source: Path | None = None
     """Source folder - if `None`, retrieved from arguments."""
     data: TimeData | None = None
-    """Analysis data configuration."""
+    """Download data selection configuration."""
     skip_existing: bool = True
     """Flag for skipping existing data."""
     folder: Path | None = None
@@ -48,7 +48,7 @@ class DownloadConfig:
         try:
             self.data = TimeData().load(sec["data"], self.source)
         except KeyError:
-            warn("No analysis data found. Use [analysis.data].")
+            warn("No download data selection found. Use [download.data].")
             self.data = None
 
         # Config to skip existing files
