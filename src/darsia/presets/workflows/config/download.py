@@ -1,0 +1,63 @@
+"""Configuration for analysis."""
+
+import logging
+from dataclasses import dataclass
+from pathlib import Path
+from warnings import warn
+
+from .time_data import TimeData
+from .utils import _get_section_from_toml
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class DownloadConfig:
+    source: Path | None = None
+    """Source folder - if `None`, retrieved from arguments."""
+    data: TimeData | None = None
+    """Analysis data configuration."""
+    skip_existing: bool = True
+    """Flag for skipping existing data."""
+    folder: Path | None = None
+    """Path to the folder where downloaded data will be stored.
+    If not provided, defaults to [data.results/raw_data]."""
+
+    def load(
+        self, path: Path, data: Path | None, results: Path | None
+    ) -> "DownloadConfig":
+        sec = _get_section_from_toml(path, "download")
+
+        # Config to source folder
+        self.source = Path(sec.get("source", data))
+        if not self.source.exists():
+            raise ValueError(
+                f"""Source folder {self.source} does not exist. """
+                """Provide a valid source folder in [download.source] or """
+                """ensure that [data] is correctly specified."""
+            )
+
+        # Config to load analysis data
+        try:
+            self.data = TimeData().load(sec["data"], self.source)
+        except KeyError:
+            warn("No analysis data found. Use [analysis.data].")
+            self.data = None
+
+        # Config to skip existing files
+        self.skip_existing = sec.get("skip_existing", True)
+
+        # Config to load download folder
+        try:
+            self.folder = Path(sec["folder"])
+        except KeyError:
+            warn(
+                """No download folder found. Use [download.folder]. """
+                """Defaulting to [data.results/raw_data]."""
+            )
+            if results is not None:
+                self.folder = results / "raw_data"
+            else:
+                self.folder = None
+
+        return self
