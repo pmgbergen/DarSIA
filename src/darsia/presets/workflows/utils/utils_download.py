@@ -32,6 +32,12 @@ def download_data(path: Path):
 
     # Define the source and destination directories
     destination_dir = config.download.folder
+    if destination_dir is None:
+        raise ValueError(
+            "Download folder is not configured. "
+            "Specify [download.folder] in the configuration or ensure a valid "
+            "results path is available to determine a default download folder."
+        )
     destination_dir.mkdir(parents=True, exist_ok=True)
 
     # Reduce to paths that do not exist yet in the destination folder if skip_existing is True
