@@ -2,9 +2,10 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Type, Literal
+from typing import Literal, Type
 
 import numpy as np
+
 from .utils import _get_section_from_toml
 
 
@@ -61,12 +62,12 @@ class ResizeCorrectionConfig:
         self.target_shape = sec.get("target_shape", self.target_shape)
 
         # Sanity checks.
-        assert self.scale is None or self.target_shape is None, (
-            "Cannot specify both scale and target_shape for resize correction."
-        )
-        assert self.scale is not None or self.target_shape is not None, (
-            "Must specify either scale or target_shape for resize correction."
-        )
+        assert (
+            self.scale is None or self.target_shape is None
+        ), "Cannot specify both scale and target_shape for resize correction."
+        assert (
+            self.scale is not None or self.target_shape is not None
+        ), "Must specify either scale or target_shape for resize correction."
         return self
 
 

@@ -5,9 +5,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from warnings import warn
 
+from .fingers import FingersConfig
 from .roi import RoiAndLabelConfig, RoiConfig
 from .segmentation import SegmentationConfig
-from .fingers import FingersConfig
 from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
 
