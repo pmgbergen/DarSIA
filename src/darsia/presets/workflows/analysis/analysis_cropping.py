@@ -37,6 +37,9 @@ def analysis_cropping_from_context(
         save_npz: Whether to save the images as NPZ.
 
     """
+    # Sanity checks
+    assert ctx.config.data is not None
+
     # Require that output options are selected
     while not (show or save_jpg or save_npz):
         logger.warning(
@@ -49,9 +52,6 @@ def analysis_cropping_from_context(
         show = "1" in user_input
         save_jpg = "2" in user_input
         save_npz = "3" in user_input
-
-    # Sanity checks
-    assert ctx.config.data is not None
 
     # ! ---- CROPPING ----
     plot_folder = ctx.config.data.results / "cropped_images"
