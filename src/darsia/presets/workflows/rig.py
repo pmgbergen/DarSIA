@@ -722,9 +722,9 @@ class Rig:
             darsia.Image: Image object with applied corrections.
 
         """
-        assert hasattr(self, "imaging_protocol"), (
-            "Imaging protocol not defined. Run load_experiment() first."
-        )
+        assert hasattr(
+            self, "imaging_protocol"
+        ), "Imaging protocol not defined. Run load_experiment() first."
         # Convert date from path
         date = self.imaging_protocol.get_datetime(path)
 
