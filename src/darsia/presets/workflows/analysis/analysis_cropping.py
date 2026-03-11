@@ -43,8 +43,8 @@ def analysis_cropping_from_context(
     # Require that output options are selected
     while not (show or save_jpg or save_npz):
         logger.warning(
-            "\033[33mNo output options selected. The images will be read but not shown or saved. "
-            "Please set at least one of show, save_jpg, or save_npz to True to see results.\033[0m"
+            "\033[33mNo output options selected. At least one output option must be chosen "
+            "before proceeding. Please select one or more options below.\033[0m"
         )
         user_input = input(
             "Enter a number to select output options (1=show, 2=save_jpg, 3=save_npz, e.g. 13 for show and save_npz): "
