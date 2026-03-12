@@ -193,12 +193,10 @@ class ImagingProtocol:
         current_id = self.image_id(file_name)
 
         # Find correct interval based on id
-        row = self.df[self.df["image_id"] == current_id].iloc[0]
-
-        if row.empty:
+        sub_df = self.df[self.df["image_id"] == current_id]
+        if sub_df.empty:
             raise ValueError(f"Image id {current_id} not found in protocol.")
-
-        return row["datetime"]
+        return sub_df["datetime"].iloc[0]
 
     def _load_protocol(self, path: Path | tuple[Path, str]) -> pd.DataFrame:
         if isinstance(path, list) or isinstance(path, tuple):
