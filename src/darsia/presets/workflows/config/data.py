@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .data_registry import DataRegistry
 from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
 
@@ -40,6 +41,9 @@ class DataConfig:
     """Path to the cache folder."""
     time_data: TimeData | None = None
     """Calibration data configuration."""
+    registry: DataRegistry | None = None
+    """Optional global data registry loaded from [data.interval.*], [data.time.*],
+    and [data.path.*] sub-sections."""
 
     def load(
         self,
@@ -97,6 +101,21 @@ class DataConfig:
             raise PermissionError(
                 f"Cannot create cache directory at {self.cache}."
             ) from e
+
+        # Attempt to load global DataRegistry from [data.interval.*], [data.time.*],
+        # and [data.path.*] sub-sections. This is optional; if none are present the
+        # registry is set to None.
+        has_registry_sections = any(
+            key in sec for key in ("interval", "time", "path")
+        )
+        if has_registry_sections:
+            try:
+                self.registry = DataRegistry().load(sec, self.folder)
+            except Exception as e:
+                logger.warning(f"Failed to load DataRegistry: {e}")
+                self.registry = None
+        else:
+            self.registry = None
 
         return self
 
