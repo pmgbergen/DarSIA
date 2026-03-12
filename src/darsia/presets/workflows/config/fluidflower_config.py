@@ -17,6 +17,7 @@ from .facies import FaciesConfig
 from .labeling import LabelingConfig
 from .protocol import ProtocolConfig
 from .rig import RigConfig
+from .roi_registry import RoiRegistry
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
 
@@ -136,6 +137,13 @@ class FluidFlowerConfig:
             self.color_to_mass = None
             warn(f"Section color_to_mass not found in {path}.")
 
+        # ! ---- ROI REGISTRY ---- ! #
+        try:
+            self.roi_registry: RoiRegistry | None = RoiRegistry()
+            self.roi_registry.load(path)
+        except KeyError:
+            self.roi_registry = None
+
         # ! ---- ANALYSIS DATA ---- ! #
         try:
             self.analysis = AnalysisConfig()
@@ -143,6 +151,7 @@ class FluidFlowerConfig:
                 path,
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
+                roi_registry=self.roi_registry,
             )
         except KeyError:
             self.analysis = None
