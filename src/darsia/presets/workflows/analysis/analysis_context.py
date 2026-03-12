@@ -155,12 +155,21 @@ def prepare_analysis_context(
     color_to_mass_analysis = None
 
     if require_color_to_mass:
-        # ! ---- POROSITY-INFORMED AVERAGING ----
-        image_porosity = fluidflower.image_porosity
-        restoration = darsia.VolumeAveraging(
-            rev=darsia.REV(size=0.005, img=fluidflower.baseline),
-            mask=image_porosity,
-        )
+        # ! ---- RESTORATION ----
+        if config.restoration is None:
+            restoration = None
+        elif config.restoration.method == "volume_average":
+            # Porosity informed averaging
+            rev_size = config.restoration.options.rev_size
+            image_porosity = fluidflower.image_porosity
+            restoration = darsia.VolumeAveraging(
+                rev=darsia.REV(size=rev_size, img=fluidflower.baseline),
+                mask=image_porosity,
+            )
+        else:
+            raise NotImplementedError(
+                f"Restoration method {fluidflower.restoration.method} not supported."
+            )
 
         # ! ---- FROM COLOR PATH TO MASS ----
         assert config.color_to_mass is not None
