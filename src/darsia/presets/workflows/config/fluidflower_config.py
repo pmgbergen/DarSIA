@@ -16,6 +16,7 @@ from .depth import DepthConfig
 from .facies import FaciesConfig
 from .labeling import LabelingConfig
 from .protocol import ProtocolConfig
+from .restoration import RestorationConfig
 from .rig import RigConfig
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
@@ -70,6 +71,14 @@ class FluidFlowerConfig:
         except KeyError:
             self.corrections = None
             warn(f"Section corrections not found in {path}, use [corrections].")
+
+        # ! ---- RESTORATION ---- ! #
+        try:
+            self.restoration: RestorationConfig | None = RestorationConfig()
+            self.restoration.load(path=path)
+        except KeyError:
+            self.restoration = None
+            warn(f"Section restoration not found in {path}, use [restoration].")
 
         # ! ---- LABELING ---- ! #
         try:
