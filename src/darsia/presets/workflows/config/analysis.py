@@ -187,7 +187,10 @@ class AnalysisConfig:
     """Analysis fingers configuration."""
 
     def load(
-        self, path: Path, data: Path | None, results: Path | None,
+        self,
+        path: Path,
+        data: Path | None,
+        results: Path | None,
         data_registry: DataRegistry | None = None,
     ) -> "AnalysisConfig":
         sec = _get_section_from_toml(path, "analysis")

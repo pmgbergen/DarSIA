@@ -64,8 +64,8 @@ class TestDataRegistryLoad:
         reg = DataRegistry().load(_make_registry_sec())
         td = reg.resolve("manual_snap")
         assert len(td.image_times) == 2
-        assert 0.5 in td.image_times  # 00:30:00 = 0.5 h
-        assert 1.0 in td.image_times  # 01:00:00 = 1.0 h
+        assert td.image_times[0] == pytest.approx(0.5)  # 00:30:00 = 0.5 h
+        assert td.image_times[1] == pytest.approx(1.0)  # 01:00:00 = 1.0 h
 
     def test_empty_registry_sections(self):
         reg = DataRegistry().load({})
