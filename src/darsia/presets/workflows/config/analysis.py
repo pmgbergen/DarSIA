@@ -1,8 +1,11 @@
 """Configuration for analysis."""
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 from warnings import warn
 
 from .fingers import FingersConfig
@@ -10,6 +13,9 @@ from .roi import RoiAndLabelConfig, RoiConfig
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
+
+if TYPE_CHECKING:
+    from .roi_registry import RoiRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -64,28 +70,48 @@ class AnalysisMassConfig:
     folder: Path = field(default_factory=Path)
     """Path to the results folder for mass analysis."""
 
-    def load(self, sec: dict, results: Path | None) -> "AnalysisMassConfig":
+    def load(
+        self, sec: dict, results: Path | None, roi_registry: RoiRegistry | None = None
+    ) -> "AnalysisMassConfig":
         sub_sec = _get_section(sec, "mass")
 
-        # Load ROIs
-        try:
-            roi_sec = _get_section(sub_sec, "roi")
+        # Load ROIs – support registry-key references (list) and inline dicts.
+        roi_raw = sub_sec.get("roi")
+        if isinstance(roi_raw, list) and roi_registry is not None:
+            self.roi = roi_registry.resolve_rois(roi_raw)
+        elif isinstance(roi_raw, dict):
             self.roi = {}
-            for key in roi_sec.keys():
-                self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
-        except KeyError:
-            self.roi = {}
+            for key in roi_raw.keys():
+                self.roi[key] = RoiConfig().load(_get_section(roi_raw, key))
+        else:
+            try:
+                roi_sec = _get_section(sub_sec, "roi")
+                self.roi = {}
+                for key in roi_sec.keys():
+                    self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
+            except KeyError:
+                self.roi = {}
 
-        # Load ROIs with labels
-        try:
-            roi_label_sec = _get_section(sub_sec, "roi_and_label")
+        # Load ROIs with labels – support registry-key references and inline dicts.
+        roi_label_raw = sub_sec.get("roi_and_label")
+        if isinstance(roi_label_raw, list) and roi_registry is not None:
+            self.roi_and_label = roi_registry.resolve_roi_and_labels(roi_label_raw)
+        elif isinstance(roi_label_raw, dict):
             self.roi_and_label = {}
-            for key in roi_label_sec.keys():
+            for key in roi_label_raw.keys():
                 self.roi_and_label[key] = RoiAndLabelConfig().load(
-                    _get_section(roi_label_sec, key)
+                    _get_section(roi_label_raw, key)
                 )
-        except KeyError:
-            self.roi_and_label = {}
+        else:
+            try:
+                roi_label_sec = _get_section(sub_sec, "roi_and_label")
+                self.roi_and_label = {}
+                for key in roi_label_sec.keys():
+                    self.roi_and_label[key] = RoiAndLabelConfig().load(
+                        _get_section(roi_label_sec, key)
+                    )
+            except KeyError:
+                self.roi_and_label = {}
 
         folder = _get_key(sub_sec, "folder", required=False, type_=Path)
         if not folder:
@@ -103,28 +129,51 @@ class AnalysisVolumeConfig:
     folder: Path = field(default_factory=Path)
     """Path to the results folder for volume analysis."""
 
-    def load(self, sec: dict, results: Path | None) -> "AnalysisVolumeConfig":
+    def load(
+        self,
+        sec: dict,
+        results: Path | None,
+        roi_registry: RoiRegistry | None = None,
+    ) -> "AnalysisVolumeConfig":
         sub_sec = _get_section(sec, "volume")
 
-        # Load ROIs
-        try:
-            roi_sec = _get_section(sub_sec, "roi")
+        # Load ROIs – support registry-key references (list) and inline dicts.
+        roi_raw = sub_sec.get("roi")
+        if isinstance(roi_raw, list) and roi_registry is not None:
+            self.roi = roi_registry.resolve_rois(roi_raw)
+        elif isinstance(roi_raw, dict):
             self.roi = {}
-            for key in roi_sec.keys():
-                self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
-        except KeyError:
-            self.roi = {}
+            for key in roi_raw.keys():
+                self.roi[key] = RoiConfig().load(_get_section(roi_raw, key))
+        else:
+            try:
+                roi_sec = _get_section(sub_sec, "roi")
+                self.roi = {}
+                for key in roi_sec.keys():
+                    self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
+            except KeyError:
+                self.roi = {}
 
-        # Load ROIs with labels
-        try:
-            roi_label_sec = _get_section(sub_sec, "roi_and_label")
+        # Load ROIs with labels – support registry-key references and inline dicts.
+        roi_label_raw = sub_sec.get("roi_and_label")
+        if isinstance(roi_label_raw, list) and roi_registry is not None:
+            self.roi_and_label = roi_registry.resolve_roi_and_labels(roi_label_raw)
+        elif isinstance(roi_label_raw, dict):
             self.roi_and_label = {}
-            for key in roi_label_sec.keys():
+            for key in roi_label_raw.keys():
                 self.roi_and_label[key] = RoiAndLabelConfig().load(
-                    _get_section(roi_label_sec, key)
+                    _get_section(roi_label_raw, key)
                 )
-        except KeyError:
-            self.roi_and_label = {}
+        else:
+            try:
+                roi_label_sec = _get_section(sub_sec, "roi_and_label")
+                self.roi_and_label = {}
+                for key in roi_label_sec.keys():
+                    self.roi_and_label[key] = RoiAndLabelConfig().load(
+                        _get_section(roi_label_sec, key)
+                    )
+            except KeyError:
+                self.roi_and_label = {}
 
         folder = _get_key(sub_sec, "folder", required=False, type_=Path)
         if not folder:
@@ -143,20 +192,29 @@ class AnalysisFingersConfig:
     img_folder: Path = field(default_factory=Path)
     """Path to the image results folder."""
 
-    def load(self, sec: dict, results: Path | None) -> "AnalysisFingersConfig":
+    def load(
+        self,
+        sec: dict,
+        results: Path | None,
+        roi_registry: RoiRegistry | None = None,
+    ) -> "AnalysisFingersConfig":
         # Allow for two scenarios: single fingers or multiple fingers
         sub_sec = _get_section(sec, "fingers")
 
         try:
-            self.config = FingersConfig().load(sub_sec)
+            self.config = FingersConfig().load(sub_sec, roi_registry=roi_registry)
         except KeyError:
             self.config = {}
             for key in sub_sec.keys():
-                self.config[key] = FingersConfig().load(_get_section(sub_sec, key))
+                self.config[key] = FingersConfig().load(
+                    _get_section(sub_sec, key), roi_registry=roi_registry
+                )
             try:
                 self.config = {}
                 for key in sub_sec.keys():
-                    self.config[key] = FingersConfig().load(_get_section(sub_sec, key))
+                    self.config[key] = FingersConfig().load(
+                        _get_section(sub_sec, key), roi_registry=roi_registry
+                    )
             except KeyError as e:
                 raise KeyError(
                     "Fingers config must be either a single or multiple fingers."
@@ -186,7 +244,11 @@ class AnalysisConfig:
     """Analysis fingers configuration."""
 
     def load(
-        self, path: Path, data: Path | None, results: Path | None
+        self,
+        path: Path,
+        data: Path | None,
+        results: Path | None,
+        roi_registry: RoiRegistry | None = None,
     ) -> "AnalysisConfig":
         sec = _get_section_from_toml(path, "analysis")
 
@@ -206,21 +268,25 @@ class AnalysisConfig:
 
         # Config to load analysis mass
         try:
-            self.mass = AnalysisMassConfig().load(sec, results)
+            self.mass = AnalysisMassConfig().load(sec, results, roi_registry=roi_registry)
         except KeyError:
             warn("No analysis mass found. Use [analysis.mass].")
             self.mass = None
 
         # Config to load analysis volume
         try:
-            self.volume = AnalysisVolumeConfig().load(sec, results)
+            self.volume = AnalysisVolumeConfig().load(
+                sec, results, roi_registry=roi_registry
+            )
         except KeyError:
             warn("No analysis volume found. Use [analysis.volume].")
             self.volume = None
 
         # Config to load analysis fingers
         try:
-            self.fingers = AnalysisFingersConfig().load(sec, results)
+            self.fingers = AnalysisFingersConfig().load(
+                sec, results, roi_registry=roi_registry
+            )
         except KeyError:
             warn("No analysis fingers found. Use [analysis.fingers].")
             self.fingers = None
