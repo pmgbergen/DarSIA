@@ -1,10 +1,16 @@
 """Configuration for fingers, based on segmentation analysis."""
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from .roi import RoiConfig
 from .utils import _get_key, _get_section
+
+if TYPE_CHECKING:
+    from .roi_registry import RoiRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -20,18 +26,30 @@ class FingersConfig:
     roi: dict[str, RoiConfig] | None = None
     """ROIs for analysis."""
 
-    def load(self, sec: dict) -> "FingersConfig":
+    def load(
+        self, sec: dict, roi_registry: RoiRegistry | None = None
+    ) -> "FingersConfig":
         self.mode = _get_key(sec, "mode", required=True, type_=str)
         self.threshold = _get_key(sec, "threshold", required=True, type_=float)
 
-        # Load ROIs
-        try:
-            roi_sec = _get_section(sec, "roi")
+        # Load ROIs – support both registry-key references and inline definitions.
+        roi_raw = sec.get("roi")
+        if isinstance(roi_raw, list) and roi_registry is not None:
+            # New format: roi = ["key1", "key2"] resolved via registry
+            self.roi = roi_registry.resolve_rois(roi_raw)
+        elif isinstance(roi_raw, dict):
+            # Old inline format: [analysis.fingers.roi.*] sub-sections
             self.roi = {}
-            for key in roi_sec.keys():
-                self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
-        except KeyError:
-            self.roi = {}
+            for key in roi_raw.keys():
+                self.roi[key] = RoiConfig().load(_get_section(roi_raw, key))
+        else:
+            try:
+                roi_sec = _get_section(sec, "roi")
+                self.roi = {}
+                for key in roi_sec.keys():
+                    self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
+            except KeyError:
+                self.roi = {}
 
         return self
 
