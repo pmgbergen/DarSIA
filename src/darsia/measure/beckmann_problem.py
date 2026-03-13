@@ -366,24 +366,10 @@ class BeckmannProblem(darsia.EMD):
         self.linear_solver_type = linear_solver_type
         """str: type of linear solver"""
 
-        if self.formulation == "full" and linear_solver_type == "ksp":
-            self.nullspace = [np.concatenate([
-                np.zeros_like(self.flux_indices), 
-                np.ones_like(self.pressure_indices)
-                ])]
-            self.linear_solver = darsia.BeckmannKSPFieldSplitSolver(
-                    linear_solver_options = self.options.get("linear_solver_options", {}),
-                    field_ises=[
-                        ("flux", self.flux_indices),
-                        ("pressure", self.pressure_indices),
-                    ],
-                    nullspace=self.nullspace)
-
-        else:
-            self.linear_solver = darsia.BeckmannLinearSolverFactory.create(
-                linear_solver_type, self.options, 
-                # arguments used only by the ksp solver, but passed to all for simplicity
-                flux_indices=self.flux_indices, pressure_indices=self.pressure_indices
+        self.linear_solver = darsia.BeckmannLinearSolverFactory.create(
+            linear_solver_type, self.options, 
+            # arguments used only by the ksp solver, but passed to all for simplicity
+            flux_indices=self.flux_indices, pressure_indices=self.pressure_indices
             )
     
     def _setup_schur_complement_reduction(self) -> None:
