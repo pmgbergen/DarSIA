@@ -383,6 +383,10 @@ class BeckmannKSPFieldSplitSolver(BeckmannLinearSolver):
                 # an example of the nested dictionary
             }
 
+        self.ndof_flux = field_ises[0][1].size
+        self.ndof_pressure = field_ises[1][1].size
+        self.ndof = self.ndof_flux + self.ndof_pressure
+
 
         self.field_ises = field_ises
         """list: list of (field name, indices) tuples to define block structure"""
@@ -411,10 +415,15 @@ class BeckmannKSPFieldSplitSolver(BeckmannLinearSolver):
         """
         if hasattr(self, "linear_solver"):
             self.linear_solver.kill()
-        
+
+        # TODO: find a more efficient way to assign this matrix
+        #     # Maybe fix J = (0, grad) + (D_flux, 0          )
+        #     #               (-div, 0) + (0,      -D_pressure)
+
+
         # Define Krylov solver with field splits and nullspace
         self.linear_solver = darsia.linalg.KSP(
-            matrix,
+            matrix[0:self.ndof, 0:self.ndof],
             field_ises=self.field_ises, 
             nullspace=self.nullspace
         )
@@ -441,7 +450,11 @@ class BeckmannKSPFieldSplitSolver(BeckmannLinearSolver):
             x0 = np.zeros_like(rhs)
 
         # Solve system
-        solution = self.linear_solver.solve(rhs, x0=x0, **self.solver_options)
+        solution = np.zeros_like(rhs)
+        solution[0:self.ndof] = self.linear_solver.solve(rhs[0:self.ndof], 
+                                                         x0=x0[0:self.ndof], 
+                                                         **self.solver_options)
+
 
         return solution
 

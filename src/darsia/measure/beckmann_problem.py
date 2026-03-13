@@ -827,27 +827,12 @@ class BeckmannProblem(darsia.EMD):
             # Setup LU factorization for the full system
             tic = time.time()
             if setup_linear_solver:
-                if isinstance(self.linear_solver, darsia.BeckmannKSPFieldSplitSolver):
-                    # TODO: find a more efficient way to assign this matrix
-                    # Maybe fix J = (0, grad) + (D_flux, 0          )
-                    #               (-div, 0) + (0,      -D_pressure)
-                    # and assign the blocks separately
-                    n =  self.grid.num_faces + self.grid.num_cells
-                    self.linear_solver.setup(matrix[0:n, 0:n])
-                else:
-                    self.linear_solver.setup(matrix)
+                self.linear_solver.setup(matrix)
             time_setup = time.time() - tic
 
             # Solve the full system
             tic = time.time()
-            if isinstance(self.linear_solver, darsia.BeckmannKSPFieldSplitSolver):
-                n =  self.grid.num_faces + self.grid.num_cells
-                # Allocate memory for solution
-                solution = np.zeros(n+1, dtype=float)
-                solution[0:n] = self.linear_solver(rhs[0:n])
-                solution[-1] = 0.0
-            else:
-                solution = self.linear_solver(rhs)
+            solution = self.linear_solver(rhs)
             time_solve = time.time() - tic
 
         elif self.formulation == "flux_reduced":
