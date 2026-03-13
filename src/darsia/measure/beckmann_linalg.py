@@ -21,7 +21,7 @@ class BeckmannLinearSolverType(StrEnum):
     AMG = "amg"
     CG = "cg"
     KSP = "ksp"
-    KSP_FIELDSPLIT = "ksp_fieldsplit"
+    KSPFIELDSPLIT = "kspfieldsplit"
 
 
 class BeckmannLinearSolver:
@@ -479,13 +479,13 @@ class BeckmannLinearSolverFactory:
             )
         elif solver_type == darsia.BeckmannLinearSolverType.KSP:
             return darsia.BeckmannKSPSolver(options.get("linear_solver_options", {}))
-        elif solver == darsia.BeckmannLinearSolverType.KSP_FIELDSPLIT:
+        elif solver_type == darsia.BeckmannLinearSolverType.KSPFIELDSPLIT:
             nullspace = [np.concatenate([
                 np.zeros_like(flux_indices), 
                 np.ones_like(pressure_indices)
                 ])]
             nullspace /= np.linalg.norm(nullspace)
-            solver = darsia.BeckmannKSPSolver(
+            solver = darsia.BeckmannKSPFieldSplitSolver(
                 options.get("linear_solver_options", {}),
                 field_ises=[
                     ("flux", flux_indices),
