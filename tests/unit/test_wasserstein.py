@@ -145,7 +145,7 @@ ksp_krylov_options = {
 }
 
 ksp_block_krylov_options = {
-    "linear_solver": "ksp",
+    "linear_solver": "kspfieldsplit",
     "linear_solver_options": {
         "rtol": 1e-8,
         "approach": "gmres",
