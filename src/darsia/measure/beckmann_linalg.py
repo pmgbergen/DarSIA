@@ -21,6 +21,7 @@ class BeckmannLinearSolverType(StrEnum):
     AMG = "amg"
     CG = "cg"
     KSP = "ksp"
+    KSP_FIELDSPLIT = "ksp_fieldsplit"
 
 
 class BeckmannLinearSolver:
@@ -330,7 +331,7 @@ class BeckmannKSPSolver(BeckmannLinearSolver):
         return solution
 
 
-class BeckmannKSPFieldSplitSolver(BeckmannKSPSolver):
+class BeckmannKSPFieldSplitSolver(BeckmannLinearSolver):
     def __init__(
         self,
         linear_solver_options: dict,
@@ -382,8 +383,6 @@ class BeckmannKSPFieldSplitSolver(BeckmannKSPSolver):
                 # an example of the nested dictionary
             }
 
-        self.linear_solver.setup(self.solver_options)
-        """dict: options for the iterative linear solver"""
 
         self.field_ises = field_ises
         """list: list of (field name, indices) tuples to define block structure"""
@@ -392,11 +391,68 @@ class BeckmannKSPFieldSplitSolver(BeckmannKSPSolver):
         """ list of nullspace vectors of the matrix"""
 
 
+        #self.setup(self.solver_options)
+        #"""dict: options for the iterative linear solver"""
+
+        
+
+    def setup(
+        self,
+        matrix: sps.csc_matrix,
+    ) -> None:
+        """Setup an KSP solver from PETSc for the given matrix.
+
+        Args:
+            matrix (sps.csc_matrix): matrix
+
+        Defines:
+            PETSc.ksp: KSP solver
+            dict: options for the KSP solver
+        """
+        if hasattr(self, "linear_solver"):
+            self.linear_solver.kill()
+        
+        # Define Krylov solver with field splits and nullspace
+        self.linear_solver = darsia.linalg.KSP(
+            matrix,
+            field_ises=self.field_ises, 
+            nullspace=self.nullspace
+        )
+        # setup solver with options
+        self.linear_solver.setup(self.solver_options)
+        """dict: options for the iterative linear solver"""
+
+    def __call__(
+        self,
+        rhs: np.ndarray,
+        x0: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        """Solve linear system Ax = b KSP block solver.
+
+        Args:
+            rhs (np.ndarray): right hand side
+            x0 (Optional[np.ndarray]): initial guess
+
+        Returns:
+            np.ndarray: solution
+
+        """
+        if x0 is None:
+            x0 = np.zeros_like(rhs)
+
+        # Solve system
+        solution = self.linear_solver.solve(rhs, x0=x0, **self.solver_options)
+
+        return solution
+
+
 class BeckmannLinearSolverFactory:
     @staticmethod
     def create(
         solver_type: BeckmannLinearSolverType,
         options: dict,
+        flux_indices: Optional[np.ndarray] = None,
+        pressure_indices: Optional[np.ndarray] = None,
     ) -> BeckmannLinearSolver:
         """Factory method to create a linear solver for Beckmann's problem.
 
@@ -423,14 +479,21 @@ class BeckmannLinearSolverFactory:
             )
         elif solver_type == darsia.BeckmannLinearSolverType.KSP:
             return darsia.BeckmannKSPSolver(options.get("linear_solver_options", {}))
-        # TODO: Use FieldSplit when full formulation... Not implemented right now
-        # elif self.linear_solver_type == darsia.BeckmannLinearSolverType.KSP:
-        #    self.linear_solver = darsia.BeckmannKSPSolver(
-        #        self.options.get("linear_solver_options", {}),
-        #        field_ises=[
-        #            ("flux", self.flux_indices),
-        #            ("pressure", self.pressure_indices),
-        #        ],
-        #    )
+        elif solver == darsia.BeckmannLinearSolverType.KSP_FIELDSPLIT:
+            nullspace = [np.concatenate([
+                np.zeros_like(flux_indices), 
+                np.ones_like(pressure_indices)
+                ])]
+            nullspace /= np.linalg.norm(nullspace)
+            solver = darsia.BeckmannKSPSolver(
+                options.get("linear_solver_options", {}),
+                field_ises=[
+                    ("flux", flux_indices),
+                    ("pressure", pressure_indices),
+                ],
+                nullspace=nullspace
+                )
+            return solver
+           
         else:
             raise NotImplementedError("Linear solver not implemented.")

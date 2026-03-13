@@ -154,8 +154,8 @@ class BeckmannProblem(darsia.EMD):
         self._setup_l1_quadrature()
         self._setup_face_weights()
         self._setup_discretization()
-        self._setup_linear_solver()
         self._setup_schur_complement_reduction()
+        self._setup_linear_solver()
         self._setup_acceleration()
 
         # Store list of callbacks passed by user
@@ -366,10 +366,26 @@ class BeckmannProblem(darsia.EMD):
         self.linear_solver_type = linear_solver_type
         """str: type of linear solver"""
 
-        self.linear_solver = darsia.BeckmannLinearSolverFactory.create(
-            linear_solver_type, self.options
-        )
+        if self.formulation == "full" and linear_solver_type == "ksp":
+            self.nullspace = [np.concatenate([
+                np.zeros_like(self.flux_indices), 
+                np.ones_like(self.pressure_indices)
+                ])]
+            self.linear_solver = darsia.BeckmannKSPFieldSplitSolver(
+                    linear_solver_options = self.options.get("linear_solver_options", {}),
+                    field_ises=[
+                        ("flux", self.flux_indices),
+                        ("pressure", self.pressure_indices),
+                    ],
+                    nullspace=self.nullspace)
 
+        else:
+            self.linear_solver = darsia.BeckmannLinearSolverFactory.create(
+                linear_solver_type, self.options, 
+                # arguments used only by the ksp solver, but passed to all for simplicity
+                flux_indices=self.flux_indices, pressure_indices=self.pressure_indices
+            )
+    
     def _setup_schur_complement_reduction(self) -> None:
         # TODO: Move to setup_schur_complement_reduction()
         self.formulation: str = self.options.get("formulation", "pressure")
@@ -825,12 +841,27 @@ class BeckmannProblem(darsia.EMD):
             # Setup LU factorization for the full system
             tic = time.time()
             if setup_linear_solver:
-                self.linear_solver.setup(matrix)
+                if isinstance(self.linear_solver, darsia.BeckmannKSPFieldSplitSolver):
+                    # TODO: find a more efficient way to assign this matrix
+                    # Maybe fix J = (0, grad) + (D_flux, 0          )
+                    #               (-div, 0) + (0,      -D_pressure)
+                    # and assign the blocks separately
+                    n =  self.grid.num_faces + self.grid.num_cells
+                    self.linear_solver.setup(matrix[0:n, 0:n])
+                else:
+                    self.linear_solver.setup(matrix)
             time_setup = time.time() - tic
 
             # Solve the full system
             tic = time.time()
-            solution = self.linear_solver(rhs)
+            if isinstance(self.linear_solver, darsia.BeckmannKSPFieldSplitSolver):
+                n =  self.grid.num_faces + self.grid.num_cells
+                # Allocate memory for solution
+                solution = np.zeros(n+1, dtype=float)
+                solution[0:n] = self.linear_solver(rhs[0:n])
+                solution[-1] = 0.0
+            else:
+                solution = self.linear_solver(rhs)
             time_solve = time.time() - tic
 
         elif self.formulation == "flux_reduced":
