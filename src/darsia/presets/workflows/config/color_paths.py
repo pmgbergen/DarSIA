@@ -96,7 +96,9 @@ class ColorPathsConfig:
         if isinstance(baseline_val, (str, list)) and data_registry is not None:
             self.baseline_image_paths = data_registry.resolve(baseline_val).image_paths
         else:
-            self.baseline_image_paths = TimeData().load(sec["baseline"], data).image_paths
+            self.baseline_image_paths = (
+                TimeData().load(sec["baseline"], data).image_paths
+            )
 
         data_val = sec.get("data")
         if isinstance(data_val, (str, list)) and data_registry is not None:

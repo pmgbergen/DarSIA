@@ -85,8 +85,7 @@ class ImageTimeData:
                 )
 
                 tolerance = _convert_to_hours(
-                    _get_key(times_data, "tol", required=False)
-                    or 0.0
+                    _get_key(times_data, "tol", required=False) or 0.0
                 )
                 self.times_with_tolerance.extend([(t, tolerance) for t in self.times])
 
@@ -245,8 +244,7 @@ class TimeData:
         mode_count = sum([has_times, has_intervals, has_paths])
         if mode_count == 0:
             raise ValueError(
-                "No data specified. Use one of: 'time', "
-                "'interval', or 'path'"
+                "No data specified. Use one of: 'time', " "'interval', or 'path'"
             )
         elif mode_count > 1:
             self.mode = "mixed"

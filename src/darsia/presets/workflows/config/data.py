@@ -105,9 +105,7 @@ class DataConfig:
         # Attempt to load global DataRegistry from [data.interval.*], [data.time.*],
         # and [data.path.*] sub-sections. This is optional; if none are present the
         # registry is set to None.
-        has_registry_sections = any(
-            key in sec for key in ("interval", "time", "path")
-        )
+        has_registry_sections = any(key in sec for key in ("interval", "time", "path"))
         if has_registry_sections:
             try:
                 self.registry = DataRegistry().load(sec, self.folder)
