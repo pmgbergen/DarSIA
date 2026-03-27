@@ -1,4 +1,5 @@
 import logging
+import shutil
 from pathlib import Path
 
 import darsia
@@ -145,3 +146,53 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
         # TODO: Provide advanced plotting - mostly for paper publication.
 
     logger.info("Calibration of color paths completed.")
+
+
+def delete_calibration(path: Path | list[Path]) -> None:
+    """Delete existing calibration files and cached images.
+
+    Removes the color paths calibration file, baseline color spectrum folder,
+    color range file, and all cached images in the results/cache folder.
+
+    Args:
+        path: Path(s) to the configuration file(s).
+
+    """
+    logger.warning(
+        """\033[91mDeleting existing calibration data. Use with caution as this """
+        """will delete existing results.\033[0m"""
+    )
+
+    config = FluidFlowerConfig(path, require_data=False, require_results=False)
+
+    # Collect paths to delete
+    paths_to_delete: list[Path] = []
+    if config.color_paths is not None:
+        paths_to_delete.append(config.color_paths.calibration_file)
+        paths_to_delete.append(config.color_paths.baseline_color_spectrum_folder)
+        paths_to_delete.append(config.color_paths.color_range_file)
+    if config.data is not None:
+        paths_to_delete.append(config.data.cache)
+
+    existing = [p for p in paths_to_delete if p.exists()]
+    if not existing:
+        logger.info("No existing calibration data found to delete.")
+        return
+
+    logger.info("The following will be deleted:")
+    for p in existing:
+        logger.info(f"  {p}")
+
+    user_input = input(
+        "Are you sure you want to delete the existing calibration data? "
+        "This action cannot be undone. (y/n): "
+    )
+    if user_input.lower() == "y":
+        for p in existing:
+            if p.is_dir():
+                shutil.rmtree(p, ignore_errors=True)
+            else:
+                p.unlink(missing_ok=True)
+        logger.info("Calibration data deleted.")
+    else:
+        logger.info("Calibration data deletion aborted.")
