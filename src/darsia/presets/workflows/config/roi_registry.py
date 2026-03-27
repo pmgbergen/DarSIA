@@ -19,9 +19,9 @@ class RoiRegistry:
     """
 
     def __init__(self) -> None:
-        self._registry: dict[str, RoiConfig | RoiAndLabelConfig | RoiAndSubroiConfig] = (
-            {}
-        )
+        self._registry: dict[
+            str, RoiConfig | RoiAndLabelConfig | RoiAndSubroiConfig
+        ] = {}
 
     def load(self, path: Path | list[Path]) -> "RoiRegistry":
         """Load all ROI entries from the top-level ``[roi]`` section of a TOML file.
