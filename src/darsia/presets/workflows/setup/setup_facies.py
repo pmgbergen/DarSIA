@@ -26,7 +26,6 @@ def setup_facies(cls: Rig, path: Path, show: bool = False):
     assert config.facies is not None
 
     # ! ---- LOAD PRE-DEFINED LABELS ----
-
     labels = darsia.imread(config.labeling.labels)
 
     # ! ---- CONNECT LABELS TO FACIES ----
@@ -35,30 +34,27 @@ def setup_facies(cls: Rig, path: Path, show: bool = False):
         labels.show(title="Labels")
 
     # Read facies groups from config
-    id_label_map = config.facies.id_label_map
-    groups = list(id_label_map.values())
-    ids = list(id_label_map.keys())
-    facies = darsia.group_labels(labels, groups=groups, values=ids)
+    all_label_ids = set(np.unique(labels.img))
+    label_to_facies_map = config.facies.label_to_facies_map
+
+    # Fill in missing labels with canonical facies ids.
+    for label_id in all_label_ids:
+        if label_id not in label_to_facies_map:
+            label_to_facies_map[label_id] = label_id
+
+    # Reassign labels to facies ids.
+    facies = darsia.reassign_labels(labels, label_to_facies_map)
 
     # Sanity check - ids. Check that all facies ids are defined in props.
     facies_props = pd.read_excel(config.facies.props)
     facies_ids = facies_props["id"].tolist()
-    for facies_id in ids:
-        assert (
-            facies_id in facies_ids
-        ), f"Facies id {facies_id} not found in facies properties."
-
-    # Sanity check - groups. Check that all labels are assigned to a facies.
-    unique_labels = set(np.unique(labels.img))
-    assigned_labels = set([label for group in groups for label in group])
-    assert unique_labels == assigned_labels, (
-        "Some labels are not assigned to any facies. "
-        f"Labels which are not set: {unique_labels - assigned_labels}. "
-        f"Assigned labels which are not in label: {assigned_labels - unique_labels}"
-    )
-
-    if show:
-        facies.show(title="Facies")
+    for facies_id in np.unique(facies.img):
+        assert facies_id in facies_ids, (
+            f"Facies id {facies_id} not found in facies properties."
+        )
 
     # ! ---- SAVE FACIES ----
     facies.save(config.facies.path)
+
+    if show:
+        facies.show(title="Facies")
