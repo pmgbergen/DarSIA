@@ -52,6 +52,5 @@ def setup_facies(cls: Rig, path: Path, show: bool = False):
 
     # ! ---- SAVE FACIES ----
     facies.save(config.facies.path)
-
     if show:
         facies.show(title="Facies")
