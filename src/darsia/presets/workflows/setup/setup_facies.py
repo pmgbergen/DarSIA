@@ -29,9 +29,6 @@ def setup_facies(cls: Rig, path: Path, show: bool = False):
     labels = darsia.imread(config.labeling.labels)
 
     # ! ---- CONNECT LABELS TO FACIES ----
-    if show:
-        # Used for defining the config.
-        labels.show(title="Labels")
 
     # Read facies groups from config
     all_label_ids = set(np.unique(labels.img))
@@ -49,9 +46,9 @@ def setup_facies(cls: Rig, path: Path, show: bool = False):
     facies_props = pd.read_excel(config.facies.props)
     facies_ids = facies_props["id"].tolist()
     for facies_id in np.unique(facies.img):
-        assert facies_id in facies_ids, (
-            f"Facies id {facies_id} not found in facies properties."
-        )
+        assert (
+            facies_id in facies_ids
+        ), f"Facies id {facies_id} not found in facies properties."
 
     # ! ---- SAVE FACIES ----
     facies.save(config.facies.path)
