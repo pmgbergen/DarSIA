@@ -268,7 +268,9 @@ class AnalysisConfig:
 
         # Config to load analysis mass
         try:
-            self.mass = AnalysisMassConfig().load(sec, results, roi_registry=roi_registry)
+            self.mass = AnalysisMassConfig().load(
+                sec, results, roi_registry=roi_registry
+            )
         except KeyError:
             warn("No analysis mass found. Use [analysis.mass].")
             self.mass = None
