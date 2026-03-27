@@ -13,9 +13,11 @@ from .color_to_mass import ColorToMassConfig
 from .corrections import CorrectionsConfig
 from .data import DataConfig
 from .depth import DepthConfig
+from .download import DownloadConfig
 from .facies import FaciesConfig
 from .labeling import LabelingConfig
 from .protocol import ProtocolConfig
+from .restoration import RestorationConfig
 from .rig import RigConfig
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
@@ -70,6 +72,14 @@ class FluidFlowerConfig:
         except KeyError:
             self.corrections = None
             warn(f"Section corrections not found in {path}, use [corrections].")
+
+        # ! ---- RESTORATION ---- ! #
+        try:
+            self.restoration: RestorationConfig | None = RestorationConfig()
+            self.restoration.load(path=path)
+        except KeyError:
+            self.restoration = None
+            warn(f"Section restoration not found in {path}, use [restoration].")
 
         # ! ---- LABELING ---- ! #
         try:
@@ -150,6 +160,19 @@ class FluidFlowerConfig:
         except KeyError:
             self.analysis = None
             warn(f"Section analysis not found in {path}, use [analysis].")
+
+        # ! ---- DOWNLOAD CONFIG ---- ! #
+        # TODO make utils config
+        try:
+            self.download = DownloadConfig()
+            self.download.load(
+                path,
+                data=self.data.folder if self.data else None,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.download = None
+            warn(f"Section download not found in {path}, use [download].")
 
         ## Reference colorchecker
         # try:
