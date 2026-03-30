@@ -746,10 +746,12 @@ class Image:
 
     def eval(
         self,
-        point: darsia.Voxel
-        | darsia.Coordinate
-        | darsia.VoxelArray
-        | darsia.CoordinateArray,
+        point: (
+            darsia.Voxel
+            | darsia.Coordinate
+            | darsia.VoxelArray
+            | darsia.CoordinateArray
+        ),
     ) -> np.ndarray:
         """Evaluate the image array at the nearest voxel for a given point location.
 
