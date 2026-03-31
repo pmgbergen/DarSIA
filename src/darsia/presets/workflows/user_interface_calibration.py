@@ -12,6 +12,7 @@ from pathlib import Path
 
 from darsia.presets.workflows.calibration.calibration_color_paths import (
     calibration_color_paths,
+    delete_calibration,
 )
 from darsia.presets.workflows.calibration.calibration_color_to_mass_analysis import (
     calibration_color_to_mass_analysis,
@@ -47,6 +48,11 @@ def build_parser_for_calibration():
         "--reset", action="store_true", help="Reset existing calibration data."
     )
     parser.add_argument(
+        "--delete",
+        action="store_true",
+        help="Delete existing calibration files and cached images. Use with caution.",
+    )
+    parser.add_argument(
         "--show", action="store_true", help="Show the labels after each step."
     )
     parser.add_argument(
@@ -74,6 +80,10 @@ def preset_calibration(rig=Rig, **kwargs):
     args = parser.parse_args()
 
     print_help_for_flags(args, parser)
+
+    if args.delete:
+        delete_calibration(args.config)
+        return
 
     if args.color_paths:
         calibration_color_paths(rig, args.config, args.show)

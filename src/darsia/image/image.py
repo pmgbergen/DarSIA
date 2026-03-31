@@ -744,6 +744,55 @@ class Image:
 
         return type(self)(img=img, **metadata)
 
+    def eval(
+        self,
+        point: (
+            darsia.Voxel
+            | darsia.Coordinate
+            | darsia.VoxelArray
+            | darsia.CoordinateArray
+        ),
+    ) -> np.ndarray:
+        """Evaluate the image array at the nearest voxel for a given point location.
+
+        Args:
+            point (Voxel, Coordinate, VoxelArray, or CoordinateArray): point(s) at which
+                to evaluate the image. Coordinates are converted to voxels if necessary.
+
+        Returns:
+            np.ndarray: image value(s) at the given point(s). For a single point,
+                returns a scalar or 1D array depending on whether the image is scalar
+                or non-scalar. For multiple points, returns an array of corresponding
+                values.
+
+        """
+        # Convert coordinates to voxels if necessary
+        if isinstance(point, (darsia.Coordinate, darsia.CoordinateArray)):
+            voxels = self.coordinatesystem.voxel(point)
+        elif isinstance(point, (darsia.Voxel, darsia.VoxelArray)):
+            voxels = point
+        else:
+            raise ValueError(
+                f"point is of type {type(point)}, but needs to be Voxel, Coordinate, "
+                "VoxelArray, or CoordinateArray."
+            )
+
+        # Distinguish between a single point and multiple points
+        is_single = not isinstance(voxels, darsia.VoxelArray)
+
+        # Clip voxel indices to valid range
+        upper = [n - 1 for n in self.num_voxels]
+        voxels_array = np.clip(np.atleast_2d(np.asarray(voxels)), 0, upper)
+
+        if is_single:
+            # Single point: access via tuple index
+            idx = tuple(int(voxels_array[0, d]) for d in range(self.space_dim))
+            return self.img[idx]
+        else:
+            # Multiple points: use advanced indexing
+            idx = tuple(voxels_array[:, d].astype(int) for d in range(self.space_dim))
+            return self.img[idx]
+
     def roi(self, roi: darsia.ROI) -> Image:
         """Extraction of spatial subregion using a darsia.ROI object.
 
