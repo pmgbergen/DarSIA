@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from warnings import warn
 
+from .data_registry import DataRegistry
 from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
 
@@ -25,7 +26,11 @@ class ColorToMassConfig:
     """Path to the calibration folder."""
 
     def load(
-        self, path: Path, data: Path | None, results: Path | None = None
+        self,
+        path: Path,
+        data: Path | None,
+        results: Path | None = None,
+        data_registry: DataRegistry | None = None,
     ) -> "ColorToMassConfig":
         """Load color to mass config from a toml file from [section].
 
@@ -33,6 +38,8 @@ class ColorToMassConfig:
             path: Path to the TOML file.
             data: Path to the data folder.
             results: Path to the results folder.
+            data_registry: Optional global :class:`DataRegistry` for resolving
+                ``data = "key"`` or ``data = ["key1", "key2"]`` references.
 
         """
         # Get section
@@ -42,12 +49,16 @@ class ColorToMassConfig:
         self.mode = _get_key(sec, "mode", default="manual", required=False, type_=str)
         self.fluid = _get_key(sec, "fluid", default="co2", required=False, type_=str)
 
-        # Calibration data
-        try:
-            self.data = TimeData().load(sec["data"], data)
-        except KeyError:
-            warn("No data found. Use [color_to_mass.data].")
-            self.data = None
+        # Calibration data – support registry reference or inline sub-section
+        data_val = sec.get("data")
+        if isinstance(data_val, (str, list)) and data_registry is not None:
+            self.data = data_registry.resolve(data_val)
+        else:
+            try:
+                self.data = TimeData().load(sec["data"], data)
+            except KeyError:
+                warn("No data found. Use [color_to_mass.data].")
+                self.data = None
 
         # Where to store the calibration results
         self.calibration_folder = _get_key(
