@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .data_registry import DataRegistry
 from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
 
@@ -38,9 +39,37 @@ class ColorPathsConfig:
     """Label to use as reference for visualization."""
 
     def load(
-        self, path: Path, data: Path | None, results: Path | None = None
+        self,
+        path: Path,
+        data: Path | None,
+        results: Path | None = None,
+        data_registry: DataRegistry | None = None,
     ) -> "ColorPathsConfig":
-        """Load color paths config from a toml file from [section]."""
+        """Load color paths config from a toml file from [section].
+
+        The ``data`` and ``baseline`` keys inside ``[color_paths]`` can be specified
+        in two ways:
+
+        **Registry reference** (new, recommended)::
+
+            [color_paths]
+            data     = ["calibration1", "calibration2"]
+            baseline = "baseline_images"
+
+        Here the values are key name(s) into the global ``[data]`` registry (see
+        :class:`~darsia.presets.workflows.config.data_registry.DataRegistry`).
+
+        **Inline sub-section** (legacy / still supported)::
+
+            [color_paths.data.interval.calibration1]
+            start = "01:00:00"
+            end   = "23:00:00"
+            num   = 5
+            tol   = "00:10:00"
+
+            [color_paths.baseline.path.calibration]
+            paths = ["baseline/DSC00155.JPG", "DSC00160.JPG"]
+        """
         # Get section
         sec = _get_section_from_toml(path, "color_paths")
 
@@ -62,10 +91,20 @@ class ColorPathsConfig:
             sec, "reference_label", default=0, required=False, type_=int
         )
 
-        # Data management
-        self.baseline_image_paths = TimeData().load(sec["baseline"], data).image_paths
+        # Data management – support registry reference or inline sub-section
+        baseline_val = sec.get("baseline")
+        if isinstance(baseline_val, (str, list)) and data_registry is not None:
+            self.baseline_image_paths = data_registry.resolve(baseline_val).image_paths
+        else:
+            self.baseline_image_paths = (
+                TimeData().load(sec["baseline"], data).image_paths
+            )
 
-        self.data = TimeData().load(sec["data"], data)
+        data_val = sec.get("data")
+        if isinstance(data_val, (str, list)) and data_registry is not None:
+            self.data = data_registry.resolve(data_val)
+        else:
+            self.data = TimeData().load(sec["data"], data)
 
         self.calibration_file = _get_key(
             sec, "calibration_file", required=False, type_=Path
@@ -93,8 +132,8 @@ class ColorPathsConfig:
         raise ValueError(
             """Use [color_paths] in the config file to load color paths.
 
-            Example:
-            --------------
+            Example (registry reference):
+            ------------------------------
 
             [color_paths]
             ignore_labels = [0, 1]
@@ -102,15 +141,23 @@ class ColorPathsConfig:
             threshold_baseline = 0.0
             threshold_calibration = 0.0
             reference_label = 0
-            calibration_file = "path/to/calibration/file"
+            data     = ["calibration1", "calibration2"]
+            baseline = "baseline_images"
 
-            [color_paths.baseline.image_paths.calibration]
+            Example (inline sub-section):
+            ------------------------------
+
+            [color_paths]
+            ignore_labels = [0, 1]
+            resolution = 51
+
+            [color_paths.baseline.path.calibration]
             paths = [
                 "relative/path/to/calibration/image1",
                 "relative/path/to/calibration/image2"
             ]
 
-            [color_paths.data.image_time_interval.calibration]
+            [color_paths.data.interval.calibration]
             start = "00:00:00"
             end = "10:00:00"
             step = "01:00:00"

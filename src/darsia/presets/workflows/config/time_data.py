@@ -68,7 +68,7 @@ class ImageTimeData:
     def load(self, sec: dict) -> "ImageTimeData":
         """Load explicit image times from config section."""
         try:
-            times_sec = _get_section(sec, "image_times")
+            times_sec = _get_section(sec, "time")
             for times_key in times_sec.keys():
                 times_data = times_sec[times_key]
                 self.times.extend(
@@ -85,8 +85,7 @@ class ImageTimeData:
                 )
 
                 tolerance = _convert_to_hours(
-                    _get_key(times_data, "tol", required=False, type_=str | float)
-                    or 0.0
+                    _get_key(times_data, "tol", required=False) or 0.0
                 )
                 self.times_with_tolerance.extend([(t, tolerance) for t in self.times])
 
@@ -99,9 +98,9 @@ class ImageTimeData:
 
         return self
 
-    # def get_times_with_uncertainty(self) -> list[tuple[float, float]]:
-    #    """Return times with associated uncertainty."""
-    #    return self.times_with_tolerance.copy()
+    def get_times_with_uncertainty(self) -> list[tuple[float, float]]:
+        """Return times with associated uncertainty."""
+        return self.times_with_tolerance.copy()
 
 
 @dataclass
@@ -114,7 +113,7 @@ class ImageTimeIntervalData:
     def load(self, sec: dict) -> "ImageTimeIntervalData":
         """Load time intervals from config section."""
         try:
-            intervals_sec = _get_section(sec, "image_time_interval")
+            intervals_sec = _get_section(sec, "interval")
             for interval_key in intervals_sec.keys():
                 interval_data = intervals_sec[interval_key]
 
@@ -150,7 +149,7 @@ class ImagePathData:
     def load(self, sec: dict, data_folder: Path | None = None) -> "ImagePathData":
         """Load image paths from config section."""
         try:
-            paths_sec = _get_section(sec, "image_paths")
+            paths_sec = _get_section(sec, "path")
             for paths_key in paths_sec.keys():
                 paths_data = paths_sec[paths_key]
                 paths = paths_data.get("paths", [])
@@ -245,8 +244,7 @@ class TimeData:
         mode_count = sum([has_times, has_intervals, has_paths])
         if mode_count == 0:
             raise ValueError(
-                "No data specified. Use one of: 'image_times', "
-                "'image_time_interval', or 'image_paths'"
+                "No data specified. Use one of: 'time', " "'interval', or 'path'"
             )
         elif mode_count > 1:
             self.mode = "mixed"
@@ -299,7 +297,7 @@ class TimeData:
     def error(self):
         raise ValueError(
             f"Use key `data` within the considered subsection in the config file. "
-            f"Supported modes: image_times, image_time_interval, or image_paths. "
+            f"Supported modes: time, interval, or path. "
             f"Multiple modes can be combined."
         )
 

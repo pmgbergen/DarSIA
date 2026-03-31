@@ -130,6 +130,7 @@ class FluidFlowerConfig:
                 path=path,
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
+                data_registry=self.data.registry if self.data else None,
             )
         except ValueError:
             self.color_paths = None
@@ -142,6 +143,7 @@ class FluidFlowerConfig:
                 path=path,
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
+                data_registry=self.data.registry if self.data else None,
             )
         except ValueError:
             self.color_to_mass = None
@@ -161,6 +163,7 @@ class FluidFlowerConfig:
                 path,
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
+                data_registry=self.data.registry if self.data else None,
                 roi_registry=self.roi_registry,
             )
         except KeyError:

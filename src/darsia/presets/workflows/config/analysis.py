@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from warnings import warn
 
+from .data_registry import DataRegistry
 from .fingers import FingersConfig
 from .roi import RoiAndLabelConfig, RoiConfig
 from .segmentation import SegmentationConfig
@@ -248,16 +249,21 @@ class AnalysisConfig:
         path: Path,
         data: Path | None,
         results: Path | None,
+        data_registry: DataRegistry | None = None,
         roi_registry: RoiRegistry | None = None,
     ) -> "AnalysisConfig":
         sec = _get_section_from_toml(path, "analysis")
 
-        # Config to load analysis data
-        try:
-            self.data = TimeData().load(sec["data"], data)
-        except KeyError:
-            warn("No analysis data found. Use [analysis.data].")
-            self.data = None
+        # Config to load analysis data – support registry reference or inline
+        data_val = sec.get("data")
+        if isinstance(data_val, (str, list)) and data_registry is not None:
+            self.data = data_registry.resolve(data_val)
+        else:
+            try:
+                self.data = TimeData().load(sec["data"], data)
+            except KeyError:
+                warn("No analysis data found. Use [analysis.data].")
+                self.data = None
 
         # Config to load analysis segmentation
         try:
