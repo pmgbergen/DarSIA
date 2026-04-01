@@ -21,6 +21,11 @@ class LabelingConfig:
     """Label corresponding to colorchecker (if any)."""
     labels: Path = field(default_factory=Path)
     """Path to the labels file."""
+    # Numerical options for labeling.
+    rtol: float = 0.001
+    """Minimum significance of labels to be kept (default: 0.1% of the image area)."""
+    ensure_connectivity: bool = True
+    """Whether to ensure that labels are connected regions (default: True)."""
 
     def load(self, path: Path, results: Path | None = None) -> "LabelingConfig":
         """Load labeling config from a toml file from [section]."""
@@ -35,6 +40,16 @@ class LabelingConfig:
         if not self.labels:
             assert results is not None
             self.labels = results / "setup" / "labels" / "labels.npz"
+        self.rtol = _get_key(
+            sec, "rtol", default=self.rtol, required=False, type_=float
+        )
+        self.ensure_connectivity = _get_key(
+            sec,
+            "ensure_connectivity",
+            default=self.ensure_connectivity,
+            required=False,
+            type_=bool,
+        )
         return self
 
     def error(self):
