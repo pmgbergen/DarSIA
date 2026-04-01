@@ -36,8 +36,8 @@ def segment_colored_image(path: Path, show: bool = False):
 
     labels = darsia.label_image(
         manually_colored_image,
-        significance=config.labeling.rtol,  # ignore labels which cover too little
-        ensure_connectivity=config.labeling.ensure_connectivity,  # ensure that labels are connected regions
+        significance=config.labeling.rtol,  # ignore labels which cover too little area
+        ensure_connectivity=config.labeling.ensure_connectivity,
     )
     logger.info("Num unique labels: %d", len(np.unique(labels.img)))
 
