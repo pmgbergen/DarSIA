@@ -771,6 +771,20 @@ class Image:
                 or non-scalar. For multiple points, returns an array of corresponding
                 values.
 
+        Example::
+
+            import darsia
+            import numpy as np
+
+            arr = np.arange(12, dtype=float).reshape(3, 4)
+            image = darsia.ScalarImage(arr, dimensions=[1, 1], space_dim=2)
+
+            # Default nearest-voxel evaluation (existing behaviour)
+            image.eval(darsia.Coordinate([0.6, 0.5]))
+
+            # Bilinear interpolation at a sub-voxel coordinate
+            image.eval(darsia.Coordinate([0.625, 0.5]), interpolation="linear")  # 8.0
+
         """
         # Linear interpolation path: only for coordinate inputs
         if interpolation == "linear" and isinstance(
