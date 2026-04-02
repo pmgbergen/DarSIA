@@ -9,9 +9,13 @@ from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
+import skimage
 
 import darsia
-from darsia.presets.workflows.config.corrections import CorrectionsConfig
+from darsia.presets.workflows.config.corrections import (
+    CorrectionsConfig,
+    IlluminationCorrectionConfig,
+)
 from darsia.presets.workflows.facies_props import FaciesProps
 
 logger = logging.getLogger(__name__)
@@ -26,7 +30,6 @@ class Rig:
         self,
         baseline_path: Path,
         imaging_protocol: darsia.ImagingProtocol,
-        # config_path: Path | list[Path] | None = None,
         corrections_config: CorrectionsConfig | None = None,
         log: Path | None = None,
     ):
@@ -37,7 +40,6 @@ class Rig:
         pre_baseline = darsia.imread(baseline_path)
         self.setup_corrections(
             pre_baseline=pre_baseline,
-            # config_path=config_path,
             corrections_config=corrections_config,
         )
 
@@ -62,7 +64,6 @@ class Rig:
         self,
         folder: Path | None = None,
         pre_baseline: darsia.Image | None = None,
-        # config_path: Path | list[Path] | None = None,
         corrections_config: CorrectionsConfig | None = None,
     ) -> None:
         """Setup corrections for the rig.
@@ -74,7 +75,8 @@ class Rig:
                 If provided, it will load existing corrections from this path.
             pre_baseline (darsia.Image | None): Pre-baseline image used for defining
                 corrections. If `folder` is provided and exists, this argument is ignored.
-            config_path (Path | list[Path] | None): Path to curvature correction config.
+            corrections_config (CorrectionsConfig | None): Configuration for which corrections
+                to apply. If `folder` is provided and exists, this argument is ignored.
 
         """
         # Use defaults if no config provided.
@@ -85,7 +87,7 @@ class Rig:
             self.corrections = []
             for correction_path in sorted(folder.glob("correction_*.npz")):
                 correction = darsia.read_correction(correction_path)
-                print(type(correction).__name__)
+                logger.info(f"Loaded {type(correction).__name__}")
                 if (
                     (
                         isinstance(correction, darsia.TypeCorrection)
@@ -229,6 +231,18 @@ class Rig:
 
             # Update corrections workflow
             self.corrections.append(self.color_correction)
+
+        if corrections_config.illumination:
+            # Define empty illumination correction to be specified when labels are available.
+            self.illumination_correction = darsia.IlluminationCorrection()
+            """Illumination correction based on labels and baseline image."""
+
+            # Need to wait until labels provided for the setup.
+            if hasattr(self, "labels"):
+                self.setup_illumination_correction(corrections_config.illumination)
+
+            # Update corrections workflow
+            self.corrections.append(self.illumination_correction)
 
         logger.info("Corrections setup complete.")
 
@@ -388,9 +402,65 @@ class Rig:
             self.permeability = darsia.imread(permeability)
 
     # ! ---- ILLUMINATION CORRECTION ----
-    def setup_illumination_correction(self, log: Path | None = None) -> None:
+    def setup_illumination_correction(
+        self, config: IlluminationCorrectionConfig | None, log: Path | None = None
+    ) -> None:
         """Setup illumination correction (empty in Rig)"""
-        pass
+        # Check if the illumination correction is part of active corrections, and track it.
+        has_illumination_correction = [
+            isinstance(c, darsia.IlluminationCorrection) for c in self.corrections
+        ]
+
+        if any(has_illumination_correction):
+            assert (
+                sum(has_illumination_correction) == 1
+            ), "Multiple illumination corrections found in workflow."
+            # Fetch the illumination correction from the workflow.
+            illumination_correction = self.corrections[
+                has_illumination_correction.index(True)
+            ]
+
+            # Fetch samples for illumination correction based on labels and baseline.
+            sample_groups = []
+            if config.labels is None:
+                # If no labels specified, use random samples from the whole image.
+                samples = illumination_correction.select_random_samples(
+                    mask=darsia.ones_like(self.baseline, dtype=bool), config=config
+                )
+                sample_groups.append(samples)
+            else:
+                for label in config.labels:
+                    mask = self.labels.img == label
+                    samples = illumination_correction.select_random_samples(
+                        mask=mask, config=config
+                    )
+                    sample_groups.append(samples)
+
+            # Define reference sample for the illumination correction.
+            reference_voxel = self.baseline.coordinatesystem.voxel(config.reference)
+
+            # Determine illumination correction based on inputs
+            illumination_correction.setup(
+                base=self.baseline,
+                sample_groups=sample_groups,
+                reference_voxel=reference_voxel,
+                mask=self.boolean_porosity,
+                outliers=0.1,  # TODO: Add option somewhere...
+                filter=lambda x: skimage.filters.gaussian(x, sigma=config.sigma),
+                colorspace=config.colorspace,
+                interpolation=config.interpolation,
+                show_plot=True,  # TODO: Add option somewhere...
+                log=log,
+            )
+
+            # Update correction in workflow.
+            self.corrections[has_illumination_correction.index(True)] = (
+                illumination_correction
+            )
+
+            # Update baseline
+            # Order? TODO Redo? Update color corrections? Revisit when splitting corrections.
+            self.baseline = illumination_correction(self.baseline)
 
     # ! ---- POROSITY ----
 
@@ -456,7 +526,6 @@ class Rig:
         labels_path: Path,
         facies_path: Path | None = None,
         facies_props_path: Path | None = None,
-        # config_path: Path | list[Path] | None = None,
         corrections_config: CorrectionsConfig | None = None,
         # ref_colorchecker_path: Path,
         log: Path | None = None,
@@ -477,7 +546,6 @@ class Rig:
         self.setup_reading(
             baseline_path,
             experiment.imaging_protocol,
-            # config_path,
             corrections_config=corrections_config,
             log=log,
         )
@@ -511,16 +579,17 @@ class Rig:
         # Define geometry for integration
         self.setup_geometry()
 
-        # Setup illumination correction
-        self.setup_illumination_correction(
-            log=log,
-        )
-
         # Setup porosity based on baseline
         self.setup_image_porosity(log=log)
 
         # Define boolean image porosity
         self.setup_boolean_image_porosity(log=log)
+
+        # Setup illumination correction (wait until here to use label information)
+        self.setup_illumination_correction(
+            corrections_config.illumination if corrections_config else None,
+            log=log,
+        )
 
         # TODO Setup concentration analysis and transformations?
         # self.co2_analysis = ...
