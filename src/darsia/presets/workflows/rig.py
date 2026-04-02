@@ -208,6 +208,18 @@ class Rig:
             # Update corrections workflow
             self.corrections.append(self.curvature_correction)
 
+        if corrections_config.illumination:
+            # Define empty illumination correction to be specified when labels are available.
+            self.illumination_correction = darsia.IlluminationCorrection()
+            """Illumination correction based on labels and baseline image."""
+
+            # Need to wait until labels provided for the setup.
+            if hasattr(self, "labels"):
+                self.setup_illumination_correction(corrections_config.illumination)
+
+            # Update corrections workflow
+            self.corrections.append(self.illumination_correction)
+
         if corrections_config.color:
             # Define color correction based on color checker
             try:
@@ -231,18 +243,6 @@ class Rig:
 
             # Update corrections workflow
             self.corrections.append(self.color_correction)
-
-        if corrections_config.illumination:
-            # Define empty illumination correction to be specified when labels are available.
-            self.illumination_correction = darsia.IlluminationCorrection()
-            """Illumination correction based on labels and baseline image."""
-
-            # Need to wait until labels provided for the setup.
-            if hasattr(self, "labels"):
-                self.setup_illumination_correction(corrections_config.illumination)
-
-            # Update corrections workflow
-            self.corrections.append(self.illumination_correction)
 
         logger.info("Corrections setup complete.")
 
