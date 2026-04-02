@@ -170,8 +170,6 @@ class ColorCorrectionConfig:
 class IlluminationCorrectionConfig:
     """Configuration for illumination correction."""
 
-    label: int | None = None
-    """Label to use for illumination correction. If None, all labels are used."""
     labels: list[int] = field(default_factory=list)
     """List of labels to use for illumination correction. Overrides `label` if not empty."""
     interpolation: Literal["rbf", "quartic", "illumination"] = "illumination"
@@ -202,7 +200,6 @@ class IlluminationCorrectionConfig:
 
         """
 
-        self.label = sec.get("label", self.label)
         self.labels = sec.get("labels", self.labels)
         self.interpolation = sec.get("interpolation", self.interpolation)
         self.colorspace = sec.get("colorspace", self.colorspace)
