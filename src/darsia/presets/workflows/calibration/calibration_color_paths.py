@@ -177,7 +177,7 @@ def delete_calibration(path: Path | list[Path]) -> None:
         paths_to_delete.append(config.color_paths.calibration_file)
         paths_to_delete.append(config.color_paths.baseline_color_spectrum_folder)
         paths_to_delete.append(config.color_paths.color_range_file)
-    if config.data is not None:
+    if config.data is not None and config.data.cache is not None:
         paths_to_delete.append(config.data.cache)
 
     existing = [p for p in paths_to_delete if p.exists()]
