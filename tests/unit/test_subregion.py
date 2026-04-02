@@ -161,3 +161,122 @@ def test_eval_clipping():
     voxel = darsia.Voxel([10, 20])
     result = image.eval(voxel)
     assert result == arr[2, 3]
+
+
+# ! ---- Tests for linear interpolation mode
+
+
+def test_eval_linear_at_voxel_center_matches_nearest():
+    """Linear interpolation at an exact voxel center must equal the nearest result."""
+    arr = np.arange(12, dtype=float).reshape(3, 4)
+    image = darsia.ScalarImage(arr, dimensions=[1, 1], space_dim=2)
+
+    # Coordinate that maps exactly to fractional voxel [1, 2]:
+    #   frac_col = x / 0.25          =>  x = 2 * 0.25 = 0.5
+    #   frac_row = (1 - y) * 3 = 1   =>  y = 1 - (1/3) = 2/3
+    coord = darsia.Coordinate(np.array([0.5, 2.0 / 3.0]))
+    result_nearest = image.eval(coord, interpolation="nearest")
+    result_linear = image.eval(coord, interpolation="linear")
+    assert np.isclose(result_nearest, arr[1, 2])
+    assert np.isclose(result_linear, arr[1, 2])
+
+
+def test_eval_linear_midpoint_two_columns():
+    """Linear interpolation at mid-point between two column-neighbours."""
+    arr = np.arange(12, dtype=float).reshape(3, 4)
+    image = darsia.ScalarImage(arr, dimensions=[1, 1], space_dim=2)
+
+    # Fractional voxel [1, 2.5]:
+    #   frac_col = 2.5  =>  x = 2.5 * 0.25 = 0.625
+    #   frac_row = 1    =>  y = 1 - (1/3) = 2/3
+    coord = darsia.Coordinate(np.array([0.625, 2.0 / 3.0]))
+    result = image.eval(coord, interpolation="linear")
+    expected = 0.5 * arr[1, 2] + 0.5 * arr[1, 3]
+    assert np.isclose(result, expected)
+
+
+def test_eval_linear_midpoint_two_rows():
+    """Linear interpolation at mid-point between two row-neighbours."""
+    arr = np.arange(12, dtype=float).reshape(3, 4)
+    image = darsia.ScalarImage(arr, dimensions=[1, 1], space_dim=2)
+
+    # Fractional voxel [1.5, 2]:
+    #   x = 2 * 0.25 = 0.5,  y = 1 - 1.5/3 = 0.5
+    coord = darsia.Coordinate(np.array([0.5, 0.5]))
+    result = image.eval(coord, interpolation="linear")
+    expected = 0.5 * arr[1, 2] + 0.5 * arr[2, 2]
+    assert np.isclose(result, expected)
+
+
+def test_eval_linear_midpoint_four_voxels():
+    """Linear interpolation at the centre of four neighbouring voxels."""
+    arr = np.arange(12, dtype=float).reshape(3, 4)
+    image = darsia.ScalarImage(arr, dimensions=[1, 1], space_dim=2)
+
+    # Fractional voxel [1.5, 2.5]:
+    #   x = 2.5 * 0.25 = 0.625,  y = 1 - 1.5/3 = 0.5
+    coord = darsia.Coordinate(np.array([0.625, 0.5]))
+    result = image.eval(coord, interpolation="linear")
+    expected = 0.25 * (arr[1, 2] + arr[1, 3] + arr[2, 2] + arr[2, 3])
+    assert np.isclose(result, expected)
+
+
+def test_eval_linear_coordinate_array():
+    """Linear interpolation with a CoordinateArray (multiple points)."""
+    arr = np.arange(12, dtype=float).reshape(3, 4)
+    image = darsia.ScalarImage(arr, dimensions=[1, 1], space_dim=2)
+
+    # Two query points: midpoint of cols 2-3 at row 1, and exact center of voxel [0,0]
+    #   Point 1: frac [1, 2.5]  -> x=0.625, y=2/3
+    #   Point 2: frac [0, 0]    -> x=0,     y=1
+    coords = darsia.CoordinateArray(np.array([[0.625, 2.0 / 3.0], [0.0, 1.0]]))
+    result = image.eval(coords, interpolation="linear")
+    expected = np.array(
+        [0.5 * arr[1, 2] + 0.5 * arr[1, 3], arr[0, 0]], dtype=float
+    )
+    assert np.allclose(result, expected)
+
+
+def test_eval_linear_voxel_input_uses_nearest():
+    """Voxel inputs must always use nearest-neighbour even when interpolation='linear'."""
+    arr = np.arange(12, dtype=float).reshape(3, 4)
+    image = darsia.ScalarImage(arr, dimensions=[1, 1], space_dim=2)
+
+    voxel = darsia.Voxel([1, 2])
+    result = image.eval(voxel, interpolation="linear")
+    assert result == arr[1, 2]
+
+
+def test_eval_linear_voxel_array_uses_nearest():
+    """VoxelArray inputs use nearest-neighbour even when interpolation='linear'."""
+    arr = np.arange(12, dtype=float).reshape(3, 4)
+    image = darsia.ScalarImage(arr, dimensions=[1, 1], space_dim=2)
+
+    voxels = darsia.VoxelArray([[0, 1], [2, 3]])
+    result = image.eval(voxels, interpolation="linear")
+    assert np.allclose(result, [arr[0, 1], arr[2, 3]])
+
+
+def test_eval_linear_out_of_bounds():
+    """Out-of-bounds coordinates are clipped to the valid range before interpolation."""
+    arr = np.arange(12, dtype=float).reshape(3, 4)
+    image = darsia.ScalarImage(arr, dimensions=[1, 1], space_dim=2)
+
+    # Coordinate far outside the domain - should clip to corner voxel [2, 3]
+    # x >> 1 clips frac_col to 3; y << 0 clips frac_row to 2
+    coord = darsia.Coordinate(np.array([5.0, -1.0]))
+    result = image.eval(coord, interpolation="linear")
+    assert np.isclose(result, arr[2, 3])
+
+
+def test_eval_linear_nonscalar_image():
+    """Linear interpolation works correctly for non-scalar (multi-channel) images."""
+    arr = np.arange(36, dtype=float).reshape(3, 4, 3)
+    image = darsia.Image(arr, scalar=False, dimensions=[1, 1], space_dim=2)
+
+    # Fractional voxel [1, 2.5] -> mid-point between cols 2 and 3 at row 1
+    #   x = 0.625,  y = 2/3
+    coord = darsia.Coordinate(np.array([0.625, 2.0 / 3.0]))
+    result = image.eval(coord, interpolation="linear")
+    expected = 0.5 * arr[1, 2] + 0.5 * arr[1, 3]
+    assert np.allclose(result, expected)

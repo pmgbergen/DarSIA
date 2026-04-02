@@ -14,6 +14,36 @@ def _get_section(data: dict, section: str) -> dict:
         raise KeyError(f"Section {section} not found.")
 
 
+def _deep_merge(base: dict, update: dict) -> dict:
+    """Recursively merge update dict into base dict.
+
+    When both dicts have the same key with dict values, merges them recursively
+    instead of overwriting.
+
+    Args:
+        base: Base dictionary to merge into.
+        update: Dictionary with updates to merge.
+
+    Returns:
+        Merged dictionary (base is modified in-place).
+
+    Example:
+        >>> base = {"a": {"x": 1, "y": 2}, "b": 3}
+        >>> update = {"a": {"y": 20, "z": 30}, "c": 4}
+        >>> _deep_merge(base, update)
+        {"a": {"x": 1, "y": 20, "z": 30}, "b": 3, "c": 4}
+
+    """
+    for key, value in update.items():
+        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+            # Recursively merge nested dicts
+            _deep_merge(base[key], value)
+        else:
+            # Overwrite or add new key
+            base[key] = value
+    return base
+
+
 def _get_section_from_toml(path: Path | list[Path], section: str) -> dict:
     if isinstance(path, Path):
         data = tomllib.loads(path.read_text())
@@ -21,7 +51,7 @@ def _get_section_from_toml(path: Path | list[Path], section: str) -> dict:
         data = {}
         for p in path:
             part = tomllib.loads(p.read_text())
-            data.update(part)
+            _deep_merge(data, part)
     else:
         raise TypeError(f"Path must be a Path or list of Paths. It is {type(path)}.")
     sec = _get_section(data, section)
