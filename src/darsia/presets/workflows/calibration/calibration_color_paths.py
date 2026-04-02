@@ -50,23 +50,29 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     # Cache baseline images for performance
     baseline_images: list[darsia.Image] = []
     for p in config.color_paths.baseline_image_paths:
-        cache_path = config.data.cache / f"{p.stem}.npz"
-        if not cache_path.exists():
-            baseline_image = fluidflower.read_image(p)
-            baseline_image.save(cache_path)
+        if config.data.use_cache:
+            cache_path = config.data.cache / f"{p.stem}.npz"
+            if cache_path.exists():
+                baseline_image = darsia.imread(cache_path)
+            else:
+                baseline_image = fluidflower.read_image(p)
+                baseline_image.save(cache_path)
         else:
-            baseline_image = darsia.imread(cache_path)
+            baseline_image = fluidflower.read_image(p)
         baseline_images.append(baseline_image)
 
     # Cache calibration images for performance
     calibration_images: list[darsia.Image] = []
     for p in calibration_image_paths:
-        cache_path = config.data.cache / f"{p.stem}.npz"
-        if not cache_path.exists():
-            calibration_image = fluidflower.read_image(p)
-            calibration_image.save(cache_path)
+        if config.data.use_cache:
+            cache_path = config.data.cache / f"{p.stem}.npz"
+            if cache_path.exists():
+                calibration_image = darsia.imread(cache_path)
+            else:
+                calibration_image = fluidflower.read_image(p)
+                calibration_image.save(cache_path)
         else:
-            calibration_image = darsia.imread(cache_path)
+            calibration_image = fluidflower.read_image(p)
         calibration_images.append(calibration_image)
 
     # ! ---- IDENTIFY AND STORE (RELATIVE) COLOR RANGE ----
@@ -171,7 +177,7 @@ def delete_calibration(path: Path | list[Path]) -> None:
         paths_to_delete.append(config.color_paths.calibration_file)
         paths_to_delete.append(config.color_paths.baseline_color_spectrum_folder)
         paths_to_delete.append(config.color_paths.color_range_file)
-    if config.data is not None:
+    if config.data is not None and config.data.cache is not None:
         paths_to_delete.append(config.data.cache)
 
     existing = [p for p in paths_to_delete if p.exists()]

@@ -37,8 +37,10 @@ class DataConfig:
     """Pad for image names."""
     results: Path = field(default_factory=Path)
     """Path to the results folder."""
-    cache: Path = field(default_factory=Path)
-    """Path to the cache folder."""
+    cache: Path | None = None
+    """Path to the cache folder, or None if caching is disabled."""
+    use_cache: bool = False
+    """Whether to use the cache folder for reading/writing cached images."""
     time_data: TimeData | None = None
     """Calibration data configuration."""
     registry: DataRegistry | None = None
@@ -93,14 +95,22 @@ class DataConfig:
                     f"Cannot create results directory at {self.results}."
                 ) from e
 
-        # Define cache folder
-        self.cache = self.results / "cache"
-        try:
-            self.cache.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            raise PermissionError(
-                f"Cannot create cache directory at {self.cache}."
-            ) from e
+        # Whether to use the cache folder for reading/writing cached images
+        self.use_cache = _get_key(
+            sec, "use_cache", default=False, required=False, type_=bool
+        )
+
+        # Define cache folder and only create it when caching is enabled
+        if self.use_cache:
+            self.cache = self.results / "cache"
+            try:
+                self.cache.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                raise PermissionError(
+                    f"Cannot create cache directory at {self.cache}."
+                ) from e
+        else:
+            self.cache = None
 
         # Attempt to load global DataRegistry from [data.interval.*], [data.time.*],
         # and [data.path.*] sub-sections. This is optional; if none are present the
