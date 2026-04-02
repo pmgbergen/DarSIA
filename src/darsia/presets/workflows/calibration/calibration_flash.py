@@ -56,12 +56,15 @@ def calibration_flash(cls, path: Path, show: bool = False):
         )
     calibration_images = []
     for p in calibration_image_paths:
-        cache_path = config.data.cache / f"cache_{p.stem}.npz"
-        if not cache_path.exists():
-            calibration_image = fluidflower.read_image(p)
-            calibration_image.save(cache_path)
+        if config.data.use_cache:
+            cache_path = config.data.cache / f"cache_{p.stem}.npz"
+            if cache_path.exists():
+                calibration_image = darsia.imread(cache_path)
+            else:
+                calibration_image = fluidflower.read_image(p)
+                calibration_image.save(cache_path)
         else:
-            calibration_image = darsia.imread(cache_path)
+            calibration_image = fluidflower.read_image(p)
         calibration_images.append(calibration_image)
 
     # ! ---- LOAD COLOR PATHS ----
