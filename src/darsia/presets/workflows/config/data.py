@@ -37,8 +37,8 @@ class DataConfig:
     """Pad for image names."""
     results: Path = field(default_factory=Path)
     """Path to the results folder."""
-    cache: Path = field(default_factory=Path)
-    """Path to the cache folder."""
+    cache: Path | None = None
+    """Path to the cache folder, or None if caching is disabled."""
     use_cache: bool = False
     """Whether to use the cache folder for reading/writing cached images."""
     time_data: TimeData | None = None
@@ -101,14 +101,16 @@ class DataConfig:
         )
 
         # Define cache folder and only create it when caching is enabled
-        self.cache = self.results / "cache"
         if self.use_cache:
+            self.cache = self.results / "cache"
             try:
                 self.cache.mkdir(parents=True, exist_ok=True)
             except Exception as e:
                 raise PermissionError(
                     f"Cannot create cache directory at {self.cache}."
                 ) from e
+        else:
+            self.cache = None
 
         # Attempt to load global DataRegistry from [data.interval.*], [data.time.*],
         # and [data.path.*] sub-sections. This is optional; if none are present the
