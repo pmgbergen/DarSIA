@@ -58,11 +58,23 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
         pad=config.data.pad,
     )
 
+    # Determine effective baseline path, using cache when enabled
+    baseline_path = config.data.baseline
+    if config.data.use_cache:
+        assert config.data.cache is not None
+        cache_path = config.data.cache / f"{baseline_path.stem}.npz"
+        if cache_path.exists():
+            baseline_path = cache_path
+        else:
+            original_baseline = darsia.imread(baseline_path)
+            original_baseline.save(cache_path)
+            baseline_path = cache_path
+
     # Setup and save rig
     rig = cls()
     rig.setup(
         experiment=experiment,
-        baseline_path=config.data.baseline,
+        baseline_path=baseline_path,
         depth_map_path=config.depth.depth_map,
         labels_path=config.labeling.labels,
         facies_path=config.facies.path,
