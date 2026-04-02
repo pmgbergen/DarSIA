@@ -186,8 +186,10 @@ class IlluminationCorrectionConfig:
     """Random seed for patch sampling."""
     sigma: float = 100.0
     """Sigma for Gaussian smoothing of the illumination correction map."""
-    reference: list[int] | None = None
-    """Reference coordinate (x,y) to set correction = 1."""
+    outliers: float = 0.1
+    """Fraction of outliers to discard when computing the illumination correction map."""
+    bounds: tuple[float, float] = (0.5, 2.0)
+    """Bounds for the illumination correction factors."""
 
     def load(self, sec: dict) -> "IlluminationCorrectionConfig":
         """Load illumination correction configuration from a dictionary.
@@ -208,7 +210,7 @@ class IlluminationCorrectionConfig:
         self.num_samples = sec.get("num_samples", self.num_samples)
         self.seed = sec.get("seed", self.seed)
         self.sigma = sec.get("sigma", self.sigma)
-        self.reference = sec.get("reference", self.reference)
+        self.bounds = sec.get("bounds", self.bounds)
 
         return self
 

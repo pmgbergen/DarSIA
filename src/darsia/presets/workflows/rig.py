@@ -403,9 +403,21 @@ class Rig:
 
     # ! ---- ILLUMINATION CORRECTION ----
     def setup_illumination_correction(
-        self, config: IlluminationCorrectionConfig | None, log: Path | None = None
+        self,
+        config: IlluminationCorrectionConfig | None,
+        log: Path | None = None,
+        show_plot: bool = False,
     ) -> None:
-        """Setup illumination correction (empty in Rig)"""
+        """Setup illumination correction (empty in Rig).
+
+        Args:
+            config (IlluminationCorrectionConfig | None): Configuration for the illumination
+                correction. If provided, it will set up the illumination correction based
+                on this configuration.
+            log (Path | None): Path to the log folder where diagnostic plots will be saved.
+            show_plot (bool): Whether to show diagnostic plots during setup (default: False).
+
+        """
         # Check if the illumination correction is part of active corrections, and track it.
         has_illumination_correction = [
             isinstance(c, darsia.IlluminationCorrection) for c in self.corrections
@@ -416,7 +428,7 @@ class Rig:
                 sum(has_illumination_correction) == 1
             ), "Multiple illumination corrections found in workflow."
             # Fetch the illumination correction from the workflow.
-            illumination_correction = self.corrections[
+            illumination_correction: darsia.IlluminationCorrection = self.corrections[
                 has_illumination_correction.index(True)
             ]
 
@@ -436,20 +448,16 @@ class Rig:
                     )
                     sample_groups.append(samples)
 
-            # Define reference sample for the illumination correction.
-            reference_voxel = self.baseline.coordinatesystem.voxel(config.reference)
-
             # Determine illumination correction based on inputs
             illumination_correction.setup(
                 base=self.baseline,
                 sample_groups=sample_groups,
-                reference_voxel=reference_voxel,
                 mask=self.boolean_porosity,
-                outliers=0.1,  # TODO: Add option somewhere...
+                outliers=config.outliers,
                 filter=lambda x: skimage.filters.gaussian(x, sigma=config.sigma),
                 colorspace=config.colorspace,
                 interpolation=config.interpolation,
-                show_plot=True,  # TODO: Add option somewhere...
+                show_plot=show_plot,
                 log=log,
             )
 
@@ -529,6 +537,7 @@ class Rig:
         corrections_config: CorrectionsConfig | None = None,
         # ref_colorchecker_path: Path,
         log: Path | None = None,
+        show_plot: bool = False,
     ) -> None:
         """Fast setup."""
         # Create log directory if it doesn't exist
@@ -589,6 +598,7 @@ class Rig:
         self.setup_illumination_correction(
             corrections_config.illumination if corrections_config else None,
             log=log,
+            show_plot=show_plot,
         )
 
         # TODO Setup concentration analysis and transformations?
