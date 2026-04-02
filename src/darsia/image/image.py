@@ -752,12 +752,18 @@ class Image:
             | darsia.VoxelArray
             | darsia.CoordinateArray
         ),
+        interpolation: str = "nearest",
     ) -> np.ndarray:
-        """Evaluate the image array at the nearest voxel for a given point location.
+        """Evaluate the image array at a given point location.
 
         Args:
             point (Voxel, Coordinate, VoxelArray, or CoordinateArray): point(s) at which
                 to evaluate the image. Coordinates are converted to voxels if necessary.
+            interpolation (str): interpolation mode. Either ``"nearest"`` (default,
+                rounds to nearest voxel) or ``"linear"`` (bilinear/trilinear
+                interpolation via ``scipy.interpolate.RegularGridInterpolator``).
+                Voxel inputs (``Voxel``/``VoxelArray``) always use nearest-neighbor
+                regardless of this parameter.
 
         Returns:
             np.ndarray: image value(s) at the given point(s). For a single point,
@@ -765,7 +771,60 @@ class Image:
                 or non-scalar. For multiple points, returns an array of corresponding
                 values.
 
+        Example::
+
+            import darsia
+            import numpy as np
+
+            arr = np.arange(12, dtype=float).reshape(3, 4)
+            image = darsia.ScalarImage(arr, dimensions=[1, 1], space_dim=2)
+
+            # Default nearest-voxel evaluation (existing behaviour)
+            image.eval(darsia.Coordinate([0.6, 0.5]))
+
+            # Bilinear interpolation at a sub-voxel coordinate
+            image.eval(darsia.Coordinate([0.625, 0.5]), interpolation="linear")  # 8.0
+
         """
+        # Linear interpolation path: only for coordinate inputs
+        if interpolation == "linear" and isinstance(
+            point, (darsia.Coordinate, darsia.CoordinateArray)
+        ):
+            from scipy.interpolate import RegularGridInterpolator
+
+            is_single = not isinstance(point, darsia.CoordinateArray)
+
+            # Compute fractional voxel indices from coordinates (mirroring
+            # CoordinateSystem.voxel() but without rounding/flooring)
+            cs = self.coordinatesystem
+            coordinate_array = np.atleast_2d(np.asarray(point))
+            frac = np.empty_like(coordinate_array, dtype=float)
+            for i, axis in enumerate(cs.axes):
+                pos, revert = darsia.interpret_indexing(axis, cs.indexing)
+                scaling = -1 if revert else 1
+                frac[:, pos] = (
+                    scaling
+                    * (coordinate_array[:, i] - cs._coordinate_of_origin_voxel[i])
+                    / cs.voxel_size[axis]
+                )
+
+            # Clip fractional indices to valid range before interpolating
+            max_indices = np.array([n - 1 for n in self.num_voxels], dtype=float)
+            frac = np.clip(frac, 0.0, max_indices)
+
+            # Build RegularGridInterpolator over the spatial voxel grid.
+            # Works for both scalar images (values shape (n0, n1, ...)) and
+            # non-scalar images (values shape (n0, n1, ..., m)) because
+            # RegularGridInterpolator broadcasts extra trailing dimensions.
+            grid = tuple(np.arange(n, dtype=float) for n in self.num_voxels)
+            interpolator = RegularGridInterpolator(
+                grid, self.img, method="linear", bounds_error=False, fill_value=None
+            )
+            result = interpolator(frac)
+
+            return result[0] if is_single else result
+
+        # Nearest-neighbor path (default, and always used for voxel inputs)
         # Convert coordinates to voxels if necessary
         if isinstance(point, (darsia.Coordinate, darsia.CoordinateArray)):
             voxels = self.coordinatesystem.voxel(point)
