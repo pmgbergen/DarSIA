@@ -276,10 +276,16 @@ class IlluminationCorrection(darsia.BaseCorrection):
                         true_rescaled_group_colors - stacked_avg_color
                     ) ** 2
 
-                    # Trim away smallest and largest 10 percent
+                    # Trim away smallest and largest fraction defined by `outliers`
                     sorted_residuals = np.sort(local_residuals, axis=0)
                     trim_amount = int(outliers * sorted_residuals.shape[0])
-                    residual += np.sum(sorted_residuals[trim_amount:-trim_amount])
+                    if trim_amount == 0:
+                        # No trimming requested: use all residuals
+                        residual += np.sum(sorted_residuals)
+                    else:
+                        residual += np.sum(
+                            sorted_residuals[trim_amount:-trim_amount]
+                        )
 
             return residual
 

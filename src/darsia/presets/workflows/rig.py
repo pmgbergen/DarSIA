@@ -458,6 +458,7 @@ class Rig:
                 filter=lambda x: skimage.filters.gaussian(x, sigma=config.sigma),
                 colorspace=config.colorspace,
                 interpolation=config.interpolation,
+                bounds=config.bounds,
                 show_plot=show_plot,
                 log=log,
             )
