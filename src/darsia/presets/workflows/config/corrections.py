@@ -225,6 +225,12 @@ class IlluminationCorrectionConfig:
         self.seed = sec.get("seed", self.seed)
         self.sigma = sec.get("sigma", self.sigma)
         self.bounds = sec.get("bounds", self.bounds)
+        self.outliers = sec.get("outliers", self.outliers)
+        if not 0.0 <= self.outliers <= 1.0:
+            raise ValueError(
+                f"IlluminationCorrectionConfig.outliers must be between 0.0 and 1.0, "
+                f"got {self.outliers!r}"
+            )
 
         return self
 

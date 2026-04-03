@@ -424,9 +424,10 @@ class Rig:
         ]
 
         if any(has_illumination_correction):
-            assert (
-                sum(has_illumination_correction) == 1
-            ), "Multiple illumination corrections found in workflow."
+            if sum(has_illumination_correction) != 1:
+                raise ValueError(
+                    "Multiple illumination corrections found in workflow."
+                )
             # Fetch the illumination correction from the workflow.
             illumination_correction: darsia.IlluminationCorrection = self.corrections[
                 has_illumination_correction.index(True)
