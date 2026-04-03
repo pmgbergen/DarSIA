@@ -283,9 +283,7 @@ class IlluminationCorrection(darsia.BaseCorrection):
                         # No trimming requested: use all residuals
                         residual += np.sum(sorted_residuals)
                     else:
-                        residual += np.sum(
-                            sorted_residuals[trim_amount:-trim_amount]
-                        )
+                        residual += np.sum(sorted_residuals[trim_amount:-trim_amount])
 
             return residual
 
@@ -317,7 +315,9 @@ class IlluminationCorrection(darsia.BaseCorrection):
                 continue
             for image_id in range(len(images)):
                 # Fetch the reference color for the sample.
-                colors = characteristic_colors[(group_id, image_id)]
+                colors = characteristic_colors[(group_id, image_id)].reshape(
+                    -1, color_components
+                )
                 if len(colors) == 0:
                     continue
                 local_scaling = np.array(
@@ -331,12 +331,9 @@ class IlluminationCorrection(darsia.BaseCorrection):
                 )
 
                 # Log the deviation.
-                original_deviation = np.linalg.norm(
-                    colors - np.mean(colors, axis=0, keepdims=True)
-                )
+                original_deviation = np.linalg.norm(colors - np.mean(colors, axis=0))
                 corrected_deviation = np.linalg.norm(
-                    np.array(corrected_colors)
-                    - np.mean(corrected_colors, axis=0, keepdims=True)
+                    np.array(corrected_colors) - np.mean(corrected_colors, axis=0)
                 )
                 logger.info(
                     f"""Deviation for group {group_id}, image {image_id}: """
