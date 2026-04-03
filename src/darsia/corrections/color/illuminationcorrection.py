@@ -3,7 +3,7 @@
 import logging
 import time
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,7 +12,9 @@ import scipy.optimize
 import skimage
 
 import darsia
-from darsia.presets.workflows.config.corrections import IlluminationCorrectionConfig
+
+if TYPE_CHECKING:
+    from darsia.presets.workflows.config.corrections import IlluminationCorrectionConfig
 
 logger = logging.getLogger(__name__)
 
