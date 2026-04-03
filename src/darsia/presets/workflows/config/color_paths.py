@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from .data_registry import DataRegistry
 from .time_data import TimeData
-from .utils import _get_key, _get_section, _get_section_from_toml
+from .utils import _get_key, _get_section_from_toml
 
 if TYPE_CHECKING:
     from .roi_registry import RoiRegistry
@@ -89,7 +89,7 @@ class ColorPathsConfig:
         ROIs can be referenced by key name from the global ``[roi.*]`` registry::
 
             [color_paths]
-            rois = ["esf_layer", "dense_box"]
+            rois = ["upper_layer", "dense_box"]
 
         Or defined inline as sub-sections, which are automatically added to the
         shared ROI registry::
@@ -217,10 +217,10 @@ class ColorPathsConfig:
             -----------------------------------------------
 
             [color_paths]
-            rois = ["esf_layer"]
+            rois = ["upper_layer"]
 
-            [roi.esf_layer]
-            name     = "esf_layer"
+            [roi.upper_layer]
+            name     = "upper_layer"
             corner_1 = [0.0, 0.0]
             corner_2 = [1.0, 0.5]
 
