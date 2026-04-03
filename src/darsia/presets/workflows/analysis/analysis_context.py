@@ -13,6 +13,7 @@ from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
+from darsia.presets.workflows.restoration import build_restoration
 from darsia.presets.workflows.rig import Rig
 
 if TYPE_CHECKING:
@@ -33,7 +34,8 @@ class AnalysisContext:
         experiment: The protocolled experiment.
         fluidflower: The loaded rig instance.
         image_paths: List of image paths to analyze.
-        restoration: Volume averaging restoration (for mass/volume/segmentation).
+        restoration: Restoration model (e.g. VolumeAveraging or TVD), or None
+            if no restoration is configured.  Available to all analysis workflows.
         color_to_mass_analysis: The color to mass analysis pipeline
             (for mass/volume/segmentation).
 
@@ -45,7 +47,7 @@ class AnalysisContext:
     image_paths: list[Path]
 
     # Optional - only initialized for mass/volume/segmentation analyses
-    restoration: darsia.VolumeAveraging | None = None
+    restoration: darsia.VolumeAveraging | darsia.TVD | None = None
     color_to_mass_analysis: HeterogeneousColorToMassAnalysis | None = None
 
 
@@ -134,8 +136,10 @@ def prepare_analysis_context(
     """Prepare common analysis context.
 
     This function initializes all shared objects needed for analysis workflows.
-    When `require_color_to_mass` is True, it also initializes the restoration
-    and color_to_mass_analysis pipelines.
+    Restoration is always built from the config (if a [restoration] section is
+    present) so it is available to all analysis workflows.  When
+    `require_color_to_mass` is True, the color_to_mass_analysis pipeline is
+    also initialized and receives the restoration object.
 
     Args:
         cls: FluidFlower rig class.
@@ -177,27 +181,13 @@ def prepare_analysis_context(
         data_registry=config.data.registry,
     )
 
-    # Initialize optional components
-    restoration = None
+    # ! ---- RESTORATION ----
+    # Always build restoration so it is available to all analysis workflows.
+    restoration = build_restoration(config.restoration, fluidflower)
+
     color_to_mass_analysis = None
 
     if require_color_to_mass:
-        # ! ---- RESTORATION ----
-        if config.restoration is None:
-            restoration = None
-        elif config.restoration.method == "volume_average":
-            # Porosity informed averaging
-            rev_size = config.restoration.options.rev_size
-            image_porosity = fluidflower.image_porosity
-            restoration = darsia.VolumeAveraging(
-                rev=darsia.REV(size=rev_size, img=fluidflower.baseline),
-                mask=image_porosity,
-            )
-        else:
-            raise NotImplementedError(
-                f"Restoration method {fluidflower.restoration.method} not supported."
-            )
-
         # ! ---- FROM COLOR PATH TO MASS ----
         assert config.color_to_mass is not None
 
