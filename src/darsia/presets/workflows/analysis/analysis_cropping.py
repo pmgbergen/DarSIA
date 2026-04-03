@@ -47,8 +47,8 @@ def analysis_cropping_from_context(
             "before proceeding. Please select one or more options below."
         )
         user_input = input(
-            """\033[33mEnter a number to select output options (1=show, 2=save_jpg, 3=save_npz, """
-            """e.g. 13 for show and save_npz):\033[0m """
+            """\033[33mEnter a number to select output options (1=show, 2=save_jpg, """
+            """3=save_npz, e.g. 13 for show and save_npz):\033[0m """
         )
         show = "1" in user_input
         save_jpg = "2" in user_input
