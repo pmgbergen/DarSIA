@@ -7,7 +7,7 @@ import numpy as np
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
-from darsia.utils.standard_images import roi_config_to_mask
+from darsia.utils.standard_images import roi_to_mask
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
         roi_entries = config.roi_registry.resolve_rois(config.color_paths.rois)
         union_mask = darsia.zeros_like(fluidflower.boolean_porosity, dtype=np.bool_)
         for roi_cfg in roi_entries.values():
-            roi_mask = roi_config_to_mask(roi_cfg, fluidflower.baseline)
+            roi_mask = roi_to_mask(roi_cfg.roi, fluidflower.baseline)
             union_mask.img |= roi_mask.img
         calibration_mask = fluidflower.boolean_porosity.copy()
         calibration_mask.img &= union_mask.img

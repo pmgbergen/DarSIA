@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Optional
+from typing import Literal, Optional
 
 import numpy as np
 
 import darsia
-
-if TYPE_CHECKING:
-    from darsia.presets.workflows.config.roi import RoiConfig
 
 StandardDtype = Literal[np.uint8, np.uint16, np.float32, np.float64, np.bool_]
 
@@ -70,25 +67,24 @@ def ones_like(
         )
 
 
-def roi_config_to_mask(
-    roi_config: "RoiConfig",
+def roi_to_mask(
+    roi: darsia.VoxelArray | darsia.CoordinateArray | darsia.ROI,
     reference_image: darsia.Image,
 ) -> darsia.Image:
     """Create a full-domain boolean mask image from a :class:`RoiConfig` bounding-box.
 
     The returned image has the same spatial extent and coordinate system as
     *reference_image*.  Pixels whose centres fall inside the axis-aligned
-    bounding box defined by ``roi_config.roi`` are set to ``True``; all other
+    bounding box defined by ``roi`` are set to ``True``; all other
     pixels are ``False``.
 
-    The corners of the bounding box are given in physical (world) coordinates,
-    so *reference_image* must already be in the corrected coordinate system
-    (i.e. after any curvature / drift corrections have been applied).
-
     Args:
-        roi_config: A :class:`~darsia.presets.workflows.config.roi.RoiConfig`
-            instance whose ``roi`` attribute is a
-            :class:`~darsia.CoordinateArray` of two corner points.
+        roi: A :class:`~darsia.ROI` or a pair of coordinates (as a
+            :class:`~darsia.CoordinateArray` or :class:`~darsia.VoxelArray`)
+            defining the opposite corners of the bounding box.  If a pair of
+            coordinates is provided, it must be in the form of a 2D array with
+            shape (2, 2), where the first row corresponds to the minimum corner
+            and the second row corresponds to the maximum corner.
         reference_image: A :class:`~darsia.Image` used to define the output
             shape, metadata and coordinate system.
 
@@ -101,7 +97,12 @@ def roi_config_to_mask(
     mask = darsia.zeros_like(reference_image, dtype=np.bool_)
 
     # Convert the two bounding-box corners from physical to voxel coordinates.
-    voxels_box = reference_image.coordinatesystem.voxel(roi_config.roi)
+    if isinstance(roi, (darsia.ROI, darsia.CoordinateArray)):
+        voxels_box = reference_image.coordinatesystem.voxel(roi)
+    elif isinstance(roi, darsia.VoxelArray):
+        voxels_box = roi
+    else:
+        raise TypeError(f"Unsupported ROI type: {type(roi)}")
 
     num_voxels = reference_image.num_voxels
     row_min = int(max(0, np.min(voxels_box[:, 0])))
