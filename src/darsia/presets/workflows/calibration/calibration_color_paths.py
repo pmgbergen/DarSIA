@@ -190,8 +190,8 @@ def delete_calibration(path: Path | list[Path]) -> None:
         logger.info(f"  {p}")
 
     user_input = input(
-        "Are you sure you want to delete the existing calibration data? "
-        "This action cannot be undone. (y/n): "
+        "\033[91mAre you sure you want to delete the existing calibration data? "
+        "This action cannot be undone. (y/n): \033[0m"
     )
     if user_input.lower() == "y":
         for p in existing:
