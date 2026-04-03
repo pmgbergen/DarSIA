@@ -248,7 +248,7 @@ class IlluminationCorrection(darsia.BaseCorrection):
             # Initialize residual.
             residual = 0
 
-            # Part 1. Relative residual (rescaled colors=avg within each group).
+            # Relative residual (rescaled colors=avg within each group).
             for group_id in range(num_groups):
                 # Fetch scaling for the group and reshape.
                 assert color_components == 1, (
@@ -312,7 +312,7 @@ class IlluminationCorrection(darsia.BaseCorrection):
             # method="Powell", # slower for large number of samples
             method="L-BFGS-B",
             tol=1e-6,
-            options={"maxiter": 1000, "disp": True},
+            options={"maxiter": 1000, "disp": True, "ftol": 1e-10, "gtol": 1e-8},
         )
         toc = time.time()
         logger.info(
