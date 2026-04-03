@@ -174,7 +174,9 @@ class IlluminationCorrectionConfig:
     """List of labels to use for illumination correction. Overrides `label` if not empty."""
     interpolation: Literal["rbf", "quartic", "illumination"] = "illumination"
     """Interpolation method to use for scaling."""
-    colorspace: Literal["hsl-scalar"] = "hsl-scalar"
+    colorspace: Literal[
+        "rgb", "rgb-scalar", "lab", "lab-scalar", "hsl", "hsl-scalar", "gray"
+    ] = "hsl-scalar"
     """Color space to use for interpolation."""
     width: int = 100
     """Width of patches to use for interpolation."""
@@ -200,9 +202,24 @@ class IlluminationCorrectionConfig:
 
         """
 
+        _supported_colorspaces = (
+            "rgb",
+            "rgb-scalar",
+            "lab",
+            "lab-scalar",
+            "hsl",
+            "hsl-scalar",
+            "gray",
+        )
         self.labels = sec.get("labels", self.labels)
         self.interpolation = sec.get("interpolation", self.interpolation)
-        self.colorspace = sec.get("colorspace", self.colorspace)
+        colorspace = sec.get("colorspace", self.colorspace)
+        if colorspace not in _supported_colorspaces:
+            raise ValueError(
+                f"IlluminationCorrectionConfig.colorspace must be one of "
+                f"{_supported_colorspaces}, got {colorspace!r}"
+            )
+        self.colorspace = colorspace
         self.width = sec.get("width", self.width)
         self.num_samples = sec.get("num_samples", self.num_samples)
         self.seed = sec.get("seed", self.seed)
