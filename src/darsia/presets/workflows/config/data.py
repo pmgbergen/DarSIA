@@ -39,6 +39,8 @@ class DataConfig:
     """Path to the results folder."""
     cache: Path | None = None
     """Path to the cache folder, or None if caching is disabled."""
+    raw_cache: Path | None = None
+    """Path to the raw cache folder, or None if caching is disabled."""
     use_cache: bool = False
     """Whether to use the cache folder for reading/writing cached images."""
     time_data: TimeData | None = None
@@ -103,11 +105,18 @@ class DataConfig:
         # Define cache folder and only create it when caching is enabled
         if self.use_cache:
             self.cache = self.results / "cache"
+            self.raw_cache = self.results / "raw_cache"
             try:
                 self.cache.mkdir(parents=True, exist_ok=True)
             except Exception as e:
                 raise PermissionError(
                     f"Cannot create cache directory at {self.cache}."
+                ) from e
+            try:
+                self.raw_cache.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                raise PermissionError(
+                    f"Cannot create raw cache directory at {self.raw_cache}."
                 ) from e
         else:
             self.cache = None
