@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Optional, Union
 from warnings import warn
 
@@ -12,8 +13,6 @@ import skimage
 from scipy import ndimage as ndi
 
 import darsia
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -567,9 +566,9 @@ def label_image(
         return_darsia_image = False
 
     # Make sure the image is in RGB format
-    assert img.ndim == 3 and img.shape[2] == 3, (
-        f"Image must be in RGB format, but has shape {img.shape}."
-    )
+    assert (
+        img.ndim == 3 and img.shape[2] == 3
+    ), f"Image must be in RGB format, but has shape {img.shape}."
 
     # Initialize the labeled image with zeros. These are the unlabeled pixels.
     labeled_image = np.zeros(img.shape[:2], dtype=np.uint8)
