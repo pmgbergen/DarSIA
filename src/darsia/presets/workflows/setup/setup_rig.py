@@ -58,11 +58,11 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
         pad=config.data.pad,
     )
 
-    # Determine effective baseline path, using cache when enabled
+    # Determine effective baseline path, using cache when enabled.
     baseline_path = config.data.baseline
     if config.data.use_cache:
-        assert config.data.cache is not None
-        cache_path = config.data.cache / f"{baseline_path.stem}.npz"
+        assert config.data.raw_cache is not None
+        cache_path = config.data.raw_cache / f"{baseline_path.stem}.npz"
         if cache_path.exists():
             baseline_path = cache_path
         else:
