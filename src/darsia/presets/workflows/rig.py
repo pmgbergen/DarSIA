@@ -425,9 +425,7 @@ class Rig:
 
         if any(has_illumination_correction):
             if sum(has_illumination_correction) != 1:
-                raise ValueError(
-                    "Multiple illumination corrections found in workflow."
-                )
+                raise ValueError("Multiple illumination corrections found in workflow.")
             # Fetch the illumination correction from the workflow.
             illumination_correction: darsia.IlluminationCorrection = self.corrections[
                 has_illumination_correction.index(True)
@@ -469,9 +467,18 @@ class Rig:
                 illumination_correction
             )
 
-            # Update baseline
-            # Order? TODO Redo? Update color corrections? Revisit when splitting corrections.
-            self.baseline = illumination_correction(self.baseline)
+            # Update baseline. TODO Do all corrections and start from pre_baseline?
+            plt.figure("before")
+            plt.imshow(self.baseline.img)
+            for correction in self.corrections[
+                has_illumination_correction.index(True) :
+            ]:
+                self.baseline = correction(self.baseline)
+            baseline_from_scratch = self.read_image(self.baseline_path)
+            plt.imshow(baseline_from_scratch.img)
+            plt.show()
+
+            assert False
 
     # ! ---- POROSITY ----
 
