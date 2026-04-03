@@ -23,9 +23,17 @@ class IlluminationCorrection(darsia.BaseCorrection):
     def select_random_samples(
         self,
         mask: darsia.Image | np.ndarray,
-        config: IlluminationCorrectionConfig | None = None,
+        config: IlluminationCorrectionConfig,
     ) -> list[tuple[slice, ...]]:
-        # Fix random seed for reproducibility (TODO: make this configurable)
+        """Select random samples for illumination correction.
+
+        Args:
+            mask: Mask to restrict sampling to certain areas.
+            config: Configuration for the illumination correction, containing parameters
+                such as sample width and number of samples.
+
+        """
+        # Fix random seed for reproducibility.
         np.random.seed(config.seed)
 
         # Find random patches, restricted to the masked regions
