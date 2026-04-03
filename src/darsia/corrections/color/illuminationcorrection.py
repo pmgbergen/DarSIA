@@ -311,11 +311,15 @@ class IlluminationCorrection(darsia.BaseCorrection):
         reshaped_scaling = np.reshape(opt_result.x, (-1, color_components))
         self.local_scaling = _interpolate_scaling(reshaped_scaling, base[0])
 
-        # Evaluate deviation for all samples.
+        # Evaluate deviation for all samples (skip empty/skipped groups).
         for group_id, samples in enumerate(sample_groups):
+            if group_id in skipped_groups:
+                continue
             for image_id in range(len(images)):
                 # Fetch the reference color for the sample.
                 colors = characteristic_colors[(group_id, image_id)]
+                if len(colors) == 0:
+                    continue
                 local_scaling = np.array(
                     [
                         self.local_scaling[i].eval(mid_coordinates)
@@ -327,9 +331,12 @@ class IlluminationCorrection(darsia.BaseCorrection):
                 )
 
                 # Log the deviation.
-                original_deviation = np.linalg.norm(colors - np.mean(colors, axis=1))
+                original_deviation = np.linalg.norm(
+                    colors - np.mean(colors, axis=0, keepdims=True)
+                )
                 corrected_deviation = np.linalg.norm(
-                    np.array(corrected_colors) - np.mean(corrected_colors, axis=1)
+                    np.array(corrected_colors)
+                    - np.mean(corrected_colors, axis=0, keepdims=True)
                 )
                 logger.info(
                     f"""Deviation for group {group_id}, image {image_id}: """
