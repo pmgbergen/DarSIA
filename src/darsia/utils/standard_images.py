@@ -105,9 +105,9 @@ def roi_config_to_mask(
 
     num_voxels = reference_image.num_voxels
     row_min = int(max(0, np.min(voxels_box[:, 0])))
-    row_max = int(min(int(np.max(voxels_box[:, 0])), num_voxels[0]))
+    row_max = min(int(np.max(voxels_box[:, 0])), num_voxels[0])
     col_min = int(max(0, np.min(voxels_box[:, 1])))
-    col_max = int(min(int(np.max(voxels_box[:, 1])), num_voxels[1]))
+    col_max = min(int(np.max(voxels_box[:, 1])), num_voxels[1])
 
     # Guard: skip if the bounding box maps to an empty region after clipping.
     # This can happen when the ROI is entirely outside the image domain (e.g.
