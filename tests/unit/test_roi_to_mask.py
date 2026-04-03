@@ -1,4 +1,4 @@
-"""Unit tests for roi_config_to_mask()."""
+"""Unit tests for roi_to_mask()."""
 
 import numpy as np
 import pytest
@@ -6,7 +6,7 @@ import pytest
 import darsia
 from darsia import make_coordinate
 from darsia.presets.workflows.config.roi import RoiConfig
-from darsia.utils.standard_images import roi_config_to_mask
+from darsia.utils.standard_images import roi_to_mask
 
 
 def _make_scalar_image(rows: int = 10, cols: int = 20) -> darsia.ScalarImage:
@@ -31,14 +31,14 @@ class TestRoiConfigToMaskBasic:
     def test_returns_boolean_scalar_image(self):
         img = _make_scalar_image()
         roi = _make_roi([0.5, 0.3], [1.5, 0.7])
-        mask = roi_config_to_mask(roi, img)
+        mask = roi_to_mask(roi.roi, img)
         assert isinstance(mask, darsia.ScalarImage)
         assert mask.img.dtype == np.bool_
 
     def test_same_shape_as_reference(self):
         img = _make_scalar_image(rows=8, cols=16)
         roi = _make_roi([0.0, 0.0], [2.0, 1.0])
-        mask = roi_config_to_mask(roi, img)
+        mask = roi_to_mask(roi.roi, img)
         assert mask.img.shape == img.img.shape
 
     def test_interior_roi_sets_correct_pixels(self):
@@ -46,7 +46,7 @@ class TestRoiConfigToMaskBasic:
         img = _make_scalar_image()
         # corner_1 = (x=0.5, y=0.3), corner_2 = (x=1.5, y=0.7)
         roi = _make_roi([0.5, 0.3], [1.5, 0.7])
-        mask = roi_config_to_mask(roi, img)
+        mask = roi_to_mask(roi.roi, img)
 
         # Determine expected pixel ranges via the coordinate system
         cs = img.coordinatesystem
@@ -74,7 +74,7 @@ class TestRoiConfigToMaskBasic:
             img.coordinatesystem._coordinate_of_origin_voxel.tolist(),
             img.coordinatesystem._coordinate_of_opposite_voxel.tolist(),
         )
-        mask = roi_config_to_mask(roi, img)
+        mask = roi_to_mask(roi.roi, img)
         assert np.all(mask.img)
 
 
@@ -84,7 +84,7 @@ class TestRoiConfigToMaskClipping:
         img = _make_scalar_image()
         # corner_1 and corner_2 extend beyond the image boundary on all sides
         roi = _make_roi([-1.0, -0.5], [3.0, 1.5])
-        mask = roi_config_to_mask(roi, img)
+        mask = roi_to_mask(roi.roi, img)
 
         # The mask should have the same shape and contain at least some True pixels
         assert mask.img.shape == img.img.shape
@@ -103,7 +103,7 @@ class TestRoiConfigToMaskClipping:
         # x is always in [0, 2] so cols are fine
         # Use y > 1.0 for both corners to go entirely above the image
         roi = _make_roi([0.0, 1.1], [2.0, 1.5])
-        mask = roi_config_to_mask(roi, img)
+        mask = roi_to_mask(roi.roi, img)
         # All voxel rows will be negative -> clipped to [0:0] or [0:negative]
         assert mask.img.shape == img.img.shape
         # At worst, the slice is mask[0:0, ...] which sets nothing
@@ -117,8 +117,8 @@ class TestRoiConfigToMaskUnion:
         roi_a = _make_roi([0.0, 0.5], [0.9, 1.0], name="left")
         roi_b = _make_roi([1.1, 0.0], [2.0, 0.5], name="right")
 
-        mask_a = roi_config_to_mask(roi_a, img)
-        mask_b = roi_config_to_mask(roi_b, img)
+        mask_a = roi_to_mask(roi_a.roi, img)
+        mask_b = roi_to_mask(roi_b.roi, img)
         union = darsia.zeros_like(img, dtype=np.bool_)
         union.img |= mask_a.img
         union.img |= mask_b.img
@@ -131,8 +131,8 @@ class TestRoiConfigToMaskUnion:
         roi_a = _make_roi([0.0, 0.3], [1.5, 0.7], name="a")
         roi_b = _make_roi([0.5, 0.3], [2.0, 0.7], name="b")
 
-        mask_a = roi_config_to_mask(roi_a, img)
-        mask_b = roi_config_to_mask(roi_b, img)
+        mask_a = roi_to_mask(roi_a.roi, img)
+        mask_b = roi_to_mask(roi_b.roi, img)
         union = darsia.zeros_like(img, dtype=np.bool_)
         union.img |= mask_a.img
         union.img |= mask_b.img
