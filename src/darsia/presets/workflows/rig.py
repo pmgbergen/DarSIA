@@ -32,6 +32,7 @@ class Rig:
         imaging_protocol: darsia.ImagingProtocol,
         corrections_config: CorrectionsConfig | None = None,
         log: Path | None = None,
+        show_plot: bool = False,
     ):
         # Cache imaging_protocol
         self.imaging_protocol = imaging_protocol
@@ -46,17 +47,18 @@ class Rig:
         # Define reference baseline (with corrections applied)
         self.baseline = self.read_image(baseline_path)
 
-        # Log corrected baseline image
+        # Plot corrected baseline - show and/or log.
+        plt.figure("Corrected baseline")
+        plt.imshow(self.baseline.img)
+        plt.title("Corrected baseline")
+        if show_plot:
+            plt.show()
         if log:
-            # Plot corrected baseline
-            plt.figure()
-            plt.imshow(self.baseline.img)
-            plt.title("Corrected baseline")
             plt.savefig(
                 log / "corrected_baseline.png",
                 dpi=500,
             )
-            plt.close()
+        plt.close()
 
         logger.info("Reading setup completed.")
 
@@ -467,18 +469,13 @@ class Rig:
                 illumination_correction
             )
 
-            # Update baseline. TODO Do all corrections and start from pre_baseline?
-            plt.figure("before")
-            plt.imshow(self.baseline.img)
+            # Update baseline.
             for correction in self.corrections[
                 has_illumination_correction.index(True) :
             ]:
                 self.baseline = correction(self.baseline)
-            baseline_from_scratch = self.read_image(self.baseline_path)
-            plt.imshow(baseline_from_scratch.img)
-            plt.show()
-
-            assert False
+            # TODO: Should use something like, this, but fails with color correction or so...
+            # self.baseline = self.read_image(self.baseline_path)
 
     # ! ---- POROSITY ----
 
