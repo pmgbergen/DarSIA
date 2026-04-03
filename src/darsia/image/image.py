@@ -541,6 +541,7 @@ class Image:
             "reference_date": self.reference_date,
             "time": self.time,
             "name": self.name,
+            "type": type(self),
         }
         return copy.copy(metadata)
 
