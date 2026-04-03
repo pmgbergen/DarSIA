@@ -434,34 +434,35 @@ class Rig:
             ]
 
             # Fetch samples for illumination correction based on labels and baseline.
-            sample_groups = []
-            if config.labels is None:
-                # If no labels specified, use random samples from the whole image.
-                samples = illumination_correction.select_random_samples(
-                    mask=darsia.ones_like(self.baseline, dtype=bool), config=config
-                )
-                sample_groups.append(samples)
-            else:
-                for label in config.labels:
-                    mask = self.labels.img == label
+            if config is not None:
+                # Fetch samples for illumination correction based on labels and baseline.
+                sample_groups = []
+                if not config.labels:
+                    # If no labels specified, use random samples from the whole image.
                     samples = illumination_correction.select_random_samples(
-                        mask=mask, config=config
+                        mask=darsia.ones_like(self.baseline, dtype=bool), config=config
                     )
                     sample_groups.append(samples)
+                else:
+                    for label in config.labels:
+                        mask = self.labels.img == label
+                        samples = illumination_correction.select_random_samples(
+                            mask=mask, config=config
+                        )
+                        sample_groups.append(samples)
 
-            # Determine illumination correction based on inputs
-            illumination_correction.setup(
-                base=self.baseline,
-                sample_groups=sample_groups,
-                mask=self.boolean_porosity,
-                outliers=config.outliers,
-                filter=lambda x: skimage.filters.gaussian(x, sigma=config.sigma),
-                colorspace=config.colorspace,
-                interpolation=config.interpolation,
-                bounds=config.bounds,
-                show_plot=show_plot,
-                log=log,
-            )
+                # Determine illumination correction based on inputs
+                illumination_correction.setup(
+                    base=self.baseline,
+                    sample_groups=sample_groups,
+                    mask=self.boolean_porosity,
+                    outliers=config.outliers,
+                    filter=lambda x: skimage.filters.gaussian(x, sigma=config.sigma),
+                    colorspace=config.colorspace,
+                    interpolation=config.interpolation,
+                    show_plot=show_plot,
+                    log=log,
+                )
 
             # Update correction in workflow.
             self.corrections[has_illumination_correction.index(True)] = (
