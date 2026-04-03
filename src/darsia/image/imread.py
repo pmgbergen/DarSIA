@@ -85,7 +85,7 @@ def imread(path: Union[str, Path, list[str], list[Path]], **kwargs) -> darsia.Im
     if suffix == ".npy":
         image = imread_from_numpy(path, **kwargs)
     elif suffix == ".npz":
-        image = imread_from_npz(path)
+        image = imread_from_npz(path, **kwargs)
     elif suffix in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]:
         image = imread_from_optical(path, **kwargs)
     elif suffix in [".dcm"]:
@@ -154,7 +154,9 @@ def imread_from_numpy(
     return image
 
 
-def imread_from_npz(path: Union[Path, list[Path]]) -> darsia.Image:
+def imread_from_npz(
+    path: Union[Path, list[Path]], transformations: Optional[list] = None, **kwargs
+) -> darsia.Image:
     """Converter from npz format to darsia.Image.
 
     Args:
@@ -164,7 +166,16 @@ def imread_from_npz(path: Union[Path, list[Path]]) -> darsia.Image:
     npzdata = np.load(path, allow_pickle=True)
     array = npzdata["array"]
     metadata = npzdata["metadata"].item()
-    image = darsia.Image(array, **metadata)
+    image_type = metadata.get("type", None)
+    if image_type is None:
+        image = darsia.Image(array, transformations=transformations, **metadata)
+    else:
+        if isinstance(image_type, str):
+            Image_class = eval(image_type)
+        else:
+            Image_class = image_type
+        image = Image_class(array, transformations=transformations, **metadata)
+
     return image
 
 
