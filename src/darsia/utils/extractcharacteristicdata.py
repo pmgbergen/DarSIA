@@ -29,8 +29,8 @@ def extract_characteristic_data(
     Args:
         signal (np.ndarray | Image): input signal, assumed to have the structure of a 2d,
             colored image.
-        mask (np.ndarray | Image): boolean array flagging pixels of interest; by default all pixels
-            considered.
+        mask (np.ndarray | Image): boolean array flagging pixels of interest; by default all
+            pixels considered.
         samples (list of slices): list of 2d regions of interest; if None, full region
             considered
         filter (callable): function to preprocess the signal before analysis, e.g.,
