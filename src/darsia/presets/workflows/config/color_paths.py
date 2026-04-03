@@ -3,10 +3,14 @@
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .data_registry import DataRegistry
 from .time_data import TimeData
-from .utils import _get_key, _get_section_from_toml
+from .utils import _get_key, _get_section, _get_section_from_toml
+
+if TYPE_CHECKING:
+    from .roi_registry import RoiRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +41,15 @@ class ColorPathsConfig:
     """Path to the color range file."""
     reference_label: int = 0
     """Label to use as reference for visualization."""
+    rois: list[str] = field(default_factory=list)
+    """Registry key names of ROIs used to restrict the calibration area.
+
+    When non-empty, only pixels that fall inside the union of the listed ROIs
+    *and* inside the porosity mask are used during colour-path calibration.
+    The keys must be present in the global ROI registry (``[roi.*]`` TOML
+    section) **or** be defined as inline sub-sections under
+    ``[color_paths.roi.*]``.
+    """
 
     def load(
         self,
@@ -44,6 +57,7 @@ class ColorPathsConfig:
         data: Path | None,
         results: Path | None = None,
         data_registry: DataRegistry | None = None,
+        roi_registry: "RoiRegistry | None" = None,
     ) -> "ColorPathsConfig":
         """Load color paths config from a toml file from [section].
 
@@ -69,6 +83,24 @@ class ColorPathsConfig:
 
             [color_paths.baseline.path.calibration]
             paths = ["baseline/DSC00155.JPG", "DSC00160.JPG"]
+
+        **ROI support** (optional):
+
+        ROIs can be referenced by key name from the global ``[roi.*]`` registry::
+
+            [color_paths]
+            rois = ["esf_layer", "dense_box"]
+
+        Or defined inline as sub-sections, which are automatically added to the
+        shared ROI registry::
+
+            [color_paths.roi.box1]
+            name     = "box1"
+            corner_1 = [0.1, 0.2]
+            corner_2 = [0.5, 0.6]
+
+        When ``rois`` is non-empty, calibration uses only pixels in the union of
+        those ROIs intersected with the porosity mask.
         """
         # Get section
         sec = _get_section_from_toml(path, "color_paths")
@@ -126,6 +158,24 @@ class ColorPathsConfig:
         if not self.color_range_file:
             assert results is not None
             self.color_range_file = results / "calibration" / "color_range"
+
+        # ROI support – registry reference list OR inline sub-sections
+        self.rois = _get_key(sec, "rois", default=[], required=False, type_=list)
+
+        # Handle inline [color_paths.roi.*] sub-sections: parse and inject into registry.
+        if "roi" in sec and isinstance(sec["roi"], dict) and roi_registry is not None:
+            from .roi import RoiAndLabelConfig, RoiConfig
+
+            for key, entry in sec["roi"].items():
+                roi_obj: RoiConfig | RoiAndLabelConfig
+                if "label" in entry:
+                    roi_obj = RoiAndLabelConfig().load(entry)
+                else:
+                    roi_obj = RoiConfig().load(entry)
+                roi_registry.register(key, roi_obj)
+                if key not in self.rois:
+                    self.rois.append(key)
+
         return self
 
     def error(self):
@@ -162,6 +212,25 @@ class ColorPathsConfig:
             end = "10:00:00"
             step = "01:00:00"
             tol = "00:05:00"
+
+            Optional ROI restriction (registry reference):
+            -----------------------------------------------
+
+            [color_paths]
+            rois = ["esf_layer"]
+
+            [roi.esf_layer]
+            name     = "esf_layer"
+            corner_1 = [0.0, 0.0]
+            corner_2 = [1.0, 0.5]
+
+            Optional ROI restriction (inline sub-section):
+            ------------------------------------------------
+
+            [color_paths.roi.box1]
+            name     = "box1"
+            corner_1 = [0.1, 0.2]
+            corner_2 = [0.5, 0.6]
 
             """
         )

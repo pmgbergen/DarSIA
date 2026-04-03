@@ -123,6 +123,15 @@ class FluidFlowerConfig:
             self.protocol = None
             warn(f"Section protocols not found in {path}, use [protocols].")
 
+        # ! ---- ROI REGISTRY ---- ! #
+        # Must be loaded before ColorPathsConfig so that inline [color_paths.roi.*]
+        # entries can be injected into the shared registry during color_paths.load().
+        try:
+            self.roi_registry: RoiRegistry | None = RoiRegistry()
+            self.roi_registry.load(path)
+        except KeyError:
+            self.roi_registry = None
+
         # ! ---- COLOR PATHS ---- ! #
         try:
             self.color_paths: ColorPathsConfig | None = ColorPathsConfig()
@@ -131,6 +140,7 @@ class FluidFlowerConfig:
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
                 data_registry=self.data.registry if self.data else None,
+                roi_registry=self.roi_registry,
             )
         except ValueError:
             self.color_paths = None
@@ -148,13 +158,6 @@ class FluidFlowerConfig:
         except ValueError:
             self.color_to_mass = None
             warn(f"Section color_to_mass not found in {path}.")
-
-        # ! ---- ROI REGISTRY ---- ! #
-        try:
-            self.roi_registry: RoiRegistry | None = RoiRegistry()
-            self.roi_registry.load(path)
-        except KeyError:
-            self.roi_registry = None
 
         # ! ---- ANALYSIS DATA ---- ! #
         try:

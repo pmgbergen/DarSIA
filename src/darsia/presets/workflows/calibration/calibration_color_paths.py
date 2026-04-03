@@ -2,9 +2,12 @@ import logging
 import shutil
 from pathlib import Path
 
+import numpy as np
+
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.utils.standard_images import roi_config_to_mask
 
 logger = logging.getLogger(__name__)
 
@@ -77,10 +80,30 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
 
     # ! ---- IDENTIFY AND STORE (RELATIVE) COLOR RANGE ----
 
+    # Build the effective calibration mask: porosity mask optionally restricted
+    # to the union of any ROIs listed in config.color_paths.rois.
+    if config.color_paths.rois and config.roi_registry is not None:
+        roi_entries = config.roi_registry.resolve_rois(config.color_paths.rois)
+        union_mask = darsia.zeros_like(fluidflower.boolean_porosity, dtype=np.bool_)
+        for roi_cfg in roi_entries.values():
+            roi_mask = roi_config_to_mask(roi_cfg, fluidflower.baseline)
+            union_mask.img |= roi_mask.img
+        calibration_mask = fluidflower.boolean_porosity.copy()
+        calibration_mask.img &= union_mask.img
+        if not np.any(calibration_mask.img):
+            logger.warning(
+                "The union of the provided ROIs does not overlap with the "
+                "porosity mask. Falling back to the full porosity mask for "
+                "colour-path calibration."
+            )
+            calibration_mask = fluidflower.boolean_porosity
+    else:
+        calibration_mask = fluidflower.boolean_porosity
+
     tracer_color_range = darsia.ColorRange.from_images(
         images=calibration_images,
         baseline=fluidflower.baseline,
-        mask=fluidflower.boolean_porosity,
+        mask=calibration_mask,
     )
     tracer_color_range.save(config.color_paths.color_range_file)
 
@@ -89,7 +112,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     color_path_regression = darsia.LabelColorPathMapRegression(
         labels=fluidflower.labels,
         color_range=tracer_color_range,
-        mask=fluidflower.boolean_porosity,
+        mask=calibration_mask,
         resolution=config.color_paths.resolution,
         ignore_labels=config.color_paths.ignore_labels,
     )
