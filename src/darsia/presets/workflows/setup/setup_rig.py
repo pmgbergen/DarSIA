@@ -79,9 +79,9 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
         labels_path=config.labeling.labels,
         facies_path=config.facies.path,
         facies_props_path=config.facies.props,
-        # config_path=path,  # TODO replace with actual config file read from toml
         corrections_config=config.corrections,
         log=config.rig.path / "log",
+        show_plot=show,
     )
     rig.save(config.rig.path)
 

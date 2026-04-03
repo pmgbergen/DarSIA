@@ -1,6 +1,6 @@
 """Configuration for corrections."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Type
 
@@ -73,11 +73,7 @@ class ResizeCorrectionConfig:
 
 @dataclass
 class CurvatureCorrectionConfig:
-    """Configuration for curvature correction.
-
-    Attributes:
-
-    """
+    """Configuration for curvature correction."""
 
     # TODO mere with curvature correction config from curvature.py
 
@@ -91,6 +87,7 @@ class CurvatureCorrectionConfig:
 
         Returns:
             self with loaded configuration
+
         """
         self.config = sec
         return self
@@ -98,11 +95,7 @@ class CurvatureCorrectionConfig:
 
 @dataclass
 class DriftCorrectionConfig:
-    """Configuration for drift correction.
-
-    Attributes:
-
-    """
+    """Configuration for drift correction."""
 
     colorchecker: (
         Literal["upper_left", "upper_right", "lower_left", "lower_right"] | None
@@ -116,6 +109,7 @@ class DriftCorrectionConfig:
 
         Returns:
             self with loaded configuration
+
         """
         self.colorchecker = sec.get("colorchecker")
 
@@ -144,6 +138,7 @@ class ColorCorrectionConfig:
     colorchecker: (
         Literal["upper_left", "upper_right", "lower_left", "lower_right"] | None
     ) = None
+    """Position of color checker for color correction."""
 
     def load(self, sec: dict) -> "ColorCorrectionConfig":
         """Load color correction configuration from a dictionary.
@@ -153,6 +148,7 @@ class ColorCorrectionConfig:
 
         Returns:
             self with loaded configuration
+
         """
         self.colorchecker = sec.get("colorchecker")
 
@@ -167,6 +163,75 @@ class ColorCorrectionConfig:
                 """colorchecker must be one of 'upper_left', 'upper_right', """
                 """'lower_left', 'lower_right'"""
             )
+        return self
+
+
+@dataclass
+class IlluminationCorrectionConfig:
+    """Configuration for illumination correction."""
+
+    labels: list[int] = field(default_factory=list)
+    """List of labels to use for illumination correction. Overrides `label` if not empty."""
+    interpolation: Literal["rbf", "quartic", "illumination"] = "illumination"
+    """Interpolation method to use for scaling."""
+    colorspace: Literal[
+        "rgb", "rgb-scalar", "lab", "lab-scalar", "hsl", "hsl-scalar", "gray"
+    ] = "hsl-scalar"
+    """Color space to use for interpolation."""
+    width: int = 100
+    """Width of patches to use for interpolation."""
+    num_samples: int = 30
+    """Number of patches to use for interpolation."""
+    seed: int = 42
+    """Random seed for patch sampling."""
+    sigma: float = 100.0
+    """Sigma for Gaussian smoothing of the illumination correction map."""
+    outliers: float = 0.1
+    """Fraction of outliers to discard when computing the illumination correction map."""
+    bounds: tuple[float, float] = (0.5, 2.0)
+    """Bounds for the illumination correction factors."""
+
+    def load(self, sec: dict) -> "IlluminationCorrectionConfig":
+        """Load illumination correction configuration from a dictionary.
+
+        Args:
+            sec: Dictionary containing illumination correction settings.
+
+        Returns:
+            self with loaded configuration
+
+        """
+
+        _supported_colorspaces = (
+            "rgb",
+            "rgb-scalar",
+            "lab",
+            "lab-scalar",
+            "hsl",
+            "hsl-scalar",
+            "gray",
+        )
+        self.labels = sec.get("labels", self.labels)
+        self.interpolation = sec.get("interpolation", self.interpolation)
+        colorspace = sec.get("colorspace", self.colorspace)
+        if colorspace not in _supported_colorspaces:
+            raise ValueError(
+                f"IlluminationCorrectionConfig.colorspace must be one of "
+                f"{_supported_colorspaces}, got {colorspace!r}"
+            )
+        self.colorspace = colorspace
+        self.width = sec.get("width", self.width)
+        self.num_samples = sec.get("num_samples", self.num_samples)
+        self.seed = sec.get("seed", self.seed)
+        self.sigma = sec.get("sigma", self.sigma)
+        self.bounds = sec.get("bounds", self.bounds)
+        self.outliers = sec.get("outliers", self.outliers)
+        if not 0.0 <= self.outliers <= 1.0:
+            raise ValueError(
+                f"IlluminationCorrectionConfig.outliers must be between 0.0 and 1.0, "
+                f"got {self.outliers!r}"
+            )
+
         return self
 
 
@@ -191,8 +256,7 @@ class CorrectionsConfig:
             Applies color correction based on color checker position.
         relative_color: Enable relative color correction based on color checker
             (default: False). Boolean flag for enabling/disabling.
-        illumination: Enable illumination correction based on color checker
-            (default: False). Boolean flag for enabling/disabling.
+        illumination: Enable illumination correction.
 
     """
 
@@ -203,7 +267,7 @@ class CorrectionsConfig:
     curvature: CurvatureCorrectionConfig | None = None
     color: ColorCorrectionConfig | None = None
     relative_color: bool = False
-    illumination: bool = False
+    illumination: IlluminationCorrectionConfig | None = None
 
     def load(self, path: Path | list[Path]) -> "CorrectionsConfig":
         """Load correction configuration from TOML file.
@@ -244,11 +308,9 @@ class CorrectionsConfig:
                 "relative color correction is only implemented as boolean for now."
             )
 
-        self.illumination = sec.get("illumination", self.illumination)
-        if not isinstance(self.illumination, bool):
-            raise NotImplementedError(
-                "illumination correction is only implemented as boolean for now."
-            )
+        illumination_sec = sec.get("illumination")
+        if illumination_sec:
+            self.illumination = IlluminationCorrectionConfig().load(illumination_sec)
 
         # Identify active corrections
         active_corrections = sec.get("active_corrections", None)

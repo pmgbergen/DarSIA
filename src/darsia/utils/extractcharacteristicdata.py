@@ -1,6 +1,6 @@
 """Module to extract characteristic data from input image for given patches."""
 
-from typing import Literal, Optional
+from typing import Literal
 from warnings import warn
 
 import cv2
@@ -9,11 +9,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 
+import darsia
+
 
 def extract_characteristic_data(
-    signal: np.ndarray,
-    mask: Optional[np.ndarray] = None,
-    samples: Optional[list[tuple[slice]]] = None,
+    signal: np.ndarray | darsia.Image,
+    mask: np.ndarray | darsia.Image | None = None,
+    samples: list[tuple[slice]] | None = None,
     filter: callable = lambda x: x,
     num_clusters: int = 5,
     num_attempts: int = 100,
@@ -25,10 +27,10 @@ def extract_characteristic_data(
     """Assistant to extract representative colors from input image for given patches.
 
     Args:
-        signal (np.ndarray): input signal, assumed to have the structure of a 2d,
+        signal (np.ndarray | Image): input signal, assumed to have the structure of a 2d,
             colored image.
-        mask (np.ndarray): boolean array flagging pixels of interest; by default all pixels
-            considered.
+        mask (np.ndarray | Image): boolean array flagging pixels of interest; by default all
+            pixels considered.
         samples (list of slices): list of 2d regions of interest; if None, full region
             considered
         filter (callable): function to preprocess the signal before analysis, e.g.,
@@ -50,6 +52,12 @@ def extract_characteristic_data(
         samples = [(slice(0, None), slice(0, None))]
 
     # Init data vector
+    signal = np.atleast_3d(signal if isinstance(signal, np.ndarray) else signal.img)
+    mask = (
+        np.atleast_3d(mask if isinstance(mask, np.ndarray) else mask.img)
+        if mask is not None
+        else None
+    )
     data_dim = signal.shape[-1]
     if data_dim not in [1, 3]:
         data_dim = 1
@@ -68,8 +76,15 @@ def extract_characteristic_data(
         if mask is None:
             ax.imshow(np.abs(signal))
         else:
-            alpha = np.clip(mask.astype(float), 0.5, 1)
-            ax.imshow(np.dstack((skimage.img_as_float(np.abs(signal)), alpha)))
+            float_signal = skimage.img_as_float(
+                np.abs(signal if isinstance(signal, np.ndarray) else signal.img)
+            )
+            alpha = np.clip(
+                (mask if isinstance(mask, np.ndarray) else mask.img).astype(float),
+                0.5,
+                1,
+            )
+            ax.imshow(float_signal.squeeze(), alpha=alpha.squeeze())
         ax.set_xlabel("horizontal pixel")
         ax.set_ylabel("vertical pixel")
 
@@ -144,7 +159,6 @@ def extract_characteristic_data(
                 ax.add_patch(rect)
 
     if show_plot:
-
         if data_dim == 3:
             warn("Assuming data is color data and using RGB as axes.", RuntimeWarning)
             plt.figure("Relative dominant colors")
