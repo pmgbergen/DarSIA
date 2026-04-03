@@ -43,7 +43,9 @@ class RoiRegistry:
                 self._registry[key] = RoiConfig().load(entry)
         return self
 
-    def register(self, key: str, roi: "RoiConfig | RoiAndLabelConfig | RoiAndSubroiConfig") -> None:
+    def register(
+        self, key: str, roi: "RoiConfig | RoiAndLabelConfig | RoiAndSubroiConfig"
+    ) -> None:
         """Add a single ROI entry to the registry without overwriting existing entries.
 
         This is useful when inline ROI definitions (e.g. from a
