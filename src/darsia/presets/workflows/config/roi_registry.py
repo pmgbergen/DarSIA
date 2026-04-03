@@ -43,6 +43,27 @@ class RoiRegistry:
                 self._registry[key] = RoiConfig().load(entry)
         return self
 
+    def register(self, key: str, roi: "RoiConfig | RoiAndLabelConfig | RoiAndSubroiConfig") -> None:
+        """Add a single ROI entry to the registry without overwriting existing entries.
+
+        This is useful when inline ROI definitions (e.g. from a
+        ``[color_paths.roi.*]`` TOML sub-section) need to be injected into the
+        shared registry so that they can later be resolved by key name.
+
+        Args:
+            key: The name to register the entry under.
+            roi: The ROI config object to register.
+
+        Raises:
+            KeyError: If *key* is already present in the registry.
+        """
+        if key in self._registry:
+            raise KeyError(
+                f"ROI key '{key}' is already registered. "
+                f"Use a different key or remove the existing entry first."
+            )
+        self._registry[key] = roi
+
     def keys(self) -> list[str]:
         """Return all registered key names."""
         return list(self._registry.keys())
