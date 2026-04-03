@@ -31,7 +31,7 @@ def build_restoration(
 
     method = restoration_config.method
 
-    if method is None or method == "none":
+    if method is None:
         return None
 
     elif method == "volume_average":
@@ -53,9 +53,28 @@ def build_restoration(
         options = restoration_config.options
         if not isinstance(options, TVDConfig):
             options = TVDConfig()
+
+        # Resolve porosity-based weight strings to actual arrays, forcing
+        # "heterogeneous bregman" as the TVD method in those cases.
+        tvd_method = options.method
+        if isinstance(options.weight, str):
+            if options.weight == "porosity":
+                weight = fluidflower.image_porosity
+            elif options.weight == "boolean-porosity":
+                weight = fluidflower.boolean_porosity
+            else:
+                raise ValueError(
+                    f"Unknown weight string '{options.weight}'. "
+                    "Valid string values are 'porosity' and 'boolean-porosity'. "
+                    "For a scalar weight, provide a numeric value in the config."
+                )
+            tvd_method = "heterogeneous bregman"
+        else:
+            weight = options.weight
+
         return darsia.TVD(
-            method=options.method,
-            weight=options.weight,
+            method=tvd_method,
+            weight=weight,
             max_num_iter=options.max_num_iter,
             eps=options.eps,
             omega=options.omega,

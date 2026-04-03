@@ -17,13 +17,6 @@ def _write_toml(tmp_path: Path, content: str) -> Path:
     return p
 
 
-def test_restoration_config_none_method(tmp_path):
-    cfg_path = _write_toml(tmp_path, '[restoration]\nmethod = "none"\n')
-    cfg = RestorationConfig().load(cfg_path)
-    assert cfg.method == "none"
-    assert cfg.options is None
-
-
 def test_restoration_config_volume_average_defaults(tmp_path):
     cfg_path = _write_toml(tmp_path, '[restoration]\nmethod = "volume_average"\n')
     cfg = RestorationConfig().load(cfg_path)
@@ -81,6 +74,35 @@ def test_restoration_config_tvd_custom_options(tmp_path):
     assert cfg.options.eps == pytest.approx(1e-3)
     assert cfg.options.omega == pytest.approx(2.0)
     assert cfg.options.regularization == pytest.approx(0.5)
+
+
+def test_restoration_config_tvd_porosity_weight(tmp_path):
+    cfg_path = _write_toml(
+        tmp_path,
+        '[restoration]\nmethod = "tvd"\n\n[restoration.options]\nweight = "porosity"\n',
+    )
+    cfg = RestorationConfig().load(cfg_path)
+    assert cfg.method == "tvd"
+    assert isinstance(cfg.options, TVDConfig)
+    assert cfg.options.weight == "porosity"
+
+
+def test_restoration_config_tvd_boolean_porosity_weight(tmp_path):
+    cfg_path = _write_toml(
+        tmp_path,
+        '[restoration]\nmethod = "tvd"\n\n[restoration.options]\nweight = "boolean-porosity"\n',
+    )
+    cfg = RestorationConfig().load(cfg_path)
+    assert cfg.method == "tvd"
+    assert isinstance(cfg.options, TVDConfig)
+    assert cfg.options.weight == "boolean-porosity"
+
+
+def test_restoration_config_none_method_raises(tmp_path):
+    """'none' is no longer a valid method string; omit the section instead."""
+    cfg_path = _write_toml(tmp_path, '[restoration]\nmethod = "none"\n')
+    with pytest.raises(NotImplementedError):
+        RestorationConfig().load(cfg_path)
 
 
 def test_restoration_config_unsupported_method_raises(tmp_path):

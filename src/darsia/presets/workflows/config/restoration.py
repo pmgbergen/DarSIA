@@ -3,7 +3,7 @@
 import dataclasses
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Union
 
 from .utils import _get_key, _get_section_from_toml
 
@@ -24,7 +24,11 @@ class TVDConfig:
     Attributes:
         method: TVD solver method. One of "chambolle", "anisotropic bregman",
             "isotropic bregman", "heterogeneous bregman".
-        weight: Regularization weight.
+        weight: Regularization weight. Either a float or one of the strings
+            "porosity" (use fluidflower.image_porosity as heterogeneous weight)
+            or "boolean-porosity" (use fluidflower.boolean_porosity as heterogeneous
+            weight). When a string value is provided, "heterogeneous bregman" is
+            automatically selected as the TVD method.
         max_num_iter: Maximum number of iterations.
         eps: Convergence tolerance.
         omega: Data fidelity weight (only for "heterogeneous bregman").
@@ -35,7 +39,7 @@ class TVDConfig:
     method: Literal[
         "chambolle", "anisotropic bregman", "isotropic bregman", "heterogeneous bregman"
     ] = "chambolle"
-    weight: float = 0.1
+    weight: Union[float, Literal["porosity", "boolean-porosity"]] = 0.1
     max_num_iter: int = 200
     eps: float = 2e-4
     omega: float = 1.0
@@ -44,7 +48,12 @@ class TVDConfig:
 
     def load(self, sec: dict) -> "TVDConfig":
         self.method = _get_key(sec, "method", self.method, required=False, type_=str)
-        self.weight = _get_key(sec, "weight", self.weight, required=False, type_=float)
+        # weight can be float or special string ("porosity" / "boolean-porosity")
+        raw_weight = _get_key(sec, "weight", self.weight, required=False)
+        if isinstance(raw_weight, str):
+            self.weight = raw_weight
+        else:
+            self.weight = float(raw_weight)
         self.max_num_iter = _get_key(
             sec, "max_num_iter", self.max_num_iter, required=False, type_=int
         )
@@ -61,7 +70,7 @@ class TVDConfig:
 
 @dataclass
 class RestorationConfig:
-    method: Literal["none", "volume_average", "tvd"] | None = "volume_average"
+    method: Literal["volume_average", "tvd"] | None = "volume_average"
     options: VolumeAveragingConfig | TVDConfig | None = None
 
     def load(self, path: Path) -> "RestorationConfig":
@@ -69,9 +78,7 @@ class RestorationConfig:
         self.method = _get_key(sec, "method", required=True, type_=str)
 
         options_sec = sec.get("options", {})
-        if self.method == "none":
-            self.options = None
-        elif self.method == "volume_average":
+        if self.method == "volume_average":
             self.options = VolumeAveragingConfig().load(options_sec)
         elif self.method == "tvd":
             self.options = TVDConfig().load(options_sec)
