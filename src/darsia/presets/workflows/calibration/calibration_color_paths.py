@@ -137,9 +137,11 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
             images=baseline_images,
             baseline=fluidflower.baseline,
             threshold_significant=config.color_paths.threshold_baseline,
-            verbose=False,
+            verbose=show,
         )
     )
+    baseline_color_spectrum.save(config.color_paths.baseline_color_spectrum_folder)
+
     # Free memory for performance
     del baseline_images
 
