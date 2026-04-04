@@ -50,6 +50,20 @@ class ColorPathsConfig:
     section) **or** be defined as inline sub-sections under
     ``[color_paths.roi.*]``.
     """
+    ignore_baseline_spectrum: str = "expanded"
+    """Controls which baseline colour spectrum (if any) is used as the ``ignore``
+    argument when computing the tracer spectrum and finding the colour path.
+
+    Allowed values:
+
+    - ``"none"``     – do not compute a baseline spectrum at all; pass
+                       ``ignore=None`` downstream.
+    - ``"baseline"`` – compute the baseline spectrum but **do not** expand it;
+                       pass the unexpanded spectrum as ``ignore=baseline_color_spectrum``.
+    - ``"expanded"`` – compute the baseline spectrum **and** expand it via
+                       linear regression; pass the expanded spectrum as
+                       ``ignore=`` *(default – preserves existing behaviour)*.
+    """
 
     def load(
         self,
@@ -162,6 +176,22 @@ class ColorPathsConfig:
         # ROI support – registry reference list OR inline sub-sections
         self.rois = _get_key(sec, "rois", default=[], required=False, type_=list)
 
+        # Baseline spectrum mode
+        _allowed_ignore = {"none", "baseline", "expanded"}
+        raw_ignore = _get_key(
+            sec,
+            "ignore_baseline_spectrum",
+            default="expanded",
+            required=False,
+            type_=str,
+        )
+        if raw_ignore not in _allowed_ignore:
+            raise ValueError(
+                f"Invalid value '{raw_ignore}' for 'ignore_baseline_spectrum'. "
+                f"Allowed values are: {sorted(_allowed_ignore)}."
+            )
+        self.ignore_baseline_spectrum = raw_ignore
+
         # Handle inline [color_paths.roi.*] sub-sections: parse and inject into registry.
         if "roi" in sec and isinstance(sec["roi"], dict) and roi_registry is not None:
             from .roi import RoiAndLabelConfig, RoiConfig
@@ -193,6 +223,7 @@ class ColorPathsConfig:
             reference_label = 0
             data     = ["calibration1", "calibration2"]
             baseline = "baseline_images"
+            ignore_baseline_spectrum = "expanded"  # "none", "baseline", or "expanded"
 
             Example (inline sub-section):
             ------------------------------

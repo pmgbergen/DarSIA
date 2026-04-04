@@ -320,3 +320,52 @@ class TestRoiRegistryRegister:
         )
         reg.register("new", roi_new)
         assert set(reg.keys()) == {"loaded", "new"}
+
+
+# ---------------------------------------------------------------------------
+# ignore_baseline_spectrum config key
+# ---------------------------------------------------------------------------
+
+
+class TestIgnoreBaselineSpectrum:
+    """Tests for the ``ignore_baseline_spectrum`` configuration key."""
+
+    def _load_cfg(self, tmp_path: Path, extra: str = "") -> ColorPathsConfig:
+        toml_path = _write_toml(tmp_path, _minimal_color_paths_toml(extra=extra))
+        data_reg = _make_data_registry(tmp_path)
+        cfg = ColorPathsConfig()
+        cfg.load(
+            path=toml_path,
+            data=tmp_path,
+            results=tmp_path,
+            data_registry=data_reg,
+        )
+        return cfg
+
+    def test_default_is_expanded(self, tmp_path):
+        """When the key is absent the default must be ``'expanded'``."""
+        cfg = self._load_cfg(tmp_path)
+        assert cfg.ignore_baseline_spectrum == "expanded"
+
+    def test_explicit_expanded(self, tmp_path):
+        cfg = self._load_cfg(tmp_path, 'ignore_baseline_spectrum = "expanded"')
+        assert cfg.ignore_baseline_spectrum == "expanded"
+
+    def test_baseline_value(self, tmp_path):
+        cfg = self._load_cfg(tmp_path, 'ignore_baseline_spectrum = "baseline"')
+        assert cfg.ignore_baseline_spectrum == "baseline"
+
+    def test_none_value(self, tmp_path):
+        cfg = self._load_cfg(tmp_path, 'ignore_baseline_spectrum = "none"')
+        assert cfg.ignore_baseline_spectrum == "none"
+
+    def test_invalid_value_raises(self, tmp_path):
+        """An unrecognised value must raise a ``ValueError``."""
+        with pytest.raises(ValueError, match="ignore_baseline_spectrum"):
+            self._load_cfg(tmp_path, 'ignore_baseline_spectrum = "bad_value"')
+
+    def test_dataclass_default(self):
+        """The dataclass default must be ``'expanded'`` without loading any TOML."""
+        cfg = ColorPathsConfig()
+        assert cfg.ignore_baseline_spectrum == "expanded"
+
