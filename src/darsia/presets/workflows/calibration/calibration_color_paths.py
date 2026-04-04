@@ -8,6 +8,10 @@ from matplotlib import pyplot as plt
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.utils.images import (
+    get_calibration_mask,
+    load_images_with_cache,
+)
 from darsia.utils.standard_images import roi_to_mask
 
 logger = logging.getLogger(__name__)
@@ -52,37 +56,25 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     )
 
     # Cache baseline images for performance
-    baseline_images: list[darsia.Image] = []
-    for p in config.color_paths.baseline_image_paths:
-        if config.data.use_cache:
-            cache_path = config.data.cache / f"{p.stem}.npz"
-            if cache_path.exists():
-                baseline_image = darsia.imread(cache_path)
-            else:
-                baseline_image = fluidflower.read_image(p)
-                baseline_image.save(cache_path)
-        else:
-            baseline_image = fluidflower.read_image(p)
-        baseline_images.append(baseline_image)
+    baseline_images: list[darsia.Image] = load_images_with_cache(
+        rig=fluidflower,
+        paths=config.color_paths.baseline_image_paths,
+        use_cache=config.data.use_cache,
+        cache_dir=config.data.cache,
+    )
 
     # Cache calibration images for performance
-    calibration_images: list[darsia.Image] = []
-    for p in calibration_image_paths:
-        if config.data.use_cache:
-            cache_path = config.data.cache / f"{p.stem}.npz"
-            if cache_path.exists():
-                calibration_image = darsia.imread(cache_path)
-            else:
-                calibration_image = fluidflower.read_image(p)
-                calibration_image.save(cache_path)
-        else:
-            calibration_image = fluidflower.read_image(p)
-        calibration_images.append(calibration_image)
+    calibration_images: list[darsia.Image] = load_images_with_cache(
+        rig=fluidflower,
+        paths=calibration_image_paths,
+        use_cache=config.data.use_cache,
+        cache_dir=config.data.cache,
+    )
 
     # ! ---- BUILD CALIBRATION MASK ----
 
     # Porosity mask restricted to the union of ROIs listed in config.color_paths.rois.
-    calibration_mask = fluidflower.boolean_porosity.copy()
+    calibration_mask = get_calibration_mask(fluidflower)
     if config.color_paths.rois and config.roi_registry is not None:
         roi_entries = config.roi_registry.resolve_rois(config.color_paths.rois)
         union_mask = darsia.zeros_like(calibration_mask, dtype=np.bool_)
@@ -96,7 +88,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
                 "porosity mask. Falling back to the full porosity mask for "
                 "colour-path calibration."
             )
-            calibration_mask = fluidflower.boolean_porosity.copy()
+            calibration_mask = get_calibration_mask(fluidflower)
 
     if show:
         # Plot the calibration mask for sanity check
