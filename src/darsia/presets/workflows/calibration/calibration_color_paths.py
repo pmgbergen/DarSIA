@@ -79,14 +79,16 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
         roi_entries = config.roi_registry.resolve_rois(config.color_paths.rois)
         rois = [roi_cfg.roi for roi_cfg in roi_entries.values()]
         union_mask = roi_to_mask(rois, calibration_mask, mode="voxels")
-        calibration_mask.img &= union_mask.img
-        if not np.any(calibration_mask.img):
+        restricted = calibration_mask.copy()
+        restricted.img &= union_mask.img
+        if not np.any(restricted.img):
             logger.warning(
                 "The union of the provided ROIs does not overlap with the "
                 "porosity mask. Falling back to the full porosity mask for "
                 "colour-path calibration."
             )
-            calibration_mask = get_calibration_mask(fluidflower.boolean_porosity)
+        else:
+            calibration_mask = restricted
 
     if show:
         # Plot the calibration mask for sanity check
