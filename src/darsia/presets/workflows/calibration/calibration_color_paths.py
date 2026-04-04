@@ -119,36 +119,44 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
 
     # ! ---- ANALYZE FLUCTUATIONS IN BASELINE IMAGES ----
 
-    baseline_color_spectrum: darsia.LabelColorSpectrumMap = (
-        color_path_regression.get_color_spectrum(
-            images=baseline_images,
-            baseline=fluidflower.baseline,
-            threshold_significant=config.color_paths.threshold_baseline,
-            verbose=show,
+    ignore_mode = config.color_paths.ignore_baseline_spectrum
+    ignore_spectrum: darsia.LabelColorSpectrumMap | None = None
+
+    if ignore_mode in ("baseline", "expanded"):
+        baseline_color_spectrum: darsia.LabelColorSpectrumMap = (
+            color_path_regression.get_color_spectrum(
+                images=baseline_images,
+                baseline=fluidflower.baseline,
+                threshold_significant=config.color_paths.threshold_baseline,
+                verbose=show,
+            )
         )
-    )
-    baseline_color_spectrum.save(config.color_paths.baseline_color_spectrum_folder)
+        baseline_color_spectrum.save(config.color_paths.baseline_color_spectrum_folder)
+
+        if ignore_mode == "expanded":
+            # Expand the baseline color spectrum through linear regression
+            expanded_baseline_color_spectrum: darsia.LabelColorSpectrumMap = (
+                color_path_regression.expand_color_spectrum(
+                    color_spectrum=baseline_color_spectrum,
+                    verbose=False,
+                )
+            )
+            expanded_baseline_color_spectrum.save(
+                config.color_paths.baseline_color_spectrum_folder
+            )
+            ignore_spectrum = expanded_baseline_color_spectrum
+        else:
+            ignore_spectrum = baseline_color_spectrum
 
     # Free memory for performance
     del baseline_images
-
-    # Expand the baseline color spectrum through linear regression
-    expanded_baseline_color_spectrum: darsia.LabelColorSpectrumMap = (
-        color_path_regression.expand_color_spectrum(
-            color_spectrum=baseline_color_spectrum,
-            verbose=False,
-        )
-    )
-    expanded_baseline_color_spectrum.save(
-        config.color_paths.baseline_color_spectrum_folder
-    )
 
     # ! ---- EXTRACT COLOR SPECTRUM OF TRACERS ---- ! #
 
     tracer_color_spectrum = color_path_regression.get_color_spectrum(
         images=calibration_images,
         baseline=fluidflower.baseline,
-        ignore=expanded_baseline_color_spectrum,
+        ignore=ignore_spectrum,
         threshold_significant=config.color_paths.threshold_calibration,
         verbose=show,
     )
@@ -159,7 +167,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     label_color_path_map: darsia.LabelColorPathMap = (
         color_path_regression.find_color_path(
             color_spectrum=tracer_color_spectrum,
-            ignore=expanded_baseline_color_spectrum,
+            ignore=ignore_spectrum,
             num_segments=config.color_paths.num_segments,
             directory=config.color_paths.calibration_file,
             verbose=show,
