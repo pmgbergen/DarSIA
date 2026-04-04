@@ -8,10 +8,7 @@ from matplotlib import pyplot as plt
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
-from darsia.presets.workflows.utils.images import (
-    get_calibration_mask,
-    load_images_with_cache,
-)
+from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.utils.standard_images import roi_to_mask
 
 logger = logging.getLogger(__name__)
@@ -74,21 +71,19 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     # ! ---- BUILD CALIBRATION MASK ----
 
     # Porosity mask restricted to the union of ROIs listed in config.color_paths.rois.
-    calibration_mask = get_calibration_mask(fluidflower.boolean_porosity)
+    calibration_mask = fluidflower.boolean_porosity.copy()
     if config.color_paths.rois and config.roi_registry is not None:
         roi_entries = config.roi_registry.resolve_rois(config.color_paths.rois)
         rois = [roi_cfg.roi for roi_cfg in roi_entries.values()]
         union_mask = roi_to_mask(rois, calibration_mask, mode="voxels")
-        restricted = calibration_mask.copy()
-        restricted.img &= union_mask.img
-        if not np.any(restricted.img):
+        calibration_mask.img &= union_mask.img
+        if not np.any(calibration_mask.img):
             logger.warning(
                 "The union of the provided ROIs does not overlap with the "
                 "porosity mask. Falling back to the full porosity mask for "
                 "colour-path calibration."
             )
-        else:
-            calibration_mask = restricted
+            calibration_mask = fluidflower.boolean_porosity.copy()
 
     if show:
         # Plot the calibration mask for sanity check
