@@ -56,17 +56,4 @@ def load_images_with_cache(
     return images
 
 
-def get_calibration_mask(mask: darsia.Image) -> darsia.Image:
-    """Return a copy of a boolean mask for use as a calibration mask.
 
-    A copy is returned so that callers can modify the result without
-    side-effects on the original image.
-
-    Args:
-        mask: Base boolean mask (typically ``fluidflower.boolean_porosity``).
-
-    Returns:
-        A boolean :class:`darsia.Image` representing the calibration mask.
-
-    """
-    return mask.copy()
