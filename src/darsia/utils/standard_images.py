@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import TYPE_CHECKING, Literal, Optional
 
 import numpy as np
 
 import darsia
+
+if TYPE_CHECKING:
+    _SingleRoi = darsia.VoxelArray | darsia.CoordinateArray | darsia.ROI
 
 StandardDtype = Literal[np.uint8, np.uint16, np.float32, np.float64, np.bool_]
 
@@ -68,33 +71,46 @@ def ones_like(
 
 
 def roi_to_mask(
-    roi: darsia.VoxelArray | darsia.CoordinateArray | darsia.ROI,
+    roi: _SingleRoi | list[_SingleRoi],
     reference_image: darsia.Image,
     mode: Literal["shape", "voxels"] = "shape",
 ) -> darsia.Image:
-    """Create a full-domain boolean mask image from a :class:`RoiConfig` bounding-box.
+    """Create a full-domain boolean mask image from one or more bounding-box ROIs.
 
     The returned image has the same spatial extent and coordinate system as
     *reference_image*.  Pixels whose centres fall inside the axis-aligned
     bounding box defined by ``roi`` are set to ``True``; all other
     pixels are ``False``.
 
+    When *roi* is a **list**, the returned mask is the element-wise **union**
+    (logical OR) of the individual bounding-box masks.
+
     Args:
-        roi: A :class:`~darsia.ROI` or a pair of coordinates (as a
-            :class:`~darsia.CoordinateArray` or :class:`~darsia.VoxelArray`)
-            defining the opposite corners of the bounding box.  If a pair of
-            coordinates is provided, it must be in the form of a 2D array with
-            shape (2, 2), where the first row corresponds to the minimum corner
-            and the second row corresponds to the maximum corner.
+        roi: A single :class:`~darsia.ROI`, :class:`~darsia.CoordinateArray`,
+            or :class:`~darsia.VoxelArray` defining the bounding-box corners,
+            **or** a list of such objects whose union is returned.  If a pair
+            of coordinates is provided, it must be in the form of a 2-D array
+            with shape ``(2, 2)``, where the first row is the minimum corner
+            and the second row is the maximum corner.
         reference_image: A :class:`~darsia.Image` used to define the output
             shape, metadata and coordinate system.
+        mode: Passed through to :func:`zeros_like`; controls whether the
+            output has the full image shape (``"shape"``) or only the voxel
+            dimensions (``"voxels"``).
 
     Returns:
         A boolean :class:`~darsia.Image` (same type/shape as
-        *reference_image*) with ``True`` inside the bounding box and
+        *reference_image*) with ``True`` inside the bounding box(es) and
         ``False`` everywhere else.
 
     """
+    # Delegate to the single-ROI helper for every element and union the results.
+    if isinstance(roi, list):
+        mask = darsia.zeros_like(reference_image, mode=mode, dtype=np.bool_)
+        for single_roi in roi:
+            mask.img |= roi_to_mask(single_roi, reference_image, mode=mode).img
+        return mask
+
     mask = darsia.zeros_like(reference_image, mode=mode, dtype=np.bool_)
 
     # Convert the two bounding-box corners from physical to voxel coordinates.
