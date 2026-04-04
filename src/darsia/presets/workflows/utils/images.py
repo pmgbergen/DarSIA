@@ -4,7 +4,11 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 import darsia
+from darsia.presets.workflows.config.roi import RoiConfig
+from darsia.utils.standard_images import roi_to_mask
 
 logger = logging.getLogger(__name__)
 
@@ -56,27 +60,44 @@ def load_images_with_cache(
     return images
 
 
-def get_calibration_mask(fluidflower: Any) -> darsia.Image:
-    """Return the calibration mask for a FluidFlower rig.
+def get_calibration_mask(
+    mask: darsia.Image,
+    roi_entries: dict[str, RoiConfig] | None = None,
+) -> darsia.Image:
+    """Build the calibration mask, optionally restricted to a union of ROIs.
 
-    The mask is taken from ``fluidflower.boolean_porosity`` (a copy is
-    returned so callers can modify it without side-effects).
+    Starting from *mask* (typically ``fluidflower.boolean_porosity``), the
+    function optionally intersects it with the union of the bounding boxes
+    defined by *roi_entries*.  If the intersection is empty (no overlap
+    between the ROI union and the base mask), the original *mask* is returned
+    unchanged and a warning is logged.
 
     Args:
-        fluidflower: A FluidFlower rig instance that exposes a
-            ``boolean_porosity`` attribute.
+        mask: Base boolean mask (a copy is used internally so the original is
+            not modified).
+        roi_entries: Optional dict mapping ROI names to :class:`RoiConfig`
+            objects.  When ``None`` or empty, *mask* is returned as-is (copy).
 
     Returns:
         A boolean :class:`darsia.Image` representing the calibration mask.
 
-    Raises:
-        AttributeError: If *fluidflower* does not have a ``boolean_porosity``
-            attribute.
-
     """
-    if not hasattr(fluidflower, "boolean_porosity"):
-        raise AttributeError(
-            f"{type(fluidflower).__name__!r} does not have a 'boolean_porosity' "
-            "attribute required for building the calibration mask."
-        )
-    return fluidflower.boolean_porosity.copy()
+    calibration_mask = mask.copy()
+
+    if roi_entries:
+        union_mask = darsia.zeros_like(calibration_mask, dtype=np.bool_)
+        for roi_cfg in roi_entries.values():
+            roi_mask = roi_to_mask(roi_cfg.roi, calibration_mask, mode="voxels")
+            union_mask.img |= roi_mask.img
+        blended = calibration_mask.copy()
+        blended.img &= union_mask.img
+        if not np.any(blended.img):
+            logger.warning(
+                "The union of the provided ROIs does not overlap with the "
+                "porosity mask. Falling back to the full porosity mask for "
+                "colour-path calibration."
+            )
+        else:
+            calibration_mask = blended
+
+    return calibration_mask
