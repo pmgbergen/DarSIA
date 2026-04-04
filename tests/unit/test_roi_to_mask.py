@@ -142,3 +142,57 @@ class TestRoiConfigToMaskUnion:
         # union pixels >= each individual mask
         assert np.sum(union.img) >= np.sum(mask_a.img)
         assert np.sum(union.img) >= np.sum(mask_b.img)
+
+
+class TestRoiToMaskList:
+    def test_list_of_two_non_overlapping_rois_matches_manual_union(self):
+        """roi_to_mask with a list returns the same union as calling it twice."""
+        img = _make_scalar_image()
+        roi_a = _make_roi([0.0, 0.5], [0.9, 1.0], name="left")
+        roi_b = _make_roi([1.1, 0.0], [2.0, 0.5], name="right")
+
+        list_mask = roi_to_mask([roi_a.roi, roi_b.roi], img)
+
+        mask_a = roi_to_mask(roi_a.roi, img)
+        mask_b = roi_to_mask(roi_b.roi, img)
+        expected = darsia.zeros_like(img, dtype=np.bool_)
+        expected.img |= mask_a.img
+        expected.img |= mask_b.img
+
+        assert np.array_equal(list_mask.img, expected.img)
+
+    def test_list_of_overlapping_rois_matches_manual_union(self):
+        """Overlapping ROIs passed as a list do not double-count pixels."""
+        img = _make_scalar_image()
+        roi_a = _make_roi([0.0, 0.3], [1.5, 0.7], name="a")
+        roi_b = _make_roi([0.5, 0.3], [2.0, 0.7], name="b")
+
+        list_mask = roi_to_mask([roi_a.roi, roi_b.roi], img)
+
+        mask_a = roi_to_mask(roi_a.roi, img)
+        mask_b = roi_to_mask(roi_b.roi, img)
+        expected = darsia.zeros_like(img, dtype=np.bool_)
+        expected.img |= mask_a.img
+        expected.img |= mask_b.img
+
+        assert np.array_equal(list_mask.img, expected.img)
+
+    def test_single_element_list_matches_scalar_call(self):
+        """A one-element list returns the same result as passing the ROI directly."""
+        img = _make_scalar_image()
+        roi = _make_roi([0.5, 0.3], [1.5, 0.7])
+
+        list_mask = roi_to_mask([roi.roi], img)
+        scalar_mask = roi_to_mask(roi.roi, img)
+
+        assert np.array_equal(list_mask.img, scalar_mask.img)
+
+    def test_empty_list_returns_all_false_mask(self):
+        """An empty list should produce an all-False mask."""
+        img = _make_scalar_image()
+        mask = roi_to_mask([], img)
+
+        assert isinstance(mask, darsia.ScalarImage)
+        assert mask.img.dtype == np.bool_
+        assert mask.img.shape == img.img.shape
+        assert not np.any(mask.img)
