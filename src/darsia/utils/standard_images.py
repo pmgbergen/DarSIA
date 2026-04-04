@@ -70,6 +70,7 @@ def ones_like(
 def roi_to_mask(
     roi: darsia.VoxelArray | darsia.CoordinateArray | darsia.ROI,
     reference_image: darsia.Image,
+    mode: Literal["shape", "voxels"] = "shape",
 ) -> darsia.Image:
     """Create a full-domain boolean mask image from a :class:`RoiConfig` bounding-box.
 
@@ -94,7 +95,7 @@ def roi_to_mask(
         ``False`` everywhere else.
 
     """
-    mask = darsia.zeros_like(reference_image, dtype=np.bool_)
+    mask = darsia.zeros_like(reference_image, mode=mode, dtype=np.bool_)
 
     # Convert the two bounding-box corners from physical to voxel coordinates.
     if isinstance(roi, (darsia.ROI, darsia.CoordinateArray)):
