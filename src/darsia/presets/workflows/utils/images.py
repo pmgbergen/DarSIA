@@ -54,6 +54,3 @@ def load_images_with_cache(
             image = rig.read_image(p)
         images.append(image)
     return images
-
-
-
