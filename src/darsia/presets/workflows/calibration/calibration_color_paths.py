@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 
 import numpy as np
+from matplotlib import pyplot as plt
 
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
@@ -78,17 +79,16 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
             calibration_image = fluidflower.read_image(p)
         calibration_images.append(calibration_image)
 
-    # ! ---- IDENTIFY AND STORE (RELATIVE) COLOR RANGE ----
+    # ! ---- BUILD CALIBRATION MASK ----
 
-    # Build the effective calibration mask: porosity mask optionally restricted
-    # to the union of any ROIs listed in config.color_paths.rois.
+    # Porosity mask restricted to the union of ROIs listed in config.color_paths.rois.
+    calibration_mask = fluidflower.boolean_porosity.copy()
     if config.color_paths.rois and config.roi_registry is not None:
         roi_entries = config.roi_registry.resolve_rois(config.color_paths.rois)
-        union_mask = darsia.zeros_like(fluidflower.boolean_porosity, dtype=np.bool_)
+        union_mask = darsia.zeros_like(calibration_mask, dtype=np.bool_)
         for roi_cfg in roi_entries.values():
-            roi_mask = roi_to_mask(roi_cfg.roi, fluidflower.baseline)
+            roi_mask = roi_to_mask(roi_cfg.roi, calibration_mask, mode="voxels")
             union_mask.img |= roi_mask.img
-        calibration_mask = fluidflower.boolean_porosity.copy()
         calibration_mask.img &= union_mask.img
         if not np.any(calibration_mask.img):
             logger.warning(
@@ -96,9 +96,22 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
                 "porosity mask. Falling back to the full porosity mask for "
                 "colour-path calibration."
             )
-            calibration_mask = fluidflower.boolean_porosity
-    else:
-        calibration_mask = fluidflower.boolean_porosity
+            calibration_mask = fluidflower.boolean_porosity.copy()
+
+    if show:
+        # Plot the calibration mask for sanity check
+        full_image = fluidflower.baseline.copy()
+        gray_full_image = full_image.to_monochromatic("gray")
+        full_image.img[~calibration_mask.img] = gray_full_image.img[
+            ~calibration_mask.img
+        ][:, None]
+        plt.figure("calibration mask")
+        plt.imshow(full_image.img)
+        plt.title("Calibration Mask for Color Path Calibration")
+        plt.axis("off")
+        plt.show()
+
+    # ! ---- IDENTIFY AND STORE (RELATIVE) COLOR RANGE ----
 
     tracer_color_range = darsia.ColorRange.from_images(
         images=calibration_images,
