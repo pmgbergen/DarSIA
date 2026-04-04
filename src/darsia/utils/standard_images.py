@@ -107,8 +107,8 @@ def roi_to_mask(
     # Delegate to the single-ROI helper for every element and union the results.
     if isinstance(roi, list):
         mask = darsia.zeros_like(reference_image, mode=mode, dtype=np.bool_)
-        for single_roi in roi:
-            mask.img |= roi_to_mask(single_roi, reference_image, mode=mode).img
+        for roi_item in roi:
+            mask.img |= roi_to_mask(roi_item, reference_image, mode=mode).img
         return mask
 
     mask = darsia.zeros_like(reference_image, mode=mode, dtype=np.bool_)
