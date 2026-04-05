@@ -283,7 +283,7 @@ class TestInvalidWeighting:
 class TestFindColorPathWeighting:
     """Verify the public ``find_color_path`` API propagates ``weighting``."""
 
-    def _setup(self):
+    def _make_regression(self):
         labels_arr = np.zeros((4, 4), dtype=int)
         labels_img = darsia.Image(img=labels_arr, dimensions=[1.0, 1.0])
         color_range = darsia.ColorRange(
@@ -294,21 +294,20 @@ class TestFindColorPathWeighting:
         mask_img = darsia.Image(
             img=np.ones((4, 4), dtype=bool), dimensions=[1.0, 1.0]
         )
-        regression = darsia.LabelColorPathMapRegression(
+        return darsia.LabelColorPathMapRegression(
             labels=labels_img,
             color_range=color_range,
             resolution=11,
             mask=mask_img,
         )
-        spectrum_map = darsia.LabelColorSpectrumMap(
-            {0: _make_spectrum(resolution=11)}
-        )
-        return regression, spectrum_map
 
     @pytest.mark.parametrize("mode", ["threshold", "wls", "wls_sqrt", "wls_log"])
     def test_returns_label_color_path_map(self, mode: str) -> None:
         """``find_color_path`` must return a LabelColorPathMap for all modes."""
-        regression, spectrum_map = self._setup()
+        regression = self._make_regression()
+        spectrum_map = darsia.LabelColorSpectrumMap(
+            {0: _make_spectrum(resolution=11)}
+        )
         result = regression.find_color_path(
             color_spectrum=spectrum_map,
             num_segments=1,

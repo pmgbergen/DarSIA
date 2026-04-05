@@ -588,7 +588,8 @@ class LabelColorPathMapRegression:
         sorted_relative_colors = sorted_relative_colors[origin_index:, :]
         sorted_weights = sorted_weights[origin_index:]
 
-        # Add origin to the beginning (weight of 0 so it doesn't bias the fit)
+        # Add origin to the beginning with weight of 0 to anchor the path at the
+        # relative origin without biasing the weighted fit toward or away from it.
         sorted_embedding = np.hstack(
             (
                 sorted_embedding[0]
