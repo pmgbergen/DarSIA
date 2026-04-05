@@ -756,6 +756,44 @@ class LabelColorPathMapRegression:
         )  # Find the two representative key colors representing the start and end of the path
 
         def segment_error(segment_range):
+            """Calculate the quantile-based fitting error for a color segment.
+
+            This function measures how well a linear interpolation fits the color path
+            within a given segment. It uses a quantile-based approach to be robust to
+            outliers rather than using the raw sum of errors.
+
+            Method:
+                1. Extract the embedding values and relative colors for the segment
+                2. Create a linear regression model that maps the 1D embedding to the
+                3D color space using only the segment's start and end points
+                3. Predict the colors for all embedding values within the segment
+                4. Calculate the L1 (Manhattan) distance between predicted and actual
+                colors at each point
+                5. Use the 80th percentile of errors (rather than mean/sum) to exclude
+                outliers and get a robust error measure
+
+            Interpretation:
+                - Small error: The segment's colors lie close to a straight line in 3D
+                color space, indicating the segment is well-approximated by linear
+                interpolation between its endpoints
+                - Large error: The segment's colors deviate significantly from a linear
+                path, suggesting curved behavior that may benefit from splitting into
+                multiple segments
+
+            Args:
+                segment_range: A range object specifying indices of points in the segment
+
+            Returns:
+                float: The 80th percentile of L1 errors between linear regression
+                    predictions and actual colors. Values are typically in [0, 3]
+                    for normalized RGB color space.
+
+            Note:
+                The use of quantile (0.8) instead of mean makes this robust to outlier
+                colors that deviate from the main path. This is important for color paths
+                that may have occasional noisy measurements or artifacts.
+
+            """
             segment_embedding = sorted_embedding[segment_range]
             segment_relative_colors = sorted_relative_colors[segment_range]
 
@@ -770,7 +808,7 @@ class LabelColorPathMapRegression:
                 ord=1,
             )
             # Use quantile error instead of sum to exclude outliers
-            quantile = 0.8
+            quantile = 0.8  # TODO make adjustable
             quantile_error = np.quantile(segment_errors, quantile)
             return quantile_error
 
