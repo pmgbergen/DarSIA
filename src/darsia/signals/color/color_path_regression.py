@@ -569,11 +569,59 @@ class LabelColorPathMapRegression:
         lle = LocallyLinearEmbedding(n_neighbors=n_neighbors, n_components=1)
         embedding = lle.fit_transform(relative_colors).flatten()
 
+        if verbose:
+            # Visualization 1: Original 3D colors vs 1D embedding
+            fig = plt.figure(figsize=(14, 5))
+
+            # 3D scatter of original colors
+            ax1 = fig.add_subplot(131, projection="3d")
+            scatter1 = ax1.scatter(
+                relative_colors[:, 0],
+                relative_colors[:, 1],
+                relative_colors[:, 2],
+                c=embedding,  # Color by embedding value
+                cmap="viridis",
+                s=50,
+                alpha=0.7,
+            )
+            ax1.set_title("Original 3D Colors\n(colored by 1D embedding)")
+            ax1.set_xlabel("R")
+            ax1.set_ylabel("G")
+            ax1.set_zlabel("B")
+            plt.colorbar(scatter1, ax=ax1, label="1D Embedding")
+
+            # 1D embedding vs point index
+            ax2 = fig.add_subplot(132)
+            ax2.scatter(range(num_points), embedding, c=embedding, cmap="viridis", s=50)
+            ax2.set_xlabel("Point Index")
+            ax2.set_ylabel("1D Embedding Value")
+            ax2.set_title("1D Embedding Distribution")
+            ax2.grid(True, alpha=0.3)
+
+            # Embedding histogram
+            ax3 = fig.add_subplot(133)
+            ax3.hist(embedding, bins=20, edgecolor="black", alpha=0.7)
+            ax3.set_xlabel("Embedding Value")
+            ax3.set_ylabel("Frequency")
+            ax3.set_title("1D Embedding Histogram")
+            ax3.grid(True, alpha=0.3)
+
+            plt.tight_layout()
+            if directory:
+                directory.mkdir(parents=True, exist_ok=True)
+                plt.savefig(directory / f"{name}_01_embedding.png", dpi=150)
+            plt.show()
+            plt.close()
+
         # Step 3: Sort embedding and colors
         sorted_indices = np.argsort(embedding)
         sorted_embedding = embedding[sorted_indices]
         sorted_relative_colors = relative_colors[sorted_indices]
         sorted_weights = point_weights[sorted_indices]
+
+        logger.info(
+            f"Embedding range: [{sorted_embedding[0]:.4f}, {sorted_embedding[-1]:.4f}]"
+        )
 
         # Step 3.2: Identify "left" part from origin and remove it
         origin = np.zeros(3)
@@ -581,18 +629,161 @@ class LabelColorPathMapRegression:
         origin_index = np.argmin(
             np.linalg.norm(sorted_relative_colors - origin, axis=1)
         )
-        # Assume origin to be close to the extreme left, if exreme right, flip everything
+        origin_distance = np.linalg.norm(sorted_relative_colors[origin_index] - origin)
+
+        logger.info(
+            f"Identified origin index: {origin_index}, "
+            f"color: {sorted_relative_colors[origin_index]}, "
+            f"distance: {origin_distance:.4f}"
+        )
+
+        if verbose:
+            # Visualization 2: Origin detection
+            fig = plt.figure(figsize=(14, 5))
+
+            # Distance to origin
+            distances_to_origin = np.linalg.norm(
+                sorted_relative_colors - origin, axis=1
+            )
+            ax1 = fig.add_subplot(121)
+            ax1.plot(
+                range(len(sorted_relative_colors)), distances_to_origin, "b-", alpha=0.5
+            )
+            ax1.scatter(
+                origin_index,
+                distances_to_origin[origin_index],
+                color="red",
+                s=100,
+                label="Detected Origin",
+            )
+            ax1.axvline(
+                len(sorted_relative_colors) // 2,
+                color="gray",
+                linestyle="--",
+                alpha=0.5,
+                label="Midpoint",
+            )
+            ax1.set_xlabel("Sorted Index")
+            ax1.set_ylabel("Distance to Origin")
+            ax1.set_title("Distance to Origin (0,0,0)")
+            ax1.legend()
+            ax1.grid(True, alpha=0.3)
+
+            # 3D visualization with origin marked
+            ax2 = fig.add_subplot(122, projection="3d")
+            ax2.scatter(
+                sorted_relative_colors[:, 0],
+                sorted_relative_colors[:, 1],
+                sorted_relative_colors[:, 2],
+                c=range(len(sorted_relative_colors)),
+                cmap="viridis",
+                s=30,
+                alpha=0.7,
+            )
+            ax2.scatter(
+                sorted_relative_colors[origin_index, 0],
+                sorted_relative_colors[origin_index, 1],
+                sorted_relative_colors[origin_index, 2],
+                color="red",
+                s=200,
+                marker="*",
+                label="Detected Origin",
+            )
+            ax2.scatter(0, 0, 0, color="green", s=100, marker="x", label="True Origin")
+            ax2.set_xlabel("R")
+            ax2.set_ylabel("G")
+            ax2.set_zlabel("B")
+            ax2.set_title("Origin Detection in 3D")
+            ax2.legend()
+
+            plt.tight_layout()
+            if directory:
+                plt.savefig(directory / f"{name}_02_origin_detection.png", dpi=150)
+            plt.show()
+            plt.close()
+
+        # Assume origin to be close to the extreme left, if extreme right, flip everything
         if origin_index > len(sorted_relative_colors) // 2:
+            logger.info(
+                f"Origin detected at right side (index {origin_index}). "
+                f"Flipping direction."
+            )
             origin_index = len(sorted_relative_colors) - origin_index - 1
             sorted_embedding = np.flip(sorted_embedding, axis=0)
             sorted_relative_colors = np.flip(sorted_relative_colors, axis=0)
             sorted_weights = np.flip(sorted_weights, axis=0)
+            logger.info(f"After flip, origin index: {origin_index}")
+
         sorted_embedding = sorted_embedding[origin_index:]
         sorted_relative_colors = sorted_relative_colors[origin_index:, :]
         sorted_weights = sorted_weights[origin_index:]
 
         # Add origin to the beginning with weight of 0 to anchor the path at the
         # relative origin without biasing the weighted fit toward or away from it.
+        logger.info(
+            f"""After trimming: {len(sorted_embedding)} points, """
+            f"""embedding range: [{sorted_embedding[0]:.4f}, {sorted_embedding[-1]:.4f}]"""
+        )
+
+        if verbose:
+            # Visualization 3: Sorted and trimmed colors
+            fig = plt.figure(figsize=(14, 5))
+
+            # Sorted embedding as path
+            ax1 = fig.add_subplot(121)
+            ax1.plot(
+                range(len(sorted_embedding)),
+                sorted_embedding,
+                "b-",
+                marker="o",
+                markersize=3,
+            )
+            ax1.scatter(
+                0,
+                sorted_embedding[0],
+                color="red",
+                s=100,
+                zorder=5,
+                label="Added Origin",
+            )
+            ax1.set_xlabel("Index")
+            ax1.set_ylabel("Embedding Value")
+            ax1.set_title("Sorted & Trimmed Embedding")
+            ax1.grid(True, alpha=0.3)
+            ax1.legend()
+
+            # 3D path
+            ax2 = fig.add_subplot(122, projection="3d")
+            ax2.plot(
+                sorted_relative_colors[:, 0],
+                sorted_relative_colors[:, 1],
+                sorted_relative_colors[:, 2],
+                "b-",
+                alpha=0.5,
+                linewidth=2,
+            )
+            ax2.scatter(
+                sorted_relative_colors[:, 0],
+                sorted_relative_colors[:, 1],
+                sorted_relative_colors[:, 2],
+                c=range(len(sorted_relative_colors)),
+                cmap="viridis",
+                s=50,
+            )
+            ax2.scatter(0, 0, 0, color="red", s=200, marker="*", label="Origin")
+            ax2.set_xlabel("R")
+            ax2.set_ylabel("G")
+            ax2.set_zlabel("B")
+            ax2.set_title("Sorted Path in 3D Color Space")
+            ax2.legend()
+
+            plt.tight_layout()
+            if directory:
+                plt.savefig(directory / f"{name}_03_sorted_path.png", dpi=150)
+            plt.show()
+            plt.close()
+
+        # Add origin to the beginning
         sorted_embedding = np.hstack(
             (
                 sorted_embedding[0]
@@ -607,12 +798,48 @@ class LabelColorPathMapRegression:
         if w_total > 0.0:
             sorted_weights = sorted_weights / w_total
 
-        # Initialize segments
-        segments = (
-            []
-        )  # Find the two representative key colors representing the start and end of the path
+        # Initialize segments.
+        segments = []
 
         def segment_error(segment_range):
+            """Calculate the quantile-based fitting error for a color segment.
+
+            This function measures how well a linear interpolation fits the color path
+            within a given segment. It uses a quantile-based approach to be robust to
+            outliers rather than using the raw sum of errors.
+
+            Method:
+                1. Extract the embedding values and relative colors for the segment
+                2. Create a linear regression model that maps the 1D embedding to the
+                3D color space using only the segment's start and end points
+                3. Predict the colors for all embedding values within the segment
+                4. Calculate the L1 (Manhattan) distance between predicted and actual
+                colors at each point
+                5. Use the 80th percentile of errors (rather than mean/sum) to exclude
+                outliers and get a robust error measure
+
+            Interpretation:
+                - Small error: The segment's colors lie close to a straight line in 3D
+                color space, indicating the segment is well-approximated by linear
+                interpolation between its endpoints
+                - Large error: The segment's colors deviate significantly from a linear
+                path, suggesting curved behavior that may benefit from splitting into
+                multiple segments
+
+            Args:
+                segment_range: A range object specifying indices of points in the segment
+
+            Returns:
+                float: The 80th percentile of L1 errors between linear regression
+                    predictions and actual colors. Values are typically in [0, 3]
+                    for normalized RGB color space.
+
+            Note:
+                The use of quantile (0.8) instead of mean makes this robust to outlier
+                colors that deviate from the main path. This is important for color paths
+                that may have occasional noisy measurements or artifacts.
+
+            """
             segment_embedding = sorted_embedding[segment_range]
             segment_relative_colors = sorted_relative_colors[segment_range]
 
@@ -645,12 +872,293 @@ class LabelColorPathMapRegression:
             return length
 
         def split_segment(segment_range):
+            """Split a segment at the point where left and right errors are balanced.
+
+            This function finds the optimal split point by:
+            1. Computing error for all possible left/right partitions
+            2. Smoothing both error curves to reduce noise
+            3. Finding where the smoothed curves intersect
+            4. Selecting the intersection closest to the segment midpoint for stability
+
+            The smoothing uses a Savitzky-Golay filter which preserves sharp features
+            while removing high-frequency noise from the error curves.
+
+            Args:
+                segment_range: A range object specifying indices in the segment
+
+            Returns:
+                Tuple of two dicts:
+                    - left_segment: {"range": range, "error": float, "length": float}
+                    - right_segment: {"range": range, "error": float, "length": float}
+
+            """
+            from scipy.signal import savgol_filter
+
+            # total_error = segment_error(segment_range)
+            # total_length = segment_length(segment_range)
+
+            pts = []
+            left_errors = []
+            right_errors = []
+
+            # Compute errors for all possible split points
+            for split_point in range(1, len(segment_range) - 1):
+                left_segment_range = segment_range[:split_point]
+                right_segment_range = segment_range[split_point:]
+
+                left_error = segment_error(left_segment_range)
+                right_error = segment_error(right_segment_range)
+
+                pts.append(split_point)
+                left_errors.append(left_error)
+                right_errors.append(right_error)
+
+            pts = np.array(pts)
+            left_errors = np.array(left_errors)
+            right_errors = np.array(right_errors)
+
+            # Smooth the error curves to reduce noise
+            # Use Savitzky-Golay filter if we have enough points
+            if len(pts) >= 5:
+                # Window length should be odd and less than data length
+                window_length = min(5, len(pts) if len(pts) % 2 == 1 else len(pts) - 1)
+                if window_length >= 5:
+                    try:
+                        left_errors_smooth = savgol_filter(
+                            left_errors, window_length=window_length, polyorder=2
+                        )
+                        right_errors_smooth = savgol_filter(
+                            right_errors, window_length=window_length, polyorder=2
+                        )
+                    except ValueError:
+                        # Fallback to simple moving average if Savitzky-Golay fails
+                        left_errors_smooth = left_errors
+                        right_errors_smooth = right_errors
+                else:
+                    # Simple moving average for small datasets
+                    window = 3
+                    left_errors_smooth = np.convolve(
+                        left_errors, np.ones(window) / window, mode="same"
+                    )
+                    right_errors_smooth = np.convolve(
+                        right_errors, np.ones(window) / window, mode="same"
+                    )
+            else:
+                # Too few points, use raw errors
+                left_errors_smooth = left_errors
+                right_errors_smooth = right_errors
+
+            # Find all crossover points where left_error ~= right_error
+            error_diff = left_errors_smooth - right_errors_smooth
+
+            # Find sign changes (crossover points)
+            sign_changes = np.where(np.diff(np.sign(error_diff)))[0]
+
+            if len(sign_changes) == 0:
+                # No crossover found - use the point with minimum absolute difference
+                optimal_idx = np.argmin(np.abs(error_diff))
+                optimal_split_point = pts[optimal_idx]
+                logger.warning(
+                    """No error crossover found. Using minimum difference at """
+                    f"""index {optimal_split_point}"""
+                )
+            else:
+                # Multiple crossovers possible - choose the one closest to segment center
+                segment_center = len(segment_range) / 2
+                crossover_indices = sign_changes
+                crossover_pts = pts[crossover_indices]
+
+                # Find crossover closest to center
+                center_distances = np.abs(crossover_pts - segment_center)
+                best_crossover_idx = np.argmin(center_distances)
+                optimal_split_point = crossover_pts[best_crossover_idx]
+
+                if verbose:
+                    logger.info(
+                        f"""Found {len(sign_changes)} crossover point(s). """
+                        f"""Selected split at {optimal_split_point} (center: """
+                        f"""{segment_center:.1f})"""
+                    )
+
+            # Create the left and right segments
+            left_segment_range = segment_range[:optimal_split_point]
+            right_segment_range = segment_range[optimal_split_point:]
+
+            left_segment = {
+                "range": left_segment_range,
+                "error": segment_error(left_segment_range),
+                "length": segment_length(left_segment_range),
+            }
+            right_segment = {
+                "range": right_segment_range,
+                "error": segment_error(right_segment_range),
+                "length": segment_length(right_segment_range),
+            }
+
+            # Visualization
+            if False:
+                fig = plt.figure(figsize=(15, 4))
+
+                # Plot 1: Error curves with smoothing
+                ax1 = fig.add_subplot(131)
+                ax1.plot(pts, left_errors, "b-", alpha=0.3, label="Left Error (raw)")
+                ax1.plot(pts, right_errors, "r-", alpha=0.3, label="Right Error (raw)")
+                ax1.plot(
+                    pts,
+                    left_errors_smooth,
+                    "b-",
+                    linewidth=2,
+                    label="Left Error (smooth)",
+                )
+                ax1.plot(
+                    pts,
+                    right_errors_smooth,
+                    "r-",
+                    linewidth=2,
+                    label="Right Error (smooth)",
+                )
+                ax1.axvline(
+                    optimal_split_point,
+                    color="green",
+                    linestyle="--",
+                    linewidth=2,
+                    label=f"Split @ {optimal_split_point}",
+                )
+                if len(sign_changes) > 0:
+                    # Not available otherwise.
+                    ax1.axvline(
+                        segment_center,
+                        color="gray",
+                        linestyle=":",
+                        alpha=0.5,
+                        label="Center",
+                    )
+                ax1.set_xlabel("Split Point")
+                ax1.set_ylabel("Error")
+                ax1.set_title("Error Curves (Raw vs Smoothed)")
+                ax1.legend(fontsize=8)
+                ax1.grid(True, alpha=0.3)
+
+                # Plot 2: Error difference
+                ax2 = fig.add_subplot(132)
+                ax2.plot(pts, error_diff, "k-", linewidth=2, label="Left - Right Error")
+                ax2.axhline(0, color="gray", linestyle="-", alpha=0.5)
+                ax2.axvline(
+                    optimal_split_point,
+                    color="green",
+                    linestyle="--",
+                    linewidth=2,
+                    label=f"Split @ {optimal_split_point}",
+                )
+                if len(sign_changes) > 0:
+                    ax2.scatter(
+                        pts[sign_changes],
+                        error_diff[sign_changes],
+                        color="orange",
+                        s=100,
+                        zorder=5,
+                        label="Crossovers",
+                    )
+                ax2.set_xlabel("Split Point")
+                ax2.set_ylabel("Error Difference")
+                ax2.set_title("Left Error - Right Error")
+                ax2.legend(fontsize=8)
+                ax2.grid(True, alpha=0.3)
+
+                # Plot 3: Segment info
+                ax3 = fig.add_subplot(133)
+                ax3.text(
+                    0.1,
+                    0.9,
+                    f"Segment Range: [{segment_range.start}:{segment_range.stop}]",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.text(
+                    0.1,
+                    0.8,
+                    f"Left Error: {left_segment['error']:.6f}",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.text(
+                    0.1,
+                    0.7,
+                    f"Right Error: {right_segment['error']:.6f}",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.text(
+                    0.1,
+                    0.6,
+                    f"Error Balance: "
+                    f"{abs(left_segment['error'] - right_segment['error']):.6f}",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.text(
+                    0.1,
+                    0.5,
+                    f"Left Length: {left_segment['length']:.6f}",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.text(
+                    0.1,
+                    0.4,
+                    f"Right Length: {right_segment['length']:.6f}",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.text(
+                    0.1,
+                    0.3,
+                    f"Crossovers Found: {len(sign_changes)}",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.axis("off")
+
+                plt.tight_layout()
+                if directory:
+                    plt.savefig(directory / f"{name}_split_analysis.png", dpi=150)
+                plt.show()
+                plt.close()
+
+            return left_segment, right_segment
+
+        def split_segment_old(segment_range):
             # Find the best split point for the selected segment.
             # Balance between error reduction and segment length
             min_metric = float("inf")
 
             total_error = segment_error(segment_range)
             total_length = segment_length(segment_range)
+
+            left_segment = None
+            right_segment = None
+
+            pts = []
+            left_errors = []
+            right_errors = []
+            split_errors = []
+            split_lengths = []
+            optimal_split_point = None
+            metric_values = []
 
             for split_point in range(1, len(segment_range) - 1):
                 left_segment_range = segment_range[:split_point]
@@ -662,9 +1170,17 @@ class LabelColorPathMapRegression:
                 split_error = max(left_error, right_error)
                 split_length = left_length + right_length
 
+                pts.append(split_point)
+                left_errors.append(left_error)
+                right_errors.append(right_error)
+                split_errors.append(split_error)
+                split_lengths.append(split_length)
+
                 # Update the best split if this one is better
-                split_metric = split_error / total_error + split_length / total_length
+                split_metric = (split_error / total_error) + split_length / total_length
+                metric_values.append(split_metric)
                 if split_metric < min_metric:
+                    optimal_split_point = split_point
                     min_metric = split_metric
 
                     left_segment = {
@@ -677,6 +1193,29 @@ class LabelColorPathMapRegression:
                         "error": right_error,
                         "length": right_length,
                     }
+
+            plt.figure("errors")
+            plt.plot(pts, left_errors, label="Left Segment Error")
+            plt.plot(pts, right_errors, label="Right Segment Error")
+            plt.plot(pts, split_errors, label="Max Segment Error", linestyle="--")
+            # Add vertical line at optimal split point
+            plt.axvline(
+                optimal_split_point, color="red", linestyle=":", label="Optimal Split"
+            )
+            plt.legend()
+            plt.figure("lengths")
+            plt.plot(pts, split_lengths, label="Split Segment Length")
+            plt.axvline(
+                optimal_split_point, color="red", linestyle=":", label="Optimal Split"
+            )
+            plt.legend()
+            plt.figure("metrics")
+            plt.plot(pts, metric_values, label="Split Metric (Error Ratio)")
+            plt.axvline(
+                optimal_split_point, color="red", linestyle=":", label="Optimal Split"
+            )
+            plt.legend()
+            plt.show()
             return left_segment, right_segment
 
         segment_range = range(0, len(sorted_embedding))
@@ -716,7 +1255,7 @@ class LabelColorPathMapRegression:
 
         # Improve segments by re-evaluating their error
         old_distances = []
-        for _ in range(1000):
+        for _ in range(10):
             # Cache previous segments for convergence check
             previous_segments = copy.deepcopy(segments)
 
@@ -743,6 +1282,9 @@ class LabelColorPathMapRegression:
                 for i in range(len(segments))
             ):
                 break
+            # Check for oscillation
+            elif False:
+                ...
             else:
                 distance = sum(
                     abs(
