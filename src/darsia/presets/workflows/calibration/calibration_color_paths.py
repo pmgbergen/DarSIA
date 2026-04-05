@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 
 import numpy as np
+import skimage.measure
 from matplotlib import pyplot as plt
 
 import darsia
@@ -86,14 +87,19 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
             calibration_mask = fluidflower.boolean_porosity.copy()
 
     if show:
-        # Plot the calibration mask for sanity check
+        # Plot the calibration mask for sanity check with contours of the ROIs if provided.
         full_image = fluidflower.baseline.copy()
         gray_full_image = full_image.to_monochromatic("gray")
         full_image.img[~calibration_mask.img] = gray_full_image.img[
             ~calibration_mask.img
         ][:, None]
+        contours = skimage.measure.find_contours(
+            calibration_mask.img.astype(float), level=0.5
+        )
         plt.figure("calibration mask")
         plt.imshow(full_image.img)
+        for contour in contours:
+            plt.plot(contour[:, 1], contour[:, 0], color="white", linewidth=2)
         plt.title("Calibration Mask for Color Path Calibration")
         plt.axis("off")
         plt.show()
@@ -179,11 +185,11 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     label_color_path_map.save(config.color_paths.calibration_file)
 
     # Display the color paths
-    if show:
-        print(label_color_path_map)
-        label_color_path_map.show_cmaps()
-        # label_color_path_map.show_paths()
-        # TODO: Provide advanced plotting - mostly for paper publication.
+    # if show:
+    # print(label_color_path_map)
+    # label_color_path_map.show_cmaps()
+    # label_color_path_map.show_paths()
+    # TODO: Provide advanced plotting - mostly for paper publication.
 
     logger.info("Calibration of color paths completed.")
 
