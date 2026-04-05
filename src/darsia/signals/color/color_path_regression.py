@@ -504,9 +504,9 @@ class LabelColorPathMapRegression:
             darsia.ColorPath: The relative color path through the significant boxes.
 
         """
-        assert spectrum.color_range.color_mode == darsia.ColorMode.RELATIVE, (
-            "Color path regression only implemented for RELATIVE color mode."
-        )
+        assert (
+            spectrum.color_range.color_mode == darsia.ColorMode.RELATIVE
+        ), "Color path regression only implemented for RELATIVE color mode."
         # Step 0: Prepare
         num_dofs = num_segments + 1
 
@@ -750,8 +750,8 @@ class LabelColorPathMapRegression:
         )
         sorted_relative_colors = np.vstack((origin, sorted_relative_colors))
 
-        # Initialize segments
-        segments = []  # Find the two representative key colors representing the start and end of the path
+        # Initialize segments.
+        segments = []
 
         def segment_error(segment_range):
             """Calculate the quantile-based fitting error for a color segment.
@@ -838,8 +838,8 @@ class LabelColorPathMapRegression:
             """
             from scipy.signal import savgol_filter
 
-            total_error = segment_error(segment_range)
-            total_length = segment_length(segment_range)
+            # total_error = segment_error(segment_range)
+            # total_length = segment_length(segment_range)
 
             pts = []
             left_errors = []
@@ -903,7 +903,8 @@ class LabelColorPathMapRegression:
                 optimal_idx = np.argmin(np.abs(error_diff))
                 optimal_split_point = pts[optimal_idx]
                 logger.warning(
-                    f"No error crossover found. Using minimum difference at index {optimal_split_point}"
+                    """No error crossover found. Using minimum difference at """
+                    f"""index {optimal_split_point}"""
                 )
             else:
                 # Multiple crossovers possible - choose the one closest to segment center
@@ -918,8 +919,9 @@ class LabelColorPathMapRegression:
 
                 if verbose:
                     logger.info(
-                        f"Found {len(sign_changes)} crossover point(s). "
-                        f"Selected split at {optimal_split_point} (center: {segment_center:.1f})"
+                        f"""Found {len(sign_changes)} crossover point(s). """
+                        f"""Selected split at {optimal_split_point} (center: """
+                        f"""{segment_center:.1f})"""
                     )
 
             # Create the left and right segments
@@ -1037,7 +1039,8 @@ class LabelColorPathMapRegression:
                 ax3.text(
                     0.1,
                     0.6,
-                    f"Error Balance: {abs(left_segment['error'] - right_segment['error']):.6f}",
+                    f"Error Balance: "
+                    f"{abs(left_segment['error'] - right_segment['error']):.6f}",
                     transform=ax3.transAxes,
                     fontsize=10,
                     verticalalignment="top",
