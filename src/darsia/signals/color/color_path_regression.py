@@ -531,10 +531,58 @@ class LabelColorPathMapRegression:
         lle = LocallyLinearEmbedding(n_neighbors=n_neighbors, n_components=1)
         embedding = lle.fit_transform(relative_colors).flatten()
 
+        if verbose:
+            # Visualization 1: Original 3D colors vs 1D embedding
+            fig = plt.figure(figsize=(14, 5))
+
+            # 3D scatter of original colors
+            ax1 = fig.add_subplot(131, projection="3d")
+            scatter1 = ax1.scatter(
+                relative_colors[:, 0],
+                relative_colors[:, 1],
+                relative_colors[:, 2],
+                c=embedding,  # Color by embedding value
+                cmap="viridis",
+                s=50,
+                alpha=0.7,
+            )
+            ax1.set_title("Original 3D Colors\n(colored by 1D embedding)")
+            ax1.set_xlabel("R")
+            ax1.set_ylabel("G")
+            ax1.set_zlabel("B")
+            plt.colorbar(scatter1, ax=ax1, label="1D Embedding")
+
+            # 1D embedding vs point index
+            ax2 = fig.add_subplot(132)
+            ax2.scatter(range(num_points), embedding, c=embedding, cmap="viridis", s=50)
+            ax2.set_xlabel("Point Index")
+            ax2.set_ylabel("1D Embedding Value")
+            ax2.set_title("1D Embedding Distribution")
+            ax2.grid(True, alpha=0.3)
+
+            # Embedding histogram
+            ax3 = fig.add_subplot(133)
+            ax3.hist(embedding, bins=20, edgecolor="black", alpha=0.7)
+            ax3.set_xlabel("Embedding Value")
+            ax3.set_ylabel("Frequency")
+            ax3.set_title("1D Embedding Histogram")
+            ax3.grid(True, alpha=0.3)
+
+            plt.tight_layout()
+            if directory:
+                directory.mkdir(parents=True, exist_ok=True)
+                plt.savefig(directory / f"{name}_01_embedding.png", dpi=150)
+            plt.show()
+            plt.close()
+
         # Step 3: Sort embedding and colors
         sorted_indices = np.argsort(embedding)
         sorted_embedding = embedding[sorted_indices]
         sorted_relative_colors = relative_colors[sorted_indices]
+
+        logger.info(
+            f"Embedding range: [{sorted_embedding[0]:.4f}, {sorted_embedding[-1]:.4f}]"
+        )
 
         # Step 3.2: Identify "left" part from origin and remove it
         origin = np.zeros(3)
@@ -542,13 +590,155 @@ class LabelColorPathMapRegression:
         origin_index = np.argmin(
             np.linalg.norm(sorted_relative_colors - origin, axis=1)
         )
-        # Assume origin to be close to the extreme left, if exreme right, flip everything
+        origin_distance = np.linalg.norm(sorted_relative_colors[origin_index] - origin)
+
+        logger.info(
+            f"Identified origin index: {origin_index}, "
+            f"color: {sorted_relative_colors[origin_index]}, "
+            f"distance: {origin_distance:.4f}"
+        )
+
+        if verbose:
+            # Visualization 2: Origin detection
+            fig = plt.figure(figsize=(14, 5))
+
+            # Distance to origin
+            distances_to_origin = np.linalg.norm(
+                sorted_relative_colors - origin, axis=1
+            )
+            ax1 = fig.add_subplot(121)
+            ax1.plot(
+                range(len(sorted_relative_colors)), distances_to_origin, "b-", alpha=0.5
+            )
+            ax1.scatter(
+                origin_index,
+                distances_to_origin[origin_index],
+                color="red",
+                s=100,
+                label="Detected Origin",
+            )
+            ax1.axvline(
+                len(sorted_relative_colors) // 2,
+                color="gray",
+                linestyle="--",
+                alpha=0.5,
+                label="Midpoint",
+            )
+            ax1.set_xlabel("Sorted Index")
+            ax1.set_ylabel("Distance to Origin")
+            ax1.set_title("Distance to Origin (0,0,0)")
+            ax1.legend()
+            ax1.grid(True, alpha=0.3)
+
+            # 3D visualization with origin marked
+            ax2 = fig.add_subplot(122, projection="3d")
+            ax2.scatter(
+                sorted_relative_colors[:, 0],
+                sorted_relative_colors[:, 1],
+                sorted_relative_colors[:, 2],
+                c=range(len(sorted_relative_colors)),
+                cmap="viridis",
+                s=30,
+                alpha=0.7,
+            )
+            ax2.scatter(
+                sorted_relative_colors[origin_index, 0],
+                sorted_relative_colors[origin_index, 1],
+                sorted_relative_colors[origin_index, 2],
+                color="red",
+                s=200,
+                marker="*",
+                label="Detected Origin",
+            )
+            ax2.scatter(0, 0, 0, color="green", s=100, marker="x", label="True Origin")
+            ax2.set_xlabel("R")
+            ax2.set_ylabel("G")
+            ax2.set_zlabel("B")
+            ax2.set_title("Origin Detection in 3D")
+            ax2.legend()
+
+            plt.tight_layout()
+            if directory:
+                plt.savefig(directory / f"{name}_02_origin_detection.png", dpi=150)
+            plt.show()
+            plt.close()
+
+        # Assume origin to be close to the extreme left, if extreme right, flip everything
         if origin_index > len(sorted_relative_colors) // 2:
+            logger.info(
+                f"Origin detected at right side (index {origin_index}). "
+                f"Flipping direction."
+            )
             origin_index = len(sorted_relative_colors) - origin_index - 1
             sorted_embedding = np.flip(sorted_embedding, axis=0)
             sorted_relative_colors = np.flip(sorted_relative_colors, axis=0)
+            logger.info(f"After flip, origin index: {origin_index}")
+
         sorted_embedding = sorted_embedding[origin_index:]
         sorted_relative_colors = sorted_relative_colors[origin_index:, :]
+
+        logger.info(
+            f"""After trimming: {len(sorted_embedding)} points, """
+            f"""embedding range: [{sorted_embedding[0]:.4f}, {sorted_embedding[-1]:.4f}]"""
+        )
+
+        if verbose:
+            # Visualization 3: Sorted and trimmed colors
+            fig = plt.figure(figsize=(14, 5))
+
+            # Sorted embedding as path
+            ax1 = fig.add_subplot(121)
+            ax1.plot(
+                range(len(sorted_embedding)),
+                sorted_embedding,
+                "b-",
+                marker="o",
+                markersize=3,
+            )
+            ax1.scatter(
+                0,
+                sorted_embedding[0],
+                color="red",
+                s=100,
+                zorder=5,
+                label="Added Origin",
+            )
+            ax1.set_xlabel("Index")
+            ax1.set_ylabel("Embedding Value")
+            ax1.set_title("Sorted & Trimmed Embedding")
+            ax1.grid(True, alpha=0.3)
+            ax1.legend()
+
+            # 3D path
+            ax2 = fig.add_subplot(122, projection="3d")
+            ax2.plot(
+                sorted_relative_colors[:, 0],
+                sorted_relative_colors[:, 1],
+                sorted_relative_colors[:, 2],
+                "b-",
+                alpha=0.5,
+                linewidth=2,
+            )
+            ax2.scatter(
+                sorted_relative_colors[:, 0],
+                sorted_relative_colors[:, 1],
+                sorted_relative_colors[:, 2],
+                c=range(len(sorted_relative_colors)),
+                cmap="viridis",
+                s=50,
+            )
+            ax2.scatter(0, 0, 0, color="red", s=200, marker="*", label="Origin")
+            ax2.set_xlabel("R")
+            ax2.set_ylabel("G")
+            ax2.set_zlabel("B")
+            ax2.set_title("Sorted Path in 3D Color Space")
+            ax2.legend()
+
+            plt.tight_layout()
+            if directory:
+                plt.savefig(directory / f"{name}_03_sorted_path.png", dpi=150)
+            plt.show()
+            plt.close()
 
         # Add origin to the beginning
         sorted_embedding = np.hstack(
