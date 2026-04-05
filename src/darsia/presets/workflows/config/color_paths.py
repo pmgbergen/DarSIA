@@ -64,6 +64,21 @@ class ColorPathsConfig:
                        linear regression; pass the expanded spectrum as
                        ``ignore=`` *(default – preserves existing behaviour)*.
     """
+    histogram_weighting: str = "threshold"
+    """Controls how histogram counts are used when fitting the colour path.
+
+    Allowed values:
+
+    - ``"threshold"``  – binary threshold on the normalised histogram; counts are
+                         discarded after thresholding *(default – preserves existing
+                         behaviour)*.
+    - ``"wls"``        – weighted least-squares path fit where per-bin weights are
+                         proportional to the normalised histogram probability.
+    - ``"wls_sqrt"``   – same as ``"wls"`` but weights are the square-root of the
+                         normalised probability, reducing dominance of high-count bins.
+    - ``"wls_log"``    – same as ``"wls"`` but weights are ``log(1 + count)``,
+                         providing gentle compression of large counts.
+    """
 
     def load(
         self,
@@ -192,6 +207,22 @@ class ColorPathsConfig:
             )
         self.ignore_baseline_spectrum = raw_ignore
 
+        # Histogram weighting mode for colour-path fitting
+        _allowed_weighting = {"threshold", "wls", "wls_sqrt", "wls_log"}
+        raw_weighting = _get_key(
+            sec,
+            "histogram_weighting",
+            default="threshold",
+            required=False,
+            type_=str,
+        )
+        if raw_weighting not in _allowed_weighting:
+            raise ValueError(
+                f"Invalid value '{raw_weighting}' for 'histogram_weighting'. "
+                f"Allowed values are: {sorted(_allowed_weighting)}."
+            )
+        self.histogram_weighting = raw_weighting
+
         # Handle inline [color_paths.roi.*] sub-sections: parse and inject into registry.
         if "roi" in sec and isinstance(sec["roi"], dict) and roi_registry is not None:
             from .roi import RoiAndLabelConfig, RoiConfig
@@ -224,6 +255,7 @@ class ColorPathsConfig:
             data     = ["calibration1", "calibration2"]
             baseline = "baseline_images"
             ignore_baseline_spectrum = "expanded"  # "none", "baseline", or "expanded"
+            histogram_weighting = "threshold"  # "threshold", "wls", "wls_sqrt", or "wls_log"
 
             Example (inline sub-section):
             ------------------------------
