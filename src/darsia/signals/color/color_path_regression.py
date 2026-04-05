@@ -504,9 +504,9 @@ class LabelColorPathMapRegression:
             darsia.ColorPath: The relative color path through the significant boxes.
 
         """
-        assert (
-            spectrum.color_range.color_mode == darsia.ColorMode.RELATIVE
-        ), "Color path regression only implemented for RELATIVE color mode."
+        assert spectrum.color_range.color_mode == darsia.ColorMode.RELATIVE, (
+            "Color path regression only implemented for RELATIVE color mode."
+        )
         # Step 0: Prepare
         num_dofs = num_segments + 1
 
@@ -751,9 +751,7 @@ class LabelColorPathMapRegression:
         sorted_relative_colors = np.vstack((origin, sorted_relative_colors))
 
         # Initialize segments
-        segments = (
-            []
-        )  # Find the two representative key colors representing the start and end of the path
+        segments = []  # Find the two representative key colors representing the start and end of the path
 
         def segment_error(segment_range):
             """Calculate the quantile-based fitting error for a color segment.
@@ -818,12 +816,288 @@ class LabelColorPathMapRegression:
             return length
 
         def split_segment(segment_range):
+            """Split a segment at the point where left and right errors are balanced.
+
+            This function finds the optimal split point by:
+            1. Computing error for all possible left/right partitions
+            2. Smoothing both error curves to reduce noise
+            3. Finding where the smoothed curves intersect
+            4. Selecting the intersection closest to the segment midpoint for stability
+
+            The smoothing uses a Savitzky-Golay filter which preserves sharp features
+            while removing high-frequency noise from the error curves.
+
+            Args:
+                segment_range: A range object specifying indices in the segment
+
+            Returns:
+                Tuple of two dicts:
+                    - left_segment: {"range": range, "error": float, "length": float}
+                    - right_segment: {"range": range, "error": float, "length": float}
+
+            """
+            from scipy.signal import savgol_filter
+
+            total_error = segment_error(segment_range)
+            total_length = segment_length(segment_range)
+
+            pts = []
+            left_errors = []
+            right_errors = []
+
+            # Compute errors for all possible split points
+            for split_point in range(1, len(segment_range) - 1):
+                left_segment_range = segment_range[:split_point]
+                right_segment_range = segment_range[split_point:]
+
+                left_error = segment_error(left_segment_range)
+                right_error = segment_error(right_segment_range)
+
+                pts.append(split_point)
+                left_errors.append(left_error)
+                right_errors.append(right_error)
+
+            pts = np.array(pts)
+            left_errors = np.array(left_errors)
+            right_errors = np.array(right_errors)
+
+            # Smooth the error curves to reduce noise
+            # Use Savitzky-Golay filter if we have enough points
+            if len(pts) >= 5:
+                # Window length should be odd and less than data length
+                window_length = min(5, len(pts) if len(pts) % 2 == 1 else len(pts) - 1)
+                if window_length >= 5:
+                    try:
+                        left_errors_smooth = savgol_filter(
+                            left_errors, window_length=window_length, polyorder=2
+                        )
+                        right_errors_smooth = savgol_filter(
+                            right_errors, window_length=window_length, polyorder=2
+                        )
+                    except ValueError:
+                        # Fallback to simple moving average if Savitzky-Golay fails
+                        left_errors_smooth = left_errors
+                        right_errors_smooth = right_errors
+                else:
+                    # Simple moving average for small datasets
+                    window = 3
+                    left_errors_smooth = np.convolve(
+                        left_errors, np.ones(window) / window, mode="same"
+                    )
+                    right_errors_smooth = np.convolve(
+                        right_errors, np.ones(window) / window, mode="same"
+                    )
+            else:
+                # Too few points, use raw errors
+                left_errors_smooth = left_errors
+                right_errors_smooth = right_errors
+
+            # Find all crossover points where left_error ~= right_error
+            error_diff = left_errors_smooth - right_errors_smooth
+
+            # Find sign changes (crossover points)
+            sign_changes = np.where(np.diff(np.sign(error_diff)))[0]
+
+            if len(sign_changes) == 0:
+                # No crossover found - use the point with minimum absolute difference
+                optimal_idx = np.argmin(np.abs(error_diff))
+                optimal_split_point = pts[optimal_idx]
+                logger.warning(
+                    f"No error crossover found. Using minimum difference at index {optimal_split_point}"
+                )
+            else:
+                # Multiple crossovers possible - choose the one closest to segment center
+                segment_center = len(segment_range) / 2
+                crossover_indices = sign_changes
+                crossover_pts = pts[crossover_indices]
+
+                # Find crossover closest to center
+                center_distances = np.abs(crossover_pts - segment_center)
+                best_crossover_idx = np.argmin(center_distances)
+                optimal_split_point = crossover_pts[best_crossover_idx]
+
+                if verbose:
+                    logger.info(
+                        f"Found {len(sign_changes)} crossover point(s). "
+                        f"Selected split at {optimal_split_point} (center: {segment_center:.1f})"
+                    )
+
+            # Create the left and right segments
+            left_segment_range = segment_range[:optimal_split_point]
+            right_segment_range = segment_range[optimal_split_point:]
+
+            left_segment = {
+                "range": left_segment_range,
+                "error": segment_error(left_segment_range),
+                "length": segment_length(left_segment_range),
+            }
+            right_segment = {
+                "range": right_segment_range,
+                "error": segment_error(right_segment_range),
+                "length": segment_length(right_segment_range),
+            }
+
+            # Visualization
+            if verbose:
+                fig = plt.figure(figsize=(15, 4))
+
+                # Plot 1: Error curves with smoothing
+                ax1 = fig.add_subplot(131)
+                ax1.plot(pts, left_errors, "b-", alpha=0.3, label="Left Error (raw)")
+                ax1.plot(pts, right_errors, "r-", alpha=0.3, label="Right Error (raw)")
+                ax1.plot(
+                    pts,
+                    left_errors_smooth,
+                    "b-",
+                    linewidth=2,
+                    label="Left Error (smooth)",
+                )
+                ax1.plot(
+                    pts,
+                    right_errors_smooth,
+                    "r-",
+                    linewidth=2,
+                    label="Right Error (smooth)",
+                )
+                ax1.axvline(
+                    optimal_split_point,
+                    color="green",
+                    linestyle="--",
+                    linewidth=2,
+                    label=f"Split @ {optimal_split_point}",
+                )
+                ax1.axvline(
+                    segment_center,
+                    color="gray",
+                    linestyle=":",
+                    alpha=0.5,
+                    label="Center",
+                )
+                ax1.set_xlabel("Split Point")
+                ax1.set_ylabel("Error")
+                ax1.set_title("Error Curves (Raw vs Smoothed)")
+                ax1.legend(fontsize=8)
+                ax1.grid(True, alpha=0.3)
+
+                # Plot 2: Error difference
+                ax2 = fig.add_subplot(132)
+                ax2.plot(pts, error_diff, "k-", linewidth=2, label="Left - Right Error")
+                ax2.axhline(0, color="gray", linestyle="-", alpha=0.5)
+                ax2.axvline(
+                    optimal_split_point,
+                    color="green",
+                    linestyle="--",
+                    linewidth=2,
+                    label=f"Split @ {optimal_split_point}",
+                )
+                if len(sign_changes) > 0:
+                    ax2.scatter(
+                        pts[sign_changes],
+                        error_diff[sign_changes],
+                        color="orange",
+                        s=100,
+                        zorder=5,
+                        label="Crossovers",
+                    )
+                ax2.set_xlabel("Split Point")
+                ax2.set_ylabel("Error Difference")
+                ax2.set_title("Left Error - Right Error")
+                ax2.legend(fontsize=8)
+                ax2.grid(True, alpha=0.3)
+
+                # Plot 3: Segment info
+                ax3 = fig.add_subplot(133)
+                ax3.text(
+                    0.1,
+                    0.9,
+                    f"Segment Range: [{segment_range.start}:{segment_range.stop}]",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.text(
+                    0.1,
+                    0.8,
+                    f"Left Error: {left_segment['error']:.6f}",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.text(
+                    0.1,
+                    0.7,
+                    f"Right Error: {right_segment['error']:.6f}",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.text(
+                    0.1,
+                    0.6,
+                    f"Error Balance: {abs(left_segment['error'] - right_segment['error']):.6f}",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.text(
+                    0.1,
+                    0.5,
+                    f"Left Length: {left_segment['length']:.6f}",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.text(
+                    0.1,
+                    0.4,
+                    f"Right Length: {right_segment['length']:.6f}",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.text(
+                    0.1,
+                    0.3,
+                    f"Crossovers Found: {len(sign_changes)}",
+                    transform=ax3.transAxes,
+                    fontsize=10,
+                    verticalalignment="top",
+                    family="monospace",
+                )
+                ax3.axis("off")
+
+                plt.tight_layout()
+                if directory:
+                    plt.savefig(directory / f"{name}_split_analysis.png", dpi=150)
+                plt.show()
+                plt.close()
+
+            return left_segment, right_segment
+
+        def split_segment_old(segment_range):
             # Find the best split point for the selected segment.
             # Balance between error reduction and segment length
             min_metric = float("inf")
 
             total_error = segment_error(segment_range)
             total_length = segment_length(segment_range)
+
+            left_segment = None
+            right_segment = None
+
+            pts = []
+            left_errors = []
+            right_errors = []
+            split_errors = []
+            split_lengths = []
+            optimal_split_point = None
+            metric_values = []
 
             for split_point in range(1, len(segment_range) - 1):
                 left_segment_range = segment_range[:split_point]
@@ -835,9 +1109,17 @@ class LabelColorPathMapRegression:
                 split_error = max(left_error, right_error)
                 split_length = left_length + right_length
 
+                pts.append(split_point)
+                left_errors.append(left_error)
+                right_errors.append(right_error)
+                split_errors.append(split_error)
+                split_lengths.append(split_length)
+
                 # Update the best split if this one is better
-                split_metric = split_error / total_error + split_length / total_length
+                split_metric = (split_error / total_error) + split_length / total_length
+                metric_values.append(split_metric)
                 if split_metric < min_metric:
+                    optimal_split_point = split_point
                     min_metric = split_metric
 
                     left_segment = {
@@ -850,6 +1132,29 @@ class LabelColorPathMapRegression:
                         "error": right_error,
                         "length": right_length,
                     }
+
+            plt.figure("errors")
+            plt.plot(pts, left_errors, label="Left Segment Error")
+            plt.plot(pts, right_errors, label="Right Segment Error")
+            plt.plot(pts, split_errors, label="Max Segment Error", linestyle="--")
+            # Add vertical line at optimal split point
+            plt.axvline(
+                optimal_split_point, color="red", linestyle=":", label="Optimal Split"
+            )
+            plt.legend()
+            plt.figure("lengths")
+            plt.plot(pts, split_lengths, label="Split Segment Length")
+            plt.axvline(
+                optimal_split_point, color="red", linestyle=":", label="Optimal Split"
+            )
+            plt.legend()
+            plt.figure("metrics")
+            plt.plot(pts, metric_values, label="Split Metric (Error Ratio)")
+            plt.axvline(
+                optimal_split_point, color="red", linestyle=":", label="Optimal Split"
+            )
+            plt.legend()
+            plt.show()
             return left_segment, right_segment
 
         segment_range = range(0, len(sorted_embedding))
@@ -889,7 +1194,7 @@ class LabelColorPathMapRegression:
 
         # Improve segments by re-evaluating their error
         old_distances = []
-        for _ in range(1000):
+        for _ in range(10):
             # Cache previous segments for convergence check
             previous_segments = copy.deepcopy(segments)
 
@@ -916,6 +1221,9 @@ class LabelColorPathMapRegression:
                 for i in range(len(segments))
             ):
                 break
+            # Check for oscillation
+            elif False:
+                ...
             else:
                 distance = sum(
                     abs(
