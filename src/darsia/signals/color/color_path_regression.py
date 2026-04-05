@@ -940,7 +940,7 @@ class LabelColorPathMapRegression:
             }
 
             # Visualization
-            if verbose:
+            if False:
                 fig = plt.figure(figsize=(15, 4))
 
                 # Plot 1: Error curves with smoothing
@@ -968,13 +968,15 @@ class LabelColorPathMapRegression:
                     linewidth=2,
                     label=f"Split @ {optimal_split_point}",
                 )
-                ax1.axvline(
-                    segment_center,
-                    color="gray",
-                    linestyle=":",
-                    alpha=0.5,
-                    label="Center",
-                )
+                if len(sign_changes) > 0:
+                    # Not available otherwise.
+                    ax1.axvline(
+                        segment_center,
+                        color="gray",
+                        linestyle=":",
+                        alpha=0.5,
+                        label="Center",
+                    )
                 ax1.set_xlabel("Split Point")
                 ax1.set_ylabel("Error")
                 ax1.set_title("Error Curves (Raw vs Smoothed)")
