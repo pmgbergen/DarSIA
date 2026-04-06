@@ -2799,16 +2799,17 @@ class HeterogeneousColorToMassAnalysis:
             int(label) for label in self.signal_model.model[1].ignore_labels
         ]
 
+        label_ids = label_ids_from_image(self.labels)
         metadata = {
             "color_mode": color_mode,
             "ignore_labels": ignore_labels,
             "basis": self.basis.value,
-            "label_ids": label_ids_from_image(self.labels),
+            "label_ids": label_ids,
         }
         write_calibration_metadata(
             folder / "metadata.json",
             basis=self.basis,
-            label_ids=label_ids_from_image(self.labels),
+            label_ids=label_ids,
             extra=metadata,
         )
 

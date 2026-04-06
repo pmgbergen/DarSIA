@@ -40,7 +40,7 @@ def calibration_basis_folder(basis: str | CalibrationBasis) -> str:
 def label_ids_from_image(labels_img) -> list[int]:
     """Extract sorted non-negative label ids from an image-like labels container."""
 
-    return [int(label) for label in sorted(np.unique(labels_img.img)) if label >= 0]
+    return sorted([int(label) for label in np.unique(labels_img.img) if label >= 0])
 
 
 def apply_basis_to_rig(rig, basis: str | CalibrationBasis) -> CalibrationBasis:

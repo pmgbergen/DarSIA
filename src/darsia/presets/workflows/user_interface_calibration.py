@@ -109,6 +109,5 @@ def preset_calibration(rig=Rig, **kwargs):
             show=args.show,
             rois=kwargs.get("rois"),
             default=args.default_mass,
-            use_facies=False if args.basis == "labels" else True,
             basis=args.basis,
         )

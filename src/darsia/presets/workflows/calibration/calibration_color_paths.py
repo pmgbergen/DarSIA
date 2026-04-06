@@ -52,10 +52,8 @@ def calibration_color_paths(
     fluidflower = cls.load(config.rig.path)
     fluidflower.load_experiment(experiment)
 
-    selected_basis = apply_basis_to_rig(
-        fluidflower,
-        basis if basis is not None else config.color_paths.basis,
-    )
+    requested_basis = basis if basis is not None else config.color_paths.basis
+    selected_basis = apply_basis_to_rig(fluidflower, requested_basis)
 
     # ! ---- LOAD IMAGES ----
 

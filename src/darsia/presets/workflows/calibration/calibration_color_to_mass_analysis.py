@@ -70,12 +70,11 @@ def calibration_color_to_mass_analysis(
 
     # ! ---- LOAD COLOR PATHS ----
 
-    selected_basis = apply_basis_to_rig(
-        fluidflower,
-        basis
-        if basis is not None
-        else (config.color_paths.basis if use_facies else CalibrationBasis.LABELS),
+    default_basis = (
+        config.color_to_mass.basis if use_facies else CalibrationBasis.LABELS
     )
+    requested_basis = basis if basis is not None else default_basis
+    selected_basis = apply_basis_to_rig(fluidflower, requested_basis)
     current_label_ids = label_ids_from_image(fluidflower.labels)
 
     color_paths_metadata = read_calibration_metadata(
@@ -88,7 +87,7 @@ def calibration_color_to_mass_analysis(
         artifact="color_paths",
     )
 
-    if selected_basis.value == "facies":
+    if selected_basis == CalibrationBasis.FACIES:
         # NOTE: Base analysis on facies (not labels)
         _color_paths = darsia.LabelColorPathMap.load(
             config.color_paths.calibration_file
