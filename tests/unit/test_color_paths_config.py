@@ -391,6 +391,27 @@ class TestBasisAwareCalibrationPaths:
         )
         data_reg = _make_data_registry(tmp_path)
         cfg = ColorPathsConfig().load(
+           path=toml_path,
+            data=tmp_path,
+            results=tmp_path,
+            data_registry=data_reg,
+        )
+        assert cfg.basis.value == "labels"
+        assert cfg.calibration_file == tmp_path / "calibration" / "color_paths" / "from_labels"
+        
+# ---------------------------------------------------------------------------
+# histogram_weighting config key
+# ---------------------------------------------------------------------------
+
+
+class TestHistogramWeighting:
+    """Tests for the ``histogram_weighting`` configuration key."""
+
+    def _load_cfg(self, tmp_path: Path, extra: str = "") -> ColorPathsConfig:
+        toml_path = _write_toml(tmp_path, _minimal_color_paths_toml(extra=extra))
+        data_reg = _make_data_registry(tmp_path)
+        cfg = ColorPathsConfig()
+        cfg.load(
             path=toml_path,
             data=tmp_path,
             results=tmp_path,
@@ -426,3 +447,35 @@ class TestBasisAwareCalibrationPaths:
             cfg.calibration_folder
             == tmp_path / "calibration" / "color_to_mass" / "from_labels"
         )
+        return cfg
+
+    def test_default_is_threshold(self, tmp_path):
+        """When the key is absent the default must be ``'threshold'``."""
+        cfg = self._load_cfg(tmp_path)
+        assert cfg.histogram_weighting == "threshold"
+
+    def test_explicit_threshold(self, tmp_path):
+        cfg = self._load_cfg(tmp_path, 'histogram_weighting = "threshold"')
+        assert cfg.histogram_weighting == "threshold"
+
+    def test_wls_value(self, tmp_path):
+        cfg = self._load_cfg(tmp_path, 'histogram_weighting = "wls"')
+        assert cfg.histogram_weighting == "wls"
+
+    def test_wls_sqrt_value(self, tmp_path):
+        cfg = self._load_cfg(tmp_path, 'histogram_weighting = "wls_sqrt"')
+        assert cfg.histogram_weighting == "wls_sqrt"
+
+    def test_wls_log_value(self, tmp_path):
+        cfg = self._load_cfg(tmp_path, 'histogram_weighting = "wls_log"')
+        assert cfg.histogram_weighting == "wls_log"
+
+    def test_invalid_value_raises(self, tmp_path):
+        """An unrecognised value must raise a ``ValueError``."""
+        with pytest.raises(ValueError, match="histogram_weighting"):
+            self._load_cfg(tmp_path, 'histogram_weighting = "bad_value"')
+
+    def test_dataclass_default(self):
+        """The dataclass default must be ``'threshold'`` without loading any TOML."""
+        cfg = ColorPathsConfig()
+        assert cfg.histogram_weighting == "threshold"
