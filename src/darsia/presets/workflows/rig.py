@@ -27,7 +27,7 @@ class Rig:
     """Rig object for CO2 analysis."""
 
     @property
-    def corrections(self) -> list:
+    def corrections(self) -> list[darsia.BaseCorrection]:
         """Combined correction workflow in execution order."""
         return getattr(self, "shape_corrections", []) + getattr(
             self, "color_corrections", []
@@ -176,7 +176,7 @@ class Rig:
 
         if True:  # corrections_config.resize:
             # Define resize correction that resizes to the shape of the baseline image.
-            # This is needed to ensure that later curvature corrrections or concentration
+            # This is needed to ensure that later curvature corrections or concentration
             # analysis work correctly.
             self.resize_correction = darsia.Resize(
                 shape=baseline_for_setup.shape[: baseline_for_setup.space_dim]
@@ -244,9 +244,10 @@ class Rig:
         """Setup label-dependent color corrections after labels/porosity are available."""
         if corrections_config is None:
             corrections_config = CorrectionsConfig()
-        assert hasattr(self, "shape_corrected_baseline"), (
-            "Shape-corrected baseline missing. Run setup_shape_corrections first."
-        )
+        if not hasattr(self, "shape_corrected_baseline"):
+            raise RuntimeError(
+                "Shape-corrected baseline missing. Run setup_shape_corrections first."
+            )
 
         self.color_corrections = []
         """Color corrections initialized after labels and porosity are available."""
