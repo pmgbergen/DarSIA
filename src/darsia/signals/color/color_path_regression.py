@@ -3,6 +3,7 @@
 import copy
 import logging
 from pathlib import Path
+from typing import Literal
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -488,6 +489,7 @@ class LabelColorPathMapRegression:
         num_segments: int = 1,
         name: str = "Color Path",
         directory: Path | None = None,
+        weighting: Literal["threshold", "wls", "wls_sqrt", "wls_log"] = "threshold",
         verbose: bool = False,
     ) -> darsia.ColorPath:
         """Find a relative color path through the significant boxes.
@@ -498,6 +500,14 @@ class LabelColorPathMapRegression:
             num_segments (int): The number of segments for the color path.
             name (str): Name of the color path.
             directory (Path | None): Directory to save verbose plots.
+            weighting (str): How to use histogram counts when fitting the path.
+                ``"threshold"`` (default) uses binary 0/1 weights controlled by
+                the spectrum threshold – counts are not used beyond that.
+                ``"wls"`` weights each active bin by its normalised probability.
+                ``"wls_sqrt"`` weights by the square-root of the probability.
+                ``"wls_log"`` weights by ``log(1 + count)`` where count is
+                derived from the normalised probability scaled by the total
+                number of active bins.
             verbose (bool): Whether to print additional information.
 
         Returns:
@@ -514,6 +524,34 @@ class LabelColorPathMapRegression:
         relative_colors = spectrum.relative_colors
         colors = spectrum.colors
         num_points = relative_colors.shape[0]
+
+        # Build per-bin weights from the histogram.
+        # Thresholding is always applied first via spectrum.spectrum (binary 0/1 mask).
+        # For "threshold" mode the weights are those binary values (1 for active bins).
+        # For WLS modes the full histogram probabilities of the active bins are used.
+        active_probs = spectrum.histogram[np.where(spectrum.spectrum)]
+        if weighting == "threshold":
+            # Binary weights from thresholding: 1 for every active bin, 0 for inactive
+            # (inactive bins are not present in relative_colors at all).
+            point_weights = np.ones(num_points, dtype=float)
+        elif weighting == "wls":
+            point_weights = active_probs
+        elif weighting == "wls_sqrt":
+            point_weights = np.sqrt(active_probs)
+        elif weighting == "wls_log":
+            # Approximate counts as prob * num_active_bins (avoids storing N separately)
+            approx_counts = active_probs * num_points
+            point_weights = np.log1p(approx_counts)
+        else:
+            raise ValueError(
+                f"Unknown histogram_weighting value '{weighting}'. "
+                "Allowed: 'threshold', 'wls', 'wls_sqrt', 'wls_log'."
+            )
+        w_sum = point_weights.sum()
+        if w_sum > 0.0:
+            point_weights = point_weights / w_sum
+        else:
+            point_weights = np.ones(num_points, dtype=float) / num_points
 
         # Check for empty color path - need at least two points to define a path
         if num_points <= 1:
@@ -579,6 +617,7 @@ class LabelColorPathMapRegression:
         sorted_indices = np.argsort(embedding)
         sorted_embedding = embedding[sorted_indices]
         sorted_relative_colors = relative_colors[sorted_indices]
+        sorted_weights = point_weights[sorted_indices]
 
         logger.info(
             f"Embedding range: [{sorted_embedding[0]:.4f}, {sorted_embedding[-1]:.4f}]"
@@ -672,11 +711,15 @@ class LabelColorPathMapRegression:
             origin_index = len(sorted_relative_colors) - origin_index - 1
             sorted_embedding = np.flip(sorted_embedding, axis=0)
             sorted_relative_colors = np.flip(sorted_relative_colors, axis=0)
+            sorted_weights = np.flip(sorted_weights, axis=0)
             logger.info(f"After flip, origin index: {origin_index}")
 
         sorted_embedding = sorted_embedding[origin_index:]
         sorted_relative_colors = sorted_relative_colors[origin_index:, :]
+        sorted_weights = sorted_weights[origin_index:]
 
+        # Add origin to the beginning with weight of 0 to anchor the path at the
+        # relative origin without biasing the weighted fit toward or away from it.
         logger.info(
             f"""After trimming: {len(sorted_embedding)} points, """
             f"""embedding range: [{sorted_embedding[0]:.4f}, {sorted_embedding[-1]:.4f}]"""
@@ -749,6 +792,11 @@ class LabelColorPathMapRegression:
             )
         )
         sorted_relative_colors = np.vstack((origin, sorted_relative_colors))
+        sorted_weights = np.hstack((0.0, sorted_weights))
+        # Re-normalise after prepending the origin weight
+        w_total = sorted_weights.sum()
+        if w_total > 0.0:
+            sorted_weights = sorted_weights / w_total
 
         # Initialize segments.
         segments = []
@@ -805,10 +853,18 @@ class LabelColorPathMapRegression:
                 axis=1,
                 ord=1,
             )
-            # Use quantile error instead of sum to exclude outliers
-            quantile = 0.8  # TODO make adjustable
-            quantile_error = np.quantile(segment_errors, quantile)
-            return quantile_error
+            if weighting == "threshold":
+                # Original behaviour: use an 80th-percentile quantile error.
+                quantile = 0.8
+                return np.quantile(segment_errors, quantile)
+            else:
+                # Weighted average error using per-bin histogram weights.
+                seg_w = sorted_weights[segment_range]
+                seg_w_sum = seg_w.sum()
+                if seg_w_sum > 0.0:
+                    return float(np.dot(seg_w, segment_errors) / seg_w_sum)
+                # Fall back to unweighted mean if all weights happen to be zero.
+                return float(np.mean(segment_errors))
 
         def segment_length(segment_range):
             segment_embedding = sorted_embedding[segment_range]
@@ -1345,6 +1401,7 @@ class LabelColorPathMapRegression:
         ignore: darsia.LabelColorSpectrumMap | None = None,
         num_segments: int = 1,
         directory: Path | None = None,
+        weighting: Literal["threshold", "wls", "wls_sqrt", "wls_log"] = "threshold",
         verbose: bool = False,
     ) -> darsia.LabelColorPathMap:
         """Find relative color paths for each label in the spectrum map.
@@ -1354,6 +1411,11 @@ class LabelColorPathMapRegression:
                 analyze.
             ignore (LabelColorSpectrumMap | None): The color spectrum map to ignore.
             num_segments (int): The number of segments for the color path.
+            weighting (Literal): How to use histogram counts when fitting each path.
+                ``"threshold"`` (default) uses binary 0/1 weights from the spectrum
+                threshold – counts are not used beyond that.
+                ``"wls"``, ``"wls_sqrt"``, and ``"wls_log"`` use count-weighted
+                average errors – see :meth:`_find_color_path` for details.
             verbose (bool): Whether to print additional information.
 
         Returns:
@@ -1370,6 +1432,7 @@ class LabelColorPathMapRegression:
                         num_segments=num_segments,
                         name=f"Color Path for Label {label}",
                         directory=directory,
+                        weighting=weighting,
                         verbose=verbose,
                     ),
                 )
