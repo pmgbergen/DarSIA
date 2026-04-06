@@ -26,6 +26,36 @@ logger = logging.getLogger(__name__)
 class Rig:
     """Rig object for CO2 analysis."""
 
+    @property
+    def corrections(self) -> list[darsia.BaseCorrection]:
+        """Combined correction workflow in execution order."""
+        return getattr(self, "shape_corrections", []) + getattr(
+            self, "color_corrections", []
+        )
+
+    @staticmethod
+    def _is_shape_correction(correction: object) -> bool:
+        return isinstance(
+            correction,
+            (
+                darsia.TypeCorrection,
+                darsia.Resize,
+                darsia.DriftCorrection,
+                darsia.CurvatureCorrection,
+            ),
+        )
+
+    @staticmethod
+    def _is_color_correction(correction: object) -> bool:
+        return isinstance(
+            correction,
+            (
+                darsia.ColorCorrection,
+                darsia.RelativeColorCorrection,
+                darsia.IlluminationCorrection,
+            ),
+        )
+
     def setup_reading(
         self,
         baseline_path: Path,
@@ -39,13 +69,16 @@ class Rig:
 
         # Setup (based on baseline image without any corrections applied)
         pre_baseline = darsia.imread(baseline_path)
-        self.setup_corrections(
+        self.setup_shape_corrections(
             pre_baseline=pre_baseline,
             corrections_config=corrections_config,
         )
 
-        # Define reference baseline (with corrections applied)
-        self.baseline = self.read_image(baseline_path)
+        # Define shape-corrected baseline.
+        self.shape_corrected_baseline = darsia.imread(
+            baseline_path, transformations=self.shape_corrections
+        )
+        self.baseline = self.shape_corrected_baseline.copy()
 
         # Plot corrected baseline - show and/or log.
         plt.figure("Corrected baseline")
@@ -62,83 +95,75 @@ class Rig:
 
         logger.info("Reading setup completed.")
 
-    def setup_corrections(
+    def load_corrections(
         self,
-        folder: Path | None = None,
-        pre_baseline: darsia.Image | None = None,
+        folder: Path,
         corrections_config: CorrectionsConfig | None = None,
     ) -> None:
-        """Setup corrections for the rig.
+        """Load persisted corrections from disk.
 
-        Prioritize loading existing corrections from the specified path.
-
-        Args:
-            folder (Path | None): Path to the folder containing correction files.
-                If provided, it will load existing corrections from this path.
-            pre_baseline (darsia.Image | None): Pre-baseline image used for defining
-                corrections. If `folder` is provided and exists, this argument is ignored.
-            corrections_config (CorrectionsConfig | None): Configuration for which corrections
-                to apply. If `folder` is provided and exists, this argument is ignored.
-
+        Supports both split-format files (`shape_correction_*`, `color_correction_*`)
+        and legacy mixed-format files (`correction_*`).
         """
-        # Use defaults if no config provided.
         if corrections_config is None:
             corrections_config = CorrectionsConfig()
 
-        if folder and folder.exists():
-            self.corrections = []
-            for correction_path in sorted(folder.glob("correction_*.npz")):
+        self.shape_corrections = []
+        self.color_corrections = []
+
+        shape_paths = sorted(folder.glob("shape_correction_*.npz"))
+        color_paths = sorted(folder.glob("color_correction_*.npz"))
+        if shape_paths or color_paths:
+            for correction_path in shape_paths:
                 correction = darsia.read_correction(correction_path)
-                logger.info(f"Loaded {type(correction).__name__}")
-                if (
-                    (
-                        isinstance(correction, darsia.TypeCorrection)
-                        # and corrections_config.type
-                    )
-                    or (
-                        isinstance(correction, darsia.Resize)
-                        # and corrections_config.resize
-                    )
-                    or (
-                        isinstance(correction, darsia.DriftCorrection)
-                        # and corrections_config.drift
-                    )
-                    or (
-                        isinstance(correction, darsia.CurvatureCorrection)
-                        # and corrections_config.curvature
-                    )
-                    or (
-                        isinstance(correction, darsia.ColorCorrection)
-                        # and corrections_config.color
-                    )
-                    or (
-                        isinstance(correction, darsia.RelativeColorCorrection)
-                        # and corrections_config.relative_color
-                    )
-                    or (
-                        isinstance(correction, darsia.IlluminationCorrection)
-                        # and corrections_config.illumination
-                    )
-                ):
-                    logger.info(f"Loaded {type(correction).__name__}")
-                    self.corrections.append(correction)
+                if self._is_shape_correction(correction):
+                    self.shape_corrections.append(correction)
+                    logger.info(f"Loaded shape correction {type(correction).__name__}")
                 else:
                     logger.warning(
-                        f"Skipping {type(correction).__name__} (not enabled in config)."
+                        f"Skipping non-shape correction in shape pipeline: "
+                        f"{type(correction).__name__}"
                     )
-
-            logger.info("Corrections setup complete.")
+            for correction_path in color_paths:
+                correction = darsia.read_correction(correction_path)
+                if self._is_color_correction(correction):
+                    self.color_corrections.append(correction)
+                    logger.info(f"Loaded color correction {type(correction).__name__}")
+                else:
+                    logger.warning(
+                        f"Skipping non-color correction in color pipeline: "
+                        f"{type(correction).__name__}"
+                    )
+            logger.info("Corrections loaded from split format.")
             return
 
-        # ! ---- CORRECTIONS ----
+        for correction_path in sorted(folder.glob("correction_*.npz")):
+            correction = darsia.read_correction(correction_path)
+            if self._is_shape_correction(correction):
+                self.shape_corrections.append(correction)
+                logger.info(f"Loaded shape correction {type(correction).__name__}")
+            elif self._is_color_correction(correction):
+                self.color_corrections.append(correction)
+                logger.info(f"Loaded color correction {type(correction).__name__}")
+            else:
+                logger.warning(
+                    f"Skipping unknown correction type {type(correction).__name__}"
+                )
+        logger.info("Corrections loaded from legacy format.")
 
-        # Initialize corrections workflow as empty list, to be filled based on config and
-        # available files.
-        self.corrections = []
-        """Corrections workflow for the rig object, applied in sequence to images."""
+    def setup_shape_corrections(
+        self,
+        pre_baseline: darsia.Image,
+        corrections_config: CorrectionsConfig | None = None,
+    ) -> None:
+        """Setup shape corrections that do not depend on labels/porosity."""
+        if corrections_config is None:
+            corrections_config = CorrectionsConfig()
 
-        # Sanity check.
-        assert pre_baseline is not None, "Pre-baseline image is not set."
+        self.shape_corrections = []
+        """Shape corrections applied prior to label-dependent corrections."""
+
+        baseline_for_setup = pre_baseline
 
         if corrections_config.type:
             # Aux: needed for rescaling not leaving the range of color space
@@ -146,17 +171,17 @@ class Rig:
                 corrections_config.type.target_type
             )
             """Type correction to convert images to float32."""
-            pre_baseline = self.type_converter(pre_baseline)
+            baseline_for_setup = self.type_converter(baseline_for_setup)
 
             # Update corrections workflow
-            self.corrections.append(self.type_converter)
+            self.shape_corrections.append(self.type_converter)
 
         if True:  # corrections_config.resize:
             # Define resize correction that resizes to the shape of the baseline image.
-            # This is needed to ensure that later curvature corrrections or concentration
+            # This is needed to ensure that later curvature corrections or concentration
             # analysis work correctly.
             self.resize_correction = darsia.Resize(
-                shape=pre_baseline.shape[: pre_baseline.space_dim]
+                shape=baseline_for_setup.shape[: baseline_for_setup.space_dim]
             )
             """Resize correction to baseline shape."""
 
@@ -171,22 +196,22 @@ class Rig:
                 )
 
             self.resize_correction_inter_nearest = darsia.Resize(
-                shape=pre_baseline.shape[: pre_baseline.space_dim],
+                shape=baseline_for_setup.shape[: baseline_for_setup.space_dim],
                 interpolation="inter_nearest",
             )
             """Resize for int data."""
 
             # Update corrections workflow
-            self.corrections.append(self.resize_correction)
+            self.shape_corrections.append(self.resize_correction)
 
         if corrections_config.drift:
             # Define translation correction object based on color checker
             try:
                 _, cc_voxels = darsia.find_colorchecker(
-                    pre_baseline, corrections_config.drift.colorchecker
+                    baseline_for_setup, corrections_config.drift.colorchecker
                 )
                 self.drift_correction = darsia.DriftCorrection(
-                    pre_baseline, config={"roi": cc_voxels}
+                    baseline_for_setup, config={"roi": cc_voxels}
                 )
                 """Drift correction based on color checker alignment."""
             except Exception as e:
@@ -194,10 +219,10 @@ class Rig:
                     f"Color checker not found. Drift correction not setup. Error: {e}",
                     UserWarning,
                 )
-                self.drift_correction = darsia.DriftCorrection(pre_baseline)
+                self.drift_correction = darsia.DriftCorrection(baseline_for_setup)
 
             # Update corrections workflow
-            self.corrections.append(self.drift_correction)
+            self.shape_corrections.append(self.drift_correction)
 
         if corrections_config.curvature:
             # Define curvature correction as derived from analysis of laser grid images
@@ -205,31 +230,62 @@ class Rig:
                 config=corrections_config.curvature.config
             )
             """Curvature correction based on laser grid analysis."""
-            baseline = self.curvature_correction(pre_baseline)
+            baseline_for_setup = self.curvature_correction(baseline_for_setup)
 
             # Update corrections workflow
-            self.corrections.append(self.curvature_correction)
+            self.shape_corrections.append(self.curvature_correction)
 
+        logger.info("Shape corrections setup complete.")
+
+    def setup_color_corrections(
+        self,
+        corrections_config: CorrectionsConfig | None = None,
+        log: Path | None = None,
+        show_plot: bool = False,
+    ) -> None:
+        """Setup label-dependent color corrections after labels/porosity are available.
+
+        Execution order is fixed:
+        1) illumination, 2) relative color, 3) color correction.
+        Note: relative color setup is currently guarded/unsupported in Rig and only
+        kept as an explicit reserved stage in this ordering.
+        """
+        if corrections_config is None:
+            corrections_config = CorrectionsConfig()
+        if not hasattr(self, "shape_corrected_baseline"):
+            raise RuntimeError(
+                "Shape-corrected baseline missing. Run setup_shape_corrections first."
+            )
+
+        self.color_corrections = []
+        """Color corrections initialized after labels and porosity are available."""
+
+        # 1) Illumination correction.
         if corrections_config.illumination:
-            # Define empty illumination correction to be specified when labels are available.
-            self.illumination_correction = darsia.IlluminationCorrection()
-            """Illumination correction based on labels and baseline image."""
+            self.illumination_correction = self.setup_illumination_correction(
+                corrections_config.illumination,
+                log=log,
+                show_plot=show_plot,
+            )
+            self.color_corrections.append(self.illumination_correction)
 
-            # Need to wait until labels provided for the setup.
-            if hasattr(self, "labels"):
-                self.setup_illumination_correction(corrections_config.illumination)
+        # 2) Relative color correction (reserved in ordering; setup currently guarded).
+        if corrections_config.relative_color:
+            warn(
+                "relative_color requested but automated setup in Rig is not implemented; "
+                "skipping relative color correction.",
+                UserWarning,
+            )
 
-            # Update corrections workflow
-            self.corrections.append(self.illumination_correction)
-
+        # 3) Color correction.
         if corrections_config.color:
-            # Define color correction based on color checker
+            # Define color correction based on color checker on shape-corrected baseline.
             try:
                 _, cc_voxels = darsia.find_colorchecker(
-                    baseline, corrections_config.color.colorchecker
+                    self.shape_corrected_baseline, corrections_config.color.colorchecker
                 )
                 self.color_correction = darsia.ColorCorrection(
-                    baseline,
+                    self.shape_corrected_baseline,
                     config={
                         "roi": cc_voxels,
                         "clip": False,
@@ -240,13 +296,19 @@ class Rig:
                     f"Color checker not found. Color correction not setup. Error: {e}",
                     UserWarning,
                 )
-                self.color_correction = darsia.ColorCorrection(baseline)
+                self.color_correction = darsia.ColorCorrection(
+                    self.shape_corrected_baseline
+                )
             """Color correction based on color checker alignment."""
+            self.color_corrections.append(self.color_correction)
 
-            # Update corrections workflow
-            self.corrections.append(self.color_correction)
+        # Apply the configured color correction pipeline to the shape-corrected baseline.
+        # At this point, setup has already been run for each configured correction.
+        self.baseline = self.shape_corrected_baseline.copy()
+        for correction in self.color_corrections:
+            self.baseline = correction(self.baseline)
 
-        logger.info("Corrections setup complete.")
+        logger.info("Color corrections setup complete.")
 
     # ! ---- GEOMETRY ----
 
@@ -311,8 +373,12 @@ class Rig:
             # Assume that the labels are based on non-corrected baseline image.
             # Thus, need to apply the relevant corrections from the read routine.
             plain_labels = darsia.imread(path)
-            resized_labels = self.resize_correction_inter_nearest(plain_labels)
-            self.labels = self.curvature_correction(resized_labels)
+            labels = plain_labels
+            if hasattr(self, "resize_correction_inter_nearest"):
+                labels = self.resize_correction_inter_nearest(labels)
+            if hasattr(self, "curvature_correction"):
+                labels = self.curvature_correction(labels)
+            self.labels = labels
 
         else:
             # Assume the labels are aligned with the corrected baseline.
@@ -353,8 +419,12 @@ class Rig:
             # Assume that the facies are based on non-corrected baseline image.
             # Thus, need to apply the relevant corrections from the read routine.
             plain_facies = darsia.imread(path)
-            resized_facies = self.resize_correction_inter_nearest(plain_facies)
-            self.facies = self.curvature_correction(resized_facies)
+            facies = plain_facies
+            if hasattr(self, "resize_correction_inter_nearest"):
+                facies = self.resize_correction_inter_nearest(facies)
+            if hasattr(self, "curvature_correction"):
+                facies = self.curvature_correction(facies)
+            self.facies = facies
 
         else:
             # Assume the facies are aligned with the corrected baseline.
@@ -409,8 +479,8 @@ class Rig:
         config: IlluminationCorrectionConfig | None,
         log: Path | None = None,
         show_plot: bool = False,
-    ) -> None:
-        """Setup illumination correction (empty in Rig).
+    ) -> darsia.IlluminationCorrection:
+        """Setup and return illumination correction.
 
         Args:
             config (IlluminationCorrectionConfig | None): Configuration for the illumination
@@ -419,63 +489,46 @@ class Rig:
             log (Path | None): Path to the log folder where diagnostic plots will be saved.
             show_plot (bool): Whether to show diagnostic plots during setup (default: False).
 
+        Notes:
+            Illumination calibration in Rig intentionally uses the shape-corrected
+            baseline as setup input.
+
         """
-        # Check if the illumination correction is part of active corrections, and track it.
-        has_illumination_correction = [
-            isinstance(c, darsia.IlluminationCorrection) for c in self.corrections
-        ]
+        illumination_correction = darsia.IlluminationCorrection()
 
-        if any(has_illumination_correction):
-            if sum(has_illumination_correction) != 1:
-                raise ValueError("Multiple illumination corrections found in workflow.")
-            # Fetch the illumination correction from the workflow.
-            illumination_correction: darsia.IlluminationCorrection = self.corrections[
-                has_illumination_correction.index(True)
-            ]
-
-            # Fetch samples for illumination correction based on labels and baseline.
-            if config is not None:
-                # Fetch samples for illumination correction based on labels and baseline.
-                sample_groups = []
-                if not config.labels:
-                    # If no labels specified, use random samples from the whole image.
+        # Fetch samples for illumination correction based on labels and baseline.
+        if config is not None:
+            sample_groups = []
+            if not config.labels:
+                # If no labels specified, use random samples from the whole image.
+                samples = illumination_correction.select_random_samples(
+                    mask=darsia.ones_like(self.shape_corrected_baseline, dtype=bool),
+                    config=config,
+                )
+                sample_groups.append(samples)
+            else:
+                for label in config.labels:
+                    mask = self.labels.img == label
                     samples = illumination_correction.select_random_samples(
-                        mask=darsia.ones_like(self.baseline, dtype=bool), config=config
+                        mask=mask, config=config
                     )
                     sample_groups.append(samples)
-                else:
-                    for label in config.labels:
-                        mask = self.labels.img == label
-                        samples = illumination_correction.select_random_samples(
-                            mask=mask, config=config
-                        )
-                        sample_groups.append(samples)
 
-                # Determine illumination correction based on inputs
-                illumination_correction.setup(
-                    base=self.baseline,
-                    sample_groups=sample_groups,
-                    mask=self.boolean_porosity,
-                    outliers=config.outliers,
-                    filter=lambda x: skimage.filters.gaussian(x, sigma=config.sigma),
-                    colorspace=config.colorspace,
-                    interpolation=config.interpolation,
-                    show_plot=show_plot,
-                    log=log,
-                )
-
-            # Update correction in workflow.
-            self.corrections[has_illumination_correction.index(True)] = (
-                illumination_correction
+            # Determine illumination correction based on inputs
+            illumination_correction.setup(
+                # Use shape-corrected baseline as explicit setup input.
+                base=self.shape_corrected_baseline,
+                sample_groups=sample_groups,
+                mask=self.boolean_porosity,
+                outliers=config.outliers,
+                filter=lambda x: skimage.filters.gaussian(x, sigma=config.sigma),
+                colorspace=config.colorspace,
+                interpolation=config.interpolation,
+                show_plot=show_plot,
+                log=log,
             )
 
-            # Update baseline.
-            for correction in self.corrections[
-                has_illumination_correction.index(True) :
-            ]:
-                self.baseline = correction(self.baseline)
-            # TODO: Should use something like, this, but fails with color correction or so...
-            # self.baseline = self.read_image(self.baseline_path)
+        return illumination_correction
 
     # ! ---- POROSITY ----
 
@@ -601,9 +654,9 @@ class Rig:
         # Define boolean image porosity
         self.setup_boolean_image_porosity(log=log)
 
-        # Setup illumination correction (wait until here to use label information)
-        self.setup_illumination_correction(
-            corrections_config.illumination if corrections_config else None,
+        # Setup color corrections (wait until here to use label and porosity information)
+        self.setup_color_corrections(
+            corrections_config=corrections_config,
             log=log,
             show_plot=show_plot,
         )
@@ -689,11 +742,16 @@ class Rig:
 
         # Save reading information
         self.baseline.save(folder / "baseline.npz")
+        if hasattr(self, "shape_corrected_baseline"):
+            self.shape_corrected_baseline.save(folder / "shape_corrected_baseline.npz")
 
-        # Save corrections
-        for i, correction in enumerate(self.corrections):
+        # Save split correction pipelines.
+        for i, correction in enumerate(self.shape_corrections):
             correction_name = type(correction).__name__.lower()
-            correction.save(folder / f"correction_{i}_{correction_name}.npz")
+            correction.save(folder / f"shape_correction_{i}_{correction_name}.npz")
+        for i, correction in enumerate(self.color_corrections):
+            correction_name = type(correction).__name__.lower()
+            correction.save(folder / f"color_correction_{i}_{correction_name}.npz")
 
         # Save geometry information
         try:
@@ -761,10 +819,16 @@ class Rig:
 
         # Load data for reading images
         rig.baseline = darsia.imread(folder / "baseline.npz")
+        if (folder / "shape_corrected_baseline.npz").exists():
+            rig.shape_corrected_baseline = darsia.imread(
+                folder / "shape_corrected_baseline.npz"
+            )
+        else:
+            rig.shape_corrected_baseline = rig.baseline.copy()
         logger.info("Baseline setup complete.")
 
         # Load corrections
-        rig.setup_corrections(folder, corrections_config=corrections_config)
+        rig.load_corrections(folder, corrections_config=corrections_config)
 
         # Load depth map
         rig.setup_depth(path=folder / "depth.npz")
