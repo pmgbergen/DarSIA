@@ -8,6 +8,8 @@ from matplotlib import pyplot as plt
 
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
+from darsia.presets.workflows.basis import label_ids_from_image, select_labels_for_basis
+from darsia.presets.workflows.calibration.metadata import write_calibration_metadata
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.utils.images import load_images_with_cache
@@ -23,7 +25,6 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
         cls: Rig class.
         path: The path to the configuration file.
         show: Whether to display plots during processing.
-
     """
 
     config = FluidFlowerConfig(path, require_data=True, require_results=False)
@@ -45,8 +46,10 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
     fluidflower = cls.load(config.rig.path)
     fluidflower.load_experiment(experiment)
 
-    # Hardcode the use of facies.
-    fluidflower.labels = fluidflower.facies.copy()
+    requested_basis = config.color_paths.basis
+    selected_basis, selected_labels = select_labels_for_basis(
+        fluidflower, requested_basis
+    )
 
     # ! ---- LOAD IMAGES ----
 
@@ -117,7 +120,7 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
     # ! ---- COLOR PATH TOOL ----
 
     color_path_regression = darsia.LabelColorPathMapRegression(
-        labels=fluidflower.labels,
+        labels=selected_labels,
         color_range=tracer_color_range,
         mask=calibration_mask,
         resolution=config.color_paths.resolution,
@@ -184,6 +187,11 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
 
     # Store the color paths to file
     label_color_path_map.save(config.color_paths.calibration_file)
+    write_calibration_metadata(
+        config.color_paths.calibration_file / "metadata.json",
+        basis=selected_basis,
+        label_ids=label_ids_from_image(selected_labels),
+    )
 
     # Display the color paths
     # if show:
