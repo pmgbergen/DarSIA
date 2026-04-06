@@ -28,7 +28,8 @@ def _load_baseline_color_spectrum_for_color_to_mass(
     if ignore_mode not in ("baseline", "expanded"):
         raise ValueError(
             f"Unsupported ignore_baseline_spectrum mode '{ignore_mode}' in "
-            "color-to-mass calibration."
+            "color-to-mass calibration. Valid modes are: 'none', 'baseline', "
+            "'expanded'."
         )
 
     spectrum_files = list(baseline_color_spectrum_folder.glob("color_spectrum_*.json"))
@@ -106,10 +107,8 @@ def calibration_color_to_mass_analysis(
     if use_facies:
         # NOTE: Base analysis on facies (not labels)
         fluidflower.labels = fluidflower.facies.copy()
-        color_paths = darsia.LabelColorPathMap.load(config.color_paths.calibration_file)
-    else:
-        # Use fine-grained but artificial labels for analysis
-        color_paths = darsia.LabelColorPathMap.load(config.color_paths.calibration_file)
+    # Use fine-grained but artificial labels for analysis
+    color_paths = darsia.LabelColorPathMap.load(config.color_paths.calibration_file)
 
     # Pick a reference color path - merely for visualization
     reference_label = config.color_paths.reference_label
