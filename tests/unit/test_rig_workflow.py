@@ -13,7 +13,7 @@ from darsia.presets.workflows.rig import Rig
 
 
 @dataclass
-class _DummyImage:
+class DummyImage:
     applied: list[str] | None = None
 
     def __post_init__(self) -> None:
@@ -21,22 +21,22 @@ class _DummyImage:
             self.applied = []
 
     def copy(self):
-        return _DummyImage(self.applied.copy())
+        return DummyImage(self.applied.copy())
 
 
-class _DummyCorrection:
+class DummyCorrection:
     def __init__(self, name: str):
         self.name = name
 
-    def __call__(self, image: _DummyImage) -> _DummyImage:
+    def __call__(self, image: DummyImage) -> DummyImage:
         image.applied.append(self.name)
         return image
 
 
 def test_rig_corrections_property_concatenates_shape_then_color():
     rig = Rig()
-    rig.shape_corrections = [_DummyCorrection("shape_a"), _DummyCorrection("shape_b")]
-    rig.color_corrections = [_DummyCorrection("color_a")]
+    rig.shape_corrections = [DummyCorrection("shape_a"), DummyCorrection("shape_b")]
+    rig.color_corrections = [DummyCorrection("color_a")]
 
     all_corrections = rig.corrections
 
@@ -55,10 +55,10 @@ def test_setup_color_corrections_illumination_return_is_assigned_and_appended(
     monkeypatch,
 ):
     rig = Rig()
-    rig.shape_corrected_baseline = _DummyImage()
+    rig.shape_corrected_baseline = DummyImage()
 
-    illumination = _DummyCorrection("illumination")
-    color = _DummyCorrection("color")
+    illumination = DummyCorrection("illumination")
+    color = DummyCorrection("color")
     monkeypatch.setattr(
         rig,
         "setup_illumination_correction",
@@ -89,16 +89,16 @@ def test_setup_color_corrections_illumination_return_is_assigned_and_appended(
     assert rig.baseline.applied == ["illumination", "color"]
 
 
-def test_setup_color_corrections_relative_color_stage_is_guarded_warning(
+def test_setup_color_corrections_warns_and_ignores_relative_color_config(
     monkeypatch,
 ):
     rig = Rig()
-    rig.shape_corrected_baseline = _DummyImage()
+    rig.shape_corrected_baseline = DummyImage()
 
     monkeypatch.setattr(
         rig,
         "setup_illumination_correction",
-        lambda *_args, **_kwargs: _DummyCorrection("illumination"),
+        lambda *_args, **_kwargs: DummyCorrection("illumination"),
     )
 
     from darsia.presets.workflows import rig as rig_module
@@ -111,7 +111,7 @@ def test_setup_color_corrections_relative_color_stage_is_guarded_warning(
     monkeypatch.setattr(
         rig_module.darsia,
         "ColorCorrection",
-        lambda *_args, **_kwargs: _DummyCorrection("color"),
+        lambda *_args, **_kwargs: DummyCorrection("color"),
     )
 
     config = CorrectionsConfig(
@@ -126,15 +126,15 @@ def test_setup_color_corrections_relative_color_stage_is_guarded_warning(
     assert [c.name for c in rig.color_corrections] == ["illumination", "color"]
 
 
-def test_setup_illumination_correction_returns_new_correction_when_config_is_none(
+def test_setup_illumination_correction_creates_uninitialized_correction_when_config_is_none(
     monkeypatch,
 ):
     rig = Rig()
-    rig.shape_corrected_baseline = _DummyImage()
+    rig.shape_corrected_baseline = DummyImage()
 
     from darsia.presets.workflows import rig as rig_module
 
-    class _DummyIlluminationCorrection:
+    class DummyIlluminationCorrection:
         def __init__(self):
             self.setup_called = False
 
@@ -147,10 +147,10 @@ def test_setup_illumination_correction_returns_new_correction_when_config_is_non
     monkeypatch.setattr(
         rig_module.darsia,
         "IlluminationCorrection",
-        _DummyIlluminationCorrection,
+        DummyIlluminationCorrection,
     )
 
     correction = rig.setup_illumination_correction(None)
 
-    assert isinstance(correction, _DummyIlluminationCorrection)
+    assert isinstance(correction, DummyIlluminationCorrection)
     assert correction.setup_called is False
