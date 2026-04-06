@@ -25,7 +25,7 @@ class ColorToMassConfig:
     """Calibration data configuration."""
     calibration_folder: Path = field(default_factory=Path)
     """Path to the calibration folder."""
-    basis: CalibrationBasis = CalibrationBasis.FACIES
+    basis: CalibrationBasis = CalibrationBasis.LABELS
     """Label-space basis used for calibration (`facies` or `labels`)."""
 
     def load(
@@ -52,7 +52,7 @@ class ColorToMassConfig:
         self.mode = _get_key(sec, "mode", default="manual", required=False, type_=str)
         self.fluid = _get_key(sec, "fluid", default="co2", required=False, type_=str)
         self.basis = parse_calibration_basis(
-            _get_key(sec, "basis", default=CalibrationBasis.FACIES.value, required=False)
+            _get_key(sec, "basis", default=CalibrationBasis.LABELS.value, required=False)
         )
 
         # Calibration data – support registry reference or inline sub-section

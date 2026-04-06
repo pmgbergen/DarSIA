@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import TYPE_CHECKING
 from warnings import warn
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from darsia.presets.workflows.rig import Rig
 
 
 class CalibrationBasis(StrEnum):
@@ -44,7 +48,7 @@ def label_ids_from_image(labels_img) -> list[int]:
 
 
 def select_labels_for_basis(
-    rig, basis: str | CalibrationBasis
+    rig: Rig, basis: str | CalibrationBasis
 ) -> tuple[CalibrationBasis, object]:
     """Return selected basis and corresponding labels image without mutating the rig."""
 

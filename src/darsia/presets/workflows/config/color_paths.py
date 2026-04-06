@@ -65,7 +65,7 @@ class ColorPathsConfig:
                        linear regression; pass the expanded spectrum as
                        ``ignore=`` *(default – preserves existing behaviour)*.
     """
-    basis: CalibrationBasis = CalibrationBasis.FACIES
+    basis: CalibrationBasis = CalibrationBasis.LABELS
     """Label-space basis used for calibration (`facies` or `labels`)."""
     histogram_weighting: str = "threshold"
     """Controls how histogram counts are used when fitting the colour path.
@@ -155,7 +155,7 @@ class ColorPathsConfig:
             sec, "reference_label", default=0, required=False, type_=int
         )
         self.basis = parse_calibration_basis(
-            _get_key(sec, "basis", default=CalibrationBasis.FACIES.value, required=False)
+            _get_key(sec, "basis", default=CalibrationBasis.LABELS.value, required=False)
         )
 
         # Data management – support registry reference or inline sub-section

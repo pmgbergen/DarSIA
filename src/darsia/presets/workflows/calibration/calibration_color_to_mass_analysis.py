@@ -29,7 +29,6 @@ def calibration_color_to_mass_analysis(
     reset: bool = False,
     show: bool = False,
     rois: dict[str, darsia.CoordinateArray] | None = None,
-    use_facies: bool = True,
     default: bool = False,
 ):
     """Calibration of color to mass analysis.
@@ -43,7 +42,6 @@ def calibration_color_to_mass_analysis(
         reset: Whether to reset existing calibration data.
         show: Whether to perform a final test run to demonstrate the calibration results.
         rois: Regions of interest for calibration (if any).
-        use_facies: Whether to use facies for analysis.
         default: Whether to perform default calibration without interactive steps.
 
     """
@@ -68,8 +66,9 @@ def calibration_color_to_mass_analysis(
 
     # ! ---- LOAD COLOR PATHS ----
 
-    default_basis = config.color_to_mass.basis if use_facies else CalibrationBasis.LABELS
-    selected_basis, selected_labels = select_labels_for_basis(fluidflower, default_basis)
+    selected_basis, selected_labels = select_labels_for_basis(
+        fluidflower, config.color_to_mass.basis
+    )
     current_label_ids = label_ids_from_image(selected_labels)
 
     color_paths_metadata = read_calibration_metadata(

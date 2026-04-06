@@ -372,7 +372,7 @@ class TestIgnoreBaselineSpectrum:
 
 
 class TestBasisAwareCalibrationPaths:
-    def test_color_paths_default_folder_uses_facies_basis(self, tmp_path):
+    def test_color_paths_default_folder_uses_labels_basis(self, tmp_path):
         toml_path = _write_toml(tmp_path, _minimal_color_paths_toml())
         data_reg = _make_data_registry(tmp_path)
         cfg = ColorPathsConfig().load(
@@ -381,10 +381,10 @@ class TestBasisAwareCalibrationPaths:
             results=tmp_path,
             data_registry=data_reg,
         )
-        assert cfg.basis.value == "facies"
-        assert cfg.calibration_file == tmp_path / "calibration" / "color_paths" / "from_facies"
+        assert cfg.basis.value == "labels"
+        assert cfg.calibration_file == tmp_path / "calibration" / "color_paths" / "from_labels"
 
-    def test_color_paths_default_folder_uses_labels_basis(self, tmp_path):
+    def test_color_paths_default_folder_uses_explicit_labels_basis(self, tmp_path):
         toml_path = _write_toml(
             tmp_path,
             _minimal_color_paths_toml(extra='basis = "labels"'),
@@ -419,6 +419,7 @@ class TestHistogramWeighting:
         )
         assert cfg.basis.value == "labels"
         assert cfg.calibration_file == tmp_path / "calibration" / "color_paths" / "from_labels"
+        return cfg
 
     def test_color_to_mass_default_folder_uses_basis(self, tmp_path):
         dummy = tmp_path / "dummy.jpg"
@@ -447,7 +448,6 @@ class TestHistogramWeighting:
             cfg.calibration_folder
             == tmp_path / "calibration" / "color_to_mass" / "from_labels"
         )
-        return cfg
 
     def test_default_is_threshold(self, tmp_path):
         """When the key is absent the default must be ``'threshold'``."""

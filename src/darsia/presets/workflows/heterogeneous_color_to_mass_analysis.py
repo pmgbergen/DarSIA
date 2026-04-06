@@ -44,7 +44,7 @@ class HeterogeneousColorToMassAnalysis:
         geometry: darsia.ExtrudedPorousGeometry,
         restoration: darsia.Model | None = None,
         ignore_labels: list[int] | None = None,
-        basis: CalibrationBasis = CalibrationBasis.FACIES,
+        basis: CalibrationBasis = CalibrationBasis.LABELS,
     ):
         base_model = darsia.CombinedModel(
             [
@@ -2822,7 +2822,7 @@ class HeterogeneousColorToMassAnalysis:
         co2_mass_analysis: darsia.CO2MassAnalysis,
         geometry: darsia.ExtrudedPorousGeometry,
         restoration: darsia.Model | None = None,
-        basis: CalibrationBasis = CalibrationBasis.FACIES,
+        basis: CalibrationBasis = CalibrationBasis.LABELS,
     ) -> "HeterogeneousColorToMassAnalysis":
         """Load the calibration data from json file.
 
