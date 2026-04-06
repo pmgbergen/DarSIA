@@ -8,6 +8,7 @@ from warnings import warn
 from .data_registry import DataRegistry
 from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
+from ..basis import CalibrationBasis, calibration_basis_folder, parse_calibration_basis
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,8 @@ class ColorToMassConfig:
     """Calibration data configuration."""
     calibration_folder: Path = field(default_factory=Path)
     """Path to the calibration folder."""
+    basis: CalibrationBasis = CalibrationBasis.FACIES
+    """Label-space basis used for calibration (`facies` or `labels`)."""
 
     def load(
         self,
@@ -48,6 +51,9 @@ class ColorToMassConfig:
         # Mode and fluid
         self.mode = _get_key(sec, "mode", default="manual", required=False, type_=str)
         self.fluid = _get_key(sec, "fluid", default="co2", required=False, type_=str)
+        self.basis = parse_calibration_basis(
+            _get_key(sec, "basis", default=CalibrationBasis.FACIES.value, required=False)
+        )
 
         # Calibration data – support registry reference or inline sub-section
         data_val = sec.get("data")
@@ -66,6 +72,11 @@ class ColorToMassConfig:
         )
         if not self.calibration_folder:
             assert results is not None
-            self.calibration_folder = results / "calibration" / "color_to_mass"
+            self.calibration_folder = (
+                results
+                / "calibration"
+                / "color_to_mass"
+                / calibration_basis_folder(self.basis)
+            )
 
         return self

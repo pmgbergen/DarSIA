@@ -7,7 +7,9 @@ import skimage.measure
 from matplotlib import pyplot as plt
 
 import darsia
+from darsia.presets.workflows.basis import apply_basis_to_rig, label_ids_from_image
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
+from darsia.presets.workflows.calibration.metadata import write_calibration_metadata
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.utils.standard_images import roi_to_mask
@@ -15,13 +17,19 @@ from darsia.utils.standard_images import roi_to_mask
 logger = logging.getLogger(__name__)
 
 
-def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
+def calibration_color_paths(
+    cls,
+    path: Path,
+    show: bool = False,
+    basis: str | None = None,
+) -> None:
     """Calibration of color paths for a given fluidflower class and configuration.
 
     Args:
         cls: The fluidflower class to use (e.g., ffum.MuseumRig).
         path: The path to the configuration file.
         show: Whether to display plots during processing.
+        basis: Optional override for basis (`labels` or `facies`).
 
     """
 
@@ -44,8 +52,10 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
     fluidflower = cls.load(config.rig.path)
     fluidflower.load_experiment(experiment)
 
-    # Hardcode the use of facies.
-    fluidflower.labels = fluidflower.facies.copy()
+    selected_basis = apply_basis_to_rig(
+        fluidflower,
+        basis if basis is not None else config.color_paths.basis,
+    )
 
     # ! ---- LOAD IMAGES ----
 
@@ -182,6 +192,11 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
 
     # Store the color paths to file
     label_color_path_map.save(config.color_paths.calibration_file)
+    write_calibration_metadata(
+        config.color_paths.calibration_file / "metadata.json",
+        basis=selected_basis,
+        label_ids=label_ids_from_image(fluidflower.labels),
+    )
 
     # Display the color paths
     # if show:

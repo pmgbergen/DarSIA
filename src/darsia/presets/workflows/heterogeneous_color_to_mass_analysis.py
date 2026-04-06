@@ -1,6 +1,5 @@
 # TODO review noqa F824 usage
 
-import json
 import logging
 from pathlib import Path
 from typing import Tuple
@@ -12,6 +11,16 @@ from matplotlib.widgets import Button, Slider
 from scipy.optimize import minimize
 
 import darsia
+from darsia.presets.workflows.basis import (
+    CalibrationBasis,
+    label_ids_from_image,
+    parse_calibration_basis,
+)
+from darsia.presets.workflows.calibration.metadata import (
+    read_calibration_metadata,
+    validate_basis_metadata,
+    write_calibration_metadata,
+)
 from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
@@ -35,6 +44,7 @@ class HeterogeneousColorToMassAnalysis:
         geometry: darsia.ExtrudedPorousGeometry,
         restoration: darsia.Model | None = None,
         ignore_labels: list[int] | None = None,
+        basis: CalibrationBasis = CalibrationBasis.FACIES,
     ):
         base_model = darsia.CombinedModel(
             [
@@ -119,6 +129,8 @@ class HeterogeneousColorToMassAnalysis:
 
         self.color_path_interpretation = color_path_interpretation
         """Color path interpretations for different labels."""
+        self.basis = parse_calibration_basis(basis)
+        """Label-space basis used during calibration."""
 
     @property
     def labels(self) -> darsia.Image:
@@ -2790,9 +2802,15 @@ class HeterogeneousColorToMassAnalysis:
         metadata = {
             "color_mode": color_mode,
             "ignore_labels": ignore_labels,
+            "basis": self.basis.value,
+            "label_ids": label_ids_from_image(self.labels),
         }
-        with open(folder / "metadata.json", "w") as f:
-            json.dump(metadata, f)
+        write_calibration_metadata(
+            folder / "metadata.json",
+            basis=self.basis,
+            label_ids=label_ids_from_image(self.labels),
+            extra=metadata,
+        )
 
     @classmethod
     def load(
@@ -2803,6 +2821,7 @@ class HeterogeneousColorToMassAnalysis:
         co2_mass_analysis: darsia.CO2MassAnalysis,
         geometry: darsia.ExtrudedPorousGeometry,
         restoration: darsia.Model | None = None,
+        basis: CalibrationBasis = CalibrationBasis.FACIES,
     ) -> "HeterogeneousColorToMassAnalysis":
         """Load the calibration data from json file.
 
@@ -2829,11 +2848,23 @@ class HeterogeneousColorToMassAnalysis:
         flash = darsia.SimpleFlash.load(folder / "flash" / "flash")
 
         metadata_path = folder / "metadata.json"
-        if metadata_path.exists():
-            with open(metadata_path, "r") as f:
-                metadata = json.load(f)
-            color_mode = darsia.ColorMode(metadata["color_mode"])
-            ignore_labels = metadata["ignore_labels"]
+        metadata = read_calibration_metadata(metadata_path)
+        validate_basis_metadata(
+            metadata=metadata,
+            expected_basis=parse_calibration_basis(basis),
+            expected_label_ids=label_ids_from_image(labels),
+            artifact="color_to_mass",
+        )
+        color_mode = darsia.ColorMode.RELATIVE
+        ignore_labels = []
+        parsed_basis = parse_calibration_basis(basis)
+        if metadata is not None:
+            if "color_mode" in metadata:
+                color_mode = darsia.ColorMode(metadata["color_mode"])
+            if "ignore_labels" in metadata:
+                ignore_labels = metadata["ignore_labels"]
+            if "basis" in metadata:
+                parsed_basis = parse_calibration_basis(metadata["basis"])
 
         return cls(
             baseline=baseline,
@@ -2846,4 +2877,5 @@ class HeterogeneousColorToMassAnalysis:
             geometry=geometry,
             restoration=restoration,
             ignore_labels=ignore_labels,
+            basis=parsed_basis,
         )

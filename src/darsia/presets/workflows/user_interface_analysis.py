@@ -65,6 +65,12 @@ def build_parser_for_analysis():
         help="Save output figures as NPZ.",
     )
     parser.add_argument(
+        "--basis",
+        choices=["labels", "facies"],
+        default=None,
+        help="Label-space basis for analysis pipelines (default keeps current behavior).",
+    )
+    parser.add_argument(
         "--info", action="store_true", help="Provide help for activated flags."
     )
     return parser
@@ -113,6 +119,7 @@ def run_analysis(rig: type[Rig], args, **kwargs):
         path=args.config,
         all=args.all,
         use_facies=use_facies,
+        basis=args.basis,
         require_color_to_mass=require_color_to_mass,
     )
 

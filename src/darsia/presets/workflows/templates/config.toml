@@ -47,12 +47,17 @@ vertical_stretch = -0.0
 vertical_center_offset = 405
 
 [color_paths]
+# Basis for calibration label-space: "facies" (default) or "labels".
+# - facies: coarse geological regions (legacy/default behavior)
+# - labels: fine segmentation labels
+basis = "facies"
 ignore_labels = [0, 1]
 resolution = [51, 51, 51]
 threshold_baseline = 0.0
 threshold_calibration = 1e-3
 baseline_images = ["...", "...", "..."]
 calibration_images = ["...", "...", "..."]
+# If omitted, defaults to results/calibration/color_paths/from_<basis>
 calibration_file = "./data/color_paths"
 reference_label = 3
 
@@ -65,6 +70,12 @@ analysis_times = [1, 5, 10, 20, 21, 40]
 [mass]
 calibration_image_times = [1, 5, 10, 20]
 calibration_file = "./data/mass_calibration.json"
+
+[color_to_mass]
+# Keep this aligned with [color_paths].basis.
+basis = "facies"
+# If omitted, defaults to results/calibration/color_to_mass/from_<basis>
+# calibration_folder = "./data/color_to_mass"
 
 [analysis.cropping]
 image_times = [1, 5, 10, 20, 21, 40]

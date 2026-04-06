@@ -1,0 +1,58 @@
+"""Shared calibration/analysis basis utilities."""
+
+from __future__ import annotations
+
+from enum import StrEnum
+from warnings import warn
+
+import numpy as np
+
+
+class CalibrationBasis(StrEnum):
+    """Label space used by calibration and analysis workflows."""
+
+    LABELS = "labels"
+    FACIES = "facies"
+
+
+def parse_calibration_basis(
+    value: str | CalibrationBasis | None,
+    default: CalibrationBasis = CalibrationBasis.FACIES,
+) -> CalibrationBasis:
+    """Parse user/config input into a :class:`CalibrationBasis`."""
+
+    if value is None:
+        return default
+    if isinstance(value, CalibrationBasis):
+        return value
+    if isinstance(value, str):
+        return CalibrationBasis(value.lower())
+    raise TypeError(f"Unsupported calibration basis value type: {type(value)}")
+
+
+def calibration_basis_folder(basis: str | CalibrationBasis) -> str:
+    """Return standard folder suffix for basis-aware calibration artifacts."""
+
+    parsed = parse_calibration_basis(basis)
+    return f"from_{parsed.value}"
+
+
+def label_ids_from_image(labels_img) -> list[int]:
+    """Extract sorted non-negative label ids from an image-like labels container."""
+
+    return [int(label) for label in sorted(np.unique(labels_img.img)) if label >= 0]
+
+
+def apply_basis_to_rig(rig, basis: str | CalibrationBasis) -> CalibrationBasis:
+    """Apply basis selection to rig labels in-place and return parsed basis."""
+
+    parsed = parse_calibration_basis(basis)
+    if parsed == CalibrationBasis.FACIES:
+        if not hasattr(rig, "facies"):
+            warn(
+                "Calibration basis is 'facies' but rig has no 'facies' attribute. "
+                "Using current labels instead."
+            )
+            return CalibrationBasis.LABELS
+        rig.labels = rig.facies.copy()
+    return parsed

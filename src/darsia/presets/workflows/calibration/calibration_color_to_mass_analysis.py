@@ -4,7 +4,16 @@ from pathlib import Path
 import numpy as np
 
 import darsia
+from darsia.presets.workflows.basis import (
+    CalibrationBasis,
+    apply_basis_to_rig,
+    label_ids_from_image,
+)
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
+from darsia.presets.workflows.calibration.metadata import (
+    read_calibration_metadata,
+    validate_basis_metadata,
+)
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
@@ -22,6 +31,7 @@ def calibration_color_to_mass_analysis(
     rois: dict[str, darsia.CoordinateArray] | None = None,
     use_facies: bool = True,
     default: bool = False,
+    basis: str | None = None,
 ):
     """Calibration of color to mass analysis.
 
@@ -36,6 +46,7 @@ def calibration_color_to_mass_analysis(
         rois: Regions of interest for calibration (if any).
         use_facies: Whether to use facies for analysis.
         default: Whether to perform default calibration without interactive steps.
+        basis: Optional explicit basis (`labels` or `facies`).
 
     """
     # ! ---- LOAD RUN AND RIG ----
@@ -59,9 +70,26 @@ def calibration_color_to_mass_analysis(
 
     # ! ---- LOAD COLOR PATHS ----
 
-    if use_facies:
+    selected_basis = apply_basis_to_rig(
+        fluidflower,
+        basis
+        if basis is not None
+        else (config.color_paths.basis if use_facies else CalibrationBasis.LABELS),
+    )
+    current_label_ids = label_ids_from_image(fluidflower.labels)
+
+    color_paths_metadata = read_calibration_metadata(
+        config.color_paths.calibration_file / "metadata.json"
+    )
+    validate_basis_metadata(
+        metadata=color_paths_metadata,
+        expected_basis=selected_basis,
+        expected_label_ids=current_label_ids,
+        artifact="color_paths",
+    )
+
+    if selected_basis.value == "facies":
         # NOTE: Base analysis on facies (not labels)
-        fluidflower.labels = fluidflower.facies.copy()
         _color_paths = darsia.LabelColorPathMap.load(
             config.color_paths.calibration_file
         )
@@ -244,6 +272,7 @@ def calibration_color_to_mass_analysis(
             co2_mass_analysis=co2_mass_analysis,
             geometry=fluidflower.geometry,
             restoration=restoration,
+            basis=selected_basis,
         )
         color_analysis.color_path_interpretation = color_path_interpretation
 
@@ -256,6 +285,7 @@ def calibration_color_to_mass_analysis(
             co2_mass_analysis=co2_mass_analysis,
             geometry=fluidflower.geometry,
             restoration=restoration,
+            basis=selected_basis,
         )
     else:
         # Start from scratch
@@ -284,6 +314,7 @@ def calibration_color_to_mass_analysis(
             geometry=fluidflower.geometry,
             restoration=restoration,
             ignore_labels=config.color_paths.ignore_labels + ignore_labels,
+            basis=selected_basis,
         )
 
     # ! ---- INTERACTIVE CALIBRATION ---- ! #

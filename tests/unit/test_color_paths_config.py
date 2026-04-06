@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from darsia.presets.workflows.config.color_paths import ColorPathsConfig
+from darsia.presets.workflows.config.color_to_mass import ColorToMassConfig
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.roi import RoiAndLabelConfig, RoiConfig
 from darsia.presets.workflows.config.roi_registry import RoiRegistry
@@ -369,3 +370,59 @@ class TestIgnoreBaselineSpectrum:
         cfg = ColorPathsConfig()
         assert cfg.ignore_baseline_spectrum == "expanded"
 
+
+class TestBasisAwareCalibrationPaths:
+    def test_color_paths_default_folder_uses_facies_basis(self, tmp_path):
+        toml_path = _write_toml(tmp_path, _minimal_color_paths_toml())
+        data_reg = _make_data_registry(tmp_path)
+        cfg = ColorPathsConfig().load(
+            path=toml_path,
+            data=tmp_path,
+            results=tmp_path,
+            data_registry=data_reg,
+        )
+        assert cfg.basis.value == "facies"
+        assert cfg.calibration_file == tmp_path / "calibration" / "color_paths" / "from_facies"
+
+    def test_color_paths_default_folder_uses_labels_basis(self, tmp_path):
+        toml_path = _write_toml(
+            tmp_path,
+            _minimal_color_paths_toml(extra='basis = "labels"'),
+        )
+        data_reg = _make_data_registry(tmp_path)
+        cfg = ColorPathsConfig().load(
+            path=toml_path,
+            data=tmp_path,
+            results=tmp_path,
+            data_registry=data_reg,
+        )
+        assert cfg.basis.value == "labels"
+        assert cfg.calibration_file == tmp_path / "calibration" / "color_paths" / "from_labels"
+
+    def test_color_to_mass_default_folder_uses_basis(self, tmp_path):
+        dummy = tmp_path / "dummy.jpg"
+        dummy.touch()
+        data_reg = DataRegistry().load(
+            {"path": {"cal_imgs": {"paths": ["dummy.jpg"]}}},
+            data_folder=tmp_path,
+        )
+
+        cfg_path = _write_toml(
+            tmp_path,
+            """
+            [color_to_mass]
+            basis = "labels"
+            data = "cal_imgs"
+            """,
+        )
+        cfg = ColorToMassConfig().load(
+            path=cfg_path,
+            data=tmp_path,
+            results=tmp_path,
+            data_registry=data_reg,
+        )
+        assert cfg.basis.value == "labels"
+        assert (
+            cfg.calibration_folder
+            == tmp_path / "calibration" / "color_to_mass" / "from_labels"
+        )
