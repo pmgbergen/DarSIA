@@ -45,7 +45,7 @@ def print_help_for_flags(args, parser):
         sys.exit(0)
 
 
-def run_comparison(rig: type[Rig], args, **kwargs):
+def run_comparison(rig_cls: type[Rig], args, **kwargs):
     # Only allow one option at a time
     assert (args.events + args.wasserstein_compute + args.wasserstein_assemble) == 1, (
         """Exactly one of events, wasserstein_compute, wasserstein_assemble, or """
@@ -63,21 +63,21 @@ def run_comparison(rig: type[Rig], args, **kwargs):
 
     if args.wasserstein_compute:
         comparison_wasserstein(
-            cls=Rig,
+            cls=rig_cls,
             path=args.config,
             compute=True,
         )
 
     if args.wasserstein_assemble:
         comparison_wasserstein(
-            cls=Rig,
+            cls=rig_cls,
             path=args.config,
             assemble=True,
         )
 
 
-def preset_comparison(rig: type[Rig], **kwargs):
+def preset_comparison(rig_cls: type[Rig], **kwargs):
     parser = build_parser_for_comparison()
     args = parser.parse_args()
     print_help_for_flags(args, parser)
-    run_comparison(rig, args, **kwargs)
+    run_comparison(rig_cls, args, **kwargs)
