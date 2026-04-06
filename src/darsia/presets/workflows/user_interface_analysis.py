@@ -90,7 +90,7 @@ def print_help_for_flags(args, parser):
         sys.exit(0)
 
 
-def run_analysis(rig: type[Rig], args, **kwargs):
+def run_analysis(rig_cls: type[Rig], args, **kwargs):
     if not (
         args.cropping or args.mass or args.volume or args.segmentation or args.fingers
     ):
@@ -109,7 +109,7 @@ def run_analysis(rig: type[Rig], args, **kwargs):
 
     # Prepare shared context once for all analyses
     ctx = prepare_analysis_context(
-        cls=rig,
+        cls=rig_cls,
         path=args.config,
         all=args.all,
         use_facies=use_facies,
@@ -150,8 +150,8 @@ def run_analysis(rig: type[Rig], args, **kwargs):
         )
 
 
-def preset_analysis(rig: type[Rig], **kwargs):
+def preset_analysis(rig_cls: type[Rig], **kwargs):
     parser = build_parser_for_analysis()
     args = parser.parse_args()
     print_help_for_flags(args, parser)
-    run_analysis(rig, args, **kwargs)
+    run_analysis(rig_cls, args, **kwargs)
