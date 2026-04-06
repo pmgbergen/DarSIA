@@ -275,8 +275,7 @@ class Rig:
                 show_plot=show_plot,
             )
 
-        # 2) Relative color correction.
-        # Currently guarded/unsupported in Rig.
+        # 2) Relative color correction (reserved in ordering; setup currently guarded).
 
         # 3) Color correction.
         if corrections_config.color:
@@ -303,7 +302,7 @@ class Rig:
             """Color correction based on color checker alignment."""
             self.color_corrections.append(self.color_correction)
 
-        # Final baseline from explicit stage source.
+        # Apply the color correction pipeline to the shape-corrected baseline.
         self.baseline = self.shape_corrected_baseline.copy()
         for correction in self.color_corrections:
             self.baseline = correction(self.baseline)
