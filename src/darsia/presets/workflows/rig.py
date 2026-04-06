@@ -146,7 +146,9 @@ class Rig:
                 self.color_corrections.append(correction)
                 logger.info(f"Loaded color correction {type(correction).__name__}")
             else:
-                logger.warning(f"Skipping unknown correction type {type(correction).__name__}")
+                logger.warning(
+                    f"Skipping unknown correction type {type(correction).__name__}"
+                )
         logger.info("Corrections loaded from legacy format.")
 
     def setup_shape_corrections(
