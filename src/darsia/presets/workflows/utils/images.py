@@ -2,15 +2,15 @@
 
 import logging
 from pathlib import Path
-from typing import Any
 
 import darsia
+from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
 
 
 def load_images_with_cache(
-    rig: Any,
+    rig: Rig,
     paths: list[Path],
     use_cache: bool,
     cache_dir: Path | None,
@@ -31,7 +31,7 @@ def load_images_with_cache(
 
     Args:
         rig: Object exposing a ``read_image(path: Path) -> darsia.Image`` method
-            (e.g. a FluidFlower rig instance).
+            (e.g. Rig).
         paths: Ordered list of image paths to load.
         use_cache: Whether to use on-disk caching.
         cache_dir: Directory that holds (or will hold) the cached ``.npz`` files.
