@@ -69,19 +69,6 @@ def calibration_color_to_mass_analysis(
     current_label_ids = label_ids_from_image(selected_labels)
 
     color_paths_calibration_file = config.color_paths.calibration_file
-    if config.data.results is not None:
-        color_paths_root = config.data.results / "calibration" / "color_paths"
-        default_color_paths_calibration_file = color_paths_root / calibration_basis_folder(
-            config.color_paths.basis
-        )
-        if (
-            color_paths_calibration_file.resolve()
-            == default_color_paths_calibration_file.resolve()
-        ):
-            color_paths_calibration_file = (
-                color_paths_root / calibration_basis_folder(selected_basis)
-            )
-
     color_paths_metadata = read_calibration_metadata(
         color_paths_calibration_file / "metadata.json"
     )
