@@ -6,6 +6,7 @@ import numpy as np
 import darsia
 from darsia.presets.workflows.basis import (
     CalibrationBasis,
+    calibration_basis_folder,
     label_ids_from_image,
     select_labels_for_basis,
 )
@@ -72,8 +73,22 @@ def calibration_color_to_mass_analysis(
     )
     current_label_ids = label_ids_from_image(selected_labels)
 
+    color_paths_calibration_file = config.color_paths.calibration_file
+    if config.data.results is not None:
+        color_paths_root = config.data.results / "calibration" / "color_paths"
+        default_color_paths_calibration_file = color_paths_root / calibration_basis_folder(
+            config.color_paths.basis
+        )
+        if (
+            color_paths_calibration_file.resolve()
+            == default_color_paths_calibration_file.resolve()
+        ):
+            color_paths_calibration_file = (
+                color_paths_root / calibration_basis_folder(selected_basis)
+            )
+
     color_paths_metadata = read_calibration_metadata(
-        config.color_paths.calibration_file / "metadata.json"
+        color_paths_calibration_file / "metadata.json"
     )
     validate_basis_metadata(
         metadata=color_paths_metadata,
@@ -82,13 +97,7 @@ def calibration_color_to_mass_analysis(
         artifact="color_paths",
     )
 
-    if selected_basis == CalibrationBasis.FACIES:
-        # NOTE: Base analysis on facies (not labels)
-        fluidflower.labels = fluidflower.facies.copy()
-        color_paths = darsia.LabelColorPathMap.load(config.color_paths.calibration_file)
-    else:
-        # Use fine-grained but artificial labels for analysis
-        color_paths = darsia.LabelColorPathMap.load(config.color_paths.calibration_file)
+    color_paths = darsia.LabelColorPathMap.load(color_paths_calibration_file)
 
     # Pick a reference color path - merely for visualization
     reference_label = config.color_paths.reference_label
