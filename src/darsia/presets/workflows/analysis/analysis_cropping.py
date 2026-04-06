@@ -104,7 +104,6 @@ def analysis_cropping(
         cls=cls,
         path=path,
         all=all,
-        use_facies=False,
         require_color_to_mass=False,
     )
     analysis_cropping_from_context(ctx, show=show, save_jpg=save_jpg, save_npz=save_npz)

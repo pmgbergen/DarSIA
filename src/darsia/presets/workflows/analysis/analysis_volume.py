@@ -209,7 +209,6 @@ def analysis_volume(
     path: Path,
     all: bool = False,
     show: bool = False,
-    use_facies: bool = True,
 ):
     """Volume analysis (standalone entry point).
 
@@ -218,14 +217,12 @@ def analysis_volume(
         path: Path to config file.
         all: Whether to use all images.
         show: Whether to show the images.
-        use_facies: Whether to use facies as labels.
 
     """
     ctx = prepare_analysis_context(
         cls=cls,
         path=path,
         all=all,
-        use_facies=use_facies,
         require_color_to_mass=True,
     )
     analysis_volume_from_context(ctx, show=show)

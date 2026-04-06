@@ -8,11 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import darsia
-from darsia.presets.workflows.basis import (
-    CalibrationBasis,
-    parse_calibration_basis,
-    select_labels_for_basis,
-)
+from darsia.presets.workflows.basis import select_labels_for_basis
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
@@ -136,7 +132,6 @@ def prepare_analysis_context(
     cls: type[Rig],
     path: Path | list[Path],
     all: bool = False,
-    use_facies: bool = True,
     require_color_to_mass: bool = False,
 ) -> AnalysisContext:
     """Prepare common analysis context.
@@ -151,7 +146,6 @@ def prepare_analysis_context(
         cls: Rig class.
         path: Path or list of paths to config files.
         all: Whether to use all images.
-        use_facies: Whether to use facies as labels.
         require_color_to_mass: Whether to initialize the color-to-mass pipeline.
 
     Returns:
@@ -175,12 +169,13 @@ def prepare_analysis_context(
     # ! ---- LOAD RIG ----
     fluidflower = cls.load(config.rig.path, config.corrections)
     fluidflower.load_experiment(experiment)
-    selected_basis = parse_calibration_basis(
-        None, default=CalibrationBasis.FACIES if use_facies else CalibrationBasis.LABELS
-    )
-    selected_basis, analysis_labels = select_labels_for_basis(
-        fluidflower, selected_basis
-    )
+    if require_color_to_mass:
+        assert config.color_to_mass is not None
+        selected_basis, analysis_labels = select_labels_for_basis(
+            fluidflower, config.color_to_mass.basis
+        )
+    else:
+        analysis_labels = fluidflower.labels
 
     # ! ---- SELECT IMAGE PATHS ----
     image_paths = select_image_paths(
@@ -221,7 +216,7 @@ def prepare_analysis_context(
             co2_mass_analysis=co2_mass_analysis,
             geometry=fluidflower.geometry,
             restoration=restoration,
-            basis=selected_basis,
+            basis=config.color_to_mass.basis,
         )
 
     return AnalysisContext(
