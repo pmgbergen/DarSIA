@@ -5,10 +5,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ..basis import CalibrationBasis, calibration_basis_folder, parse_calibration_basis
 from .data_registry import DataRegistry
 from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
-from ..basis import CalibrationBasis, calibration_basis_folder, parse_calibration_basis
 
 if TYPE_CHECKING:
     from .roi_registry import RoiRegistry
@@ -155,7 +155,9 @@ class ColorPathsConfig:
             sec, "reference_label", default=0, required=False, type_=int
         )
         self.basis = parse_calibration_basis(
-            _get_key(sec, "basis", default=CalibrationBasis.LABELS.value, required=False)
+            _get_key(
+                sec, "basis", default=CalibrationBasis.LABELS.value, required=False
+            )
         )
 
         # Data management – support registry reference or inline sub-section

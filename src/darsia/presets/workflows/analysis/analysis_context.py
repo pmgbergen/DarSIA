@@ -178,7 +178,9 @@ def prepare_analysis_context(
     selected_basis = parse_calibration_basis(
         None, default=CalibrationBasis.FACIES if use_facies else CalibrationBasis.LABELS
     )
-    selected_basis, analysis_labels = select_labels_for_basis(fluidflower, selected_basis)
+    selected_basis, analysis_labels = select_labels_for_basis(
+        fluidflower, selected_basis
+    )
 
     # ! ---- SELECT IMAGE PATHS ----
     image_paths = select_image_paths(

@@ -5,10 +5,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from warnings import warn
 
+from ..basis import CalibrationBasis, calibration_basis_folder, parse_calibration_basis
 from .data_registry import DataRegistry
 from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
-from ..basis import CalibrationBasis, calibration_basis_folder, parse_calibration_basis
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,9 @@ class ColorToMassConfig:
         self.mode = _get_key(sec, "mode", default="manual", required=False, type_=str)
         self.fluid = _get_key(sec, "fluid", default="co2", required=False, type_=str)
         self.basis = parse_calibration_basis(
-            _get_key(sec, "basis", default=CalibrationBasis.LABELS.value, required=False)
+            _get_key(
+                sec, "basis", default=CalibrationBasis.LABELS.value, required=False
+            )
         )
 
         # Calibration data – support registry reference or inline sub-section
