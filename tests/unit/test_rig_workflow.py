@@ -126,7 +126,9 @@ def test_setup_color_corrections_relative_color_stage_is_guarded_warning(
     assert [c.name for c in rig.color_corrections] == ["illumination", "color"]
 
 
-def test_setup_illumination_correction_returns_new_correction_when_config_none(monkeypatch):
+def test_setup_illumination_correction_returns_new_correction_when_config_is_none(
+    monkeypatch,
+):
     rig = Rig()
     rig.shape_corrected_baseline = _DummyImage()
 
@@ -152,4 +154,3 @@ def test_setup_illumination_correction_returns_new_correction_when_config_none(m
 
     assert isinstance(correction, _DummyIlluminationCorrection)
     assert correction.setup_called is False
-
