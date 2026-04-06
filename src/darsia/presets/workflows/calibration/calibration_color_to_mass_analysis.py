@@ -18,6 +18,7 @@ from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
+from darsia.presets.workflows.utils.images import load_images_with_cache
 
 logger = logging.getLogger(__name__)
 
@@ -83,25 +84,11 @@ def calibration_color_to_mass_analysis(
 
     if selected_basis == CalibrationBasis.FACIES:
         # NOTE: Base analysis on facies (not labels)
-        _color_paths = darsia.LabelColorPathMap.load(
-            config.color_paths.calibration_file
-        )
-        color_paths = darsia.LabelColorPathMap.refine(
-            _color_paths,
-            num_segments=6,
-            mode="relative",
-        )
+        fluidflower.labels = fluidflower.facies.copy()
+        color_paths = darsia.LabelColorPathMap.load(config.color_paths.calibration_file)
     else:
         # Use fine-grained but artificial labels for analysis
-        _color_paths = darsia.LabelColorPathMap.load(
-            config.color_paths.calibration_file
-        )
-
-        # ! ---- REFINE COLOR PATHS ----
-        color_paths = darsia.LabelColorPathMap.refine(
-            _color_paths,
-            num_segments=8,
-        )
+        color_paths = darsia.LabelColorPathMap.load(config.color_paths.calibration_file)
 
     # Pick a reference color path - merely for visualization
     reference_label = config.color_paths.reference_label
@@ -120,20 +107,13 @@ def calibration_color_to_mass_analysis(
         config, experiment, all=False, sub_config=config.color_to_mass
     )
 
-    # Store cached versions of calibration images to speed up development
-    calibration_images = []
-    if not default:
-        for p in calibration_image_paths:
-            if config.data.use_cache:
-                cache_path = config.data.cache / f"{p.stem}.npz"
-                if cache_path.exists():
-                    calibration_image = darsia.imread(cache_path)
-                else:
-                    calibration_image = fluidflower.read_image(p)
-                    calibration_image.save(cache_path)
-            else:
-                calibration_image = fluidflower.read_image(p)
-            calibration_images.append(calibration_image)
+    # Cache calibration images for performance
+    calibration_images: list[darsia.Image] = load_images_with_cache(
+        rig=fluidflower,
+        paths=calibration_image_paths,
+        use_cache=config.data.use_cache,
+        cache_dir=config.data.cache,
+    )
 
     # ! ---- ALLOCATE EMPTY INTERPOLATIONS ----
 
@@ -282,13 +262,26 @@ def calibration_color_to_mass_analysis(
         )
     else:
         # Start from scratch
-        signal_functions = {
-            label: darsia.PWTransformation(
-                color_paths[label].equidistant_distances,
-                color_path_interpolation[label].values,
-            )
-            for label in color_path_interpolation
-        }
+        signal_functions = {}
+        for label in color_path_interpolation:
+            if label in config.color_paths.ignore_labels or label in ignore_labels:
+                signal_functions[label] = darsia.PWTransformation(
+                    color_paths[reference_label].equidistant_distances,
+                    np.zeros(len(color_paths[reference_label].equidistant_distances)),
+                )
+                continue
+            try:
+                signal_functions[label] = darsia.PWTransformation(
+                    color_paths[label].equidistant_distances,
+                    color_path_interpolation[label].values,
+                )
+            except Exception as e:
+                signal_functions[label] = darsia.PWTransformation(
+                    color_paths[reference_label].equidistant_distances,
+                    np.zeros(len(color_paths[reference_label].equidistant_distances)),
+                )
+                ignore_labels.append(label)
+                logger.warning(f"Error processing label {label}: {e}")
         flash = darsia.SimpleFlash(
             min_value_aq=0,
             max_value_aq=0.75,

@@ -214,7 +214,7 @@ def analysis_volume(
     """Volume analysis (standalone entry point).
 
     Args:
-        cls: FluidFlower rig class.
+        cls: Rig class.
         path: Path to config file.
         all: Whether to use all images.
         show: Whether to show the images.

@@ -15,7 +15,7 @@ import math
 from datetime import datetime, timedelta
 from pathlib import Path
 from time import time as tm
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from warnings import warn
 
 import cv2
@@ -2182,7 +2182,9 @@ class OpticalImage(Image):
             self.img = img
             self.color_space = color_space.upper()
 
-    def to_monochromatic(self, key: str) -> ScalarImage:
+    def to_monochromatic(
+        self, key: Literal["gray", "red", "green", "blue", "hue", "saturation", "value"]
+    ) -> ScalarImage:
         """Returns monochromatic version of the image.
 
         Returns:
@@ -2228,6 +2230,12 @@ class OpticalImage(Image):
                 img = image.img[..., 1]
             elif key == "value":
                 img = image.img[..., 2]
+
+        else:
+            raise NotImplementedError(
+                f"""Key {key} not recognized. Please choose one of the following: """
+                """'gray', 'red', 'green', 'blue', 'hue', 'saturation', 'value'."""
+            )
 
         # Adapt specs.
         metadata = image.metadata()

@@ -23,7 +23,7 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
     """Setup and store rig object.
 
     Args:
-        cls: Class of the rig to be setup, e.g. ffum.MuseumRig
+        cls: Class of the rig to be setup
         path (Path): Path to the config file.
         show (bool): Whether to show intermediate results.
 

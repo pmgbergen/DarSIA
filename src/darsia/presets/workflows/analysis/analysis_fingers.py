@@ -151,7 +151,7 @@ def analysis_fingers(
     """Fingers analysis (standalone entry point).
 
     Args:
-        cls: FluidFlower rig class.
+        cls: Rig class.
         path: Path or list of paths to config files.
         show: Whether to show the images.
         all: Whether to use all images.

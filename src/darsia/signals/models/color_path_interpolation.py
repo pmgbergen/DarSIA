@@ -2,12 +2,15 @@
 
 import abc
 import json
+import logging
 from pathlib import Path
 from typing import Literal, overload
 
 import numpy as np
 
 import darsia
+
+logger = logging.getLogger(__name__)
 
 
 class ColorPathFunction(darsia.Model):
@@ -143,6 +146,7 @@ class ColorPathInterpolation(ColorPathFunction):
         Returns:
             ColorPathInterpolation: Loaded ColorPathInterpolation instance.
         """
+        logger.info(f"Loading ColorPathInterpolation from {path}")
         with open(path.with_suffix(".json"), "r") as f:
             data = json.load(f)
         return ColorPathInterpolation.from_dict(data)

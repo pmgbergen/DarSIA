@@ -263,8 +263,45 @@ class LabelColorPathMapRegression:
                     1.0,
                 ).reshape(self._shape + (3,))
 
-                # Plot the significant boxes
-                ax.voxels(color_spectrum_map[label].spectrum, facecolors=c_mesh)
+                # Use histogram values for alpha transparency
+                histogram = color_spectrum_map[label].histogram
+                # Normalize histogram to [0, 1] range for alpha values
+                alpha_mesh = np.zeros(self._shape, dtype=float)
+                hist_max = np.max(histogram[color_spectrum_map[label].spectrum])
+                if hist_max > 0:
+                    alpha_mesh = histogram / hist_max
+                else:
+                    alpha_mesh[color_spectrum_map[label].spectrum] = 1.0
+
+                # Block alpha into 10 discrete levels.
+                num_alpha_levels = 10
+                alpha_min = np.min(alpha_mesh)
+                alpha_max = np.max(alpha_mesh)
+                alpha_levels = np.linspace(alpha_min, alpha_max, num_alpha_levels)
+                alpha_blocked = (
+                    np.digitize(alpha_mesh, bins=alpha_levels) / num_alpha_levels
+                )
+                alpha_blocked = np.clip(alpha_blocked, alpha_min, alpha_max)
+
+                # Plot voxels for each alpha level separately
+                for alpha_level in alpha_levels:
+                    # Create mask for voxels at this alpha level
+                    alpha_tolerance = (alpha_max - alpha_min) / (2 * num_alpha_levels)
+                    mask_at_level = color_spectrum_map[label].spectrum & (
+                        np.abs(alpha_blocked - alpha_level) < alpha_tolerance
+                    )
+                    # Rescale such that levels span 0..1
+                    alpha_level_rescaled = (alpha_level - alpha_min) / (
+                        alpha_max - alpha_min
+                    )
+
+                    if np.any(mask_at_level):
+                        ax.voxels(
+                            mask_at_level,
+                            facecolors=c_mesh,
+                            alpha=alpha_level_rescaled,
+                        )
+
                 # Mark the ignored colors
                 if ignore is not None:
                     ax.voxels(
