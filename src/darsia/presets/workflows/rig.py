@@ -258,26 +258,22 @@ class Rig:
         self.color_corrections = []
         """Color corrections initialized after labels and porosity are available."""
 
+        # 1) Illumination correction.
+        if corrections_config.illumination:
+            self.illumination_correction = self.setup_illumination_correction(
+                corrections_config.illumination,
+                log=log,
+                show_plot=show_plot,
+            )
+            self.color_corrections.append(self.illumination_correction)
+
+        # 2) Relative color correction (reserved in ordering; setup currently guarded).
         if corrections_config.relative_color:
             warn(
                 "relative_color requested but automated setup in Rig is not implemented; "
                 "skipping relative color correction.",
                 UserWarning,
             )
-
-        # 1) Illumination correction.
-        if corrections_config.illumination:
-            # Define empty illumination correction to be specified using labels/porosity.
-            self.illumination_correction = darsia.IlluminationCorrection()
-            self.color_corrections.append(self.illumination_correction)
-
-            self.setup_illumination_correction(
-                corrections_config.illumination,
-                log=log,
-                show_plot=show_plot,
-            )
-
-        # 2) Relative color correction (reserved in ordering; setup currently guarded).
 
         # 3) Color correction.
         if corrections_config.color:
@@ -481,8 +477,8 @@ class Rig:
         config: IlluminationCorrectionConfig | None,
         log: Path | None = None,
         show_plot: bool = False,
-    ) -> None:
-        """Setup illumination correction (empty in Rig).
+    ) -> darsia.IlluminationCorrection:
+        """Setup and return illumination correction.
 
         Args:
             config (IlluminationCorrectionConfig | None): Configuration for the illumination
@@ -496,56 +492,41 @@ class Rig:
             baseline as setup input.
 
         """
-        # Check if the illumination correction is part of active corrections, and track it.
-        has_illumination_correction = [
-            isinstance(c, darsia.IlluminationCorrection) for c in self.color_corrections
-        ]
+        illumination_correction = darsia.IlluminationCorrection()
 
-        if any(has_illumination_correction):
-            if sum(has_illumination_correction) != 1:
-                raise ValueError("Multiple illumination corrections found in workflow.")
-            # Fetch the illumination correction from the workflow.
-            illumination_correction: darsia.IlluminationCorrection = (
-                self.color_corrections[has_illumination_correction.index(True)]
-            )
-
-            # Fetch samples for illumination correction based on labels and baseline.
-            if config is not None:
-                # Fetch samples for illumination correction based on labels and baseline.
-                sample_groups = []
-                if not config.labels:
-                    # If no labels specified, use random samples from the whole image.
+        # Fetch samples for illumination correction based on labels and baseline.
+        if config is not None:
+            sample_groups = []
+            if not config.labels:
+                # If no labels specified, use random samples from the whole image.
+                samples = illumination_correction.select_random_samples(
+                    mask=darsia.ones_like(self.shape_corrected_baseline, dtype=bool),
+                    config=config,
+                )
+                sample_groups.append(samples)
+            else:
+                for label in config.labels:
+                    mask = self.labels.img == label
                     samples = illumination_correction.select_random_samples(
-                        mask=darsia.ones_like(self.shape_corrected_baseline, dtype=bool),
-                        config=config,
+                        mask=mask, config=config
                     )
                     sample_groups.append(samples)
-                else:
-                    for label in config.labels:
-                        mask = self.labels.img == label
-                        samples = illumination_correction.select_random_samples(
-                            mask=mask, config=config
-                        )
-                        sample_groups.append(samples)
 
-                # Determine illumination correction based on inputs
-                illumination_correction.setup(
-                    # Use shape-corrected baseline as explicit setup input.
-                    base=self.shape_corrected_baseline,
-                    sample_groups=sample_groups,
-                    mask=self.boolean_porosity,
-                    outliers=config.outliers,
-                    filter=lambda x: skimage.filters.gaussian(x, sigma=config.sigma),
-                    colorspace=config.colorspace,
-                    interpolation=config.interpolation,
-                    show_plot=show_plot,
-                    log=log,
-                )
-
-            # Update correction in workflow.
-            self.color_corrections[has_illumination_correction.index(True)] = (
-                illumination_correction
+            # Determine illumination correction based on inputs
+            illumination_correction.setup(
+                # Use shape-corrected baseline as explicit setup input.
+                base=self.shape_corrected_baseline,
+                sample_groups=sample_groups,
+                mask=self.boolean_porosity,
+                outliers=config.outliers,
+                filter=lambda x: skimage.filters.gaussian(x, sigma=config.sigma),
+                colorspace=config.colorspace,
+                interpolation=config.interpolation,
+                show_plot=show_plot,
+                log=log,
             )
+
+        return illumination_correction
 
     # ! ---- POROSITY ----
 
