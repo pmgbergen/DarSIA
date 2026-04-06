@@ -142,7 +142,7 @@ def prepare_analysis_context(
     also initialized and receives the restoration object.
 
     Args:
-        cls: FluidFlower rig class.
+        cls: Rig class.
         path: Path or list of paths to config files.
         all: Whether to use all images.
         use_facies: Whether to use facies as labels.
