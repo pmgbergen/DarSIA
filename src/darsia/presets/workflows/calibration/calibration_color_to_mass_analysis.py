@@ -14,6 +14,49 @@ from darsia.presets.workflows.utils.images import load_images_with_cache
 logger = logging.getLogger(__name__)
 
 
+def _load_baseline_color_spectrum_for_color_to_mass(
+    *,
+    ignore_mode: str,
+    baseline_color_spectrum_folder: Path,
+    required_labels: set[int],
+) -> darsia.LabelColorSpectrumMap | None:
+    """Load baseline colour spectrum for color-to-mass calibration if configured."""
+
+    if ignore_mode == "none":
+        return None
+
+    if ignore_mode not in ("baseline", "expanded"):
+        raise ValueError(
+            f"Unsupported ignore_baseline_spectrum mode '{ignore_mode}' in "
+            "color-to-mass calibration."
+        )
+
+    spectrum_files = list(baseline_color_spectrum_folder.glob("color_spectrum_*.json"))
+    if len(spectrum_files) == 0:
+        raise FileNotFoundError(
+            "Baseline colour spectrum files were not found, but "
+            f"ignore_baseline_spectrum='{ignore_mode}' requires them. Expected files "
+            f"matching 'color_spectrum_*.json' in {baseline_color_spectrum_folder}. "
+            "Run color-path calibration first or set ignore_baseline_spectrum='none'."
+        )
+
+    baseline_color_spectrum = darsia.LabelColorSpectrumMap.load(
+        baseline_color_spectrum_folder
+    )
+
+    missing_labels = sorted(
+        required_labels.difference(set(baseline_color_spectrum.keys()))
+    )
+    if len(missing_labels) > 0:
+        raise FileNotFoundError(
+            "Baseline colour spectrum is incomplete for color-to-mass calibration. "
+            f"Missing labels: {missing_labels}. Folder: "
+            f"{baseline_color_spectrum_folder}."
+        )
+
+    return baseline_color_spectrum
+
+
 def calibration_color_to_mass_analysis(
     cls,
     path: Path,
@@ -75,9 +118,10 @@ def calibration_color_to_mass_analysis(
     if show and False:
         reference_color_path.show_path()
 
-    # ! ---- LOAD BASELINE COLOR SPECTRUM ----
-    baseline_color_spectrum = darsia.LabelColorSpectrumMap.load(
-        config.color_paths.baseline_color_spectrum_folder
+    baseline_color_spectrum = _load_baseline_color_spectrum_for_color_to_mass(
+        ignore_mode=config.color_paths.ignore_baseline_spectrum,
+        baseline_color_spectrum_folder=config.color_paths.baseline_color_spectrum_folder,
+        required_labels=set(color_paths.keys()),
     )
 
     # ! ---- LOAD IMAGES ----
@@ -100,7 +144,11 @@ def calibration_color_to_mass_analysis(
             color_path=color_path,
             color_mode=darsia.ColorMode.RELATIVE,
             values=color_path.relative_distances,
-            ignore_spectrum=baseline_color_spectrum[label],
+            ignore_spectrum=(
+                baseline_color_spectrum[label]
+                if baseline_color_spectrum is not None
+                else None
+            ),
         )
         for label, color_path in color_paths.items()
     }
@@ -115,16 +163,20 @@ def calibration_color_to_mass_analysis(
     # Metric I.
     # Determine distance from color path to baseline spectrum (consider the furthest
     # away color to measure sensitivity)
-    distances = {
-        label: max(
-            [
-                float(baseline_color_spectrum[label].distance(c))
-                for c in color_path.colors
-            ]
-        )
-        for label, color_path in color_paths.items()
-    }
-    reference_distance = max(distances.values())
+    if baseline_color_spectrum is None:
+        distances = {label: 1.0 for label in color_paths}
+        reference_distance = 1.0
+    else:
+        distances = {
+            label: max(
+                [
+                    float(baseline_color_spectrum[label].distance(c))
+                    for c in color_path.colors
+                ]
+            )
+            for label, color_path in color_paths.items()
+        }
+        reference_distance = max(distances.values())
 
     # Metric II.
     # Determine distance from color path to reference color path.
@@ -180,7 +232,11 @@ def calibration_color_to_mass_analysis(
             color_path=color_path,
             color_mode=darsia.ColorMode.RELATIVE,
             values=color_path.equidistant_distances,
-            ignore_spectrum=baseline_color_spectrum[label],
+            ignore_spectrum=(
+                baseline_color_spectrum[label]
+                if baseline_color_spectrum is not None
+                else None
+            ),
         )
         for label, color_path in color_paths.items()
     }
