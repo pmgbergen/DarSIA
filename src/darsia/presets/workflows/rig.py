@@ -245,6 +245,8 @@ class Rig:
 
         Execution order is fixed:
         1) illumination, 2) relative color, 3) color correction.
+        Note: relative color setup is currently guarded/unsupported in Rig and only
+        kept as an explicit reserved stage in this ordering.
         """
         if corrections_config is None:
             corrections_config = CorrectionsConfig()
@@ -302,7 +304,8 @@ class Rig:
             """Color correction based on color checker alignment."""
             self.color_corrections.append(self.color_correction)
 
-        # Apply the color correction pipeline to the shape-corrected baseline.
+        # Apply the configured color correction pipeline to the shape-corrected baseline.
+        # At this point, setup has already been run for each configured correction.
         self.baseline = self.shape_corrected_baseline.copy()
         for correction in self.color_corrections:
             self.baseline = correction(self.baseline)
