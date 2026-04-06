@@ -241,7 +241,11 @@ class Rig:
         log: Path | None = None,
         show_plot: bool = False,
     ) -> None:
-        """Setup label-dependent color corrections after labels/porosity are available."""
+        """Setup label-dependent color corrections after labels/porosity are available.
+
+        Execution order is fixed:
+        1) illumination, 2) relative color, 3) color correction.
+        """
         if corrections_config is None:
             corrections_config = CorrectionsConfig()
         if not hasattr(self, "shape_corrected_baseline"):
@@ -252,6 +256,27 @@ class Rig:
         self.color_corrections = []
         """Color corrections initialized after labels and porosity are available."""
 
+        # 1) Illumination correction.
+        if corrections_config.illumination:
+            # Define empty illumination correction to be specified using labels/porosity.
+            self.illumination_correction = darsia.IlluminationCorrection()
+            self.color_corrections.append(self.illumination_correction)
+
+            self.setup_illumination_correction(
+                corrections_config.illumination,
+                log=log,
+                show_plot=show_plot,
+            )
+
+        # 2) Relative color correction.
+        if corrections_config.relative_color:
+            warn(
+                "relative_color requested but automated setup in Rig is not implemented; "
+                "skipping relative color correction.",
+                UserWarning,
+            )
+
+        # 3) Color correction.
         if corrections_config.color:
             # Define color correction based on color checker on shape-corrected baseline.
             try:
@@ -276,33 +301,10 @@ class Rig:
             """Color correction based on color checker alignment."""
             self.color_corrections.append(self.color_correction)
 
-        if corrections_config.relative_color:
-            warn(
-                "relative_color requested but automated setup in Rig is not implemented; "
-                "skipping relative color correction.",
-                UserWarning,
-            )
-
-        if corrections_config.illumination:
-            # Define empty illumination correction to be specified using labels/porosity.
-            self.illumination_correction = darsia.IlluminationCorrection()
-            self.color_corrections.append(self.illumination_correction)
-
-        # Pre-illumination baseline: shape + non-illumination color corrections.
-        self.pre_illumination_baseline = self.shape_corrected_baseline.copy()
+        # Final baseline from explicit stage source.
+        self.baseline = self.shape_corrected_baseline.copy()
         for correction in self.color_corrections:
-            if not isinstance(correction, darsia.IlluminationCorrection):
-                self.pre_illumination_baseline = correction(self.pre_illumination_baseline)
-
-        # Final baseline.
-        self.baseline = self.pre_illumination_baseline.copy()
-
-        # Illumination setup uses labels and boolean porosity and the pre-illumination baseline.
-        self.setup_illumination_correction(
-            corrections_config.illumination,
-            log=log,
-            show_plot=show_plot,
-        )
+            self.baseline = correction(self.baseline)
 
         logger.info("Color corrections setup complete.")
 
@@ -506,9 +508,7 @@ class Rig:
                 if not config.labels:
                     # If no labels specified, use random samples from the whole image.
                     samples = illumination_correction.select_random_samples(
-                        mask=darsia.ones_like(
-                            self.pre_illumination_baseline, dtype=bool
-                        ),
+                        mask=darsia.ones_like(self.shape_corrected_baseline, dtype=bool),
                         config=config,
                     )
                     sample_groups.append(samples)
@@ -522,7 +522,7 @@ class Rig:
 
                 # Determine illumination correction based on inputs
                 illumination_correction.setup(
-                    base=self.pre_illumination_baseline,
+                    base=self.shape_corrected_baseline,
                     sample_groups=sample_groups,
                     mask=self.boolean_porosity,
                     outliers=config.outliers,
@@ -537,13 +537,6 @@ class Rig:
             self.color_corrections[has_illumination_correction.index(True)] = (
                 illumination_correction
             )
-
-            # Update baseline.
-            self.baseline = self.pre_illumination_baseline.copy()
-            for correction in self.color_corrections[
-                has_illumination_correction.index(True) :
-            ]:
-                self.baseline = correction(self.baseline)
 
     # ! ---- POROSITY ----
 
@@ -840,7 +833,6 @@ class Rig:
             )
         else:
             rig.shape_corrected_baseline = rig.baseline.copy()
-        rig.pre_illumination_baseline = rig.baseline.copy()
         logger.info("Baseline setup complete.")
 
         # Load corrections
