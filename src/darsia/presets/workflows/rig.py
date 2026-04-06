@@ -256,6 +256,13 @@ class Rig:
         self.color_corrections = []
         """Color corrections initialized after labels and porosity are available."""
 
+        if corrections_config.relative_color:
+            warn(
+                "relative_color requested but automated setup in Rig is not implemented; "
+                "skipping relative color correction.",
+                UserWarning,
+            )
+
         # 1) Illumination correction.
         if corrections_config.illumination:
             # Define empty illumination correction to be specified using labels/porosity.
@@ -269,12 +276,7 @@ class Rig:
             )
 
         # 2) Relative color correction.
-        if corrections_config.relative_color:
-            warn(
-                "relative_color requested but automated setup in Rig is not implemented; "
-                "skipping relative color correction.",
-                UserWarning,
-            )
+        # Currently guarded/unsupported in Rig.
 
         # 3) Color correction.
         if corrections_config.color:
