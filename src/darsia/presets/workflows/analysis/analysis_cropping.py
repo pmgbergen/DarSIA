@@ -92,7 +92,7 @@ def analysis_cropping(
     Note: If no options are set, the images are only read and no output is saved.
 
     Args:
-        cls: FluidFlower rig class.
+        cls: Rig class.
         path: Path or list of Paths to the images.
         show: Whether to show the images.
         save_jpg: Whether to save the images as JPG.
