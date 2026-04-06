@@ -176,6 +176,7 @@ def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
             ignore=ignore_spectrum,
             num_segments=config.color_paths.num_segments,
             directory=config.color_paths.calibration_file,
+            weighting=config.color_paths.histogram_weighting,
             verbose=show,
         )
     )
