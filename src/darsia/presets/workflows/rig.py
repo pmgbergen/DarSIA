@@ -491,6 +491,10 @@ class Rig:
             log (Path | None): Path to the log folder where diagnostic plots will be saved.
             show_plot (bool): Whether to show diagnostic plots during setup (default: False).
 
+        Notes:
+            Illumination calibration in Rig intentionally uses the shape-corrected
+            baseline as setup input.
+
         """
         # Check if the illumination correction is part of active corrections, and track it.
         has_illumination_correction = [
@@ -526,6 +530,7 @@ class Rig:
 
                 # Determine illumination correction based on inputs
                 illumination_correction.setup(
+                    # Use shape-corrected baseline as explicit setup input.
                     base=self.shape_corrected_baseline,
                     sample_groups=sample_groups,
                     mask=self.boolean_porosity,
