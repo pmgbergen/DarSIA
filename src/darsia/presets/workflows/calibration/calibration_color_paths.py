@@ -9,17 +9,18 @@ from matplotlib import pyplot as plt
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.utils.standard_images import roi_to_mask
 
 logger = logging.getLogger(__name__)
 
 
-def calibration_color_paths(cls, path: Path, show: bool = False) -> None:
+def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> None:
     """Calibration of color paths for a given fluidflower class and configuration.
 
     Args:
-        cls: The fluidflower class to use (e.g., ffum.MuseumRig).
+        cls: Rig class.
         path: The path to the configuration file.
         show: Whether to display plots during processing.
 
