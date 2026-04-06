@@ -6,8 +6,8 @@ import numpy as np
 import darsia
 from darsia.presets.workflows.basis import (
     CalibrationBasis,
-    apply_basis_to_rig,
     label_ids_from_image,
+    select_labels_for_basis,
 )
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.calibration.metadata import (
@@ -31,7 +31,6 @@ def calibration_color_to_mass_analysis(
     rois: dict[str, darsia.CoordinateArray] | None = None,
     use_facies: bool = True,
     default: bool = False,
-    basis: str | None = None,
 ):
     """Calibration of color to mass analysis.
 
@@ -46,7 +45,6 @@ def calibration_color_to_mass_analysis(
         rois: Regions of interest for calibration (if any).
         use_facies: Whether to use facies for analysis.
         default: Whether to perform default calibration without interactive steps.
-        basis: Optional explicit basis (`labels` or `facies`).
 
     """
     # ! ---- LOAD RUN AND RIG ----
@@ -70,12 +68,9 @@ def calibration_color_to_mass_analysis(
 
     # ! ---- LOAD COLOR PATHS ----
 
-    default_basis = (
-        config.color_to_mass.basis if use_facies else CalibrationBasis.LABELS
-    )
-    requested_basis = basis if basis is not None else default_basis
-    selected_basis = apply_basis_to_rig(fluidflower, requested_basis)
-    current_label_ids = label_ids_from_image(fluidflower.labels)
+    default_basis = config.color_to_mass.basis if use_facies else CalibrationBasis.LABELS
+    selected_basis, selected_labels = select_labels_for_basis(fluidflower, default_basis)
+    current_label_ids = label_ids_from_image(selected_labels)
 
     color_paths_metadata = read_calibration_metadata(
         config.color_paths.calibration_file / "metadata.json"
@@ -190,7 +185,7 @@ def calibration_color_to_mass_analysis(
 
     # Decide which labels to ignore based on the two metrics
     ignore_labels = []
-    for label in np.unique(fluidflower.labels.img):
+    for label in np.unique(selected_labels.img):
         relative_distance = distances[label] / reference_distance
         relative_max_interpolation = (
             interpolation_values[label] / reference_interpolation_value
@@ -204,7 +199,7 @@ def calibration_color_to_mass_analysis(
     if False:
         for img in calibration_images[-1:]:
             _img = img.copy()
-            for mask, label in darsia.Masks(fluidflower.labels, return_label=True):
+            for mask, label in darsia.Masks(selected_labels, return_label=True):
                 if label not in ignore_labels:
                     continue
                 _img.img[mask.img] = np.mean(_img.img[mask.img], axis=1, keepdims=True)
@@ -217,7 +212,7 @@ def calibration_color_to_mass_analysis(
         color_path_interpolation[label].values *= interpolation_values[label]
 
     # Overwrite the color paths with updated interpolation values
-    for label in np.unique(fluidflower.labels.img):
+    for label in np.unique(selected_labels.img):
         if label in config.color_paths.ignore_labels or label in ignore_labels:
             color_path_interpolation[label] = color_path_interpolation[reference_label]
 
@@ -267,7 +262,7 @@ def calibration_color_to_mass_analysis(
         color_analysis = HeterogeneousColorToMassAnalysis.load(
             folder=ref_config.color_to_mass.calibration_folder,
             baseline=fluidflower.baseline,
-            labels=fluidflower.labels,
+            labels=selected_labels,
             co2_mass_analysis=co2_mass_analysis,
             geometry=fluidflower.geometry,
             restoration=restoration,
@@ -280,7 +275,7 @@ def calibration_color_to_mass_analysis(
         color_analysis = HeterogeneousColorToMassAnalysis.load(
             folder=config.color_to_mass.calibration_folder,
             baseline=fluidflower.baseline,
-            labels=fluidflower.labels,
+            labels=selected_labels,
             co2_mass_analysis=co2_mass_analysis,
             geometry=fluidflower.geometry,
             restoration=restoration,
@@ -304,7 +299,7 @@ def calibration_color_to_mass_analysis(
         )
         color_analysis = HeterogeneousColorToMassAnalysis(
             baseline=fluidflower.baseline,
-            labels=fluidflower.labels,
+            labels=selected_labels,
             color_mode=darsia.ColorMode.RELATIVE,
             color_path_interpretation=color_path_interpretation,
             signal_functions=signal_functions,
@@ -341,7 +336,7 @@ def calibration_color_to_mass_analysis(
             cmap=custom_cmap,
         )
 
-    for label in np.unique(fluidflower.labels.img):
+    for label in np.unique(selected_labels.img):
         if label in config.color_paths.ignore_labels or label in ignore_labels:
             color_paths[label] = color_paths[reference_label]
 

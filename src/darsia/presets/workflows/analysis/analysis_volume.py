@@ -161,9 +161,9 @@ def analysis_volume_from_context(
 
             # Restrict mass arrays to labeled area.
             _saturation_g = saturation_g.copy()
-            _saturation_g.img[fluidflower.labels.img != label] = 0.0
+            _saturation_g.img[ctx.analysis_labels.img != label] = 0.0
             _saturation_aq = saturation_aq.copy()
-            _saturation_aq.img[fluidflower.labels.img != label] = 0.0
+            _saturation_aq.img[ctx.analysis_labels.img != label] = 0.0
 
             # Integrate over chosen roi
             volume_g_roi = geometry[key].integrate(_saturation_g.subregion(roi))

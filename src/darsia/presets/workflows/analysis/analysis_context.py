@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING
 import darsia
 from darsia.presets.workflows.basis import (
     CalibrationBasis,
-    apply_basis_to_rig,
     parse_calibration_basis,
+    select_labels_for_basis,
 )
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
@@ -49,6 +49,7 @@ class AnalysisContext:
     config: FluidFlowerConfig
     experiment: darsia.ProtocolledExperiment
     fluidflower: Rig
+    analysis_labels: darsia.Image
     image_paths: list[Path]
 
     # Optional - only initialized for mass/volume/segmentation analyses
@@ -136,7 +137,6 @@ def prepare_analysis_context(
     path: Path | list[Path],
     all: bool = False,
     use_facies: bool = True,
-    basis: str | CalibrationBasis | None = None,
     require_color_to_mass: bool = False,
 ) -> AnalysisContext:
     """Prepare common analysis context.
@@ -152,8 +152,6 @@ def prepare_analysis_context(
         path: Path or list of paths to config files.
         all: Whether to use all images.
         use_facies: Whether to use facies as labels.
-        basis: Optional explicit basis (`labels` or `facies`). When provided, this
-            overrides `use_facies`.
         require_color_to_mass: Whether to initialize the color-to-mass pipeline.
 
     Returns:
@@ -178,9 +176,9 @@ def prepare_analysis_context(
     fluidflower = cls.load(config.rig.path, config.corrections)
     fluidflower.load_experiment(experiment)
     selected_basis = parse_calibration_basis(
-        basis, default=CalibrationBasis.FACIES if use_facies else CalibrationBasis.LABELS
+        None, default=CalibrationBasis.FACIES if use_facies else CalibrationBasis.LABELS
     )
-    apply_basis_to_rig(fluidflower, selected_basis)
+    selected_basis, analysis_labels = select_labels_for_basis(fluidflower, selected_basis)
 
     # ! ---- SELECT IMAGE PATHS ----
     image_paths = select_image_paths(
@@ -217,7 +215,7 @@ def prepare_analysis_context(
         color_to_mass_analysis = HeterogeneousColorToMassAnalysis.load(
             folder=config.color_to_mass.calibration_folder,
             baseline=fluidflower.baseline,
-            labels=fluidflower.labels,
+            labels=analysis_labels,
             co2_mass_analysis=co2_mass_analysis,
             geometry=fluidflower.geometry,
             restoration=restoration,
@@ -228,6 +226,7 @@ def prepare_analysis_context(
         config=config,
         experiment=experiment,
         fluidflower=fluidflower,
+        analysis_labels=analysis_labels,
         image_paths=image_paths,
         restoration=restoration,
         color_to_mass_analysis=color_to_mass_analysis,

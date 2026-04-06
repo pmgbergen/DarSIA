@@ -7,7 +7,7 @@ import skimage.measure
 from matplotlib import pyplot as plt
 
 import darsia
-from darsia.presets.workflows.basis import apply_basis_to_rig, label_ids_from_image
+from darsia.presets.workflows.basis import label_ids_from_image, select_labels_for_basis
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.calibration.metadata import write_calibration_metadata
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
@@ -21,7 +21,6 @@ def calibration_color_paths(
     cls,
     path: Path,
     show: bool = False,
-    basis: str | None = None,
 ) -> None:
     """Calibration of color paths for a given fluidflower class and configuration.
 
@@ -29,8 +28,6 @@ def calibration_color_paths(
         cls: The fluidflower class to use (e.g., ffum.MuseumRig).
         path: The path to the configuration file.
         show: Whether to display plots during processing.
-        basis: Optional override for basis (`labels` or `facies`).
-
     """
 
     config = FluidFlowerConfig(path, require_data=True, require_results=False)
@@ -52,8 +49,10 @@ def calibration_color_paths(
     fluidflower = cls.load(config.rig.path)
     fluidflower.load_experiment(experiment)
 
-    requested_basis = basis if basis is not None else config.color_paths.basis
-    selected_basis = apply_basis_to_rig(fluidflower, requested_basis)
+    requested_basis = config.color_paths.basis
+    selected_basis, selected_labels = select_labels_for_basis(
+        fluidflower, requested_basis
+    )
 
     # ! ---- LOAD IMAGES ----
 
@@ -124,7 +123,7 @@ def calibration_color_paths(
     # ! ---- COLOR PATH TOOL ----
 
     color_path_regression = darsia.LabelColorPathMapRegression(
-        labels=fluidflower.labels,
+        labels=selected_labels,
         color_range=tracer_color_range,
         mask=calibration_mask,
         resolution=config.color_paths.resolution,
@@ -193,7 +192,7 @@ def calibration_color_paths(
     write_calibration_metadata(
         config.color_paths.calibration_file / "metadata.json",
         basis=selected_basis,
-        label_ids=label_ids_from_image(fluidflower.labels),
+        label_ids=label_ids_from_image(selected_labels),
     )
 
     # Display the color paths

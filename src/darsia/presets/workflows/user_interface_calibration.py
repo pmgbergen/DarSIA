@@ -56,12 +56,6 @@ def build_parser_for_calibration():
         "--show", action="store_true", help="Show the labels after each step."
     )
     parser.add_argument(
-        "--basis",
-        choices=["labels", "facies"],
-        default=None,
-        help="Label-space basis for calibration pipelines (defaults to facies).",
-    )
-    parser.add_argument(
         "--info", action="store_true", help="Provide help for activated flags."
     )
     return parser
@@ -96,7 +90,6 @@ def preset_calibration(rig=Rig, **kwargs):
             rig,
             args.config,
             args.show,
-            basis=args.basis,
         )
 
     if args.mass or args.default_mass:
@@ -109,5 +102,4 @@ def preset_calibration(rig=Rig, **kwargs):
             show=args.show,
             rois=kwargs.get("rois"),
             default=args.default_mass,
-            basis=args.basis,
         )

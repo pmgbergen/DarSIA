@@ -162,11 +162,11 @@ def analysis_mass_from_context(
 
             # Restrict mass arrays to labeled area.
             _mass = mass.copy()
-            _mass.img[fluidflower.labels.img != label] = 0.0
+            _mass.img[ctx.analysis_labels.img != label] = 0.0
             _mass_g = mass_g.copy()
-            _mass_g.img[fluidflower.labels.img != label] = 0.0
+            _mass_g.img[ctx.analysis_labels.img != label] = 0.0
             _mass_aq = mass_aq.copy()
-            _mass_aq.img[fluidflower.labels.img != label] = 0.0
+            _mass_aq.img[ctx.analysis_labels.img != label] = 0.0
 
             # Integrate over chosen roi
             mass_roi = geometry[key].integrate(_mass.subregion(roi))
