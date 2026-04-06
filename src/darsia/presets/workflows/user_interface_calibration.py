@@ -86,7 +86,11 @@ def preset_calibration(rig=Rig, **kwargs):
         return
 
     if args.color_paths:
-        calibration_color_paths(rig, args.config, args.show)
+        calibration_color_paths(
+            rig,
+            args.config,
+            args.show,
+        )
 
     if args.mass or args.default_mass:
         ref_config = Path(args.ref_config) if args.ref_config else None

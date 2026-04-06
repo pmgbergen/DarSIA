@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ..basis import CalibrationBasis, calibration_basis_folder, parse_calibration_basis
 from .data_registry import DataRegistry
 from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
@@ -64,6 +65,8 @@ class ColorPathsConfig:
                        linear regression; pass the expanded spectrum as
                        ``ignore=`` *(default – preserves existing behaviour)*.
     """
+    basis: CalibrationBasis = CalibrationBasis.LABELS
+    """Label-space basis used for calibration (`facies` or `labels`)."""
     histogram_weighting: str = "threshold"
     """Controls how histogram counts are used when fitting the colour path.
 
@@ -151,6 +154,11 @@ class ColorPathsConfig:
         self.reference_label = _get_key(
             sec, "reference_label", default=0, required=False, type_=int
         )
+        self.basis = parse_calibration_basis(
+            _get_key(
+                sec, "basis", default=CalibrationBasis.LABELS.value, required=False
+            )
+        )
 
         # Data management – support registry reference or inline sub-section
         baseline_val = sec.get("baseline")
@@ -172,7 +180,12 @@ class ColorPathsConfig:
         )
         if not self.calibration_file:
             assert results is not None
-            self.calibration_file = results / "calibration" / "color_paths"
+            self.calibration_file = (
+                results
+                / "calibration"
+                / "color_paths"
+                / calibration_basis_folder(self.basis)
+            )
         self.baseline_color_spectrum_folder = _get_key(
             sec, "baseline_color_spectrum_folder", required=False, type_=Path
         )

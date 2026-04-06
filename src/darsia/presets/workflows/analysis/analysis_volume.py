@@ -161,9 +161,9 @@ def analysis_volume_from_context(
 
             # Restrict mass arrays to labeled area.
             _saturation_g = saturation_g.copy()
-            _saturation_g.img[fluidflower.labels.img != label] = 0.0
+            _saturation_g.img[ctx.analysis_labels.img != label] = 0.0
             _saturation_aq = saturation_aq.copy()
-            _saturation_aq.img[fluidflower.labels.img != label] = 0.0
+            _saturation_aq.img[ctx.analysis_labels.img != label] = 0.0
 
             # Integrate over chosen roi
             volume_g_roi = geometry[key].integrate(_saturation_g.subregion(roi))
@@ -209,7 +209,6 @@ def analysis_volume(
     path: Path,
     all: bool = False,
     show: bool = False,
-    use_facies: bool = True,
 ):
     """Volume analysis (standalone entry point).
 
@@ -218,14 +217,12 @@ def analysis_volume(
         path: Path to config file.
         all: Whether to use all images.
         show: Whether to show the images.
-        use_facies: Whether to use facies as labels.
 
     """
     ctx = prepare_analysis_context(
         cls=cls,
         path=path,
         all=all,
-        use_facies=use_facies,
         require_color_to_mass=True,
     )
     analysis_volume_from_context(ctx, show=show)

@@ -68,7 +68,6 @@ def analysis_segmentation(
     path: Path | list[Path],
     show: bool = False,
     all: bool = False,
-    use_facies: bool = True,
 ):
     """Segmentation analysis (standalone entry point).
 
@@ -77,14 +76,12 @@ def analysis_segmentation(
         path: Path or list of paths to config files.
         show: Whether to show the images.
         all: Whether to use all images.
-        use_facies: Whether to use facies as labels.
 
     """
     ctx = prepare_analysis_context(
         cls=cls,
         path=path,
         all=all,
-        use_facies=use_facies,
         require_color_to_mass=True,
     )
     analysis_segmentation_from_context(ctx, show=show)

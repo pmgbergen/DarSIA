@@ -104,15 +104,11 @@ def run_analysis(rig_cls: type[Rig], args, **kwargs):
         args.mass or args.volume or args.segmentation or args.fingers
     )
 
-    # Determine if we need facies (only for mass/volume/segmentation)
-    use_facies = require_color_to_mass
-
     # Prepare shared context once for all analyses
     ctx = prepare_analysis_context(
         cls=rig_cls,
         path=args.config,
         all=args.all,
-        use_facies=use_facies,
         require_color_to_mass=require_color_to_mass,
     )
 
