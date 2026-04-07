@@ -510,3 +510,44 @@ class TestHistogramWeighting:
         """The dataclass default must be ``'threshold'`` without loading any TOML."""
         cfg = ColorPathsConfig()
         assert cfg.histogram_weighting == "threshold"
+
+
+# ---------------------------------------------------------------------------
+# mode config key
+# ---------------------------------------------------------------------------
+
+
+class TestColorPathMode:
+    """Tests for the ``mode`` configuration key in ``[color_paths]``."""
+
+    def _load_cfg(self, tmp_path: Path, extra: str = "") -> ColorPathsConfig:
+        toml_path = _write_toml(tmp_path, _minimal_color_paths_toml(extra=extra))
+        data_reg = _make_data_registry(tmp_path)
+        cfg = ColorPathsConfig()
+        cfg.load(
+            path=toml_path,
+            data=tmp_path,
+            results=tmp_path,
+            data_registry=data_reg,
+        )
+        return cfg
+
+    def test_default_is_auto(self, tmp_path):
+        cfg = self._load_cfg(tmp_path)
+        assert cfg.mode == "auto"
+
+    def test_manual_value(self, tmp_path):
+        cfg = self._load_cfg(tmp_path, 'mode = "manual"')
+        assert cfg.mode == "manual"
+
+    def test_auto_value(self, tmp_path):
+        cfg = self._load_cfg(tmp_path, 'mode = "auto"')
+        assert cfg.mode == "auto"
+
+    def test_invalid_value_raises(self, tmp_path):
+        with pytest.raises(ValueError, match="for 'mode'"):
+            self._load_cfg(tmp_path, 'mode = "bad_value"')
+
+    def test_dataclass_default(self):
+        cfg = ColorPathsConfig()
+        assert cfg.mode == "auto"

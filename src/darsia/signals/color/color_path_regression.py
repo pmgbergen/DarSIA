@@ -8,6 +8,7 @@ from warnings import warn
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.widgets import Button, TextBox
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 from sklearn.manifold import LocallyLinearEmbedding
@@ -527,6 +528,7 @@ class LabelColorPathMapRegression:
         name: str = "Color Path",
         directory: Path | None = None,
         weighting: Literal["threshold", "wls", "wls_sqrt", "wls_log"] = "threshold",
+        mode: Literal["auto", "manual"] = "auto",
         verbose: bool = False,
     ) -> darsia.ColorPath:
         """Find a relative color path through the significant boxes.
@@ -545,6 +547,10 @@ class LabelColorPathMapRegression:
                 ``"wls_log"`` weights by ``log(1 + count)`` where count is
                 derived from the normalised probability scaled by the total
                 number of active bins.
+            mode (str): Color-path selection mode.
+                ``"auto"`` returns the automated result.
+                ``"manual"`` starts from the automated result and allows
+                interactive key-color editing before finalizing.
             verbose (bool): Whether to print additional information.
 
         Returns:
@@ -1357,6 +1363,22 @@ class LabelColorPathMapRegression:
                 name=name,
             )
 
+        if mode not in ("auto", "manual"):
+            raise ValueError(
+                f"Unknown color-path mode '{mode}'. Allowed: 'auto', 'manual'."
+            )
+
+        if mode == "manual":
+            key_relative_colors = self._manual_postprocess_color_path(
+                relative_colors=relative_colors,
+                colors=colors,
+                key_relative_colors=key_relative_colors,
+                base_color=spectrum.base_color,
+                ignore=ignore,
+                num_dofs=num_dofs,
+                name=name,
+            )
+
         # Step 5: Define the corresponding absolute colors
         key_colors = [spectrum.base_color + c for c in key_relative_colors]
 
@@ -1439,6 +1461,7 @@ class LabelColorPathMapRegression:
         num_segments: int = 1,
         directory: Path | None = None,
         weighting: Literal["threshold", "wls", "wls_sqrt", "wls_log"] = "threshold",
+        mode: Literal["auto", "manual"] = "auto",
         verbose: bool = False,
     ) -> darsia.LabelColorPathMap:
         """Find relative color paths for each label in the spectrum map.
@@ -1453,6 +1476,9 @@ class LabelColorPathMapRegression:
                 threshold – counts are not used beyond that.
                 ``"wls"``, ``"wls_sqrt"``, and ``"wls_log"`` use count-weighted
                 average errors – see :meth:`_find_color_path` for details.
+            mode (Literal): Color-path selection mode.
+                ``"auto"`` returns the automated result.
+                ``"manual"`` enables interactive key-color postprocessing.
             verbose (bool): Whether to print additional information.
 
         Returns:
@@ -1470,6 +1496,7 @@ class LabelColorPathMapRegression:
                         name=f"Color Path for Label {label}",
                         directory=directory,
                         weighting=weighting,
+                        mode=mode,
                         verbose=verbose,
                     ),
                 )
@@ -1477,3 +1504,121 @@ class LabelColorPathMapRegression:
             )
         )
         return label_color_path_map
+
+    def _manual_postprocess_color_path(
+        self,
+        *,
+        relative_colors: np.ndarray,
+        colors: np.ndarray,
+        key_relative_colors: list[np.ndarray],
+        base_color: np.ndarray,
+        ignore: darsia.ColorSpectrum | None,
+        num_dofs: int,
+        name: str,
+    ) -> list[np.ndarray]:
+        """Interactively adjust key relative colors and return the updated list."""
+
+        new_key_relative_colors = [np.array(c, dtype=float).copy() for c in key_relative_colors]
+        if len(new_key_relative_colors) == 0:
+            return new_key_relative_colors
+
+        selected_index = 0
+        finalized = False
+
+        fig = plt.figure(figsize=(10, 6))
+        ax = fig.add_subplot(111, projection="3d")
+        plt.subplots_adjust(bottom=0.25)
+
+        def redraw() -> None:
+            ax.cla()
+            ax.scatter(
+                relative_colors[:, 0],
+                relative_colors[:, 1],
+                relative_colors[:, 2],
+                c=np.clip(colors, 0, 1),
+                s=10,
+                alpha=0.5,
+            )
+
+            key_colors = [base_color + c for c in new_key_relative_colors]
+            if np.array(new_key_relative_colors).shape[0] == num_dofs:
+                key_arr = np.array(new_key_relative_colors)
+                ax.plot(*key_arr.T, c="black", linewidth=2)
+                ax.scatter(*key_arr.T, c=np.clip(key_colors, 0, 1), s=100)
+
+            ax.plot(*np.array(relative_colors).T, c="gray", linewidth=1, alpha=0.5)
+
+            if ignore is not None:
+                base_relative_colors = ignore.relative_colors
+                ax.scatter(
+                    base_relative_colors[:, 0],
+                    base_relative_colors[:, 1],
+                    base_relative_colors[:, 2],
+                    c="r",
+                    s=10,
+                    alpha=0.1,
+                )
+
+            ax.set_title(f"{name} (manual)")
+            ax.set_xlabel("R")
+            ax.set_ylabel("G")
+            ax.set_zlabel("B")
+            fig.canvas.draw_idle()
+
+        index_ax = plt.axes([0.06, 0.12, 0.10, 0.06])
+        r_ax = plt.axes([0.22, 0.12, 0.15, 0.06])
+        g_ax = plt.axes([0.41, 0.12, 0.15, 0.06])
+        b_ax = plt.axes([0.60, 0.12, 0.15, 0.06])
+        update_ax = plt.axes([0.78, 0.12, 0.09, 0.06])
+        finalize_ax = plt.axes([0.89, 0.12, 0.09, 0.06])
+
+        index_box = TextBox(index_ax, "Index", initial=str(selected_index))
+        init_color = new_key_relative_colors[selected_index]
+        r_box = TextBox(r_ax, "R", initial=f"{init_color[0]:.6f}")
+        g_box = TextBox(g_ax, "G", initial=f"{init_color[1]:.6f}")
+        b_box = TextBox(b_ax, "B", initial=f"{init_color[2]:.6f}")
+        update_button = Button(update_ax, "Update")
+        finalize_button = Button(finalize_ax, "Finalize")
+
+        def refresh_color_fields() -> None:
+            color = new_key_relative_colors[selected_index]
+            r_box.set_val(f"{color[0]:.6f}")
+            g_box.set_val(f"{color[1]:.6f}")
+            b_box.set_val(f"{color[2]:.6f}")
+
+        def on_index_submit(text: str) -> None:
+            nonlocal selected_index
+            try:
+                idx = int(float(text))
+            except ValueError:
+                idx = selected_index
+            idx = max(0, min(len(new_key_relative_colors) - 1, idx))
+            selected_index = idx
+            refresh_color_fields()
+
+        def on_update(_) -> None:
+            try:
+                new_color = np.array(
+                    [float(r_box.text), float(g_box.text), float(b_box.text)],
+                    dtype=float,
+                )
+            except ValueError:
+                logger.warning("Manual color-path update skipped due to invalid RGB input.")
+                return
+            new_key_relative_colors[selected_index] = new_color
+            redraw()
+
+        def on_finalize(_) -> None:
+            nonlocal finalized
+            finalized = True
+            plt.close(fig)
+
+        index_box.on_submit(on_index_submit)
+        update_button.on_clicked(on_update)
+        finalize_button.on_clicked(on_finalize)
+
+        redraw()
+        plt.show()
+        if not finalized:
+            logger.info("Manual color-path editor closed without explicit finalize.")
+        return new_key_relative_colors
