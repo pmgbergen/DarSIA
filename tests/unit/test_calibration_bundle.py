@@ -17,6 +17,7 @@ def _write_file(path: Path, content: str = "{}") -> None:
 
 def _write_minimal_config(tmp_path: Path) -> Path:
     data_folder = tmp_path / "data"
+    results_folder = tmp_path / "results"
     data_folder.mkdir(parents=True, exist_ok=True)
     (data_folder / "baseline.jpg").touch()
     (data_folder / "dummy.jpg").touch()
@@ -27,7 +28,7 @@ def _write_minimal_config(tmp_path: Path) -> Path:
 [data]
 folder = "{data_folder}"
 baseline = "baseline.jpg"
-results = "{tmp_path / "results"}"
+results = "{results_folder}"
 
 [data.path.baseline_imgs]
 paths = ["dummy.jpg"]
