@@ -172,7 +172,7 @@ def calibration_color_to_mass_analysis(
     # TODO move this to another calibration function.
 
     # Util 1.
-    threshold = 0.2  # TODO include in config.
+    threshold = config.color_to_mass.threshold
 
     # Metric I.
     # Determine distance from color path to baseline spectrum (consider the furthest
