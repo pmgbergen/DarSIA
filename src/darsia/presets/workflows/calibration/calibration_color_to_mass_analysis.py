@@ -174,7 +174,6 @@ def calibration_color_to_mass_analysis(
     # Util 1.
     threshold = config.color_to_mass.threshold
 
-    # Metric I.
     # Determine distance from color path to baseline spectrum (consider the furthest
     # away color to measure sensitivity)
     if baseline_color_spectrum is None:
@@ -192,7 +191,27 @@ def calibration_color_to_mass_analysis(
         }
         reference_distance = max(distances.values())
 
-    # Metric II.
+    # Decide which labels to ignore based on the two metrics
+    ignore_labels = []
+    for label in np.unique(selected_labels.img):
+        relative_distance = distances[label] / reference_distance
+        if relative_distance < threshold:
+            ignore_labels.append(label)
+    logger.info(f"\033[93mIgnoring labels based on distance: {ignore_labels}\033[0m")
+
+    # Illustrate the ignored labels for the calibration images through grayscaling
+    if show and len(ignore_labels) > 0:
+        for img in calibration_images[-1:]:
+            _img = img.copy()
+            for mask, label in darsia.Masks(selected_labels, return_label=True):
+                if label not in ignore_labels:
+                    continue
+                _img.img[mask.img] = np.mean(_img.img[mask.img], axis=1, keepdims=True)
+            _img.show(cmap=custom_cmap, title="Ignored labels")
+
+    # Util 2. Adapt the interpolation values based on the reference color path
+
+    # Rescale color paths based on reference interpolation.
     # Determine distance from color path to reference color path.
     reference_interpolation = color_path_interpolation[reference_label]
     interpolation_values = {
@@ -204,35 +223,9 @@ def calibration_color_to_mass_analysis(
         )
         for label, color_path in color_paths.items()
     }
-    reference_interpolation_value = max(interpolation_values.values())
-
-    # Decide which labels to ignore based on the two metrics
-    ignore_labels = []
-    for label in np.unique(selected_labels.img):
-        relative_distance = distances[label] / reference_distance
-        relative_max_interpolation = (
-            interpolation_values[label] / reference_interpolation_value
-        )
-        if min(relative_distance, relative_max_interpolation) < threshold:
-            ignore_labels.append(label)
-
-    logger.info(f"\033[93mIgnoring labels: {ignore_labels}\033[0m")
-
-    # Illustrate the ignored labels for the calibration images throgh grayscaling
-    if False:
-        for img in calibration_images[-1:]:
-            _img = img.copy()
-            for mask, label in darsia.Masks(selected_labels, return_label=True):
-                if label not in ignore_labels:
-                    continue
-                _img.img[mask.img] = np.mean(_img.img[mask.img], axis=1, keepdims=True)
-            _img.show(cmap=custom_cmap, title="Ignored labels")
-
-    # Utils. Adapt the interpolation values based on the reference color path
-
-    # Rescale color paths based on reference interpolation
     for label in color_path_interpolation:
-        color_path_interpolation[label].values *= interpolation_values[label]
+        if interpolation_values[label] > 0:
+            color_path_interpolation[label].values *= interpolation_values[label]
 
     # Overwrite the color paths with updated interpolation values
     for label in np.unique(selected_labels.img):
