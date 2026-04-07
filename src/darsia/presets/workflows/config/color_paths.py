@@ -82,6 +82,15 @@ class ColorPathsConfig:
     - ``"wls_log"``    – same as ``"wls"`` but weights are ``log(1 + count)``,
                          providing gentle compression of large counts.
     """
+    mode: str = "auto"
+    """Color-path calibration mode.
+
+    Allowed values:
+
+    - ``"auto"``   – fully automated path fitting *(default)*.
+    - ``"manual"`` – start from automated key colors and allow interactive
+                     user-controlled postprocessing of key relative colors.
+    """
 
     def load(
         self,
@@ -236,6 +245,22 @@ class ColorPathsConfig:
             )
         self.histogram_weighting = raw_weighting
 
+        # Color-path mode
+        _allowed_mode = {"auto", "manual"}
+        raw_mode = _get_key(
+            sec,
+            "mode",
+            default="auto",
+            required=False,
+            type_=str,
+        )
+        if raw_mode not in _allowed_mode:
+            raise ValueError(
+                f"Invalid value '{raw_mode}' for 'mode'. "
+                f"Allowed values are: {sorted(_allowed_mode)}."
+            )
+        self.mode = raw_mode
+
         # Handle inline [color_paths.roi.*] sub-sections: parse and inject into registry.
         if "roi" in sec and isinstance(sec["roi"], dict) and roi_registry is not None:
             from .roi import RoiAndLabelConfig, RoiConfig
@@ -269,6 +294,7 @@ class ColorPathsConfig:
             baseline = "baseline_images"
             ignore_baseline_spectrum = "expanded"  # "none", "baseline", or "expanded"
             histogram_weighting = "threshold"  # "threshold", "wls", "wls_sqrt", or "wls_log"
+            mode = "auto"  # "auto" or "manual"
 
             Example (inline sub-section):
             ------------------------------

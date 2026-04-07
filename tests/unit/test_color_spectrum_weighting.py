@@ -274,6 +274,15 @@ class TestInvalidWeighting:
                 spectrum=spectrum, num_segments=1, weighting="bogus"
             )
 
+    def test_unknown_mode_raises_value_error(self) -> None:
+        """Passing an unknown mode value must raise a ``ValueError``."""
+        spectrum = _make_spectrum(resolution=11)
+        regression = self._make_regression()
+        with pytest.raises(ValueError, match="color-path mode"):
+            regression._find_color_path(
+                spectrum=spectrum, num_segments=1, mode="bogus"  # type: ignore[arg-type]
+            )
+
 
 # ---------------------------------------------------------------------------
 # find_color_path (public API) propagates weighting
@@ -312,6 +321,19 @@ class TestFindColorPathWeighting:
             color_spectrum=spectrum_map,
             num_segments=1,
             weighting=mode,
+        )
+        assert isinstance(result, darsia.LabelColorPathMap)
+        assert 0 in result
+
+    def test_auto_mode_propagates(self) -> None:
+        """Explicit ``mode='auto'`` must run through the public API."""
+        regression = self._make_regression()
+        spectrum_map = darsia.LabelColorSpectrumMap({0: _make_spectrum(resolution=11)})
+        result = regression.find_color_path(
+            color_spectrum=spectrum_map,
+            num_segments=1,
+            weighting="threshold",
+            mode="auto",
         )
         assert isinstance(result, darsia.LabelColorPathMap)
         assert 0 in result
