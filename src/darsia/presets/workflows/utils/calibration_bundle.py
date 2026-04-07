@@ -87,6 +87,10 @@ def export_calibration_bundle(
         raise ValueError(
             "Missing [data] section; cannot determine default bundle location."
         )
+    if config.data.results is None:
+        raise ValueError(
+            "Missing [data].results value; cannot determine default bundle location."
+        )
 
     if bundle is None:
         bundle_dir = config.data.results / "calibration" / "bundles"
@@ -158,6 +162,10 @@ def import_calibration_bundle(
         if config.data is None:
             raise ValueError(
                 "Missing [data] section; provide --calibration-target explicitly."
+            )
+        if config.data.results is None:
+            raise ValueError(
+                "Missing [data].results value; provide --calibration-target explicitly."
             )
         target_folder = config.data.results / "calibration" / "imported" / bundle.stem
     else:
