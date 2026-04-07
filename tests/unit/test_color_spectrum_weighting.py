@@ -136,9 +136,7 @@ class TestBackwardCompatibility:
             max_color=np.array([0.5, 0.5, 0.5]),
             color_mode=darsia.ColorMode.RELATIVE,
         )
-        mask_img = darsia.Image(
-            img=np.ones((4, 4), dtype=bool), dimensions=[1.0, 1.0]
-        )
+        mask_img = darsia.Image(img=np.ones((4, 4), dtype=bool), dimensions=[1.0, 1.0])
         return darsia.LabelColorPathMapRegression(
             labels=labels_img,
             color_range=color_range,
@@ -153,9 +151,7 @@ class TestBackwardCompatibility:
         spectrum = _make_spectrum(resolution=11)
         regression = self._make_regression()
 
-        path_default = regression._find_color_path(
-            spectrum=spectrum, num_segments=1
-        )
+        path_default = regression._find_color_path(spectrum=spectrum, num_segments=1)
         path_threshold = regression._find_color_path(
             spectrum=spectrum, num_segments=1, weighting="threshold"
         )
@@ -191,9 +187,7 @@ class TestWeightedFitQuality:
             max_color=np.array([0.5, 0.5, 0.5]),
             color_mode=darsia.ColorMode.RELATIVE,
         )
-        mask_img = darsia.Image(
-            img=np.ones((4, 4), dtype=bool), dimensions=[1.0, 1.0]
-        )
+        mask_img = darsia.Image(img=np.ones((4, 4), dtype=bool), dimensions=[1.0, 1.0])
         return darsia.LabelColorPathMapRegression(
             labels=labels_img,
             color_range=color_range,
@@ -255,9 +249,7 @@ class TestInvalidWeighting:
             max_color=np.array([0.5, 0.5, 0.5]),
             color_mode=darsia.ColorMode.RELATIVE,
         )
-        mask_img = darsia.Image(
-            img=np.ones((4, 4), dtype=bool), dimensions=[1.0, 1.0]
-        )
+        mask_img = darsia.Image(img=np.ones((4, 4), dtype=bool), dimensions=[1.0, 1.0])
         return darsia.LabelColorPathMapRegression(
             labels=labels_img,
             color_range=color_range,
@@ -300,9 +292,7 @@ class TestFindColorPathWeighting:
             max_color=np.array([0.5, 0.5, 0.5]),
             color_mode=darsia.ColorMode.RELATIVE,
         )
-        mask_img = darsia.Image(
-            img=np.ones((4, 4), dtype=bool), dimensions=[1.0, 1.0]
-        )
+        mask_img = darsia.Image(img=np.ones((4, 4), dtype=bool), dimensions=[1.0, 1.0])
         return darsia.LabelColorPathMapRegression(
             labels=labels_img,
             color_range=color_range,
@@ -314,9 +304,7 @@ class TestFindColorPathWeighting:
     def test_returns_label_color_path_map(self, mode: str) -> None:
         """``find_color_path`` must return a LabelColorPathMap for all modes."""
         regression = self._make_regression()
-        spectrum_map = darsia.LabelColorSpectrumMap(
-            {0: _make_spectrum(resolution=11)}
-        )
+        spectrum_map = darsia.LabelColorSpectrumMap({0: _make_spectrum(resolution=11)})
         result = regression.find_color_path(
             color_spectrum=spectrum_map,
             num_segments=1,

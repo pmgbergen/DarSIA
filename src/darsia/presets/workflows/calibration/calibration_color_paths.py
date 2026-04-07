@@ -174,17 +174,17 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
     del calibration_images
 
     # Find a relative color path through the significant boxes
-        label_color_path_map: darsia.LabelColorPathMap = (
-            color_path_regression.find_color_path(
-                color_spectrum=tracer_color_spectrum,
-                ignore=ignore_spectrum,
-                num_segments=config.color_paths.num_segments,
-                directory=config.color_paths.calibration_file,
-                weighting=config.color_paths.histogram_weighting,
-                mode=config.color_paths.mode,
-                verbose=show,
-            )
+    label_color_path_map: darsia.LabelColorPathMap = (
+        color_path_regression.find_color_path(
+            color_spectrum=tracer_color_spectrum,
+            ignore=ignore_spectrum,
+            num_segments=config.color_paths.num_segments,
+            directory=config.color_paths.calibration_file,
+            weighting=config.color_paths.histogram_weighting,
+            mode=config.color_paths.mode,
+            verbose=show,
         )
+    )
 
     # Store the color paths to file
     label_color_path_map.save(config.color_paths.calibration_file)

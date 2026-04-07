@@ -1518,7 +1518,9 @@ class LabelColorPathMapRegression:
     ) -> list[np.ndarray]:
         """Interactively adjust key relative colors and return the updated list."""
 
-        new_key_relative_colors = [np.array(c, dtype=float).copy() for c in key_relative_colors]
+        new_key_relative_colors = [
+            np.array(c, dtype=float).copy() for c in key_relative_colors
+        ]
         if len(new_key_relative_colors) == 0:
             return new_key_relative_colors
 
@@ -1603,7 +1605,9 @@ class LabelColorPathMapRegression:
                     dtype=float,
                 )
             except ValueError:
-                logger.warning("Manual color-path update skipped due to invalid RGB input.")
+                logger.warning(
+                    "Manual color-path update skipped due to invalid RGB input."
+                )
                 return
             new_key_relative_colors[selected_index] = new_color
             redraw()
