@@ -81,7 +81,9 @@ def preset_utils():
         download_data(args.config)
     if args.export_calibration:
         bundle_path = (
-            Path(args.calibration_bundle) if args.calibration_bundle is not None else None
+            Path(args.calibration_bundle)
+            if args.calibration_bundle is not None
+            else None
         )
         exported = export_calibration_bundle(args.config, bundle=bundle_path)
         logger.info("Calibration bundle exported to %s", exported)
@@ -91,7 +93,9 @@ def preset_utils():
                 "Import requires --calibration-bundle pointing to a zip file."
             )
         target = (
-            Path(args.calibration_target) if args.calibration_target is not None else None
+            Path(args.calibration_target)
+            if args.calibration_target is not None
+            else None
         )
         imported = import_calibration_bundle(
             args.config,

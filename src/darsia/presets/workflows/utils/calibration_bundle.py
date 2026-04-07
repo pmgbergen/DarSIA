@@ -84,7 +84,9 @@ def export_calibration_bundle(
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
 
     if config.data is None:
-        raise ValueError("Missing [data] section; cannot determine default bundle location.")
+        raise ValueError(
+            "Missing [data] section; cannot determine default bundle location."
+        )
 
     if bundle is None:
         bundle_dir = config.data.results / "calibration" / "bundles"
@@ -99,7 +101,9 @@ def export_calibration_bundle(
     if config.color_paths is not None:
         if config.color_paths.calibration_file.exists():
             artifact_paths["color_paths"] = config.color_paths.calibration_file
-        baseline_color_spectrum_folder = config.color_paths.baseline_color_spectrum_folder
+        baseline_color_spectrum_folder = (
+            config.color_paths.baseline_color_spectrum_folder
+        )
         if baseline_color_spectrum_folder.exists():
             artifact_paths["baseline_color_spectrum"] = baseline_color_spectrum_folder
         color_range_file = config.color_paths.color_range_file.with_suffix(".json")
@@ -155,9 +159,7 @@ def import_calibration_bundle(
             raise ValueError(
                 "Missing [data] section; provide --calibration-target explicitly."
             )
-        target_folder = (
-            config.data.results / "calibration" / "imported" / bundle.stem
-        )
+        target_folder = config.data.results / "calibration" / "imported" / bundle.stem
     else:
         target_folder = Path(target_folder)
 

@@ -54,20 +54,15 @@ def _create_calibration_artifacts(tmp_path: Path) -> Path:
     _write_file(
         results / "calibration" / "color_paths" / "from_labels" / "color_path_0.json"
     )
-    _write_file(results / "calibration" / "color_paths" / "from_labels" / "metadata.json")
     _write_file(
-        results
-        / "calibration"
-        / "color_to_mass"
-        / "from_labels"
-        / "metadata.json",
+        results / "calibration" / "color_paths" / "from_labels" / "metadata.json"
+    )
+    _write_file(
+        results / "calibration" / "color_to_mass" / "from_labels" / "metadata.json",
         '{"basis":"labels","label_ids":[0]}',
     )
     _write_file(
-        results
-        / "calibration"
-        / "baseline_color_spectrum"
-        / "color_spectrum_0.json"
+        results / "calibration" / "baseline_color_spectrum" / "color_spectrum_0.json"
     )
     _write_file(
         results / "calibration" / "color_range.json",
@@ -88,7 +83,9 @@ def test_export_calibration_bundle(tmp_path: Path):
         names = set(zf.namelist())
         assert "calibration_bundle/color_paths/color_path_0.json" in names
         assert "calibration_bundle/color_to_mass/metadata.json" in names
-        assert "calibration_bundle/baseline_color_spectrum/color_spectrum_0.json" in names
+        assert (
+            "calibration_bundle/baseline_color_spectrum/color_spectrum_0.json" in names
+        )
         assert "calibration_bundle/color_range/color_range.json" in names
         manifest = json.loads(zf.read("calibration_bundle/manifest.json"))
         assert "artifacts" in manifest
