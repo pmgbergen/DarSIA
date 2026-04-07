@@ -275,7 +275,9 @@ def calibration_color_to_mass_analysis(
     # Fetch signal functions from reference calibration.
     if not reset and ref_path is not None:
         # Start from reference calibration if available
-        ref_config = FluidFlowerConfig(ref_path)
+        ref_config = FluidFlowerConfig(
+            ref_path, require_data=False, require_results=False
+        )
         assert (
             ref_config.color_to_mass.calibration_folder.exists()
         ), "Reference calibration folder does not exist."
