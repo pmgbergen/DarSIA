@@ -76,7 +76,7 @@ class TestColorPathsConfigNoRois:
     def test_rois_defaults_to_empty_list(self, tmp_path):
         toml_path = _write_toml(
             tmp_path,
-            _minimal_color_paths_toml(rois_line='rois = []'),
+            _minimal_color_paths_toml(rois_line="rois = []"),
         )
         data_reg = _make_data_registry(tmp_path)
         cfg = ColorPathsConfig()
@@ -134,9 +134,7 @@ class TestColorPathsConfigRoisFromRegistry:
         reg = RoiRegistry()
         for name in ("roi_a", "roi_b"):
             roi = RoiConfig()
-            roi.load(
-                {"name": name, "corner_1": [0.0, 0.0], "corner_2": [1.0, 1.0]}
-            )
+            roi.load({"name": name, "corner_1": [0.0, 0.0], "corner_2": [1.0, 1.0]})
             reg.register(name, roi)
 
         cfg = ColorPathsConfig()
@@ -316,9 +314,7 @@ class TestRoiRegistryRegister:
         reg._registry["loaded"] = roi_loaded
 
         roi_new = RoiConfig()
-        roi_new.load(
-            {"name": "new", "corner_1": [0.5, 0.5], "corner_2": [1.0, 1.0]}
-        )
+        roi_new.load({"name": "new", "corner_1": [0.5, 0.5], "corner_2": [1.0, 1.0]})
         reg.register("new", roi_new)
         assert set(reg.keys()) == {"loaded", "new"}
 
@@ -382,7 +378,10 @@ class TestBasisAwareCalibrationPaths:
             data_registry=data_reg,
         )
         assert cfg.basis.value == "labels"
-        assert cfg.calibration_file == tmp_path / "calibration" / "color_paths" / "from_labels"
+        assert (
+            cfg.calibration_file
+            == tmp_path / "calibration" / "color_paths" / "from_labels"
+        )
 
     def test_color_paths_default_folder_uses_explicit_labels_basis(self, tmp_path):
         toml_path = _write_toml(
@@ -391,14 +390,18 @@ class TestBasisAwareCalibrationPaths:
         )
         data_reg = _make_data_registry(tmp_path)
         cfg = ColorPathsConfig().load(
-           path=toml_path,
+            path=toml_path,
             data=tmp_path,
             results=tmp_path,
             data_registry=data_reg,
         )
         assert cfg.basis.value == "labels"
-        assert cfg.calibration_file == tmp_path / "calibration" / "color_paths" / "from_labels"
-        
+        assert (
+            cfg.calibration_file
+            == tmp_path / "calibration" / "color_paths" / "from_labels"
+        )
+
+
 # ---------------------------------------------------------------------------
 # histogram_weighting config key
 # ---------------------------------------------------------------------------
@@ -418,7 +421,10 @@ class TestHistogramWeighting:
             data_registry=data_reg,
         )
         assert cfg.basis.value == "labels"
-        assert cfg.calibration_file == tmp_path / "calibration" / "color_paths" / "from_labels"
+        assert (
+            cfg.calibration_file
+            == tmp_path / "calibration" / "color_paths" / "from_labels"
+        )
         return cfg
 
     def test_color_to_mass_default_folder_uses_basis(self, tmp_path):
