@@ -74,6 +74,8 @@ calibration_file = "./data/mass_calibration.json"
 [color_to_mass]
 # Keep this aligned with [color_paths].basis.
 basis = "labels"
+# Label sensitivity threshold for deactivating insensitive color paths.
+threshold = 0.2
 # If omitted, defaults to results/calibration/color_to_mass/from_<basis>
 # calibration_folder = "./data/color_to_mass"
 

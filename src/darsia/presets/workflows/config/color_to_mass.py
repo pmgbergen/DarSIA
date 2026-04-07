@@ -27,6 +27,8 @@ class ColorToMassConfig:
     """Path to the calibration folder."""
     basis: CalibrationBasis = CalibrationBasis.LABELS
     """Label-space basis used for calibration (`facies` or `labels`)."""
+    threshold: float = 0.2
+    """Sensitivity threshold used when deactivating insensitive color paths."""
 
     def load(
         self,
@@ -55,6 +57,9 @@ class ColorToMassConfig:
             _get_key(
                 sec, "basis", default=CalibrationBasis.LABELS.value, required=False
             )
+        )
+        self.threshold = _get_key(
+            sec, "threshold", default=0.2, required=False, type_=float
         )
 
         # Calibration data – support registry reference or inline sub-section

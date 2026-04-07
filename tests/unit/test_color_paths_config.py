@@ -448,6 +448,31 @@ class TestHistogramWeighting:
             cfg.calibration_folder
             == tmp_path / "calibration" / "color_to_mass" / "from_labels"
         )
+        assert cfg.threshold == 0.2
+
+    def test_color_to_mass_threshold_can_be_overridden(self, tmp_path):
+        dummy = tmp_path / "dummy.jpg"
+        dummy.touch()
+        data_reg = DataRegistry().load(
+            {"path": {"cal_imgs": {"paths": ["dummy.jpg"]}}},
+            data_folder=tmp_path,
+        )
+
+        cfg_path = _write_toml(
+            tmp_path,
+            """
+            [color_to_mass]
+            data = "cal_imgs"
+            threshold = 0.35
+            """,
+        )
+        cfg = ColorToMassConfig().load(
+            path=cfg_path,
+            data=tmp_path,
+            results=tmp_path,
+            data_registry=data_reg,
+        )
+        assert cfg.threshold == 0.35
 
     def test_default_is_threshold(self, tmp_path):
         """When the key is absent the default must be ``'threshold'``."""
