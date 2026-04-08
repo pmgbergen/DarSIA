@@ -3,7 +3,10 @@ from pathlib import Path
 import pytest
 
 from darsia.presets.workflows.rig import Rig
-from darsia.presets.workflows.user_interface_gui import normalize_paths, resolve_rig_class
+from darsia.presets.workflows.user_interface_gui import (
+    normalize_paths,
+    resolve_rig_class,
+)
 
 
 def test_resolve_rig_class_default() -> None:
