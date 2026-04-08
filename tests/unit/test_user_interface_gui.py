@@ -1,12 +1,12 @@
-from pathlib import Path
-import threading
+import multiprocessing as mp
 import time
+from pathlib import Path
 
 import pytest
 
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.user_interface_gui import (
-    abort_thread,
+    abort_process,
     normalize_paths,
     resolve_rig_class,
 )
@@ -38,25 +38,17 @@ def test_normalize_paths_deduplicates_and_resolves(tmp_path: Path) -> None:
     assert normalized == [p.resolve()]
 
 
-def test_abort_thread_none_returns_false() -> None:
-    assert not abort_thread(None)
+def _sleep_worker(duration: float) -> None:
+    time.sleep(duration)
 
 
-def test_abort_thread_stops_running_thread() -> None:
-    aborted = threading.Event()
+def test_abort_process_none_returns_false() -> None:
+    assert not abort_process(None)
 
-    def worker() -> None:
-        try:
-            while True:
-                time.sleep(0.01)
-        except SystemExit:
-            aborted.set()
-            return
 
-    thread = threading.Thread(target=worker, daemon=True)
-    thread.start()
+def test_abort_process_stops_running_process() -> None:
+    process = mp.Process(target=_sleep_worker, args=(5.0,), daemon=True)
+    process.start()
 
-    assert abort_thread(thread)
-    thread.join(timeout=1.0)
-    assert not thread.is_alive()
-    assert aborted.is_set()
+    assert abort_process(process)
+    assert not process.is_alive()

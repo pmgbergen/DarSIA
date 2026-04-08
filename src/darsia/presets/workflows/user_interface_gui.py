@@ -7,10 +7,9 @@ This GUI is additive and does not replace the existing command-line
 from __future__ import annotations
 
 import argparse
-import ctypes
 import importlib
 import logging
-import threading
+import multiprocessing as mp
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -82,20 +81,116 @@ def _find_template_file() -> Path:
     return candidates[-1]
 
 
-def abort_thread(thread: threading.Thread | None) -> bool:
-    """Abort a running Python thread by injecting ``SystemExit``."""
-    if thread is None or not thread.is_alive() or thread.ident is None:
+def abort_process(process: mp.Process | None) -> bool:
+    """Abort a running process."""
+    if process is None or not process.is_alive():
         return False
+    process.terminate()
+    process.join(timeout=1.0)
+    if process.is_alive():
+        process.kill()
+        process.join(timeout=1.0)
+    return True
 
-    thread_id = ctypes.c_ulong(thread.ident)
-    result = ctypes.pythonapi.PyThreadState_SetAsyncExc(
-        thread_id, ctypes.py_object(SystemExit)
+
+def _run_setup_workflow(
+    config_paths: list[str], rig_spec: str, options: dict[str, bool]
+) -> None:
+    from darsia.presets.workflows.setup.setup_depth import setup_depth_map
+    from darsia.presets.workflows.setup.setup_facies import setup_facies
+    from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
+    from darsia.presets.workflows.setup.setup_rig import delete_rig, setup_rig
+
+    paths = normalize_paths(config_paths)
+    rig_cls = resolve_rig_class(rig_spec)
+    show = options["show"]
+    if options["all"] or options["depth"]:
+        setup_depth_map(paths, key="depth", show=show)
+    if options["all"] or options["segmentation"]:
+        segment_colored_image(paths, show=show)
+    if options["all"] or options["facies"]:
+        setup_facies(rig_cls, paths, show=show)
+    if options["all"] or options["rig"]:
+        setup_rig(rig_cls, paths, show=show)
+    if options["delete_rig"]:
+        delete_rig(rig_cls, paths, show=show)
+
+
+def _run_calibration_workflow(
+    config_paths: list[str], rig_spec: str, options: dict[str, bool]
+) -> None:
+    from darsia.presets.workflows.calibration import (
+        calibration_color_to_mass_analysis as c2m_analysis_module,
     )
-    if result == 1:
-        return True
-    if result > 1:
-        ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, None)
-    return False
+    from darsia.presets.workflows.calibration.calibration_color_paths import (
+        calibration_color_paths,
+        delete_calibration,
+    )
+
+    paths = normalize_paths(config_paths)
+    rig_cls = resolve_rig_class(rig_spec)
+    if options["delete"]:
+        delete_calibration(paths)
+        return
+    if options["color_paths"]:
+        calibration_color_paths(rig_cls, paths, options["show"])
+    if options["mass"] or options["default_mass"]:
+        c2m_analysis_module.calibration_color_to_mass_analysis(
+            rig_cls,
+            paths,
+            reset=options["reset"],
+            show=options["show"],
+            default=options["default_mass"],
+        )
+
+
+def _run_analysis_workflow(
+    config_paths: list[str], rig_spec: str, options: dict[str, bool]
+) -> None:
+    from darsia.presets.workflows.user_interface_analysis import run_analysis
+
+    paths = normalize_paths(config_paths)
+    rig_cls = resolve_rig_class(rig_spec)
+    args = argparse.Namespace(
+        config=paths,
+        all=options["all"],
+        cropping=options["cropping"],
+        segmentation=options["segmentation"],
+        fingers=options["fingers"],
+        mass=options["mass"],
+        volume=options["volume"],
+        show=options["show"],
+        save_jpg=options["save_jpg"],
+        save_npz=options["save_npz"],
+        info=False,
+    )
+    run_analysis(rig_cls, args)
+
+
+def _run_comparison_workflow(
+    config_path: str, rig_spec: str, options: dict[str, bool]
+) -> None:
+    from darsia.presets.workflows.user_interface_comparison import run_comparison
+
+    path = Path(config_path)
+    rig_cls = resolve_rig_class(rig_spec)
+    args = argparse.Namespace(
+        config=path,
+        events=options["events"],
+        wasserstein_compute=options["wasserstein_compute"],
+        wasserstein_assemble=options["wasserstein_assemble"],
+        info=False,
+        show=False,
+    )
+    run_comparison(rig_cls, args)
+
+
+def _run_utils_workflow(config_paths: list[str], options: dict[str, bool]) -> None:
+    from darsia.presets.workflows.utils.utils_download import download_data
+
+    paths = normalize_paths(config_paths)
+    if options["download"]:
+        download_data(paths)
 
 
 class QueueLogHandler(logging.Handler):
@@ -126,7 +221,8 @@ class WorkflowGUI:
 
         self.current_config_file: Path | None = None
         self.log_queue: Queue[str] = Queue()
-        self._worker: threading.Thread | None = None
+        self._worker_process: mp.Process | None = None
+        self._abort_requested = False
 
         self._setup_logging()
         self._build_layout()
@@ -394,107 +490,95 @@ class WorkflowGUI:
         self.abort_button.config(state=state)
 
     def _abort_worker_clicked(self) -> None:
-        if abort_thread(self._worker):
+        if abort_process(self._worker_process):
+            self._abort_requested = True
             self.log_queue.put("Abort requested.")
             return
         self.log_queue.put("No active workflow to abort.")
 
-    def _run_async(self, fn: Callable[[], None]) -> None:
-        if self._worker is not None and self._worker.is_alive():
+    def _run_async(self, fn: Callable[..., None], *args: Any) -> None:
+        if self._worker_process is not None and self._worker_process.is_alive():
             self.messagebox.showwarning("Busy", "Another workflow is still running.")
             return
-
-        def _target():
-            try:
-                fn()
-                self.log_queue.put("Done.")
-            except SystemExit:
-                self.log_queue.put("Workflow aborted.")
-            except Exception as e:
-                logger.exception("Workflow failed")
-                self.log_queue.put(f"ERROR: {e}")
-            finally:
-                self.root.after(0, self._set_worker_state, False)
-                self._worker = None
-
-        self._worker = threading.Thread(target=_target, daemon=True)
+        self._worker_process = mp.Process(target=fn, args=args, daemon=True)
+        self._worker_process.start()
+        self._abort_requested = False
         self._set_worker_state(True)
-        self._worker.start()
+        self.root.after(200, self._poll_worker_completion)
+
+    def _poll_worker_completion(self) -> None:
+        process = self._worker_process
+        if process is None:
+            self._set_worker_state(False)
+            return
+        if process.is_alive():
+            self.root.after(200, self._poll_worker_completion)
+            return
+
+        exit_code = process.exitcode
+        if self._abort_requested:
+            self.log_queue.put("Workflow aborted.")
+        elif exit_code == 0:
+            self.log_queue.put("Done.")
+        else:
+            self.log_queue.put(f"ERROR: Workflow failed with exit code {exit_code}.")
+        self._worker_process = None
+        self._set_worker_state(False)
 
     def _run_setup_clicked(self) -> None:
-        def _run():
-            from darsia.presets.workflows.setup.setup_depth import setup_depth_map
-            from darsia.presets.workflows.setup.setup_facies import setup_facies
-            from darsia.presets.workflows.setup.setup_labeling import (
-                segment_colored_image,
-            )
-            from darsia.presets.workflows.setup.setup_rig import delete_rig, setup_rig
-
-            ctx = self._context()
-            show = self.setup_show.get()
-            if self.setup_all.get() or self.setup_depth.get():
-                setup_depth_map(ctx.config_paths, key="depth", show=show)
-            if self.setup_all.get() or self.setup_seg.get():
-                segment_colored_image(ctx.config_paths, show=show)
-            if self.setup_all.get() or self.setup_facies.get():
-                setup_facies(ctx.rig_cls, ctx.config_paths, show=show)
-            if self.setup_all.get() or self.setup_rig.get():
-                setup_rig(ctx.rig_cls, ctx.config_paths, show=show)
-            if self.setup_delete.get():
-                delete_rig(ctx.rig_cls, ctx.config_paths, show=show)
-
-        self._run_async(_run)
+        ctx = self._context()
+        options = {
+            "all": self.setup_all.get(),
+            "depth": self.setup_depth.get(),
+            "segmentation": self.setup_seg.get(),
+            "facies": self.setup_facies.get(),
+            "rig": self.setup_rig.get(),
+            "delete_rig": self.setup_delete.get(),
+            "show": self.setup_show.get(),
+        }
+        self._run_async(
+            _run_setup_workflow,
+            [str(path) for path in ctx.config_paths],
+            self.rig_spec.get(),
+            options,
+        )
 
     def _run_calibration_clicked(self) -> None:
-        def _run():
-            from darsia.presets.workflows.calibration import (
-                calibration_color_to_mass_analysis as c2m_analysis_module,
-            )
-            from darsia.presets.workflows.calibration.calibration_color_paths import (
-                calibration_color_paths,
-                delete_calibration,
-            )
-
-            ctx = self._context()
-            if self.cal_delete.get():
-                delete_calibration(ctx.config_paths)
-                return
-            if self.cal_color_paths.get():
-                calibration_color_paths(
-                    ctx.rig_cls, ctx.config_paths, self.cal_show.get()
-                )
-            if self.cal_mass.get() or self.cal_default_mass.get():
-                c2m_analysis_module.calibration_color_to_mass_analysis(
-                    ctx.rig_cls,
-                    ctx.config_paths,
-                    reset=self.cal_reset.get(),
-                    show=self.cal_show.get(),
-                    default=self.cal_default_mass.get(),
-                )
-
-        self._run_async(_run)
+        ctx = self._context()
+        options = {
+            "delete": self.cal_delete.get(),
+            "color_paths": self.cal_color_paths.get(),
+            "mass": self.cal_mass.get(),
+            "default_mass": self.cal_default_mass.get(),
+            "reset": self.cal_reset.get(),
+            "show": self.cal_show.get(),
+        }
+        self._run_async(
+            _run_calibration_workflow,
+            [str(path) for path in ctx.config_paths],
+            self.rig_spec.get(),
+            options,
+        )
 
     def _run_analysis_clicked(self) -> None:
-        def _run():
-            from darsia.presets.workflows.user_interface_analysis import run_analysis
-
-            ctx = self._context()
-            args = argparse.Namespace(
-                config=ctx.config_paths,
-                all=self.an_all.get(),
-                cropping=self.an_crop.get(),
-                segmentation=self.an_seg.get(),
-                fingers=self.an_fingers.get(),
-                mass=self.an_mass.get(),
-                volume=self.an_volume.get(),
-                show=self.an_show.get(),
-                save_jpg=self.an_jpg.get(),
-                save_npz=self.an_npz.get(),
-                info=False,
-            )
-            run_analysis(ctx.rig_cls, args)
-
-        self._run_async(_run)
+        ctx = self._context()
+        options = {
+            "all": self.an_all.get(),
+            "cropping": self.an_crop.get(),
+            "segmentation": self.an_seg.get(),
+            "fingers": self.an_fingers.get(),
+            "mass": self.an_mass.get(),
+            "volume": self.an_volume.get(),
+            "show": self.an_show.get(),
+            "save_jpg": self.an_jpg.get(),
+            "save_npz": self.an_npz.get(),
+        }
+        self._run_async(
+            _run_analysis_workflow,
+            [str(path) for path in ctx.config_paths],
+            self.rig_spec.get(),
+            options,
+        )
 
     def _run_comparison_clicked(self) -> None:
         try:
@@ -509,34 +593,27 @@ class WorkflowGUI:
             )
             return
 
-        def _run():
-            from darsia.presets.workflows.user_interface_comparison import (
-                run_comparison,
-            )
-
-            args = argparse.Namespace(
-                config=ctx.config_paths[0],
-                events=self.comp_events.get(),
-                wasserstein_compute=self.comp_w_compute.get(),
-                wasserstein_assemble=self.comp_w_assemble.get(),
-                info=False,
-                show=False,
-            )
-            run_comparison(ctx.rig_cls, args)
-
-        self._run_async(_run)
+        options = {
+            "events": self.comp_events.get(),
+            "wasserstein_compute": self.comp_w_compute.get(),
+            "wasserstein_assemble": self.comp_w_assemble.get(),
+        }
+        self._run_async(
+            _run_comparison_workflow,
+            str(ctx.config_paths[0]),
+            self.rig_spec.get(),
+            options,
+        )
 
     def _run_utils_clicked(self) -> None:
-        def _run():
-            from darsia.presets.workflows.utils.utils_download import download_data
-
-            ctx = self._context()
-            if self.utils_download.get():
-                download_data(ctx.config_paths)
-            else:
-                logger.info("No utility option selected.")
-
-        self._run_async(_run)
+        ctx = self._context()
+        options = {"download": self.utils_download.get()}
+        if not options["download"]:
+            logger.info("No utility option selected.")
+            return
+        self._run_async(
+            _run_utils_workflow, [str(path) for path in ctx.config_paths], options
+        )
 
     def _add_config_path(self) -> None:
         path = self.filedialog.askopenfilename(
