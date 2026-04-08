@@ -11,8 +11,9 @@ import importlib
 import logging
 import threading
 from dataclasses import dataclass
+from importlib import resources
 from pathlib import Path
-from queue import Queue
+from queue import Empty, Queue
 from typing import Any, Callable
 
 from darsia.presets.workflows.rig import Rig
@@ -26,7 +27,8 @@ def _require_tkinter() -> tuple[Any, Any, Any, Any]:
         from tkinter import filedialog, messagebox, ttk
     except ModuleNotFoundError as e:
         raise ModuleNotFoundError(
-            "tkinter is required for the DarSIA GUI. Install Python Tk support."
+            "tkinter is required for the DarSIA GUI. Install Python Tk support "
+            "(e.g. apt install python3-tk on Debian/Ubuntu) and retry."
         ) from e
     return tk, filedialog, messagebox, ttk
 
@@ -63,6 +65,22 @@ def normalize_paths(paths: list[str]) -> list[Path]:
     return unique
 
 
+def _find_template_file() -> Path:
+    candidates: list[Path] = []
+    try:
+        packaged = resources.files("darsia.presets.workflows.templates").joinpath(
+            "config.toml"
+        )
+        candidates.append(Path(str(packaged)))
+    except (ModuleNotFoundError, AttributeError, FileNotFoundError):
+        pass
+    candidates.append(Path(__file__).resolve().parent / "templates" / "config.toml")
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[-1]
+
+
 class QueueLogHandler(logging.Handler):
     """Log handler writing to a queue for GUI consumption."""
 
@@ -83,7 +101,7 @@ class RunContext:
 class WorkflowGUI:
     """Tkinter-based GUI for preset workflow execution."""
 
-    def __init__(self, root):
+    def __init__(self, root: Any):
         self.tk, self.filedialog, self.messagebox, self.ttk = _require_tkinter()
         self.root = root
         self.root.title("DarSIA Workflows GUI")
@@ -185,16 +203,16 @@ class WorkflowGUI:
         self.setup_all = self.tk.BooleanVar(value=False)
         self.setup_depth = self.tk.BooleanVar(value=False)
         self.setup_seg = self.tk.BooleanVar(value=False)
-        self.setup_facies_var = self.tk.BooleanVar(value=False)
-        self.setup_rig_var = self.tk.BooleanVar(value=False)
+        self.setup_facies = self.tk.BooleanVar(value=False)
+        self.setup_rig = self.tk.BooleanVar(value=False)
         self.setup_delete = self.tk.BooleanVar(value=False)
         self.setup_show = self.tk.BooleanVar(value=False)
         for label, var in [
             ("All", self.setup_all),
             ("Depth", self.setup_depth),
             ("Segmentation", self.setup_seg),
-            ("Facies", self.setup_facies_var),
-            ("Rig", self.setup_rig_var),
+            ("Facies", self.setup_facies),
+            ("Rig", self.setup_rig),
             ("Delete rig", self.setup_delete),
             ("Show plots", self.setup_show),
         ]:
@@ -328,7 +346,7 @@ class WorkflowGUI:
             while True:
                 msg = self.log_queue.get_nowait()
                 self._append_log(msg)
-        except Exception:
+        except Empty:
             pass
         self.root.after(100, self._poll_logs)
 
@@ -338,7 +356,7 @@ class WorkflowGUI:
 
     def _context(self) -> RunContext:
         paths = self._selected_paths()
-        if len(paths) == 0:
+        if not paths:
             raise ValueError("Please add at least one config file.")
         rig_cls = resolve_rig_class(self.rig_spec.get())
         return RunContext(config_paths=paths, rig_cls=rig_cls)
@@ -374,9 +392,9 @@ class WorkflowGUI:
                 setup_depth_map(ctx.config_paths, key="depth", show=show)
             if self.setup_all.get() or self.setup_seg.get():
                 segment_colored_image(ctx.config_paths, show=show)
-            if self.setup_all.get() or self.setup_facies_var.get():
+            if self.setup_all.get() or self.setup_facies.get():
                 setup_facies(ctx.rig_cls, ctx.config_paths, show=show)
-            if self.setup_all.get() or self.setup_rig_var.get():
+            if self.setup_all.get() or self.setup_rig.get():
                 setup_rig(ctx.rig_cls, ctx.config_paths, show=show)
             if self.setup_delete.get():
                 delete_rig(ctx.rig_cls, ctx.config_paths, show=show)
@@ -385,12 +403,12 @@ class WorkflowGUI:
 
     def _run_calibration_clicked(self) -> None:
         def _run():
+            from darsia.presets.workflows.calibration import (
+                calibration_color_to_mass_analysis as c2m_analysis_module,
+            )
             from darsia.presets.workflows.calibration.calibration_color_paths import (
                 calibration_color_paths,
                 delete_calibration,
-            )
-            from darsia.presets.workflows.calibration.calibration_color_to_mass_analysis import (  # noqa: E501
-                calibration_color_to_mass_analysis,
             )
 
             ctx = self._context()
@@ -402,7 +420,7 @@ class WorkflowGUI:
                     ctx.rig_cls, ctx.config_paths, self.cal_show.get()
                 )
             if self.cal_mass.get() or self.cal_default_mass.get():
-                calibration_color_to_mass_analysis(
+                c2m_analysis_module.calibration_color_to_mass_analysis(
                     ctx.rig_cls,
                     ctx.config_paths,
                     reset=self.cal_reset.get(),
@@ -435,16 +453,23 @@ class WorkflowGUI:
         self._run_async(_run)
 
     def _run_comparison_clicked(self) -> None:
+        try:
+            ctx = self._context()
+        except Exception as e:
+            self.messagebox.showerror("Invalid configuration", str(e))
+            return
+        if len(ctx.config_paths) != 1:
+            self.messagebox.showerror(
+                "Invalid configuration",
+                "Comparison currently supports exactly one config path.",
+            )
+            return
+
         def _run():
             from darsia.presets.workflows.user_interface_comparison import (
                 run_comparison,
             )
 
-            ctx = self._context()
-            if len(ctx.config_paths) != 1:
-                raise ValueError(
-                    "Comparison currently supports exactly one config path."
-                )
             args = argparse.Namespace(
                 config=ctx.config_paths[0],
                 events=self.comp_events.get(),
@@ -496,7 +521,7 @@ class WorkflowGUI:
         self.config_list.selection_set(j)
 
     def _new_from_template(self) -> None:
-        template = Path(__file__).resolve().parent / "templates" / "config.toml"
+        template = _find_template_file()
         if not template.exists():
             self.messagebox.showerror(
                 "Missing template", f"Template not found: {template}"
@@ -526,7 +551,7 @@ class WorkflowGUI:
         if self.current_config_file is None:
             self._save_config_as()
             return
-        self.current_config_file.write_text(self.editor.get("1.0", self.tk.END))
+        self.current_config_file.write_text(self.editor.get("1.0", "end-1c"))
         self.editor_path.set(str(self.current_config_file))
         if str(self.current_config_file) not in self.config_list.get(0, self.tk.END):
             self.config_list.insert(self.tk.END, str(self.current_config_file))
