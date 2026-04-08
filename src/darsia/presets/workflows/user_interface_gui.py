@@ -7,6 +7,7 @@ This GUI is additive and does not replace the existing command-line
 from __future__ import annotations
 
 import argparse
+import ctypes
 import importlib
 import logging
 import threading
@@ -79,6 +80,22 @@ def _find_template_file() -> Path:
         if candidate.exists():
             return candidate
     return candidates[-1]
+
+
+def abort_thread(thread: threading.Thread | None) -> bool:
+    """Abort a running Python thread by injecting ``SystemExit``."""
+    if thread is None or not thread.is_alive() or thread.ident is None:
+        return False
+
+    thread_id = ctypes.c_ulong(thread.ident)
+    result = ctypes.pythonapi.PyThreadState_SetAsyncExc(
+        thread_id, ctypes.py_object(SystemExit)
+    )
+    if result == 1:
+        return True
+    if result > 1:
+        ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, None)
+    return False
 
 
 class QueueLogHandler(logging.Handler):
@@ -332,6 +349,17 @@ class WorkflowGUI:
     def _build_log_view(self, parent) -> None:
         frame = self.ttk.LabelFrame(parent, text="Execution log")
         frame.pack(fill=self.tk.BOTH, expand=True, padx=8, pady=8)
+
+        controls = self.ttk.Frame(frame)
+        controls.pack(fill=self.tk.X, padx=5, pady=(5, 0))
+        self.abort_button = self.ttk.Button(
+            controls,
+            text="Abort running workflow",
+            command=self._abort_worker_clicked,
+            state=self.tk.DISABLED,
+        )
+        self.abort_button.pack(side=self.tk.RIGHT)
+
         self.log = self.tk.Text(frame, height=15, state=self.tk.DISABLED)
         self.log.pack(fill=self.tk.BOTH, expand=True, padx=5, pady=5)
 
@@ -361,6 +389,16 @@ class WorkflowGUI:
         rig_cls = resolve_rig_class(self.rig_spec.get())
         return RunContext(config_paths=paths, rig_cls=rig_cls)
 
+    def _set_worker_state(self, running: bool) -> None:
+        state = self.tk.NORMAL if running else self.tk.DISABLED
+        self.abort_button.config(state=state)
+
+    def _abort_worker_clicked(self) -> None:
+        if abort_thread(self._worker):
+            self.log_queue.put("Abort requested.")
+            return
+        self.log_queue.put("No active workflow to abort.")
+
     def _run_async(self, fn: Callable[[], None]) -> None:
         if self._worker is not None and self._worker.is_alive():
             self.messagebox.showwarning("Busy", "Another workflow is still running.")
@@ -370,11 +408,17 @@ class WorkflowGUI:
             try:
                 fn()
                 self.log_queue.put("Done.")
+            except SystemExit:
+                self.log_queue.put("Workflow aborted.")
             except Exception as e:
                 logger.exception("Workflow failed")
                 self.log_queue.put(f"ERROR: {e}")
+            finally:
+                self.root.after(0, self._set_worker_state, False)
+                self._worker = None
 
         self._worker = threading.Thread(target=_target, daemon=True)
+        self._set_worker_state(True)
         self._worker.start()
 
     def _run_setup_clicked(self) -> None:
