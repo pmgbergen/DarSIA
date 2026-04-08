@@ -38,7 +38,7 @@ def test_normalize_paths_deduplicates_and_resolves(tmp_path: Path) -> None:
     assert normalized == [p.resolve()]
 
 
-def _sleep_worker(duration: float) -> None:
+def _long_running_task(duration: float) -> None:
     time.sleep(duration)
 
 
@@ -47,7 +47,8 @@ def test_abort_process_none_returns_false() -> None:
 
 
 def test_abort_process_stops_running_process() -> None:
-    process = mp.Process(target=_sleep_worker, args=(5.0,), daemon=True)
+    ctx = mp.get_context("spawn")
+    process = ctx.Process(target=_long_running_task, args=(5.0,), daemon=True)
     process.start()
 
     assert abort_process(process)
