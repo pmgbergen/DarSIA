@@ -82,7 +82,11 @@ def _find_template_file() -> Path:
 
 
 def abort_process(process: mp.Process | None) -> bool:
-    """Abort a running process."""
+    """Abort a running process.
+
+    Returns:
+        True if a running process was aborted, otherwise False.
+    """
     if process is None or not process.is_alive():
         return False
     process.terminate()
@@ -96,6 +100,7 @@ def abort_process(process: mp.Process | None) -> bool:
 def _run_setup_workflow(
     config_paths: list[str], rig_spec: str, options: dict[str, bool]
 ) -> None:
+    """Run setup workflow in a worker process."""
     from darsia.presets.workflows.setup.setup_depth import setup_depth_map
     from darsia.presets.workflows.setup.setup_facies import setup_facies
     from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
@@ -119,6 +124,7 @@ def _run_setup_workflow(
 def _run_calibration_workflow(
     config_paths: list[str], rig_spec: str, options: dict[str, bool]
 ) -> None:
+    """Run calibration workflow in a worker process."""
     from darsia.presets.workflows.calibration import (
         calibration_color_to_mass_analysis as c2m_analysis_module,
     )
@@ -147,6 +153,7 @@ def _run_calibration_workflow(
 def _run_analysis_workflow(
     config_paths: list[str], rig_spec: str, options: dict[str, bool]
 ) -> None:
+    """Run analysis workflow in a worker process."""
     from darsia.presets.workflows.user_interface_analysis import run_analysis
 
     paths = normalize_paths(config_paths)
@@ -170,6 +177,7 @@ def _run_analysis_workflow(
 def _run_comparison_workflow(
     config_path: str, rig_spec: str, options: dict[str, bool]
 ) -> None:
+    """Run comparison workflow in a worker process."""
     from darsia.presets.workflows.user_interface_comparison import run_comparison
 
     path = Path(config_path)
@@ -186,6 +194,7 @@ def _run_comparison_workflow(
 
 
 def _run_utils_workflow(config_paths: list[str], options: dict[str, bool]) -> None:
+    """Run utility workflow in a worker process."""
     from darsia.presets.workflows.utils.utils_download import download_data
 
     paths = normalize_paths(config_paths)
@@ -221,6 +230,7 @@ class WorkflowGUI:
 
         self.current_config_file: Path | None = None
         self.log_queue: Queue[str] = Queue()
+        self._mp_context = mp.get_context("spawn")
         self._worker_process: mp.Process | None = None
         self._abort_requested = False
 
@@ -497,16 +507,20 @@ class WorkflowGUI:
         self.log_queue.put("No active workflow to abort.")
 
     def _run_async(self, fn: Callable[..., None], *args: Any) -> None:
+        """Run a workflow function in a child process and monitor it."""
         if self._worker_process is not None and self._worker_process.is_alive():
             self.messagebox.showwarning("Busy", "Another workflow is still running.")
             return
-        self._worker_process = mp.Process(target=fn, args=args, daemon=True)
+        self._worker_process = self._mp_context.Process(
+            target=fn, args=args, daemon=True
+        )
         self._worker_process.start()
         self._abort_requested = False
         self._set_worker_state(True)
         self.root.after(200, self._poll_worker_completion)
 
     def _poll_worker_completion(self) -> None:
+        """Poll process completion and translate exit status to GUI log messages."""
         process = self._worker_process
         if process is None:
             self._set_worker_state(False)
