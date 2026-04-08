@@ -1,6 +1,7 @@
 """Unit tests for Rig correction workflow setup behavior."""
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 
@@ -8,6 +9,7 @@ from darsia.presets.workflows.config.corrections import (
     ColorCorrectionConfig,
     CorrectionsConfig,
     IlluminationCorrectionConfig,
+    RelativeColorCorrectionConfig,
 )
 from darsia.presets.workflows.rig import Rig
 
@@ -89,7 +91,7 @@ def test_setup_color_corrections_illumination_return_is_assigned_and_appended(
     assert rig.baseline.applied == ["illumination", "color"]
 
 
-def test_setup_color_corrections_warns_and_ignores_relative_color_config(
+def test_setup_color_corrections_warns_on_boolean_relative_color(
     monkeypatch,
 ):
     rig = Rig()
@@ -120,10 +122,84 @@ def test_setup_color_corrections_warns_and_ignores_relative_color_config(
         color=ColorCorrectionConfig(colorchecker="upper_left"),
     )
 
-    with pytest.warns(UserWarning, match="relative_color requested"):
+    with pytest.warns(UserWarning, match="relative_color=True requires"):
         rig.setup_color_corrections(config)
 
     assert [c.name for c in rig.color_corrections] == ["illumination", "color"]
+
+
+def test_setup_color_corrections_loads_relative_color_from_path_and_preserves_order(
+    monkeypatch,
+):
+    rig = Rig()
+    rig.shape_corrected_baseline = DummyImage()
+    rig.shape_corrections = [DummyCorrection("shape")]
+
+    illumination = DummyCorrection("illumination")
+    color = DummyCorrection("color")
+    monkeypatch.setattr(
+        rig,
+        "setup_illumination_correction",
+        lambda *_args, **_kwargs: illumination,
+    )
+
+    from darsia.presets.workflows import rig as rig_module
+
+    monkeypatch.setattr(
+        rig_module.darsia,
+        "find_colorchecker",
+        lambda *_args, **_kwargs: (None, "dummy-roi"),
+    )
+    monkeypatch.setattr(
+        rig_module.darsia,
+        "ColorCorrection",
+        lambda *_args, **_kwargs: color,
+    )
+
+    class DummyRelativeColorCorrection(DummyCorrection):
+        def __init__(self, *_args, **_kwargs):
+            super().__init__("relative")
+            self.loaded = None
+
+        def load(self, path):
+            self.loaded = path
+
+    monkeypatch.setattr(
+        rig_module.darsia,
+        "RelativeColorCorrection",
+        DummyRelativeColorCorrection,
+    )
+
+    config = CorrectionsConfig(
+        illumination=IlluminationCorrectionConfig(),
+        relative_color=RelativeColorCorrectionConfig(path=Path("relative.npz")),
+        color=ColorCorrectionConfig(colorchecker="upper_left"),
+    )
+
+    rig.setup_color_corrections(config)
+
+    assert [c.name for c in rig.color_corrections] == [
+        "illumination",
+        "relative",
+        "color",
+    ]
+    assert rig.baseline.applied == ["illumination", "relative", "color"]
+    assert rig.relative_color_correction.loaded.name == "relative.npz"
+
+
+def test_setup_color_corrections_raises_for_noninteractive_relative_color_images():
+    rig = Rig()
+    rig.shape_corrected_baseline = DummyImage()
+    rig.shape_corrections = []
+
+    config = CorrectionsConfig(
+        relative_color=RelativeColorCorrectionConfig(
+            images=[Path("calibration_a.jpg")], interactive=False
+        )
+    )
+
+    with pytest.raises(ValueError, match="Interactive calibration is required"):
+        rig.setup_color_corrections(config)
 
 
 def test_setup_illumination_correction_creates_uninitialized_correction_when_config_is_none(

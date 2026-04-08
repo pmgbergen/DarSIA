@@ -9,6 +9,7 @@ from darsia import (
     CurvatureCorrection,
     DriftCorrection,
     IlluminationCorrection,
+    RelativeColorCorrection,
     Resize,
     TypeCorrection,
 )
@@ -18,6 +19,7 @@ AnyCorrection = (
     | DriftCorrection
     | CurvatureCorrection
     | IlluminationCorrection
+    | RelativeColorCorrection
     | ColorCorrection
     | Resize
 )
