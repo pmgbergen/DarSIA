@@ -7,7 +7,7 @@ import logging
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
-from zipfile import ZIP_DEFLATED, ZipFile
+from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 
@@ -218,7 +218,7 @@ def import_calibration_bundle(
             else:
                 destination.unlink()
 
-    artifact_members: dict[str, list[tuple[object, Path]]] = {
+    artifact_members: dict[str, list[tuple[ZipInfo, Path]]] = {
         "color_paths": [],
         "color_to_mass": [],
         "baseline_color_spectrum": [],
@@ -244,7 +244,7 @@ def import_calibration_bundle(
             # are directories receiving extracted members.
             safe_base = (
                 destination_root
-                if destination_root.is_dir() or artifact != "color_range"
+                if artifact != "color_range"
                 else destination_root.parent
             )
             for member, relative_path in members:
