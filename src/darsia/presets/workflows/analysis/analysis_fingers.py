@@ -151,7 +151,7 @@ def analysis_fingers_from_context(
                 for unit in finger_path:
                     time_index = int(unit.time)
                     if 0 <= time_index < len(contour_evolution_times[key]):
-                        unit_time = float(contour_evolution_times[key][time_index])
+                        unit_time = contour_evolution_times[key][time_index]
                     else:
                         logger.warning(
                             "Skip path unit with invalid time index %s for ROI '%s'.",
