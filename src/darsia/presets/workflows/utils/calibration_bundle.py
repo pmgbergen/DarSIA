@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def _basis_subfolder_name(path: Path | None) -> str | None:
-    """Return basis-specific folder name if the path ends in a ``from_*`` folder."""
+    """Return ``from_*`` folder name from ``path`` if present, otherwise ``None``."""
     if path is None:
         return None
     name = path.name
@@ -302,6 +302,7 @@ def import_calibration_bundle(
                     shutil.copyfileobj(src, dst)
 
     result: dict[str, Path] = {}
+    # Only these artifacts are basis-aware and may carry a from_* subfolder.
     for key in ("color_paths", "color_to_mass"):
         basis_folder = imported_basis_folders[key] or expected_basis_folders[key]
         root = destination_roots[key]
