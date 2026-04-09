@@ -133,3 +133,26 @@ def test_import_calibration_bundle_default_target_from_config(tmp_path: Path):
     assert imported["baseline_color_spectrum"] == results / "baseline_color_spectrum"
     assert imported["color_range"] == results / "color_range.json"
     assert (results / "CONFIG_SNIPPET.toml").exists()
+
+
+def test_import_calibration_bundle_ignores_mother_folder(tmp_path: Path):
+    config_path = _write_minimal_config(tmp_path)
+    bundle = tmp_path / "bundle.zip"
+    with zipfile.ZipFile(bundle, "w") as zf:
+        zf.writestr("outer.json", "{}")
+        zf.writestr("calibration_bundle/color_paths/metadata.json", "{}")
+        zf.writestr("calibration_bundle/color_to_mass/metadata.json", "{}")
+        zf.writestr(
+            "calibration_bundle/color_range/color_range.json",
+            '{"min_color":[0,0,0],"max_color":[1,1,1],"color_mode":"RELATIVE"}',
+        )
+
+    imported = import_calibration_bundle(
+        config_path,
+        bundle=bundle,
+        target_folder=tmp_path / "imported",
+    )
+
+    assert not (tmp_path / "imported" / "outer.json").exists()
+    assert not (tmp_path / "imported" / "calibration_bundle").exists()
+    assert imported["color_paths"].exists()
