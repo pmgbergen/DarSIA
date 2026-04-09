@@ -284,11 +284,10 @@ def import_calibration_bundle(
             )
             for member, relative_path in members:
                 if artifact in {"color_paths", "color_to_mass"}:
-                    first_part = ""
-                    if relative_path.parts:
-                        first_part = relative_path.parts[0]
-                    if first_part.startswith("from_"):
-                        imported_basis_folders[artifact] = first_part
+                    if relative_path.parts and relative_path.parts[0].startswith(
+                        "from_"
+                    ):
+                        imported_basis_folders[artifact] = relative_path.parts[0]
                     elif expected_basis_folders[artifact] is not None:
                         relative_path = (
                             Path(expected_basis_folders[artifact]) / relative_path
