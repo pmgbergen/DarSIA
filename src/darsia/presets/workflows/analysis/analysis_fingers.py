@@ -49,6 +49,7 @@ def analysis_fingers_from_context(
         mode=fingers_config.mode, threshold=fingers_config.threshold
     )
     contour_analysis = ContourAnalysis()
+    # Keep evolution state per ROI to prevent mixing path histories across ROIs.
     contour_evolution_analysis = {
         key: ContourEvolutionAnalysis() for key in fingers_config.roi
     }
@@ -141,12 +142,22 @@ def analysis_fingers_from_context(
 
                 start_unit = finger_path[0]
                 path_id = f"path_t{int(start_unit.time)}_p{int(start_unit.peak)}"
+                path_id_base = path_id
+                suffix = 1
+                while path_id in path_log:
+                    path_id = f"{path_id_base}_{suffix}"
+                    suffix += 1
                 coordinates = []
                 for unit in finger_path:
                     time_index = int(unit.time)
                     if 0 <= time_index < len(contour_evolution_times[key]):
                         unit_time = float(contour_evolution_times[key][time_index])
                     else:
+                        logger.warning(
+                            "Skip path unit with invalid time index %s for ROI '%s'.",
+                            time_index,
+                            key,
+                        )
                         continue
 
                     x = int(unit.position[0]) + roi_top_left_x
