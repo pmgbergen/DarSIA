@@ -8,4 +8,5 @@ DarSIA workflows are organized in phases:
 4. **Comparison**: Compare runs/events and Wasserstein-based distances.
 5. **GUI (optional)**: Use the Tkinter GUI as an additive interface for the same workflows.
 
-Continue with [Quickstart](./quickstart.md) for a minimal command sequence.
+Start with [Introduction](./introduction.md) for config-file composition guidance, then
+continue with [Quickstart](./quickstart.md) for a minimal command sequence.
