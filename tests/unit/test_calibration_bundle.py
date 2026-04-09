@@ -135,7 +135,7 @@ def test_import_calibration_bundle_default_target_from_config(tmp_path: Path):
     assert (results / "CONFIG_SNIPPET.toml").exists()
 
 
-def test_import_calibration_bundle_ignores_mother_folder(tmp_path: Path):
+def test_import_calibration_bundle_filters_to_bundle_root(tmp_path: Path):
     config_path = _write_minimal_config(tmp_path)
     bundle = tmp_path / "bundle.zip"
     with zipfile.ZipFile(bundle, "w") as zf:
