@@ -103,4 +103,4 @@ def preset_utils():
             target_folder=target,
             overwrite=args.overwrite,
         )
-        logger.info("Imported calibration artifacts: %s", imported)
+        logger.info("Imported calibration: %s", imported)
