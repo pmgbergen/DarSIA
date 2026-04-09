@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def _basis_subfolder_name(path: Path | None) -> str | None:
+    """Return basis-specific folder name if the path ends in a ``from_*`` folder."""
     if path is None:
         return None
     name = path.name
@@ -283,9 +284,7 @@ def import_calibration_bundle(
             )
             for member, relative_path in members:
                 if artifact in {"color_paths", "color_to_mass"}:
-                    first_part = (
-                        relative_path.parts[0] if len(relative_path.parts) > 0 else ""
-                    )
+                    first_part = relative_path.parts[0] if relative_path.parts else ""
                     if first_part.startswith("from_"):
                         imported_basis_folders[artifact] = first_part
                     elif expected_basis_folders[artifact] is not None:
