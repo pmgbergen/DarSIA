@@ -289,7 +289,9 @@ def import_calibration_bundle(
                     if first_part.startswith("from_"):
                         imported_basis_folders[artifact] = first_part
                     elif expected_basis_folders[artifact] is not None:
-                        relative_path = Path(expected_basis_folders[artifact]) / relative_path
+                        relative_path = (
+                            Path(expected_basis_folders[artifact]) / relative_path
+                        )
                 if artifact == "color_range":
                     destination = destination_root
                 else:
