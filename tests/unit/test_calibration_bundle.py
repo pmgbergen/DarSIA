@@ -103,8 +103,13 @@ def test_import_calibration_bundle(tmp_path: Path):
     )
 
     assert (tmp_path / "imported" / "CONFIG_SNIPPET.toml").exists()
-    assert imported["color_paths"] == tmp_path / "imported" / "color_paths" / "from_labels"
-    assert imported["color_to_mass"] == tmp_path / "imported" / "color_to_mass" / "from_labels"
+    assert (
+        imported["color_paths"] == tmp_path / "imported" / "color_paths" / "from_labels"
+    )
+    assert (
+        imported["color_to_mass"]
+        == tmp_path / "imported" / "color_to_mass" / "from_labels"
+    )
     assert imported["color_range"].exists()
 
 
@@ -155,4 +160,6 @@ def test_import_calibration_bundle_filters_to_bundle_root(tmp_path: Path):
 
     assert not (tmp_path / "imported" / "outer.json").exists()
     assert not (tmp_path / "imported" / "calibration_bundle").exists()
-    assert imported["color_paths"] == tmp_path / "imported" / "color_paths" / "from_labels"
+    assert (
+        imported["color_paths"] == tmp_path / "imported" / "color_paths" / "from_labels"
+    )
