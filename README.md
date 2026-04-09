@@ -77,3 +77,4 @@ Furthermore, we encourage any user to checkout the examples in the examples fold
 ## Developing DarSIA
 
 Use black (version 22.3.0), flake8 and isort formatting.
+See [DEVELOPER_NOTES.md](./DEVELOPER_NOTES.md) for workflow documentation maintenance guidance, including risks, acceptance criteria, and update conventions.
