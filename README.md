@@ -8,9 +8,6 @@ Darcy scale image analysis toolbox
 # Documentation
 Visit pmgbergen.github.io/DarSIA
 
-For workflow-level calibration sharing across users/machines, see
-`CALIBRATION_REUSE.md`.
-
 # Citing
 
 If you use DarSIA in your research, we ask you to cite the following publication:
