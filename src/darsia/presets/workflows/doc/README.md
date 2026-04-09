@@ -3,6 +3,7 @@
 This section documents the maintained presets/workflows interface in DarSIA.
 
 ## Getting started
+- [Introduction](./introduction.md)
 - [Overview](./overview.md)
 - [Quickstart](./quickstart.md)
 
@@ -10,6 +11,8 @@ This section documents the maintained presets/workflows interface in DarSIA.
 - [Setup workflow](./workflow-setup.md)
 - [Calibration workflow](./workflow-calibration.md)
 - [Analysis workflow](./workflow-analysis.md)
+- [Analysis deep-dive](./analysis.md)
+- [Finger analysis](./finger_analysis.md)
 - [Comparison workflow](./workflow-comparison.md)
 - [GUI workflow](./workflow-gui.md)
 
