@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from darsia.presets.workflows.analysis.analysis_context import (
@@ -46,7 +48,10 @@ def analysis_fingers_from_context(
         mode=fingers_config.mode, threshold=fingers_config.threshold
     )
     contour_analysis = ContourAnalysis()
-    contour_evolution_analysis = ContourEvolutionAnalysis()
+    contour_evolution_analysis = {
+        key: ContourEvolutionAnalysis() for key in fingers_config.roi
+    }
+    contour_evolution_times = {key: [] for key in fingers_config.roi}
 
     # Data management.
     results_folder = ctx.config.analysis.fingers.folder
@@ -108,17 +113,56 @@ def analysis_fingers_from_context(
             )
 
             # Update evolution analysis.
-            contour_evolution_analysis.add(peaks=peaks, valleys=valleys, time=img.time)
-            contour_evolution_analysis.find_paths()
-            # contour_evolution_analysis.plot(img, roi=roi_config.roi)
+            contour_evolution_analysis[key].add(peaks=peaks, valleys=valleys, time=img.time)
+            contour_evolution_analysis[key].find_paths()
+            contour_evolution_times[key].append(float(img.time))
+            # contour_evolution_analysis[key].plot(img, roi=roi_config.roi)
 
-            contour_evolution_analysis.plot_paths(
+            contour_evolution_analysis[key].plot_paths(
                 img,
                 roi=roi_config.roi,
                 path=results_folder / "paths" / key / f"{path.stem}.png",
                 show=show,
             )
             # number_paths = contour_evolution_analysis.number_paths
+
+            roi_top_left_x = 0
+            roi_top_left_y = 0
+            if roi_config.roi is not None:
+                roi_pixels = roi_config.roi.to_voxel(img.coordinatesystem)
+                roi_top_left_x = int(np.min(roi_pixels[:, 1]))
+                roi_top_left_y = int(np.min(roi_pixels[:, 0]))
+
+            path_log = {}
+            for finger_path in contour_evolution_analysis[key].paths:
+                if len(finger_path) == 0:
+                    continue
+
+                start_unit = finger_path[0]
+                path_id = f"path_t{int(start_unit.time)}_p{int(start_unit.peak)}"
+                coordinates = []
+                for unit in finger_path:
+                    time_index = int(unit.time)
+                    if 0 <= time_index < len(contour_evolution_times[key]):
+                        unit_time = float(contour_evolution_times[key][time_index])
+                    else:
+                        continue
+
+                    x = int(unit.position[0]) + roi_top_left_x
+                    y = int(unit.position[1]) + roi_top_left_y
+                    coordinates.append([x, y, unit_time])
+
+                if len(coordinates) == 0:
+                    continue
+
+                path_log[path_id] = {
+                    "start": coordinates[0][2],
+                    "end": coordinates[-1][2],
+                    "coordinates": coordinates,
+                }
+
+            with open(results_folder / "paths" / key / "paths.json", "w") as f:
+                json.dump(path_log, f, indent=2)
 
             df = pd.concat(
                 [
