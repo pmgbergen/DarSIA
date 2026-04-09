@@ -225,10 +225,19 @@ def import_calibration_bundle(
         "color_range": [],
     }
     with ZipFile(bundle, mode="r") as zip_file:
+        has_bundle_root = any(
+            len(Path(member.filename).parts) > 0
+            and Path(member.filename).parts[0] == "calibration_bundle"
+            for member in zip_file.infolist()
+        )
         for member in zip_file.infolist():
             member_path = Path(member.filename)
             if member_path.is_absolute() or ".." in member_path.parts:
                 raise ValueError(f"Unsafe archive member path: {member.filename}")
+            if has_bundle_root and (
+                not member_path.parts or member_path.parts[0] != "calibration_bundle"
+            ):
+                continue
             if member_path.parts and member_path.parts[0] == "calibration_bundle":
                 member_path = Path(*member_path.parts[1:])
             if len(member_path.parts) < 2:
