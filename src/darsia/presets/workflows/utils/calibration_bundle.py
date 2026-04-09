@@ -166,12 +166,12 @@ def import_calibration_bundle(
         target_folder = calibration_root
     else:
         target_folder = Path(target_folder)
-        if target_folder.exists() and not overwrite:
-            raise FileExistsError(
-                f"Target folder already exists: {target_folder}. "
-                "Use overwrite=True or provide a new target folder."
-            )
-        if target_folder.exists() and overwrite:
+        if target_folder.exists():
+            if not overwrite:
+                raise FileExistsError(
+                    f"Target folder already exists: {target_folder}. "
+                    "Use overwrite=True or provide a new target folder."
+                )
             shutil.rmtree(target_folder)
 
     target_folder.mkdir(parents=True, exist_ok=True)
@@ -205,14 +205,14 @@ def import_calibration_bundle(
         destination_roots["baseline_color_spectrum"],
         destination_roots["color_range"],
     ]
-    existing_roots = [path for path in destination_root_paths if path.exists()]
-    if existing_roots and not overwrite:
+    existing_destinations = [path for path in destination_root_paths if path.exists()]
+    if existing_destinations and not overwrite:
         raise FileExistsError(
-            f"Calibration destination already exists: {existing_roots[0]}. "
+            f"Calibration destination already exists: {existing_destinations[0]}. "
             "Use overwrite=True or provide a new target folder."
         )
     if overwrite:
-        for destination in existing_roots:
+        for destination in existing_destinations:
             if destination.is_dir():
                 shutil.rmtree(destination)
             else:
@@ -240,6 +240,8 @@ def import_calibration_bundle(
 
         for artifact, members in artifact_members.items():
             destination_root = destination_roots[artifact]
+            # color_range is stored as a single file destination, while the others
+            # are directories receiving extracted members.
             safe_base = (
                 destination_root
                 if destination_root.is_dir() or artifact != "color_range"
