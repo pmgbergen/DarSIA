@@ -54,7 +54,8 @@ def build_parser_for_setup():
         "--calibration-target",
         type=str,
         default=None,
-        help="Folder where imported calibration is extracted.",
+        help="Optional calibration import root. Defaults to "
+        "<results>/calibration from --config.",
     )
     parser.add_argument(
         "--overwrite",

@@ -116,3 +116,20 @@ def test_import_calibration_bundle_overwrite_guard(tmp_path: Path):
 
     with pytest.raises(FileExistsError):
         import_calibration_bundle(config_path, bundle=bundle, target_folder=target)
+
+
+def test_import_calibration_bundle_default_target_from_config(tmp_path: Path):
+    source_root = tmp_path / "source"
+    target_root = tmp_path / "target"
+    source_config = _create_calibration_artifacts(source_root)
+    target_config = _write_minimal_config(target_root)
+    bundle = export_calibration_bundle(source_config, bundle=tmp_path / "bundle.zip")
+
+    imported = import_calibration_bundle(target_config, bundle=bundle)
+
+    results = target_root / "results" / "calibration"
+    assert imported["color_paths"] == results / "color_paths" / "from_labels"
+    assert imported["color_to_mass"] == results / "color_to_mass" / "from_labels"
+    assert imported["baseline_color_spectrum"] == results / "baseline_color_spectrum"
+    assert imported["color_range"] == results / "color_range.json"
+    assert (results / "CONFIG_SNIPPET.toml").exists()
