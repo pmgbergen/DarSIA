@@ -195,7 +195,7 @@ def import_calibration_bundle(
         "color_range": (
             config.color_paths.color_range_file.with_suffix(".json")
             if target_folder == calibration_root and config.color_paths is not None
-            else target_folder / "color_range" / "color_range.json"
+            else target_folder / "color_range.json"
         ),
     }
 
