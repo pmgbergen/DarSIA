@@ -44,6 +44,7 @@ def analysis_fingers_from_context(
 
     # Extract finger analysis config (asserted not None above)
     fingers_config = ctx.config.analysis.fingers.config
+    assert fingers_config.roi is not None
     segmentation_analysis = SimpleSegmentation(
         mode=fingers_config.mode, threshold=fingers_config.threshold
     )
