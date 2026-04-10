@@ -288,11 +288,18 @@ def analysis_fingers_from_context(
                 length_by_time = {float(time): float(length) for length, time in lengths}
                 for x, y, time in coordinates:
                     time = float(time)
+                    if time not in length_by_time:
+                        logger.warning(
+                            "Skip finger statistics entry with missing length at time %s for ROI '%s'.",
+                            time,
+                            key,
+                        )
+                        continue
                     active_fingers_by_time.setdefault(time, []).append(
                         {
                             "x": float(x),
                             "y": float(y),
-                            "length": length_by_time.get(time, 0.0),
+                            "length": length_by_time[time],
                         }
                     )
 
