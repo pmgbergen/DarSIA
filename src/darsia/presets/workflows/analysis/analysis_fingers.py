@@ -303,7 +303,7 @@ def analysis_fingers_from_context(
                 x_coords_sorted = sorted(float(finger["x"]) for finger in active_fingers)
                 dist_x = []
                 if len(x_coords_sorted) > 1:
-                    dist_x = [float(value) for value in np.diff(x_coords_sorted)]
+                    dist_x = np.diff(x_coords_sorted).tolist()
 
                 lengths_at_time = [float(finger["length"]) for finger in active_fingers]
                 new_fingers = int(sum(np.isclose(length, 0.0) for length in lengths_at_time))
