@@ -221,10 +221,11 @@ def analysis_fingers_from_context(
                     path_id = f"{path_id_base}_{suffix}"
                     suffix += 1
                 coordinates = []
+                times = []
                 for unit in finger_path:
                     time_index = int(unit.time)
                     if 0 <= time_index < len(contour_evolution_times[key]):
-                        unit_time = contour_evolution_times[key][time_index]
+                        unit_time = float(contour_evolution_times[key][time_index])
                     else:
                         logger.warning(
                             "Skip path unit with invalid time index %s for ROI '%s'.",
@@ -235,34 +236,35 @@ def analysis_fingers_from_context(
 
                     x = int(unit.position[0]) + roi_top_left_x
                     y = int(unit.position[1]) + roi_top_left_y
-                    coordinates.append([x, y, unit_time])
+                    times.append(unit_time)
+                    coordinates.append([x, y])
 
                 if len(coordinates) == 0:
                     continue
 
-                lengths = [[0.0, float(coordinates[0][2])]]
+                lengths = [0.0]
                 cumulative_length = 0.0
                 for index in range(1, len(coordinates)):
-                    x_prev, y_prev, _ = coordinates[index - 1]
-                    x_curr, y_curr, t_curr = coordinates[index]
+                    x_prev, y_prev = coordinates[index - 1]
+                    x_curr, y_curr = coordinates[index]
                     cumulative_length += float(np.hypot(x_curr - x_prev, y_curr - y_prev))
-                    lengths.append([cumulative_length, float(t_curr)])
+                    lengths.append(cumulative_length)
 
-                heights = []
+                heights = [0.0]
                 min_y = float(coordinates[0][1])
                 max_y = float(coordinates[0][1])
-                heights.append([0.0, float(coordinates[0][2])])
                 for index in range(1, len(coordinates)):
                     y_curr = float(coordinates[index][1])
-                    t_curr = float(coordinates[index][2])
                     min_y = min(min_y, y_curr)
                     max_y = max(max_y, y_curr)
-                    heights.append([max_y - min_y, t_curr])
+                    heights.append(max_y - min_y)
 
                 speeds = []
                 for index in range(1, len(coordinates)):
-                    x_prev, y_prev, t_prev = coordinates[index - 1]
-                    x_curr, y_curr, t_curr = coordinates[index]
+                    x_prev, y_prev = coordinates[index - 1]
+                    x_curr, y_curr = coordinates[index]
+                    t_prev = times[index - 1]
+                    t_curr = times[index]
                     dt = float(t_curr - t_prev)
                     if dt <= 0:
                         logger.warning(
@@ -270,57 +272,46 @@ def analysis_fingers_from_context(
                             dt,
                             key,
                         )
+                        speeds.append(float("nan"))
                         continue
                     vx = float(x_curr - x_prev) / dt
                     vy = float(y_curr - y_prev) / dt
                     speed = float(np.hypot(vx, vy))
-                    speeds.append([speed, float(t_curr)])
+                    speeds.append(speed)
 
                 path_log[path_id] = {
-                    "start": coordinates[0][2],
-                    "end": coordinates[-1][2],
+                    "start": times[0],
+                    "end": times[-1],
+                    "time": times,
                     "coordinates": coordinates,
                     "speed": speeds,
                     "length": lengths,
                     "height": heights,
                 }
 
-                length_by_time = {float(time): float(length) for length, time in lengths}
-                for x, y, time in coordinates:
-                    time = float(time)
-                    if time not in length_by_time:
-                        logger.warning(
-                            "Skip finger statistics entry with missing length at time %s for ROI '%s'.",
-                            time,
-                            key,
-                        )
-                        continue
+                for (x, _), time, length in zip(coordinates, times, lengths):
                     active_fingers_by_time.setdefault(time, []).append(
                         {
                             "x": float(x),
-                            "y": float(y),
-                            "length": length_by_time[time],
+                            "length": float(length),
                         }
                     )
 
             statistics = {}
             for time in sorted(active_fingers_by_time):
                 active_fingers = active_fingers_by_time[time]
-                distances = []
-                for i, finger_i in enumerate(active_fingers):
-                    for finger_j in active_fingers[i + 1 :]:
-                        distances.append(
-                            float(
-                                np.hypot(
-                                    finger_j["x"] - finger_i["x"],
-                                    finger_j["y"] - finger_i["y"],
-                                )
-                            )
-                        )
+                x_coords_sorted = sorted(float(finger["x"]) for finger in active_fingers)
+                dist_x = []
+                if len(x_coords_sorted) > 1:
+                    dist_x = [float(value) for value in np.diff(x_coords_sorted)]
+
                 lengths_at_time = [float(finger["length"]) for finger in active_fingers]
+                new_fingers = int(sum(np.isclose(length, 0.0) for length in lengths_at_time))
+
                 statistics[time] = {
-                    "distances": distances,
+                    "dist_x": dist_x,
                     "lengths": lengths_at_time,
+                    "new_fingers": new_fingers,
                 }
 
             path_log["statistics"] = statistics
