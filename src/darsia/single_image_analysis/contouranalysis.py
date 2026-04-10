@@ -321,7 +321,9 @@ class ContourAnalysis:
 
         return metric_contour_length
 
-    def fingers(self, direction=np.array([0.0, -1.0])) -> tuple[np.ndarray, np.ndarray]:
+    def local_extrema(
+        self, direction=np.array([0.0, -1.0])
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Determine local extrema of the contour, where the extremality
         is defined by a direction.
@@ -430,11 +432,11 @@ class ContourAnalysis:
         reshaped_valleys_pixels = np.reshape(sorted_valleys_pixels, (-1, 1, 2))
 
         if self.verbosity:
-            self.plot_finger_peaks(self.img, reshaped_peaks_pixels)
+            self.plot_peaks(self.img, reshaped_peaks_pixels)
 
         return reshaped_peaks_pixels, reshaped_valleys_pixels
 
-    def plot_finger_peaks(
+    def plot_peaks(
         self,
         img: darsia.Image,
         peaks_pixels: np.ndarray,
@@ -526,7 +528,7 @@ class ContourAnalysis:
             int: number of peaks.
 
         """
-        peaks_pixels, _ = self.fingers()
+        peaks_pixels, _ = self.local_extrema()
         return len(peaks_pixels)
 
     def plot_valleys(
@@ -637,7 +639,7 @@ class ContourAnalysis:
             int: number of valleys.
 
         """
-        _, valleys_pixels = self.fingers()
+        _, valleys_pixels = self.local_extrema()
         return len(valleys_pixels)
 
 
