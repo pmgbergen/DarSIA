@@ -10,15 +10,24 @@ import argparse
 import importlib
 import logging
 import multiprocessing as mp
+import os
+import time
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
-from queue import Empty, Queue
-from typing import Any, Callable
+from queue import Empty
+from typing import Any, Callable, Protocol
 
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
+
+
+class SupportsLogQueue(Protocol):
+    """Protocol for queue-like objects used for log forwarding."""
+
+    def put(self, obj: str) -> Any:
+        """Put one log message in the queue."""
 
 
 def _require_tkinter() -> tuple[Any, Any, Any, Any]:
@@ -79,6 +88,62 @@ def _find_template_file() -> Path:
         if candidate.exists():
             return candidate
     return candidates[-1]
+
+
+def _configure_queue_logging(log_queue: SupportsLogQueue) -> None:
+    """Attach queue logging handler to root logger."""
+    handler = QueueLogHandler(log_queue)
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    )
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
+    if root_logger.level > logging.INFO:
+        root_logger.setLevel(logging.INFO)
+
+
+def _worker_entry(
+    log_queue: SupportsLogQueue, fn: Callable[..., None], args: tuple[Any, ...]
+) -> None:
+    """Worker process entry point with queue-forwarded logging."""
+    _configure_queue_logging(log_queue)
+    fn(*args)
+
+
+def enabled_option_labels(
+    options: dict[str, bool], *, exclude: set[str] | None = None
+) -> list[str]:
+    """Return enabled option labels suitable for display."""
+    excluded = exclude or set()
+    return [
+        key.replace("_", " ")
+        for key, value in options.items()
+        if value and key not in excluded
+    ]
+
+
+def format_workflow_start_message(
+    workflow: str, actions: list[str], config_paths: list[Path], rig_spec: str
+) -> str:
+    """Format a detailed run-start message."""
+    action_str = ", ".join(actions) if actions else "none"
+    config_str = ", ".join(str(path) for path in config_paths)
+    rig_str = rig_spec.strip() or "darsia.presets.workflows.rig:Rig"
+    return (
+        f"Starting {workflow} workflow. Actions: {action_str}. "
+        f"Configs: {config_str}. Rig: {rig_str}."
+    )
+
+
+def format_workflow_done_message(
+    workflow: str, actions: list[str], config_count: int, duration_seconds: float
+) -> str:
+    """Format a detailed completion message."""
+    action_str = ", ".join(actions) if actions else "none"
+    return (
+        f"{workflow.capitalize()} completed. Actions: {action_str}. "
+        f"Configs: {config_count}. Duration: {duration_seconds:.1f}s."
+    )
 
 
 def abort_process(process: mp.Process | None) -> bool:
@@ -205,7 +270,7 @@ def _run_utils_workflow(config_paths: list[str], options: dict[str, bool]) -> No
 class QueueLogHandler(logging.Handler):
     """Log handler writing to a queue for GUI consumption."""
 
-    def __init__(self, queue: Queue[str]):
+    def __init__(self, queue: SupportsLogQueue):
         super().__init__()
         self._queue = queue
 
@@ -229,26 +294,42 @@ class WorkflowGUI:
         self.root.geometry("1200x800")
 
         self.current_config_file: Path | None = None
-        self.log_queue: Queue[str] = Queue()
         self._mp_context = mp.get_context("spawn")
+        self.log_queue: SupportsLogQueue = self._mp_context.Queue()
         self._worker_process: mp.Process | None = None
         self._abort_requested = False
+        self._active_workflow = ""
+        self._active_actions: list[str] = []
+        self._active_config_paths: list[Path] = []
+        self._active_rig_spec = ""
+        self._worker_started_at: float | None = None
+        self._sv_ttk: Any = None
+        self._native_theme_name: str | None = None
 
         self._setup_logging()
         self._build_layout()
+        self._setup_themes()
         self._poll_logs()
+        self._update_dashboard()
 
     def _setup_logging(self) -> None:
-        self.queue_handler = QueueLogHandler(self.log_queue)
-        self.queue_handler.setFormatter(
-            logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-        )
-        root_logger = logging.getLogger()
-        root_logger.addHandler(self.queue_handler)
-        if root_logger.level > logging.INFO:
-            root_logger.setLevel(logging.INFO)
+        _configure_queue_logging(self.log_queue)
 
     def _build_layout(self) -> None:
+        top = self.ttk.Frame(self.root)
+        top.pack(fill=self.tk.X, padx=8, pady=(8, 0))
+        self.ttk.Label(top, text="Theme:").pack(side=self.tk.LEFT)
+        self.theme_var = self.tk.StringVar(value="System")
+        self.theme_select = self.ttk.Combobox(
+            top,
+            values=["System", "Light", "Dark"],
+            textvariable=self.theme_var,
+            state="readonly",
+            width=10,
+        )
+        self.theme_select.pack(side=self.tk.LEFT, padx=4)
+        self.theme_select.bind("<<ComboboxSelected>>", self._on_theme_selected)
+
         main = self.ttk.Panedwindow(self.root, orient=self.tk.HORIZONTAL)
         main.pack(fill=self.tk.BOTH, expand=True)
 
@@ -259,7 +340,7 @@ class WorkflowGUI:
 
         self._build_config_manager(left)
         self._build_workflow_controls(left)
-        self._build_editor(right)
+        self._build_mode_views(right)
         self._build_log_view(right)
 
     def _build_config_manager(self, parent) -> None:
@@ -282,12 +363,16 @@ class WorkflowGUI:
         self.ttk.Button(buttons, text="Remove", command=self._remove_config_path).pack(
             fill=self.tk.X, pady=4
         )
+        self.ttk.Button(
+            buttons, text="Open in editor", command=self._open_selected_config_in_editor
+        ).pack(fill=self.tk.X)
         self.ttk.Button(buttons, text="Up", command=lambda: self._move_config(-1)).pack(
-            fill=self.tk.X
+            fill=self.tk.X, pady=4
         )
         self.ttk.Button(
             buttons, text="Down", command=lambda: self._move_config(1)
-        ).pack(fill=self.tk.X, pady=4)
+        ).pack(fill=self.tk.X)
+        self.config_list.bind("<Double-Button-1>", self._open_selected_config_in_editor)
 
         rig_frame = self.ttk.Frame(frame)
         rig_frame.pack(fill=self.tk.X, padx=5, pady=5)
@@ -425,6 +510,19 @@ class WorkflowGUI:
             self.utils_frame, text="Run utils", command=self._run_utils_clicked
         ).pack(fill=self.tk.X, pady=6)
 
+    def _build_mode_views(self, parent) -> None:
+        self.mode_notebook = self.ttk.Notebook(parent)
+        self.mode_notebook.pack(fill=self.tk.BOTH, expand=True, padx=8, pady=8)
+        self.editor_mode_frame = self.ttk.Frame(self.mode_notebook)
+        self.dashboard_mode_frame = self.ttk.Frame(self.mode_notebook)
+        self.batch_mode_frame = self.ttk.Frame(self.mode_notebook)
+        self.mode_notebook.add(self.editor_mode_frame, text="Config editor")
+        self.mode_notebook.add(self.dashboard_mode_frame, text="Dashboard")
+        self.mode_notebook.add(self.batch_mode_frame, text="Batch monitor")
+        self._build_editor(self.editor_mode_frame)
+        self._build_dashboard(self.dashboard_mode_frame)
+        self._build_batch_monitor(self.batch_mode_frame)
+
     def _build_editor(self, parent) -> None:
         frame = self.ttk.LabelFrame(parent, text="Config editor")
         frame.pack(fill=self.tk.BOTH, expand=True, padx=8, pady=8)
@@ -451,6 +549,34 @@ class WorkflowGUI:
 
         self.editor = self.tk.Text(frame, wrap=self.tk.NONE)
         self.editor.pack(fill=self.tk.BOTH, expand=True, padx=5, pady=5)
+
+    def _build_dashboard(self, parent) -> None:
+        frame = self.ttk.LabelFrame(parent, text="System dashboard")
+        frame.pack(fill=self.tk.BOTH, expand=True, padx=8, pady=8)
+        self.dashboard_cpu = self.tk.StringVar(value="CPU: n/a")
+        self.dashboard_memory = self.tk.StringVar(value="Memory: n/a")
+        self.dashboard_worker = self.tk.StringVar(value="Workflow process: idle")
+        for variable in [
+            self.dashboard_cpu,
+            self.dashboard_memory,
+            self.dashboard_worker,
+        ]:
+            self.ttk.Label(frame, textvariable=variable).pack(
+                anchor=self.tk.W, padx=5, pady=2
+            )
+
+    def _build_batch_monitor(self, parent) -> None:
+        frame = self.ttk.LabelFrame(parent, text="Batch monitor")
+        frame.pack(fill=self.tk.BOTH, expand=True, padx=8, pady=8)
+        self.batch_monitor_text = self.tk.StringVar(
+            value=(
+                "Batch monitor is currently a placeholder.\n"
+                "Future versions will show active analyses and image-level progress."
+            )
+        )
+        self.ttk.Label(frame, textvariable=self.batch_monitor_text).pack(
+            anchor=self.tk.W, padx=5, pady=5
+        )
 
     def _build_log_view(self, parent) -> None:
         frame = self.ttk.LabelFrame(parent, text="Execution log")
@@ -502,19 +628,38 @@ class WorkflowGUI:
     def _abort_worker_clicked(self) -> None:
         if abort_process(self._worker_process):
             self._abort_requested = True
-            self.log_queue.put("Abort requested.")
+            workflow = self._active_workflow or "workflow"
+            self.log_queue.put(f"Abort requested for {workflow}.")
             return
         self.log_queue.put("No active workflow to abort.")
 
-    def _run_async(self, fn: Callable[..., None], *args: Any) -> None:
+    def _run_async(
+        self,
+        workflow: str,
+        actions: list[str],
+        config_paths: list[Path],
+        rig_spec: str,
+        fn: Callable[..., None],
+        *args: Any,
+    ) -> None:
         """Run a workflow function in a child process and monitor it."""
         if self._worker_process is not None and self._worker_process.is_alive():
             self.messagebox.showwarning("Busy", "Another workflow is still running.")
             return
+        self._active_workflow = workflow
+        self._active_actions = actions
+        self._active_config_paths = config_paths
+        self._active_rig_spec = rig_spec
+        self.log_queue.put(
+            format_workflow_start_message(workflow, actions, config_paths, rig_spec)
+        )
         self._worker_process = self._mp_context.Process(
-            target=fn, args=args, daemon=True
+            target=_worker_entry,
+            args=(self.log_queue, fn, args),
+            daemon=True,
         )
         self._worker_process.start()
+        self._worker_started_at = time.monotonic()
         self._abort_requested = False
         self._set_worker_state(True)
         self.root.after(200, self._poll_worker_completion)
@@ -530,17 +675,43 @@ class WorkflowGUI:
             return
 
         exit_code = process.exitcode
+        duration = (
+            0.0
+            if self._worker_started_at is None
+            else max(0.0, time.monotonic() - self._worker_started_at)
+        )
         if self._abort_requested:
-            self.log_queue.put("Workflow aborted.")
+            self.log_queue.put(
+                f"{self._active_workflow.capitalize()} workflow aborted."
+            )
         elif exit_code == 0:
-            self.log_queue.put("Done.")
+            self.log_queue.put(
+                format_workflow_done_message(
+                    self._active_workflow,
+                    self._active_actions,
+                    len(self._active_config_paths),
+                    duration,
+                )
+            )
         else:
-            self.log_queue.put(f"ERROR: Workflow failed with exit code {exit_code}.")
+            self.log_queue.put(
+                f"ERROR: {self._active_workflow} workflow failed with exit code "
+                f"{exit_code}. Actions: {', '.join(self._active_actions) or 'none'}."
+            )
         self._worker_process = None
+        self._worker_started_at = None
+        self._active_workflow = ""
+        self._active_actions = []
+        self._active_config_paths = []
+        self._active_rig_spec = ""
         self._set_worker_state(False)
 
     def _run_setup_clicked(self) -> None:
-        ctx = self._context()
+        try:
+            ctx = self._context()
+        except Exception as e:
+            self.messagebox.showerror("Invalid configuration", str(e))
+            return
         options = {
             "all": self.setup_all.get(),
             "depth": self.setup_depth.get(),
@@ -550,7 +721,12 @@ class WorkflowGUI:
             "delete_rig": self.setup_delete.get(),
             "show": self.setup_show.get(),
         }
+        actions = enabled_option_labels(options)
         self._run_async(
+            "setup",
+            actions,
+            ctx.config_paths,
+            self.rig_spec.get(),
             _run_setup_workflow,
             [str(path) for path in ctx.config_paths],
             self.rig_spec.get(),
@@ -558,7 +734,11 @@ class WorkflowGUI:
         )
 
     def _run_calibration_clicked(self) -> None:
-        ctx = self._context()
+        try:
+            ctx = self._context()
+        except Exception as e:
+            self.messagebox.showerror("Invalid configuration", str(e))
+            return
         options = {
             "delete": self.cal_delete.get(),
             "color_paths": self.cal_color_paths.get(),
@@ -567,7 +747,12 @@ class WorkflowGUI:
             "reset": self.cal_reset.get(),
             "show": self.cal_show.get(),
         }
+        actions = enabled_option_labels(options)
         self._run_async(
+            "calibration",
+            actions,
+            ctx.config_paths,
+            self.rig_spec.get(),
             _run_calibration_workflow,
             [str(path) for path in ctx.config_paths],
             self.rig_spec.get(),
@@ -575,7 +760,11 @@ class WorkflowGUI:
         )
 
     def _run_analysis_clicked(self) -> None:
-        ctx = self._context()
+        try:
+            ctx = self._context()
+        except Exception as e:
+            self.messagebox.showerror("Invalid configuration", str(e))
+            return
         options = {
             "all": self.an_all.get(),
             "cropping": self.an_crop.get(),
@@ -587,7 +776,12 @@ class WorkflowGUI:
             "save_jpg": self.an_jpg.get(),
             "save_npz": self.an_npz.get(),
         }
+        actions = enabled_option_labels(options)
         self._run_async(
+            "analysis",
+            actions,
+            ctx.config_paths,
+            self.rig_spec.get(),
             _run_analysis_workflow,
             [str(path) for path in ctx.config_paths],
             self.rig_spec.get(),
@@ -612,7 +806,12 @@ class WorkflowGUI:
             "wasserstein_compute": self.comp_w_compute.get(),
             "wasserstein_assemble": self.comp_w_assemble.get(),
         }
+        actions = enabled_option_labels(options)
         self._run_async(
+            "comparison",
+            actions,
+            ctx.config_paths,
+            self.rig_spec.get(),
             _run_comparison_workflow,
             str(ctx.config_paths[0]),
             self.rig_spec.get(),
@@ -620,13 +819,24 @@ class WorkflowGUI:
         )
 
     def _run_utils_clicked(self) -> None:
-        ctx = self._context()
+        try:
+            ctx = self._context()
+        except Exception as e:
+            self.messagebox.showerror("Invalid configuration", str(e))
+            return
         options = {"download": self.utils_download.get()}
+        actions = enabled_option_labels(options)
         if not options["download"]:
             logger.info("No utility option selected.")
             return
         self._run_async(
-            _run_utils_workflow, [str(path) for path in ctx.config_paths], options
+            "utils",
+            actions,
+            ctx.config_paths,
+            self.rig_spec.get(),
+            _run_utils_workflow,
+            [str(path) for path in ctx.config_paths],
+            options,
         )
 
     def _add_config_path(self) -> None:
@@ -674,19 +884,44 @@ class WorkflowGUI:
         )
         if not path:
             return
-        p = Path(path).resolve()
-        self.current_config_file = p
-        self.editor_path.set(str(p))
+        self._load_config_into_editor(Path(path).resolve(), add_to_context=True)
+
+    def _open_selected_config_in_editor(self, event: Any | None = None) -> None:
+        del event
+        selection = self.config_list.curselection()
+        if len(selection) != 1:
+            self.messagebox.showwarning(
+                "No config selected",
+                "Select exactly one config in the context list to open in editor.",
+            )
+            return
+        path = Path(self.config_list.get(selection[0])).resolve()
+        self._load_config_into_editor(path, add_to_context=False)
+
+    def _load_config_into_editor(self, path: Path, *, add_to_context: bool) -> None:
+        try:
+            text = path.read_text()
+        except OSError as e:
+            self.messagebox.showerror("Open failed", f"Failed to open {path}:\n{e}")
+            return
+        self.current_config_file = path
+        self.editor_path.set(str(path))
         self.editor.delete("1.0", self.tk.END)
-        self.editor.insert(self.tk.END, p.read_text())
-        if str(p) not in self.config_list.get(0, self.tk.END):
-            self.config_list.insert(self.tk.END, str(p))
+        self.editor.insert(self.tk.END, text)
+        if add_to_context and str(path) not in self.config_list.get(0, self.tk.END):
+            self.config_list.insert(self.tk.END, str(path))
 
     def _save_config(self) -> None:
         if self.current_config_file is None:
             self._save_config_as()
             return
-        self.current_config_file.write_text(self.editor.get("1.0", "end-1c"))
+        try:
+            self.current_config_file.write_text(self.editor.get("1.0", "end-1c"))
+        except OSError as e:
+            self.messagebox.showerror(
+                "Save failed", f"Failed to save {self.current_config_file}:\n{e}"
+            )
+            return
         self.editor_path.set(str(self.current_config_file))
         if str(self.current_config_file) not in self.config_list.get(0, self.tk.END):
             self.config_list.insert(self.tk.END, str(self.current_config_file))
@@ -701,6 +936,96 @@ class WorkflowGUI:
             return
         self.current_config_file = Path(path).resolve()
         self._save_config()
+
+    def _setup_themes(self) -> None:
+        style = self.ttk.Style(self.root)
+        self._native_theme_name = style.theme_use()
+        try:
+            import sv_ttk
+
+            self._sv_ttk = sv_ttk
+        except ModuleNotFoundError:
+            self._sv_ttk = None
+        self._apply_theme("System", announce=False)
+
+    def _on_theme_selected(self, event: Any | None = None) -> None:
+        del event
+        self._apply_theme(self.theme_var.get(), announce=True)
+
+    def _apply_theme(self, theme: str, *, announce: bool) -> None:
+        style = self.ttk.Style(self.root)
+        selected = theme.lower()
+        if self._sv_ttk is not None:
+            if selected == "light":
+                self._sv_ttk.set_theme("light")
+            elif selected == "dark":
+                self._sv_ttk.set_theme("dark")
+            else:
+                if self._native_theme_name is not None:
+                    style.theme_use(self._native_theme_name)
+            if announce:
+                self.log_queue.put(f"Theme changed to {theme}.")
+            return
+
+        if selected == "system":
+            if self._native_theme_name is not None:
+                style.theme_use(self._native_theme_name)
+        elif selected == "light":
+            preferred = self._pick_preferred_theme(
+                style, ["vista", "aqua", "default", "clam", "alt"]
+            )
+            if preferred is not None:
+                style.theme_use(preferred)
+        else:
+            preferred = self._pick_preferred_theme(style, ["clam", "alt", "default"])
+            if preferred is not None:
+                style.theme_use(preferred)
+            if announce:
+                self.log_queue.put(
+                    "Dark theme fallback in use. Install optional 'sv_ttk' "
+                    "for richer dark mode."
+                )
+        if announce:
+            self.log_queue.put(f"Theme changed to {theme}.")
+
+    def _pick_preferred_theme(self, style: Any, candidates: list[str]) -> str | None:
+        names = set(style.theme_names())
+        for candidate in candidates:
+            if candidate in names:
+                return candidate
+        return None
+
+    def _update_dashboard(self) -> None:
+        cpu_text = "CPU: n/a"
+        memory_text = "Memory: n/a"
+        try:
+            import psutil
+
+            cpu_text = f"CPU: {psutil.cpu_percent(interval=None):.1f}%"
+            memory_text = (
+                f"Memory: {psutil.virtual_memory().percent:.1f}% system, "
+                f"{psutil.Process(os.getpid()).memory_info().rss / (1024**2):.1f} MB GUI"
+            )
+        except ModuleNotFoundError:
+            if hasattr(os, "getloadavg"):
+                load1, _, _ = os.getloadavg()
+                cpu_text = f"CPU load avg (1m): {load1:.2f}"
+        except Exception:
+            pass
+
+        process = self._worker_process
+        if process is not None and process.is_alive():
+            worker_text = (
+                "Workflow process: running "
+                f"(pid={process.pid}, {self._active_workflow})"
+            )
+        else:
+            worker_text = "Workflow process: idle"
+
+        self.dashboard_cpu.set(cpu_text)
+        self.dashboard_memory.set(memory_text)
+        self.dashboard_worker.set(worker_text)
+        self.root.after(1000, self._update_dashboard)
 
 
 def launch_workflows_gui() -> None:
