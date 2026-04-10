@@ -140,7 +140,9 @@ def analysis_fingers_from_context(
                 peaks,
                 roi_config.roi,
                 contours=contours,
-                path=(results_folder / "tips" / key / f"{path.stem}").with_suffix(plot_format),
+                path=(results_folder / "tips" / key / f"{path.stem}").with_suffix(
+                    plot_format
+                ),
                 show=show,
                 **{
                     "peak_color": peak_color,
@@ -171,8 +173,6 @@ def analysis_fingers_from_context(
                 },
             )
 
-            # TODO: Plot finger valleys (fjords) as well, and add to results.
-
             # Update evolution analysis.
             contour_evolution_analysis[key].add(
                 peaks=peaks, valleys=valleys, time=img.time
@@ -185,7 +185,9 @@ def analysis_fingers_from_context(
             contour_evolution_analysis[key].plot_paths(
                 img,
                 roi=roi_config.roi,
-                path=(results_folder / "paths" / key / f"{path.stem}").with_suffix(plot_format),
+                path=(results_folder / "paths" / key / f"{path.stem}").with_suffix(
+                    plot_format
+                ),
                 show=show,
             )
             contour_evolution_analysis[key].plot_valley_paths(
