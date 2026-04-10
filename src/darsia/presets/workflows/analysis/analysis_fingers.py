@@ -84,8 +84,8 @@ def analysis_fingers_from_context(
     plot_format = ".png"
     contour_color = "w"
     peak_color = "r"
-    peak_size = 10
-    contour_linewidth = 1
+    peak_size = 5
+    contour_linewidth = 0.5
     plot_boundary = False
     boundary_color = "y"
     boundary_linewidth = 2
@@ -118,7 +118,7 @@ def analysis_fingers_from_context(
 
             # Determine various contour values.
             contour_length = contour_analysis.length()
-            peaks, valleys = contour_analysis.fingers()
+            peaks, valleys = contour_analysis.local_extrema()
             number_tips = contour_analysis.number_peaks()
             number_fjords = contour_analysis.number_valleys()
             roi_width = float(np.abs(roi_config.roi[1, 0] - roi_config.roi[0, 0]))
@@ -186,7 +186,7 @@ def analysis_fingers_from_context(
             contour_evolution_analysis[key].plot_paths(
                 img,
                 roi=roi_config.roi,
-                path=(results_folder / "paths" / key / f"{path.stem}").with_suffix(
+                path=(results_folder / "tips_paths" / key / f"{path.stem}").with_suffix(
                     plot_format
                 ),
                 show=show,
@@ -274,7 +274,7 @@ def analysis_fingers_from_context(
                     "height": height,
                 }
 
-            with open(results_folder / "paths" / key / "paths.json", "w") as f:
+            with open(results_folder / "tips_paths" / key / "paths.json", "w") as f:
                 json.dump(path_log, f, indent=2)
 
             df = pd.concat(
