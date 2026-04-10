@@ -138,7 +138,7 @@ def analysis_fingers_from_context(
             )
 
             # Update evolution analysis.
-            contour_evolution_analysis.add(peaks, fjords, img.time)
+            contour_evolution_analysis.add(peaks=peaks, valleys=fjords, time=img.time)
             contour_evolution_analysis.find_paths()
             contour_evolution_analysis.find_fjord_paths()
             # contour_evolution_analysis.plot(img, roi=roi_config.roi)
