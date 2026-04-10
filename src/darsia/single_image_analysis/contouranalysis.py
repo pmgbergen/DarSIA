@@ -832,6 +832,19 @@ class ContourEvolutionAnalysis:
         else:
             plt.close()
 
+    def plot_fjord_paths(
+        self,
+        img: Optional[darsia.Image] = None,
+        roi: darsia.CoordinateArray | None = None,
+        path: Path | None = None,
+        show: bool = False,
+        color: str | None = None,
+    ) -> None:
+        """Alias for plot_valley_paths with finger-analysis terminology."""
+        self.plot_valley_paths(
+            img=img, roi=roi, path=path, show=show, color=color
+        )
+
     def _find_paths(self, points: dict[int, np.ndarray]) -> list[list[PathUnit]]:
         paths = []
 
@@ -969,3 +982,7 @@ class ContourEvolutionAnalysis:
         if reset:
             self.valley_paths = []
         self.valley_paths.extend(self._find_paths(self.valleys))
+
+    def find_fjord_paths(self, reset: bool = True) -> None:
+        """Alias for find_valley_paths with finger-analysis terminology."""
+        self.find_valley_paths(reset=reset)
