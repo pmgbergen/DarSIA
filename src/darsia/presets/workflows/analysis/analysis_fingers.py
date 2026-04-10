@@ -128,6 +128,8 @@ def analysis_fingers_from_context(
                 },
             )
 
+            # TODO: Plot finger valleys (fjords) as well, and add to results.
+
             # Update evolution analysis.
             contour_evolution_analysis[key].add(
                 peaks=peaks, valleys=valleys, time=img.time
