@@ -221,10 +221,28 @@ def analysis_fingers_from_context(
                 if len(coordinates) == 0:
                     continue
 
+                speeds = []
+                for index in range(1, len(coordinates)):
+                    x_prev, y_prev, t_prev = coordinates[index - 1]
+                    x_curr, y_curr, t_curr = coordinates[index]
+                    dt = float(t_curr - t_prev)
+                    if dt <= 0:
+                        logger.warning(
+                            "Skip speed computation with non-positive dt=%s for ROI '%s'.",
+                            dt,
+                            key,
+                        )
+                        continue
+                    vx = float(x_curr - x_prev) / dt
+                    vy = float(y_curr - y_prev) / dt
+                    speed = float(np.hypot(vx, vy))
+                    speeds.append([speed, float(t_curr)])
+
                 path_log[path_id] = {
                     "start": coordinates[0][2],
                     "end": coordinates[-1][2],
                     "coordinates": coordinates,
+                    "speed": speeds,
                 }
 
             with open(results_folder / "paths" / key / "paths.json", "w") as f:
