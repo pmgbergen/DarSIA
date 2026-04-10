@@ -265,7 +265,7 @@ def _run_analysis_workflow(
                 logger.exception("Failed to publish stream payload to GUI queue.")
                 publish_latest_queue_item(
                     stream_queue,
-                    {"__error__": b"Stream error while publishing payload."},
+                    {"__error__": b"Failed to publish stream data to queue."},
                 )
 
         stream_callback = _stream_callback
@@ -713,7 +713,10 @@ class WorkflowGUI:
             self._show_stream_message("Nothing is streamed.")
             return
         if not isinstance(payload, dict):
-            self._show_stream_message("Stream error: invalid payload.")
+            self._show_stream_message(
+                f"Stream error: expected dict payload, received "
+                f"{type(payload).__name__}."
+            )
             return
 
         if "__error__" in payload:
