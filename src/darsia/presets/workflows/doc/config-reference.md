@@ -38,6 +38,28 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `[analysis.volume]`: volume analysis and optional ROIs
 - `[analysis.fingers]`: finger detection mode/threshold and optional ROIs
 
+### Segmentation contour options
+For each segmentation entry, the following contour styling keys are supported:
+- `mode`
+- `thresholds`
+- `color`
+- `alpha`
+- `linewidth`
+
+Optional contour-value labels:
+- `show_values` (bool, default `false`)
+- `value_color` (`[r,g,b]`, default = contour `color`)
+- `value_size` (float font scale, default `0.5`)
+- `value_alpha` (float in `[0, 1]`, default `1.0`)
+- `value_density` (float, default `0.35`)
+- `value_min_distance_px` (float, default `40.0`)
+- `value_max_per_contour` (int, default `3`)
+- `value_format` (string format, default `"{:.2f}"`)
+
+The value-label keys can be provided directly in the segmentation section or nested in
+`[analysis.segmentation.values]` (or `[analysis.segmentation.<name>.values]` for
+multiple segmentations).
+
 ## Notes on legacy vs current naming
 - Current rig section is `[rig]`.
 - Curvature settings are part of `[corrections.curvature.*]`.

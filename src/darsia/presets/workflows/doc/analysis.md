@@ -33,6 +33,22 @@ Commonly used sections:
 - `[analysis.volume]`
 - `[analysis.fingers]`
 
+### Segmentation contour labels
+Segmentation contour plots can optionally print the contour threshold values directly
+on the plot. Configure this per segmentation entry via:
+- `show_values`
+- `value_color`
+- `value_size`
+- `value_alpha`
+- `value_density`
+- `value_min_distance_px`
+- `value_max_per_contour`
+- `value_format`
+
+These keys support both flat placement in `[analysis.segmentation]` and nested
+placement in `[analysis.segmentation.values]` (and similarly for
+`[analysis.segmentation.<name>.values]`).
+
 Use registry keys for image selection and ROIs where possible.
 
 ## Output expectations
