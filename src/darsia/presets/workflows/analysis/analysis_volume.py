@@ -126,8 +126,8 @@ def analysis_volume_from_context(
         # Fetch results
         saturation_g = mass_analysis_result.saturation_g
         concentration_aq = mass_analysis_result.concentration_aq
-        saturation_aq = concentration_aq.copy()
-        saturation_aq.img *= 1 - saturation_g.img
+        saturation_aq_full = concentration_aq.copy()
+        saturation_aq_full.img *= 1 - saturation_g.img
 
         # Store coarse data to disk
         saturation_g.save(folder_saturation_g / f"{path.stem}.npz")
@@ -143,7 +143,7 @@ def analysis_volume_from_context(
 
             # Integrate over chosen roi
             volume_g_roi = geometry[key].integrate(saturation_g.subregion(roi))
-            volume_aq_roi = geometry[key].integrate(saturation_aq.subregion(roi))
+            volume_aq_roi = geometry[key].integrate(saturation_aq_full.subregion(roi))
             volume_roi = volume_g_roi + volume_aq_roi
 
             # Store
@@ -159,7 +159,7 @@ def analysis_volume_from_context(
             # Restrict mass arrays to labeled area.
             _saturation_g = saturation_g.copy()
             _saturation_g.img[ctx.analysis_labels.img != label] = 0.0
-            _saturation_aq = saturation_aq.copy()
+            _saturation_aq = saturation_aq_full.copy()
             _saturation_aq.img[ctx.analysis_labels.img != label] = 0.0
 
             # Integrate over chosen roi
@@ -206,7 +206,7 @@ def analysis_volume_from_context(
                 "volume_source_image": img,
                 "saturation_g": saturation_g,
                 "concentration_aq": concentration_aq,
-                "saturation_aq": saturation_aq,
+                "saturation_aq": saturation_aq_full,
             },
             logger=logger,
             error_message=f"Failed to stream volume previews for image '{path}'.",
