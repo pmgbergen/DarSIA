@@ -530,6 +530,16 @@ class ContourAnalysis:
         peaks_pixels, _ = self.fingers()
         return len(peaks_pixels)
 
+    def number_valleys(self) -> int:
+        """Determine number of valleys.
+
+        Returns:
+            int: number of valleys.
+
+        """
+        _, valleys_pixels = self.fingers()
+        return len(valleys_pixels)
+
 
 # In order to uniquely identify a location in the collection of paths, define
 # a subunit, storing the position in terms of local and global characteristics.
