@@ -208,6 +208,7 @@ def analysis_fingers_from_context(
                 roi_top_left_y = int(np.min(roi_pixels[:, 0]))
 
             path_log = {}
+            active_fingers_by_time = {}
             for finger_path in contour_evolution_analysis[key].paths:
                 if len(finger_path) == 0:
                     continue
@@ -283,6 +284,39 @@ def analysis_fingers_from_context(
                     "length": lengths,
                     "height": heights,
                 }
+
+                length_by_time = {float(time): float(length) for length, time in lengths}
+                for x, y, time in coordinates:
+                    time = float(time)
+                    active_fingers_by_time.setdefault(time, []).append(
+                        {
+                            "x": float(x),
+                            "y": float(y),
+                            "length": length_by_time.get(time, 0.0),
+                        }
+                    )
+
+            statistics = {}
+            for time in sorted(active_fingers_by_time):
+                active_fingers = active_fingers_by_time[time]
+                distances = []
+                for i, finger_i in enumerate(active_fingers):
+                    for finger_j in active_fingers[i + 1 :]:
+                        distances.append(
+                            float(
+                                np.hypot(
+                                    finger_j["x"] - finger_i["x"],
+                                    finger_j["y"] - finger_i["y"],
+                                )
+                            )
+                        )
+                lengths_at_time = [float(finger["length"]) for finger in active_fingers]
+                statistics[time] = {
+                    "distances": distances,
+                    "lengths": lengths_at_time,
+                }
+
+            path_log["statistics"] = statistics
 
             with open(results_folder / "paths" / key / "paths.json", "w") as f:
                 json.dump(path_log, f, indent=2)
