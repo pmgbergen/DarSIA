@@ -638,7 +638,12 @@ class ContourEvolutionAnalysis:
             )
 
         if path is not None:
-            plt.savefig(path.with_suffix(".svg"), format="svg", dpi=1000)
+            suffix = path.suffix
+            if suffix in [".png", ".jpg", ".jpeg", ".svg"]:
+                format = suffix[1:]
+                plt.savefig(path, format=format, dpi=1000)
+            else:
+                plt.savefig(path.with_suffix(".png"), format="png", dpi=1000)
 
         # Finalize plot
         if show:
