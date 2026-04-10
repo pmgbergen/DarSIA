@@ -167,7 +167,8 @@ def analysis_fingers_from_context(
                             "key": key,
                             "image": path.name,
                             "contour_length": contour_length,
-                            # Keep number_tips for legacy downstream consumers.
+                            # number_tips historically represented detected peaks; keep it in
+                            # sync with number_peaks for backward compatibility.
                             "number_tips": number_peaks,
                             "number_peaks": number_peaks,
                             "number_valleys": number_valleys,

@@ -673,7 +673,7 @@ class ContourEvolutionAnalysis:
     ) -> None:
         # TODO.
         if img is None:
-            raise ValueError("img is required to plot contour evolution.")
+            raise ValueError("img cannot be None when plotting contour evolution.")
 
         top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
         background = np.zeros(img.img.shape[:2], dtype=int)
@@ -705,7 +705,7 @@ class ContourEvolutionAnalysis:
         show: bool = False,
     ) -> None:
         if img is None:
-            raise ValueError("img is required to plot paths.")
+            raise ValueError("img cannot be None when plotting paths.")
 
         top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
 
@@ -757,7 +757,7 @@ class ContourEvolutionAnalysis:
         color: str | None = None,
     ) -> None:
         if img is None:
-            raise ValueError("img is required to plot valley paths.")
+            raise ValueError("img cannot be None when plotting valley paths.")
 
         top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
 
@@ -875,7 +875,7 @@ class ContourEvolutionAnalysis:
 
         if self.total_time == 1:
             pts = _reshape_points(points.get(0, np.zeros((0, 1, 2), dtype=int)))
-            _include_points(0, list(np.arange(len(pts))), pts)
+            _include_points(0, range(len(pts)), pts)
             return paths
 
         for time_index in range(self.total_time - 1):
@@ -888,7 +888,7 @@ class ContourEvolutionAnalysis:
             new_paths = []
 
             if len(pts_prev) == 0 and len(pts_next) > 0:
-                for point_index in list(np.arange(len(pts_next))):
+                for point_index in range(len(pts_next)):
                     new_paths.append(point_index)
                 _include_points(time_index + 1, new_paths, pts_next)
                 continue
@@ -931,17 +931,13 @@ class ContourEvolutionAnalysis:
                 if _nonempty_slice(post_slice[0]) and _nonempty_slice(post_slice[1]):
                     paired_slices.insert(0, post_slice)
                 elif _nonempty_slice(post_slice[1]):
-                    for point_index in list(
-                        np.arange(post_slice[1].start, post_slice[1].stop)
-                    ):
+                    for point_index in range(post_slice[1].start, post_slice[1].stop):
                         new_paths.append(point_index)
 
                 if _nonempty_slice(pre_slice[0]) and _nonempty_slice(pre_slice[1]):
                     paired_slices.insert(0, pre_slice)
                 elif _nonempty_slice(pre_slice[1]):
-                    for point_index in list(
-                        np.arange(pre_slice[1].start, pre_slice[1].stop)
-                    ):
+                    for point_index in range(pre_slice[1].start, pre_slice[1].stop):
                         new_paths.append(point_index)
 
             prev_next_pairs = np.array(prev_next_pairs).reshape(-1, 2)
