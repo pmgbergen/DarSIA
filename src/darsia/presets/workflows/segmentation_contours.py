@@ -241,7 +241,10 @@ class SegmentationContours:
         min_distance_px = max(1.0, values_config.value_min_distance_px)
         max_per_contour = max(0, values_config.value_max_per_contour)
         density = max(0.0, values_config.value_density)
-        text_color = tuple(int(np.clip(c, 0, 255)) for c in values_config.value_color)
+        configured_color = list(values_config.value_color or [])
+        if len(configured_color) < 3:
+            configured_color = configured_color + [255] * (3 - len(configured_color))
+        text_color = tuple(int(np.clip(c, 0, 255)) for c in configured_color[:3])
         text_thickness = max(1, int(round(1.2 * font_scale)))
 
         used_positions: list[tuple[int, int]] = []
