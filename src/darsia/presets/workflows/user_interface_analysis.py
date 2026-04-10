@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+from collections.abc import Callable
 
 from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_context
 from darsia.presets.workflows.analysis.analysis_cropping import (
@@ -90,7 +91,12 @@ def print_help_for_flags(args, parser):
         sys.exit(0)
 
 
-def run_analysis(rig_cls: type[Rig], args, **kwargs):
+def run_analysis(
+    rig_cls: type[Rig],
+    args,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
+    **kwargs,
+):
     if not (
         args.cropping or args.mass or args.volume or args.segmentation or args.fingers
     ):
@@ -137,6 +143,7 @@ def run_analysis(rig_cls: type[Rig], args, **kwargs):
         analysis_segmentation_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
         )
 
     if args.fingers:

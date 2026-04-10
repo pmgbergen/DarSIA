@@ -7,6 +7,7 @@ This GUI is additive and does not replace the existing command-line
 from __future__ import annotations
 
 import argparse
+import base64
 import importlib
 import logging
 import multiprocessing as mp
@@ -15,7 +16,7 @@ import time
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
-from queue import Empty
+from queue import Empty, Full
 from typing import Any, Callable, Protocol
 
 from darsia.presets.workflows.rig import Rig
@@ -28,6 +29,16 @@ class SupportsLogQueue(Protocol):
 
     def put(self, obj: str) -> Any:
         """Put one log message in the queue."""
+
+
+class SupportsQueue(Protocol):
+    """Protocol for queue-like objects used for generic payload forwarding."""
+
+    def get_nowait(self) -> Any:
+        """Get one queue element without blocking."""
+
+    def put_nowait(self, obj: Any) -> Any:
+        """Put one queue element without blocking."""
 
 
 def _require_tkinter() -> tuple[Any, Any, Any, Any]:
@@ -108,6 +119,24 @@ def _worker_entry(
     """Worker process entry point with queue-forwarded logging."""
     _configure_queue_logging(log_queue)
     fn(*args)
+
+
+def clear_queue(queue: SupportsQueue) -> None:
+    """Drain all currently queued items."""
+    try:
+        while True:
+            queue.get_nowait()
+    except Empty:
+        pass
+
+
+def publish_latest_queue_item(queue: SupportsQueue, payload: Any) -> None:
+    """Keep only the latest payload in queue."""
+    clear_queue(queue)
+    try:
+        queue.put_nowait(payload)
+    except Full:
+        pass
 
 
 def enabled_option_labels(
@@ -216,13 +245,30 @@ def _run_calibration_workflow(
 
 
 def _run_analysis_workflow(
-    config_paths: list[str], rig_spec: str, options: dict[str, bool]
+    config_paths: list[str],
+    rig_spec: str,
+    options: dict[str, bool],
+    stream_queue: SupportsQueue | None = None,
 ) -> None:
     """Run analysis workflow in a worker process."""
     from darsia.presets.workflows.user_interface_analysis import run_analysis
 
     paths = normalize_paths(config_paths)
     rig_cls = resolve_rig_class(rig_spec)
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None
+    if options.get("streaming", False) and stream_queue is not None:
+
+        def _stream_callback(payload: dict[str, bytes] | None) -> None:
+            try:
+                publish_latest_queue_item(stream_queue, payload)
+            except Exception:
+                logger.exception("Failed to publish stream payload to GUI queue.")
+                publish_latest_queue_item(
+                    stream_queue,
+                    {"__error__": b"Stream error while publishing payload."},
+                )
+
+        stream_callback = _stream_callback
     args = argparse.Namespace(
         config=paths,
         all=options["all"],
@@ -236,7 +282,7 @@ def _run_analysis_workflow(
         save_npz=options["save_npz"],
         info=False,
     )
-    run_analysis(rig_cls, args)
+    run_analysis(rig_cls, args, stream_callback=stream_callback)
 
 
 def _run_comparison_workflow(
@@ -296,6 +342,7 @@ class WorkflowGUI:
         self.current_config_file: Path | None = None
         self._mp_context = mp.get_context("spawn")
         self.log_queue: SupportsLogQueue = self._mp_context.Queue()
+        self.stream_queue: SupportsQueue = self._mp_context.Queue(maxsize=1)
         self._worker_process: mp.Process | None = None
         self._abort_requested = False
         self._active_workflow = ""
@@ -303,6 +350,8 @@ class WorkflowGUI:
         self._active_config_paths: list[Path] = []
         self._active_rig_spec = ""
         self._worker_started_at: float | None = None
+        self._latest_stream_payload: dict[str, bytes | None] | None = None
+        self._stream_photo: Any | None = None
         self._sv_ttk: Any = None
         self._native_theme_name: str | None = None
 
@@ -310,6 +359,7 @@ class WorkflowGUI:
         self._build_layout()
         self._setup_themes()
         self._poll_logs()
+        self._poll_stream()
         self._update_dashboard()
 
     def _setup_logging(self) -> None:
@@ -465,6 +515,7 @@ class WorkflowGUI:
         self.an_show = self.tk.BooleanVar(value=False)
         self.an_jpg = self.tk.BooleanVar(value=False)
         self.an_npz = self.tk.BooleanVar(value=False)
+        self.an_streaming = self.tk.BooleanVar(value=False)
         for label, var in [
             ("All images", self.an_all),
             ("Cropping", self.an_crop),
@@ -475,6 +526,7 @@ class WorkflowGUI:
             ("Show plots", self.an_show),
             ("Save JPG", self.an_jpg),
             ("Save NPZ", self.an_npz),
+            ("Enable streaming", self.an_streaming),
         ]:
             self.ttk.Checkbutton(self.analysis_frame, text=label, variable=var).pack(
                 anchor=self.tk.W
@@ -516,12 +568,15 @@ class WorkflowGUI:
         self.editor_mode_frame = self.ttk.Frame(self.mode_notebook)
         self.dashboard_mode_frame = self.ttk.Frame(self.mode_notebook)
         self.batch_mode_frame = self.ttk.Frame(self.mode_notebook)
+        self.streaming_mode_frame = self.ttk.Frame(self.mode_notebook)
         self.mode_notebook.add(self.editor_mode_frame, text="Config editor")
         self.mode_notebook.add(self.dashboard_mode_frame, text="Dashboard")
         self.mode_notebook.add(self.batch_mode_frame, text="Batch monitor")
+        self.mode_notebook.add(self.streaming_mode_frame, text="Streaming")
         self._build_editor(self.editor_mode_frame)
         self._build_dashboard(self.dashboard_mode_frame)
         self._build_batch_monitor(self.batch_mode_frame)
+        self._build_streaming_mode(self.streaming_mode_frame)
 
     def _build_editor(self, parent) -> None:
         frame = self.ttk.LabelFrame(parent, text="Config editor")
@@ -578,6 +633,38 @@ class WorkflowGUI:
             anchor=self.tk.W, padx=5, pady=5
         )
 
+    def _build_streaming_mode(self, parent) -> None:
+        frame = self.ttk.LabelFrame(parent, text="Streaming monitor")
+        frame.pack(fill=self.tk.BOTH, expand=True, padx=8, pady=8)
+
+        self.stream_status = self.tk.StringVar(value="No stream yet.")
+        self.ttk.Label(frame, textvariable=self.stream_status).pack(
+            anchor=self.tk.W, padx=5, pady=5
+        )
+
+        selector = self.ttk.Frame(frame)
+        selector.pack(fill=self.tk.X, padx=5, pady=5)
+        self.ttk.Label(selector, text="Stream key:").pack(side=self.tk.LEFT)
+        self.stream_key_var = self.tk.StringVar(value="")
+        self.stream_key_selector = self.ttk.Combobox(
+            selector,
+            textvariable=self.stream_key_var,
+            values=[],
+            state="readonly",
+            width=30,
+        )
+        self.stream_key_selector.pack(side=self.tk.LEFT, padx=4)
+        self.stream_key_selector.bind(
+            "<<ComboboxSelected>>", self._on_stream_key_changed
+        )
+
+        self.stream_image_label = self.ttk.Label(
+            frame,
+            text="No streamed image.",
+            anchor=self.tk.CENTER,
+        )
+        self.stream_image_label.pack(fill=self.tk.BOTH, expand=True, padx=5, pady=5)
+
     def _build_log_view(self, parent) -> None:
         frame = self.ttk.LabelFrame(parent, text="Execution log")
         frame.pack(fill=self.tk.BOTH, expand=True, padx=8, pady=8)
@@ -609,6 +696,72 @@ class WorkflowGUI:
         except Empty:
             pass
         self.root.after(100, self._poll_logs)
+
+    def _poll_stream(self) -> None:
+        try:
+            while True:
+                payload = self.stream_queue.get_nowait()
+                self._consume_stream_payload(payload)
+        except Empty:
+            pass
+        self.root.after(100, self._poll_stream)
+
+    def _consume_stream_payload(self, payload: Any) -> None:
+        if payload is None:
+            self._latest_stream_payload = None
+            self._show_stream_message("Nothing is streamed.")
+            return
+        if not isinstance(payload, dict):
+            self._show_stream_message("Stream error: invalid payload.")
+            return
+
+        if "__error__" in payload:
+            self._show_stream_message("Stream error.")
+            return
+
+        self._latest_stream_payload = payload
+        image_keys = [key for key, value in payload.items() if value is not None]
+        if len(image_keys) == 0:
+            self._show_stream_message("Nothing is streamed.")
+            return
+
+        current_key = self.stream_key_var.get()
+        selected_key = current_key if current_key in image_keys else image_keys[0]
+        self.stream_key_selector.config(values=image_keys)
+        self.stream_key_var.set(selected_key)
+        self._render_selected_stream_image()
+
+    def _on_stream_key_changed(self, event: Any | None = None) -> None:
+        del event
+        self._render_selected_stream_image()
+
+    def _render_selected_stream_image(self) -> None:
+        payload = self._latest_stream_payload
+        if payload is None:
+            self._show_stream_message("Nothing is streamed.")
+            return
+
+        selected_key = self.stream_key_var.get()
+        selected_image = payload.get(selected_key)
+        if selected_image is None:
+            self._show_stream_message("Nothing is streamed.")
+            return
+
+        try:
+            encoded = base64.b64encode(selected_image).decode("ascii")
+            self._stream_photo = self.tk.PhotoImage(data=encoded)
+        except Exception:
+            self._stream_photo = None
+            self._show_stream_message("Stream error.")
+            return
+
+        self.stream_image_label.config(image=self._stream_photo, text="")
+        self.stream_status.set(f"Showing stream key: {selected_key}")
+
+    def _show_stream_message(self, message: str) -> None:
+        self._stream_photo = None
+        self.stream_image_label.config(image="", text=message)
+        self.stream_status.set(message)
 
     def _selected_paths(self) -> list[Path]:
         values = [self.config_list.get(i) for i in range(self.config_list.size())]
@@ -775,7 +928,13 @@ class WorkflowGUI:
             "show": self.an_show.get(),
             "save_jpg": self.an_jpg.get(),
             "save_npz": self.an_npz.get(),
+            "streaming": self.an_streaming.get(),
         }
+        if options["streaming"]:
+            clear_queue(self.stream_queue)
+            self._show_stream_message("Streaming enabled. Waiting for data...")
+        else:
+            self._show_stream_message("Streaming disabled.")
         actions = enabled_option_labels(options)
         self._run_async(
             "analysis",
@@ -786,6 +945,7 @@ class WorkflowGUI:
             [str(path) for path in ctx.config_paths],
             self.rig_spec.get(),
             options,
+            self.stream_queue,
         )
 
     def _run_comparison_clicked(self) -> None:
