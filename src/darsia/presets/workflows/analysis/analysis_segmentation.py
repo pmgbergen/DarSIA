@@ -28,7 +28,9 @@ def _encode_low_resolution_png(
     bgr_array = bgr_image.img
 
     height, width = bgr_array.shape[:2]
-    scale = min(max_width / max(width, 1), max_height / max(height, 1), 1.0)
+    if width == 0 or height == 0:
+        raise ValueError("Cannot stream an image with zero width or height.")
+    scale = min(max_width / width, max_height / height, 1.0)
     if scale < 1.0:
         bgr_array = cv2.resize(
             bgr_array,

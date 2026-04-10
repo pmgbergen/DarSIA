@@ -342,6 +342,7 @@ class WorkflowGUI:
         self.current_config_file: Path | None = None
         self._mp_context = mp.get_context("spawn")
         self.log_queue: SupportsLogQueue = self._mp_context.Queue()
+        # Keep only the most recent frame to avoid stale previews and memory growth.
         self.stream_queue: SupportsQueue = self._mp_context.Queue(maxsize=1)
         self._worker_process: mp.Process | None = None
         self._abort_requested = False
@@ -515,7 +516,7 @@ class WorkflowGUI:
         self.an_show = self.tk.BooleanVar(value=False)
         self.an_jpg = self.tk.BooleanVar(value=False)
         self.an_npz = self.tk.BooleanVar(value=False)
-        self.an_streaming = self.tk.BooleanVar(value=False)
+        self.an_stream = self.tk.BooleanVar(value=False)
         for label, var in [
             ("All images", self.an_all),
             ("Cropping", self.an_crop),
@@ -526,7 +527,7 @@ class WorkflowGUI:
             ("Show plots", self.an_show),
             ("Save JPG", self.an_jpg),
             ("Save NPZ", self.an_npz),
-            ("Enable streaming", self.an_streaming),
+            ("Enable streaming", self.an_stream),
         ]:
             self.ttk.Checkbutton(self.analysis_frame, text=label, variable=var).pack(
                 anchor=self.tk.W
@@ -928,7 +929,7 @@ class WorkflowGUI:
             "show": self.an_show.get(),
             "save_jpg": self.an_jpg.get(),
             "save_npz": self.an_npz.get(),
-            "streaming": self.an_streaming.get(),
+            "streaming": self.an_stream.get(),
         }
         if options["streaming"]:
             clear_queue(self.stream_queue)
