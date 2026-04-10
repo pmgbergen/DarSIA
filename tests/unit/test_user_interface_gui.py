@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import queue
 import json
 import time
 from pathlib import Path
@@ -8,12 +9,14 @@ import pytest
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.user_interface_gui import (
     abort_process,
+    clear_queue,
     deduplicate_paths,
     default_session_cache_file,
     enabled_option_labels,
     format_workflow_done_message,
     format_workflow_start_message,
     normalize_paths,
+    publish_latest_queue_item,
     read_session_cache,
     resolve_rig_class,
     write_session_cache,
@@ -148,3 +151,19 @@ def test_format_workflow_start_message() -> None:
 def test_format_workflow_done_message() -> None:
     msg = format_workflow_done_message("setup", ["depth", "rig"], 2, 3.2)
     assert msg == "Setup completed. Actions: depth, rig. Configs: 2. Duration: 3.2s."
+
+
+def test_publish_latest_queue_item_keeps_only_latest() -> None:
+    q: queue.Queue[str] = queue.Queue()
+    q.put_nowait("first")
+    publish_latest_queue_item(q, "latest")
+    assert q.qsize() == 1
+    assert q.get_nowait() == "latest"
+
+
+def test_clear_queue_removes_all_items() -> None:
+    q: queue.Queue[str] = queue.Queue()
+    q.put_nowait("a")
+    q.put_nowait("b")
+    clear_queue(q)
+    assert q.empty()
