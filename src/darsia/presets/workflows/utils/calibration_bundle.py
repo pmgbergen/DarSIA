@@ -14,6 +14,14 @@ from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 logger = logging.getLogger(__name__)
 
 
+def _basis_subfolder_name(path: Path | None) -> str | None:
+    """Return ``path.name`` when it is a ``from_*`` basis folder, else ``None``."""
+    if path is None:
+        return None
+    name = path.name
+    return name if name.startswith("from_") else None
+
+
 def _zip_add_file(zip_file: ZipFile, file_path: Path, archive_path: Path) -> None:
     zip_file.write(file_path, arcname=str(archive_path))
 
@@ -130,6 +138,8 @@ def export_calibration_bundle(
         for key, src_path in artifact_paths.items():
             if src_path.is_dir():
                 archive_path = archive_root / key
+                if key in {"color_paths", "color_to_mass"}:
+                    archive_path = archive_path / src_path.name
                 _zip_add_directory(zip_file, src_path, archive_path)
             else:
                 archive_path = archive_root / key / src_path.name
@@ -178,12 +188,12 @@ def import_calibration_bundle(
 
     destination_roots: dict[str, Path] = {
         "color_paths": (
-            config.color_paths.calibration_file
+            config.color_paths.calibration_file.parent
             if target_folder == calibration_root and config.color_paths is not None
             else target_folder / "color_paths"
         ),
         "color_to_mass": (
-            config.color_to_mass.calibration_folder
+            config.color_to_mass.calibration_folder.parent
             if target_folder == calibration_root and config.color_to_mass is not None
             else target_folder / "color_to_mass"
         ),
@@ -197,6 +207,22 @@ def import_calibration_bundle(
             if target_folder == calibration_root and config.color_paths is not None
             else target_folder / "color_range.json"
         ),
+    }
+    expected_basis_folders: dict[str, str | None] = {
+        "color_paths": (
+            _basis_subfolder_name(config.color_paths.calibration_file)
+            if config.color_paths is not None
+            else None
+        ),
+        "color_to_mass": (
+            _basis_subfolder_name(config.color_to_mass.calibration_folder)
+            if config.color_to_mass is not None
+            else None
+        ),
+    }
+    imported_basis_folders: dict[str, str | None] = {
+        "color_paths": None,
+        "color_to_mass": None,
     }
 
     destination_root_paths = [
@@ -257,6 +283,15 @@ def import_calibration_bundle(
                 else destination_root.parent
             )
             for member, relative_path in members:
+                if artifact in {"color_paths", "color_to_mass"}:
+                    if relative_path.parts and relative_path.parts[0].startswith(
+                        "from_"
+                    ):
+                        imported_basis_folders[artifact] = relative_path.parts[0]
+                    elif expected_basis_folders[artifact] is not None:
+                        relative_path = (
+                            Path(expected_basis_folders[artifact]) / relative_path
+                        )
                 if artifact == "color_range":
                     destination = destination_root
                 else:
@@ -267,12 +302,16 @@ def import_calibration_bundle(
                 with zip_file.open(member) as src, destination.open("wb") as dst:
                     shutil.copyfileobj(src, dst)
 
-    result = {
-        key: value
-        for key, value in destination_roots.items()
-        if value.exists()
-        and key in {"color_paths", "color_to_mass", "baseline_color_spectrum"}
-    }
+    result: dict[str, Path] = {}
+    # Only these artifacts are basis-aware and may carry a from_* subfolder.
+    for key in ("color_paths", "color_to_mass"):
+        basis_folder = imported_basis_folders[key] or expected_basis_folders[key]
+        root = destination_roots[key]
+        path = root / basis_folder if basis_folder is not None else root
+        if path.exists():
+            result[key] = path
+    if destination_roots["baseline_color_spectrum"].exists():
+        result["baseline_color_spectrum"] = destination_roots["baseline_color_spectrum"]
     if destination_roots["color_range"].exists():
         result["color_range"] = destination_roots["color_range"]
 

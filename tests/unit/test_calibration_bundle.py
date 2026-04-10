@@ -82,8 +82,8 @@ def test_export_calibration_bundle(tmp_path: Path):
     assert bundle.exists()
     with zipfile.ZipFile(bundle, "r") as zf:
         names = set(zf.namelist())
-        assert "calibration_bundle/color_paths/color_path_0.json" in names
-        assert "calibration_bundle/color_to_mass/metadata.json" in names
+        assert "calibration_bundle/color_paths/from_labels/color_path_0.json" in names
+        assert "calibration_bundle/color_to_mass/from_labels/metadata.json" in names
         assert (
             "calibration_bundle/baseline_color_spectrum/color_spectrum_0.json" in names
         )
@@ -103,8 +103,13 @@ def test_import_calibration_bundle(tmp_path: Path):
     )
 
     assert (tmp_path / "imported" / "CONFIG_SNIPPET.toml").exists()
-    assert imported["color_paths"].exists()
-    assert imported["color_to_mass"].exists()
+    assert (
+        imported["color_paths"] == tmp_path / "imported" / "color_paths" / "from_labels"
+    )
+    assert (
+        imported["color_to_mass"]
+        == tmp_path / "imported" / "color_to_mass" / "from_labels"
+    )
     assert imported["color_range"].exists()
 
 
@@ -155,4 +160,6 @@ def test_import_calibration_bundle_filters_to_bundle_root(tmp_path: Path):
 
     assert not (tmp_path / "imported" / "outer.json").exists()
     assert not (tmp_path / "imported" / "calibration_bundle").exists()
-    assert imported["color_paths"].exists()
+    assert (
+        imported["color_paths"] == tmp_path / "imported" / "color_paths" / "from_labels"
+    )
