@@ -16,11 +16,18 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 from queue import Empty
-from typing import Any, Callable
+from typing import Any, Callable, Protocol
 
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
+
+
+class SupportsLogQueue(Protocol):
+    """Protocol for queue-like objects used for log forwarding."""
+
+    def put(self, obj: str) -> Any:
+        """Put one log message in the queue."""
 
 
 def _require_tkinter() -> tuple[Any, Any, Any, Any]:
@@ -83,7 +90,7 @@ def _find_template_file() -> Path:
     return candidates[-1]
 
 
-def _configure_queue_logging(log_queue: Any) -> None:
+def _configure_queue_logging(log_queue: SupportsLogQueue) -> None:
     """Attach queue logging handler to root logger."""
     handler = QueueLogHandler(log_queue)
     handler.setFormatter(
@@ -96,7 +103,7 @@ def _configure_queue_logging(log_queue: Any) -> None:
 
 
 def _worker_entry(
-    log_queue: Any, fn: Callable[..., None], args: tuple[Any, ...]
+    log_queue: SupportsLogQueue, fn: Callable[..., None], args: tuple[Any, ...]
 ) -> None:
     """Worker process entry point with queue-forwarded logging."""
     _configure_queue_logging(log_queue)
@@ -263,7 +270,7 @@ def _run_utils_workflow(config_paths: list[str], options: dict[str, bool]) -> No
 class QueueLogHandler(logging.Handler):
     """Log handler writing to a queue for GUI consumption."""
 
-    def __init__(self, queue: Any):
+    def __init__(self, queue: SupportsLogQueue):
         super().__init__()
         self._queue = queue
 
@@ -288,7 +295,7 @@ class WorkflowGUI:
 
         self.current_config_file: Path | None = None
         self._mp_context = mp.get_context("spawn")
-        self.log_queue: Any = self._mp_context.Queue()
+        self.log_queue: SupportsLogQueue = self._mp_context.Queue()
         self._worker_process: mp.Process | None = None
         self._abort_requested = False
         self._active_workflow = ""
