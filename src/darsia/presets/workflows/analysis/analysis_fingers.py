@@ -105,7 +105,10 @@ def analysis_fingers_from_context(
             # Determine various contour values.
             contour_length = contour_analysis.length()
             peaks, valleys = contour_analysis.fingers()
-            number_peaks = contour_analysis.number_peaks()
+            number_tips = contour_analysis.number_peaks()
+            number_fjords = contour_analysis.number_valleys()
+
+            # Plot finger peaks and contours.
             contour_analysis.plot_finger_peaks(
                 img,
                 peaks,
@@ -198,7 +201,7 @@ def analysis_fingers_from_context(
                             "key": key,
                             "image": path.name,
                             "contour_length": contour_length,
-                            "number_peaks": number_peaks,
+                            "number_tips": number_tips,
                             # "number_merged_paths": ...,
                             # "number_new_paths": ...,
                         },
