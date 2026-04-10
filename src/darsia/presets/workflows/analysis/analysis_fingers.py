@@ -60,10 +60,21 @@ def analysis_fingers_from_context(
     results_folder.mkdir(parents=True, exist_ok=True)
     for key in fingers_config.roi:
         (results_folder / "tips" / key).mkdir(parents=True, exist_ok=True)
-        (results_folder / "paths" / key).mkdir(parents=True, exist_ok=True)
+        (results_folder / "fjords" / key).mkdir(parents=True, exist_ok=True)
+        (results_folder / "tips_paths" / key).mkdir(parents=True, exist_ok=True)
+        (results_folder / "fjord_paths" / key).mkdir(parents=True, exist_ok=True)
 
     # DataFrame to store results.
-    df = pd.DataFrame(columns=["time", "key", "image", "contour_length", "number_tips"])
+    df = pd.DataFrame(
+        columns=[
+            "time",
+            "key",
+            "image",
+            "contour_length",
+            "number_tips",
+            "number_fjords",
+        ]
+    )
 
     # Config of plotting.
     # TODO enable control from config.
@@ -127,6 +138,23 @@ def analysis_fingers_from_context(
                     "highlight_roi": highlight_roi,
                 },
             )
+            contour_analysis.plot_valleys(
+                img,
+                valleys,
+                roi_config.roi,
+                contours=contours,
+                path=results_folder / "fjords" / key / f"{path.stem}.png",
+                show=show,
+                **{
+                    "valley_color": "c",
+                    "valley_linewidth": 1,
+                    "plot_valley_dots": True,
+                    "valley_dot_color": "r",
+                    "valley_dot_size": 20,
+                    "contour_color": "w",
+                    "contour_linewidth": 1,
+                },
+            )
 
             # TODO: Plot finger valleys (fjords) as well, and add to results.
 
@@ -135,6 +163,7 @@ def analysis_fingers_from_context(
                 peaks=peaks, valleys=valleys, time=img.time
             )
             contour_evolution_analysis[key].find_paths()
+            contour_evolution_analysis[key].find_valley_paths()
             contour_evolution_times[key].append(float(img.time))
             # contour_evolution_analysis[key].plot(img, roi=roi_config.roi)
 
@@ -143,6 +172,13 @@ def analysis_fingers_from_context(
                 roi=roi_config.roi,
                 path=(results_folder / "paths" / key / f"{path.stem}").with_suffix(plot_format),
                 show=show,
+            )
+            contour_evolution_analysis[key].plot_valley_paths(
+                img,
+                roi=roi_config.roi,
+                path=results_folder / "fjord_paths" / key / f"{path.stem}.png",
+                show=show,
+                color=None,
             )
             # number_paths = contour_evolution_analysis.number_paths
 
@@ -204,6 +240,7 @@ def analysis_fingers_from_context(
                             "image": path.name,
                             "contour_length": contour_length,
                             "number_tips": number_tips,
+                            "number_fjords": number_fjords,
                             # "number_merged_paths": ...,
                             # "number_new_paths": ...,
                         },
