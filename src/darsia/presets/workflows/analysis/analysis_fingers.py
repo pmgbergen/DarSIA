@@ -64,6 +64,7 @@ def analysis_fingers_from_context(
             "key",
             "image",
             "contour_length",
+            "number_tips",
             "number_peaks",
             "number_valleys",
         ]
@@ -166,6 +167,7 @@ def analysis_fingers_from_context(
                             "key": key,
                             "image": path.name,
                             "contour_length": contour_length,
+                            "number_tips": number_peaks,
                             "number_peaks": number_peaks,
                             "number_valleys": number_valleys,
                             # "number_merged_paths": ...,

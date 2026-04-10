@@ -486,8 +486,7 @@ class ContourAnalysis:
         if kwargs.get("plot_boundary", False):
             plt.gca().add_patch(
                 plt.Rectangle(
-                    top_left_roi_pixel[0],
-                    top_left_roi_pixel[1],
+                    (top_left_roi_pixel[0], top_left_roi_pixel[1]),
                     bottom_right_roi_pixel[0] - top_left_roi_pixel[0],
                     bottom_right_roi_pixel[1] - top_left_roi_pixel[1],
                     linewidth=kwargs.get("boundary_linewidth", 2),
@@ -707,7 +706,7 @@ class ContourEvolutionAnalysis:
         show: bool = False,
     ) -> None:
         if img is None:
-            raise False
+            raise ValueError("img is required to plot valley paths.")
 
         top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
 
