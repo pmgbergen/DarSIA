@@ -130,7 +130,8 @@ def analysis_fingers_from_context(
                     tip_wavelength = roi_width / float(number_tips)
             else:
                 logger.warning(
-                    "Skip frequency/wavelength computation due to non-positive ROI width for ROI '%s'.",
+                    "Skip frequency/wavelength computation due to non-positive"
+                    " ROI width for ROI '%s'.",
                     key,
                 )
 
