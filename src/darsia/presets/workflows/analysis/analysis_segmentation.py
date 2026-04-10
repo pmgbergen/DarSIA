@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import cv2
 
@@ -19,11 +20,21 @@ logger = logging.getLogger(__name__)
 
 
 def _encode_low_resolution_png(
-    contour_image,
+    contour_image: Any,
     max_width: int = 640,
     max_height: int = 480,
 ) -> bytes:
-    """Encode an image as low-resolution PNG bytes."""
+    """Encode an image as low-resolution PNG bytes.
+
+    Args:
+        contour_image: Image-like object containing contour visualization.
+        max_width: Maximum output width in pixels.
+        max_height: Maximum output height in pixels.
+
+    Returns:
+        PNG-encoded bytes for streaming.
+
+    """
     bgr_image = contour_image.to_trichromatic("BGR", return_image=True)
     bgr_array = bgr_image.img
 

@@ -263,10 +263,13 @@ def _run_analysis_workflow(
                 publish_latest_queue_item(stream_queue, payload)
             except Exception:
                 logger.exception("Failed to publish stream payload to GUI queue.")
-                publish_latest_queue_item(
-                    stream_queue,
-                    {"__error__": b"Failed to publish stream data to queue."},
-                )
+                try:
+                    publish_latest_queue_item(
+                        stream_queue,
+                        {"__error__": b"Failed to publish stream data to queue."},
+                    )
+                except Exception:
+                    pass
 
         stream_callback = _stream_callback
     args = argparse.Namespace(
