@@ -629,6 +629,15 @@ class ContourAnalysis:
             plt.show()
         else:
             plt.close()
+    def number_valleys(self) -> int:
+        """Determine number of valleys.
+
+        Returns:
+            int: number of valleys.
+
+        """
+        _, valleys_pixels = self.fingers()
+        return len(valleys_pixels)
 
 
 # In order to uniquely identify a location in the collection of paths, define
@@ -740,7 +749,12 @@ class ContourEvolutionAnalysis:
             )
 
         if path is not None:
-            plt.savefig(path.with_suffix(".svg"), format="svg", dpi=1000)
+            suffix = path.suffix
+            if suffix in [".png", ".jpg", ".jpeg", ".svg"]:
+                format = suffix[1:]
+                plt.savefig(path, format=format, dpi=1000)
+            else:
+                plt.savefig(path.with_suffix(".png"), format="png", dpi=1000)
 
         # Finalize plot
         if show:
@@ -831,19 +845,6 @@ class ContourEvolutionAnalysis:
             plt.show()
         else:
             plt.close()
-
-    def plot_fjord_paths(
-        self,
-        img: Optional[darsia.Image] = None,
-        roi: darsia.CoordinateArray | None = None,
-        path: Path | None = None,
-        show: bool = False,
-        color: str | None = None,
-    ) -> None:
-        """Alias for plot_valley_paths with finger-analysis terminology."""
-        self.plot_valley_paths(
-            img=img, roi=roi, path=path, show=show, color=color
-        )
 
     def _find_paths(self, points: dict[int, np.ndarray]) -> list[list[PathUnit]]:
         paths = []

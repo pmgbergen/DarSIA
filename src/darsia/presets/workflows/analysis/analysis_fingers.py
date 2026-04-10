@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from darsia.presets.workflows.analysis.analysis_context import (
@@ -42,11 +44,16 @@ def analysis_fingers_from_context(
 
     # Extract finger analysis config (asserted not None above)
     fingers_config = ctx.config.analysis.fingers.config
+    assert fingers_config.roi is not None
     segmentation_analysis = SimpleSegmentation(
         mode=fingers_config.mode, threshold=fingers_config.threshold
     )
     contour_analysis = ContourAnalysis()
-    contour_evolution_analysis = ContourEvolutionAnalysis()
+    # Keep evolution state per ROI to prevent mixing path histories across ROIs.
+    contour_evolution_analysis = {
+        key: ContourEvolutionAnalysis() for key in fingers_config.roi
+    }
+    contour_evolution_times = {key: [] for key in fingers_config.roi}
 
     # Data management.
     results_folder = ctx.config.analysis.fingers.folder
@@ -65,10 +72,21 @@ def analysis_fingers_from_context(
             "image",
             "contour_length",
             "number_tips",
-            "number_peaks",
             "number_fjords",
         ]
     )
+
+    # Config of plotting.
+    # TODO enable control from config.
+    plot_format = ".png"
+    contour_color = "w"
+    peak_color = "r"
+    peak_size = 10
+    contour_linewidth = 1
+    plot_boundary = False
+    boundary_color = "y"
+    boundary_linewidth = 2
+    highlight_roi = False
 
     # Loop over images and analyze
     for path in image_paths:
@@ -97,31 +115,32 @@ def analysis_fingers_from_context(
 
             # Determine various contour values.
             contour_length = contour_analysis.length()
-            peaks, fjords = contour_analysis.fingers()
-            number_peaks = contour_analysis.number_peaks()
-            number_fjords = len(fjords)
+            peaks, valleys = contour_analysis.fingers()
+            number_tips = contour_analysis.number_peaks()
+            number_fjords = contour_analysis.number_valleys()
+
+            # Plot finger peaks and contours.
             contour_analysis.plot_finger_peaks(
                 img,
                 peaks,
                 roi_config.roi,
                 contours=contours,
-                path=results_folder / "tips" / key / f"{path.stem}.png",
+                path=(results_folder / "tips" / key / f"{path.stem}").with_suffix(plot_format),
                 show=show,
                 **{
-                    # TODO enable control from config.
-                    "peak_color": "r",
-                    "peak_size": 10,
-                    "contour_color": "w",
-                    "contour_linewidth": 1,
-                    # "plot_boundary": True,
-                    # "boundary_color": "y",
-                    # "boundary_linewidth": 2,
-                    # "highlight_roi": True,
+                    "peak_color": peak_color,
+                    "peak_size": peak_size,
+                    "contour_color": contour_color,
+                    "contour_linewidth": contour_linewidth,
+                    "plot_boundary": plot_boundary,
+                    "boundary_color": boundary_color,
+                    "boundary_linewidth": boundary_linewidth,
+                    "highlight_roi": highlight_roi,
                 },
             )
             contour_analysis.plot_valleys(
                 img,
-                fjords,
+                valleys,
                 roi_config.roi,
                 contours=contours,
                 path=results_folder / "fjords" / key / f"{path.stem}.png",
@@ -137,19 +156,24 @@ def analysis_fingers_from_context(
                 },
             )
 
-            # Update evolution analysis.
-            contour_evolution_analysis.add(peaks=peaks, valleys=fjords, time=img.time)
-            contour_evolution_analysis.find_paths()
-            contour_evolution_analysis.find_fjord_paths()
-            # contour_evolution_analysis.plot(img, roi=roi_config.roi)
+            # TODO: Plot finger valleys (fjords) as well, and add to results.
 
-            contour_evolution_analysis.plot_paths(
+            # Update evolution analysis.
+            contour_evolution_analysis[key].add(
+                peaks=peaks, valleys=valleys, time=img.time
+            )
+            contour_evolution_analysis[key].find_paths()
+            contour_evolution_analysis[key].find_valley_paths()
+            contour_evolution_times[key].append(float(img.time))
+            # contour_evolution_analysis[key].plot(img, roi=roi_config.roi)
+
+            contour_evolution_analysis[key].plot_paths(
                 img,
                 roi=roi_config.roi,
-                path=results_folder / "tips_paths" / key / f"{path.stem}.png",
+                path=(results_folder / "paths" / key / f"{path.stem}").with_suffix(plot_format),
                 show=show,
             )
-            contour_evolution_analysis.plot_fjord_paths(
+            contour_evolution_analysis[key].plot_valley_paths(
                 img,
                 roi=roi_config.roi,
                 path=results_folder / "fjord_paths" / key / f"{path.stem}.png",
@@ -157,6 +181,54 @@ def analysis_fingers_from_context(
                 color=None,
             )
             # number_paths = contour_evolution_analysis.number_paths
+
+            roi_top_left_x = 0
+            roi_top_left_y = 0
+            if roi_config.roi is not None:
+                roi_pixels = roi_config.roi.to_voxel(img.coordinatesystem)
+                roi_top_left_x = int(np.min(roi_pixels[:, 1]))
+                roi_top_left_y = int(np.min(roi_pixels[:, 0]))
+
+            path_log = {}
+            for finger_path in contour_evolution_analysis[key].paths:
+                if len(finger_path) == 0:
+                    continue
+
+                start_unit = finger_path[0]
+                path_id = f"path_t{int(start_unit.time)}_p{int(start_unit.peak)}"
+                path_id_base = path_id
+                suffix = 1
+                while path_id in path_log:
+                    path_id = f"{path_id_base}_{suffix}"
+                    suffix += 1
+                coordinates = []
+                for unit in finger_path:
+                    time_index = int(unit.time)
+                    if 0 <= time_index < len(contour_evolution_times[key]):
+                        unit_time = contour_evolution_times[key][time_index]
+                    else:
+                        logger.warning(
+                            "Skip path unit with invalid time index %s for ROI '%s'.",
+                            time_index,
+                            key,
+                        )
+                        continue
+
+                    x = int(unit.position[0]) + roi_top_left_x
+                    y = int(unit.position[1]) + roi_top_left_y
+                    coordinates.append([x, y, unit_time])
+
+                if len(coordinates) == 0:
+                    continue
+
+                path_log[path_id] = {
+                    "start": coordinates[0][2],
+                    "end": coordinates[-1][2],
+                    "coordinates": coordinates,
+                }
+
+            with open(results_folder / "paths" / key / "paths.json", "w") as f:
+                json.dump(path_log, f, indent=2)
 
             df = pd.concat(
                 [
@@ -167,10 +239,7 @@ def analysis_fingers_from_context(
                             "key": key,
                             "image": path.name,
                             "contour_length": contour_length,
-                            # number_tips historically represented detected peaks; keep it in
-                            # sync with number_peaks for backward compatibility.
-                            "number_tips": number_peaks,
-                            "number_peaks": number_peaks,
+                            "number_tips": number_tips,
                             "number_fjords": number_fjords,
                             # "number_merged_paths": ...,
                             # "number_new_paths": ...,
