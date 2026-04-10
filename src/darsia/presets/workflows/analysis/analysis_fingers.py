@@ -73,6 +73,9 @@ def analysis_fingers_from_context(
             "contour_length",
             "number_tips",
             "number_fjords",
+            "roi_width",
+            "tip_frequency",
+            "tip_wavelength",
         ]
     )
 
@@ -118,6 +121,18 @@ def analysis_fingers_from_context(
             peaks, valleys = contour_analysis.fingers()
             number_tips = contour_analysis.number_peaks()
             number_fjords = contour_analysis.number_valleys()
+            roi_width = float(np.abs(roi_config.roi[1, 0] - roi_config.roi[0, 0]))
+            tip_frequency = np.nan
+            tip_wavelength = np.nan
+            if roi_width > 0:
+                tip_frequency = float(number_tips) / roi_width
+                if number_tips > 0:
+                    tip_wavelength = roi_width / float(number_tips)
+            else:
+                logger.warning(
+                    "Skip frequency/wavelength computation due to non-positive ROI width for ROI '%s'.",
+                    key,
+                )
 
             # Plot finger peaks and contours.
             contour_analysis.plot_finger_peaks(
@@ -259,6 +274,9 @@ def analysis_fingers_from_context(
                             "contour_length": contour_length,
                             "number_tips": number_tips,
                             "number_fjords": number_fjords,
+                            "roi_width": roi_width,
+                            "tip_frequency": tip_frequency,
+                            "tip_wavelength": tip_wavelength,
                             # "number_merged_paths": ...,
                             # "number_new_paths": ...,
                         },
