@@ -5,57 +5,18 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
-
-import cv2
 
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.streaming import (
+    publish_stream_images,
+)
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SegmentationContours
 
 logger = logging.getLogger(__name__)
-
-
-def _encode_low_resolution_png(
-    contour_image: Any,
-    max_width: int = 640,
-    max_height: int = 480,
-) -> bytes:
-    """Encode an image as low-resolution PNG bytes.
-
-    Args:
-        contour_image: Image-like object containing contour visualization.
-        max_width: Maximum output width in pixels.
-        max_height: Maximum output height in pixels.
-
-    Returns:
-        PNG-encoded bytes for streaming.
-
-    """
-    bgr_image = contour_image.to_trichromatic("BGR", return_image=True)
-    bgr_array = bgr_image.img
-
-    height, width = bgr_array.shape[:2]
-    if width == 0 or height == 0:
-        raise ValueError(
-            f"Cannot encode an image with zero dimensions: width={width}, "
-            f"height={height}."
-        )
-    scale = min(max_width / width, max_height / height, 1.0)
-    if scale < 1.0:
-        bgr_array = cv2.resize(
-            bgr_array,
-            (int(width * scale), int(height * scale)),
-            interpolation=cv2.INTER_AREA,
-        )
-
-    success, encoded = cv2.imencode(".png", bgr_array)
-    if not success:
-        raise ValueError("Failed to encode segmentation stream image.")
-    return encoded.tobytes()
 
 
 def analysis_segmentation_from_context(
@@ -107,19 +68,12 @@ def analysis_segmentation_from_context(
         contour_path = segmentation_config.folder / f"{path.stem}.jpg"
         contour_image.write(contour_path, quality=80)
 
-        if stream_callback is not None:
-            try:
-                stream_callback(
-                    {"segmentation": _encode_low_resolution_png(contour_image)}
-                )
-            except Exception:
-                logger.exception(
-                    "Failed to stream segmentation preview for image '%s'.", path
-                )
-                try:
-                    stream_callback(None)
-                except Exception:
-                    pass
+        publish_stream_images(
+            stream_callback=stream_callback,
+            image_payload={"segmentation": contour_image},
+            logger=logger,
+            error_message=f"Failed to stream segmentation preview for image '{path}'.",
+        )
 
 
 def analysis_segmentation(

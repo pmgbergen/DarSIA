@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
+import cv2
 import pandas as pd
 
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SimpleSegmentation
 from darsia.single_image_analysis.contouranalysis import (
@@ -24,6 +27,7 @@ logger = logging.getLogger(__name__)
 def analysis_fingers_from_context(
     ctx: AnalysisContext,
     show: bool = False,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
 ) -> None:
     """Segmentation analysis using pre-prepared context.
 
@@ -72,6 +76,8 @@ def analysis_fingers_from_context(
             mass=mass_analysis_result.mass,
         )
 
+        stream_images = {"fingers_source_image": img, "fingers_segmentation": segmentation}
+
         for key, roi_config in fingers_config.roi.items():
             # TODO: allow to tune the threshold value, and mode in a interactive way.
 
@@ -87,12 +93,13 @@ def analysis_fingers_from_context(
             contour_length = contour_analysis.length()
             peaks, valleys = contour_analysis.fingers()
             number_peaks = contour_analysis.number_peaks()
+            tips_path = results_folder / "tips" / key / f"{path.stem}.png"
             contour_analysis.plot_finger_peaks(
                 img,
                 peaks,
                 roi_config.roi,
                 contours=contours,
-                path=results_folder / "tips" / key / f"{path.stem}.png",
+                path=tips_path,
                 show=show,
                 **{
                     # TODO enable control from config.
@@ -112,10 +119,11 @@ def analysis_fingers_from_context(
             contour_evolution_analysis.find_paths()
             # contour_evolution_analysis.plot(img, roi=roi_config.roi)
 
+            paths_path = results_folder / "paths" / key / f"{path.stem}.png"
             contour_evolution_analysis.plot_paths(
                 img,
                 roi=roi_config.roi,
-                path=results_folder / "paths" / key / f"{path.stem}.png",
+                path=paths_path,
                 show=show,
             )
             # number_paths = contour_evolution_analysis.number_paths
@@ -140,12 +148,27 @@ def analysis_fingers_from_context(
             )
             df.to_csv(results_folder / "results.csv", index=False)
 
+            tips_plot = cv2.imread(str(tips_path), cv2.IMREAD_COLOR)
+            if tips_plot is not None:
+                stream_images[f"fingers_tips_{key}"] = tips_plot
+            paths_plot = cv2.imread(str(paths_path), cv2.IMREAD_COLOR)
+            if paths_plot is not None:
+                stream_images[f"fingers_paths_{key}"] = paths_plot
+
+        publish_stream_images(
+            stream_callback=stream_callback,
+            image_payload=stream_images,
+            logger=logger,
+            error_message=f"Failed to stream finger previews for image '{path}'.",
+        )
+
 
 def analysis_fingers(
     cls: type[Rig],
     path: Path | list[Path],
     show: bool = False,
     all: bool = False,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
 ):
     """Fingers analysis (standalone entry point).
 
@@ -162,4 +185,4 @@ def analysis_fingers(
         all=all,
         require_color_to_mass=True,
     )
-    analysis_fingers_from_context(ctx, show=show)
+    analysis_fingers_from_context(ctx, show=show, stream_callback=stream_callback)
