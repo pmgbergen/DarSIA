@@ -65,6 +65,18 @@ def analysis_fingers_from_context(
     # DataFrame to store results.
     df = pd.DataFrame(columns=["time", "key", "image", "contour_length", "number_tips"])
 
+    # Config of plotting.
+    # TODO enable control from config.
+    plot_format = ".png"
+    contour_color = "w"
+    peak_color = "r"
+    peak_size = 10
+    contour_linewidth = 1
+    plot_boundary = False
+    boundary_color = "y"
+    boundary_linewidth = 2
+    highlight_roi = False
+
     # Loop over images and analyze
     for path in image_paths:
         # Extract color signal and assign mass
@@ -99,18 +111,17 @@ def analysis_fingers_from_context(
                 peaks,
                 roi_config.roi,
                 contours=contours,
-                path=results_folder / "tips" / key / f"{path.stem}.png",
+                path=(results_folder / "tips" / key / f"{path.stem}").with_suffix(plot_format),
                 show=show,
                 **{
-                    # TODO enable control from config.
-                    "peak_color": "r",
-                    "peak_size": 10,
-                    "contour_color": "w",
-                    "contour_linewidth": 1,
-                    # "plot_boundary": True,
-                    # "boundary_color": "y",
-                    # "boundary_linewidth": 2,
-                    # "highlight_roi": True,
+                    "peak_color": peak_color,
+                    "peak_size": peak_size,
+                    "contour_color": contour_color,
+                    "contour_linewidth": contour_linewidth,
+                    "plot_boundary": plot_boundary,
+                    "boundary_color": boundary_color,
+                    "boundary_linewidth": boundary_linewidth,
+                    "highlight_roi": highlight_roi,
                 },
             )
 
@@ -125,7 +136,7 @@ def analysis_fingers_from_context(
             contour_evolution_analysis[key].plot_paths(
                 img,
                 roi=roi_config.roi,
-                path=results_folder / "paths" / key / f"{path.stem}.png",
+                path=(results_folder / "paths" / key / f"{path.stem}").with_suffix(plot_format),
                 show=show,
             )
             # number_paths = contour_evolution_analysis.number_paths
