@@ -136,7 +136,7 @@ def analysis_fingers_from_context(
                 )
 
             # Plot finger peaks and contours.
-            contour_analysis.plot_finger_peaks(
+            contour_analysis.plot_peaks(
                 img,
                 peaks,
                 roi_config.roi,
