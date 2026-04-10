@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import cv2
 import pandas as pd
@@ -76,7 +77,7 @@ def analysis_fingers_from_context(
             mass=mass_analysis_result.mass,
         )
 
-        stream_images: dict[str, object] | None = None
+        stream_images: dict[str, Any] | None = None
         if stream_callback is not None:
             stream_images = {
                 "fingers_source_image": img,
