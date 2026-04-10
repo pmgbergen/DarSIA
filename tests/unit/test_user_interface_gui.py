@@ -7,6 +7,9 @@ import pytest
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.user_interface_gui import (
     abort_process,
+    enabled_option_labels,
+    format_workflow_done_message,
+    format_workflow_start_message,
     normalize_paths,
     resolve_rig_class,
 )
@@ -53,3 +56,28 @@ def test_abort_process_stops_running_process() -> None:
 
     assert abort_process(process)
     assert not process.is_alive()
+
+
+def test_enabled_option_labels_excludes_entries() -> None:
+    labels = enabled_option_labels(
+        {"all": True, "save_npz": True, "show": False}, exclude={"all"}
+    )
+    assert labels == ["save npz"]
+
+
+def test_format_workflow_start_message() -> None:
+    msg = format_workflow_start_message(
+        workflow="analysis",
+        actions=["mass", "segmentation"],
+        config_paths=[Path("/tmp/a.toml"), Path("/tmp/b.toml")],
+        rig_spec="",
+    )
+    assert "Starting analysis workflow." in msg
+    assert "Actions: mass, segmentation." in msg
+    assert "Configs: /tmp/a.toml, /tmp/b.toml." in msg
+    assert "Rig: darsia.presets.workflows.rig:Rig." in msg
+
+
+def test_format_workflow_done_message() -> None:
+    msg = format_workflow_done_message("setup", ["depth", "rig"], 2, 3.2)
+    assert msg == "Setup completed. Actions: depth, rig. Configs: 2. Duration: 3.2s."
