@@ -208,6 +208,7 @@ def analysis_fingers_from_context(
                 roi_top_left_y = int(np.min(roi_pixels[:, 0]))
 
             path_log = {}
+            active_fingers_by_time = {}
             for finger_path in contour_evolution_analysis[key].paths:
                 if len(finger_path) == 0:
                     continue
@@ -239,14 +240,24 @@ def analysis_fingers_from_context(
                 if len(coordinates) == 0:
                     continue
 
-                length = 0.0
+                lengths = [[0.0, float(coordinates[0][2])]]
+                cumulative_length = 0.0
                 for index in range(1, len(coordinates)):
                     x_prev, y_prev, _ = coordinates[index - 1]
-                    x_curr, y_curr, _ = coordinates[index]
-                    length += float(np.hypot(x_curr - x_prev, y_curr - y_prev))
+                    x_curr, y_curr, t_curr = coordinates[index]
+                    cumulative_length += float(np.hypot(x_curr - x_prev, y_curr - y_prev))
+                    lengths.append([cumulative_length, float(t_curr)])
 
-                y_coordinates = [coord[1] for coord in coordinates]
-                height = float(np.max(y_coordinates) - np.min(y_coordinates))
+                heights = []
+                min_y = float(coordinates[0][1])
+                max_y = float(coordinates[0][1])
+                heights.append([0.0, float(coordinates[0][2])])
+                for index in range(1, len(coordinates)):
+                    y_curr = float(coordinates[index][1])
+                    t_curr = float(coordinates[index][2])
+                    min_y = min(min_y, y_curr)
+                    max_y = max(max_y, y_curr)
+                    heights.append([max_y - min_y, t_curr])
 
                 speeds = []
                 for index in range(1, len(coordinates)):
@@ -270,10 +281,50 @@ def analysis_fingers_from_context(
                     "end": coordinates[-1][2],
                     "coordinates": coordinates,
                     "speed": speeds,
-                    "length": length,
-                    "height": height,
+                    "length": lengths,
+                    "height": heights,
                 }
 
+                length_by_time = {float(time): float(length) for length, time in lengths}
+                for x, y, time in coordinates:
+                    time = float(time)
+                    if time not in length_by_time:
+                        logger.warning(
+                            "Skip finger statistics entry with missing length at time %s for ROI '%s'.",
+                            time,
+                            key,
+                        )
+                        continue
+                    active_fingers_by_time.setdefault(time, []).append(
+                        {
+                            "x": float(x),
+                            "y": float(y),
+                            "length": length_by_time[time],
+                        }
+                    )
+
+            statistics = {}
+            for time in sorted(active_fingers_by_time):
+                active_fingers = active_fingers_by_time[time]
+                distances = []
+                for i, finger_i in enumerate(active_fingers):
+                    for finger_j in active_fingers[i + 1 :]:
+                        distances.append(
+                            float(
+                                np.hypot(
+                                    finger_j["x"] - finger_i["x"],
+                                    finger_j["y"] - finger_i["y"],
+                                )
+                            )
+                        )
+                lengths_at_time = [float(finger["length"]) for finger in active_fingers]
+                statistics[time] = {
+                    "distances": distances,
+                    "lengths": lengths_at_time,
+                }
+
+            path_log["statistics"] = statistics
+            
             with open(results_folder / "tips_paths" / key / "paths.json", "w") as f:
                 json.dump(path_log, f, indent=2)
 
