@@ -73,6 +73,9 @@ def analysis_fingers_from_context(
             "contour_length",
             "number_tips",
             "number_fjords",
+            "roi_width",
+            "tip_frequency",
+            "tip_wavelength",
         ]
     )
 
@@ -118,6 +121,18 @@ def analysis_fingers_from_context(
             peaks, valleys = contour_analysis.fingers()
             number_tips = contour_analysis.number_peaks()
             number_fjords = contour_analysis.number_valleys()
+            roi_width = float(np.abs(roi_config.roi[1, 0] - roi_config.roi[0, 0]))
+            tip_frequency = np.nan
+            tip_wavelength = np.nan
+            if roi_width > 0:
+                tip_frequency = float(number_tips) / roi_width
+                if number_tips > 0:
+                    tip_wavelength = roi_width / float(number_tips)
+            else:
+                logger.warning(
+                    "Skip frequency/wavelength computation due to non-positive ROI width for ROI '%s'.",
+                    key,
+                )
 
             # Plot finger peaks and contours.
             contour_analysis.plot_finger_peaks(
@@ -221,10 +236,28 @@ def analysis_fingers_from_context(
                 if len(coordinates) == 0:
                     continue
 
+                speeds = []
+                for index in range(1, len(coordinates)):
+                    x_prev, y_prev, t_prev = coordinates[index - 1]
+                    x_curr, y_curr, t_curr = coordinates[index]
+                    dt = float(t_curr - t_prev)
+                    if dt <= 0:
+                        logger.warning(
+                            "Skip speed computation with non-positive dt=%s for ROI '%s'.",
+                            dt,
+                            key,
+                        )
+                        continue
+                    vx = float(x_curr - x_prev) / dt
+                    vy = float(y_curr - y_prev) / dt
+                    speed = float(np.hypot(vx, vy))
+                    speeds.append([speed, float(t_curr)])
+
                 path_log[path_id] = {
                     "start": coordinates[0][2],
                     "end": coordinates[-1][2],
                     "coordinates": coordinates,
+                    "speed": speeds,
                 }
 
             with open(results_folder / "paths" / key / "paths.json", "w") as f:
@@ -241,6 +274,9 @@ def analysis_fingers_from_context(
                             "contour_length": contour_length,
                             "number_tips": number_tips,
                             "number_fjords": number_fjords,
+                            "roi_width": roi_width,
+                            "tip_frequency": tip_frequency,
+                            "tip_wavelength": tip_wavelength,
                             # "number_merged_paths": ...,
                             # "number_new_paths": ...,
                         },
