@@ -342,7 +342,7 @@ class WorkflowGUI:
         self.current_config_file: Path | None = None
         self._mp_context = mp.get_context("spawn")
         self.log_queue: SupportsLogQueue = self._mp_context.Queue()
-        # Keep only the most recent frame to avoid stale previews and memory growth.
+        # maxsize=1 keeps only the newest preview frame and bounds memory usage.
         self.stream_queue: SupportsQueue = self._mp_context.Queue(maxsize=1)
         self._worker_process: mp.Process | None = None
         self._abort_requested = False

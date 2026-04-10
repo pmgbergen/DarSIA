@@ -30,7 +30,7 @@ def _encode_low_resolution_png(
     height, width = bgr_array.shape[:2]
     if width == 0 or height == 0:
         raise ValueError(
-            f"Cannot stream an image with zero dimensions: width={width}, "
+            f"Cannot encode an image with zero dimensions: width={width}, "
             f"height={height}."
         )
     scale = min(max_width / width, max_height / height, 1.0)
