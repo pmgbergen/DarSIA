@@ -51,6 +51,12 @@ def test_find_valley_paths_tracks_valleys_over_time():
     contour_evolution_analysis.find_valley_paths()
 
     assert len(contour_evolution_analysis.valley_paths) == 2
+
+    starts = sorted([tuple(path[0].position) for path in contour_evolution_analysis.valley_paths])
+    ends = sorted([tuple(path[1].position) for path in contour_evolution_analysis.valley_paths])
+    assert starts == [(1, 2), (6, 2)]
+    assert ends == [(2, 3), (7, 3)]
+
     for valley_path in contour_evolution_analysis.valley_paths:
         assert len(valley_path) == 2
         assert valley_path[0].time == 0
