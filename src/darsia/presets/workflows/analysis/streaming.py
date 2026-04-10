@@ -141,7 +141,8 @@ def publish_stream_images(
         return
     try:
         encoded_payload = {
-            key: encode_low_resolution_png(image) for key, image in image_payload.items()
+            key: encode_low_resolution_png(image)
+            for key, image in image_payload.items()
         }
         publish_stream_payload(
             stream_callback=stream_callback,

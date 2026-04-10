@@ -76,7 +76,10 @@ def analysis_fingers_from_context(
             mass=mass_analysis_result.mass,
         )
 
-        stream_images = {"fingers_source_image": img, "fingers_segmentation": segmentation}
+        stream_images = {
+            "fingers_source_image": img,
+            "fingers_segmentation": segmentation,
+        }
 
         for key, roi_config in fingers_config.roi.items():
             # TODO: allow to tune the threshold value, and mode in a interactive way.
