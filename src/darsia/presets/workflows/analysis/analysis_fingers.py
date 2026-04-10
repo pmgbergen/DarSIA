@@ -239,14 +239,24 @@ def analysis_fingers_from_context(
                 if len(coordinates) == 0:
                     continue
 
-                length = 0.0
+                lengths = [[0.0, float(coordinates[0][2])]]
+                cumulative_length = 0.0
                 for index in range(1, len(coordinates)):
                     x_prev, y_prev, _ = coordinates[index - 1]
-                    x_curr, y_curr, _ = coordinates[index]
-                    length += float(np.hypot(x_curr - x_prev, y_curr - y_prev))
+                    x_curr, y_curr, t_curr = coordinates[index]
+                    cumulative_length += float(np.hypot(x_curr - x_prev, y_curr - y_prev))
+                    lengths.append([cumulative_length, float(t_curr)])
 
-                y_coordinates = [coord[1] for coord in coordinates]
-                height = float(np.max(y_coordinates) - np.min(y_coordinates))
+                heights = []
+                min_y = float(coordinates[0][1])
+                max_y = float(coordinates[0][1])
+                heights.append([0.0, float(coordinates[0][2])])
+                for index in range(1, len(coordinates)):
+                    y_curr = float(coordinates[index][1])
+                    t_curr = float(coordinates[index][2])
+                    min_y = min(min_y, y_curr)
+                    max_y = max(max_y, y_curr)
+                    heights.append([max_y - min_y, t_curr])
 
                 speeds = []
                 for index in range(1, len(coordinates)):
@@ -270,8 +280,8 @@ def analysis_fingers_from_context(
                     "end": coordinates[-1][2],
                     "coordinates": coordinates,
                     "speed": speeds,
-                    "length": length,
-                    "height": height,
+                    "length": lengths,
+                    "height": heights,
                 }
 
             with open(results_folder / "paths" / key / "paths.json", "w") as f:
