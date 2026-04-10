@@ -629,6 +629,7 @@ class ContourAnalysis:
             plt.show()
         else:
             plt.close()
+
     def number_valleys(self) -> int:
         """Determine number of valleys.
 
@@ -839,7 +840,12 @@ class ContourEvolutionAnalysis:
                 )
 
         if path is not None:
-            plt.savefig(path.with_suffix(".svg"), format="svg", dpi=1000)
+            suffix = path.suffix
+            if suffix in [".png", ".jpg", ".jpeg", ".svg"]:
+                format = suffix[1:]
+                plt.savefig(path, format=format, dpi=1000)
+            else:
+                plt.savefig(path.with_suffix(".png"), format="png", dpi=1000)
 
         if show:
             plt.show()
@@ -884,7 +890,9 @@ class ContourEvolutionAnalysis:
 
         def _include_points(time_next, point_indices, pts_next):
             for point_index in point_indices:
-                path_unit_next = PathUnit(time_next, point_index, pts_next[point_index, :])
+                path_unit_next = PathUnit(
+                    time_next, point_index, pts_next[point_index, :]
+                )
                 paths.append([path_unit_next])
 
         if self.total_time == 1:
@@ -893,7 +901,9 @@ class ContourEvolutionAnalysis:
             return paths
 
         for time_index in range(self.total_time - 1):
-            pts_prev = _reshape_points(points.get(time_index, np.zeros((0, 1, 2), dtype=int)))
+            pts_prev = _reshape_points(
+                points.get(time_index, np.zeros((0, 1, 2), dtype=int))
+            )
             pts_next = _reshape_points(
                 points.get(time_index + 1, np.zeros((0, 1, 2), dtype=int))
             )
@@ -964,7 +974,9 @@ class ContourEvolutionAnalysis:
                 arg_sorted_new_paths = np.argsort(new_paths)
                 new_paths = new_paths[arg_sorted_new_paths]
 
-            _include_segments(time_index, time_index + 1, prev_next_pairs, pts_prev, pts_next)
+            _include_segments(
+                time_index, time_index + 1, prev_next_pairs, pts_prev, pts_next
+            )
             _include_points(time_index + 1, new_paths, pts_next)
 
         return paths
