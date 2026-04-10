@@ -23,6 +23,7 @@ from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
 SESSION_CACHE_FILE_NAME = "workflows_gui_session.json"
+SESSION_CACHE_VERSION = 1
 
 
 class SupportsLogQueue(Protocol):
@@ -76,9 +77,23 @@ def normalize_paths(paths: list[str]) -> list[Path]:
     return unique
 
 
+def deduplicate_paths(paths: list[Path]) -> list[Path]:
+    """Deduplicate Path objects preserving order."""
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for path in paths:
+        if path not in seen:
+            seen.add(path)
+            unique.append(path)
+    return unique
+
+
 def default_session_cache_file() -> Path:
     """Return default path for GUI session cache file."""
-    base = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    xdg_cache_home = os.environ.get("XDG_CACHE_HOME")
+    base = (
+        Path(xdg_cache_home).expanduser() if xdg_cache_home else Path.home() / ".cache"
+    )
     return base / "darsia" / SESSION_CACHE_FILE_NAME
 
 
@@ -92,6 +107,12 @@ def read_session_cache(path: Path) -> tuple[list[Path], str]:
         raise ValueError(f"Failed to read session cache {path}: {e}") from e
     if not isinstance(data, dict):
         raise ValueError(f"Invalid session cache format in {path}.")
+    version = data.get("version", SESSION_CACHE_VERSION)
+    if not isinstance(version, int) or version != SESSION_CACHE_VERSION:
+        raise ValueError(
+            f"Unsupported session cache version in {path}: {version}. "
+            f"Expected {SESSION_CACHE_VERSION}."
+        )
 
     config_paths_raw = data.get("config_paths", [])
     if not isinstance(config_paths_raw, list):
@@ -109,8 +130,7 @@ def read_session_cache(path: Path) -> tuple[list[Path], str]:
 def write_session_cache(path: Path, config_paths: list[Path], rig_spec: str) -> None:
     """Write cached GUI session (config paths + rig spec)."""
     payload = {
-        "version": 1,
-        "updated_at": time.time(),
+        "version": SESSION_CACHE_VERSION,
         "config_paths": [str(p) for p in config_paths],
         "rig_spec": rig_spec,
     }
@@ -349,7 +369,11 @@ class WorkflowGUI:
         self._worker_started_at: float | None = None
         self._sv_ttk: Any = None
         self._native_theme_name: str | None = None
-        self._session_cache_file = default_session_cache_file()
+        self._session_cache_file: Path | None = None
+        try:
+            self._session_cache_file = default_session_cache_file()
+        except (OSError, RuntimeError) as e:
+            logger.warning("Failed to initialize GUI session cache path: %s", e)
 
         self._setup_logging()
         self._build_layout()
@@ -669,6 +693,8 @@ class WorkflowGUI:
             self.config_list.insert(self.tk.END, str(path))
 
     def _persist_session_cache(self) -> None:
+        if self._session_cache_file is None:
+            return
         try:
             write_session_cache(
                 self._session_cache_file, self._selected_paths(), self.rig_spec.get()
@@ -932,6 +958,12 @@ class WorkflowGUI:
         self._persist_session_cache()
 
     def _load_previous_session(self) -> None:
+        if self._session_cache_file is None:
+            self.messagebox.showwarning(
+                "Session cache warning",
+                "Session cache is unavailable in this environment.",
+            )
+            return
         try:
             cached_paths, cached_rig_spec = read_session_cache(self._session_cache_file)
         except ValueError as e:
@@ -953,21 +985,22 @@ class WorkflowGUI:
                 unavailable_paths.append(path)
 
         current_paths = self._selected_paths()
-        merged = normalize_paths(
-            [str(path) for path in current_paths]
-            + [str(path) for path in available_paths]
-        )
+        merged = deduplicate_paths(current_paths + available_paths)
         self._set_selected_paths(merged)
 
         if cached_rig_spec.strip():
             self.rig_spec.set(cached_rig_spec)
 
         if unavailable_paths:
-            unavailable_list = "\n".join(str(path) for path in unavailable_paths)
+            max_display = 10
+            shown = unavailable_paths[:max_display]
+            unavailable_list = "\n".join(str(path) for path in shown)
+            remaining = len(unavailable_paths) - len(shown)
+            suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
             self.messagebox.showwarning(
                 "Missing config files",
                 "Some files from previous session are not available:\n"
-                f"{unavailable_list}",
+                f"{unavailable_list}{suffix}",
             )
 
         self._persist_session_cache()
@@ -1137,9 +1170,13 @@ class WorkflowGUI:
         self.root.after(1000, self._update_dashboard)
 
     def _on_close(self) -> None:
-        self._persist_session_cache()
-        abort_process(self._worker_process)
-        self.root.destroy()
+        try:
+            self._persist_session_cache()
+        except Exception:
+            logger.exception("Failed while persisting GUI session cache during close.")
+        finally:
+            abort_process(self._worker_process)
+            self.root.destroy()
 
 
 def launch_workflows_gui() -> None:

@@ -8,6 +8,7 @@ import pytest
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.user_interface_gui import (
     abort_process,
+    deduplicate_paths,
     default_session_cache_file,
     enabled_option_labels,
     format_workflow_done_message,
@@ -43,6 +44,12 @@ def test_normalize_paths_deduplicates_and_resolves(tmp_path: Path) -> None:
     raw = [str(p), str(p), "", f"  {p}  "]
     normalized = normalize_paths(raw)
     assert normalized == [p.resolve()]
+
+
+def test_deduplicate_paths_preserves_order(tmp_path: Path) -> None:
+    p1 = (tmp_path / "a.toml").resolve()
+    p2 = (tmp_path / "b.toml").resolve()
+    assert deduplicate_paths([p1, p2, p1]) == [p1, p2]
 
 
 def test_write_and_read_session_cache_roundtrip(tmp_path: Path) -> None:
@@ -83,6 +90,13 @@ def test_read_session_cache_deduplicates_paths(tmp_path: Path) -> None:
     paths, rig_spec = read_session_cache(cache_path)
     assert paths == [p1.resolve()]
     assert rig_spec == "a:b"
+
+
+def test_read_session_cache_rejects_unsupported_version(tmp_path: Path) -> None:
+    cache_path = tmp_path / "session.json"
+    cache_path.write_text(json.dumps({"version": 999, "config_paths": []}))
+    with pytest.raises(ValueError):
+        read_session_cache(cache_path)
 
 
 def test_default_session_cache_file_respects_xdg_cache_home(
