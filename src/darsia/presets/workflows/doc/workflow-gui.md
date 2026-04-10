@@ -6,14 +6,17 @@ The GUI is additive: it does not replace CLI workflow modules.
 
 ## Capabilities
 - Manage and order multiple config files
+- Persist config context between GUI sessions and restore via "Load previous session"
 - Open context-listed config files directly in editor ("Open in editor" and list double-click)
 - Edit TOML content and save back to currently opened path
-- Switch GUI mode between Config Editor, Dashboard, and Batch Monitor placeholder
+- Switch GUI mode between Config Editor, Dashboard, Batch Monitor, and Streaming monitor
 - Switch visual theme (System/Light/Dark) with optional `sv_ttk` support
 - Run setup/calibration/analysis/comparison/actions
+- Enable prototype segmentation streaming from Analysis and inspect latest streamed images by key
 - View richer execution logs (workflow start details and workflow-specific completion)
 - Inject custom Rig class using `module.path:ClassName`
 - Abort active workflow process from the UI
+- Warn when cached session config files are no longer available during restore
 
 ## Dependency
 `tkinter` is required in the Python environment.

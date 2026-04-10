@@ -7,7 +7,9 @@ This GUI is additive and does not replace the existing command-line
 from __future__ import annotations
 
 import argparse
+import base64
 import importlib
+import json
 import logging
 import multiprocessing as mp
 import os
@@ -15,12 +17,14 @@ import time
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
-from queue import Empty
+from queue import Empty, Full
 from typing import Any, Callable, Protocol
 
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
+SESSION_CACHE_FILE_NAME = "workflows_gui_session.json"
+SESSION_CACHE_VERSION = 1
 
 
 class SupportsLogQueue(Protocol):
@@ -28,6 +32,16 @@ class SupportsLogQueue(Protocol):
 
     def put(self, obj: str) -> Any:
         """Put one log message in the queue."""
+
+
+class SupportsQueue(Protocol):
+    """Protocol for queue-like objects used for generic payload forwarding."""
+
+    def get_nowait(self) -> Any:
+        """Get one queue element without blocking."""
+
+    def put_nowait(self, obj: Any) -> Any:
+        """Put one queue element without blocking."""
 
 
 def _require_tkinter() -> tuple[Any, Any, Any, Any]:
@@ -74,6 +88,67 @@ def normalize_paths(paths: list[str]) -> list[Path]:
     return unique
 
 
+def deduplicate_paths(paths: list[Path]) -> list[Path]:
+    """Deduplicate Path objects preserving order."""
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for path in paths:
+        if path not in seen:
+            seen.add(path)
+            unique.append(path)
+    return unique
+
+
+def default_session_cache_file() -> Path:
+    """Return default path for GUI session cache file."""
+    xdg_cache_home = os.environ.get("XDG_CACHE_HOME")
+    base = (
+        Path(xdg_cache_home).expanduser() if xdg_cache_home else Path.home() / ".cache"
+    )
+    return base / "darsia" / SESSION_CACHE_FILE_NAME
+
+
+def read_session_cache(path: Path) -> tuple[list[Path], str]:
+    """Read cached GUI session (config paths + rig spec)."""
+    if not path.exists():
+        return [], ""
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise ValueError(f"Failed to read session cache {path}: {e}") from e
+    if not isinstance(data, dict):
+        raise ValueError(f"Invalid session cache format in {path}.")
+    version = data.get("version", SESSION_CACHE_VERSION)
+    if not isinstance(version, int) or version != SESSION_CACHE_VERSION:
+        raise ValueError(
+            f"Unsupported session cache version in {path}: {version}. "
+            f"Expected {SESSION_CACHE_VERSION}."
+        )
+
+    config_paths_raw = data.get("config_paths", [])
+    if not isinstance(config_paths_raw, list):
+        raise ValueError(f"Invalid session cache format in {path}: config_paths.")
+    config_paths = normalize_paths(
+        [item for item in config_paths_raw if isinstance(item, str)]
+    )
+
+    rig_spec = data.get("rig_spec", "")
+    if not isinstance(rig_spec, str):
+        rig_spec = ""
+    return config_paths, rig_spec
+
+
+def write_session_cache(path: Path, config_paths: list[Path], rig_spec: str) -> None:
+    """Write cached GUI session (config paths + rig spec)."""
+    payload = {
+        "version": SESSION_CACHE_VERSION,
+        "config_paths": [str(p) for p in config_paths],
+        "rig_spec": rig_spec,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2))
+
+
 def _find_template_file() -> Path:
     candidates: list[Path] = []
     try:
@@ -108,6 +183,24 @@ def _worker_entry(
     """Worker process entry point with queue-forwarded logging."""
     _configure_queue_logging(log_queue)
     fn(*args)
+
+
+def clear_queue(queue: SupportsQueue) -> None:
+    """Drain all currently queued items."""
+    try:
+        while True:
+            queue.get_nowait()
+    except Empty:
+        pass
+
+
+def publish_latest_queue_item(queue: SupportsQueue, payload: Any) -> None:
+    """Keep only the latest payload in queue."""
+    clear_queue(queue)
+    try:
+        queue.put_nowait(payload)
+    except Full:
+        pass
 
 
 def enabled_option_labels(
@@ -216,13 +309,33 @@ def _run_calibration_workflow(
 
 
 def _run_analysis_workflow(
-    config_paths: list[str], rig_spec: str, options: dict[str, bool]
+    config_paths: list[str],
+    rig_spec: str,
+    options: dict[str, bool],
+    stream_queue: SupportsQueue | None = None,
 ) -> None:
     """Run analysis workflow in a worker process."""
     from darsia.presets.workflows.user_interface_analysis import run_analysis
 
     paths = normalize_paths(config_paths)
     rig_cls = resolve_rig_class(rig_spec)
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None
+    if options.get("streaming", False) and stream_queue is not None:
+
+        def _stream_callback(payload: dict[str, bytes] | None) -> None:
+            try:
+                publish_latest_queue_item(stream_queue, payload)
+            except Exception:
+                logger.exception("Failed to publish stream payload to GUI queue.")
+                try:
+                    publish_latest_queue_item(
+                        stream_queue,
+                        {"__error__": b"Failed to publish stream data to queue."},
+                    )
+                except Exception:
+                    pass
+
+        stream_callback = _stream_callback
     args = argparse.Namespace(
         config=paths,
         all=options["all"],
@@ -236,7 +349,7 @@ def _run_analysis_workflow(
         save_npz=options["save_npz"],
         info=False,
     )
-    run_analysis(rig_cls, args)
+    run_analysis(rig_cls, args, stream_callback=stream_callback)
 
 
 def _run_comparison_workflow(
@@ -296,6 +409,8 @@ class WorkflowGUI:
         self.current_config_file: Path | None = None
         self._mp_context = mp.get_context("spawn")
         self.log_queue: SupportsLogQueue = self._mp_context.Queue()
+        # maxsize=1 keeps only the newest preview frame and bounds memory usage.
+        self.stream_queue: SupportsQueue = self._mp_context.Queue(maxsize=1)
         self._worker_process: mp.Process | None = None
         self._abort_requested = False
         self._active_workflow = ""
@@ -303,14 +418,23 @@ class WorkflowGUI:
         self._active_config_paths: list[Path] = []
         self._active_rig_spec = ""
         self._worker_started_at: float | None = None
+        self._latest_stream_payload: dict[str, bytes | None] | None = None
+        self._stream_photo: Any | None = None
         self._sv_ttk: Any = None
         self._native_theme_name: str | None = None
+        self._session_cache_file: Path | None = None
+        try:
+            self._session_cache_file = default_session_cache_file()
+        except (OSError, RuntimeError) as e:
+            logger.warning("Failed to initialize GUI session cache path: %s", e)
 
         self._setup_logging()
         self._build_layout()
         self._setup_themes()
         self._poll_logs()
+        self._poll_stream()
         self._update_dashboard()
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _setup_logging(self) -> None:
         _configure_queue_logging(self.log_queue)
@@ -372,6 +496,9 @@ class WorkflowGUI:
         self.ttk.Button(
             buttons, text="Down", command=lambda: self._move_config(1)
         ).pack(fill=self.tk.X)
+        self.ttk.Button(
+            buttons, text="Load previous session", command=self._load_previous_session
+        ).pack(fill=self.tk.X, pady=(8, 0))
         self.config_list.bind("<Double-Button-1>", self._open_selected_config_in_editor)
 
         rig_frame = self.ttk.Frame(frame)
@@ -465,6 +592,7 @@ class WorkflowGUI:
         self.an_show = self.tk.BooleanVar(value=False)
         self.an_jpg = self.tk.BooleanVar(value=False)
         self.an_npz = self.tk.BooleanVar(value=False)
+        self.an_stream = self.tk.BooleanVar(value=False)
         for label, var in [
             ("All images", self.an_all),
             ("Cropping", self.an_crop),
@@ -475,6 +603,7 @@ class WorkflowGUI:
             ("Show plots", self.an_show),
             ("Save JPG", self.an_jpg),
             ("Save NPZ", self.an_npz),
+            ("Enable streaming", self.an_stream),
         ]:
             self.ttk.Checkbutton(self.analysis_frame, text=label, variable=var).pack(
                 anchor=self.tk.W
@@ -516,12 +645,15 @@ class WorkflowGUI:
         self.editor_mode_frame = self.ttk.Frame(self.mode_notebook)
         self.dashboard_mode_frame = self.ttk.Frame(self.mode_notebook)
         self.batch_mode_frame = self.ttk.Frame(self.mode_notebook)
+        self.streaming_mode_frame = self.ttk.Frame(self.mode_notebook)
         self.mode_notebook.add(self.editor_mode_frame, text="Config editor")
         self.mode_notebook.add(self.dashboard_mode_frame, text="Dashboard")
         self.mode_notebook.add(self.batch_mode_frame, text="Batch monitor")
+        self.mode_notebook.add(self.streaming_mode_frame, text="Streaming")
         self._build_editor(self.editor_mode_frame)
         self._build_dashboard(self.dashboard_mode_frame)
         self._build_batch_monitor(self.batch_mode_frame)
+        self._build_streaming_mode(self.streaming_mode_frame)
 
     def _build_editor(self, parent) -> None:
         frame = self.ttk.LabelFrame(parent, text="Config editor")
@@ -578,6 +710,38 @@ class WorkflowGUI:
             anchor=self.tk.W, padx=5, pady=5
         )
 
+    def _build_streaming_mode(self, parent) -> None:
+        frame = self.ttk.LabelFrame(parent, text="Streaming monitor")
+        frame.pack(fill=self.tk.BOTH, expand=True, padx=8, pady=8)
+
+        self.stream_status = self.tk.StringVar(value="No stream yet.")
+        self.ttk.Label(frame, textvariable=self.stream_status).pack(
+            anchor=self.tk.W, padx=5, pady=5
+        )
+
+        selector = self.ttk.Frame(frame)
+        selector.pack(fill=self.tk.X, padx=5, pady=5)
+        self.ttk.Label(selector, text="Stream key:").pack(side=self.tk.LEFT)
+        self.stream_key_var = self.tk.StringVar(value="")
+        self.stream_key_selector = self.ttk.Combobox(
+            selector,
+            textvariable=self.stream_key_var,
+            values=[],
+            state="readonly",
+            width=30,
+        )
+        self.stream_key_selector.pack(side=self.tk.LEFT, padx=4)
+        self.stream_key_selector.bind(
+            "<<ComboboxSelected>>", self._on_stream_key_changed
+        )
+
+        self.stream_image_label = self.ttk.Label(
+            frame,
+            text="No streamed image.",
+            anchor=self.tk.CENTER,
+        )
+        self.stream_image_label.pack(fill=self.tk.BOTH, expand=True, padx=5, pady=5)
+
     def _build_log_view(self, parent) -> None:
         frame = self.ttk.LabelFrame(parent, text="Execution log")
         frame.pack(fill=self.tk.BOTH, expand=True, padx=8, pady=8)
@@ -610,9 +774,93 @@ class WorkflowGUI:
             pass
         self.root.after(100, self._poll_logs)
 
+    def _poll_stream(self) -> None:
+        try:
+            while True:
+                payload = self.stream_queue.get_nowait()
+                self._consume_stream_payload(payload)
+        except Empty:
+            pass
+        self.root.after(100, self._poll_stream)
+
+    def _consume_stream_payload(self, payload: Any) -> None:
+        if payload is None:
+            self._latest_stream_payload = None
+            self._show_stream_message("Nothing is streamed.")
+            return
+        if not isinstance(payload, dict):
+            self._show_stream_message(
+                f"Stream error: expected dict payload, received "
+                f"{type(payload).__name__}."
+            )
+            return
+
+        if "__error__" in payload:
+            self._show_stream_message("Stream error.")
+            return
+
+        self._latest_stream_payload = payload
+        image_keys = [key for key, value in payload.items() if value is not None]
+        if len(image_keys) == 0:
+            self._show_stream_message("Nothing is streamed.")
+            return
+
+        current_key = self.stream_key_var.get()
+        selected_key = current_key if current_key in image_keys else image_keys[0]
+        self.stream_key_selector.config(values=image_keys)
+        self.stream_key_var.set(selected_key)
+        self._render_selected_stream_image()
+
+    def _on_stream_key_changed(self, event: Any | None = None) -> None:
+        del event
+        self._render_selected_stream_image()
+
+    def _render_selected_stream_image(self) -> None:
+        payload = self._latest_stream_payload
+        if payload is None:
+            self._show_stream_message("Nothing is streamed.")
+            return
+
+        selected_key = self.stream_key_var.get()
+        selected_image = payload.get(selected_key)
+        if selected_image is None:
+            self._show_stream_message("Nothing is streamed.")
+            return
+
+        try:
+            encoded = base64.b64encode(selected_image).decode("ascii")
+            self._stream_photo = self.tk.PhotoImage(data=encoded)
+        except Exception:
+            self._stream_photo = None
+            self._show_stream_message("Stream error.")
+            return
+
+        self.stream_image_label.config(image=self._stream_photo, text="")
+        self.stream_status.set(f"Showing stream key: {selected_key}")
+
+    def _show_stream_message(self, message: str) -> None:
+        self._stream_photo = None
+        self.stream_image_label.config(image="", text=message)
+        self.stream_status.set(message)
+
     def _selected_paths(self) -> list[Path]:
         values = [self.config_list.get(i) for i in range(self.config_list.size())]
         return normalize_paths(values)
+
+    def _set_selected_paths(self, paths: list[Path]) -> None:
+        self.config_list.delete(0, self.tk.END)
+        for path in paths:
+            self.config_list.insert(self.tk.END, str(path))
+
+    def _persist_session_cache(self) -> None:
+        if self._session_cache_file is None:
+            return
+        try:
+            write_session_cache(
+                self._session_cache_file, self._selected_paths(), self.rig_spec.get()
+            )
+        except OSError as e:
+            logger.warning("Failed to persist GUI session cache: %s", e)
 
     def _context(self) -> RunContext:
         paths = self._selected_paths()
@@ -775,7 +1023,13 @@ class WorkflowGUI:
             "show": self.an_show.get(),
             "save_jpg": self.an_jpg.get(),
             "save_npz": self.an_npz.get(),
+            "streaming": self.an_stream.get(),
         }
+        if options["streaming"]:
+            clear_queue(self.stream_queue)
+            self._show_stream_message("Streaming enabled. Waiting for data...")
+        else:
+            self._show_stream_message("Streaming disabled.")
         actions = enabled_option_labels(options)
         self._run_async(
             "analysis",
@@ -786,6 +1040,7 @@ class WorkflowGUI:
             [str(path) for path in ctx.config_paths],
             self.rig_spec.get(),
             options,
+            self.stream_queue,
         )
 
     def _run_comparison_clicked(self) -> None:
@@ -846,11 +1101,14 @@ class WorkflowGUI:
         )
         if path:
             self.config_list.insert(self.tk.END, str(Path(path).resolve()))
+            self._persist_session_cache()
 
     def _remove_config_path(self) -> None:
         selection = list(self.config_list.curselection())
         for idx in reversed(selection):
             self.config_list.delete(idx)
+        if selection:
+            self._persist_session_cache()
 
     def _move_config(self, direction: int) -> None:
         selected = self.config_list.curselection()
@@ -864,6 +1122,55 @@ class WorkflowGUI:
         self.config_list.delete(i)
         self.config_list.insert(j, value)
         self.config_list.selection_set(j)
+        self._persist_session_cache()
+
+    def _load_previous_session(self) -> None:
+        if self._session_cache_file is None:
+            self.messagebox.showwarning(
+                "Session cache warning",
+                "Session cache is unavailable in this environment.",
+            )
+            return
+        try:
+            cached_paths, cached_rig_spec = read_session_cache(self._session_cache_file)
+        except ValueError as e:
+            self.messagebox.showwarning("Session cache warning", str(e))
+            return
+        if not cached_paths and not cached_rig_spec.strip():
+            self.messagebox.showwarning(
+                "No previous session",
+                f"No cached GUI session found at:\n{self._session_cache_file}",
+            )
+            return
+
+        available_paths: list[Path] = []
+        unavailable_paths: list[Path] = []
+        for path in cached_paths:
+            if path.exists():
+                available_paths.append(path)
+            else:
+                unavailable_paths.append(path)
+
+        current_paths = self._selected_paths()
+        merged = deduplicate_paths(current_paths + available_paths)
+        self._set_selected_paths(merged)
+
+        if cached_rig_spec.strip():
+            self.rig_spec.set(cached_rig_spec)
+
+        if unavailable_paths:
+            max_display = 10
+            shown = unavailable_paths[:max_display]
+            unavailable_list = "\n".join(str(path) for path in shown)
+            remaining = len(unavailable_paths) - len(shown)
+            suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
+            self.messagebox.showwarning(
+                "Missing config files",
+                "Some files from previous session are not available:\n"
+                f"{unavailable_list}{suffix}",
+            )
+
+        self._persist_session_cache()
 
     def _new_from_template(self) -> None:
         template = _find_template_file()
@@ -910,6 +1217,7 @@ class WorkflowGUI:
         self.editor.insert(self.tk.END, text)
         if add_to_context and str(path) not in self.config_list.get(0, self.tk.END):
             self.config_list.insert(self.tk.END, str(path))
+            self._persist_session_cache()
 
     def _save_config(self) -> None:
         if self.current_config_file is None:
@@ -925,6 +1233,7 @@ class WorkflowGUI:
         self.editor_path.set(str(self.current_config_file))
         if str(self.current_config_file) not in self.config_list.get(0, self.tk.END):
             self.config_list.insert(self.tk.END, str(self.current_config_file))
+            self._persist_session_cache()
 
     def _save_config_as(self) -> None:
         path = self.filedialog.asksaveasfilename(
@@ -1026,6 +1335,15 @@ class WorkflowGUI:
         self.dashboard_memory.set(memory_text)
         self.dashboard_worker.set(worker_text)
         self.root.after(1000, self._update_dashboard)
+
+    def _on_close(self) -> None:
+        try:
+            self._persist_session_cache()
+        except Exception:
+            logger.exception("Failed while persisting GUI session cache during close.")
+        finally:
+            abort_process(self._worker_process)
+            self.root.destroy()
 
 
 def launch_workflows_gui() -> None:
