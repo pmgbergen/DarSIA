@@ -95,7 +95,9 @@ def _configure_queue_logging(log_queue: Any) -> None:
         root_logger.setLevel(logging.INFO)
 
 
-def _worker_entry(log_queue: Any, fn: Callable[..., None], args: tuple[Any, ...]) -> None:
+def _worker_entry(
+    log_queue: Any, fn: Callable[..., None], args: tuple[Any, ...]
+) -> None:
     """Worker process entry point with queue-forwarded logging."""
     _configure_queue_logging(log_queue)
     fn(*args)
@@ -106,7 +108,11 @@ def enabled_option_labels(
 ) -> list[str]:
     """Return enabled option labels suitable for display."""
     excluded = exclude or set()
-    return [key.replace("_", " ") for key, value in options.items() if value and key not in excluded]
+    return [
+        key.replace("_", " ")
+        for key, value in options.items()
+        if value and key not in excluded
+    ]
 
 
 def format_workflow_start_message(
@@ -543,8 +549,14 @@ class WorkflowGUI:
         self.dashboard_cpu = self.tk.StringVar(value="CPU: n/a")
         self.dashboard_memory = self.tk.StringVar(value="Memory: n/a")
         self.dashboard_worker = self.tk.StringVar(value="Workflow process: idle")
-        for variable in [self.dashboard_cpu, self.dashboard_memory, self.dashboard_worker]:
-            self.ttk.Label(frame, textvariable=variable).pack(anchor=self.tk.W, padx=5, pady=2)
+        for variable in [
+            self.dashboard_cpu,
+            self.dashboard_memory,
+            self.dashboard_worker,
+        ]:
+            self.ttk.Label(frame, textvariable=variable).pack(
+                anchor=self.tk.W, padx=5, pady=2
+            )
 
     def _build_batch_monitor(self, parent) -> None:
         frame = self.ttk.LabelFrame(parent, text="Batch monitor")
@@ -662,7 +674,9 @@ class WorkflowGUI:
             else max(0.0, time.monotonic() - self._worker_started_at)
         )
         if self._abort_requested:
-            self.log_queue.put(f"{self._active_workflow.capitalize()} workflow aborted.")
+            self.log_queue.put(
+                f"{self._active_workflow.capitalize()} workflow aborted."
+            )
         elif exit_code == 0:
             self.log_queue.put(
                 format_workflow_done_message(
@@ -950,7 +964,9 @@ class WorkflowGUI:
             if self._native_theme_name is not None:
                 style.theme_use(self._native_theme_name)
         elif selected == "light":
-            preferred = self._pick_preferred_theme(style, ["vista", "aqua", "default", "clam", "alt"])
+            preferred = self._pick_preferred_theme(
+                style, ["vista", "aqua", "default", "clam", "alt"]
+            )
             if preferred is not None:
                 style.theme_use(preferred)
         else:
@@ -959,7 +975,8 @@ class WorkflowGUI:
                 style.theme_use(preferred)
             if announce:
                 self.log_queue.put(
-                    "Dark theme fallback in use. Install optional 'sv_ttk' for richer dark mode."
+                    "Dark theme fallback in use. Install optional 'sv_ttk' "
+                    "for richer dark mode."
                 )
         if announce:
             self.log_queue.put(f"Theme changed to {theme}.")
@@ -991,7 +1008,10 @@ class WorkflowGUI:
 
         process = self._worker_process
         if process is not None and process.is_alive():
-            worker_text = f"Workflow process: running (pid={process.pid}, {self._active_workflow})"
+            worker_text = (
+                "Workflow process: running "
+                f"(pid={process.pid}, {self._active_workflow})"
+            )
         else:
             worker_text = "Workflow process: idle"
 
