@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 from queue import Empty, Full
-from typing import Any, Callable, Protocol
+from typing import Any, Callable, Protocol, TypedDict
 
 from darsia.presets.workflows.rig import Rig
 
@@ -43,6 +43,15 @@ class SupportsQueue(Protocol):
 
     def put_nowait(self, obj: Any) -> Any:
         """Put one queue element without blocking."""
+
+
+class UtilsWorkflowOptions(TypedDict):
+    download: bool
+    export_calibration: bool
+    import_calibration: bool
+    export_bundle: str
+    import_bundle: str
+    import_conflict_action: str
 
 
 def _require_tkinter() -> tuple[Any, Any, Any, Any]:
@@ -405,7 +414,7 @@ def _run_comparison_workflow(
     run_comparison(rig_cls, args)
 
 
-def _run_utils_workflow(config_paths: list[str], options: dict[str, Any]) -> None:
+def _run_utils_workflow(config_paths: list[str], options: UtilsWorkflowOptions) -> None:
     """Run utility workflow in a worker process."""
     from darsia.presets.workflows.utils.calibration_bundle import (
         export_calibration_bundle,

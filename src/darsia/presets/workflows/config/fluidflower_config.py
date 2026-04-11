@@ -144,6 +144,8 @@ class FluidFlowerConfig:
                 roi_registry=self.roi_registry,
             )
         except (ValueError, KeyError):
+            # KeyError occurs when [color_paths] section is missing entirely.
+            # ValueError covers malformed/incomplete section content.
             self.color_paths = None
             warn(f"Section color_paths not found in {path}.")
 
@@ -157,6 +159,8 @@ class FluidFlowerConfig:
                 data_registry=self.data.registry if self.data else None,
             )
         except (ValueError, KeyError):
+            # KeyError occurs when [color_to_mass] section is missing entirely.
+            # ValueError covers malformed/incomplete section content.
             self.color_to_mass = None
             warn(f"Section color_to_mass not found in {path}.")
 
