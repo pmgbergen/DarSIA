@@ -118,7 +118,7 @@ def test_import_calibration_bundle_overwrite_guard(tmp_path: Path):
     config_path = _create_calibration_artifacts(tmp_path)
     bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")
     target = tmp_path / "imported"
-    conflict_file = target / "color_range.json"
+    conflict_file = target / "color_paths" / "from_labels" / "metadata.json"
     conflict_file.parent.mkdir(parents=True, exist_ok=True)
     conflict_file.write_text("{}")
 

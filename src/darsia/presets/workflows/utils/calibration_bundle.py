@@ -334,9 +334,13 @@ def import_calibration_bundle(
         ),
     }
 
+    if conflict_action is not None and conflict_action not in {
+        "error",
+        "overwrite_all",
+        "skip_all",
+    }:
+        raise ValueError(f"Unsupported conflict action: {conflict_action}")
     action = conflict_action or ("overwrite_all" if overwrite else "error")
-    if action not in {"error", "overwrite_all", "skip_all"}:
-        raise ValueError(f"Unsupported conflict action: {action}")
 
     with ZipFile(bundle, mode="r") as zip_file:
         artifact_members = _collect_artifact_members(zip_file)

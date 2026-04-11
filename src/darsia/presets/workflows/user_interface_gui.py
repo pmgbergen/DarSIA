@@ -25,6 +25,7 @@ from darsia.presets.workflows.rig import Rig
 logger = logging.getLogger(__name__)
 SESSION_CACHE_FILE_NAME = "workflows_gui_session.json"
 SESSION_CACHE_VERSION = 1
+UTILS_CONFLICT_PREVIEW_LIMIT = 8
 
 
 class SupportsLogQueue(Protocol):
@@ -1201,7 +1202,7 @@ class WorkflowGUI:
                 Path(import_bundle),
             )
             if conflicts:
-                max_preview = 8
+                max_preview = UTILS_CONFLICT_PREVIEW_LIMIT
                 preview = "\n".join(str(path) for path in conflicts[:max_preview])
                 remaining = max(0, len(conflicts) - max_preview)
                 suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
