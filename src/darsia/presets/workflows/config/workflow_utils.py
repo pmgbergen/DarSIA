@@ -36,4 +36,8 @@ class WorkflowUtilsConfig:
             required=False,
             type_=Path,
         )
+        if self.export_calibration_bundle is not None:
+            self.export_calibration_bundle = Path(self.export_calibration_bundle)
+        if self.import_calibration_bundle is not None:
+            self.import_calibration_bundle = Path(self.import_calibration_bundle)
         return self

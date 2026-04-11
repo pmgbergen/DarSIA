@@ -143,7 +143,7 @@ class FluidFlowerConfig:
                 data_registry=self.data.registry if self.data else None,
                 roi_registry=self.roi_registry,
             )
-        except ValueError:
+        except (ValueError, KeyError):
             self.color_paths = None
             warn(f"Section color_paths not found in {path}.")
 
@@ -156,7 +156,7 @@ class FluidFlowerConfig:
                 results=self.data.results if self.data else None,
                 data_registry=self.data.registry if self.data else None,
             )
-        except ValueError:
+        except (ValueError, KeyError):
             self.color_to_mass = None
             warn(f"Section color_to_mass not found in {path}.")
 

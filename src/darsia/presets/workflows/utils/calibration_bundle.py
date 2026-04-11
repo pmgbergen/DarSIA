@@ -86,7 +86,9 @@ def _write_config_snippet(
     return snippet_path
 
 
-def _collect_artifact_members(zip_file: ZipFile) -> dict[str, list[tuple[ZipInfo, Path]]]:
+def _collect_artifact_members(
+    zip_file: ZipFile,
+) -> dict[str, list[tuple[ZipInfo, Path]]]:
     """Collect archive members grouped by artifact."""
     artifact_members: dict[str, list[tuple[ZipInfo, Path]]] = {
         "color_paths": [],
@@ -156,14 +158,22 @@ def _resolve_import_targets(
     }
     for artifact, members in artifact_members.items():
         destination_root = destination_roots[artifact]
-        safe_base = destination_root if artifact != "color_range" else destination_root.parent
+        safe_base = (
+            destination_root if artifact != "color_range" else destination_root.parent
+        )
         for member, relative_path in members:
             if artifact in {"color_paths", "color_to_mass"}:
                 if relative_path.parts and relative_path.parts[0].startswith("from_"):
                     imported_basis_folders[artifact] = relative_path.parts[0]
                 elif expected_basis_folders[artifact] is not None:
-                    relative_path = Path(expected_basis_folders[artifact]) / relative_path
-            destination = destination_root if artifact == "color_range" else destination_root / relative_path
+                    relative_path = (
+                        Path(expected_basis_folders[artifact]) / relative_path
+                    )
+            destination = (
+                destination_root
+                if artifact == "color_range"
+                else destination_root / relative_path
+            )
             if not destination.resolve().is_relative_to(safe_base.resolve()):
                 raise ValueError(f"Unsafe archive member path: {member.filename}")
             targets.append((member, destination))
@@ -189,7 +199,9 @@ def preview_calibration_bundle_import_conflicts(
 
     calibration_root = config.data.results / "calibration"
     target_folder = calibration_root if target_folder is None else Path(target_folder)
-    destination_roots = _build_destination_roots(config, target_folder, calibration_root)
+    destination_roots = _build_destination_roots(
+        config, target_folder, calibration_root
+    )
     expected_basis_folders: dict[str, str | None] = {
         "color_paths": (
             _basis_subfolder_name(config.color_paths.calibration_file)
@@ -306,7 +318,9 @@ def import_calibration_bundle(
 
     target_folder.mkdir(parents=True, exist_ok=True)
 
-    destination_roots = _build_destination_roots(config, target_folder, calibration_root)
+    destination_roots = _build_destination_roots(
+        config, target_folder, calibration_root
+    )
     expected_basis_folders: dict[str, str | None] = {
         "color_paths": (
             _basis_subfolder_name(config.color_paths.calibration_file)

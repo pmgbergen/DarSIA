@@ -12,11 +12,13 @@ The GUI is additive: it does not replace CLI workflow modules.
 - Switch GUI mode between Config Editor, Dashboard, Batch Monitor, and Streaming monitor
 - Switch visual theme (System/Light/Dark) with optional `sv_ttk` support
 - Run setup/calibration/analysis/comparison/actions
+- Run utils actions: download/cache data, export calibration bundle, import calibration bundle
 - Enable prototype segmentation streaming from Analysis and inspect latest streamed images by key
 - View richer execution logs (workflow start details and workflow-specific completion)
 - Inject custom Rig class using `module.path:ClassName`
 - Abort active workflow process from the UI
 - Warn when cached session config files are no longer available during restore
+- Preview calibration import conflicts and choose overwrite-all, skip-all, or abort before import
 
 ## Dependency
 `tkinter` is required in the Python environment.

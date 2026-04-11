@@ -15,9 +15,11 @@ from darsia.presets.workflows.user_interface_gui import (
     enabled_option_labels,
     format_workflow_done_message,
     format_workflow_start_message,
+    map_conflict_dialog_choice_to_policy,
     normalize_paths,
     publish_latest_queue_item,
     read_session_cache,
+    resolve_utils_bundle_defaults,
     resolve_rig_class,
     write_session_cache,
 )
@@ -167,3 +169,31 @@ def test_clear_queue_removes_all_items() -> None:
     q.put_nowait("b")
     clear_queue(q)
     assert q.empty()
+
+
+def test_map_conflict_dialog_choice_to_policy() -> None:
+    assert map_conflict_dialog_choice_to_policy(True) == "overwrite_all"
+    assert map_conflict_dialog_choice_to_policy(False) == "skip_all"
+    assert map_conflict_dialog_choice_to_policy(None) is None
+
+
+def test_resolve_utils_bundle_defaults(tmp_path: Path) -> None:
+    data_folder = tmp_path / "data"
+    data_folder.mkdir(parents=True, exist_ok=True)
+    (data_folder / "baseline.jpg").touch()
+    config = tmp_path / "config.toml"
+    config.write_text(
+        f"""
+[data]
+folder = "{data_folder}"
+baseline = "baseline.jpg"
+results = "{tmp_path / "results"}"
+
+[utils.calibration]
+export_bundle = "{tmp_path / "export.zip"}"
+import_bundle = "{tmp_path / "import.zip"}"
+"""
+    )
+    export_bundle, import_bundle = resolve_utils_bundle_defaults([str(config)])
+    assert export_bundle == str(tmp_path / "export.zip")
+    assert import_bundle == str(tmp_path / "import.zip")

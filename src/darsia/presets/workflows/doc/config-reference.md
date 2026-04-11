@@ -15,6 +15,24 @@ This is the user-facing map of workflow TOML sections currently loaded by `Fluid
 - `[color_to_mass]`: color-to-mass calibration options.
 - `[analysis]`: analysis data and feature-specific subsections.
 - `[download]`: download utility config (optional).
+- `[utils]`: optional utility defaults (calibration bundle import/export paths).
+
+## Utils section
+Optional keys for utility workflows:
+
+```toml
+[utils.calibration]
+export_bundle = "/absolute/path/to/calibration_bundle.zip"
+import_bundle = "/absolute/path/to/calibration_bundle.zip"
+```
+
+Legacy flat keys are also supported:
+
+```toml
+[utils]
+export_calibration_bundle = "/absolute/path/to/calibration_bundle.zip"
+import_calibration_bundle = "/absolute/path/to/calibration_bundle.zip"
+```
 
 ## Shared data registry (recommended)
 Define reusable selections in top-level `[data]` subsections:
