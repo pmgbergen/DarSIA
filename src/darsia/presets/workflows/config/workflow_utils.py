@@ -18,26 +18,28 @@ class WorkflowUtilsConfig:
         calibration_sec = sec.get("calibration", {})
         if not isinstance(calibration_sec, dict):
             calibration_sec = {}
+        flat_export = _get_key(
+            sec, "export_calibration_bundle", default=None, required=False
+        )
+        if flat_export is not None:
+            flat_export = Path(flat_export)
+        flat_import = _get_key(
+            sec, "import_calibration_bundle", default=None, required=False
+        )
+        if flat_import is not None:
+            flat_import = Path(flat_import)
         self.export_calibration_bundle = _get_key(
             calibration_sec,
             "export_bundle",
-            default=_get_key(
-                sec, "export_calibration_bundle", default=None, required=False
-            ),
+            default=flat_export,
             required=False,
             type_=Path,
         )
         self.import_calibration_bundle = _get_key(
             calibration_sec,
             "import_bundle",
-            default=_get_key(
-                sec, "import_calibration_bundle", default=None, required=False
-            ),
+            default=flat_import,
             required=False,
             type_=Path,
         )
-        if self.export_calibration_bundle is not None:
-            self.export_calibration_bundle = Path(self.export_calibration_bundle)
-        if self.import_calibration_bundle is not None:
-            self.import_calibration_bundle = Path(self.import_calibration_bundle)
         return self
