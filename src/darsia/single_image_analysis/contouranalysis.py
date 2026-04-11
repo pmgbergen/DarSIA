@@ -6,9 +6,10 @@ This includes measuring lengths of contours, weighted sums (generalized mass ana
 
 from __future__ import annotations
 
+import logging
 from collections import namedtuple
 from pathlib import Path
-from typing import Optional, Union, cast
+from typing import cast
 
 import cv2
 import matplotlib.pyplot as plt
@@ -20,11 +21,13 @@ from scipy.spatial import distance_matrix
 
 import darsia
 
+logger = logging.getLogger(__name__)
+
 
 def contour_length(
     img: darsia.Image,
-    roi: Optional[darsia.CoordinateArray] = None,
-    values_of_interest: Optional[Union[int, list[int]]] = None,
+    roi: darsia.CoordinateArray | None = None,
+    values_of_interest: int | list[int] | None = None,
     fill_holes: bool = True,
     verbosity: bool = False,
 ) -> float:
@@ -97,6 +100,7 @@ def contour_length(
         plt.imshow(img_roi.img)
         plt.figure()
         plt.imshow(mask)
+        plt.axis("off")
         plt.show()
         print(f"The contour length is {metric_contour_length}.")
 
@@ -141,8 +145,8 @@ class ContourAnalysis:
     def load_labels(
         self,
         img: darsia.Image,
-        roi: Optional[darsia.CoordinateArray] = None,
-        values_of_interest: Optional[Union[int, list[int]]] = None,
+        roi: darsia.CoordinateArray | None = None,
+        values_of_interest: int | list[int] | None = None,
         fill_holes: bool = True,
     ) -> None:
         """Read labeled image and restrict to values of interest.
@@ -204,7 +208,7 @@ class ContourAnalysis:
         self,
         img: darsia.Image,
         mask: darsia.Image,
-        roi: Optional[darsia.CoordinateArray] = None,
+        roi: darsia.CoordinateArray | None = None,
         fill_holes: bool = True,
     ) -> None:
         """Read labeled image and restrict to values of interest.
@@ -444,6 +448,7 @@ class ContourAnalysis:
         contours: list[np.ndarray] | None = None,
         path: Path | None = None,
         show: bool = True,
+        dpi: int = 1000,
         **kwargs,
     ) -> None:
         """Plot peaks on top of the provided image.
@@ -457,6 +462,7 @@ class ContourAnalysis:
                 translated to the top left corner of the ROI; default is None.
             path (Path, optional): path to save the plot; if None, no saving is performed.
             show (bool): flag controlling whether the plot is shown; default is True.
+            dpi (int): dots per inch for the saved plot; default is 1000.
             **kwargs: additional keyword arguments for plotting.
                 - color (str): color for the peaks; default is "r".
                 - size (int): size for the peaks; default is 20.
@@ -514,7 +520,8 @@ class ContourAnalysis:
             )
         if path is not None:
             plt.tight_layout()
-            plt.savefig(path, format="png", dpi=1000)
+            plt.axis("off")
+            plt.savefig(path, format="png", dpi=dpi, bbox_inches="tight", pad_inches=0)
 
         if show:
             plt.show()
@@ -539,6 +546,7 @@ class ContourAnalysis:
         contours: list[np.ndarray] | None = None,
         path: Path | None = None,
         show: bool = True,
+        dpi: int = 1000,
         **kwargs,
     ) -> None:
         """Plot valleys on top of the provided image.
@@ -552,6 +560,7 @@ class ContourAnalysis:
                 translated to the top left corner of the ROI; default is None.
             path (Path, optional): path to save the plot; if None, no saving is performed.
             show (bool): flag controlling whether the plot is shown; default is True.
+            dpi (int): dots per inch for the saved plot; default is 1000.
             **kwargs: additional keyword arguments for plotting.
                 - valley_color (str): color for valley lines; default is "c".
                 - valley_linewidth (float): line width for valley lines; default is 1.
@@ -568,8 +577,17 @@ class ContourAnalysis:
         y_max = kwargs.get("y_max", bottom_right_roi_pixel[1])
         valley_color = kwargs.get("valley_color", "c")
 
+        # Make sure the y_min/y_max are within the image bounds
+        y_min = max(0, y_min)
+        y_max = min(img.img.shape[0], y_max)
+
         plt.figure("Original image with valleys")
         plt.imshow(img.img)
+
+        # Match image dimensions
+        plt.xlim(0, img.img.shape[1])
+        plt.ylim(img.img.shape[0], 0)  # Inverted because image y-axis is top-down
+
         if contours is not None:
             for contour in contours:
                 plt.plot(
@@ -625,7 +643,8 @@ class ContourAnalysis:
 
         if path is not None:
             plt.tight_layout()
-            plt.savefig(path, format="png", dpi=1000)
+            plt.axis("off")
+            plt.savefig(path, format="png", dpi=dpi, bbox_inches="tight", pad_inches=0)
 
         if show:
             plt.show()
@@ -661,16 +680,30 @@ class ContourEvolutionAnalysis:
         """
 
         self.index = 0
+        """Index of the current time point."""
         self.peaks = {}
+        """Dictionary storing peaks at different time points."""
         self.valleys = {}
+        """Dictionary storing valleys at different time points."""
         self.paths = []
+        """List storing paths of peaks."""
         self.valley_paths = []
-
+        """List storing paths of valleys."""
         self.verbosity = verbosity
+        """Verbosity flag."""
 
     def add(
-        self, peaks: np.ndarray, valleys: np.ndarray, time: Optional[float] = None
+        self, peaks: np.ndarray, valleys: np.ndarray, time: float | None = None
     ) -> None:
+        """Add peaks and valleys for a new time point.
+
+        Args:
+            peaks (np.ndarray): pixels of peaks at the new time point.
+            valleys (np.ndarray): pixels of valleys at the new time point.
+            time (float, optional): time corresponding to the new time point;
+                if None, index is used as time.
+
+        """
         self.peaks[self.index] = peaks.copy()
         self.valleys[self.index] = valleys.copy()
         self.time = time
@@ -680,8 +713,8 @@ class ContourEvolutionAnalysis:
 
     def plot(
         self,
-        img: Optional[darsia.Image] = None,
-        roi: Optional[darsia.CoordinateArray] = None,
+        img: darsia.Image | None = None,
+        roi: darsia.CoordinateArray | None = None,
     ) -> None:
         # TODO.
         if img is None:
@@ -711,10 +744,11 @@ class ContourEvolutionAnalysis:
 
     def plot_paths(
         self,
-        img: Optional[darsia.Image] = None,
+        img: darsia.Image | None = None,
         roi: darsia.CoordinateArray | None = None,
         path: Path | None = None,
         show: bool = False,
+        dpi: int = 1000,
     ) -> None:
         if img is None:
             raise ValueError("img cannot be None when plotting paths.")
@@ -751,13 +785,24 @@ class ContourEvolutionAnalysis:
                 linewidth=path_length / max_path_length * 2,
             )
 
+        # Turn off axis
+        plt.axis("off")
+
         if path is not None:
             suffix = path.suffix
             if suffix in [".png", ".jpg", ".jpeg", ".svg"]:
                 format = suffix[1:]
-                plt.savefig(path, format=format, dpi=1000)
+                plt.savefig(
+                    path, format=format, dpi=dpi, bbox_inches="tight", pad_inches=0
+                )
             else:
-                plt.savefig(path.with_suffix(".png"), format="png", dpi=1000)
+                plt.savefig(
+                    path.with_suffix(".png"),
+                    format="png",
+                    dpi=dpi,
+                    bbox_inches="tight",
+                    pad_inches=0,
+                )
 
         # Finalize plot
         if show:
@@ -767,11 +812,12 @@ class ContourEvolutionAnalysis:
 
     def plot_valley_paths(
         self,
-        img: Optional[darsia.Image] = None,
+        img: darsia.Image | None = None,
         roi: darsia.CoordinateArray | None = None,
         path: Path | None = None,
         show: bool = False,
         color: str | None = None,
+        dpi: int = 1000,
     ) -> None:
         if img is None:
             raise ValueError("img cannot be None when plotting valley paths.")
@@ -841,13 +887,24 @@ class ContourEvolutionAnalysis:
                     alpha=0.5,
                 )
 
+        # Turn off axis
+        plt.axis("off")
+
         if path is not None:
             suffix = path.suffix
             if suffix in [".png", ".jpg", ".jpeg", ".svg"]:
                 format = suffix[1:]
-                plt.savefig(path, format=format, dpi=1000)
+                plt.savefig(
+                    path, format=format, dpi=dpi, bbox_inches="tight", pad_inches=0
+                )
             else:
-                plt.savefig(path.with_suffix(".png"), format="png", dpi=1000)
+                plt.savefig(
+                    path.with_suffix(".png"),
+                    format="png",
+                    dpi=dpi,
+                    bbox_inches="tight",
+                    pad_inches=0,
+                )
 
         if show:
             plt.show()
