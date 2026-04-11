@@ -239,6 +239,31 @@ def format_workflow_done_message(
     )
 
 
+def format_workflow_error_message(
+    workflow: str, actions: list[str], exit_code: int | None
+) -> str:
+    """Format a detailed failure message."""
+    return (
+        f"ERROR: {workflow} workflow failed with exit code {exit_code}. "
+        f"Actions: {', '.join(actions) or 'none'}."
+    )
+
+
+def completion_dialog_spec(
+    workflow: str, exit_code: int | None, abort_requested: bool
+) -> tuple[str, str, str] | None:
+    """Return modal dialog information for terminal workflow states."""
+    if abort_requested:
+        return None
+    if exit_code == 0:
+        return ("info", "Done", f"{workflow.capitalize()} workflow completed.")
+    return (
+        "error",
+        "Error",
+        f"{workflow.capitalize()} workflow failed with exit code {exit_code}.",
+    )
+
+
 def abort_process(process: mp.Process | None) -> bool:
     """Abort a running process.
 
@@ -928,23 +953,24 @@ class WorkflowGUI:
             if self._worker_started_at is None
             else max(0.0, time.monotonic() - self._worker_started_at)
         )
+        workflow = self._active_workflow
+        actions = self._active_actions
+        config_count = len(self._active_config_paths)
+        dialog_spec = completion_dialog_spec(workflow, exit_code, self._abort_requested)
         if self._abort_requested:
-            self.log_queue.put(
-                f"{self._active_workflow.capitalize()} workflow aborted."
-            )
+            self.log_queue.put(f"{workflow.capitalize()} workflow aborted.")
         elif exit_code == 0:
             self.log_queue.put(
                 format_workflow_done_message(
-                    self._active_workflow,
-                    self._active_actions,
-                    len(self._active_config_paths),
+                    workflow,
+                    actions,
+                    config_count,
                     duration,
                 )
             )
         else:
             self.log_queue.put(
-                f"ERROR: {self._active_workflow} workflow failed with exit code "
-                f"{exit_code}. Actions: {', '.join(self._active_actions) or 'none'}."
+                format_workflow_error_message(workflow, actions, exit_code)
             )
         self._worker_process = None
         self._worker_started_at = None
@@ -953,6 +979,12 @@ class WorkflowGUI:
         self._active_config_paths = []
         self._active_rig_spec = ""
         self._set_worker_state(False)
+        if dialog_spec is not None:
+            kind, title, message = dialog_spec
+            if kind == "info":
+                self.messagebox.showinfo(title, message)
+            else:
+                self.messagebox.showerror(title, message)
 
     def _run_setup_clicked(self) -> None:
         try:

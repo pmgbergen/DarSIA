@@ -10,10 +10,12 @@ from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.user_interface_gui import (
     abort_process,
     clear_queue,
+    completion_dialog_spec,
     deduplicate_paths,
     default_session_cache_file,
     enabled_option_labels,
     format_workflow_done_message,
+    format_workflow_error_message,
     format_workflow_start_message,
     normalize_paths,
     publish_latest_queue_item,
@@ -151,6 +153,32 @@ def test_format_workflow_start_message() -> None:
 def test_format_workflow_done_message() -> None:
     msg = format_workflow_done_message("setup", ["depth", "rig"], 2, 3.2)
     assert msg == "Setup completed. Actions: depth, rig. Configs: 2. Duration: 3.2s."
+
+
+def test_format_workflow_error_message() -> None:
+    msg = format_workflow_error_message("analysis", ["mass"], 3)
+    assert msg == "ERROR: analysis workflow failed with exit code 3. Actions: mass."
+
+
+def test_completion_dialog_spec_success() -> None:
+    assert completion_dialog_spec("analysis", 0, False) == (
+        "info",
+        "Done",
+        "Analysis workflow completed.",
+    )
+
+
+def test_completion_dialog_spec_failure() -> None:
+    assert completion_dialog_spec("analysis", 7, False) == (
+        "error",
+        "Error",
+        "Analysis workflow failed with exit code 7.",
+    )
+
+
+def test_completion_dialog_spec_abort_is_log_only() -> None:
+    assert completion_dialog_spec("analysis", 0, True) is None
+    assert completion_dialog_spec("analysis", 9, True) is None
 
 
 def test_publish_latest_queue_item_keeps_only_latest() -> None:
