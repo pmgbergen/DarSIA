@@ -7,10 +7,10 @@ from datetime import datetime
 from pathlib import Path
 
 import cv2
-import darsia
 import numpy as np
 from PIL import Image as PILImage
 
+import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 
 logger = logging.getLogger(__name__)
@@ -51,13 +51,7 @@ def _scan_source_images(
         else list(folder.glob(pattern or "*"))
     )
     ext_set = {e.lower() for e in extensions}
-    return sorted(
-        {
-            p
-            for p in raw_paths
-            if p.is_file() and (p.suffix.lower() in ext_set or pattern is not None)
-        }
-    )
+    return sorted({p for p in raw_paths if p.is_file() and p.suffix.lower() in ext_set})
 
 
 def _protocol_sort_frames(
@@ -96,7 +90,9 @@ def _apply_overlay(
     line_spacing = overlay_config.line_spacing
     padding = overlay_config.box_padding
 
-    text_sizes = [cv2.getTextSize(line, font, font_scale, thickness)[0] for line in lines]
+    text_sizes = [
+        cv2.getTextSize(line, font, font_scale, thickness)[0] for line in lines
+    ]
     text_height = sum(size[1] for size in text_sizes) + line_spacing * (len(lines) - 1)
     text_width = max((size[0] for size in text_sizes), default=0)
     box_w = text_width + 2 * padding
@@ -141,7 +137,7 @@ def _apply_overlay(
 
 
 def _rgb_to_bgr(color: tuple[int, int, int]) -> tuple[int, int, int]:
-    return int(color[2]), int(color[1]), int(color[0])
+    return color[2], color[1], color[0]
 
 
 def _read_and_process_frames(
@@ -158,8 +154,8 @@ def _read_and_process_frames(
             continue
         if idx == 0 and target_resolution is None:
             target_resolution = (frame.shape[1], frame.shape[0])
-        if target_resolution is not None:
-            frame = cv2.resize(frame, target_resolution, interpolation=cv2.INTER_AREA)
+        assert target_resolution is not None
+        frame = cv2.resize(frame, target_resolution, interpolation=cv2.INTER_AREA)
         frame = _apply_overlay(frame, elapsed_time_h, overlay_config)
         processed.append(frame)
     if not processed:
@@ -267,4 +263,3 @@ def build_media(path: Path | list[Path]) -> dict[str, Path]:
     for kind, out_path in outputs.items():
         logger.info("Saved %s to %s", kind.upper(), out_path)
     return outputs
-

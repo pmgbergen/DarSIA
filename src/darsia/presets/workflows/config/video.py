@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .utils import _get_key, _get_section, _get_section_from_toml
+from .utils import _get_key, _get_section_from_toml
 
 
 def _normalize_extensions(extensions: list[str] | str) -> list[str]:
@@ -90,7 +90,9 @@ class VideoOutputConfig:
             self.resolution = None
         self.filename = _get_key(out, "filename", required=False, default=None)
         self.codec = _get_key(out, "codec", required=False, default=self.codec)
-        self.quality = int(_get_key(out, "quality", required=False, default=self.quality))
+        self.quality = int(
+            _get_key(out, "quality", required=False, default=self.quality)
+        )
         if not (1 <= self.quality <= 100):
             raise ValueError("Video output quality must be in [1, 100].")
         return self
@@ -198,4 +200,3 @@ class VideoConfig:
 
     def error(self):
         raise ValueError("Use [video] in the config file to load video utility config.")
-

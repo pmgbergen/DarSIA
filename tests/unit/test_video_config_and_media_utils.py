@@ -7,7 +7,10 @@ import numpy as np
 import pytest
 
 from darsia.presets.workflows.config.video import VideoConfig
-from darsia.presets.workflows.utils.utils_media import _apply_overlay, _protocol_sort_frames
+from darsia.presets.workflows.utils.utils_media import (
+    _apply_overlay,
+    _protocol_sort_frames,
+)
 
 
 def _write_toml(tmp_path: Path, content: str) -> Path:
@@ -98,4 +101,3 @@ def test_apply_overlay_writes_elapsed_time_and_note_on_frame() -> None:
     )
     out = _apply_overlay(frame.copy(), elapsed_time_h=1.25, overlay_config=overlay_cfg)
     assert np.any(out != frame)
-
