@@ -12,6 +12,7 @@ The GUI is additive: it does not replace CLI workflow modules.
 - Switch GUI mode between Config Editor, Dashboard, Batch Monitor, and Streaming monitor
 - Switch visual theme (System/Light/Dark) with optional `sv_ttk` support
 - Run setup/calibration/analysis/comparison/actions
+- Run utils actions for data download/cache and protocol-time media generation (MP4/GIF)
 - Enable prototype segmentation streaming from Analysis and inspect latest streamed images by key
 - View richer execution logs (workflow start details and workflow-specific completion)
 - Inject custom Rig class using `module.path:ClassName`

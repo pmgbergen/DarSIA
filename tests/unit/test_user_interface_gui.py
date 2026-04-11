@@ -1,7 +1,9 @@
 import multiprocessing as mp
 import queue
 import json
+import sys
 import time
+import types
 from pathlib import Path
 
 import pytest
@@ -19,6 +21,7 @@ from darsia.presets.workflows.user_interface_gui import (
     publish_latest_queue_item,
     read_session_cache,
     resolve_rig_class,
+    _run_utils_workflow,
     write_session_cache,
 )
 
@@ -167,3 +170,46 @@ def test_clear_queue_removes_all_items() -> None:
     q.put_nowait("b")
     clear_queue(q)
     assert q.empty()
+
+
+def test_run_utils_workflow_dispatches_download_and_media(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[tuple[str, list[Path]]] = []
+
+    def _fake_download(paths):
+        calls.append(("download", paths))
+
+    def _fake_media(paths):
+        calls.append(("media", paths))
+
+    fake_download_module = types.ModuleType(
+        "darsia.presets.workflows.utils.utils_download"
+    )
+    fake_download_module.download_data = _fake_download
+    fake_media_module = types.ModuleType("darsia.presets.workflows.utils.utils_media")
+    fake_media_module.build_media = _fake_media
+    monkeypatch.setitem(
+        sys.modules,
+        "darsia.presets.workflows.utils.utils_download",
+        fake_download_module,
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "darsia.presets.workflows.utils.utils_media",
+        fake_media_module,
+    )
+
+    config_path = tmp_path / "run.toml"
+    config_path.write_text("[data]\nfolder='.'\n")
+
+    _run_utils_workflow(
+        [str(config_path)],
+        {"download": True, "media": True},
+    )
+
+    assert len(calls) == 2
+    assert calls[0][0] == "download"
+    assert calls[1][0] == "media"
+    assert calls[0][1] == [config_path.resolve()]
+    assert calls[1][1] == [config_path.resolve()]
