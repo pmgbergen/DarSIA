@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+import darsia
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
@@ -61,8 +62,7 @@ def analysis_fingers_from_context(
     for key in fingers_config.roi:
         (results_folder / "tips" / key).mkdir(parents=True, exist_ok=True)
         (results_folder / "fjords" / key).mkdir(parents=True, exist_ok=True)
-        (results_folder / "tips_paths" / key).mkdir(parents=True, exist_ok=True)
-        (results_folder / "fjord_paths" / key).mkdir(parents=True, exist_ok=True)
+        (results_folder / "paths" / key).mkdir(parents=True, exist_ok=True)
 
     # DataFrame to store results.
     df = pd.DataFrame(
@@ -78,6 +78,15 @@ def analysis_fingers_from_context(
             "tip_wavelength",
         ]
     )
+
+    # Dictionary to collect path statistics for all ROIs.
+    path_statistics = {}
+    path_statistics["paths"] = {
+        key: {"roi": roi_config.roi.tolist()}
+        for key, roi_config in fingers_config.roi.items()
+    }
+    path_statistics["times"] = []
+    path_statistics["images"] = []
 
     # Config of plotting.
     # TODO enable control from config.
@@ -105,9 +114,12 @@ def analysis_fingers_from_context(
             mass=mass_analysis_result.mass,
         )
 
-        for key, roi_config in fingers_config.roi.items():
-            # TODO: allow to tune the threshold value, and mode in a interactive way.
+        # Extract time from image.
+        time = img.time
+        path_statistics["times"].append(float(time))
+        path_statistics["images"].append(path.name)
 
+        for key, roi_config in fingers_config.roi.items():
             # Perform finger analysis if configured
             contour_analysis.load(
                 img, segmentation, roi=roi_config.roi, fill_holes=False
@@ -186,33 +198,29 @@ def analysis_fingers_from_context(
             contour_evolution_analysis[key].plot_paths(
                 img,
                 roi=roi_config.roi,
-                path=(results_folder / "tips_paths" / key / f"{path.stem}").with_suffix(
+                path=(results_folder / "paths" / key / f"{path.stem}").with_suffix(
                     plot_format
                 ),
                 show=show,
             )
-            contour_evolution_analysis[key].plot_valley_paths(
-                img,
-                roi=roi_config.roi,
-                path=results_folder / "fjord_paths" / key / f"{path.stem}.png",
-                show=show,
-                color=None,
-            )
-            # number_paths = contour_evolution_analysis.number_paths
 
-            roi_top_left_x = 0
-            roi_top_left_y = 0
+            # Fetch ROI top-left corner in pixel coordinates for path coordinate conversion.
+            roi_top_left_row = 0
+            roi_top_left_col = 0
             if roi_config.roi is not None:
                 roi_pixels = roi_config.roi.to_voxel(img.coordinatesystem)
-                roi_top_left_x = int(np.min(roi_pixels[:, 1]))
-                roi_top_left_y = int(np.min(roi_pixels[:, 0]))
+                roi_top_left_row = int(np.min(roi_pixels[:, 0]))
+                roi_top_left_col = int(np.min(roi_pixels[:, 1]))
 
+            # Process paths to extract statistics.
             path_log = {}
             active_fingers_by_time = {}
             for finger_path in contour_evolution_analysis[key].paths:
                 if len(finger_path) == 0:
                     continue
 
+                # Generate unique path ID based on start time and peak
+                # with suffix if needed to avoid duplicates.
                 start_unit = finger_path[0]
                 path_id = f"path_t{int(start_unit.time)}_p{int(start_unit.peak)}"
                 path_id_base = path_id
@@ -220,46 +228,50 @@ def analysis_fingers_from_context(
                 while path_id in path_log:
                     path_id = f"{path_id_base}_{suffix}"
                     suffix += 1
-                coordinates = []
+
+                # Collect times.
                 times = []
                 for unit in finger_path:
                     time_index = int(unit.time)
                     if 0 <= time_index < len(contour_evolution_times[key]):
                         unit_time = float(contour_evolution_times[key][time_index])
-                    else:
-                        logger.warning(
-                            "Skip path unit with invalid time index %s for ROI '%s'.",
-                            time_index,
-                            key,
-                        )
-                        continue
-
-                    x = int(unit.position[0]) + roi_top_left_x
-                    y = int(unit.position[1]) + roi_top_left_y
                     times.append(unit_time)
-                    coordinates.append([x, y])
+
+                # Convert path coordinates from pixel to physical units and collect times.
+                coordinates = []
+                for unit in finger_path:
+                    # NOTE/TODO: Flip in row/col (see ContourAnalysis...)
+                    local_row = int(unit.position[1])
+                    local_col = int(unit.position[0])
+                    pixel_row = local_row + roi_top_left_row
+                    pixel_col = local_col + roi_top_left_col
+                    coordinate = img.coordinatesystem.coordinate(
+                        darsia.Voxel([pixel_row, pixel_col])
+                    )
+                    coordinates.append(coordinate.tolist())
 
                 if len(coordinates) == 0:
                     continue
 
-                lengths = [0.0]
+                # Compute travel distances.
+                travel_distances = [0.0]
+                vertical_travel_distances = [0.0]
                 cumulative_length = 0.0
+                cummulative_vertical_length = 0.0
                 for index in range(1, len(coordinates)):
                     x_prev, y_prev = coordinates[index - 1]
                     x_curr, y_curr = coordinates[index]
-                    cumulative_length += float(np.hypot(x_curr - x_prev, y_curr - y_prev))
-                    lengths.append(cumulative_length)
+                    cumulative_length += float(
+                        np.hypot(x_curr - x_prev, y_curr - y_prev)
+                    )
+                    cummulative_vertical_length += float(np.abs(y_curr - y_prev))
+                    travel_distances.append(cumulative_length)
+                    vertical_travel_distances.append(cummulative_vertical_length)
 
-                heights = [0.0]
-                min_y = float(coordinates[0][1])
-                max_y = float(coordinates[0][1])
-                for index in range(1, len(coordinates)):
-                    y_curr = float(coordinates[index][1])
-                    min_y = min(min_y, y_curr)
-                    max_y = max(max_y, y_curr)
-                    heights.append(max_y - min_y)
-
+                # Compute speeds.
+                velocities = []
                 speeds = []
+                vertical_speeds = []
                 for index in range(1, len(coordinates)):
                     x_prev, y_prev = coordinates[index - 1]
                     x_curr, y_curr = coordinates[index]
@@ -276,49 +288,102 @@ def analysis_fingers_from_context(
                         continue
                     vx = float(x_curr - x_prev) / dt
                     vy = float(y_curr - y_prev) / dt
-                    speed = float(np.hypot(vx, vy))
+
+                    velocities.append([vx, vy])
+
+                    speed = float(np.sqrt(vx**2 + vy**2))
                     speeds.append(speed)
 
+                    vertical_speed = float(vy)
+                    vertical_speeds.append(vertical_speed)
+
+                # Sanity check on length of lists.
+                assert (
+                    len(times)
+                    == len(coordinates)
+                    == len(travel_distances)
+                    == len(vertical_travel_distances)
+                )
+                assert (
+                    len(velocities)
+                    == len(speeds)
+                    == len(vertical_speeds)
+                    == len(coordinates) - 1
+                )
+
+                # Collect path log for this path.
                 path_log[path_id] = {
                     "start": times[0],
                     "end": times[-1],
                     "time": times,
                     "coordinates": coordinates,
+                    "velocities": velocities,
                     "speed": speeds,
-                    "length": lengths,
-                    "height": heights,
+                    "vertical_speed": vertical_speeds,
+                    "travel_distance": travel_distances,
+                    "vertical_travel_distance": vertical_travel_distances,
                 }
 
-                for (x, _), time, length in zip(coordinates, times, lengths):
+                # Aggregate active fingers by time for statistics.
+                for (x, _), time, travel_distance in zip(
+                    coordinates, times, travel_distances
+                ):
                     active_fingers_by_time.setdefault(time, []).append(
                         {
                             "x": float(x),
-                            "length": float(length),
+                            "travel_distance": float(travel_distance),
                         }
                     )
 
+            # Compute statistics for this ROI based on active fingers at each time.
             statistics = {}
             for time in sorted(active_fingers_by_time):
                 active_fingers = active_fingers_by_time[time]
-                x_coords_sorted = sorted(float(finger["x"]) for finger in active_fingers)
+
+                # Compute horizontal distances between active fingers at this time.
+                x_coords_sorted = sorted(
+                    float(finger["x"]) for finger in active_fingers
+                )
                 dist_x = []
                 if len(x_coords_sorted) > 1:
                     dist_x = np.diff(x_coords_sorted).tolist()
 
-                lengths_at_time = [float(finger["length"]) for finger in active_fingers]
-                new_fingers = int(sum(np.isclose(length, 0.0) for length in lengths_at_time))
+                # Compute lengths of active fingers at this time (using travel distance as a
+                # proxy for length).
+                travel_distances_at_time = [
+                    float(finger["travel_distance"]) for finger in active_fingers
+                ]
+
+                # Count new fingers that have zero travel distance at this time
+                # (i.e., just appeared).
+                new_fingers = int(
+                    sum(
+                        np.isclose(length, 0.0, atol=1e-10)
+                        for length in travel_distances_at_time
+                    )
+                )
 
                 statistics[time] = {
-                    "dist_x": dist_x,
-                    "lengths": lengths_at_time,
+                    "horizontal_distances": dist_x,
+                    "travel_distances": travel_distances_at_time,
                     "new_fingers": new_fingers,
+                    "number_fingers": len(active_fingers),
+                    "contour_length": contour_length,
+                    "roi_width": roi_width,
+                    "tip_frequency": tip_frequency,
+                    "tip_wavelength": tip_wavelength,
                 }
 
             path_log["statistics"] = statistics
-            
-            with open(results_folder / "tips_paths" / key / "paths.json", "w") as f:
-                json.dump(path_log, f, indent=2)
 
+            # Collect path log for this ROI into the overall statistics dictionary.
+            path_statistics["paths"][key].update(path_log)
+
+            # Save overall path statistics for all ROIs to a single JSON file.
+            with open(results_folder / "statistics.json", "w") as f:
+                json.dump(path_statistics, f, indent=2)
+
+            # Save tabular statistics to DataFrame and CSV.
             df = pd.concat(
                 [
                     df,
@@ -341,7 +406,7 @@ def analysis_fingers_from_context(
                 ],
                 ignore_index=True,
             )
-            df.to_csv(results_folder / "results.csv", index=False)
+            df.to_csv(results_folder / "statistics.csv", index=False)
 
 
 def analysis_fingers(
