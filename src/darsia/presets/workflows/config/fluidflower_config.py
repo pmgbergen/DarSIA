@@ -22,6 +22,7 @@ from .rig import RigConfig
 from .roi_registry import RoiRegistry
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
+from .workflow_utils import WorkflowUtilsConfig
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +186,13 @@ class FluidFlowerConfig:
         except KeyError:
             self.download = None
             warn(f"Section download not found in {path}, use [download].")
+
+        # ! ---- UTILS CONFIG ---- ! #
+        try:
+            self.workflow_utils = WorkflowUtilsConfig()
+            self.workflow_utils.load(path)
+        except KeyError:
+            self.workflow_utils = None
 
         ## Reference colorchecker
         # try:
