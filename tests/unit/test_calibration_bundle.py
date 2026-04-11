@@ -139,6 +139,25 @@ def test_preview_calibration_bundle_import_conflicts(tmp_path: Path):
     assert target / "color_paths" / "from_labels" / "metadata.json" in conflicts
 
 
+def test_preview_calibration_bundle_import_conflicts_multiple_artifacts(tmp_path: Path):
+    config_path = _create_calibration_artifacts(tmp_path)
+    bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")
+    target = tmp_path / "imported"
+    color_to_mass_conflict = target / "color_to_mass" / "from_labels" / "metadata.json"
+    baseline_conflict = target / "baseline_color_spectrum" / "color_spectrum_0.json"
+    color_to_mass_conflict.parent.mkdir(parents=True, exist_ok=True)
+    baseline_conflict.parent.mkdir(parents=True, exist_ok=True)
+    color_to_mass_conflict.write_text("{}")
+    baseline_conflict.write_text("{}")
+
+    conflicts = preview_calibration_bundle_import_conflicts(
+        config_path, bundle=bundle, target_folder=target
+    )
+
+    assert color_to_mass_conflict in conflicts
+    assert baseline_conflict in conflicts
+
+
 def test_import_calibration_bundle_skip_all_conflicts(tmp_path: Path):
     config_path = _create_calibration_artifacts(tmp_path)
     bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")

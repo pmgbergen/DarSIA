@@ -1203,7 +1203,7 @@ class WorkflowGUI:
             if conflicts:
                 max_preview = 8
                 preview = "\n".join(str(path) for path in conflicts[:max_preview])
-                remaining = len(conflicts) - min(len(conflicts), max_preview)
+                remaining = max(0, len(conflicts) - max_preview)
                 suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
                 choice = self.messagebox.askyesnocancel(
                     "Calibration import conflicts",
