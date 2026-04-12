@@ -1,6 +1,6 @@
+import json
 import multiprocessing as mp
 import queue
-import json
 import sys
 import time
 import types
@@ -10,18 +10,24 @@ import pytest
 
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.user_interface_gui import (
+    _run_utils_workflow,
     abort_process,
     clear_queue,
+    completion_dialog_spec,
+    decode_workflow_error_details,
     deduplicate_paths,
     default_session_cache_file,
     enabled_option_labels,
+    encode_workflow_error_details,
+    format_error_details_text,
     format_workflow_done_message,
+    format_workflow_error_message,
     format_workflow_start_message,
     normalize_paths,
     publish_latest_queue_item,
     read_session_cache,
     resolve_rig_class,
-    _run_utils_workflow,
+    suggested_analysis_results_folder,
     write_session_cache,
 )
 
@@ -154,6 +160,97 @@ def test_format_workflow_start_message() -> None:
 def test_format_workflow_done_message() -> None:
     msg = format_workflow_done_message("setup", ["depth", "rig"], 2, 3.2)
     assert msg == "Setup completed. Actions: depth, rig. Configs: 2. Duration: 3.2s."
+
+
+def test_format_workflow_error_message() -> None:
+    msg = format_workflow_error_message("analysis", ["mass"], 3)
+    assert msg == "ERROR: analysis workflow failed with exit code 3. Actions: mass."
+
+
+def test_format_error_details_text_without_details() -> None:
+    assert format_error_details_text("") == "No workflow error details available."
+
+
+def test_format_error_details_text_with_details() -> None:
+    details = "Traceback...\nOSError: [WinError 64] ..."
+    assert format_error_details_text(details) == details
+
+
+def test_completion_dialog_spec_success() -> None:
+    assert completion_dialog_spec("analysis", 0, False) == (
+        "info",
+        "Done",
+        "Analysis workflow completed.",
+    )
+
+
+def test_completion_dialog_spec_failure() -> None:
+    assert completion_dialog_spec("analysis", 7, False) == (
+        "error",
+        "Error",
+        "Analysis workflow failed with exit code 7.",
+    )
+
+
+def test_completion_dialog_spec_abort_is_log_only() -> None:
+    assert completion_dialog_spec("analysis", 0, True) is None
+    assert completion_dialog_spec("analysis", 9, True) is None
+
+
+def test_encode_decode_workflow_error_details_roundtrip() -> None:
+    details = "Traceback...\nOSError: [WinError 64] ..."
+    encoded = encode_workflow_error_details(details)
+    assert decode_workflow_error_details(encoded) == details
+
+
+def test_decode_workflow_error_details_non_error_message() -> None:
+    assert decode_workflow_error_details("regular log line") is None
+
+
+def test_suggested_analysis_results_folder_for_cropping(tmp_path: Path) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_analysis_results_folder([config], ["cropping"])
+    assert folder == results / "cropped_images"
+
+
+def test_suggested_analysis_results_folder_from_analysis_section(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    seg_folder = tmp_path / "seg"
+    config.write_text(
+        f"[data]\nresults = '{results}'\n\n"
+        f"[analysis.segmentation]\nfolder = '{seg_folder}'\n"
+    )
+
+    folder = suggested_analysis_results_folder([config], ["segmentation"])
+    assert folder == seg_folder
+
+
+def test_suggested_analysis_results_folder_defaults_to_results_on_multiple_modes(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_analysis_results_folder([config], ["mass", "volume"])
+    assert folder == results
+
+
+def test_suggested_analysis_results_folder_fallback_for_missing_mode_folder(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_analysis_results_folder([config], ["fingers"])
+    assert folder == results / "fingers"
 
 
 def test_publish_latest_queue_item_keeps_only_latest() -> None:
