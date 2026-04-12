@@ -191,10 +191,9 @@ def analysis_fingers_from_context(
                 peaks=peaks, valleys=valleys, time=img.time
             )
             contour_evolution_analysis[key].find_paths()
-            contour_evolution_analysis[key].find_valley_paths()
             contour_evolution_times[key].append(float(img.time))
-            # contour_evolution_analysis[key].plot(img, roi=roi_config.roi)
 
+            # Plotting.
             contour_evolution_analysis[key].plot_paths(
                 img,
                 roi=roi_config.roi,
