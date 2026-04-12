@@ -6,9 +6,10 @@ This includes measuring lengths of contours, weighted sums (generalized mass ana
 
 from __future__ import annotations
 
+import logging
 from collections import namedtuple
 from pathlib import Path
-from typing import Optional, Union, cast
+from typing import cast
 
 import cv2
 import matplotlib.pyplot as plt
@@ -20,11 +21,13 @@ from scipy.spatial import distance_matrix
 
 import darsia
 
+logger = logging.getLogger(__name__)
+
 
 def contour_length(
     img: darsia.Image,
-    roi: Optional[darsia.CoordinateArray] = None,
-    values_of_interest: Optional[Union[int, list[int]]] = None,
+    roi: darsia.CoordinateArray | None = None,
+    values_of_interest: int | list[int] | None = None,
     fill_holes: bool = True,
     verbosity: bool = False,
 ) -> float:
@@ -97,6 +100,7 @@ def contour_length(
         plt.imshow(img_roi.img)
         plt.figure()
         plt.imshow(mask)
+        plt.axis("off")
         plt.show()
         print(f"The contour length is {metric_contour_length}.")
 
@@ -141,8 +145,8 @@ class ContourAnalysis:
     def load_labels(
         self,
         img: darsia.Image,
-        roi: Optional[darsia.CoordinateArray] = None,
-        values_of_interest: Optional[Union[int, list[int]]] = None,
+        roi: darsia.CoordinateArray | None = None,
+        values_of_interest: int | list[int] | None = None,
         fill_holes: bool = True,
     ) -> None:
         """Read labeled image and restrict to values of interest.
@@ -204,7 +208,7 @@ class ContourAnalysis:
         self,
         img: darsia.Image,
         mask: darsia.Image,
-        roi: Optional[darsia.CoordinateArray] = None,
+        roi: darsia.CoordinateArray | None = None,
         fill_holes: bool = True,
     ) -> None:
         """Read labeled image and restrict to values of interest.
@@ -321,7 +325,9 @@ class ContourAnalysis:
 
         return metric_contour_length
 
-    def fingers(self, direction=np.array([0.0, -1.0])) -> tuple[np.ndarray, np.ndarray]:
+    def local_extrema(
+        self, direction=np.array([0.0, -1.0])
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Determine local extrema of the contour, where the extremality
         is defined by a direction.
@@ -430,11 +436,11 @@ class ContourAnalysis:
         reshaped_valleys_pixels = np.reshape(sorted_valleys_pixels, (-1, 1, 2))
 
         if self.verbosity:
-            self.plot_finger_peaks(self.img, reshaped_peaks_pixels)
+            self.plot_peaks(self.img, reshaped_peaks_pixels)
 
         return reshaped_peaks_pixels, reshaped_valleys_pixels
 
-    def plot_finger_peaks(
+    def plot_peaks(
         self,
         img: darsia.Image,
         peaks_pixels: np.ndarray,
@@ -442,6 +448,7 @@ class ContourAnalysis:
         contours: list[np.ndarray] | None = None,
         path: Path | None = None,
         show: bool = True,
+        dpi: int = 1000,
         **kwargs,
     ) -> None:
         """Plot peaks on top of the provided image.
@@ -455,6 +462,7 @@ class ContourAnalysis:
                 translated to the top left corner of the ROI; default is None.
             path (Path, optional): path to save the plot; if None, no saving is performed.
             show (bool): flag controlling whether the plot is shown; default is True.
+            dpi (int): dots per inch for the saved plot; default is 1000.
             **kwargs: additional keyword arguments for plotting.
                 - color (str): color for the peaks; default is "r".
                 - size (int): size for the peaks; default is 20.
@@ -486,8 +494,7 @@ class ContourAnalysis:
         if kwargs.get("plot_boundary", False):
             plt.gca().add_patch(
                 plt.Rectangle(
-                    top_left_roi_pixel[0],
-                    top_left_roi_pixel[1],
+                    (top_left_roi_pixel[0], top_left_roi_pixel[1]),
                     bottom_right_roi_pixel[0] - top_left_roi_pixel[0],
                     bottom_right_roi_pixel[1] - top_left_roi_pixel[1],
                     linewidth=kwargs.get("boundary_linewidth", 2),
@@ -513,7 +520,8 @@ class ContourAnalysis:
             )
         if path is not None:
             plt.tight_layout()
-            plt.savefig(path, format="png", dpi=1000)
+            plt.axis("off")
+            plt.savefig(path, format="png", dpi=dpi, bbox_inches="tight", pad_inches=0)
 
         if show:
             plt.show()
@@ -527,8 +535,131 @@ class ContourAnalysis:
             int: number of peaks.
 
         """
-        peaks_pixels, _ = self.fingers()
+        peaks_pixels, _ = self.local_extrema()
         return len(peaks_pixels)
+
+    def plot_valleys(
+        self,
+        img: darsia.Image,
+        valleys_pixels: np.ndarray,
+        roi: darsia.CoordinateArray | None = None,
+        contours: list[np.ndarray] | None = None,
+        path: Path | None = None,
+        show: bool = True,
+        dpi: int = 1000,
+        **kwargs,
+    ) -> None:
+        """Plot valleys on top of the provided image.
+
+        Args:
+            img (darsia.Image): image to plot on.
+            valleys_pixels (np.ndarray): pixels of valleys.
+            contours (list[np.ndarray], optional): contours to plot; if None, no contours are
+                plotted; default is None.
+            roi (darsia.CoordinateArray | None): region of interest. If provided, valleys are
+                translated to the top left corner of the ROI; default is None.
+            path (Path, optional): path to save the plot; if None, no saving is performed.
+            show (bool): flag controlling whether the plot is shown; default is True.
+            dpi (int): dots per inch for the saved plot; default is 1000.
+            **kwargs: additional keyword arguments for plotting.
+                - valley_color (str): color for valley lines; default is "c".
+                - valley_linewidth (float): line width for valley lines; default is 1.
+                - y_min (float): lower y-limit for valley lines; default is top of ROI.
+                - y_max (float): upper y-limit for valley lines; default is bottom of ROI.
+                - plot_valley_dots (bool): if True, valley dots are added; default is False.
+                - valley_dot_color (str): color for valley dots; default is valley_color.
+                - valley_dot_size (float): dot size for valley dots; default is 20.
+
+        """
+
+        top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
+        y_min = kwargs.get("y_min", top_left_roi_pixel[1])
+        y_max = kwargs.get("y_max", bottom_right_roi_pixel[1])
+        valley_color = kwargs.get("valley_color", "c")
+
+        # Make sure the y_min/y_max are within the image bounds
+        y_min = max(0, y_min)
+        y_max = min(img.img.shape[0], y_max)
+
+        plt.figure("Original image with valleys")
+        plt.imshow(img.img)
+
+        # Match image dimensions
+        plt.xlim(0, img.img.shape[1])
+        plt.ylim(img.img.shape[0], 0)  # Inverted because image y-axis is top-down
+
+        if contours is not None:
+            for contour in contours:
+                plt.plot(
+                    contour[:, 0, 0] + top_left_roi_pixel[0],
+                    contour[:, 0, 1] + top_left_roi_pixel[1],
+                    c=kwargs.get("contour_color", "w"),
+                    linewidth=kwargs.get("contour_linewidth", 1),
+                )
+
+        valley_x = valleys_pixels[:, 0, 0] + top_left_roi_pixel[0]
+        plt.vlines(
+            valley_x,
+            y_min,
+            y_max,
+            colors=valley_color,
+            linewidth=kwargs.get("valley_linewidth", 1),
+        )
+
+        if kwargs.get("plot_valley_dots", False):
+            plt.scatter(
+                valley_x,
+                valleys_pixels[:, 0, 1] + top_left_roi_pixel[1],
+                c=kwargs.get("valley_dot_color", valley_color),
+                s=kwargs.get("valley_dot_size", 20),
+            )
+
+        if kwargs.get("plot_boundary", False):
+            plt.gca().add_patch(
+                plt.Rectangle(
+                    (top_left_roi_pixel[0], top_left_roi_pixel[1]),
+                    bottom_right_roi_pixel[0] - top_left_roi_pixel[0],
+                    bottom_right_roi_pixel[1] - top_left_roi_pixel[1],
+                    linewidth=kwargs.get("boundary_linewidth", 2),
+                    edgecolor=kwargs.get("boundary_color", "y"),
+                    facecolor="none",
+                )
+            )
+        if kwargs.get("highlight_roi", False):
+            plt.gca().add_patch(
+                plt.Rectangle(
+                    (0, 0), img.img.shape[1], img.img.shape[0], color="black", alpha=0.5
+                )
+            )
+            plt.gca().add_patch(
+                plt.Rectangle(
+                    (top_left_roi_pixel[0], top_left_roi_pixel[1]),
+                    bottom_right_roi_pixel[0] - top_left_roi_pixel[0],
+                    bottom_right_roi_pixel[1] - top_left_roi_pixel[1],
+                    color="white",
+                    alpha=0.5,
+                )
+            )
+
+        if path is not None:
+            plt.tight_layout()
+            plt.axis("off")
+            plt.savefig(path, format="png", dpi=dpi, bbox_inches="tight", pad_inches=0)
+
+        if show:
+            plt.show()
+        else:
+            plt.close()
+
+    def number_valleys(self) -> int:
+        """Determine number of valleys.
+
+        Returns:
+            int: number of valleys.
+
+        """
+        _, valleys_pixels = self.local_extrema()
+        return len(valleys_pixels)
 
 
 # In order to uniquely identify a location in the collection of paths, define
@@ -549,15 +680,30 @@ class ContourEvolutionAnalysis:
         """
 
         self.index = 0
+        """Index of the current time point."""
         self.peaks = {}
+        """Dictionary storing peaks at different time points."""
         self.valleys = {}
+        """Dictionary storing valleys at different time points."""
         self.paths = []
-
+        """List storing paths of peaks."""
+        self.valley_paths = []
+        """List storing paths of valleys."""
         self.verbosity = verbosity
+        """Verbosity flag."""
 
     def add(
-        self, peaks: np.ndarray, valleys: np.ndarray, time: Optional[float] = None
+        self, peaks: np.ndarray, valleys: np.ndarray, time: float | None = None
     ) -> None:
+        """Add peaks and valleys for a new time point.
+
+        Args:
+            peaks (np.ndarray): pixels of peaks at the new time point.
+            valleys (np.ndarray): pixels of valleys at the new time point.
+            time (float, optional): time corresponding to the new time point;
+                if None, index is used as time.
+
+        """
         self.peaks[self.index] = peaks.copy()
         self.valleys[self.index] = valleys.copy()
         self.time = time
@@ -567,12 +713,12 @@ class ContourEvolutionAnalysis:
 
     def plot(
         self,
-        img: Optional[darsia.Image] = None,
-        roi: Optional[darsia.CoordinateArray] = None,
+        img: darsia.Image | None = None,
+        roi: darsia.CoordinateArray | None = None,
     ) -> None:
         # TODO.
         if img is None:
-            raise False
+            raise ValueError("img cannot be None when plotting contour evolution.")
 
         top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
         background = np.zeros(img.img.shape[:2], dtype=int)
@@ -598,13 +744,14 @@ class ContourEvolutionAnalysis:
 
     def plot_paths(
         self,
-        img: Optional[darsia.Image] = None,
+        img: darsia.Image | None = None,
         roi: darsia.CoordinateArray | None = None,
         path: Path | None = None,
         show: bool = False,
+        dpi: int = 1000,
     ) -> None:
         if img is None:
-            raise False
+            raise ValueError("img cannot be None when plotting paths.")
 
         top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
 
@@ -624,6 +771,7 @@ class ContourEvolutionAnalysis:
         # Add paths
         cmap = plt.cm.get_cmap("viridis")
         num_paths = len(self.paths)
+        denominator = max(num_paths - 1, 1)
         for i, finger_path in enumerate(self.paths):
             # Assemble path by connecting positions
             path_pos = np.zeros((0, 2), dtype=int)
@@ -633,12 +781,28 @@ class ContourEvolutionAnalysis:
             plt.plot(
                 path_pos[:, 0] + top_left_roi_pixel[0],
                 path_pos[:, 1] + top_left_roi_pixel[1],
-                color=cmap(i / (num_paths - 1)),
+                color=cmap(i / denominator),
                 linewidth=path_length / max_path_length * 2,
             )
 
+        # Turn off axis
+        plt.axis("off")
+
         if path is not None:
-            plt.savefig(path.with_suffix(".svg"), format="svg", dpi=1000)
+            suffix = path.suffix
+            if suffix in [".png", ".jpg", ".jpeg", ".svg"]:
+                format = suffix[1:]
+                plt.savefig(
+                    path, format=format, dpi=dpi, bbox_inches="tight", pad_inches=0
+                )
+            else:
+                plt.savefig(
+                    path.with_suffix(".png"),
+                    format="png",
+                    dpi=dpi,
+                    bbox_inches="tight",
+                    pad_inches=0,
+                )
 
         # Finalize plot
         if show:
@@ -646,109 +810,183 @@ class ContourEvolutionAnalysis:
         else:
             plt.close()
 
-    def find_paths(self, reset: bool = True) -> None:
-        """
-        Find paths in the peaks and valleys.
-        """
+    def plot_valley_paths(
+        self,
+        img: darsia.Image | None = None,
+        roi: darsia.CoordinateArray | None = None,
+        path: Path | None = None,
+        show: bool = False,
+        color: str | None = None,
+        dpi: int = 1000,
+    ) -> None:
+        if img is None:
+            raise ValueError("img cannot be None when plotting valley paths.")
 
-        # TODO decide whether to reset
-        if reset:
-            self.paths = []
+        top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(img, roi)
+
+        plt.figure("Valley paths")
+        plt.imshow(img.img)
+
+        max_path_length = 0
+        for valley_path in self.valley_paths:
+            path_pos = np.zeros((0, 2), dtype=int)
+            for unit in valley_path:
+                path_pos = np.vstack((path_pos, unit.position))
+            max_path_length = max(max_path_length, path_pos.shape[0])
+
+        if max_path_length == 0:
+            max_path_length = 1
+
+        y_min = top_left_roi_pixel[1]
+        y_max = bottom_right_roi_pixel[1]
+
+        cmap = plt.cm.get_cmap("viridis")
+        num_paths = len(self.valley_paths)
+        denominator = max(num_paths - 1, 1)
+        for i, valley_path in enumerate(self.valley_paths):
+            path_pos = np.zeros((0, 2), dtype=int)
+            for unit in valley_path:
+                path_pos = np.vstack((path_pos, unit.position))
+
+            if path_pos.shape[0] == 0:
+                continue
+
+            path_length = path_pos.shape[0]
+            path_color = cmap(i / denominator) if color is None else color
+            line_width = path_length / max_path_length * 2
+
+            x_global = path_pos[:, 0] + top_left_roi_pixel[0]
+            y_global = path_pos[:, 1] + top_left_roi_pixel[1]
+            plt.plot(
+                x_global,
+                y_global,
+                color=path_color,
+                linewidth=line_width,
+                alpha=1.0,
+            )
+
+            first_x = x_global[0]
+            first_y = y_global[0]
+            if first_y != y_min:
+                plt.plot(
+                    [first_x, first_x],
+                    [y_min, first_y],
+                    color=path_color,
+                    linewidth=line_width,
+                    alpha=0.5,
+                )
+
+            last_x = x_global[-1]
+            last_y = y_global[-1]
+            if last_y != y_max:
+                plt.plot(
+                    [last_x, last_x],
+                    [last_y, y_max],
+                    color=path_color,
+                    linewidth=line_width,
+                    alpha=0.5,
+                )
+
+        # Turn off axis
+        plt.axis("off")
+
+        if path is not None:
+            suffix = path.suffix
+            if suffix in [".png", ".jpg", ".jpeg", ".svg"]:
+                format = suffix[1:]
+                plt.savefig(
+                    path, format=format, dpi=dpi, bbox_inches="tight", pad_inches=0
+                )
+            else:
+                plt.savefig(
+                    path.with_suffix(".png"),
+                    format="png",
+                    dpi=dpi,
+                    bbox_inches="tight",
+                    pad_inches=0,
+                )
+
+        if show:
+            plt.show()
+        else:
+            plt.close()
+
+    def _find_paths(self, points: dict[int, np.ndarray]) -> list[list[PathUnit]]:
+        paths = []
+
+        def _reshape_points(array: np.ndarray) -> np.ndarray:
+            squeezed_array = np.asarray(array)
+            if squeezed_array.size == 0:
+                return np.zeros((0, 2), dtype=int)
+            return np.squeeze(squeezed_array).reshape(-1, 2)
 
         def _same_path_unit(path_unit_0, path_unit_1):
-            """
-            Check whether all required items are the same (position not needed
-            if implemented without errors).
-            """
-
             return (
                 path_unit_0.time == path_unit_1.time
                 and path_unit_0.peak == path_unit_1.peak
             )
 
         def _include_segments(time_prev, time_next, segments, pts_prev, pts_next):
-            """
-            Assemble paths.
-            """
-
-            # Consider each segment separately:
             for segment in segments:
-                # Define a path unit for the start point - ignore
                 path_unit_prev = PathUnit(
                     time_prev, segment[0], pts_prev[segment[0], :]
                 )
-
-                # Define a path unit for the end point
                 path_unit_next = PathUnit(
                     time_next, segment[1], pts_next[segment[1], :]
                 )
 
-                # Traverse the paths to check whether a preexisting path ends with
-                # the start of the segment.
                 added_to_preexisting_path = False
-                for path in self.paths:
-                    # Check last element in the path
+                for path in paths:
                     last_unit = path[-1]
                     identical_units = _same_path_unit(last_unit, path_unit_prev)
-
                     if identical_units:
                         path.append(path_unit_next)
                         added_to_preexisting_path = True
                         break
 
-                # Add the entire segment if no suitable path exists for this
                 if not added_to_preexisting_path:
-                    # print("create new path")
-                    self.paths.append([path_unit_prev, path_unit_next])
+                    paths.append([path_unit_prev, path_unit_next])
 
-        def _include_points(time_next, points, pts_next):
-            """
-            Assemble paths.
-            """
+        def _include_points(time_next, point_indices, pts_next):
+            for point_index in point_indices:
+                path_unit_next = PathUnit(
+                    time_next, point_index, pts_next[point_index, :]
+                )
+                paths.append([path_unit_next])
 
-            # Consider each segment separately:
-            for point in points:
-                # Define a path unit for the end point
-                path_unit_next = PathUnit(time_next, point, pts_next[point, :])
-                self.paths.append([path_unit_next])
+        if self.total_time == 1:
+            pts = _reshape_points(points.get(0, np.zeros((0, 1, 2), dtype=int)))
+            _include_points(0, range(len(pts)), pts)
+            return paths
 
-        # TODO replace time_index with something global?
         for time_index in range(self.total_time - 1):
-            # Fetch peak indices
-            peaks_prev = np.squeeze(self.peaks[time_index]).reshape(-1, 2)
-            peaks_next = np.squeeze(self.peaks[time_index + 1]).reshape(-1, 2)
+            pts_prev = _reshape_points(
+                points.get(time_index, np.zeros((0, 1, 2), dtype=int))
+            )
+            pts_next = _reshape_points(
+                points.get(time_index + 1, np.zeros((0, 1, 2), dtype=int))
+            )
 
-            # Initialize correpsonding peaks
             prev_next_pairs = []
             new_paths = []
 
-            if len(peaks_prev) == 0:
-                for peak_index in list(np.arange(len(peaks_prev))):
-                    new_paths.append(peak_index)
+            if len(pts_prev) == 0 and len(pts_next) > 0:
+                for point_index in range(len(pts_next)):
+                    new_paths.append(point_index)
+                _include_points(time_index + 1, new_paths, pts_next)
                 continue
 
-            if len(peaks_next) == 0:
+            if len(pts_next) == 0 or len(pts_prev) == 0:
                 continue
 
-            # Initialize paired slices
-            paired_slices = [(slice(0, len(peaks_prev)), slice(0, len(peaks_next)))]
+            paired_slices = [(slice(0, len(pts_prev)), slice(0, len(pts_next)))]
+            dist = distance_matrix(pts_prev, pts_next)
 
-            # Construct distance matrix
-            dist = distance_matrix(peaks_prev, peaks_next)
-
-            for iteration in range(max(len(peaks_prev), len(peaks_next))):
-                # Stopping criterion.
+            for _ in range(max(len(pts_prev), len(pts_next))):
                 if len(paired_slices) == 0:
                     break
 
-                # First assignments
                 ind_prev, ind_next = paired_slices.pop(0)
-
-                if self.verbosity:
-                    print("slices", ind_prev, ind_next)
-
-                # Find smallest entry in the restricted distance matrix
-                # print(dist[ind_prev, ind_next])
                 local_distance_matrix = dist[ind_prev, ind_next]
                 num_local_cols = local_distance_matrix.shape[1]
                 local_argmin_1d = np.argmin(np.ravel(local_distance_matrix))
@@ -758,19 +996,7 @@ class ContourEvolutionAnalysis:
                         local_argmin_1d % num_local_cols,
                     ]
                 )
-                if self.verbosity:
-                    print("local argmin 2d", local_argmin_1d, local_argmin_2d)
-                # Globalize argmin_2d
                 argmin_2d = local_argmin_2d + np.array([ind_prev.start, ind_next.start])
-                if self.verbosity:
-                    print(
-                        "argmin",
-                        argmin_2d,
-                        peaks_prev[argmin_2d[0]],
-                        peaks_next[argmin_2d[1]],
-                    )
-
-                # Bookkeeping.
                 prev_next_pairs.append(argmin_2d)
 
                 pre_slice = (
@@ -785,61 +1011,50 @@ class ContourEvolutionAnalysis:
                 def _nonempty_slice(sl) -> bool:
                     return sl.stop - sl.start > 0
 
-                # In order to keep the order, start with the later slice
                 if _nonempty_slice(post_slice[0]) and _nonempty_slice(post_slice[1]):
                     paired_slices.insert(0, post_slice)
-                elif _nonempty_slice(post_slice[0]):
-                    if self.verbosity:
-                        print(
-                            f"Fingers according to slice {post_slice[0]} are terminated."
-                        )
                 elif _nonempty_slice(post_slice[1]):
-                    if self.verbosity:
-                        print(f"New paths according to slice {post_slice[1]}.")
-                    for peak_index in list(
-                        np.arange(post_slice[1].start, post_slice[1].stop)
-                    ):
-                        new_paths.append(peak_index)
+                    for point_index in range(post_slice[1].start, post_slice[1].stop):
+                        new_paths.append(point_index)
 
                 if _nonempty_slice(pre_slice[0]) and _nonempty_slice(pre_slice[1]):
                     paired_slices.insert(0, pre_slice)
-                elif _nonempty_slice(pre_slice[0]):
-                    if self.verbosity:
-                        print(
-                            f"Fingers according to slice {pre_slice[0]} are terminated."
-                        )
                 elif _nonempty_slice(pre_slice[1]):
-                    if self.verbosity:
-                        print(f"New paths according to slice {pre_slice[1]}.")
-                    for peak_index in list(
-                        np.arange(pre_slice[1].start, pre_slice[1].stop)
-                    ):
-                        new_paths.append(peak_index)
+                    for point_index in range(pre_slice[1].start, pre_slice[1].stop):
+                        new_paths.append(point_index)
 
-                if self.verbosity:
-                    print()
-
-            # For simpler handling, convert to array format (reshape only for
-            # handling empty lists) and sort
             prev_next_pairs = np.array(prev_next_pairs).reshape(-1, 2)
-            arg_sorted_prev_next_pairs = np.argsort(prev_next_pairs[:, 0])
-            prev_next_pairs = prev_next_pairs[arg_sorted_prev_next_pairs]
+            if prev_next_pairs.shape[0] > 0:
+                arg_sorted_prev_next_pairs = np.argsort(prev_next_pairs[:, 0])
+                prev_next_pairs = prev_next_pairs[arg_sorted_prev_next_pairs]
 
             new_paths = np.array(new_paths)
-            arg_sorted_new_paths = np.argsort(new_paths)
-            new_paths = new_paths[arg_sorted_new_paths]
+            if new_paths.shape[0] > 0:
+                arg_sorted_new_paths = np.argsort(new_paths)
+                new_paths = new_paths[arg_sorted_new_paths]
 
-            if self.verbosity:
-                print(
-                    f"""final: {time_index} vs. {time_index + 1}. Found
-                    {len(prev_next_pairs)} many pairs among {len(peaks_prev)}
-                    and {len(peaks_next)} fingers, respectively."""
-                )
-                print(prev_next_pairs)
-                print(new_paths)
-
-            # Glue together segments where possible (sort in).
             _include_segments(
-                time_index, time_index + 1, prev_next_pairs, peaks_prev, peaks_next
+                time_index, time_index + 1, prev_next_pairs, pts_prev, pts_next
             )
-            _include_points(time_index + 1, new_paths, peaks_next)
+            _include_points(time_index + 1, new_paths, pts_next)
+
+        return paths
+
+    def find_paths(self, reset: bool = True) -> None:
+        """
+        Find paths in the peaks and valleys.
+        """
+
+        if reset:
+            self.paths = []
+        self.paths.extend(self._find_paths(self.peaks))
+
+    def find_valley_paths(self, reset: bool = True) -> None:
+        """Find paths in the valleys."""
+        if reset:
+            self.valley_paths = []
+        self.valley_paths.extend(self._find_paths(self.valleys))
+
+    def find_fjord_paths(self, reset: bool = True) -> None:
+        """Alias for find_valley_paths with finger-analysis terminology."""
+        self.find_valley_paths(reset=reset)
