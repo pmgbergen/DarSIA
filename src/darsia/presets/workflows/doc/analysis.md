@@ -54,6 +54,15 @@ Use registry keys for image selection and ROIs where possible.
 ## Output expectations
 Depending on enabled tasks, analysis typically produces derived crops, plots/maps, and result artifacts in the configured results directory.
 
+## Suggested streamed image keys
+When GUI streaming is enabled for analysis, the latest image payload can include:
+- Cropping: `cropping`
+- Segmentation: `segmentation`
+- Mass: `mass_source_image`, `mass_total`, `mass_g`, `mass_aq`
+- Volume: `volume_source_image`, `saturation_g`, `concentration_aq`, `saturation_aq`
+- Fingers: `fingers_source_image`, `fingers_segmentation`, plus ROI-specific
+  `fingers_tips_<roi_key>` and `fingers_paths_<roi_key>`
+
 ## Related guides
 - [Workflow analysis](./workflow-analysis.md)
 - [Finger analysis](./finger_analysis.md)
