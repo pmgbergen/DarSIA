@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from .roi_registry import RoiRegistry
 
 logger = logging.getLogger(__name__)
+SUPPORTED_CROPPING_FORMATS = {"jpg", "npz"}
 
 
 @dataclass
@@ -240,7 +241,7 @@ class AnalysisCroppingConfig:
     image_times: list[float] = field(default_factory=list)
     """Legacy direct image times for cropping."""
     formats: list[str] = field(default_factory=list)
-    """Output formats for cropping images (supported: npz, jpg)."""
+    """Output formats for cropping images."""
 
     def load(
         self, sec: dict, data: Path | None, data_registry: DataRegistry | None = None
@@ -279,12 +280,14 @@ class AnalysisCroppingConfig:
         if not all(isinstance(fmt, str) for fmt in raw_formats):
             raise ValueError("analysis.cropping.formats entries must be strings.")
         self.formats = [fmt.strip().lower() for fmt in raw_formats]
-        invalid_formats = sorted(set(self.formats) - {"jpg", "npz"})
+        invalid_formats = sorted(set(self.formats) - SUPPORTED_CROPPING_FORMATS)
         if len(invalid_formats) > 0:
             raise ValueError(
                 "Unsupported analysis.cropping formats: "
                 + ", ".join(invalid_formats)
-                + ". Supported formats: jpg, npz."
+                + ". Supported formats: "
+                + ", ".join(sorted(SUPPORTED_CROPPING_FORMATS))
+                + "."
             )
         return self
 
