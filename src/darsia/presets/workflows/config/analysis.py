@@ -13,7 +13,7 @@ from .fingers import FingersConfig
 from .roi import RoiAndLabelConfig, RoiConfig
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
-from .utils import _get_key, _get_section, _get_section_from_toml
+from .utils import _convert_to_hours, _get_key, _get_section, _get_section_from_toml
 
 if TYPE_CHECKING:
     from .roi_registry import RoiRegistry
@@ -232,9 +232,69 @@ class AnalysisFingersConfig:
 
 
 @dataclass
+class AnalysisCroppingConfig:
+    data: TimeData | str | list[str] | None = None
+    """Cropping data selection configuration."""
+    image_paths: list[Path] = field(default_factory=list)
+    """Legacy direct image paths for cropping."""
+    image_times: list[float] = field(default_factory=list)
+    """Legacy direct image times for cropping."""
+    formats: list[str] = field(default_factory=list)
+    """Output formats for cropping images (supported: npz, jpg)."""
+
+    def load(
+        self, sec: dict, data: Path | None, data_registry: DataRegistry | None = None
+    ) -> "AnalysisCroppingConfig":
+        sub_sec = _get_section(sec, "cropping")
+
+        data_val = sub_sec.get("data")
+        if isinstance(data_val, (str, list)) and data_registry is not None:
+            self.data = data_val
+        elif isinstance(data_val, dict):
+            self.data = TimeData().load(data_val, data)
+        else:
+            try:
+                self.data = TimeData().load(sub_sec, data)
+            except ValueError:
+                self.data = None
+
+        raw_paths = _get_key(sub_sec, "image_paths", default=[], required=False)
+        if not isinstance(raw_paths, list):
+            raise ValueError("analysis.cropping.image_paths must be a list.")
+        if len(raw_paths) > 0:
+            self.image_paths = [
+                Path(p) if Path(p).is_absolute() or data is None else data / p
+                for p in raw_paths
+            ]
+
+        raw_times = _get_key(sub_sec, "image_times", default=[], required=False)
+        if not isinstance(raw_times, list):
+            raise ValueError("analysis.cropping.image_times must be a list.")
+        if len(raw_times) > 0:
+            self.image_times = [_convert_to_hours(t) for t in raw_times]
+
+        raw_formats = _get_key(sub_sec, "formats", default=[], required=False)
+        if not isinstance(raw_formats, list):
+            raise ValueError("analysis.cropping.formats must be a list.")
+        if not all(isinstance(fmt, str) for fmt in raw_formats):
+            raise ValueError("analysis.cropping.formats entries must be strings.")
+        self.formats = [fmt.strip().lower() for fmt in raw_formats]
+        invalid_formats = sorted(set(self.formats) - {"jpg", "npz"})
+        if len(invalid_formats) > 0:
+            raise ValueError(
+                "Unsupported analysis.cropping formats: "
+                + ", ".join(invalid_formats)
+                + ". Supported formats: jpg, npz."
+            )
+        return self
+
+
+@dataclass
 class AnalysisConfig:
     data: TimeData | None = None
     """Analysis data configuration."""
+    cropping: AnalysisCroppingConfig | None = None
+    """Analysis cropping configuration."""
     segmentation: AnalysisSegmentationConfig | None = None
     """Analysis segmentation configuration."""
     mass: AnalysisMassConfig | None = None
@@ -264,6 +324,15 @@ class AnalysisConfig:
             except KeyError:
                 warn("No analysis data found. Use [analysis.data].")
                 self.data = None
+
+        # Config to load analysis cropping
+        try:
+            self.cropping = AnalysisCroppingConfig().load(
+                sec, data, data_registry=data_registry
+            )
+        except KeyError:
+            warn("No analysis cropping found. Use [analysis.cropping].")
+            self.cropping = None
 
         # Config to load analysis segmentation
         try:

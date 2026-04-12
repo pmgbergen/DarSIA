@@ -12,6 +12,7 @@ import darsia
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
+    select_image_paths,
 )
 from darsia.presets.workflows.rig import Rig
 
@@ -25,40 +26,47 @@ logging.basicConfig(level=logging.INFO)
 def analysis_cropping_from_context(
     ctx: AnalysisContext,
     show: bool = False,
-    save_jpg: bool = False,
-    save_npz: bool = False,
 ) -> None:
     """Cropping analysis using pre-prepared context.
 
     Args:
         ctx: Pre-prepared analysis context.
         show: Whether to show the images.
-        save_jpg: Whether to save the images as JPG.
-        save_npz: Whether to save the images as NPZ.
 
     """
     # Sanity checks
     assert ctx.config.data is not None
+    assert ctx.config.analysis is not None
 
-    # Require that output options are selected
-    while not (show or save_jpg or save_npz):
-        logger.warning(
-            "No output options selected. At least one output option must be chosen "
-            "before proceeding. Please select one or more options below."
+    cropping_config = ctx.config.analysis.cropping
+    formats: list[str] = []
+    if cropping_config is not None:
+        formats = cropping_config.formats
+
+    save_jpg = "jpg" in formats
+    save_npz = "npz" in formats
+
+    if not (show or save_jpg or save_npz):
+        raise ValueError(
+            "Cropping requires output selection via [analysis.cropping].formats "
+            "(jpg and/or npz) or --show."
         )
-        user_input = input(
-            """\033[33mEnter a number to select output options (1=show, 2=save_jpg, """
-            """3=save_npz, e.g. 13 for show and save_npz):\033[0m """
+
+    image_paths = ctx.image_paths
+    if cropping_config is not None:
+        image_paths = select_image_paths(
+            ctx.config,
+            ctx.experiment,
+            sub_config=cropping_config,
+            source=ctx.config.data.folder,
+            data_registry=ctx.config.data.registry,
         )
-        show = "1" in user_input
-        save_jpg = "2" in user_input
-        save_npz = "3" in user_input
 
     # ! ---- CROPPING ----
     plot_folder = ctx.config.data.results / "cropped_images"
     plot_folder.mkdir(parents=True, exist_ok=True)
 
-    for path in ctx.image_paths:
+    for path in image_paths:
         # Read image
         img = ctx.fluidflower.read_image(path)
 
@@ -83,20 +91,16 @@ def analysis_cropping(
     cls: type[Rig],
     path: Path | list[Path],
     show: bool = False,
-    save_jpg: bool = False,
-    save_npz: bool = False,
     all: bool = False,
 ) -> None:
     """Cropping analysis (standalone entry point).
 
-    Note: If no options are set, the images are only read and no output is saved.
+    Note: Output is configured via `[analysis.cropping].formats`.
 
     Args:
         cls: Rig class.
         path: Path or list of Paths to the images.
         show: Whether to show the images.
-        save_jpg: Whether to save the images as JPG.
-        save_npz: Whether to save the images as NPZ.
         all: Whether to use all images or only the ones specified in the config.
 
     """
@@ -106,4 +110,4 @@ def analysis_cropping(
         all=all,
         require_color_to_mass=False,
     )
-    analysis_cropping_from_context(ctx, show=show, save_jpg=save_jpg, save_npz=save_npz)
+    analysis_cropping_from_context(ctx, show=show)
