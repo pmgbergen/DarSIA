@@ -75,15 +75,8 @@ For practical examples, see:
 
 Use `[video]` to assemble protocol-time ordered media from stored analysis images.
 
-- `analysis`: source selector (`segmentation`, `fingers`, `cropping`, `mass`, `volume`) or omitted/`"none"` to use a custom source folder key.
 - `[video.output]`: `formats` (`mp4`, `gif`), `fps`, optional `resolution`, `filename`, `codec`, `quality`
 - `[video.overlay]`: elapsed-time/note toggles and text-box styling (`font_scale`, colors, position, alpha, padding, etc.)
-- `[video.source]` (optional): override source folder and scanning behavior (`folder`, `extensions`, `pattern`, `recursive`)
-
-When no source folder is given, defaults are resolved under `[data.results]`:
-- segmentation → `segmentation`
-- cropping → `cropped_images`
-
-For `fingers`, provide `[video.source].folder` explicitly due to its multi-folder output structure (tips/fjords/paths/ROIs).
+- `[video.source]` (required): source folder and scanning behavior (`folder`, `extensions`, `pattern`, `recursive`)
 
 Generated media files are saved to `<results>/videos/`.

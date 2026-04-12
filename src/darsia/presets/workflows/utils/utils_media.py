@@ -1,4 +1,4 @@
-"""Utils for creating protocol-time ordered videos/GIFs from analysis outputs."""
+"""Utils for creating protocol-time ordered videos/GIFs from configured image sources."""
 
 from __future__ import annotations
 
@@ -16,33 +16,12 @@ from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 logger = logging.getLogger(__name__)
 
 
-_ANALYSIS_DEFAULT_FOLDERS = {
-    "segmentation": Path("segmentation"),
-    "cropping": Path("cropped_images"),
-    "mass": Path("mass"),
-    "volume": Path("volume"),
-}
-
-
 def _resolve_source_folder(config: FluidFlowerConfig) -> Path:
     assert config.data is not None
     assert config.video is not None
     src = config.video.source.folder
     if src is None:
-        # TODO: Finger outputs can be split across multiple ROI and feature folders
-        # (e.g. tips/fjords/paths). Until we introduce an explicit selector for this
-        # structure, require [video.source].folder for fingers.
-        if config.video.analysis == "fingers":
-            raise ValueError(
-                "No default folder exists for [video].analysis='fingers'. "
-                "Provide [video.source].folder explicitly."
-            )
-        if config.video.analysis not in _ANALYSIS_DEFAULT_FOLDERS:
-            raise ValueError(
-                f"No default source folder for [video].analysis='{config.video.analysis}'. "
-                "Provide [video.source].folder explicitly."
-            )
-        return config.data.results / _ANALYSIS_DEFAULT_FOLDERS[config.video.analysis]
+        raise ValueError("Missing required [video.source].folder.")
     return src if src.is_absolute() else config.data.results / src
 
 

@@ -36,7 +36,7 @@ def test_video_config_defaults_and_results_video_folder(tmp_path: Path) -> None:
     assert cfg.folder == results / "videos"
 
 
-def test_video_config_rejects_invalid_analysis(tmp_path: Path) -> None:
+def test_video_config_rejects_removed_analysis_key(tmp_path: Path) -> None:
     config_path = _write_toml(
         tmp_path,
         """
@@ -44,19 +44,18 @@ def test_video_config_rejects_invalid_analysis(tmp_path: Path) -> None:
         analysis = "unknown"
         """,
     )
-    with pytest.raises(ValueError, match="Unsupported video.analysis"):
+    with pytest.raises(ValueError, match="no longer supported"):
         VideoConfig().load(config_path, results=tmp_path / "results")
 
 
-def test_video_config_requires_source_when_analysis_is_none(tmp_path: Path) -> None:
+def test_video_config_requires_source_folder(tmp_path: Path) -> None:
     config_path = _write_toml(
         tmp_path,
         """
         [video]
-        analysis = "none"
         """,
     )
-    with pytest.raises(ValueError, match="source"):
+    with pytest.raises(KeyError, match="source"):
         VideoConfig().load(config_path, results=tmp_path / "results")
 
 
@@ -65,8 +64,6 @@ def test_video_config_derives_analysis_key_from_source_path(tmp_path: Path) -> N
         tmp_path,
         """
         [video]
-        analysis = "none"
-
         [video.source]
         folder = "custom/roi/stream"
         """,

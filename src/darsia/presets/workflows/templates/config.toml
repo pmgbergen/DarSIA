@@ -87,13 +87,12 @@ image_times = [1, 5, 10, 20, 21, 40]
 image_times = [1, 5, 10, 20, 21, 40]
 
 [video]
-analysis = "segmentation" # segmentation | fingers | cropping | mass | volume | none
 
 [video.output]
 formats = ["mp4", "gif"]
 fps = 6.0
 # resolution = [1280, 720] # optional [width, height]
-filename = "segmentation_over_time"
+filename = "source_over_time"
 codec = "mp4v"
 quality = 95
 
@@ -111,10 +110,8 @@ box_color = [0, 0, 0]
 box_alpha = 0.4
 box_padding = 10
 
-# Optional source override
-#[video.source]
-#folder = "segmentation"                # relative to [data.results] when not absolute
-# For analysis="fingers", provide folder explicitly.
+[video.source]
+folder = "segmentation"                # required; relative to [data.results] when not absolute
 #extensions = [".jpg", ".png"]
 #pattern = "*.png"
 #recursive = false

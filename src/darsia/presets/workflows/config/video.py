@@ -37,25 +37,22 @@ def _to_rgb(color: list[int] | tuple[int, int, int], name: str) -> tuple[int, in
 class VideoSourceConfig:
     folder: Path | None = None
     pattern: str | None = None
-    recursive: bool | None = None
+    recursive: bool = False
     extensions: list[str] = field(
         default_factory=lambda: [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"]
     )
 
-    def load(self, sec: dict, analysis: str | None) -> "VideoSourceConfig":
-        src = sec.get("source", {})
-        folder = _get_key(src, "folder", required=False)
-        self.folder = Path(folder) if folder else None
+    def load(self, sec: dict) -> "VideoSourceConfig":
+        src = _get_key(sec, "source", required=True)
+        folder = _get_key(src, "folder", required=True, type_=str).strip()
+        if not folder:
+            raise ValueError("[video.source].folder must not be empty.")
+        self.folder = Path(folder)
         self.pattern = _get_key(src, "pattern", required=False, default=None, type_=str)
         self.extensions = _normalize_extensions(
             _get_key(src, "extensions", required=False, default=self.extensions)
         )
-        recursive = _get_key(src, "recursive", required=False, default=None)
-        self.recursive = (
-            bool(recursive)
-            if recursive is not None
-            else (analysis is not None and analysis.lower() == "fingers")
-        )
+        self.recursive = bool(_get_key(src, "recursive", required=False, default=False))
         return self
 
 
@@ -174,7 +171,7 @@ class VideoOverlayConfig:
 
 @dataclass
 class VideoConfig:
-    analysis: str | None = None
+    analysis: str = ""
     source: VideoSourceConfig = field(default_factory=VideoSourceConfig)
     output: VideoOutputConfig = field(default_factory=VideoOutputConfig)
     overlay: VideoOverlayConfig = field(default_factory=VideoOverlayConfig)
@@ -182,33 +179,16 @@ class VideoConfig:
 
     def load(self, path: Path | list[Path], results: Path | None) -> "VideoConfig":
         sec = _get_section_from_toml(path, "video")
-        explicit_analysis = _get_key(
-            sec, "analysis", required=False, default=None, type_=str
-        )
-        explicit_analysis = (
-            explicit_analysis.lower() if explicit_analysis is not None else None
-        )
-        if explicit_analysis == "none":
-            explicit_analysis = None
-        self.analysis = explicit_analysis
-
-        self.source.load(sec, self.analysis)
-
-        if self.analysis is None:
-            if self.source.folder is None:
-                raise ValueError(
-                    "When [video].analysis is omitted or None, "
-                    "[video.source].folder is required."
-                )
-            self.analysis = (
-                str(self.source.folder).replace("\\", "/").strip("/").replace("/", "_")
-            )
-
-        allowed = {"segmentation", "fingers", "cropping", "mass", "volume"}
-        if explicit_analysis is not None and self.analysis not in allowed:
+        if "analysis" in sec:
             raise ValueError(
-                f"Unsupported video.analysis '{self.analysis}'. Supported: {sorted(allowed)}."
+                "[video].analysis is no longer supported. "
+                "Use [video.source].folder to select the source."
             )
+        self.source.load(sec)
+        assert self.source.folder is not None
+        self.analysis = (
+            str(self.source.folder).replace("\\", "/").strip("/").replace("/", "_")
+        )
         self.output.load(sec)
         self.overlay.load(sec)
         if results is None:
