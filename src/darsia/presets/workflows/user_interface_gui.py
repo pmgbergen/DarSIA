@@ -14,6 +14,7 @@ import logging
 import multiprocessing as mp
 import os
 import time
+import traceback
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -25,6 +26,7 @@ from darsia.presets.workflows.rig import Rig
 logger = logging.getLogger(__name__)
 SESSION_CACHE_FILE_NAME = "workflows_gui_session.json"
 SESSION_CACHE_VERSION = 1
+WORKFLOW_ERROR_DETAILS_PREFIX = "__DARSIA_WORKFLOW_ERROR_DETAILS__:"
 
 
 class SupportsLogQueue(Protocol):
@@ -182,7 +184,11 @@ def _worker_entry(
 ) -> None:
     """Worker process entry point with queue-forwarded logging."""
     _configure_queue_logging(log_queue)
-    fn(*args)
+    try:
+        fn(*args)
+    except Exception:
+        log_queue.put(encode_workflow_error_details(traceback.format_exc()))
+        raise
 
 
 def clear_queue(queue: SupportsQueue) -> None:
@@ -201,6 +207,18 @@ def publish_latest_queue_item(queue: SupportsQueue, payload: Any) -> None:
         queue.put_nowait(payload)
     except Full:
         pass
+
+
+def encode_workflow_error_details(details: str) -> str:
+    """Encode workflow error details for transfer over the log queue."""
+    return f"{WORKFLOW_ERROR_DETAILS_PREFIX}{details}"
+
+
+def decode_workflow_error_details(message: str) -> str | None:
+    """Decode workflow error details from a log-queue message."""
+    if message.startswith(WORKFLOW_ERROR_DETAILS_PREFIX):
+        return message[len(WORKFLOW_ERROR_DETAILS_PREFIX) :]
+    return None
 
 
 def enabled_option_labels(
@@ -443,6 +461,7 @@ class WorkflowGUI:
         self._active_config_paths: list[Path] = []
         self._active_rig_spec = ""
         self._worker_started_at: float | None = None
+        self._last_error_details = ""
         self._latest_stream_payload: dict[str, bytes | None] | None = None
         self._stream_photo: Any | None = None
         self._sv_ttk: Any = None
@@ -780,6 +799,13 @@ class WorkflowGUI:
             state=self.tk.DISABLED,
         )
         self.abort_button.pack(side=self.tk.RIGHT)
+        self.error_details_button = self.ttk.Button(
+            controls,
+            text="Show last error details",
+            command=self._show_last_error_details_clicked,
+            state=self.tk.DISABLED,
+        )
+        self.error_details_button.pack(side=self.tk.RIGHT, padx=(0, 6))
 
         self.log = self.tk.Text(frame, height=15, state=self.tk.DISABLED)
         self.log.pack(fill=self.tk.BOTH, expand=True, padx=5, pady=5)
@@ -794,10 +820,24 @@ class WorkflowGUI:
         try:
             while True:
                 msg = self.log_queue.get_nowait()
+                details = decode_workflow_error_details(msg)
+                if details is not None:
+                    self._last_error_details = details.strip()
+                    self.error_details_button.config(state=self.tk.NORMAL)
+                    continue
                 self._append_log(msg)
         except Empty:
             pass
         self.root.after(100, self._poll_logs)
+
+    def _show_last_error_details_clicked(self) -> None:
+        details = self._last_error_details.strip()
+        if not details:
+            self.messagebox.showinfo(
+                "Error details", "No workflow error details available."
+            )
+            return
+        self.messagebox.showerror("Error details", details)
 
     def _poll_stream(self) -> None:
         try:
@@ -923,6 +963,8 @@ class WorkflowGUI:
         self._active_actions = actions
         self._active_config_paths = config_paths
         self._active_rig_spec = rig_spec
+        self._last_error_details = ""
+        self.error_details_button.config(state=self.tk.DISABLED)
         self.log_queue.put(
             format_workflow_start_message(workflow, actions, config_paths, rig_spec)
         )

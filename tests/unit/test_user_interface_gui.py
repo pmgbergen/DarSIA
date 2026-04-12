@@ -11,8 +11,10 @@ from darsia.presets.workflows.user_interface_gui import (
     abort_process,
     clear_queue,
     completion_dialog_spec,
+    decode_workflow_error_details,
     deduplicate_paths,
     default_session_cache_file,
+    encode_workflow_error_details,
     enabled_option_labels,
     format_workflow_done_message,
     format_workflow_error_message,
@@ -179,6 +181,16 @@ def test_completion_dialog_spec_failure() -> None:
 def test_completion_dialog_spec_abort_is_log_only() -> None:
     assert completion_dialog_spec("analysis", 0, True) is None
     assert completion_dialog_spec("analysis", 9, True) is None
+
+
+def test_encode_decode_workflow_error_details_roundtrip() -> None:
+    details = "Traceback...\nOSError: [WinError 64] ..."
+    encoded = encode_workflow_error_details(details)
+    assert decode_workflow_error_details(encoded) == details
+
+
+def test_decode_workflow_error_details_non_error_message() -> None:
+    assert decode_workflow_error_details("regular log line") is None
 
 
 def test_publish_latest_queue_item_keeps_only_latest() -> None:
