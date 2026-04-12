@@ -227,12 +227,7 @@ def decode_workflow_error_details(message: str) -> str | None:
 def _deep_merge_dict(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
     """Recursively merge update dictionary into base dictionary."""
     for key, value in update.items():
-        if (
-            key in base
-            and isinstance(base[key], dict)
-            and isinstance(value, dict)
-            and isinstance(base[key], dict)
-        ):
+        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
             _deep_merge_dict(base[key], value)
         else:
             base[key] = value
@@ -290,9 +285,15 @@ def open_in_file_explorer(path: Path) -> None:
     if os.name == "nt":
         os.startfile(str(target))  # type: ignore[attr-defined]
     elif sys.platform == "darwin":
-        subprocess.run(["open", str(target)], check=True)
+        try:
+            subprocess.run(["open", str(target)], check=True)
+        except (FileNotFoundError, subprocess.CalledProcessError) as e:
+            raise RuntimeError("Failed to open folder with 'open'.") from e
     else:
-        subprocess.run(["xdg-open", str(target)], check=True)
+        try:
+            subprocess.run(["xdg-open", str(target)], check=True)
+        except (FileNotFoundError, subprocess.CalledProcessError) as e:
+            raise RuntimeError("Failed to open folder with 'xdg-open'.") from e
 
 
 _ANALYSIS_MODE_ACTIONS = {"cropping", "segmentation", "mass", "volume", "fingers"}
