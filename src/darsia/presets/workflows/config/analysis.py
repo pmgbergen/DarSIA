@@ -283,7 +283,8 @@ class AnalysisCroppingConfig:
         invalid_formats = sorted(set(self.formats) - SUPPORTED_CROPPING_FORMATS)
         if len(invalid_formats) > 0:
             raise ValueError(
-                f"Unsupported analysis.cropping formats: {', '.join(invalid_formats)}. "
+                "Unsupported [analysis.cropping].formats entries: "
+                f"{', '.join(invalid_formats)}. "
                 f"Supported formats: {', '.join(sorted(SUPPORTED_CROPPING_FORMATS))}."
             )
         return self

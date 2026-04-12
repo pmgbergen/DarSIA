@@ -39,17 +39,15 @@ def analysis_cropping_from_context(
     assert ctx.config.analysis is not None
 
     cropping_config = ctx.config.analysis.cropping
-    formats: list[str] = []
-    if cropping_config is not None:
-        formats = cropping_config.formats
+    formats = cropping_config.formats if cropping_config is not None else []
 
     save_jpg = "jpg" in formats
     save_npz = "npz" in formats
 
     if not (show or save_jpg or save_npz):
         raise ValueError(
-            'Cropping requires output selection via formats = ["jpg", "npz"] in '
-            "[analysis.cropping] or --show."
+            "Cropping requires output selection via [analysis.cropping].formats, "
+            'e.g. ["jpg"], ["npz"], or ["jpg", "npz"], or --show.'
         )
 
     image_paths = ctx.image_paths

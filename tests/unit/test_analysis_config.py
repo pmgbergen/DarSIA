@@ -42,7 +42,9 @@ formats = ["npz", "png"]
 """.strip(),
     )
 
-    with pytest.raises(ValueError, match="Unsupported analysis.cropping formats"):
+    with pytest.raises(
+        ValueError, match=r"Unsupported \[analysis\.cropping\]\.formats entries"
+    ):
         AnalysisConfig().load(
             path=config_path,
             data=tmp_path,
