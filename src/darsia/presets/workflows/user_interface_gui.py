@@ -870,6 +870,8 @@ class WorkflowGUI:
             text="Load utils defaults from config",
             command=lambda: self._load_utils_defaults_from_config(force=True),
         ).pack(fill=self.tk.X, pady=(6, 0))
+        self.ttk.Checkbutton(
+            self.utils_frame,
             text="Build protocol-time media (MP4/GIF)",
             variable=self.utils_media,
         ).pack(anchor=self.tk.W)
@@ -1465,14 +1467,14 @@ class WorkflowGUI:
 
         self._load_utils_defaults_from_config(force=False)
 
-        options = {
+        action_flags = {
             "download": self.utils_download.get(),
             "export_calibration": self.utils_export_calibration.get(),
             "import_calibration": self.utils_import_calibration.get(),
             "media": self.utils_media.get(),
         }
-        actions = enabled_option_labels(options)
-        if not any(options.values()):
+        actions = enabled_option_labels(action_flags)
+        if not any(action_flags.values()):
             logger.info("No utility option selected.")
             return
 

@@ -198,7 +198,7 @@ class FluidFlowerConfig:
             self.workflow_utils.load(path)
         except KeyError:
             self.workflow_utils = None
-            
+
         # ! ---- VIDEO CONFIG ---- ! #
         try:
             self.video = VideoConfig()
