@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 import pandas as pd
@@ -11,6 +12,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.config.analysis import AnalysisVolumeConfig
 from darsia.presets.workflows.rig import Rig
 
@@ -20,6 +22,7 @@ logger = logging.getLogger(__name__)
 def analysis_volume_from_context(
     ctx: AnalysisContext,
     show: bool = False,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
 ) -> None:
     """Volume analysis using pre-prepared context.
 
@@ -123,6 +126,8 @@ def analysis_volume_from_context(
         # Fetch results
         saturation_g = mass_analysis_result.saturation_g
         concentration_aq = mass_analysis_result.concentration_aq
+        saturation_aq = concentration_aq.copy()
+        saturation_aq.img *= 1 - saturation_g.img
 
         # Store coarse data to disk
         saturation_g.save(folder_saturation_g / f"{path.stem}.npz")
@@ -135,10 +140,6 @@ def analysis_volume_from_context(
         for roi_config in config.analysis.volume.roi.values():
             key = roi_config.name
             roi = roi_config.roi
-
-            # Build effective aqueous saturation
-            saturation_aq = concentration_aq.copy()
-            saturation_aq.img *= 1 - saturation_g.img
 
             # Integrate over chosen roi
             volume_g_roi = geometry[key].integrate(saturation_g.subregion(roi))
@@ -154,10 +155,6 @@ def analysis_volume_from_context(
             key = roi_and_label_config.name
             label = roi_and_label_config.label
             roi = roi_and_label_config.roi
-
-            # Build effective aqueous saturation
-            saturation_aq = concentration_aq.copy()
-            saturation_aq.img *= 1 - saturation_g.img
 
             # Restrict mass arrays to labeled area.
             _saturation_g = saturation_g.copy()
@@ -203,12 +200,25 @@ def analysis_volume_from_context(
             concentration_aq.show(title=f"Concentration_aq at {path.stem}", delay=True)
             plt.show()
 
+        publish_stream_images(
+            stream_callback=stream_callback,
+            image_payload={
+                "volume_source_image": img,
+                "saturation_g": saturation_g,
+                "concentration_aq": concentration_aq,
+                "saturation_aq": saturation_aq,
+            },
+            logger=logger,
+            error_message=f"Failed to stream volume previews for image '{path}'.",
+        )
+
 
 def analysis_volume(
     cls: type[Rig],
     path: Path,
     all: bool = False,
     show: bool = False,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
 ):
     """Volume analysis (standalone entry point).
 
@@ -225,4 +235,4 @@ def analysis_volume(
         all=all,
         require_color_to_mass=True,
     )
-    analysis_volume_from_context(ctx, show=show)
+    analysis_volume_from_context(ctx, show=show, stream_callback=stream_callback)

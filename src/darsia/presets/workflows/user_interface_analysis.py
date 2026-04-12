@@ -113,18 +113,21 @@ def run_analysis(
         analysis_cropping_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
         )
 
     if args.mass:
         analysis_mass_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
         )
 
     if args.volume:
         analysis_volume_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
         )
 
     if args.segmentation:
@@ -138,6 +141,7 @@ def run_analysis(
         analysis_fingers_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
         )
 
 

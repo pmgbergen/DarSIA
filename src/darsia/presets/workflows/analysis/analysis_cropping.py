@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -14,6 +15,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     prepare_analysis_context,
     select_image_paths,
 )
+from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.rig import Rig
 
 if TYPE_CHECKING:
@@ -26,6 +28,7 @@ logging.basicConfig(level=logging.INFO)
 def analysis_cropping_from_context(
     ctx: AnalysisContext,
     show: bool = False,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
 ) -> None:
     """Cropping analysis using pre-prepared context.
 
@@ -82,6 +85,13 @@ def analysis_cropping_from_context(
             img.original_dtype = np.uint8  # Hack to allow plotting
             img.write(plot_folder / f"{path.stem}.jpg", quality=50)
 
+        publish_stream_images(
+            stream_callback=stream_callback,
+            image_payload={"cropping": img},
+            logger=logger,
+            error_message=f"Failed to stream cropped preview for image '{path}'.",
+        )
+
     print("Done. Analysis.")
 
 
@@ -90,6 +100,7 @@ def analysis_cropping(
     path: Path | list[Path],
     show: bool = False,
     all: bool = False,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
 ) -> None:
     """Cropping analysis (standalone entry point).
 
@@ -108,4 +119,9 @@ def analysis_cropping(
         all=all,
         require_color_to_mass=False,
     )
-    analysis_cropping_from_context(ctx, show=show)
+
+    analysis_cropping_from_context(
+        ctx,
+        show=show,
+        stream_callback=stream_callback,
+    )

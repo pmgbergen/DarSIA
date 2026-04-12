@@ -1,24 +1,33 @@
+import json
 import multiprocessing as mp
 import queue
-import json
+import sys
 import time
+import types
 from pathlib import Path
 
 import pytest
 
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.user_interface_gui import (
+    _run_utils_workflow,
     abort_process,
     clear_queue,
+    completion_dialog_spec,
+    decode_workflow_error_details,
     deduplicate_paths,
     default_session_cache_file,
     enabled_option_labels,
+    encode_workflow_error_details,
+    format_error_details_text,
     format_workflow_done_message,
+    format_workflow_error_message,
     format_workflow_start_message,
     normalize_paths,
     publish_latest_queue_item,
     read_session_cache,
     resolve_rig_class,
+    suggested_analysis_results_folder,
     write_session_cache,
 )
 
@@ -153,6 +162,97 @@ def test_format_workflow_done_message() -> None:
     assert msg == "Setup completed. Actions: depth, rig. Configs: 2. Duration: 3.2s."
 
 
+def test_format_workflow_error_message() -> None:
+    msg = format_workflow_error_message("analysis", ["mass"], 3)
+    assert msg == "ERROR: analysis workflow failed with exit code 3. Actions: mass."
+
+
+def test_format_error_details_text_without_details() -> None:
+    assert format_error_details_text("") == "No workflow error details available."
+
+
+def test_format_error_details_text_with_details() -> None:
+    details = "Traceback...\nOSError: [WinError 64] ..."
+    assert format_error_details_text(details) == details
+
+
+def test_completion_dialog_spec_success() -> None:
+    assert completion_dialog_spec("analysis", 0, False) == (
+        "info",
+        "Done",
+        "Analysis workflow completed.",
+    )
+
+
+def test_completion_dialog_spec_failure() -> None:
+    assert completion_dialog_spec("analysis", 7, False) == (
+        "error",
+        "Error",
+        "Analysis workflow failed with exit code 7.",
+    )
+
+
+def test_completion_dialog_spec_abort_is_log_only() -> None:
+    assert completion_dialog_spec("analysis", 0, True) is None
+    assert completion_dialog_spec("analysis", 9, True) is None
+
+
+def test_encode_decode_workflow_error_details_roundtrip() -> None:
+    details = "Traceback...\nOSError: [WinError 64] ..."
+    encoded = encode_workflow_error_details(details)
+    assert decode_workflow_error_details(encoded) == details
+
+
+def test_decode_workflow_error_details_non_error_message() -> None:
+    assert decode_workflow_error_details("regular log line") is None
+
+
+def test_suggested_analysis_results_folder_for_cropping(tmp_path: Path) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_analysis_results_folder([config], ["cropping"])
+    assert folder == results / "cropped_images"
+
+
+def test_suggested_analysis_results_folder_from_analysis_section(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    seg_folder = tmp_path / "seg"
+    config.write_text(
+        f"[data]\nresults = '{results}'\n\n"
+        f"[analysis.segmentation]\nfolder = '{seg_folder}'\n"
+    )
+
+    folder = suggested_analysis_results_folder([config], ["segmentation"])
+    assert folder == seg_folder
+
+
+def test_suggested_analysis_results_folder_defaults_to_results_on_multiple_modes(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_analysis_results_folder([config], ["mass", "volume"])
+    assert folder == results
+
+
+def test_suggested_analysis_results_folder_fallback_for_missing_mode_folder(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_analysis_results_folder([config], ["fingers"])
+    assert folder == results / "fingers"
+
+
 def test_publish_latest_queue_item_keeps_only_latest() -> None:
     q: queue.Queue[str] = queue.Queue()
     q.put_nowait("first")
@@ -167,3 +267,46 @@ def test_clear_queue_removes_all_items() -> None:
     q.put_nowait("b")
     clear_queue(q)
     assert q.empty()
+
+
+def test_run_utils_workflow_dispatches_download_and_media(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[tuple[str, list[Path]]] = []
+
+    def _fake_download(paths):
+        calls.append(("download", paths))
+
+    def _fake_media(paths):
+        calls.append(("media", paths))
+
+    fake_download_module = types.ModuleType(
+        "darsia.presets.workflows.utils.utils_download"
+    )
+    fake_download_module.download_data = _fake_download
+    fake_media_module = types.ModuleType("darsia.presets.workflows.utils.utils_media")
+    fake_media_module.build_media = _fake_media
+    monkeypatch.setitem(
+        sys.modules,
+        "darsia.presets.workflows.utils.utils_download",
+        fake_download_module,
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "darsia.presets.workflows.utils.utils_media",
+        fake_media_module,
+    )
+
+    config_path = tmp_path / "run.toml"
+    config_path.write_text("[data]\nfolder='.'\n")
+
+    _run_utils_workflow(
+        [str(config_path)],
+        {"download": True, "media": True},
+    )
+
+    assert len(calls) == 2
+    assert calls[0][0] == "download"
+    assert calls[1][0] == "media"
+    assert calls[0][1] == [config_path.resolve()]
+    assert calls[1][1] == [config_path.resolve()]

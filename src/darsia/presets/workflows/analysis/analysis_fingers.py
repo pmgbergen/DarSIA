@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
+import cv2
 import numpy as np
 import pandas as pd
 
@@ -14,6 +17,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SimpleSegmentation
 from darsia.single_image_analysis.contouranalysis import (
@@ -27,6 +31,7 @@ logger = logging.getLogger(__name__)
 def analysis_fingers_from_context(
     ctx: AnalysisContext,
     show: bool = False,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
 ) -> None:
     """Segmentation analysis using pre-prepared context.
 
@@ -114,6 +119,13 @@ def analysis_fingers_from_context(
             mass=mass_analysis_result.mass,
         )
 
+        stream_images: dict[str, Any] | None = None
+        if stream_callback is not None:
+            stream_images = {
+                "fingers_source_image": img,
+                "fingers_segmentation": segmentation,
+            }
+
         # Extract time from image.
         time = img.time
         path_statistics["times"].append(float(time))
@@ -148,14 +160,15 @@ def analysis_fingers_from_context(
                 )
 
             # Plot finger peaks and contours.
+            tips_path = (results_folder / "tips" / key / f"{path.stem}").with_suffix(
+                plot_format
+            )
             contour_analysis.plot_peaks(
                 img,
                 peaks,
                 roi_config.roi,
                 contours=contours,
-                path=(results_folder / "tips" / key / f"{path.stem}").with_suffix(
-                    plot_format
-                ),
+                path=tips_path,
                 show=show,
                 **{
                     "peak_color": peak_color,
@@ -194,12 +207,13 @@ def analysis_fingers_from_context(
             contour_evolution_times[key].append(float(img.time))
 
             # Plotting.
+            paths_path = (results_folder / "paths" / key / f"{path.stem}").with_suffix(
+                plot_format
+            )
             contour_evolution_analysis[key].plot_paths(
                 img,
                 roi=roi_config.roi,
-                path=(results_folder / "paths" / key / f"{path.stem}").with_suffix(
-                    plot_format
-                ),
+                path=paths_path,
                 show=show,
             )
 
@@ -407,12 +421,33 @@ def analysis_fingers_from_context(
             )
             df.to_csv(results_folder / "statistics.csv", index=False)
 
+            if stream_images is not None:
+                tips_plot = cv2.cvtColor(
+                    cv2.imread(str(tips_path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB
+                )
+                if tips_plot is not None:
+                    stream_images[f"fingers_tips_{key}"] = tips_plot
+                paths_plot = cv2.cvtColor(
+                    cv2.imread(str(paths_path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB
+                )
+                if paths_plot is not None:
+                    stream_images[f"fingers_paths_{key}"] = paths_plot
+
+        if stream_images is not None:
+            publish_stream_images(
+                stream_callback=stream_callback,
+                image_payload=stream_images,
+                logger=logger,
+                error_message=f"Failed to stream finger previews for image '{path}'.",
+            )
+
 
 def analysis_fingers(
     cls: type[Rig],
     path: Path | list[Path],
     show: bool = False,
     all: bool = False,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
 ):
     """Fingers analysis (standalone entry point).
 
@@ -429,4 +464,4 @@ def analysis_fingers(
         all=all,
         require_color_to_mass=True,
     )
-    analysis_fingers_from_context(ctx, show=show)
+    analysis_fingers_from_context(ctx, show=show, stream_callback=stream_callback)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 import pandas as pd
@@ -11,6 +12,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.config.analysis import AnalysisMassConfig
 from darsia.presets.workflows.rig import Rig
 
@@ -20,6 +22,7 @@ logger = logging.getLogger(__name__)
 def analysis_mass_from_context(
     ctx: AnalysisContext,
     show: bool = False,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
 ) -> None:
     """Mass analysis using pre-prepared context.
 
@@ -205,12 +208,25 @@ def analysis_mass_from_context(
             mass_aq.show(title=f"Mass AQ at {path.stem}", delay=True)
             plt.show()
 
+        publish_stream_images(
+            stream_callback=stream_callback,
+            image_payload={
+                "mass_source_image": img,
+                "mass_total": mass,
+                "mass_g": mass_g,
+                "mass_aq": mass_aq,
+            },
+            logger=logger,
+            error_message=f"Failed to stream mass previews for image '{path}'.",
+        )
+
 
 def analysis_mass(
     cls: type[Rig],
     path: Path | list[Path],
     show: bool = False,
     all: bool = False,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
 ):
     """Mass analysis (standalone entry point).
 
@@ -227,4 +243,4 @@ def analysis_mass(
         all=all,
         require_color_to_mass=True,
     )
-    analysis_mass_from_context(ctx, show=show)
+    analysis_mass_from_context(ctx, show=show, stream_callback=stream_callback)
