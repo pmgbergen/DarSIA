@@ -16,8 +16,8 @@ import os
 import subprocess
 import sys
 import time
-import traceback
 import tomllib
+import traceback
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -1157,7 +1157,9 @@ class WorkflowGUI:
         if dialog_spec is not None:
             kind, title, message = dialog_spec
             if kind == "info" and workflow == "analysis":
-                suggested_folder = suggested_analysis_results_folder(config_paths, actions)
+                suggested_folder = suggested_analysis_results_folder(
+                    config_paths, actions
+                )
                 self._show_done_dialog_with_open_folder(message, suggested_folder)
             elif kind == "info":
                 self.messagebox.showinfo(title, message)
