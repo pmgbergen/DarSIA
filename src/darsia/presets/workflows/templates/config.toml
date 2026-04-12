@@ -87,7 +87,7 @@ image_times = [1, 5, 10, 20, 21, 40]
 image_times = [1, 5, 10, 20, 21, 40]
 
 [video]
-analysis = "segmentation" # segmentation | fingers | cropping | mass | volume
+analysis = "segmentation" # segmentation | fingers | cropping | mass | volume | none
 
 [video.output]
 formats = ["mp4", "gif"]
@@ -114,6 +114,7 @@ box_padding = 10
 # Optional source override
 #[video.source]
 #folder = "segmentation"                # relative to [data.results] when not absolute
+# For analysis="fingers", provide folder explicitly.
 #extensions = [".jpg", ".png"]
 #pattern = "*.png"
 #recursive = false

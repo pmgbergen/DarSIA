@@ -24,7 +24,9 @@ def test_video_config_defaults_and_results_video_folder(tmp_path: Path) -> None:
         tmp_path,
         """
         [video]
-        analysis = "segmentation"
+
+        [video.source]
+        folder = "segmentation"
         """,
     )
     results = tmp_path / "results"
@@ -44,6 +46,33 @@ def test_video_config_rejects_invalid_analysis(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="Unsupported video.analysis"):
         VideoConfig().load(config_path, results=tmp_path / "results")
+
+
+def test_video_config_requires_source_when_analysis_is_none(tmp_path: Path) -> None:
+    config_path = _write_toml(
+        tmp_path,
+        """
+        [video]
+        analysis = "none"
+        """,
+    )
+    with pytest.raises(ValueError, match="source"):
+        VideoConfig().load(config_path, results=tmp_path / "results")
+
+
+def test_video_config_derives_analysis_key_from_source_path(tmp_path: Path) -> None:
+    config_path = _write_toml(
+        tmp_path,
+        """
+        [video]
+        analysis = "none"
+
+        [video.source]
+        folder = "custom/roi/stream"
+        """,
+    )
+    cfg = VideoConfig().load(config_path, results=tmp_path / "results")
+    assert cfg.analysis == "custom_roi_stream"
 
 
 class _FakeImagingProtocol:

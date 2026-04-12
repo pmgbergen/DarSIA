@@ -42,7 +42,7 @@ class VideoSourceConfig:
         default_factory=lambda: [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"]
     )
 
-    def load(self, sec: dict, analysis: str) -> "VideoSourceConfig":
+    def load(self, sec: dict, analysis: str | None) -> "VideoSourceConfig":
         src = sec.get("source", {})
         folder = _get_key(src, "folder", required=False)
         self.folder = Path(folder) if folder else None
@@ -52,7 +52,9 @@ class VideoSourceConfig:
         )
         recursive = _get_key(src, "recursive", required=False, default=None)
         self.recursive = (
-            bool(recursive) if recursive is not None else analysis.lower() == "fingers"
+            bool(recursive)
+            if recursive is not None
+            else (analysis is not None and analysis.lower() == "fingers")
         )
         return self
 
@@ -172,7 +174,7 @@ class VideoOverlayConfig:
 
 @dataclass
 class VideoConfig:
-    analysis: str = "segmentation"
+    analysis: str | None = None
     source: VideoSourceConfig = field(default_factory=VideoSourceConfig)
     output: VideoOutputConfig = field(default_factory=VideoOutputConfig)
     overlay: VideoOverlayConfig = field(default_factory=VideoOverlayConfig)
@@ -180,15 +182,29 @@ class VideoConfig:
 
     def load(self, path: Path | list[Path], results: Path | None) -> "VideoConfig":
         sec = _get_section_from_toml(path, "video")
-        self.analysis = _get_key(
-            sec, "analysis", required=False, default=self.analysis, type_=str
-        ).lower()
+        analysis = _get_key(sec, "analysis", required=False, default=None, type_=str)
+        analysis = analysis.lower() if analysis is not None else None
+        if analysis == "none":
+            analysis = None
+        self.analysis = analysis
+
+        self.source.load(sec, self.analysis)
+
+        if self.analysis is None:
+            if self.source.folder is None:
+                raise ValueError(
+                    "When [video].analysis is omitted or None, "
+                    "[video.source].folder is required."
+                )
+            self.analysis = (
+                str(self.source.folder).replace("\\", "/").strip("/").replace("/", "_")
+            )
+
         allowed = {"segmentation", "fingers", "cropping", "mass", "volume"}
-        if self.analysis not in allowed:
+        if analysis is not None and self.analysis not in allowed:
             raise ValueError(
                 f"Unsupported video.analysis '{self.analysis}'. Supported: {sorted(allowed)}."
             )
-        self.source.load(sec, self.analysis)
         self.output.load(sec)
         self.overlay.load(sec)
         if results is None:
