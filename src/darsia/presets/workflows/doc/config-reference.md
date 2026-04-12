@@ -33,6 +33,7 @@ Legacy flat keys are also supported:
 export_calibration_bundle = "/absolute/path/to/calibration_bundle.zip"
 import_calibration_bundle = "/absolute/path/to/calibration_bundle.zip"
 ```
+- `[video]`: media utility config for protocol-time ordered MP4/GIF generation.
 
 ## Shared data registry (recommended)
 Define reusable selections in top-level `[data]` subsections:
@@ -51,6 +52,7 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 
 ## Analysis subsections
 - `[analysis.data]`: selected analysis image set
+- `[analysis.cropping]`: cropping image selection and output formats (`formats = ["npz", "jpg"]`)
 - `[analysis.segmentation]`: contour config(s)
 - `[analysis.mass]`: mass analysis and optional ROIs
 - `[analysis.volume]`: volume analysis and optional ROIs
@@ -87,3 +89,13 @@ For practical examples, see:
 - [Image selection](./image-selection.md)
 - [ROI reference](./roi-reference.md)
 - [Corrections](./corrections.md)
+
+## Video utility section
+
+Use `[video]` to assemble protocol-time ordered media from stored analysis images.
+
+- `[video.output]`: `formats` (`mp4`, `gif`), `fps`, optional `resolution`, `filename`, `codec`, `quality`
+- `[video.overlay]`: elapsed-time/note toggles and text-box styling (`font_scale`, colors, position, alpha, padding, etc.)
+- `[video.source]` (required): source folder and scanning behavior (`folder`, `extensions`, `pattern`, `recursive`)
+
+Generated media files are saved to `<results>/videos/`.

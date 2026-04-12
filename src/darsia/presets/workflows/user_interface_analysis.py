@@ -56,16 +56,6 @@ def build_parser_for_analysis():
         help="Show the labels after each step.",
     )
     parser.add_argument(
-        "--save-jpg",
-        action="store_true",
-        help="Save output figures as JPG.",
-    )
-    parser.add_argument(
-        "--save-npz",
-        action="store_true",
-        help="Save output figures as NPZ.",
-    )
-    parser.add_argument(
         "--info", action="store_true", help="Provide help for activated flags."
     )
     return parser
@@ -123,20 +113,21 @@ def run_analysis(
         analysis_cropping_from_context(
             ctx,
             show=args.show,
-            save_jpg=args.save_jpg,
-            save_npz=args.save_npz,
+            stream_callback=stream_callback,
         )
 
     if args.mass:
         analysis_mass_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
         )
 
     if args.volume:
         analysis_volume_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
         )
 
     if args.segmentation:
@@ -150,6 +141,7 @@ def run_analysis(
         analysis_fingers_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
         )
 
 

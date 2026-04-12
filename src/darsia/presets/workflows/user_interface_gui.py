@@ -13,7 +13,11 @@ import json
 import logging
 import multiprocessing as mp
 import os
+import subprocess
+import sys
 import time
+import tomllib
+import traceback
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -26,6 +30,7 @@ logger = logging.getLogger(__name__)
 SESSION_CACHE_FILE_NAME = "workflows_gui_session.json"
 SESSION_CACHE_VERSION = 1
 UTILS_CONFLICT_PREVIEW_LIMIT = 8
+WORKFLOW_ERROR_DETAILS_PREFIX = "__DARSIA_WORKFLOW_ERROR_DETAILS__:"
 
 
 class SupportsLogQueue(Protocol):
@@ -192,7 +197,11 @@ def _worker_entry(
 ) -> None:
     """Worker process entry point with queue-forwarded logging."""
     _configure_queue_logging(log_queue)
-    fn(*args)
+    try:
+        fn(*args)
+    except Exception:
+        log_queue.put(encode_workflow_error_details(traceback.format_exc()))
+        raise
 
 
 def clear_queue(queue: SupportsQueue) -> None:
@@ -211,6 +220,99 @@ def publish_latest_queue_item(queue: SupportsQueue, payload: Any) -> None:
         queue.put_nowait(payload)
     except Full:
         pass
+
+
+def encode_workflow_error_details(details: str) -> str:
+    """Encode workflow error details for transfer over the log queue."""
+    return f"{WORKFLOW_ERROR_DETAILS_PREFIX}{details}"
+
+
+def decode_workflow_error_details(message: str) -> str | None:
+    """Decode workflow error details from a log-queue message."""
+    if message.startswith(WORKFLOW_ERROR_DETAILS_PREFIX):
+        return message[len(WORKFLOW_ERROR_DETAILS_PREFIX) :]
+    return None
+
+
+def _deep_merge_dict(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge update dictionary into base dictionary."""
+    for key, value in update.items():
+        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+            _deep_merge_dict(base[key], value)
+        else:
+            base[key] = value
+    return base
+
+
+def suggested_analysis_results_folder(
+    config_paths: list[Path], actions: list[str]
+) -> Path | None:
+    """Return suggested analysis results folder for completed runs."""
+    merged: dict[str, Any] = {}
+    for path in config_paths:
+        _deep_merge_dict(merged, tomllib.loads(path.read_text()))
+
+    data = merged.get("data")
+    if not isinstance(data, dict):
+        return None
+    results_raw = data.get("results")
+    if not isinstance(results_raw, str) or not results_raw.strip():
+        return None
+    results = Path(results_raw).expanduser()
+
+    mode_actions = [action for action in actions if action in _ANALYSIS_MODE_ACTIONS]
+    if len(mode_actions) != 1:
+        return results
+
+    mode = mode_actions[0]
+    if mode == "cropping":
+        return results / "cropped_images"
+
+    analysis = merged.get("analysis")
+    if isinstance(analysis, dict):
+        mode_section = analysis.get(mode)
+        if isinstance(mode_section, dict):
+            folder = mode_section.get("folder")
+            if isinstance(folder, str) and folder.strip():
+                return Path(folder).expanduser()
+
+    return results / _ANALYSIS_MODE_DEFAULT_SUBFOLDER[mode]
+
+
+def open_in_file_explorer(path: Path) -> None:
+    """Open path in the OS file explorer."""
+    target = path.expanduser().resolve()
+    if not target.exists():
+        for parent in target.parents:
+            if parent.exists():
+                target = parent
+                break
+        else:
+            raise FileNotFoundError(f"Path does not exist: {path}")
+    if target.is_file():
+        target = target.parent
+
+    if os.name == "nt":
+        os.startfile(str(target))  # type: ignore[attr-defined]
+    elif sys.platform == "darwin":
+        try:
+            subprocess.run(["open", str(target)], check=True)
+        except (FileNotFoundError, subprocess.CalledProcessError) as e:
+            raise RuntimeError("Failed to open folder with 'open'.") from e
+    else:
+        try:
+            subprocess.run(["xdg-open", str(target)], check=True)
+        except (FileNotFoundError, subprocess.CalledProcessError) as e:
+            raise RuntimeError("Failed to open folder with 'xdg-open'.") from e
+
+
+_ANALYSIS_MODE_ACTIONS = {"cropping", "segmentation", "mass", "volume", "fingers"}
+_ANALYSIS_MODE_DEFAULT_SUBFOLDER = {
+    "segmentation": "segmentation",
+    "mass": "mass",
+    "volume": "volume",
+    "fingers": "fingers",
+}
 
 
 def enabled_option_labels(
@@ -280,6 +382,39 @@ def format_workflow_done_message(
         f"{workflow.capitalize()} completed. Actions: {action_str}. "
         f"Configs: {config_count}. Duration: {duration_seconds:.1f}s."
     )
+
+
+def format_workflow_error_message(
+    workflow: str, actions: list[str], exit_code: int | None
+) -> str:
+    """Format a detailed failure message."""
+    return (
+        f"ERROR: {workflow} workflow failed with exit code {exit_code}. "
+        f"Actions: {', '.join(actions) or 'none'}."
+    )
+
+
+def completion_dialog_spec(
+    workflow: str, exit_code: int | None, abort_requested: bool
+) -> tuple[str, str, str] | None:
+    """Return modal dialog information for terminal workflow states."""
+    if abort_requested:
+        return None
+    if exit_code == 0:
+        return ("info", "Done", f"{workflow.capitalize()} workflow completed.")
+    return (
+        "error",
+        "Error",
+        f"{workflow.capitalize()} workflow failed with exit code {exit_code}.",
+    )
+
+
+def format_error_details_text(details: str) -> str:
+    """Normalize detailed traceback text for error-detail display."""
+    stripped_details = details.strip()
+    if not stripped_details:
+        return "No workflow error details available."
+    return stripped_details
 
 
 def abort_process(process: mp.Process | None) -> bool:
@@ -388,8 +523,6 @@ def _run_analysis_workflow(
         mass=options["mass"],
         volume=options["volume"],
         show=options["show"],
-        save_jpg=options["save_jpg"],
-        save_npz=options["save_npz"],
         info=False,
     )
     run_analysis(rig_cls, args, stream_callback=stream_callback)
@@ -421,6 +554,7 @@ def _run_utils_workflow(config_paths: list[str], options: UtilsWorkflowOptions) 
         import_calibration_bundle,
     )
     from darsia.presets.workflows.utils.utils_download import download_data
+    from darsia.presets.workflows.utils.utils_media import build_media
 
     paths = normalize_paths(config_paths)
     if options["download"]:
@@ -437,6 +571,8 @@ def _run_utils_workflow(config_paths: list[str], options: UtilsWorkflowOptions) 
             bundle=Path(bundle_raw),
             conflict_action=options["import_conflict_action"],
         )
+    if options["media"]:
+        build_media(paths)
 
 
 class QueueLogHandler(logging.Handler):
@@ -477,6 +613,7 @@ class WorkflowGUI:
         self._active_config_paths: list[Path] = []
         self._active_rig_spec = ""
         self._worker_started_at: float | None = None
+        self._last_error_details = ""
         self._latest_stream_payload: dict[str, bytes | None] | None = None
         self._stream_photo: Any | None = None
         self._sv_ttk: Any = None
@@ -649,8 +786,6 @@ class WorkflowGUI:
         self.an_mass = self.tk.BooleanVar(value=False)
         self.an_volume = self.tk.BooleanVar(value=False)
         self.an_show = self.tk.BooleanVar(value=False)
-        self.an_jpg = self.tk.BooleanVar(value=False)
-        self.an_npz = self.tk.BooleanVar(value=False)
         self.an_stream = self.tk.BooleanVar(value=False)
         for label, var in [
             ("All images", self.an_all),
@@ -660,8 +795,6 @@ class WorkflowGUI:
             ("Mass", self.an_mass),
             ("Volume", self.an_volume),
             ("Show plots", self.an_show),
-            ("Save JPG", self.an_jpg),
-            ("Save NPZ", self.an_npz),
             ("Enable streaming", self.an_stream),
         ]:
             self.ttk.Checkbutton(self.analysis_frame, text=label, variable=var).pack(
@@ -695,6 +828,7 @@ class WorkflowGUI:
         self.utils_import_calibration = self.tk.BooleanVar(value=False)
         self.utils_export_bundle = self.tk.StringVar(value="")
         self.utils_import_bundle = self.tk.StringVar(value="")
+        self.utils_media = self.tk.BooleanVar(value=False)
         self.ttk.Checkbutton(
             self.utils_frame, text="Download/cache data", variable=self.utils_download
         ).pack(anchor=self.tk.W)
@@ -736,6 +870,9 @@ class WorkflowGUI:
             text="Load utils defaults from config",
             command=lambda: self._load_utils_defaults_from_config(force=True),
         ).pack(fill=self.tk.X, pady=(6, 0))
+            text="Build protocol-time media (MP4/GIF)",
+            variable=self.utils_media,
+        ).pack(anchor=self.tk.W)
         self.ttk.Button(
             self.utils_frame, text="Run utils", command=self._run_utils_clicked
         ).pack(fill=self.tk.X, pady=6)
@@ -866,14 +1003,141 @@ class WorkflowGUI:
         self.log.see(self.tk.END)
         self.log.config(state=self.tk.DISABLED)
 
+    def _consume_log_queue_messages(self) -> None:
+        """Consume queued log messages and keep latest encoded error details."""
+        while True:
+            msg = self.log_queue.get_nowait()
+            details = decode_workflow_error_details(msg)
+            if details is not None:
+                self._last_error_details = details
+                continue
+            self._append_log(msg)
+
     def _poll_logs(self) -> None:
         try:
-            while True:
-                msg = self.log_queue.get_nowait()
-                self._append_log(msg)
+            self._consume_log_queue_messages()
         except Empty:
             pass
         self.root.after(100, self._poll_logs)
+
+    def _center_dialog_on_screen(self, dialog: Any) -> None:
+        """Center a toplevel dialog on the current screen."""
+        dialog.update_idletasks()
+        width = dialog.winfo_width()
+        height = dialog.winfo_height()
+        screen_width = dialog.winfo_screenwidth()
+        screen_height = dialog.winfo_screenheight()
+        x_pos = max(0, (screen_width - width) // 2)
+        y_pos = max(0, (screen_height - height) // 2)
+        dialog.geometry(f"+{x_pos}+{y_pos}")
+
+    def _show_done_dialog_with_open_folder(
+        self, message: str, suggested_folder: Path | None
+    ) -> None:
+        if suggested_folder is None:
+            self.messagebox.showinfo("Done", message)
+            return
+
+        dialog = self.tk.Toplevel(self.root)
+        dialog.title("Done")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        dialog.resizable(False, False)
+
+        frame = self.ttk.Frame(dialog, padding=12)
+        frame.pack(fill=self.tk.BOTH, expand=True)
+        self.ttk.Label(frame, text=message, wraplength=480, justify=self.tk.LEFT).pack(
+            anchor=self.tk.W, pady=(0, 10)
+        )
+
+        buttons = self.ttk.Frame(frame)
+        buttons.pack(anchor=self.tk.E)
+
+        open_requested = {"value": False}
+
+        def _close_ok() -> None:
+            dialog.destroy()
+
+        def _open_folder() -> None:
+            open_requested["value"] = True
+            dialog.destroy()
+
+        self.ttk.Button(buttons, text="OK", command=_close_ok).pack(
+            side=self.tk.RIGHT, padx=(8, 0)
+        )
+        self.ttk.Button(buttons, text="Open in folder", command=_open_folder).pack(
+            side=self.tk.RIGHT
+        )
+        dialog.protocol("WM_DELETE_WINDOW", _close_ok)
+        self._center_dialog_on_screen(dialog)
+        self.root.wait_window(dialog)
+
+        if open_requested["value"]:
+            try:
+                open_in_file_explorer(suggested_folder)
+            except Exception as e:
+                self.messagebox.showerror(
+                    "Open failed",
+                    f"Failed to open {suggested_folder}:\n{e}",
+                )
+
+    def _show_error_dialog_with_details(
+        self, title: str, message: str, details: str
+    ) -> None:
+        """Show modal error dialog with on-demand, scrollable details."""
+        dialog = self.tk.Toplevel(self.root)
+        dialog.title(title)
+        dialog.transient(self.root)
+        dialog.grab_set()
+        dialog.resizable(True, True)
+
+        frame = self.ttk.Frame(dialog, padding=12)
+        frame.pack(fill=self.tk.BOTH, expand=True)
+        self.ttk.Label(frame, text=message, wraplength=540, justify=self.tk.LEFT).pack(
+            anchor=self.tk.W
+        )
+
+        details_container = self.ttk.Frame(frame)
+        details_container.pack(fill=self.tk.BOTH, expand=True, pady=(10, 0))
+        details_container.pack_forget()
+
+        details_scrollbar = self.ttk.Scrollbar(
+            details_container, orient=self.tk.VERTICAL
+        )
+        details_scrollbar.pack(side=self.tk.RIGHT, fill=self.tk.Y)
+        details_text = self.tk.Text(
+            details_container,
+            height=12,
+            width=80,
+            wrap=self.tk.WORD,
+            yscrollcommand=details_scrollbar.set,
+        )
+        details_text.insert(self.tk.END, format_error_details_text(details))
+        details_text.config(state=self.tk.DISABLED)
+        details_text.pack(side=self.tk.LEFT, fill=self.tk.BOTH, expand=True)
+        details_scrollbar.config(command=details_text.yview)
+
+        buttons = self.ttk.Frame(frame)
+        buttons.pack(anchor=self.tk.E, pady=(10, 0))
+
+        def _close_ok() -> None:
+            dialog.destroy()
+
+        def _show_details() -> None:
+            details_button.config(state=self.tk.DISABLED)
+            details_container.pack(fill=self.tk.BOTH, expand=True, pady=(10, 0))
+            self._center_dialog_on_screen(dialog)
+
+        self.ttk.Button(buttons, text="OK", command=_close_ok).pack(
+            side=self.tk.RIGHT, padx=(8, 0)
+        )
+        details_button = self.ttk.Button(
+            buttons, text="Show details", command=_show_details
+        )
+        details_button.pack(side=self.tk.RIGHT)
+        dialog.protocol("WM_DELETE_WINDOW", _close_ok)
+        self._center_dialog_on_screen(dialog)
+        self.root.wait_window(dialog)
 
     def _poll_stream(self) -> None:
         try:
@@ -999,6 +1263,7 @@ class WorkflowGUI:
         self._active_actions = actions
         self._active_config_paths = config_paths
         self._active_rig_spec = rig_spec
+        self._last_error_details = ""
         self.log_queue.put(
             format_workflow_start_message(workflow, actions, config_paths, rig_spec)
         )
@@ -1029,23 +1294,29 @@ class WorkflowGUI:
             if self._worker_started_at is None
             else max(0.0, time.monotonic() - self._worker_started_at)
         )
+        workflow = self._active_workflow
+        actions = self._active_actions
+        config_paths = self._active_config_paths
+        config_count = len(self._active_config_paths)
+        try:
+            self._consume_log_queue_messages()
+        except Empty:
+            pass
+        dialog_spec = completion_dialog_spec(workflow, exit_code, self._abort_requested)
         if self._abort_requested:
-            self.log_queue.put(
-                f"{self._active_workflow.capitalize()} workflow aborted."
-            )
+            self.log_queue.put(f"{workflow.capitalize()} workflow aborted.")
         elif exit_code == 0:
             self.log_queue.put(
                 format_workflow_done_message(
-                    self._active_workflow,
-                    self._active_actions,
-                    len(self._active_config_paths),
+                    workflow,
+                    actions,
+                    config_count,
                     duration,
                 )
             )
         else:
             self.log_queue.put(
-                f"ERROR: {self._active_workflow} workflow failed with exit code "
-                f"{exit_code}. Actions: {', '.join(self._active_actions) or 'none'}."
+                format_workflow_error_message(workflow, actions, exit_code)
             )
         self._worker_process = None
         self._worker_started_at = None
@@ -1054,6 +1325,19 @@ class WorkflowGUI:
         self._active_config_paths = []
         self._active_rig_spec = ""
         self._set_worker_state(False)
+        if dialog_spec is not None:
+            kind, title, message = dialog_spec
+            if kind == "info" and workflow == "analysis":
+                suggested_folder = suggested_analysis_results_folder(
+                    config_paths, actions
+                )
+                self._show_done_dialog_with_open_folder(message, suggested_folder)
+            elif kind == "info":
+                self.messagebox.showinfo(title, message)
+            else:
+                self._show_error_dialog_with_details(
+                    title, message, self._last_error_details
+                )
 
     def _run_setup_clicked(self) -> None:
         try:
@@ -1122,8 +1406,6 @@ class WorkflowGUI:
             "mass": self.an_mass.get(),
             "volume": self.an_volume.get(),
             "show": self.an_show.get(),
-            "save_jpg": self.an_jpg.get(),
-            "save_npz": self.an_npz.get(),
             "streaming": self.an_stream.get(),
         }
         if options["streaming"]:
@@ -1180,15 +1462,17 @@ class WorkflowGUI:
         except Exception as e:
             self.messagebox.showerror("Invalid configuration", str(e))
             return
+
         self._load_utils_defaults_from_config(force=False)
 
-        action_flags = {
+        options = {
             "download": self.utils_download.get(),
             "export_calibration": self.utils_export_calibration.get(),
             "import_calibration": self.utils_import_calibration.get(),
+            "media": self.utils_media.get(),
         }
-        actions = enabled_option_labels(action_flags)
-        if not any(action_flags.values()):
+        actions = enabled_option_labels(options)
+        if not any(options.values()):
             logger.info("No utility option selected.")
             return
 
