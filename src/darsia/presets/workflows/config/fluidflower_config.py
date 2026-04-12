@@ -22,6 +22,7 @@ from .rig import RigConfig
 from .roi_registry import RoiRegistry
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
+from .video import VideoConfig
 
 logger = logging.getLogger(__name__)
 
@@ -186,6 +187,16 @@ class FluidFlowerConfig:
             self.download = None
             warn(f"Section download not found in {path}, use [download].")
 
+        # ! ---- VIDEO CONFIG ---- ! #
+        try:
+            self.video = VideoConfig()
+            self.video.load(
+                path,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.video = None
+
         ## Reference colorchecker
         # try:
         #    self.ref_colorchecker = (
@@ -225,6 +236,8 @@ class FluidFlowerConfig:
             raise ValueError(
                 "No mass analysis loaded. Use [analysis.mass] in the config file."
             )
+        elif key == "video" and not self.video:
+            VideoConfig().error()
 
     def check(self, *args: str) -> None:
         """Check that required components are loaded.
@@ -251,6 +264,7 @@ class FluidFlowerConfig:
                 "labeling",
                 "protocol",
                 "rig",
+                "video",
             ], f"Key {key} not recognized for checking."
             self._check(key)
 

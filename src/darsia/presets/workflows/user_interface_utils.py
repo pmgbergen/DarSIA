@@ -14,6 +14,7 @@ from darsia.presets.workflows.utils.calibration_bundle import (
     import_calibration_bundle,
 )
 from darsia.presets.workflows.utils.utils_download import download_data
+from darsia.presets.workflows.utils.utils_media import build_media
 
 # Set logging level
 logger = logging.getLogger(__name__)
@@ -63,6 +64,11 @@ def build_parser_for_setup():
         help="Allow import to overwrite an existing calibration target folder.",
     )
     parser.add_argument(
+        "--build-media",
+        action="store_true",
+        help="Build protocol-time ordered MP4/GIF from analysis result images.",
+    )
+    parser.add_argument(
         "--show",
         action="store_true",
         help="Show intermediate results.",
@@ -80,6 +86,9 @@ def preset_utils():
     if args.download_data:
         logger.info("Downloading raw data...")
         download_data(args.config)
+    if args.build_media:
+        logger.info("Building media from analysis outputs...")
+        build_media(args.config)
     if args.export_calibration:
         bundle_path = (
             Path(args.calibration_bundle)
