@@ -41,7 +41,7 @@ def analysis_cropping_from_context(
     assert ctx.config.analysis is not None
 
     cropping_config = ctx.config.analysis.cropping
-    formats = cropping_config.formats if cropping_config is not None else []
+    formats = cropping_config.formats if cropping_config is not None else ["jpg"]
 
     save_jpg = "jpg" in formats
     save_npz = "npz" in formats
