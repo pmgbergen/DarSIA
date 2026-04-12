@@ -84,6 +84,6 @@ When no source folder is given, defaults are resolved under `[data.results]`:
 - segmentation → `segmentation`
 - cropping → `cropped_images`
 
-For `fingers`, provide `[video.source].folder` explicitly due its multi-folder output structure (tips/fjords/paths/ROIs).
+For `fingers`, provide `[video.source].folder` explicitly due to its multi-folder output structure (tips/fjords/paths/ROIs).
 
 Generated media files are saved to `<results>/videos/`.

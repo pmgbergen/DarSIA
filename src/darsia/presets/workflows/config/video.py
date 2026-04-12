@@ -182,11 +182,15 @@ class VideoConfig:
 
     def load(self, path: Path | list[Path], results: Path | None) -> "VideoConfig":
         sec = _get_section_from_toml(path, "video")
-        analysis = _get_key(sec, "analysis", required=False, default=None, type_=str)
-        analysis = analysis.lower() if analysis is not None else None
-        if analysis == "none":
-            analysis = None
-        self.analysis = analysis
+        explicit_analysis = _get_key(
+            sec, "analysis", required=False, default=None, type_=str
+        )
+        explicit_analysis = (
+            explicit_analysis.lower() if explicit_analysis is not None else None
+        )
+        if explicit_analysis == "none":
+            explicit_analysis = None
+        self.analysis = explicit_analysis
 
         self.source.load(sec, self.analysis)
 
@@ -201,7 +205,7 @@ class VideoConfig:
             )
 
         allowed = {"segmentation", "fingers", "cropping", "mass", "volume"}
-        if analysis is not None and self.analysis not in allowed:
+        if explicit_analysis is not None and self.analysis not in allowed:
             raise ValueError(
                 f"Unsupported video.analysis '{self.analysis}'. Supported: {sorted(allowed)}."
             )
