@@ -88,11 +88,17 @@ image_times = [1, 5, 10, 20, 21, 40]
 
 [video]
 
+[video.source]
+folder = "segmentation" # required; relative to [data.results] when not absolute
+#extensions = [".jpg", ".png"]
+#pattern = "*.png"
+#recursive = false
+
 [video.output]
 formats = ["mp4", "gif"]
 fps = 6.0
 # resolution = [1280, 720] # optional [width, height]
-filename = "source_over_time"
+# filename = "video" # optional
 codec = "mp4v"
 quality = 95
 
@@ -101,7 +107,7 @@ show_elapsed_time = true
 elapsed_time_format = "Elapsed: {:.2f} h"
 show_note = true
 note = "Experiment #1 - Segmentation"
-font_scale = 0.7
+font_scale = 1.5
 thickness = 2
 text_color = [255, 255, 255]
 position = [20, 20]
@@ -109,9 +115,3 @@ box_enabled = true
 box_color = [0, 0, 0]
 box_alpha = 0.4
 box_padding = 10
-
-[video.source]
-folder = "segmentation"                # required; relative to [data.results] when not absolute
-#extensions = [".jpg", ".png"]
-#pattern = "*.png"
-#recursive = false
