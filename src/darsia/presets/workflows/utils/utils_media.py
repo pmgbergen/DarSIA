@@ -225,7 +225,7 @@ def build_media(path: Path | list[Path]) -> dict[str, Path]:
 
     output_folder = config.video.folder
     output_folder.mkdir(parents=True, exist_ok=True)
-    stem = config.video.output.filename or config.video.analysis
+    stem = config.video.output.filename or config.video.analysis or "video"
     frames = _read_and_process_frames(
         ordered_frames=ordered,
         resolution=config.video.output.resolution,
