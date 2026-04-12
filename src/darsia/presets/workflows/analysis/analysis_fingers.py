@@ -160,14 +160,15 @@ def analysis_fingers_from_context(
                 )
 
             # Plot finger peaks and contours.
+            tips_path = (results_folder / "tips" / key / f"{path.stem}").with_suffix(
+                plot_format
+            )
             contour_analysis.plot_peaks(
                 img,
                 peaks,
                 roi_config.roi,
                 contours=contours,
-                path=(results_folder / "tips" / key / f"{path.stem}").with_suffix(
-                    plot_format
-                ),
+                path=tips_path,
                 show=show,
                 **{
                     "peak_color": peak_color,
@@ -206,12 +207,13 @@ def analysis_fingers_from_context(
             contour_evolution_times[key].append(float(img.time))
 
             # Plotting.
+            paths_path = (results_folder / "paths" / key / f"{path.stem}").with_suffix(
+                plot_format
+            )
             contour_evolution_analysis[key].plot_paths(
                 img,
                 roi=roi_config.roi,
-                path=(results_folder / "paths" / key / f"{path.stem}").with_suffix(
-                    plot_format
-                ),
+                path=paths_path,
                 show=show,
             )
 
