@@ -12,7 +12,7 @@ The GUI is additive: it does not replace CLI workflow modules.
 - Switch GUI mode between Config Editor, Dashboard, Batch Monitor, and Streaming monitor
 - Switch visual theme (System/Light/Dark) with optional `sv_ttk` support
 - Run setup/calibration/analysis/comparison/actions
-- Enable prototype segmentation streaming from Analysis and inspect latest streamed images by key
+- Enable analysis streaming from Analysis and inspect latest streamed images by key
 - View richer execution logs (workflow start details and workflow-specific completion)
 - Show blocking terminal-state dialogs for workflow completion (`Done`) and failure (`Error`) while still writing terminal-state entries to the execution log
 - Inject custom Rig class using `module.path:ClassName`
