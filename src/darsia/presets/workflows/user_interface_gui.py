@@ -366,12 +366,12 @@ def completion_dialog_spec(
     )
 
 
-def format_error_dialog_message(base_message: str, details: str) -> str:
-    """Combine base failure message with optional detailed traceback text."""
+def format_error_details_text(details: str) -> str:
+    """Normalize detailed traceback text for error-detail display."""
     stripped_details = details.strip()
     if not stripped_details:
-        return base_message
-    return f"{base_message}\n\nDetails:\n{stripped_details}"
+        return "No workflow error details available."
+    return stripped_details
 
 
 def abort_process(process: mp.Process | None) -> bool:
@@ -988,6 +988,64 @@ class WorkflowGUI:
                     f"Failed to open {suggested_folder}:\n{e}",
                 )
 
+    def _show_error_dialog_with_details(
+        self, title: str, message: str, details: str
+    ) -> None:
+        """Show modal error dialog with on-demand, scrollable details."""
+        dialog = self.tk.Toplevel(self.root)
+        dialog.title(title)
+        dialog.transient(self.root)
+        dialog.grab_set()
+        dialog.resizable(True, True)
+
+        frame = self.ttk.Frame(dialog, padding=12)
+        frame.pack(fill=self.tk.BOTH, expand=True)
+        self.ttk.Label(frame, text=message, wraplength=540, justify=self.tk.LEFT).pack(
+            anchor=self.tk.W
+        )
+
+        details_container = self.ttk.Frame(frame)
+        details_container.pack(fill=self.tk.BOTH, expand=True, pady=(10, 0))
+        details_container.pack_forget()
+
+        details_scrollbar = self.ttk.Scrollbar(
+            details_container, orient=self.tk.VERTICAL
+        )
+        details_scrollbar.pack(side=self.tk.RIGHT, fill=self.tk.Y)
+        details_text = self.tk.Text(
+            details_container,
+            height=12,
+            width=80,
+            wrap=self.tk.WORD,
+            yscrollcommand=details_scrollbar.set,
+        )
+        details_text.insert(self.tk.END, format_error_details_text(details))
+        details_text.config(state=self.tk.DISABLED)
+        details_text.pack(side=self.tk.LEFT, fill=self.tk.BOTH, expand=True)
+        details_scrollbar.config(command=details_text.yview)
+
+        buttons = self.ttk.Frame(frame)
+        buttons.pack(anchor=self.tk.E, pady=(10, 0))
+
+        def _close_ok() -> None:
+            dialog.destroy()
+
+        def _show_details() -> None:
+            details_button.config(state=self.tk.DISABLED)
+            details_container.pack(fill=self.tk.BOTH, expand=True, pady=(10, 0))
+            self._center_dialog_on_screen(dialog)
+
+        self.ttk.Button(buttons, text="OK", command=_close_ok).pack(
+            side=self.tk.RIGHT, padx=(8, 0)
+        )
+        details_button = self.ttk.Button(
+            buttons, text="Show details", command=_show_details
+        )
+        details_button.pack(side=self.tk.RIGHT)
+        dialog.protocol("WM_DELETE_WINDOW", _close_ok)
+        self._center_dialog_on_screen(dialog)
+        self.root.wait_window(dialog)
+
     def _poll_stream(self) -> None:
         try:
             while True:
@@ -1184,9 +1242,8 @@ class WorkflowGUI:
             elif kind == "info":
                 self.messagebox.showinfo(title, message)
             else:
-                self.messagebox.showerror(
-                    title,
-                    format_error_dialog_message(message, self._last_error_details),
+                self._show_error_dialog_with_details(
+                    title, message, self._last_error_details
                 )
 
     def _run_setup_clicked(self) -> None:

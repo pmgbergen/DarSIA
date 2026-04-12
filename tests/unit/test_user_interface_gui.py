@@ -19,7 +19,7 @@ from darsia.presets.workflows.user_interface_gui import (
     default_session_cache_file,
     enabled_option_labels,
     encode_workflow_error_details,
-    format_error_dialog_message,
+    format_error_details_text,
     format_workflow_done_message,
     format_workflow_error_message,
     format_workflow_start_message,
@@ -167,18 +167,13 @@ def test_format_workflow_error_message() -> None:
     assert msg == "ERROR: analysis workflow failed with exit code 3. Actions: mass."
 
 
-def test_format_error_dialog_message_without_details() -> None:
-    base = "Analysis workflow failed with exit code 7."
-    assert format_error_dialog_message(base, "") == base
+def test_format_error_details_text_without_details() -> None:
+    assert format_error_details_text("") == "No workflow error details available."
 
 
-def test_format_error_dialog_message_with_details() -> None:
-    base = "Analysis workflow failed with exit code 7."
+def test_format_error_details_text_with_details() -> None:
     details = "Traceback...\nOSError: [WinError 64] ..."
-    assert format_error_dialog_message(base, details) == (
-        "Analysis workflow failed with exit code 7.\n\n"
-        "Details:\nTraceback...\nOSError: [WinError 64] ..."
-    )
+    assert format_error_details_text(details) == details
 
 
 def test_completion_dialog_spec_success() -> None:
