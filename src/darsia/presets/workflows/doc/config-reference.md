@@ -15,6 +15,7 @@ This is the user-facing map of workflow TOML sections currently loaded by `Fluid
 - `[color_to_mass]`: color-to-mass calibration options.
 - `[analysis]`: analysis data and feature-specific subsections.
 - `[download]`: download utility config (optional).
+- `[video]`: media utility config for protocol-time ordered MP4/GIF generation.
 
 ## Shared data registry (recommended)
 Define reusable selections in top-level `[data]` subsections:
@@ -69,3 +70,13 @@ For practical examples, see:
 - [Image selection](./image-selection.md)
 - [ROI reference](./roi-reference.md)
 - [Corrections](./corrections.md)
+
+## Video utility section
+
+Use `[video]` to assemble protocol-time ordered media from stored analysis images.
+
+- `[video.output]`: `formats` (`mp4`, `gif`), `fps`, optional `resolution`, `filename`, `codec`, `quality`
+- `[video.overlay]`: elapsed-time/note toggles and text-box styling (`font_scale`, colors, position, alpha, padding, etc.)
+- `[video.source]` (required): source folder and scanning behavior (`folder`, `extensions`, `pattern`, `recursive`)
+
+Generated media files are saved to `<results>/videos/`.

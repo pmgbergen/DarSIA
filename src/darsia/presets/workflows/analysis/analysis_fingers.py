@@ -422,10 +422,14 @@ def analysis_fingers_from_context(
             df.to_csv(results_folder / "statistics.csv", index=False)
 
             if stream_images is not None:
-                tips_plot = cv2.imread(str(tips_path), cv2.IMREAD_COLOR)
+                tips_plot = cv2.cvtColor(
+                    cv2.imread(str(tips_path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB
+                )
                 if tips_plot is not None:
                     stream_images[f"fingers_tips_{key}"] = tips_plot
-                paths_plot = cv2.imread(str(paths_path), cv2.IMREAD_COLOR)
+                paths_plot = cv2.cvtColor(
+                    cv2.imread(str(paths_path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB
+                )
                 if paths_plot is not None:
                     stream_images[f"fingers_paths_{key}"] = paths_plot
 

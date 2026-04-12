@@ -500,10 +500,13 @@ def _run_comparison_workflow(
 def _run_utils_workflow(config_paths: list[str], options: dict[str, bool]) -> None:
     """Run utility workflow in a worker process."""
     from darsia.presets.workflows.utils.utils_download import download_data
+    from darsia.presets.workflows.utils.utils_media import build_media
 
     paths = normalize_paths(config_paths)
     if options["download"]:
         download_data(paths)
+    if options["media"]:
+        build_media(paths)
 
 
 class QueueLogHandler(logging.Handler):
@@ -759,8 +762,14 @@ class WorkflowGUI:
 
     def _build_utils_tab(self) -> None:
         self.utils_download = self.tk.BooleanVar(value=False)
+        self.utils_media = self.tk.BooleanVar(value=False)
         self.ttk.Checkbutton(
             self.utils_frame, text="Download/cache data", variable=self.utils_download
+        ).pack(anchor=self.tk.W)
+        self.ttk.Checkbutton(
+            self.utils_frame,
+            text="Build protocol-time media (MP4/GIF)",
+            variable=self.utils_media,
         ).pack(anchor=self.tk.W)
         self.ttk.Button(
             self.utils_frame, text="Run utils", command=self._run_utils_clicked
@@ -1291,9 +1300,12 @@ class WorkflowGUI:
         except Exception as e:
             self.messagebox.showerror("Invalid configuration", str(e))
             return
-        options = {"download": self.utils_download.get()}
+        options = {
+            "download": self.utils_download.get(),
+            "media": self.utils_media.get(),
+        }
         actions = enabled_option_labels(options)
-        if not options["download"]:
+        if not any(options.values()):
             logger.info("No utility option selected.")
             return
         self._run_async(
