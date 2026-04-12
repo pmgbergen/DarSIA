@@ -81,6 +81,7 @@ threshold = 0.2
 
 [analysis.cropping]
 image_times = [1, 5, 10, 20, 21, 40]
+formats = ["npz", "jpg"]
 [analysis.color_signal]
 image_times = [1, 5, 10, 20, 21, 40]
 [analysis.mass]

@@ -34,6 +34,7 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 
 ## Analysis subsections
 - `[analysis.data]`: selected analysis image set
+- `[analysis.cropping]`: cropping image selection and output formats (`formats = ["npz", "jpg"]`)
 - `[analysis.segmentation]`: contour config(s)
 - `[analysis.mass]`: mass analysis and optional ROIs
 - `[analysis.volume]`: volume analysis and optional ROIs

@@ -480,8 +480,6 @@ def _run_analysis_workflow(
         mass=options["mass"],
         volume=options["volume"],
         show=options["show"],
-        save_jpg=options["save_jpg"],
-        save_npz=options["save_npz"],
         info=False,
     )
     run_analysis(rig_cls, args, stream_callback=stream_callback)
@@ -729,8 +727,6 @@ class WorkflowGUI:
         self.an_mass = self.tk.BooleanVar(value=False)
         self.an_volume = self.tk.BooleanVar(value=False)
         self.an_show = self.tk.BooleanVar(value=False)
-        self.an_jpg = self.tk.BooleanVar(value=False)
-        self.an_npz = self.tk.BooleanVar(value=False)
         self.an_stream = self.tk.BooleanVar(value=False)
         for label, var in [
             ("All images", self.an_all),
@@ -740,8 +736,6 @@ class WorkflowGUI:
             ("Mass", self.an_mass),
             ("Volume", self.an_volume),
             ("Show plots", self.an_show),
-            ("Save JPG", self.an_jpg),
-            ("Save NPZ", self.an_npz),
             ("Enable streaming", self.an_stream),
         ]:
             self.ttk.Checkbutton(self.analysis_frame, text=label, variable=var).pack(
@@ -1313,8 +1307,6 @@ class WorkflowGUI:
             "mass": self.an_mass.get(),
             "volume": self.an_volume.get(),
             "show": self.an_show.get(),
-            "save_jpg": self.an_jpg.get(),
-            "save_npz": self.an_npz.get(),
             "streaming": self.an_stream.get(),
         }
         if options["streaming"]:

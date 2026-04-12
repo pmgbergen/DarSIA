@@ -232,9 +232,36 @@ class AnalysisFingersConfig:
 
 
 @dataclass
+class AnalysisCroppingConfig:
+    formats: list[str] = field(default_factory=lambda: ["jpg"])
+    """Output formats for cropping images."""
+
+    def load(self, sec: dict) -> "AnalysisCroppingConfig":
+        sub_sec = _get_section(sec, "cropping")
+
+        raw_formats = _get_key(sub_sec, "formats", default=["jpg"], required=False)
+        if not isinstance(raw_formats, list):
+            raise ValueError("analysis.cropping.formats must be a list.")
+        if not all(isinstance(fmt, str) for fmt in raw_formats):
+            raise ValueError("analysis.cropping.formats entries must be strings.")
+        self.formats = [fmt.strip().lower() for fmt in raw_formats]
+        SUPPORTED_CROPPING_FORMATS = {"jpg", "npz"}
+        invalid_formats = sorted(set(self.formats) - SUPPORTED_CROPPING_FORMATS)
+        if len(invalid_formats) > 0:
+            raise ValueError(
+                "Unsupported [analysis.cropping].formats entries: "
+                f"{', '.join(invalid_formats)}. "
+                f"Supported formats: {', '.join(sorted(SUPPORTED_CROPPING_FORMATS))}."
+            )
+        return self
+
+
+@dataclass
 class AnalysisConfig:
     data: TimeData | None = None
     """Analysis data configuration."""
+    cropping: AnalysisCroppingConfig | None = None
+    """Analysis cropping configuration."""
     segmentation: AnalysisSegmentationConfig | None = None
     """Analysis segmentation configuration."""
     mass: AnalysisMassConfig | None = None
@@ -264,6 +291,13 @@ class AnalysisConfig:
             except KeyError:
                 warn("No analysis data found. Use [analysis.data].")
                 self.data = None
+
+        # Config to load analysis cropping
+        try:
+            self.cropping = AnalysisCroppingConfig().load(sec)
+        except KeyError:
+            warn("No analysis cropping found. Use [analysis.cropping].")
+            self.cropping = AnalysisCroppingConfig()  # Default to empty cropping config
 
         # Config to load analysis segmentation
         try:
