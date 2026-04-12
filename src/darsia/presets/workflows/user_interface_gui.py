@@ -822,7 +822,7 @@ class WorkflowGUI:
                 msg = self.log_queue.get_nowait()
                 details = decode_workflow_error_details(msg)
                 if details is not None:
-                    self._last_error_details = details.strip()
+                    self._last_error_details = details
                     self.error_details_button.config(state=self.tk.NORMAL)
                     continue
                 self._append_log(msg)
@@ -831,7 +831,7 @@ class WorkflowGUI:
         self.root.after(100, self._poll_logs)
 
     def _show_last_error_details_clicked(self) -> None:
-        details = self._last_error_details.strip()
+        details = self._last_error_details
         if not details:
             self.messagebox.showinfo(
                 "Error details", "No workflow error details available."
