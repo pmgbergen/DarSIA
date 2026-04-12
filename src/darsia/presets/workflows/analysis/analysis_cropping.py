@@ -13,7 +13,6 @@ import darsia
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
-    select_image_paths,
 )
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.rig import Rig
@@ -53,21 +52,11 @@ def analysis_cropping_from_context(
             'e.g. ["jpg"], ["npz"], or ["jpg", "npz"], or --show.'
         )
 
-    image_paths = ctx.image_paths
-    if cropping_config is not None:
-        image_paths = select_image_paths(
-            ctx.config,
-            ctx.experiment,
-            sub_config=cropping_config,
-            source=ctx.config.data.folder,
-            data_registry=ctx.config.data.registry,
-        )
-
     # ! ---- CROPPING ----
     plot_folder = ctx.config.data.results / "cropped_images"
     plot_folder.mkdir(parents=True, exist_ok=True)
 
-    for path in image_paths:
+    for path in ctx.image_paths:
         # Read image
         img = ctx.fluidflower.read_image(path)
 

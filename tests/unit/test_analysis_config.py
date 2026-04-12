@@ -16,7 +16,6 @@ def test_analysis_cropping_formats_are_loaded(tmp_path: Path) -> None:
         """
 [analysis]
 [analysis.cropping]
-image_times = [1, 2]
 formats = ["npz", "jpg"]
 """.strip(),
     )
@@ -29,7 +28,6 @@ formats = ["npz", "jpg"]
 
     assert config.cropping is not None
     assert config.cropping.formats == ["npz", "jpg"]
-    assert config.cropping.image_times == [1.0, 2.0]
 
 
 def test_analysis_cropping_formats_reject_invalid_entries(tmp_path: Path) -> None:
