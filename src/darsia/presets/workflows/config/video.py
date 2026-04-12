@@ -178,11 +178,6 @@ class VideoConfig:
 
     def load(self, path: Path | list[Path], results: Path | None) -> "VideoConfig":
         sec = _get_section_from_toml(path, "video")
-        if "analysis" in sec:
-            raise ValueError(
-                "[video].analysis is no longer supported. "
-                "Use [video.source].folder to select the source."
-            )
         self.source.load(sec)
         self.output.load(sec)
         self.overlay.load(sec)
