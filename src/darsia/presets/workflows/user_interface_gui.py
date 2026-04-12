@@ -366,6 +366,14 @@ def completion_dialog_spec(
     )
 
 
+def format_error_dialog_message(base_message: str, details: str) -> str:
+    """Combine base failure message with optional detailed traceback text."""
+    stripped_details = details.strip()
+    if not stripped_details:
+        return base_message
+    return f"{base_message}\n\nDetails:\n{stripped_details}"
+
+
 def abort_process(process: mp.Process | None) -> bool:
     """Abort a running process.
 
@@ -892,13 +900,6 @@ class WorkflowGUI:
             state=self.tk.DISABLED,
         )
         self.abort_button.pack(side=self.tk.RIGHT)
-        self.error_details_button = self.ttk.Button(
-            controls,
-            text="Show last error details",
-            command=self._show_last_error_details_clicked,
-            state=self.tk.DISABLED,
-        )
-        self.error_details_button.pack(side=self.tk.RIGHT, padx=(0, 6))
 
         self.log = self.tk.Text(frame, height=15, state=self.tk.DISABLED)
         self.log.pack(fill=self.tk.BOTH, expand=True, padx=5, pady=5)
@@ -909,28 +910,33 @@ class WorkflowGUI:
         self.log.see(self.tk.END)
         self.log.config(state=self.tk.DISABLED)
 
+    def _consume_log_queue_messages(self) -> None:
+        """Consume queued log messages and keep latest encoded error details."""
+        while True:
+            msg = self.log_queue.get_nowait()
+            details = decode_workflow_error_details(msg)
+            if details is not None:
+                self._last_error_details = details
+                continue
+            self._append_log(msg)
+
     def _poll_logs(self) -> None:
         try:
-            while True:
-                msg = self.log_queue.get_nowait()
-                details = decode_workflow_error_details(msg)
-                if details is not None:
-                    self._last_error_details = details
-                    self.error_details_button.config(state=self.tk.NORMAL)
-                    continue
-                self._append_log(msg)
+            self._consume_log_queue_messages()
         except Empty:
             pass
         self.root.after(100, self._poll_logs)
 
-    def _show_last_error_details_clicked(self) -> None:
-        details = self._last_error_details
-        if not details:
-            self.messagebox.showinfo(
-                "Error details", "No workflow error details available."
-            )
-            return
-        self.messagebox.showerror("Error details", details)
+    def _center_dialog_on_screen(self, dialog: Any) -> None:
+        """Center a toplevel dialog on the current screen."""
+        dialog.update_idletasks()
+        width = dialog.winfo_width()
+        height = dialog.winfo_height()
+        screen_width = dialog.winfo_screenwidth()
+        screen_height = dialog.winfo_screenheight()
+        x_pos = max(0, (screen_width - width) // 2)
+        y_pos = max(0, (screen_height - height) // 2)
+        dialog.geometry(f"+{x_pos}+{y_pos}")
 
     def _show_done_dialog_with_open_folder(
         self, message: str, suggested_folder: Path | None
@@ -970,6 +976,7 @@ class WorkflowGUI:
             side=self.tk.RIGHT
         )
         dialog.protocol("WM_DELETE_WINDOW", _close_ok)
+        self._center_dialog_on_screen(dialog)
         self.root.wait_window(dialog)
 
         if open_requested["value"]:
@@ -1106,7 +1113,6 @@ class WorkflowGUI:
         self._active_config_paths = config_paths
         self._active_rig_spec = rig_spec
         self._last_error_details = ""
-        self.error_details_button.config(state=self.tk.DISABLED)
         self.log_queue.put(
             format_workflow_start_message(workflow, actions, config_paths, rig_spec)
         )
@@ -1141,6 +1147,10 @@ class WorkflowGUI:
         actions = self._active_actions
         config_paths = self._active_config_paths
         config_count = len(self._active_config_paths)
+        try:
+            self._consume_log_queue_messages()
+        except Empty:
+            pass
         dialog_spec = completion_dialog_spec(workflow, exit_code, self._abort_requested)
         if self._abort_requested:
             self.log_queue.put(f"{workflow.capitalize()} workflow aborted.")
@@ -1174,7 +1184,10 @@ class WorkflowGUI:
             elif kind == "info":
                 self.messagebox.showinfo(title, message)
             else:
-                self.messagebox.showerror(title, message)
+                self.messagebox.showerror(
+                    title,
+                    format_error_dialog_message(message, self._last_error_details),
+                )
 
     def _run_setup_clicked(self) -> None:
         try:

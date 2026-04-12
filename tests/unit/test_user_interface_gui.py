@@ -1,6 +1,6 @@
+import json
 import multiprocessing as mp
 import queue
-import json
 import sys
 import time
 import types
@@ -10,14 +10,16 @@ import pytest
 
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.user_interface_gui import (
+    _run_utils_workflow,
     abort_process,
     clear_queue,
     completion_dialog_spec,
     decode_workflow_error_details,
     deduplicate_paths,
     default_session_cache_file,
-    encode_workflow_error_details,
     enabled_option_labels,
+    encode_workflow_error_details,
+    format_error_dialog_message,
     format_workflow_done_message,
     format_workflow_error_message,
     format_workflow_start_message,
@@ -26,7 +28,6 @@ from darsia.presets.workflows.user_interface_gui import (
     read_session_cache,
     resolve_rig_class,
     suggested_analysis_results_folder,
-    _run_utils_workflow,
     write_session_cache,
 )
 
@@ -166,6 +167,20 @@ def test_format_workflow_error_message() -> None:
     assert msg == "ERROR: analysis workflow failed with exit code 3. Actions: mass."
 
 
+def test_format_error_dialog_message_without_details() -> None:
+    base = "Analysis workflow failed with exit code 7."
+    assert format_error_dialog_message(base, "") == base
+
+
+def test_format_error_dialog_message_with_details() -> None:
+    base = "Analysis workflow failed with exit code 7."
+    details = "Traceback...\nOSError: [WinError 64] ..."
+    assert format_error_dialog_message(base, details) == (
+        "Analysis workflow failed with exit code 7.\n\n"
+        "Details:\nTraceback...\nOSError: [WinError 64] ..."
+    )
+
+
 def test_completion_dialog_spec_success() -> None:
     assert completion_dialog_spec("analysis", 0, False) == (
         "info",
@@ -206,7 +221,9 @@ def test_suggested_analysis_results_folder_for_cropping(tmp_path: Path) -> None:
     assert folder == results / "cropped_images"
 
 
-def test_suggested_analysis_results_folder_from_analysis_section(tmp_path: Path) -> None:
+def test_suggested_analysis_results_folder_from_analysis_section(
+    tmp_path: Path,
+) -> None:
     config = tmp_path / "config.toml"
     results = tmp_path / "results"
     seg_folder = tmp_path / "seg"
