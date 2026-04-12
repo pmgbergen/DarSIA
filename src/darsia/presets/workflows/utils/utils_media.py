@@ -20,8 +20,6 @@ def _resolve_source_folder(config: FluidFlowerConfig) -> Path:
     assert config.data is not None
     assert config.video is not None
     src = config.video.source.folder
-    if src is None:
-        raise ValueError("Missing required [video.source].folder.")
     return src if src.is_absolute() else config.data.results / src
 
 
@@ -225,7 +223,7 @@ def build_media(path: Path | list[Path]) -> dict[str, Path]:
 
     output_folder = config.video.folder
     output_folder.mkdir(parents=True, exist_ok=True)
-    stem = config.video.output.filename or config.video.analysis or "video"
+    stem = config.video.output.filename or config.video.analysis
     frames = _read_and_process_frames(
         ordered_frames=ordered,
         resolution=config.video.output.resolution,

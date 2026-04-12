@@ -35,7 +35,7 @@ def _to_rgb(color: list[int] | tuple[int, int, int], name: str) -> tuple[int, in
 
 @dataclass
 class VideoSourceConfig:
-    folder: Path | None = None
+    folder: Path = field(default_factory=Path)
     pattern: str | None = None
     recursive: bool = False
     extensions: list[str] = field(
@@ -171,7 +171,7 @@ class VideoOverlayConfig:
 
 @dataclass
 class VideoConfig:
-    analysis: str | None = None
+    analysis: str = ""
     source: VideoSourceConfig = field(default_factory=VideoSourceConfig)
     output: VideoOutputConfig = field(default_factory=VideoOutputConfig)
     overlay: VideoOverlayConfig = field(default_factory=VideoOverlayConfig)
@@ -187,8 +187,6 @@ class VideoConfig:
         self.source.load(sec)
         self.analysis = (
             str(self.source.folder).replace("\\", "/").strip("/").replace("/", "_")
-            if self.source.folder is not None
-            else None
         )
         self.output.load(sec)
         self.overlay.load(sec)
