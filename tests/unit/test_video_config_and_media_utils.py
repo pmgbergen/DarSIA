@@ -31,7 +31,7 @@ def test_video_config_defaults_and_results_video_folder(tmp_path: Path) -> None:
     )
     results = tmp_path / "results"
     cfg = VideoConfig().load(config_path, results=results)
-    assert cfg.analysis == "segmentation"
+    assert cfg.source.folder == Path("segmentation")
     assert cfg.output.formats == ["mp4"]
     assert cfg.folder == results / "videos"
 
@@ -71,7 +71,7 @@ def test_video_config_rejects_empty_source_folder(tmp_path: Path) -> None:
         VideoConfig().load(config_path, results=tmp_path / "results")
 
 
-def test_video_config_derives_analysis_key_from_source_path(tmp_path: Path) -> None:
+def test_video_config_loads_source_folder_path(tmp_path: Path) -> None:
     config_path = _write_toml(
         tmp_path,
         """
@@ -81,7 +81,7 @@ def test_video_config_derives_analysis_key_from_source_path(tmp_path: Path) -> N
         """,
     )
     cfg = VideoConfig().load(config_path, results=tmp_path / "results")
-    assert cfg.analysis == "custom_roi_stream"
+    assert cfg.source.folder == Path("custom/roi/stream")
 
 
 class _FakeImagingProtocol:

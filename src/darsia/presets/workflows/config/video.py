@@ -171,7 +171,6 @@ class VideoOverlayConfig:
 
 @dataclass
 class VideoConfig:
-    analysis: str = ""
     source: VideoSourceConfig = field(default_factory=VideoSourceConfig)
     output: VideoOutputConfig = field(default_factory=VideoOutputConfig)
     overlay: VideoOverlayConfig = field(default_factory=VideoOverlayConfig)
@@ -185,11 +184,6 @@ class VideoConfig:
                 "Use [video.source].folder to select the source."
             )
         self.source.load(sec)
-        if self.source.folder is None:
-            raise ValueError("Missing required [video.source].folder.")
-        self.analysis = (
-            str(self.source.folder).replace("\\", "/").strip("/").replace("/", "_")
-        )
         self.output.load(sec)
         self.overlay.load(sec)
         if results is None:
