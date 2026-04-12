@@ -23,6 +23,7 @@ from darsia.presets.workflows.user_interface_gui import (
     publish_latest_queue_item,
     read_session_cache,
     resolve_rig_class,
+    suggested_analysis_results_folder,
     write_session_cache,
 )
 
@@ -191,6 +192,50 @@ def test_encode_decode_workflow_error_details_roundtrip() -> None:
 
 def test_decode_workflow_error_details_non_error_message() -> None:
     assert decode_workflow_error_details("regular log line") is None
+
+
+def test_suggested_analysis_results_folder_for_cropping(tmp_path: Path) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_analysis_results_folder([config], ["cropping"])
+    assert folder == results / "cropped_images"
+
+
+def test_suggested_analysis_results_folder_from_analysis_section(tmp_path: Path) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    seg_folder = tmp_path / "seg"
+    config.write_text(
+        f"[data]\nresults = '{results}'\n\n"
+        f"[analysis.segmentation]\nfolder = '{seg_folder}'\n"
+    )
+
+    folder = suggested_analysis_results_folder([config], ["segmentation"])
+    assert folder == seg_folder
+
+
+def test_suggested_analysis_results_folder_defaults_to_results_on_multiple_modes(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_analysis_results_folder([config], ["mass", "volume"])
+    assert folder == results
+
+
+def test_suggested_analysis_results_folder_fallback_for_missing_mode_folder(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_analysis_results_folder([config], ["fingers"])
+    assert folder == results / "fingers"
 
 
 def test_publish_latest_queue_item_keeps_only_latest() -> None:

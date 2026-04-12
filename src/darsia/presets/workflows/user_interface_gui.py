@@ -13,8 +13,11 @@ import json
 import logging
 import multiprocessing as mp
 import os
+import subprocess
+import sys
 import time
 import traceback
+import tomllib
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -219,6 +222,86 @@ def decode_workflow_error_details(message: str) -> str | None:
     if message.startswith(WORKFLOW_ERROR_DETAILS_PREFIX):
         return message[len(WORKFLOW_ERROR_DETAILS_PREFIX) :]
     return None
+
+
+def _deep_merge_dict(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge update dictionary into base dictionary."""
+    for key, value in update.items():
+        if (
+            key in base
+            and isinstance(base[key], dict)
+            and isinstance(value, dict)
+            and isinstance(base[key], dict)
+        ):
+            _deep_merge_dict(base[key], value)
+        else:
+            base[key] = value
+    return base
+
+
+def suggested_analysis_results_folder(
+    config_paths: list[Path], actions: list[str]
+) -> Path | None:
+    """Return suggested analysis results folder for completed runs."""
+    merged: dict[str, Any] = {}
+    for path in config_paths:
+        _deep_merge_dict(merged, tomllib.loads(path.read_text()))
+
+    data = merged.get("data")
+    if not isinstance(data, dict):
+        return None
+    results_raw = data.get("results")
+    if not isinstance(results_raw, str) or not results_raw.strip():
+        return None
+    results = Path(results_raw).expanduser()
+
+    mode_actions = [action for action in actions if action in _ANALYSIS_MODE_ACTIONS]
+    if len(mode_actions) != 1:
+        return results
+
+    mode = mode_actions[0]
+    if mode == "cropping":
+        return results / "cropped_images"
+
+    analysis = merged.get("analysis")
+    if isinstance(analysis, dict):
+        mode_section = analysis.get(mode)
+        if isinstance(mode_section, dict):
+            folder = mode_section.get("folder")
+            if isinstance(folder, str) and folder.strip():
+                return Path(folder).expanduser()
+
+    return results / _ANALYSIS_MODE_DEFAULT_SUBFOLDER[mode]
+
+
+def open_in_file_explorer(path: Path) -> None:
+    """Open path in the OS file explorer."""
+    target = path.expanduser().resolve()
+    if not target.exists():
+        for parent in target.parents:
+            if parent.exists():
+                target = parent
+                break
+        else:
+            raise FileNotFoundError(f"Path does not exist: {path}")
+    if target.is_file():
+        target = target.parent
+
+    if os.name == "nt":
+        os.startfile(str(target))  # type: ignore[attr-defined]
+    elif sys.platform == "darwin":
+        subprocess.run(["open", str(target)], check=True)
+    else:
+        subprocess.run(["xdg-open", str(target)], check=True)
+
+
+_ANALYSIS_MODE_ACTIONS = {"cropping", "segmentation", "mass", "volume", "fingers"}
+_ANALYSIS_MODE_DEFAULT_SUBFOLDER = {
+    "segmentation": "segmentation",
+    "mass": "mass",
+    "volume": "volume",
+    "fingers": "fingers",
+}
 
 
 def enabled_option_labels(
@@ -839,6 +922,55 @@ class WorkflowGUI:
             return
         self.messagebox.showerror("Error details", details)
 
+    def _show_done_dialog_with_open_folder(
+        self, message: str, suggested_folder: Path | None
+    ) -> None:
+        if suggested_folder is None:
+            self.messagebox.showinfo("Done", message)
+            return
+
+        dialog = self.tk.Toplevel(self.root)
+        dialog.title("Done")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        dialog.resizable(False, False)
+
+        frame = self.ttk.Frame(dialog, padding=12)
+        frame.pack(fill=self.tk.BOTH, expand=True)
+        self.ttk.Label(frame, text=message, wraplength=480, justify=self.tk.LEFT).pack(
+            anchor=self.tk.W, pady=(0, 10)
+        )
+
+        buttons = self.ttk.Frame(frame)
+        buttons.pack(anchor=self.tk.E)
+
+        open_requested = {"value": False}
+
+        def _close_ok() -> None:
+            dialog.destroy()
+
+        def _open_folder() -> None:
+            open_requested["value"] = True
+            dialog.destroy()
+
+        self.ttk.Button(buttons, text="OK", command=_close_ok).pack(
+            side=self.tk.RIGHT, padx=(8, 0)
+        )
+        self.ttk.Button(buttons, text="Open in folder", command=_open_folder).pack(
+            side=self.tk.RIGHT
+        )
+        dialog.protocol("WM_DELETE_WINDOW", _close_ok)
+        self.root.wait_window(dialog)
+
+        if open_requested["value"]:
+            try:
+                open_in_file_explorer(suggested_folder)
+            except Exception as e:
+                self.messagebox.showerror(
+                    "Open failed",
+                    f"Failed to open {suggested_folder}:\n{e}",
+                )
+
     def _poll_stream(self) -> None:
         try:
             while True:
@@ -997,6 +1129,7 @@ class WorkflowGUI:
         )
         workflow = self._active_workflow
         actions = self._active_actions
+        config_paths = self._active_config_paths
         config_count = len(self._active_config_paths)
         dialog_spec = completion_dialog_spec(workflow, exit_code, self._abort_requested)
         if self._abort_requested:
@@ -1023,7 +1156,10 @@ class WorkflowGUI:
         self._set_worker_state(False)
         if dialog_spec is not None:
             kind, title, message = dialog_spec
-            if kind == "info":
+            if kind == "info" and workflow == "analysis":
+                suggested_folder = suggested_analysis_results_folder(config_paths, actions)
+                self._show_done_dialog_with_open_folder(message, suggested_folder)
+            elif kind == "info":
                 self.messagebox.showinfo(title, message)
             else:
                 self.messagebox.showerror(title, message)
