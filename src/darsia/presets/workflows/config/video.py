@@ -35,7 +35,7 @@ def _to_rgb(color: list[int] | tuple[int, int, int], name: str) -> tuple[int, in
 
 @dataclass
 class VideoSourceConfig:
-    folder: Path = field(default_factory=Path)
+    folder: Path | None = None
     pattern: str | None = None
     recursive: bool = False
     extensions: list[str] = field(
@@ -185,6 +185,8 @@ class VideoConfig:
                 "Use [video.source].folder to select the source."
             )
         self.source.load(sec)
+        if self.source.folder is None:
+            raise ValueError("Missing required [video.source].folder.")
         self.analysis = (
             str(self.source.folder).replace("\\", "/").strip("/").replace("/", "_")
         )

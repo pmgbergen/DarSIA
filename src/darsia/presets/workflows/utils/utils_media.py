@@ -20,6 +20,8 @@ def _resolve_source_folder(config: FluidFlowerConfig) -> Path:
     assert config.data is not None
     assert config.video is not None
     src = config.video.source.folder
+    if src is None:
+        raise ValueError("Missing required [video.source].folder.")
     return src if src.is_absolute() else config.data.results / src
 
 

@@ -59,6 +59,18 @@ def test_video_config_requires_source_folder(tmp_path: Path) -> None:
         VideoConfig().load(config_path, results=tmp_path / "results")
 
 
+def test_video_config_rejects_empty_source_folder(tmp_path: Path) -> None:
+    config_path = _write_toml(
+        tmp_path,
+        """
+        [video.source]
+        folder = "   "
+        """,
+    )
+    with pytest.raises(ValueError, match="must not be empty"):
+        VideoConfig().load(config_path, results=tmp_path / "results")
+
+
 def test_video_config_derives_analysis_key_from_source_path(tmp_path: Path) -> None:
     config_path = _write_toml(
         tmp_path,
