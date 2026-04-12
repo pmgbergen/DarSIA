@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from .roi_registry import RoiRegistry
 
 logger = logging.getLogger(__name__)
-SUPPORTED_CROPPING_FORMATS = {"jpg", "npz"}
 
 
 @dataclass
@@ -234,18 +233,19 @@ class AnalysisFingersConfig:
 
 @dataclass
 class AnalysisCroppingConfig:
-    formats: list[str] = field(default_factory=list)
+    formats: list[str] = field(default_factory=lambda: ["jpg"])
     """Output formats for cropping images."""
 
     def load(self, sec: dict) -> "AnalysisCroppingConfig":
         sub_sec = _get_section(sec, "cropping")
 
-        raw_formats = _get_key(sub_sec, "formats", default=[], required=False)
+        raw_formats = _get_key(sub_sec, "formats", default=["jpg"], required=False)
         if not isinstance(raw_formats, list):
             raise ValueError("analysis.cropping.formats must be a list.")
         if not all(isinstance(fmt, str) for fmt in raw_formats):
             raise ValueError("analysis.cropping.formats entries must be strings.")
         self.formats = [fmt.strip().lower() for fmt in raw_formats]
+        SUPPORTED_CROPPING_FORMATS = {"jpg", "npz"}
         invalid_formats = sorted(set(self.formats) - SUPPORTED_CROPPING_FORMATS)
         if len(invalid_formats) > 0:
             raise ValueError(
@@ -297,7 +297,7 @@ class AnalysisConfig:
             self.cropping = AnalysisCroppingConfig().load(sec)
         except KeyError:
             warn("No analysis cropping found. Use [analysis.cropping].")
-            self.cropping = None
+            self.cropping = AnalysisCroppingConfig()  # Default to empty cropping config
 
         # Config to load analysis segmentation
         try:
