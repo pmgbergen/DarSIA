@@ -48,8 +48,8 @@ def analysis_cropping_from_context(
 
     if not (show or save_jpg or save_npz):
         raise ValueError(
-            "Cropping requires output selection via formats in [analysis.cropping] "
-            "(jpg and/or npz) or --show."
+            'Cropping requires output selection via formats = ["jpg", "npz"] in '
+            "[analysis.cropping] or --show."
         )
 
     image_paths = ctx.image_paths
