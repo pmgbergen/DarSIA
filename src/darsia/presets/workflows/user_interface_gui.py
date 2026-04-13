@@ -51,6 +51,7 @@ class SupportsQueue(Protocol):
 
 
 class UtilsWorkflowOptions(TypedDict):
+    media: bool
     download: bool
     export_calibration: bool
     import_calibration: bool
@@ -830,7 +831,14 @@ class WorkflowGUI:
         self.utils_import_bundle = self.tk.StringVar(value="")
         self.utils_media = self.tk.BooleanVar(value=False)
         self.ttk.Checkbutton(
-            self.utils_frame, text="Download/cache data", variable=self.utils_download
+            self.utils_frame,
+            text="Build protocol-time media (MP4/GIF)",
+            variable=self.utils_media,
+        ).pack(anchor=self.tk.W)
+        self.ttk.Checkbutton(
+            self.utils_frame,
+            text="Download/cache data",
+            variable=self.utils_download,
         ).pack(anchor=self.tk.W)
         self.ttk.Checkbutton(
             self.utils_frame,
@@ -870,11 +878,6 @@ class WorkflowGUI:
             text="Load utils defaults from config",
             command=lambda: self._load_utils_defaults_from_config(force=True),
         ).pack(fill=self.tk.X, pady=(6, 0))
-        self.ttk.Checkbutton(
-            self.utils_frame,
-            text="Build protocol-time media (MP4/GIF)",
-            variable=self.utils_media,
-        ).pack(anchor=self.tk.W)
         self.ttk.Button(
             self.utils_frame, text="Run utils", command=self._run_utils_clicked
         ).pack(fill=self.tk.X, pady=6)
