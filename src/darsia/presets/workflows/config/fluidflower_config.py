@@ -22,8 +22,8 @@ from .rig import RigConfig
 from .roi_registry import RoiRegistry
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
-from .workflow_utils import WorkflowUtilsConfig
 from .video import VideoConfig
+from .workflow_utils import WorkflowUtilsConfig
 
 logger = logging.getLogger(__name__)
 
