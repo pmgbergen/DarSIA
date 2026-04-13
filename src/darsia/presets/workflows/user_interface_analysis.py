@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+from collections.abc import Callable
 
 from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_context
 from darsia.presets.workflows.analysis.analysis_cropping import (
@@ -55,16 +56,6 @@ def build_parser_for_analysis():
         help="Show the labels after each step.",
     )
     parser.add_argument(
-        "--save-jpg",
-        action="store_true",
-        help="Save output figures as JPG.",
-    )
-    parser.add_argument(
-        "--save-npz",
-        action="store_true",
-        help="Save output figures as NPZ.",
-    )
-    parser.add_argument(
         "--info", action="store_true", help="Provide help for activated flags."
     )
     return parser
@@ -90,7 +81,12 @@ def print_help_for_flags(args, parser):
         sys.exit(0)
 
 
-def run_analysis(rig_cls: type[Rig], args, **kwargs):
+def run_analysis(
+    rig_cls: type[Rig],
+    args,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
+    **kwargs,
+):
     if not (
         args.cropping or args.mass or args.volume or args.segmentation or args.fingers
     ):
@@ -117,32 +113,35 @@ def run_analysis(rig_cls: type[Rig], args, **kwargs):
         analysis_cropping_from_context(
             ctx,
             show=args.show,
-            save_jpg=args.save_jpg,
-            save_npz=args.save_npz,
+            stream_callback=stream_callback,
         )
 
     if args.mass:
         analysis_mass_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
         )
 
     if args.volume:
         analysis_volume_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
         )
 
     if args.segmentation:
         analysis_segmentation_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
         )
 
     if args.fingers:
         analysis_fingers_from_context(
             ctx,
             show=args.show,
+            stream_callback=stream_callback,
         )
 
 

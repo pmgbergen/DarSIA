@@ -22,6 +22,8 @@ from .rig import RigConfig
 from .roi_registry import RoiRegistry
 from .segmentation import SegmentationConfig
 from .time_data import TimeData
+from .video import VideoConfig
+from .workflow_utils import WorkflowUtilsConfig
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +144,9 @@ class FluidFlowerConfig:
                 data_registry=self.data.registry if self.data else None,
                 roi_registry=self.roi_registry,
             )
-        except ValueError:
+        except (ValueError, KeyError):
+            # KeyError occurs when [color_paths] section is missing entirely.
+            # ValueError covers malformed/incomplete section content.
             self.color_paths = None
             warn(f"Section color_paths not found in {path}.")
 
@@ -155,7 +159,9 @@ class FluidFlowerConfig:
                 results=self.data.results if self.data else None,
                 data_registry=self.data.registry if self.data else None,
             )
-        except ValueError:
+        except (ValueError, KeyError):
+            # KeyError occurs when [color_to_mass] section is missing entirely.
+            # ValueError covers malformed/incomplete section content.
             self.color_to_mass = None
             warn(f"Section color_to_mass not found in {path}.")
 
@@ -185,6 +191,23 @@ class FluidFlowerConfig:
         except KeyError:
             self.download = None
             warn(f"Section download not found in {path}, use [download].")
+
+        # ! ---- UTILS CONFIG ---- ! #
+        try:
+            self.workflow_utils = WorkflowUtilsConfig()
+            self.workflow_utils.load(path)
+        except KeyError:
+            self.workflow_utils = None
+
+        # ! ---- VIDEO CONFIG ---- ! #
+        try:
+            self.video = VideoConfig()
+            self.video.load(
+                path,
+                results=self.data.results if self.data else None,
+            )
+        except KeyError:
+            self.video = None
 
         ## Reference colorchecker
         # try:
@@ -225,6 +248,8 @@ class FluidFlowerConfig:
             raise ValueError(
                 "No mass analysis loaded. Use [analysis.mass] in the config file."
             )
+        elif key == "video" and not self.video:
+            VideoConfig().error()
 
     def check(self, *args: str) -> None:
         """Check that required components are loaded.
@@ -251,6 +276,7 @@ class FluidFlowerConfig:
                 "labeling",
                 "protocol",
                 "rig",
+                "video",
             ], f"Key {key} not recognized for checking."
             self._check(key)
 

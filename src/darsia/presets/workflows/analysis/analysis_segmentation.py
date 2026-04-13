@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
+)
+from darsia.presets.workflows.analysis.streaming import (
+    publish_stream_images,
 )
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SegmentationContours
@@ -18,12 +22,14 @@ logger = logging.getLogger(__name__)
 def analysis_segmentation_from_context(
     ctx: AnalysisContext,
     show: bool = False,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
 ) -> None:
     """Segmentation analysis using pre-prepared context.
 
     Args:
         ctx: Pre-prepared analysis context with color_to_mass_analysis initialized.
         show: Whether to show the images.
+        stream_callback: Optional callback receiving streamed segmentation previews.
 
     """
     assert ctx.config.analysis is not None
@@ -62,12 +68,20 @@ def analysis_segmentation_from_context(
         contour_path = segmentation_config.folder / f"{path.stem}.jpg"
         contour_image.write(contour_path, quality=80)
 
+        publish_stream_images(
+            stream_callback=stream_callback,
+            image_payload={"segmentation": contour_image},
+            logger=logger,
+            error_message=f"Failed to stream segmentation preview for image '{path}'.",
+        )
+
 
 def analysis_segmentation(
     cls: type[Rig],
     path: Path | list[Path],
     show: bool = False,
     all: bool = False,
+    stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
 ):
     """Segmentation analysis (standalone entry point).
 
@@ -76,6 +90,7 @@ def analysis_segmentation(
         path: Path or list of paths to config files.
         show: Whether to show the images.
         all: Whether to use all images.
+        stream_callback: Optional callback receiving streamed segmentation previews.
 
     """
     ctx = prepare_analysis_context(
@@ -84,4 +99,8 @@ def analysis_segmentation(
         all=all,
         require_color_to_mass=True,
     )
-    analysis_segmentation_from_context(ctx, show=show)
+    analysis_segmentation_from_context(
+        ctx,
+        show=show,
+        stream_callback=stream_callback,
+    )
