@@ -1520,6 +1520,7 @@ class WorkflowGUI:
             "export_bundle": self.utils_export_bundle.get().strip(),
             "import_bundle": import_bundle,
             "import_conflict_action": import_conflict_action,
+            "media": action_flags["media"],
         }
         self._run_async(
             "utils",
