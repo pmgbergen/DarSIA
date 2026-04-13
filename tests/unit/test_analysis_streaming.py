@@ -151,7 +151,8 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
             del path
             return _FakeImage(np.zeros((16, 24, 3), dtype=np.uint8))
 
-    def _fake_color_to_mass(_img: _FakeImage):
+    def _fake_color_to_mass(img: _FakeImage):
+        del img
         scalar = np.zeros((16, 24), dtype=np.float32)
         scalar[2:8, 4:12] = 0.25
         scalar[10:14, 14:20] = 0.9
