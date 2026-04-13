@@ -126,7 +126,9 @@ class AnalysisThresholdingConfig:
         )
         if not isinstance(raw_thresholds, dict):
             raise ValueError("analysis.thresholding.thresholds must be a table/dict.")
-        invalid_threshold_modes = sorted(set(raw_thresholds.keys()) - self.SUPPORTED_MODES)
+        invalid_threshold_modes = sorted(
+            set(raw_thresholds.keys()) - self.SUPPORTED_MODES
+        )
         if len(invalid_threshold_modes) > 0:
             raise ValueError(
                 "Unsupported [analysis.thresholding].thresholds keys: "
