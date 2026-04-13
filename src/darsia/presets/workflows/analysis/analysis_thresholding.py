@@ -102,6 +102,40 @@ def _extract_mode_images(result: Any) -> dict[str, Any]:
     }
 
 
+def _overlay_layer(
+    base_bgr: np.ndarray,
+    mask: np.ndarray,
+    *,
+    fill: tuple[int, int, int],
+    stroke: tuple[int, int, int],
+    fill_alpha: float,
+    stroke_width: int,
+) -> np.ndarray:
+    overlay = base_bgr.copy()
+    mask_u8 = (mask > 0).astype(np.uint8)
+
+    # Fill on active mask region.
+    fill_bgr = np.array(_rgb_to_bgr(fill), dtype=np.uint8)
+    color_layer = np.zeros_like(overlay, dtype=np.uint8)
+    color_layer[mask_u8.astype(bool)] = fill_bgr
+    if fill_alpha > 0.0:
+        overlay = cv2.addWeighted(color_layer, fill_alpha, overlay, 1.0, 0.0)
+
+    # Stroke around contours.
+    if stroke_width > 0:
+        contours, _ = cv2.findContours(mask_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cv2.drawContours(
+            overlay,
+            contours,
+            -1,
+            _rgb_to_bgr(stroke),
+            thickness=stroke_width,
+            lineType=cv2.LINE_AA,
+        )
+
+    return overlay
+
+
 def analysis_thresholding_from_context(
     ctx: AnalysisContext,
     show: bool = False,
@@ -126,40 +160,58 @@ def analysis_thresholding_from_context(
     thresholding_config = config.analysis.thresholding
     thresholding_config.folder.mkdir(parents=True, exist_ok=True)
 
-    # Storage folder organization by mode.
-    mode_folders = {
-        mode: thresholding_config.folder / mode for mode in thresholding_config.modes
-    }
-    for mode_folder in mode_folders.values():
-        mode_folder.mkdir(parents=True, exist_ok=True)
+    layer_names = list(thresholding_config.layers.keys())
+    has_jpg = "jpg" in thresholding_config.formats
+    has_npz = "npz" in thresholding_config.formats
+
+    jpg_folder = thresholding_config.folder / "jpg"
+    npz_folder = thresholding_config.folder / "npz"
+    if has_jpg:
+        for layer_name in layer_names:
+            (jpg_folder / layer_name).mkdir(parents=True, exist_ok=True)
+    if has_npz:
+        for layer_name in layer_names:
+            (npz_folder / layer_name).mkdir(parents=True, exist_ok=True)
 
     for path in image_paths:
         img = fluidflower.read_image(path)
         result = color_to_mass_analysis(img)
         mode_images = _extract_mode_images(result)
         stream_payload: dict[str, Any] = {"thresholding_source_image": img}
+        img_bgr = _to_bgr_array(img)
 
-        for mode in thresholding_config.modes:
-            scalar = _to_scalar_array(mode_images[mode])
-            threshold = float(thresholding_config.thresholds[mode])
+        for layer_name, layer in thresholding_config.layers.items():
+            scalar = _to_scalar_array(mode_images[layer.mode])
+            threshold = float(layer.threshold)
             mask = (scalar >= threshold).astype(np.uint8)
 
-            np.savez_compressed(
-                mode_folders[mode] / f"{path.stem}.npz",
-                mask=mask,
-                threshold=threshold,
-                mode=mode,
-            )
+            if has_npz:
+                np.savez_compressed(
+                    npz_folder / layer_name / f"{path.stem}.npz",
+                    mask=mask,
+                    threshold=threshold,
+                    mode=layer.mode,
+                    layer=layer_name,
+                )
 
-            preview = np.where(mask > 0, 255, 0).astype(np.uint8)
-            preview = cv2.cvtColor(preview, cv2.COLOR_GRAY2BGR)
+            preview = _overlay_layer(
+                img_bgr,
+                mask,
+                fill=layer.fill,
+                stroke=layer.stroke,
+                fill_alpha=layer.fill_alpha,
+                stroke_width=layer.stroke_width,
+            )
             preview = _apply_legend(
                 preview,
-                text=f"{mode} >= {threshold:g}",
+                text=f"{layer.label} ({layer.mode} >= {threshold:g})",
                 legend_config=thresholding_config.legend,
             )
-            cv2.imwrite(str(mode_folders[mode] / f"{path.stem}.jpg"), preview)
-            stream_payload[f"thresholding_{mode}"] = cv2.cvtColor(
+
+            if has_jpg:
+                cv2.imwrite(str(jpg_folder / layer_name / f"{path.stem}.jpg"), preview)
+
+            stream_payload[f"thresholding_{layer_name}"] = cv2.cvtColor(
                 preview, cv2.COLOR_BGR2RGB
             )
 
@@ -167,10 +219,10 @@ def analysis_thresholding_from_context(
             import matplotlib.pyplot as plt
 
             img.show(title=f"Image at {path.stem}", delay=True)
-            for mode in thresholding_config.modes:
-                mode_preview = _to_bgr_array(stream_payload[f"thresholding_{mode}"])
+            for layer_name in layer_names:
+                mode_preview = _to_bgr_array(stream_payload[f"thresholding_{layer_name}"])
                 plt.figure()
-                plt.title(f"Thresholding {mode} at {path.stem}")
+                plt.title(f"Thresholding {layer_name} at {path.stem}")
                 plt.imshow(cv2.cvtColor(mode_preview, cv2.COLOR_BGR2RGB))
                 plt.axis("off")
             plt.show()

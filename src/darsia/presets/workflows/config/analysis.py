@@ -84,9 +84,54 @@ class AnalysisThresholdingLegendConfig:
 
 @dataclass
 class AnalysisThresholdingConfig:
-    modes: list[str] = field(
-        default_factory=lambda: ["concentration_aq", "saturation_g"]
-    )
+    @dataclass
+    class LayerConfig:
+        mode: str = "concentration_aq"
+        threshold: float = 0.0
+        label: str = ""
+        fill: tuple[int, int, int] = (255, 255, 255)
+        stroke: tuple[int, int, int] = (0, 0, 0)
+        fill_alpha: float = 0.35
+        stroke_width: int = 2
+
+        def load(
+            self, sec: dict, *, key: str, supported_modes: set[str]
+        ) -> "AnalysisThresholdingConfig.LayerConfig":
+            self.mode = _get_key(sec, "mode", required=True, type_=str).strip()
+            if self.mode not in supported_modes:
+                raise ValueError(
+                    f"Unsupported analysis.thresholding.layers.{key}.mode '{self.mode}'. "
+                    f"Supported modes: {', '.join(sorted(supported_modes))}."
+                )
+            self.threshold = float(_get_key(sec, "threshold", required=True))
+            self.label = _get_key(sec, "label", required=False, default=key, type_=str)
+            self.fill = _to_rgb(
+                _get_key(sec, "fill", required=False, default=self.fill),
+                f"analysis.thresholding.layers.{key}.fill",
+            )
+            self.stroke = _to_rgb(
+                _get_key(sec, "stroke", required=False, default=self.stroke),
+                f"analysis.thresholding.layers.{key}.stroke",
+            )
+            self.fill_alpha = float(
+                _get_key(sec, "fill_alpha", required=False, default=self.fill_alpha)
+            )
+            if not (0.0 <= self.fill_alpha <= 1.0):
+                raise ValueError(
+                    f"analysis.thresholding.layers.{key}.fill_alpha must be in [0, 1]."
+                )
+            self.stroke_width = int(
+                _get_key(sec, "stroke_width", required=False, default=self.stroke_width)
+            )
+            if self.stroke_width < 0:
+                raise ValueError(
+                    f"analysis.thresholding.layers.{key}.stroke_width must be >= 0."
+                )
+            return self
+
+    formats: list[str] = field(default_factory=lambda: ["jpg", "npz"])
+    layers: dict[str, LayerConfig] = field(default_factory=dict)
+    modes: list[str] = field(default_factory=lambda: ["concentration_aq", "saturation_g"])
     thresholds: dict[str, float] = field(default_factory=dict)
     legend: AnalysisThresholdingLegendConfig = field(
         default_factory=AnalysisThresholdingLegendConfig
@@ -105,39 +150,77 @@ class AnalysisThresholdingConfig:
     def load(self, sec: dict, results: Path | None) -> "AnalysisThresholdingConfig":
         sub_sec = _get_section(sec, "thresholding")
 
-        raw_modes = _get_key(sub_sec, "modes", required=False, default=self.modes)
-        if not isinstance(raw_modes, list) or not all(
-            isinstance(mode, str) for mode in raw_modes
-        ):
-            raise ValueError("analysis.thresholding.modes must be a list of strings.")
-        self.modes = [mode.strip() for mode in raw_modes if mode.strip()]
-        if len(self.modes) == 0:
-            raise ValueError("analysis.thresholding.modes must not be empty.")
-        invalid_modes = sorted(set(self.modes) - self.SUPPORTED_MODES)
-        if len(invalid_modes) > 0:
+        raw_formats = _get_key(sub_sec, "formats", required=False, default=self.formats)
+        if not isinstance(raw_formats, list):
+            raise ValueError("analysis.thresholding.formats must be a list.")
+        if not all(isinstance(fmt, str) for fmt in raw_formats):
+            raise ValueError("analysis.thresholding.formats entries must be strings.")
+        self.formats = [fmt.strip().lower() for fmt in raw_formats if fmt.strip()]
+        if len(self.formats) == 0:
+            raise ValueError("analysis.thresholding.formats must not be empty.")
+        supported_formats = {"jpg", "npz"}
+        invalid_formats = sorted(set(self.formats) - supported_formats)
+        if len(invalid_formats) > 0:
             raise ValueError(
-                "Unsupported [analysis.thresholding].modes entries: "
-                f"{', '.join(invalid_modes)}. Supported modes: "
-                f"{', '.join(sorted(self.SUPPORTED_MODES))}."
+                "Unsupported [analysis.thresholding].formats entries: "
+                f"{', '.join(invalid_formats)}. Supported formats: "
+                f"{', '.join(sorted(supported_formats))}."
             )
 
-        raw_thresholds = _get_key(
-            sub_sec, "thresholds", required=False, default=self.thresholds
-        )
-        if not isinstance(raw_thresholds, dict):
-            raise ValueError("analysis.thresholding.thresholds must be a table/dict.")
-        invalid_threshold_modes = sorted(
-            set(raw_thresholds.keys()) - self.SUPPORTED_MODES
-        )
-        if len(invalid_threshold_modes) > 0:
-            raise ValueError(
-                "Unsupported [analysis.thresholding].thresholds keys: "
-                f"{', '.join(invalid_threshold_modes)}. Supported modes: "
-                f"{', '.join(sorted(self.SUPPORTED_MODES))}."
+        # Preferred schema: explicit layer definitions.
+        raw_layers = _get_key(sub_sec, "layers", required=False, default={})
+        if not isinstance(raw_layers, dict):
+            raise ValueError("analysis.thresholding.layers must be a table/dict.")
+        self.layers = {}
+        if len(raw_layers) > 0:
+            for key in raw_layers.keys():
+                layer_sec = _get_section(raw_layers, key)
+                self.layers[key] = self.LayerConfig().load(
+                    layer_sec, key=key, supported_modes=self.SUPPORTED_MODES
+                )
+        else:
+            # Backward compatibility: construct layers from modes+thresholds.
+            raw_modes = _get_key(sub_sec, "modes", required=False, default=self.modes)
+            if not isinstance(raw_modes, list) or not all(
+                isinstance(mode, str) for mode in raw_modes
+            ):
+                raise ValueError("analysis.thresholding.modes must be a list of strings.")
+            self.modes = [mode.strip() for mode in raw_modes if mode.strip()]
+            if len(self.modes) == 0:
+                raise ValueError("analysis.thresholding.modes must not be empty.")
+            invalid_modes = sorted(set(self.modes) - self.SUPPORTED_MODES)
+            if len(invalid_modes) > 0:
+                raise ValueError(
+                    "Unsupported [analysis.thresholding].modes entries: "
+                    f"{', '.join(invalid_modes)}. Supported modes: "
+                    f"{', '.join(sorted(self.SUPPORTED_MODES))}."
+                )
+
+            raw_thresholds = _get_key(
+                sub_sec, "thresholds", required=False, default=self.thresholds
             )
-        self.thresholds = {
-            mode: float(raw_thresholds.get(mode, 0.0)) for mode in self.modes
-        }
+            if not isinstance(raw_thresholds, dict):
+                raise ValueError("analysis.thresholding.thresholds must be a table/dict.")
+            invalid_threshold_modes = sorted(
+                set(raw_thresholds.keys()) - self.SUPPORTED_MODES
+            )
+            if len(invalid_threshold_modes) > 0:
+                raise ValueError(
+                    "Unsupported [analysis.thresholding].thresholds keys: "
+                    f"{', '.join(invalid_threshold_modes)}. Supported modes: "
+                    f"{', '.join(sorted(self.SUPPORTED_MODES))}."
+                )
+            self.thresholds = {
+                mode: float(raw_thresholds.get(mode, 0.0)) for mode in self.modes
+            }
+            self.layers = {
+                mode: self.LayerConfig(
+                    mode=mode,
+                    threshold=self.thresholds[mode],
+                    label=mode,
+                )
+                for mode in self.modes
+            }
 
         legend = _get_key(sub_sec, "legend", required=False, default={})
         if not isinstance(legend, dict):

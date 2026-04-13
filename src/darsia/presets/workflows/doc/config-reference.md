@@ -91,9 +91,16 @@ analysis outputs. Supported `modes`:
 - `mass_aq`
 
 Supported keys:
-- `modes` (list of mode names; default: `["concentration_aq", "saturation_g"]`)
-- `thresholds.<mode>` (float threshold per mode; defaults to `0.0`)
+- `formats` (list of output formats: `["jpg", "npz"]`)
 - `folder` (output folder, defaults to `<results>/thresholding`)
+- `[analysis.thresholding.layers.<name>]` (one mask layer per entry):
+  - `mode` (`concentration_aq`, `saturation_g`, `mass_total`, `mass_g`, `mass_aq`)
+  - `threshold` (float)
+  - `label` (string)
+  - `fill` (`[r,g,b]`)
+  - `stroke` (`[r,g,b]`)
+  - `fill_alpha` (float in `[0, 1]`)
+  - `stroke_width` (int `>= 0`)
 - `[analysis.thresholding.legend]` (compact text-box style keys aligned with
   `[video.overlay]`):
   - `show`
@@ -106,6 +113,10 @@ Supported keys:
   - `box_color`
   - `box_alpha`
   - `box_padding`
+
+Notes:
+- JPG and NPZ outputs are stored in separate subfolders: `<folder>/jpg/` and `<folder>/npz/`.
+- Legacy `modes` + `thresholds` is still accepted and mapped to default layers.
 
 ## Notes on legacy vs current naming
 - Current rig section is `[rig]`.
