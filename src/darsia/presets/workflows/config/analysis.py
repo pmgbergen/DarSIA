@@ -131,7 +131,9 @@ class AnalysisThresholdingConfig:
 
     formats: list[str] = field(default_factory=lambda: ["jpg", "npz"])
     layers: dict[str, LayerConfig] = field(default_factory=dict)
-    modes: list[str] = field(default_factory=lambda: ["concentration_aq", "saturation_g"])
+    modes: list[str] = field(
+        default_factory=lambda: ["concentration_aq", "saturation_g"]
+    )
     thresholds: dict[str, float] = field(default_factory=dict)
     legend: AnalysisThresholdingLegendConfig = field(
         default_factory=AnalysisThresholdingLegendConfig
@@ -184,7 +186,9 @@ class AnalysisThresholdingConfig:
             if not isinstance(raw_modes, list) or not all(
                 isinstance(mode, str) for mode in raw_modes
             ):
-                raise ValueError("analysis.thresholding.modes must be a list of strings.")
+                raise ValueError(
+                    "analysis.thresholding.modes must be a list of strings."
+                )
             self.modes = [mode.strip() for mode in raw_modes if mode.strip()]
             if len(self.modes) == 0:
                 raise ValueError("analysis.thresholding.modes must not be empty.")
@@ -200,7 +204,9 @@ class AnalysisThresholdingConfig:
                 sub_sec, "thresholds", required=False, default=self.thresholds
             )
             if not isinstance(raw_thresholds, dict):
-                raise ValueError("analysis.thresholding.thresholds must be a table/dict.")
+                raise ValueError(
+                    "analysis.thresholding.thresholds must be a table/dict."
+                )
             invalid_threshold_modes = sorted(
                 set(raw_thresholds.keys()) - self.SUPPORTED_MODES
             )

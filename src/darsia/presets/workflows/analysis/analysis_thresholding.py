@@ -123,7 +123,9 @@ def _overlay_layer(
 
     # Stroke around contours.
     if stroke_width > 0:
-        contours, _ = cv2.findContours(mask_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            mask_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
         cv2.drawContours(
             overlay,
             contours,
@@ -220,7 +222,9 @@ def analysis_thresholding_from_context(
 
             img.show(title=f"Image at {path.stem}", delay=True)
             for layer_name in layer_names:
-                mode_preview = _to_bgr_array(stream_payload[f"thresholding_{layer_name}"])
+                mode_preview = _to_bgr_array(
+                    stream_payload[f"thresholding_{layer_name}"]
+                )
                 plt.figure()
                 plt.title(f"Thresholding {layer_name} at {path.stem}")
                 plt.imshow(cv2.cvtColor(mode_preview, cv2.COLOR_BGR2RGB))
