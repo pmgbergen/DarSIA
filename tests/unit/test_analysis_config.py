@@ -50,19 +50,25 @@ formats = ["npz", "png"]
         )
 
 
-def test_analysis_thresholding_modes_and_thresholds_are_loaded(tmp_path: Path) -> None:
+def test_analysis_thresholding_layers_and_formats_are_loaded(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
 [analysis]
 [analysis.thresholding]
-modes = ["concentration_aq", "saturation_g", "mass_total", "mass_g", "mass_aq"]
-[analysis.thresholding.thresholds]
-concentration_aq = 0.05
-saturation_g = 0.15
-mass_total = 0.0
-mass_g = 0.01
-mass_aq = 0.02
+formats = ["jpg", "npz"]
+[analysis.thresholding.layers.gas]
+mode = "saturation_g"
+threshold = 0.15
+label = "Gas plume"
+fill = [255, 0, 0]
+stroke = [255, 255, 255]
+[analysis.thresholding.layers.aq]
+mode = "concentration_aq"
+threshold = 0.05
+label = "Aqueous plume"
+fill = [0, 0, 255]
+stroke = [255, 255, 255]
 [analysis.thresholding.legend]
 show = true
 font_scale = 0.8
@@ -82,34 +88,50 @@ box_padding = 8
     )
 
     assert config.thresholding is not None
-    assert config.thresholding.modes == [
-        "concentration_aq",
-        "saturation_g",
-        "mass_total",
-        "mass_g",
-        "mass_aq",
-    ]
-    assert config.thresholding.thresholds == {
-        "concentration_aq": 0.05,
-        "saturation_g": 0.15,
-        "mass_total": 0.0,
-        "mass_g": 0.01,
-        "mass_aq": 0.02,
-    }
+    assert config.thresholding.formats == ["jpg", "npz"]
+    assert set(config.thresholding.layers.keys()) == {"gas", "aq"}
+    assert config.thresholding.layers["gas"].mode == "saturation_g"
+    assert config.thresholding.layers["gas"].threshold == 0.15
+    assert config.thresholding.layers["gas"].label == "Gas plume"
+    assert config.thresholding.layers["aq"].mode == "concentration_aq"
+    assert config.thresholding.layers["aq"].threshold == 0.05
 
 
-def test_analysis_thresholding_rejects_invalid_mode(tmp_path: Path) -> None:
+def test_analysis_thresholding_rejects_invalid_layer_mode(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
 [analysis]
 [analysis.thresholding]
-modes = ["concentration_aq", "not_supported"]
+[analysis.thresholding.layers.bad]
+mode = "not_supported"
+threshold = 0.1
+""".strip(),
+    )
+
+    with pytest.raises(ValueError, match=r"Unsupported analysis\.thresholding\.layers"):
+        AnalysisConfig().load(
+            path=config_path,
+            data=tmp_path,
+            results=tmp_path,
+        )
+
+
+def test_analysis_thresholding_rejects_invalid_formats(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+[analysis.thresholding]
+formats = ["jpg", "png"]
+[analysis.thresholding.layers.gas]
+mode = "saturation_g"
+threshold = 0.1
 """.strip(),
     )
 
     with pytest.raises(
-        ValueError, match=r"Unsupported \[analysis\.thresholding\]\.modes entries"
+        ValueError, match=r"Unsupported \[analysis\.thresholding\]\.formats entries"
     ):
         AnalysisConfig().load(
             path=config_path,
