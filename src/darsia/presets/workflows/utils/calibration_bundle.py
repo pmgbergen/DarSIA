@@ -7,6 +7,7 @@ import logging
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
@@ -85,6 +86,143 @@ def _write_config_snippet(
     return snippet_path
 
 
+def _collect_artifact_members(
+    zip_file: ZipFile,
+) -> dict[str, list[tuple[ZipInfo, Path]]]:
+    """Collect archive members grouped by artifact."""
+    artifact_members: dict[str, list[tuple[ZipInfo, Path]]] = {
+        "color_paths": [],
+        "color_to_mass": [],
+        "baseline_color_spectrum": [],
+        "color_range": [],
+    }
+    members = zip_file.infolist()
+    has_bundle_root = any(
+        Path(member.filename).parts[:1] == ("calibration_bundle",) for member in members
+    )
+    for member in members:
+        member_path = Path(member.filename)
+        if member_path.is_absolute() or ".." in member_path.parts:
+            raise ValueError(f"Unsafe archive member path: {member.filename}")
+        if has_bundle_root and (
+            not member_path.parts or member_path.parts[0] != "calibration_bundle"
+        ):
+            continue
+        if member_path.parts and member_path.parts[0] == "calibration_bundle":
+            member_path = Path(*member_path.parts[1:])
+        if len(member_path.parts) < 2:
+            continue
+        artifact = member_path.parts[0]
+        if artifact not in artifact_members or member.is_dir():
+            continue
+        artifact_members[artifact].append((member, Path(*member_path.parts[1:])))
+    return artifact_members
+
+
+def _build_destination_roots(
+    config: FluidFlowerConfig, target_folder: Path, calibration_root: Path
+) -> dict[str, Path]:
+    return {
+        "color_paths": (
+            config.color_paths.calibration_file.parent
+            if target_folder == calibration_root and config.color_paths is not None
+            else target_folder / "color_paths"
+        ),
+        "color_to_mass": (
+            config.color_to_mass.calibration_folder.parent
+            if target_folder == calibration_root and config.color_to_mass is not None
+            else target_folder / "color_to_mass"
+        ),
+        "baseline_color_spectrum": (
+            config.color_paths.baseline_color_spectrum_folder
+            if target_folder == calibration_root and config.color_paths is not None
+            else target_folder / "baseline_color_spectrum"
+        ),
+        "color_range": (
+            config.color_paths.color_range_file.with_suffix(".json")
+            if target_folder == calibration_root and config.color_paths is not None
+            else target_folder / "color_range.json"
+        ),
+    }
+
+
+def _resolve_import_targets(
+    artifact_members: dict[str, list[tuple[ZipInfo, Path]]],
+    destination_roots: dict[str, Path],
+    expected_basis_folders: dict[str, str | None],
+) -> tuple[list[tuple[ZipInfo, Path]], dict[str, str | None]]:
+    targets: list[tuple[ZipInfo, Path]] = []
+    imported_basis_folders: dict[str, str | None] = {
+        "color_paths": None,
+        "color_to_mass": None,
+    }
+    for artifact, members in artifact_members.items():
+        destination_root = destination_roots[artifact]
+        safe_base = (
+            destination_root if artifact != "color_range" else destination_root.parent
+        )
+        for member, relative_path in members:
+            if artifact in {"color_paths", "color_to_mass"}:
+                if relative_path.parts and relative_path.parts[0].startswith("from_"):
+                    imported_basis_folders[artifact] = relative_path.parts[0]
+                elif expected_basis_folders[artifact] is not None:
+                    relative_path = (
+                        Path(expected_basis_folders[artifact]) / relative_path
+                    )
+            destination = (
+                destination_root
+                if artifact == "color_range"
+                else destination_root / relative_path
+            )
+            if not destination.resolve().is_relative_to(safe_base.resolve()):
+                raise ValueError(f"Unsafe archive member path: {member.filename}")
+            targets.append((member, destination))
+    return targets, imported_basis_folders
+
+
+def _resolve_import_conflicts(
+    targets: list[tuple[ZipInfo, Path]],
+) -> list[Path]:
+    return [destination for _, destination in targets if destination.exists()]
+
+
+def preview_calibration_bundle_import_conflicts(
+    path: Path | list[Path], bundle: Path, target_folder: Path | None = None
+) -> list[Path]:
+    """Preview destination files that would be overwritten during import."""
+    config = FluidFlowerConfig(path, require_data=False, require_results=False)
+    bundle = Path(bundle)
+    if not bundle.exists():
+        raise FileNotFoundError(f"Calibration bundle not found: {bundle}")
+    if config.data is None or config.data.results is None:
+        raise ValueError("Missing [data].results value in config.")
+
+    calibration_root = config.data.results / "calibration"
+    target_folder = calibration_root if target_folder is None else Path(target_folder)
+    destination_roots = _build_destination_roots(
+        config, target_folder, calibration_root
+    )
+    expected_basis_folders: dict[str, str | None] = {
+        "color_paths": (
+            _basis_subfolder_name(config.color_paths.calibration_file)
+            if config.color_paths is not None
+            else None
+        ),
+        "color_to_mass": (
+            _basis_subfolder_name(config.color_to_mass.calibration_folder)
+            if config.color_to_mass is not None
+            else None
+        ),
+    }
+    with ZipFile(bundle, mode="r") as zip_file:
+        artifact_members = _collect_artifact_members(zip_file)
+    targets, _ = _resolve_import_targets(
+        artifact_members, destination_roots, expected_basis_folders
+    )
+    conflicts = _resolve_import_conflicts(targets)
+    return sorted(set(conflicts))
+
+
 def export_calibration_bundle(
     path: Path | list[Path], bundle: Path | None = None
 ) -> Path:
@@ -161,6 +299,7 @@ def import_calibration_bundle(
     bundle: Path,
     target_folder: Path | None = None,
     overwrite: bool = False,
+    conflict_action: Literal["error", "overwrite_all", "skip_all"] | None = None,
 ) -> dict[str, Path]:
     """Import a calibration bundle and provide config-ready path mapping."""
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
@@ -176,38 +315,12 @@ def import_calibration_bundle(
         target_folder = calibration_root
     else:
         target_folder = Path(target_folder)
-        if target_folder.exists():
-            if not overwrite:
-                raise FileExistsError(
-                    f"Target folder already exists: {target_folder}. "
-                    "Use overwrite=True or provide a new target folder."
-                )
-            shutil.rmtree(target_folder)
 
     target_folder.mkdir(parents=True, exist_ok=True)
 
-    destination_roots: dict[str, Path] = {
-        "color_paths": (
-            config.color_paths.calibration_file.parent
-            if target_folder == calibration_root and config.color_paths is not None
-            else target_folder / "color_paths"
-        ),
-        "color_to_mass": (
-            config.color_to_mass.calibration_folder.parent
-            if target_folder == calibration_root and config.color_to_mass is not None
-            else target_folder / "color_to_mass"
-        ),
-        "baseline_color_spectrum": (
-            config.color_paths.baseline_color_spectrum_folder
-            if target_folder == calibration_root and config.color_paths is not None
-            else target_folder / "baseline_color_spectrum"
-        ),
-        "color_range": (
-            config.color_paths.color_range_file.with_suffix(".json")
-            if target_folder == calibration_root and config.color_paths is not None
-            else target_folder / "color_range.json"
-        ),
-    }
+    destination_roots = _build_destination_roots(
+        config, target_folder, calibration_root
+    )
     expected_basis_folders: dict[str, str | None] = {
         "color_paths": (
             _basis_subfolder_name(config.color_paths.calibration_file)
@@ -220,87 +333,34 @@ def import_calibration_bundle(
             else None
         ),
     }
-    imported_basis_folders: dict[str, str | None] = {
-        "color_paths": None,
-        "color_to_mass": None,
-    }
 
-    destination_root_paths = [
-        destination_roots["color_paths"],
-        destination_roots["color_to_mass"],
-        destination_roots["baseline_color_spectrum"],
-        destination_roots["color_range"],
-    ]
-    existing_destinations = [path for path in destination_root_paths if path.exists()]
-    if existing_destinations and not overwrite:
-        raise FileExistsError(
-            f"Calibration destination already exists: {existing_destinations[0]}. "
-            "Use overwrite=True or provide a new target folder."
-        )
-    if overwrite:
-        for destination in existing_destinations:
-            if destination.is_dir():
-                shutil.rmtree(destination)
-            else:
-                destination.unlink()
+    if conflict_action is not None and conflict_action not in {
+        "error",
+        "overwrite_all",
+        "skip_all",
+    }:
+        raise ValueError(f"Unsupported conflict action: {conflict_action}")
+    action = conflict_action or ("overwrite_all" if overwrite else "error")
 
-    artifact_members: dict[str, list[tuple[ZipInfo, Path]]] = {
-        "color_paths": [],
-        "color_to_mass": [],
-        "baseline_color_spectrum": [],
-        "color_range": [],
-    }
     with ZipFile(bundle, mode="r") as zip_file:
-        members = zip_file.infolist()
-        has_bundle_root = any(
-            Path(member.filename).parts[:1] == ("calibration_bundle",)
-            for member in members
+        artifact_members = _collect_artifact_members(zip_file)
+        targets, imported_basis_folders = _resolve_import_targets(
+            artifact_members, destination_roots, expected_basis_folders
         )
-        for member in members:
-            member_path = Path(member.filename)
-            if member_path.is_absolute() or ".." in member_path.parts:
-                raise ValueError(f"Unsafe archive member path: {member.filename}")
-            if has_bundle_root and (
-                not member_path.parts or member_path.parts[0] != "calibration_bundle"
-            ):
-                continue
-            if member_path.parts and member_path.parts[0] == "calibration_bundle":
-                member_path = Path(*member_path.parts[1:])
-            if len(member_path.parts) < 2:
-                continue
-            artifact = member_path.parts[0]
-            if artifact not in artifact_members or member.is_dir():
-                continue
-            artifact_members[artifact].append((member, Path(*member_path.parts[1:])))
-
-        for artifact, members in artifact_members.items():
-            destination_root = destination_roots[artifact]
-            # color_range is stored as a single file destination, while the others
-            # are directories receiving extracted members.
-            safe_base = (
-                destination_root
-                if artifact != "color_range"
-                else destination_root.parent
+        conflicts = _resolve_import_conflicts(targets)
+        if conflicts and action == "error":
+            raise FileExistsError(
+                f"Calibration import would overwrite existing file: {conflicts[0]}. "
+                "Use overwrite=True/conflict_action='overwrite_all' or "
+                "conflict_action='skip_all'."
             )
-            for member, relative_path in members:
-                if artifact in {"color_paths", "color_to_mass"}:
-                    if relative_path.parts and relative_path.parts[0].startswith(
-                        "from_"
-                    ):
-                        imported_basis_folders[artifact] = relative_path.parts[0]
-                    elif expected_basis_folders[artifact] is not None:
-                        relative_path = (
-                            Path(expected_basis_folders[artifact]) / relative_path
-                        )
-                if artifact == "color_range":
-                    destination = destination_root
-                else:
-                    destination = destination_root / relative_path
-                if not destination.resolve().is_relative_to(safe_base.resolve()):
-                    raise ValueError(f"Unsafe archive member path: {member.filename}")
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                with zip_file.open(member) as src, destination.open("wb") as dst:
-                    shutil.copyfileobj(src, dst)
+        for member, destination in targets:
+            if destination.exists():
+                if action == "skip_all":
+                    continue
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with zip_file.open(member) as src, destination.open("wb") as dst:
+                shutil.copyfileobj(src, dst)
 
     result: dict[str, Path] = {}
     # Only these artifacts are basis-aware and may carry a from_* subfolder.

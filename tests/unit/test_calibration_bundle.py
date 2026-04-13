@@ -7,6 +7,7 @@ import pytest
 from darsia.presets.workflows.utils.calibration_bundle import (
     export_calibration_bundle,
     import_calibration_bundle,
+    preview_calibration_bundle_import_conflicts,
 )
 
 
@@ -117,10 +118,81 @@ def test_import_calibration_bundle_overwrite_guard(tmp_path: Path):
     config_path = _create_calibration_artifacts(tmp_path)
     bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")
     target = tmp_path / "imported"
-    target.mkdir(parents=True, exist_ok=True)
+    conflict_file = target / "color_paths" / "from_labels" / "metadata.json"
+    conflict_file.parent.mkdir(parents=True, exist_ok=True)
+    conflict_file.write_text("{}")
 
     with pytest.raises(FileExistsError):
         import_calibration_bundle(config_path, bundle=bundle, target_folder=target)
+
+
+def test_preview_calibration_bundle_import_conflicts(tmp_path: Path):
+    config_path = _create_calibration_artifacts(tmp_path)
+    bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")
+    target = tmp_path / "imported"
+    (target / "color_paths" / "from_labels").mkdir(parents=True, exist_ok=True)
+    (target / "color_paths" / "from_labels" / "metadata.json").write_text("{}")
+
+    conflicts = preview_calibration_bundle_import_conflicts(
+        config_path, bundle=bundle, target_folder=target
+    )
+    assert target / "color_paths" / "from_labels" / "metadata.json" in conflicts
+
+
+def test_preview_calibration_bundle_import_conflicts_multiple_artifacts(tmp_path: Path):
+    config_path = _create_calibration_artifacts(tmp_path)
+    bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")
+    target = tmp_path / "imported"
+    color_to_mass_conflict = target / "color_to_mass" / "from_labels" / "metadata.json"
+    baseline_conflict = target / "baseline_color_spectrum" / "color_spectrum_0.json"
+    color_to_mass_conflict.parent.mkdir(parents=True, exist_ok=True)
+    baseline_conflict.parent.mkdir(parents=True, exist_ok=True)
+    color_to_mass_conflict.write_text("{}")
+    baseline_conflict.write_text("{}")
+
+    conflicts = preview_calibration_bundle_import_conflicts(
+        config_path, bundle=bundle, target_folder=target
+    )
+
+    assert color_to_mass_conflict in conflicts
+    assert baseline_conflict in conflicts
+
+
+def test_import_calibration_bundle_skip_all_conflicts(tmp_path: Path):
+    config_path = _create_calibration_artifacts(tmp_path)
+    bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")
+    target = tmp_path / "imported"
+    conflict_file = target / "color_paths" / "from_labels" / "metadata.json"
+    conflict_file.parent.mkdir(parents=True, exist_ok=True)
+    conflict_file.write_text('{"old":"value"}')
+
+    imported = import_calibration_bundle(
+        config_path,
+        bundle=bundle,
+        target_folder=target,
+        conflict_action="skip_all",
+    )
+
+    assert json.loads(conflict_file.read_text()) == {"old": "value"}
+    assert imported["color_to_mass"].exists()
+
+
+def test_import_calibration_bundle_overwrite_all_conflicts(tmp_path: Path):
+    config_path = _create_calibration_artifacts(tmp_path)
+    bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")
+    target = tmp_path / "imported"
+    conflict_file = target / "color_paths" / "from_labels" / "metadata.json"
+    conflict_file.parent.mkdir(parents=True, exist_ok=True)
+    conflict_file.write_text('{"old":"value"}')
+
+    import_calibration_bundle(
+        config_path,
+        bundle=bundle,
+        target_folder=target,
+        conflict_action="overwrite_all",
+    )
+
+    assert json.loads(conflict_file.read_text()) != {"old": "value"}
 
 
 def test_import_calibration_bundle_default_target_from_config(tmp_path: Path):

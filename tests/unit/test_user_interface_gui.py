@@ -23,10 +23,12 @@ from darsia.presets.workflows.user_interface_gui import (
     format_workflow_done_message,
     format_workflow_error_message,
     format_workflow_start_message,
+    map_conflict_dialog_choice_to_policy,
     normalize_paths,
     publish_latest_queue_item,
     read_session_cache,
     resolve_rig_class,
+    resolve_utils_bundle_defaults,
     suggested_analysis_results_folder,
     write_session_cache,
 )
@@ -269,6 +271,34 @@ def test_clear_queue_removes_all_items() -> None:
     assert q.empty()
 
 
+def test_map_conflict_dialog_choice_to_policy() -> None:
+    assert map_conflict_dialog_choice_to_policy(True) == "overwrite_all"
+    assert map_conflict_dialog_choice_to_policy(False) == "skip_all"
+    assert map_conflict_dialog_choice_to_policy(None) is None
+
+
+def test_resolve_utils_bundle_defaults(tmp_path: Path) -> None:
+    data_folder = tmp_path / "data"
+    data_folder.mkdir(parents=True, exist_ok=True)
+    (data_folder / "baseline.jpg").touch()
+    config = tmp_path / "config.toml"
+    config.write_text(
+        f"""
+[data]
+folder = "{data_folder}"
+baseline = "baseline.jpg"
+results = "{tmp_path / "results"}"
+
+[utils.calibration]
+export_bundle = "{tmp_path / "export.zip"}"
+import_bundle = "{tmp_path / "import.zip"}"
+"""
+    )
+    export_bundle, import_bundle = resolve_utils_bundle_defaults([str(config)])
+    assert export_bundle == str(tmp_path / "export.zip")
+    assert import_bundle == str(tmp_path / "import.zip")
+
+
 def test_run_utils_workflow_dispatches_download_and_media(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -280,12 +310,25 @@ def test_run_utils_workflow_dispatches_download_and_media(
     def _fake_media(paths):
         calls.append(("media", paths))
 
+    def _fake_export(paths, bundle):
+        del bundle
+        calls.append(("export_calibration", paths))
+
+    def _fake_import(paths, bundle, conflict_action):
+        del bundle, conflict_action
+        calls.append(("import_calibration", paths))
+
     fake_download_module = types.ModuleType(
         "darsia.presets.workflows.utils.utils_download"
     )
     fake_download_module.download_data = _fake_download
     fake_media_module = types.ModuleType("darsia.presets.workflows.utils.utils_media")
     fake_media_module.build_media = _fake_media
+    fake_calibration_module = types.ModuleType(
+        "darsia.presets.workflows.utils.calibration_bundle"
+    )
+    fake_calibration_module.export_calibration_bundle = _fake_export
+    fake_calibration_module.import_calibration_bundle = _fake_import
     monkeypatch.setitem(
         sys.modules,
         "darsia.presets.workflows.utils.utils_download",
@@ -296,13 +339,26 @@ def test_run_utils_workflow_dispatches_download_and_media(
         "darsia.presets.workflows.utils.utils_media",
         fake_media_module,
     )
+    monkeypatch.setitem(
+        sys.modules,
+        "darsia.presets.workflows.utils.calibration_bundle",
+        fake_calibration_module,
+    )
 
     config_path = tmp_path / "run.toml"
     config_path.write_text("[data]\nfolder='.'\n")
 
     _run_utils_workflow(
         [str(config_path)],
-        {"download": True, "media": True},
+        {
+            "download": True,
+            "media": True,
+            "export_calibration": False,
+            "import_calibration": False,
+            "export_bundle": "",
+            "import_bundle": "",
+            "import_conflict_action": "error",
+        },
     )
 
     assert len(calls) == 2

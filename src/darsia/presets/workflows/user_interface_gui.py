@@ -22,13 +22,14 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 from queue import Empty, Full
-from typing import Any, Callable, Protocol
+from typing import Any, Callable, Protocol, TypedDict
 
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
 SESSION_CACHE_FILE_NAME = "workflows_gui_session.json"
 SESSION_CACHE_VERSION = 1
+UTILS_CONFLICT_PREVIEW_LIMIT = 8
 WORKFLOW_ERROR_DETAILS_PREFIX = "__DARSIA_WORKFLOW_ERROR_DETAILS__:"
 
 
@@ -47,6 +48,16 @@ class SupportsQueue(Protocol):
 
     def put_nowait(self, obj: Any) -> Any:
         """Put one queue element without blocking."""
+
+
+class UtilsWorkflowOptions(TypedDict):
+    media: bool
+    download: bool
+    export_calibration: bool
+    import_calibration: bool
+    export_bundle: str
+    import_bundle: str
+    import_conflict_action: str
 
 
 def _require_tkinter() -> tuple[Any, Any, Any, Any]:
@@ -317,6 +328,39 @@ def enabled_option_labels(
     ]
 
 
+def resolve_utils_bundle_defaults(config_paths: list[str]) -> tuple[str, str]:
+    """Resolve configured default bundle paths for utils export/import."""
+    from darsia.presets.workflows.config.workflow_utils import WorkflowUtilsConfig
+
+    paths = normalize_paths(config_paths)
+    if not paths:
+        return "", ""
+    try:
+        config = WorkflowUtilsConfig().load(paths)
+    except KeyError:
+        return "", ""
+    export_bundle = (
+        ""
+        if config.export_calibration_bundle is None
+        else str(config.export_calibration_bundle)
+    )
+    import_bundle = (
+        ""
+        if config.import_calibration_bundle is None
+        else str(config.import_calibration_bundle)
+    )
+    return export_bundle, import_bundle
+
+
+def map_conflict_dialog_choice_to_policy(choice: bool | None) -> str | None:
+    """Map askyesnocancel result to import conflict policy."""
+    if choice is True:
+        return "overwrite_all"
+    if choice is False:
+        return "skip_all"
+    return None
+
+
 def format_workflow_start_message(
     workflow: str, actions: list[str], config_paths: list[Path], rig_spec: str
 ) -> str:
@@ -504,14 +548,30 @@ def _run_comparison_workflow(
     run_comparison(rig_cls, args)
 
 
-def _run_utils_workflow(config_paths: list[str], options: dict[str, bool]) -> None:
+def _run_utils_workflow(config_paths: list[str], options: UtilsWorkflowOptions) -> None:
     """Run utility workflow in a worker process."""
+    from darsia.presets.workflows.utils.calibration_bundle import (
+        export_calibration_bundle,
+        import_calibration_bundle,
+    )
     from darsia.presets.workflows.utils.utils_download import download_data
     from darsia.presets.workflows.utils.utils_media import build_media
 
     paths = normalize_paths(config_paths)
     if options["download"]:
         download_data(paths)
+    if options["export_calibration"]:
+        bundle = Path(options["export_bundle"]) if options["export_bundle"] else None
+        export_calibration_bundle(paths, bundle=bundle)
+    if options["import_calibration"]:
+        bundle_raw = options["import_bundle"]
+        if not bundle_raw:
+            raise ValueError("Import calibration requires a bundle path.")
+        import_calibration_bundle(
+            paths,
+            bundle=Path(bundle_raw),
+            conflict_action=options["import_conflict_action"],
+        )
     if options["media"]:
         build_media(paths)
 
@@ -765,15 +825,59 @@ class WorkflowGUI:
 
     def _build_utils_tab(self) -> None:
         self.utils_download = self.tk.BooleanVar(value=False)
+        self.utils_export_calibration = self.tk.BooleanVar(value=False)
+        self.utils_import_calibration = self.tk.BooleanVar(value=False)
+        self.utils_export_bundle = self.tk.StringVar(value="")
+        self.utils_import_bundle = self.tk.StringVar(value="")
         self.utils_media = self.tk.BooleanVar(value=False)
-        self.ttk.Checkbutton(
-            self.utils_frame, text="Download/cache data", variable=self.utils_download
-        ).pack(anchor=self.tk.W)
         self.ttk.Checkbutton(
             self.utils_frame,
             text="Build protocol-time media (MP4/GIF)",
             variable=self.utils_media,
         ).pack(anchor=self.tk.W)
+        self.ttk.Checkbutton(
+            self.utils_frame,
+            text="Download/cache data",
+            variable=self.utils_download,
+        ).pack(anchor=self.tk.W)
+        self.ttk.Checkbutton(
+            self.utils_frame,
+            text="Export calibration",
+            variable=self.utils_export_calibration,
+        ).pack(anchor=self.tk.W, pady=(6, 0))
+        self.ttk.Label(self.utils_frame, text="Export zip destination").pack(
+            anchor=self.tk.W
+        )
+        export_row = self.ttk.Frame(self.utils_frame)
+        export_row.pack(fill=self.tk.X)
+        self.ttk.Entry(export_row, textvariable=self.utils_export_bundle).pack(
+            side=self.tk.LEFT, fill=self.tk.X, expand=True
+        )
+        self.ttk.Button(
+            export_row, text="Browse", command=self._browse_utils_export_bundle
+        ).pack(side=self.tk.LEFT, padx=4)
+
+        self.ttk.Checkbutton(
+            self.utils_frame,
+            text="Import calibration",
+            variable=self.utils_import_calibration,
+        ).pack(anchor=self.tk.W, pady=(6, 0))
+        self.ttk.Label(self.utils_frame, text="Import zip source").pack(
+            anchor=self.tk.W
+        )
+        import_row = self.ttk.Frame(self.utils_frame)
+        import_row.pack(fill=self.tk.X)
+        self.ttk.Entry(import_row, textvariable=self.utils_import_bundle).pack(
+            side=self.tk.LEFT, fill=self.tk.X, expand=True
+        )
+        self.ttk.Button(
+            import_row, text="Browse", command=self._browse_utils_import_bundle
+        ).pack(side=self.tk.LEFT, padx=4)
+        self.ttk.Button(
+            self.utils_frame,
+            text="Load utils defaults from config",
+            command=lambda: self._load_utils_defaults_from_config(force=True),
+        ).pack(fill=self.tk.X, pady=(6, 0))
         self.ttk.Button(
             self.utils_frame, text="Run utils", command=self._run_utils_clicked
         ).pack(fill=self.tk.X, pady=6)
@@ -1363,14 +1467,64 @@ class WorkflowGUI:
         except Exception as e:
             self.messagebox.showerror("Invalid configuration", str(e))
             return
-        options = {
+
+        self._load_utils_defaults_from_config(force=False)
+
+        action_flags = {
             "download": self.utils_download.get(),
+            "export_calibration": self.utils_export_calibration.get(),
+            "import_calibration": self.utils_import_calibration.get(),
             "media": self.utils_media.get(),
         }
-        actions = enabled_option_labels(options)
-        if not any(options.values()):
+        actions = enabled_option_labels(action_flags)
+        if not any(action_flags.values()):
             logger.info("No utility option selected.")
             return
+
+        import_bundle = self.utils_import_bundle.get().strip()
+        if action_flags["import_calibration"] and not import_bundle:
+            self.messagebox.showerror(
+                "Invalid configuration",
+                "Import calibration requires an input bundle zip path.",
+            )
+            return
+
+        import_conflict_action = "error"
+        if action_flags["import_calibration"]:
+            from darsia.presets.workflows.utils.calibration_bundle import (
+                preview_calibration_bundle_import_conflicts,
+            )
+
+            conflicts = preview_calibration_bundle_import_conflicts(
+                ctx.config_paths,
+                Path(import_bundle),
+            )
+            if conflicts:
+                max_preview = UTILS_CONFLICT_PREVIEW_LIMIT
+                preview = "\n".join(str(path) for path in conflicts[:max_preview])
+                remaining = max(0, len(conflicts) - max_preview)
+                suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
+                choice = self.messagebox.askyesnocancel(
+                    "Calibration import conflicts",
+                    "Some calibration files already exist and would be overwritten.\n\n"
+                    f"{preview}{suffix}\n\n"
+                    "Yes: overwrite all\nNo: skip all existing\nCancel: abort",
+                )
+                policy = map_conflict_dialog_choice_to_policy(choice)
+                if policy is None:
+                    logger.info("Calibration import aborted by user.")
+                    return
+                import_conflict_action = policy
+
+        options = {
+            "download": action_flags["download"],
+            "export_calibration": action_flags["export_calibration"],
+            "import_calibration": action_flags["import_calibration"],
+            "export_bundle": self.utils_export_bundle.get().strip(),
+            "import_bundle": import_bundle,
+            "import_conflict_action": import_conflict_action,
+            "media": action_flags["media"],
+        }
         self._run_async(
             "utils",
             actions,
@@ -1381,6 +1535,35 @@ class WorkflowGUI:
             options,
         )
 
+    def _load_utils_defaults_from_config(self, *, force: bool) -> None:
+        selected = self._selected_paths()
+        if not selected:
+            return
+        export_default, import_default = resolve_utils_bundle_defaults(
+            [str(path) for path in selected]
+        )
+        if export_default and (force or not self.utils_export_bundle.get().strip()):
+            self.utils_export_bundle.set(export_default)
+        if import_default and (force or not self.utils_import_bundle.get().strip()):
+            self.utils_import_bundle.set(import_default)
+
+    def _browse_utils_export_bundle(self) -> None:
+        path = self.filedialog.asksaveasfilename(
+            title="Select export calibration bundle path",
+            defaultextension=".zip",
+            filetypes=[("Zip files", "*.zip"), ("All files", "*.*")],
+        )
+        if path:
+            self.utils_export_bundle.set(path)
+
+    def _browse_utils_import_bundle(self) -> None:
+        path = self.filedialog.askopenfilename(
+            title="Select calibration bundle zip",
+            filetypes=[("Zip files", "*.zip"), ("All files", "*.*")],
+        )
+        if path:
+            self.utils_import_bundle.set(path)
+
     def _add_config_path(self) -> None:
         path = self.filedialog.askopenfilename(
             title="Select config file",
@@ -1389,6 +1572,7 @@ class WorkflowGUI:
         if path:
             self.config_list.insert(self.tk.END, str(Path(path).resolve()))
             self._persist_session_cache()
+            self._load_utils_defaults_from_config(force=False)
 
     def _remove_config_path(self) -> None:
         selection = list(self.config_list.curselection())
@@ -1396,6 +1580,7 @@ class WorkflowGUI:
             self.config_list.delete(idx)
         if selection:
             self._persist_session_cache()
+            self._load_utils_defaults_from_config(force=False)
 
     def _move_config(self, direction: int) -> None:
         selected = self.config_list.curselection()
@@ -1410,6 +1595,7 @@ class WorkflowGUI:
         self.config_list.insert(j, value)
         self.config_list.selection_set(j)
         self._persist_session_cache()
+        self._load_utils_defaults_from_config(force=False)
 
     def _load_previous_session(self) -> None:
         if self._session_cache_file is None:

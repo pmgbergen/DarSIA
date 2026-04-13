@@ -42,7 +42,9 @@ python <your_utils_entrypoint>.py \
 
 Optional:
 
-- `--overwrite` to replace an existing target folder.
+- `--overwrite` to overwrite all conflicting files in the destination.
+
+Without `--overwrite`, import aborts if conflicting files already exist.
 
 After import, DarSIA writes:
 
@@ -70,3 +72,5 @@ Run your normal analysis workflow. It will load calibration from the linked path
 - Calibration artifacts contain metadata (`basis`, `label_ids`).
 - Loading performs compatibility checks and raises errors on mismatches.
 - This protects users from accidentally applying incompatible calibrations.
+- GUI import performs a preflight conflict scan and prompts for
+  overwrite-all / skip-all / abort before writing files.

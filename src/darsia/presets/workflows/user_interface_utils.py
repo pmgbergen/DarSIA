@@ -61,7 +61,7 @@ def build_parser_for_setup():
     parser.add_argument(
         "--overwrite",
         action="store_true",
-        help="Allow import to overwrite an existing calibration target folder.",
+        help="Allow import to overwrite all conflicting existing calibration files.",
     )
     parser.add_argument(
         "--build-media",
