@@ -15,6 +15,7 @@ import darsia
 from darsia.presets.workflows.config.corrections import (
     CorrectionsConfig,
     IlluminationCorrectionConfig,
+    RelativeColorCorrectionConfig,
 )
 from darsia.presets.workflows.facies_props import FaciesProps
 
@@ -247,8 +248,8 @@ class Rig:
 
         Execution order is fixed:
         1) illumination, 2) relative color, 3) color correction.
-        Note: relative color setup is currently guarded/unsupported in Rig and only
-        kept as an explicit reserved stage in this ordering.
+        Relative color can either be loaded from a precomputed correction file or
+        calibrated from configured images (interactive mode only).
         """
         if corrections_config is None:
             corrections_config = CorrectionsConfig()
@@ -269,13 +270,43 @@ class Rig:
             )
             self.color_corrections.append(self.illumination_correction)
 
-        # 2) Relative color correction (reserved in ordering; setup currently guarded).
+        # 2) Relative color correction.
         if corrections_config.relative_color:
-            warn(
-                "relative_color requested but automated setup in Rig is not implemented; "
-                "skipping relative color correction.",
-                UserWarning,
-            )
+            relative_config = corrections_config.relative_color
+            if isinstance(relative_config, bool):
+                warn(
+                    "relative_color=True requires a [corrections.relative_color] "
+                    "configuration table with either 'path' or 'images'.",
+                    UserWarning,
+                )
+            else:
+                assert isinstance(relative_config, RelativeColorCorrectionConfig)
+                if relative_config.path is not None:
+                    self.relative_color_correction = darsia.RelativeColorCorrection(
+                        self.shape_corrected_baseline
+                    )
+                    self.relative_color_correction.load(relative_config.path)
+                    self.color_corrections.append(self.relative_color_correction)
+                elif relative_config.images:
+                    if not relative_config.interactive:
+                        raise ValueError(
+                            "Interactive calibration is required when using "
+                            "corrections.relative_color.images. Set "
+                            "corrections.relative_color.interactive=true or provide "
+                            "corrections.relative_color.path."
+                        )
+                    relative_color_images = []
+                    for path in relative_config.images:
+                        img = darsia.imread(path)
+                        for correction in self.shape_corrections:
+                            img = correction(img)
+                        relative_color_images.append(img)
+                    self.relative_color_correction = darsia.RelativeColorCorrection(
+                        self.shape_corrected_baseline,
+                        relative_color_images,
+                        relative_config.options,
+                    )
+                    self.color_corrections.append(self.relative_color_correction)
 
         # 3) Color correction.
         if corrections_config.color:
