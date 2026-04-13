@@ -116,6 +116,7 @@ Supported keys:
 
 Notes:
 - JPG and NPZ outputs are stored in separate subfolders: `<folder>/jpg/` and `<folder>/npz/`.
+- JPG outputs are source-image overlays using each layer’s `fill` and `stroke` styling.
 - Legacy `modes` + `thresholds` is still accepted and mapped to default layers.
 
 ## Notes on legacy vs current naming
