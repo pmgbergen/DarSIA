@@ -14,7 +14,10 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
-from darsia.presets.workflows.analysis.streaming import _to_bgr_array, publish_stream_images
+from darsia.presets.workflows.analysis.streaming import (
+    _to_bgr_array,
+    publish_stream_images,
+)
 from darsia.presets.workflows.config.analysis import AnalysisThresholdingConfig
 from darsia.presets.workflows.rig import Rig
 

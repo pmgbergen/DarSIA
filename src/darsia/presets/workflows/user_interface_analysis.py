@@ -109,7 +109,11 @@ def run_analysis(
 
     # Determine if we need color-to-mass analysis (expensive initialization)
     require_color_to_mass = (
-        args.mass or args.volume or args.segmentation or args.fingers or args.thresholding
+        args.mass
+        or args.volume
+        or args.segmentation
+        or args.fingers
+        or args.thresholding
     )
 
     # Prepare shared context once for all analyses
