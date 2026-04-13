@@ -21,6 +21,142 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _to_rgb(color: list[int] | tuple[int, int, int], name: str) -> tuple[int, int, int]:
+    if len(color) != 3:
+        raise ValueError(f"{name} must have exactly 3 entries [R, G, B].")
+    vals = tuple(int(v) for v in color)
+    if any(v < 0 or v > 255 for v in vals):
+        raise ValueError(f"{name} entries must be in [0, 255].")
+    return vals
+
+
+@dataclass
+class AnalysisThresholdingLegendConfig:
+    show: bool = True
+    font_scale: float = 0.7
+    thickness: int = 2
+    line_spacing: int = 8
+    position: tuple[int, int] = (20, 20)
+    text_color: tuple[int, int, int] = (255, 255, 255)
+    box_enabled: bool = True
+    box_color: tuple[int, int, int] = (0, 0, 0)
+    box_alpha: float = 0.4
+    box_padding: int = 10
+
+    def load(self, sec: dict) -> "AnalysisThresholdingLegendConfig":
+        self.show = bool(_get_key(sec, "show", required=False, default=self.show))
+        self.font_scale = float(
+            _get_key(sec, "font_scale", required=False, default=self.font_scale)
+        )
+        self.thickness = int(
+            _get_key(sec, "thickness", required=False, default=self.thickness)
+        )
+        self.line_spacing = int(
+            _get_key(sec, "line_spacing", required=False, default=self.line_spacing)
+        )
+        position = _get_key(sec, "position", required=False, default=self.position)
+        if len(position) != 2:
+            raise ValueError("analysis.thresholding.legend.position must be [x, y].")
+        self.position = (int(position[0]), int(position[1]))
+        self.text_color = _to_rgb(
+            _get_key(sec, "text_color", required=False, default=self.text_color),
+            "analysis.thresholding.legend.text_color",
+        )
+        self.box_enabled = bool(
+            _get_key(sec, "box_enabled", required=False, default=self.box_enabled)
+        )
+        self.box_color = _to_rgb(
+            _get_key(sec, "box_color", required=False, default=self.box_color),
+            "analysis.thresholding.legend.box_color",
+        )
+        self.box_alpha = float(
+            _get_key(sec, "box_alpha", required=False, default=self.box_alpha)
+        )
+        if not (0 <= self.box_alpha <= 1):
+            raise ValueError(
+                "analysis.thresholding.legend.box_alpha must be in [0, 1]."
+            )
+        self.box_padding = int(
+            _get_key(sec, "box_padding", required=False, default=self.box_padding)
+        )
+        return self
+
+
+@dataclass
+class AnalysisThresholdingConfig:
+    modes: list[str] = field(
+        default_factory=lambda: ["concentration_aq", "saturation_g"]
+    )
+    thresholds: dict[str, float] = field(default_factory=dict)
+    legend: AnalysisThresholdingLegendConfig = field(
+        default_factory=AnalysisThresholdingLegendConfig
+    )
+    folder: Path = field(default_factory=Path)
+    """Path to the results folder for thresholding analysis."""
+
+    SUPPORTED_MODES = {
+        "concentration_aq",
+        "saturation_g",
+        "mass_total",
+        "mass_g",
+        "mass_aq",
+    }
+
+    def load(self, sec: dict, results: Path | None) -> "AnalysisThresholdingConfig":
+        sub_sec = _get_section(sec, "thresholding")
+
+        raw_modes = _get_key(sub_sec, "modes", required=False, default=self.modes)
+        if not isinstance(raw_modes, list) or not all(
+            isinstance(mode, str) for mode in raw_modes
+        ):
+            raise ValueError("analysis.thresholding.modes must be a list of strings.")
+        self.modes = [mode.strip() for mode in raw_modes if mode.strip()]
+        if len(self.modes) == 0:
+            raise ValueError("analysis.thresholding.modes must not be empty.")
+        invalid_modes = sorted(set(self.modes) - self.SUPPORTED_MODES)
+        if len(invalid_modes) > 0:
+            raise ValueError(
+                "Unsupported [analysis.thresholding].modes entries: "
+                f"{', '.join(invalid_modes)}. Supported modes: "
+                f"{', '.join(sorted(self.SUPPORTED_MODES))}."
+            )
+
+        raw_thresholds = _get_key(
+            sub_sec, "thresholds", required=False, default=self.thresholds
+        )
+        if not isinstance(raw_thresholds, dict):
+            raise ValueError("analysis.thresholding.thresholds must be a table/dict.")
+        invalid_threshold_modes = sorted(set(raw_thresholds.keys()) - self.SUPPORTED_MODES)
+        if len(invalid_threshold_modes) > 0:
+            raise ValueError(
+                "Unsupported [analysis.thresholding].thresholds keys: "
+                f"{', '.join(invalid_threshold_modes)}. Supported modes: "
+                f"{', '.join(sorted(self.SUPPORTED_MODES))}."
+            )
+        self.thresholds = {
+            mode: float(raw_thresholds.get(mode, 0.0)) for mode in self.modes
+        }
+
+        legend = _get_key(sub_sec, "legend", required=False, default={})
+        if not isinstance(legend, dict):
+            raise ValueError("analysis.thresholding.legend must be a table/dict.")
+        self.legend.load(legend)
+
+        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
+        if not folder:
+            assert results is not None
+            self.folder = results / "thresholding"
+        else:
+            self.folder = folder
+
+        return self
+
+    def error(self):
+        raise ValueError(
+            "Use [analysis.thresholding] in the config file to load thresholding."
+        )
+
+
 @dataclass
 class AnalysisSegmentationConfig:
     config: SegmentationConfig | dict[str, SegmentationConfig] = field(
@@ -270,6 +406,8 @@ class AnalysisConfig:
     """Analysis volume configuration."""
     fingers: AnalysisFingersConfig | None = None
     """Analysis fingers configuration."""
+    thresholding: AnalysisThresholdingConfig | None = None
+    """Analysis thresholding configuration."""
 
     def load(
         self,
@@ -332,5 +470,12 @@ class AnalysisConfig:
         except KeyError:
             warn("No analysis fingers found. Use [analysis.fingers].")
             self.fingers = None
+
+        # Config to load analysis thresholding
+        try:
+            self.thresholding = AnalysisThresholdingConfig().load(sec, results)
+        except KeyError:
+            warn("No analysis thresholding found. Use [analysis.thresholding].")
+            self.thresholding = None
 
         return self

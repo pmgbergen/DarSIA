@@ -83,6 +83,10 @@ def test_run_analysis_forwards_stream_callback_to_all_modes(monkeypatch) -> None
         "darsia.presets.workflows.user_interface_analysis.analysis_fingers_from_context",
         _capture("fingers"),
     )
+    monkeypatch.setattr(
+        "darsia.presets.workflows.user_interface_analysis.analysis_thresholding_from_context",
+        _capture("thresholding"),
+    )
 
     args = SimpleNamespace(
         config=["/tmp/config.toml"],
@@ -92,6 +96,7 @@ def test_run_analysis_forwards_stream_callback_to_all_modes(monkeypatch) -> None
         volume=True,
         segmentation=True,
         fingers=True,
+        thresholding=True,
         show=False,
         save_jpg=False,
         save_npz=False,
@@ -104,4 +109,5 @@ def test_run_analysis_forwards_stream_callback_to_all_modes(monkeypatch) -> None
         "volume": stream_callback,
         "segmentation": stream_callback,
         "fingers": stream_callback,
+        "thresholding": stream_callback,
     }
