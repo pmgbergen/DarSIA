@@ -32,6 +32,7 @@ Commonly used sections:
 - `[analysis.mass]`
 - `[analysis.volume]`
 - `[analysis.fingers]`
+- `[analysis.thresholding]`
 
 ### Segmentation contour labels
 Segmentation contour plots can optionally print the contour threshold values directly
@@ -60,6 +61,7 @@ When GUI streaming is enabled for analysis, the latest image payload can include
 - Segmentation: `segmentation`
 - Mass: `mass_source_image`, `mass_total`, `mass_g`, `mass_aq`
 - Volume: `volume_source_image`, `saturation_g`, `concentration_aq`, `saturation_aq`
+- Thresholding: `thresholding_source_image`, `thresholding_<mode>`
 - Fingers: `fingers_source_image`, `fingers_segmentation`, plus ROI-specific
   `fingers_tips_<roi_key>` and `fingers_paths_<roi_key>`
 

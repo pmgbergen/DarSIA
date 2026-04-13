@@ -255,6 +255,17 @@ def test_suggested_analysis_results_folder_fallback_for_missing_mode_folder(
     assert folder == results / "fingers"
 
 
+def test_suggested_analysis_results_folder_thresholding_fallback(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_analysis_results_folder([config], ["thresholding"])
+    assert folder == results / "thresholding"
+
+
 def test_publish_latest_queue_item_keeps_only_latest() -> None:
     q: queue.Queue[str] = queue.Queue()
     q.put_nowait("first")

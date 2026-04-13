@@ -86,6 +86,26 @@ formats = ["npz", "jpg"]
 image_times = [1, 5, 10, 20, 21, 40]
 [analysis.mass]
 image_times = [1, 5, 10, 20, 21, 40]
+[analysis.thresholding]
+# Optional thresholding of analysis fields.
+# Supported modes: concentration_aq, saturation_g, mass_total, mass_g, mass_aq
+modes = ["concentration_aq", "saturation_g", "mass_total", "mass_g", "mass_aq"]
+[analysis.thresholding.thresholds]
+concentration_aq = 0.05
+saturation_g = 0.05
+mass_total = 0.0
+mass_g = 0.0
+mass_aq = 0.0
+[analysis.thresholding.legend]
+show = true
+font_scale = 0.7
+thickness = 2
+position = [20, 20]
+text_color = [255, 255, 255]
+box_enabled = true
+box_color = [0, 0, 0]
+box_alpha = 0.4
+box_padding = 10
 
 [video]
 

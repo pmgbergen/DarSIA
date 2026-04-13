@@ -57,6 +57,7 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `[analysis.mass]`: mass analysis and optional ROIs
 - `[analysis.volume]`: volume analysis and optional ROIs
 - `[analysis.fingers]`: finger detection mode/threshold and optional ROIs
+- `[analysis.thresholding]`: threshold selected analysis modes and export mask previews
 
 ### Segmentation contour options
 For each segmentation entry, the following contour styling keys are supported:
@@ -79,6 +80,32 @@ Optional contour-value labels:
 The value-label keys can be provided directly in the segmentation section or nested in
 `[analysis.segmentation.values]` (or `[analysis.segmentation.<name>.values]` for
 multiple segmentations).
+
+### Thresholding options
+Use `[analysis.thresholding]` (only under `[analysis]`) to threshold selected scalar
+analysis outputs. Supported `modes`:
+- `concentration_aq`
+- `saturation_g`
+- `mass_total`
+- `mass_g`
+- `mass_aq`
+
+Supported keys:
+- `modes` (list of mode names; default: `["concentration_aq", "saturation_g"]`)
+- `thresholds.<mode>` (float threshold per mode; defaults to `0.0`)
+- `folder` (output folder, defaults to `<results>/thresholding`)
+- `[analysis.thresholding.legend]` (compact text-box style keys aligned with
+  `[video.overlay]`):
+  - `show`
+  - `font_scale`
+  - `thickness`
+  - `line_spacing`
+  - `position`
+  - `text_color`
+  - `box_enabled`
+  - `box_color`
+  - `box_alpha`
+  - `box_padding`
 
 ## Notes on legacy vs current naming
 - Current rig section is `[rig]`.
