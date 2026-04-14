@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -14,63 +13,47 @@ if TYPE_CHECKING:
     from darsia.presets.workflows.rig import Rig
 
 
-@dataclass
-class IgnoreMaskedRestoration:
-    """Wrapper restoring ignored regions to their original values."""
+class RestorationMaskFactory:
+    """Factory for predefined restoration ignore masks."""
 
-    model: darsia.Model
-    ignore_mask: np.ndarray
+    def __init__(self, fluidflower: "Rig") -> None:
+        self.fluidflower = fluidflower
+        self._ignore_mask_builders = {
+            "image_porosity": self._image_porosity_ignore_mask,
+            "boolean_porosity": self._boolean_porosity_ignore_mask,
+        }
 
-    def __call__(self, img: np.ndarray | darsia.Image) -> np.ndarray | darsia.Image:
-        result = self.model(img)
-        if isinstance(img, darsia.Image):
-            if not isinstance(result, darsia.Image):
-                raise TypeError(
-                    "Restoration returned an unexpected type. Expected darsia.Image "
-                    f"for darsia.Image input, got {type(result)}."
+    def _image_porosity_ignore_mask(self) -> np.ndarray:
+        return self.fluidflower.image_porosity.img <= 0
+
+    def _boolean_porosity_ignore_mask(self) -> np.ndarray:
+        return ~self.fluidflower.boolean_porosity.img.astype(bool)
+
+    def build_ignore_mask(self, mask_names: list[str]) -> np.ndarray | None:
+        if len(mask_names) == 0:
+            return None
+
+        ignore_mask: np.ndarray | None = None
+        for name in mask_names:
+            if name not in self._ignore_mask_builders:
+                raise ValueError(
+                    f"Unknown restoration ignore mask '{name}'. "
+                    f"Valid values are: {list(self._ignore_mask_builders.keys())}."
                 )
-            result.img[self.ignore_mask] = img.img[self.ignore_mask]
-            return result
-        else:
-            if not isinstance(result, np.ndarray):
-                raise TypeError(
-                    "Restoration returned an unexpected type. Expected numpy.ndarray "
-                    f"for ndarray input, got {type(result)}."
-                )
-            result[self.ignore_mask] = img[self.ignore_mask]
-            return result
-
-
-def _resolve_ignore_mask(
-    restoration_config: RestorationConfig,
-    fluidflower: "Rig",
-) -> np.ndarray | None:
-    if len(restoration_config.ignore) == 0:
-        return None
-
-    ignore_mask: np.ndarray | None = None
-    for ignore_key in restoration_config.ignore:
-        if ignore_key == "boolean_porosity":
-            # boolean_porosity=True indicates porous regions eligible for
-            # restoration, while ignore_mask=True indicates regions to preserve,
-            # so invert the mask.
-            current = ~fluidflower.boolean_porosity.img.astype(bool)
-        else:
-            raise ValueError(
-                f"Unknown restoration ignore mask '{ignore_key}'. "
-                "Valid values are: ['boolean_porosity']."
+            current_ignore_mask = self._ignore_mask_builders[name]()
+            ignore_mask = (
+                current_ignore_mask
+                if ignore_mask is None
+                else np.logical_or(ignore_mask, current_ignore_mask)
             )
-        ignore_mask = (
-            current if ignore_mask is None else np.logical_or(ignore_mask, current)
-        )
 
-    return ignore_mask
+        return ignore_mask
 
 
 def build_restoration(
     restoration_config: RestorationConfig | None,
     fluidflower: "Rig",
-) -> darsia.VolumeAveraging | darsia.TVD | IgnoreMaskedRestoration | None:
+) -> darsia.VolumeAveraging | darsia.TVD | None:
     """Build a restoration object from configuration.
 
     Args:
@@ -90,7 +73,9 @@ def build_restoration(
     if method is None:
         return None
 
-    ignore_mask = _resolve_ignore_mask(restoration_config, fluidflower)
+    mask_factory = RestorationMaskFactory(fluidflower)
+    ignore_mask = mask_factory.build_ignore_mask(restoration_config.ignore)
+    active_mask = None if ignore_mask is None else (~ignore_mask).astype(float)
 
     if method == "volume_average":
         from darsia.presets.workflows.config.restoration import VolumeAveragingConfig
@@ -99,7 +84,9 @@ def build_restoration(
         if not isinstance(options, VolumeAveragingConfig):
             options = VolumeAveragingConfig()
         rev_size = options.rev_size
-        image_porosity = fluidflower.image_porosity
+        image_porosity = fluidflower.image_porosity.copy()
+        if active_mask is not None:
+            image_porosity.img *= active_mask
         restoration = darsia.VolumeAveraging(
             rev=darsia.REV(size=rev_size, img=fluidflower.baseline),
             mask=image_porosity,
@@ -130,6 +117,13 @@ def build_restoration(
         else:
             weight = options.weight
 
+        if isinstance(weight, darsia.Image):
+            weight = weight.img
+
+        if active_mask is not None:
+            weight = np.multiply(weight, active_mask)
+            tvd_method = "heterogeneous bregman"
+
         restoration = darsia.TVD(
             method=tvd_method,
             weight=weight,
@@ -143,8 +137,4 @@ def build_restoration(
     else:
         raise NotImplementedError(f"Restoration method '{method}' not supported.")
 
-    return (
-        restoration
-        if ignore_mask is None
-        else IgnoreMaskedRestoration(model=restoration, ignore_mask=ignore_mask)
-    )
+    return restoration
