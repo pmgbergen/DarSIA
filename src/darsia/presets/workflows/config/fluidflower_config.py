@@ -8,9 +8,9 @@ from pathlib import Path
 from warnings import warn
 
 from .analysis import AnalysisConfig
-from .colorrange import ColorRangeConfig
 from .color_paths import ColorPathsConfig
 from .color_to_mass import ColorToMassConfig
+from .colorrange import ColorRangeConfig
 from .corrections import CorrectionsConfig
 from .data import DataConfig
 from .depth import DepthConfig

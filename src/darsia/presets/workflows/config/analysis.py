@@ -97,7 +97,9 @@ class AnalysisThresholdingConfig:
         fill_alpha: float = 0.35
         stroke_width: int = 2
 
-        def load(self, sec: dict, *, key: str) -> "AnalysisThresholdingConfig.LayerConfig":
+        def load(
+            self, sec: dict, *, key: str
+        ) -> "AnalysisThresholdingConfig.LayerConfig":
             self.mode = _get_key(sec, "mode", required=True, type_=str).strip()
             if not validate_mode_syntax(self.mode):
                 raise ValueError(

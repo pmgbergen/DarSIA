@@ -61,7 +61,9 @@ def infer_require_color_to_mass_from_config(
             modes.append(fingers_config.mode)
 
     if include_thresholding and config.analysis.thresholding is not None:
-        modes.extend(layer.mode for layer in config.analysis.thresholding.layers.values())
+        modes.extend(
+            layer.mode for layer in config.analysis.thresholding.layers.values()
+        )
 
     if len(modes) == 0:
         return True

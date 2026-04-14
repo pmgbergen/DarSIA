@@ -191,7 +191,7 @@ def analysis_thresholding_from_context(
                 layer.mode,
                 img,
                 mass_analysis_result=result,
-                colorrange_config=config.colorrange,
+                colorrange_config=getattr(config, "colorrange", None),
             )
             scalar = _to_scalar_array(mode_image)
             threshold_min = layer.threshold_min

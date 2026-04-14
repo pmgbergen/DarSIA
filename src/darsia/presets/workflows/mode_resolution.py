@@ -10,7 +10,6 @@ import numpy as np
 import darsia
 from darsia.presets.workflows.config.colorrange import ColorRangeConfig
 
-
 LEGACY_COLOR_TO_MASS_MODES = {
     "concentration_aq",
     "saturation_g",
@@ -52,9 +51,16 @@ def validate_mode_syntax(mode: str) -> bool:
         return True
     colorchannel = parse_colorchannel_mode(mode)
     if colorchannel is not None:
-        return colorchannel.color_space in {"RGB", "BGR", "HSV", "HLS", "LAB"} and (
-            colorchannel.channel in {"r", "g", "b", "h", "s", "v", "l", "a"}
-        )
+        if colorchannel.color_space not in {"RGB", "BGR", "HSV", "HLS", "LAB"}:
+            return False
+        allowed_channels = {
+            "RGB": {"r", "g", "b"},
+            "BGR": {"r", "g", "b"},
+            "HSV": {"h", "s", "v"},
+            "HLS": {"h", "l", "s"},
+            "LAB": {"l", "a", "b"},
+        }
+        return colorchannel.channel in allowed_channels[colorchannel.color_space]
     return parse_colorrange_mode(mode) is not None
 
 
@@ -77,17 +83,19 @@ def _normalized_trichromatic(
         raise ValueError("Color-based modes require an optical image input.")
     converted = image.to_trichromatic(color_space, return_image=True)
     arr = converted.img.astype(np.float32, copy=False)
+    if not np.all(np.isfinite(arr)):
+        raise ValueError("Color-based mode resolution requires finite image values.")
     cs = color_space.upper()
 
     if cs in {"RGB", "BGR"}:
-        if np.nanmax(arr) > 1.0:
+        if np.max(arr) > 1.0:
             arr = arr / 255.0
     elif cs in {"HSV", "HLS"}:
         # OpenCV conventions differ by dtype; normalize all channels to [0, 1].
         hue = arr[..., 0]
-        hue_scale = 360.0 if np.nanmax(hue) > 180.0 else 180.0
-        arr[..., 0] = hue / max(hue_scale, 1.0)
-        if np.nanmax(arr[..., 1:]) > 1.0:
+        hue_scale = 360.0 if np.max(hue) > 180.0 else 180.0
+        arr[..., 0] = hue / hue_scale
+        if np.max(arr[..., 1:]) > 1.0:
             arr[..., 1:] = arr[..., 1:] / 255.0
     elif cs == "LAB":
         # Normalize LAB to [0, 1] per component.
@@ -183,9 +191,13 @@ def _resolve_colorrange_mode(
             and float(lower) > float(upper)
         ):
             # Hue wrap-around interval.
-            component_mask = np.logical_or(values >= float(lower), values <= float(upper))
+            component_mask = np.logical_or(
+                values >= float(lower), values <= float(upper)
+            )
         else:
-            component_mask = np.logical_and(values >= float(lower), values <= float(upper))
+            component_mask = np.logical_and(
+                values >= float(lower), values <= float(upper)
+            )
         mask = np.logical_and(mask, component_mask)
 
     return _to_scalar_image(image, mask.astype(np.float32))

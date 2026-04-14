@@ -14,6 +14,20 @@ from darsia.utils.augmented_plotting import plot_contour_on_image
 logger = logging.getLogger(__name__)
 
 
+def _compose_mass_analysis_result(
+    saturation_g: darsia.Image | None,
+    concentration_aq: darsia.Image | None,
+    mass: darsia.Image | None,
+):
+    return SimpleNamespace(
+        saturation_g=saturation_g,
+        concentration_aq=concentration_aq,
+        mass=mass,
+        mass_g=None,
+        mass_aq=None,
+    )
+
+
 class SimpleSegmentation:
     """Simple threshold based segmentation."""
 
@@ -55,12 +69,8 @@ class SimpleSegmentation:
         colorrange_config=None,
     ) -> darsia.Image:
         if mass_analysis_result is None:
-            mass_analysis_result = SimpleNamespace(
-                saturation_g=saturation_g,
-                concentration_aq=concentration_aq,
-                mass=mass,
-                mass_g=None,
-                mass_aq=None,
+            mass_analysis_result = _compose_mass_analysis_result(
+                saturation_g, concentration_aq, mass
             )
         values = resolve_mode_image(
             self.mode,
@@ -305,12 +315,8 @@ class SegmentationContours:
     ) -> darsia.Image:
         contour_img = img.copy()
         if mass_analysis_result is None:
-            mass_analysis_result = SimpleNamespace(
-                saturation_g=saturation_g,
-                concentration_aq=concentration_aq,
-                mass=mass,
-                mass_g=None,
-                mass_aq=None,
+            mass_analysis_result = _compose_mass_analysis_result(
+                saturation_g, concentration_aq, mass
             )
         for segmentation_config in self.config.values():
             values = resolve_mode_image(

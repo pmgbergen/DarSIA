@@ -131,7 +131,7 @@ def analysis_fingers_from_context(
             ),
             mass=mass_analysis_result.mass if mass_analysis_result else None,
             mass_analysis_result=mass_analysis_result,
-            colorrange_config=ctx.config.colorrange,
+            colorrange_config=getattr(ctx.config, "colorrange", None),
         )
 
         stream_images: dict[str, Any] | None = None
