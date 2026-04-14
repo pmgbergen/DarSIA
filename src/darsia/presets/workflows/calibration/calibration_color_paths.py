@@ -60,7 +60,9 @@ def _load_or_compute_tracer_color_spectrum(
 ) -> darsia.LabelColorSpectrumMap:
     tracer_files = list(tracer_color_spectrum_folder.glob("color_spectrum_*.json"))
     if tracer_files:
-        logger.info("Loading stored tracer spectrum from %s", tracer_color_spectrum_folder)
+        logger.info(
+            "Loading stored tracer spectrum from %s", tracer_color_spectrum_folder
+        )
         return darsia.LabelColorSpectrumMap.load(tracer_color_spectrum_folder)
 
     if strict_stored_artifacts:
@@ -291,7 +293,9 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
 
     # Find a relative color path through the significant boxes
     if config.color_paths.calibration_scope == "single_label":
-        existing_map = darsia.LabelColorPathMap.load(config.color_paths.calibration_file)
+        existing_map = darsia.LabelColorPathMap.load(
+            config.color_paths.calibration_file
+        )
         validate_basis_metadata(
             metadata=read_calibration_metadata(
                 config.color_paths.calibration_file / "metadata.json"
@@ -319,16 +323,18 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
         existing_map = None
         target_labels = None
 
-    label_color_path_map: darsia.LabelColorPathMap = color_path_regression.find_color_path(
-        color_spectrum=tracer_color_spectrum,
-        ignore=ignore_spectrum,
-        num_segments=config.color_paths.num_segments,
-        directory=config.color_paths.calibration_file,
-        weighting=config.color_paths.histogram_weighting,
-        mode=config.color_paths.mode,
-        target_labels=target_labels,
-        existing_map=existing_map,
-        verbose=show,
+    label_color_path_map: darsia.LabelColorPathMap = (
+        color_path_regression.find_color_path(
+            color_spectrum=tracer_color_spectrum,
+            ignore=ignore_spectrum,
+            num_segments=config.color_paths.num_segments,
+            directory=config.color_paths.calibration_file,
+            weighting=config.color_paths.histogram_weighting,
+            mode=config.color_paths.mode,
+            target_labels=target_labels,
+            existing_map=existing_map,
+            verbose=show,
+        )
     )
 
     # Store the color paths to file
