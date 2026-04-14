@@ -190,10 +190,11 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
     # ! ---- IDENTIFY AND STORE (RELATIVE) COLOR RANGE ----
 
     if config.color_paths.calibration_scope == "single_label":
-        if not config.color_paths.color_range_file.with_suffix(".json").exists():
+        color_range_json = config.color_paths.color_range_file.with_suffix(".json")
+        if not color_range_json.exists():
             raise FileNotFoundError(
                 "Single-label calibration requires stored color_range_file: "
-                f"{config.color_paths.color_range_file.with_suffix('.json')}"
+                f"{color_range_json}"
             )
         tracer_color_range = darsia.ColorRange.load(config.color_paths.color_range_file)
     else:
