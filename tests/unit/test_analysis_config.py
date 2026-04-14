@@ -59,13 +59,13 @@ def test_analysis_thresholding_layers_and_formats_are_loaded(tmp_path: Path) -> 
 formats = ["jpg", "npz"]
 [analysis.thresholding.layers.gas]
 mode = "saturation_g"
-threshold = 0.15
+threshold_min = 0.15
 label = "Gas plume"
 fill = [255, 0, 0]
 stroke = [255, 255, 255]
 [analysis.thresholding.layers.aq]
 mode = "concentration_aq"
-threshold = 0.05
+threshold_max = 0.05
 label = "Aqueous plume"
 fill = [0, 0, 255]
 stroke = [255, 255, 255]
@@ -91,10 +91,10 @@ box_padding = 8
     assert config.thresholding.formats == ["jpg", "npz"]
     assert set(config.thresholding.layers.keys()) == {"gas", "aq"}
     assert config.thresholding.layers["gas"].mode == "saturation_g"
-    assert config.thresholding.layers["gas"].threshold == 0.15
+    assert config.thresholding.layers["gas"].threshold_min == 0.15
     assert config.thresholding.layers["gas"].label == "Gas plume"
     assert config.thresholding.layers["aq"].mode == "concentration_aq"
-    assert config.thresholding.layers["aq"].threshold == 0.05
+    assert config.thresholding.layers["aq"].threshold_max == 0.05
 
 
 def test_analysis_thresholding_rejects_invalid_layer_mode(tmp_path: Path) -> None:
@@ -105,7 +105,7 @@ def test_analysis_thresholding_rejects_invalid_layer_mode(tmp_path: Path) -> Non
 [analysis.thresholding]
 [analysis.thresholding.layers.bad]
 mode = "not_supported"
-threshold = 0.1
+threshold_min = 0.1
 """.strip(),
     )
 
@@ -126,7 +126,7 @@ def test_analysis_thresholding_rejects_invalid_formats(tmp_path: Path) -> None:
 formats = ["jpg", "png"]
 [analysis.thresholding.layers.gas]
 mode = "saturation_g"
-threshold = 0.1
+threshold_min = 0.1
 """.strip(),
     )
 
