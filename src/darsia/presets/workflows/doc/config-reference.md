@@ -95,7 +95,8 @@ Supported keys:
 - `folder` (output folder, defaults to `<results>/thresholding`)
 - `[analysis.thresholding.layers.<name>]` (one mask layer per entry):
   - `mode` (`concentration_aq`, `saturation_g`, `mass_total`, `mass_g`, `mass_aq`)
-  - `threshold` (float)
+  - `threshold_min` (float)
+  - `threshold_max` (float)
   - `label` (string)
   - `fill` (`[r,g,b]`)
   - `stroke` (`[r,g,b]`)
