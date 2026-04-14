@@ -72,10 +72,14 @@ class TVDConfig:
 class RestorationConfig:
     method: Literal["volume_average", "tvd"] | None = "volume_average"
     options: VolumeAveragingConfig | TVDConfig | None = None
+    ignore: list[str] = field(default_factory=list)
 
     def load(self, path: Path) -> "RestorationConfig":
         sec = _get_section_from_toml(path, "restoration")
         self.method = _get_key(sec, "method", required=True, type_=str)
+        self.ignore = _get_key(sec, "ignore", default=[], required=False, type_=list)
+        if not all(isinstance(entry, str) for entry in self.ignore):
+            raise ValueError("restoration.ignore must be a list of strings.")
 
         options_sec = sec.get("options", {})
         if self.method == "volume_average":
