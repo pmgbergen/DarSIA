@@ -98,6 +98,24 @@ def test_restoration_config_tvd_boolean_porosity_weight(tmp_path):
     assert cfg.options.weight == "boolean-porosity"
 
 
+def test_restoration_config_ignore_masks(tmp_path):
+    cfg_path = _write_toml(
+        tmp_path,
+        '[restoration]\nmethod = "tvd"\nignore = ["boolean_porosity"]\n',
+    )
+    cfg = RestorationConfig().load(cfg_path)
+    assert cfg.ignore == ["boolean_porosity"]
+
+
+def test_restoration_config_ignore_masks_must_be_strings(tmp_path):
+    cfg_path = _write_toml(
+        tmp_path,
+        '[restoration]\nmethod = "tvd"\nignore = ["boolean_porosity", 1]\n',
+    )
+    with pytest.raises(ValueError, match="restoration.ignore must be a list of strings"):
+        RestorationConfig().load(cfg_path)
+
+
 def test_restoration_config_none_method_raises(tmp_path):
     """'none' is no longer a valid method string; omit the section instead."""
     cfg_path = _write_toml(tmp_path, '[restoration]\nmethod = "none"\n')
