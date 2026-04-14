@@ -186,14 +186,23 @@ def analysis_thresholding_from_context(
 
         for layer_name, layer in thresholding_config.layers.items():
             scalar = _to_scalar_array(mode_images[layer.mode])
-            threshold = float(layer.threshold)
-            mask = (scalar >= threshold).astype(np.uint8)
+            threshold_min = layer.threshold_min
+            threshold_max = layer.threshold_max
+            if threshold_min is not None and threshold_max is not None:
+                mask = ((scalar >= threshold_min) & (scalar <= threshold_max)).astype(
+                    np.uint8
+                )
+            elif threshold_min is not None:
+                mask = (scalar >= threshold_min).astype(np.uint8)
+            elif threshold_max is not None:
+                mask = (scalar <= threshold_max).astype(np.uint8)
 
             if has_npz:
                 np.savez_compressed(
                     npz_folder / layer_name / f"{path.stem}.npz",
                     mask=mask,
-                    threshold=threshold,
+                    threshold_min=threshold_min,
+                    threshold_max=threshold_max,
                     mode=layer.mode,
                     layer=layer_name,
                 )
@@ -206,9 +215,16 @@ def analysis_thresholding_from_context(
                 fill_alpha=layer.fill_alpha,
                 stroke_width=layer.stroke_width,
             )
+            if threshold_min is not None and threshold_max is not None:
+                legend_text = f"{layer.label} ({layer.mode} in [{threshold_min:g}, {threshold_max:g}])"
+            elif threshold_min is not None:
+                legend_text = f"{layer.label} ({layer.mode} >= {threshold_min:g})"
+            elif threshold_max is not None:
+                legend_text = f"{layer.label} ({layer.mode} <= {threshold_max:g})"
+
             preview = _apply_legend(
                 preview,
-                text=f"{layer.label} ({layer.mode} >= {threshold:g})",
+                text=legend_text,
                 legend_config=thresholding_config.legend,
             )
 
