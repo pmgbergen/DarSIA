@@ -62,6 +62,8 @@ def test_load_or_compute_tracer_spectrum_prefers_stored(tmp_path: Path):
     )
     assert 0 in result
     assert float(result[0].histogram.sum()) == pytest.approx(2.0)
+    np.testing.assert_array_equal(result[0].spectrum, stored[0].spectrum)
+    np.testing.assert_allclose(result[0].base_color, stored[0].base_color)
 
 
 def test_load_or_compute_tracer_spectrum_fallback_non_strict(tmp_path: Path):

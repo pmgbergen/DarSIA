@@ -276,10 +276,7 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
         ignore_spectrum=ignore_spectrum,
         threshold_calibration=config.color_paths.threshold_calibration,
         tracer_color_spectrum_folder=config.color_paths.tracer_color_spectrum_folder,
-        strict_stored_artifacts=(
-            config.color_paths.calibration_scope == "single_label"
-            and config.color_paths.strict_stored_artifacts
-        ),
+        strict_stored_artifacts=config.color_paths.strict_stored_artifacts,
         verbose=show,
     )
     tracer_color_spectrum.save(config.color_paths.tracer_color_spectrum_folder)
