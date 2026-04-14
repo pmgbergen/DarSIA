@@ -508,6 +508,9 @@ class Rig:
                 sample_groups.append(samples)
             else:
                 for label in config.labels:
+                    assert (
+                        label in self.labels.img
+                    ), f"Label {label} not found in labels image."
                     mask = self.labels.img == label
                     samples = illumination_correction.select_random_samples(
                         mask=mask, config=config
