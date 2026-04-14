@@ -128,7 +128,7 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
                 "layers": {
                     "gas": {
                         "mode": "saturation_g",
-                        "threshold": 0.2,
+                        "threshold_min": 0.2,
                         "label": "Gas plume",
                         "fill": [255, 0, 0],
                         "stroke": [255, 255, 255],
