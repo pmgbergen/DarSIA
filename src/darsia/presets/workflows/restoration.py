@@ -51,8 +51,9 @@ def _resolve_ignore_mask(
     ignore_mask: np.ndarray | None = None
     for ignore_key in restoration_config.ignore:
         if ignore_key == "boolean_porosity":
-            # boolean_porosity=True means "eligible for restoration", while
-            # ignore_mask=True means "preserve original value", so invert it.
+            # boolean_porosity=True indicates porous regions eligible for
+            # restoration, while ignore_mask=True indicates regions to preserve,
+            # so invert the mask.
             current = ~fluidflower.boolean_porosity.img.astype(bool)
         else:
             raise ValueError(
