@@ -309,7 +309,12 @@ class ColorPathsConfig:
         if isinstance(raw_targets, int):
             self.target_labels = [int(raw_targets)]
         elif isinstance(raw_targets, list):
-            self.target_labels = [int(label) for label in raw_targets]
+            try:
+                self.target_labels = [int(label) for label in raw_targets]
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    "Invalid value for 'target_labels'. List entries must be integers."
+                ) from exc
         else:
             raise ValueError(
                 "Invalid value for 'target_labels'. Allowed types are int or list[int]."

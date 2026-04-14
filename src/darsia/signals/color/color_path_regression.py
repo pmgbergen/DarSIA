@@ -1494,7 +1494,7 @@ class LabelColorPathMapRegression:
         if target_labels is None:
             labels_to_process = list(color_spectrum.keys())
         else:
-            labels_to_process = [int(label) for label in target_labels]
+            labels_to_process = list(target_labels)
             missing_in_spectrum = [
                 label for label in labels_to_process if label not in color_spectrum
             ]

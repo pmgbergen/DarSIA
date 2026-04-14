@@ -30,7 +30,7 @@ def _resolve_target_labels(
         raise ValueError(
             "Single-label calibration requires non-empty [color_paths].target_labels."
         )
-    targets = [int(label) for label in target_labels]
+    targets = list(target_labels)
     invalid = sorted(set(targets).difference(valid_labels))
     if invalid:
         raise ValueError(
