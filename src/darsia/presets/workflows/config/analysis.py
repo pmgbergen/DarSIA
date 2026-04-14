@@ -87,7 +87,8 @@ class AnalysisThresholdingConfig:
     @dataclass
     class LayerConfig:
         mode: str = "concentration_aq"
-        threshold: float = 0.0
+        threshold_min: float | None = None
+        threshold_max: float | None = None
         label: str = ""
         fill: tuple[int, int, int] = (255, 255, 255)
         stroke: tuple[int, int, int] = (0, 0, 0)
@@ -103,7 +104,25 @@ class AnalysisThresholdingConfig:
                     f"Unsupported analysis.thresholding.layers.{key}.mode '{self.mode}'. "
                     f"Supported modes: {', '.join(sorted(supported_modes))}."
                 )
-            self.threshold = float(_get_key(sec, "threshold", required=True))
+            self.threshold_min = _get_key(sec, "threshold_min", required=False)
+            self.threshold_max = _get_key(sec, "threshold_max", required=False)
+            if not self.threshold_min is None:
+                self.threshold_min = float(self.threshold_min)
+            if not self.threshold_max is None:
+                self.threshold_max = float(self.threshold_max)
+            if (
+                self.threshold_min is not None
+                and self.threshold_max is not None
+                and self.threshold_min > self.threshold_max
+            ):
+                raise ValueError(
+                    f"analysis.thresholding.layers.{key} has threshold_min > threshold_max."
+                )
+            if self.threshold_min is None and self.threshold_max is None:
+                raise ValueError(
+                    f"analysis.thresholding.layers.{key} must have at least one of threshold_min or threshold_max."
+                )
+
             self.label = _get_key(sec, "label", required=False, default=key, type_=str)
             self.fill = _to_rgb(
                 _get_key(sec, "fill", required=False, default=self.fill),
