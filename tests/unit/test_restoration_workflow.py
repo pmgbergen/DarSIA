@@ -3,46 +3,99 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from darsia.presets.workflows.config.restoration import RestorationConfig, TVDConfig
-from darsia.presets.workflows.restoration import (
-    IgnoreMaskedRestoration,
-    build_restoration,
+import darsia
+from darsia.presets.workflows.config.restoration import (
+    RestorationConfig,
+    TVDConfig,
+    VolumeAveragingConfig,
 )
+from darsia.presets.workflows.restoration import build_restoration
 
 
-def test_build_restoration_applies_boolean_porosity_ignore_mask(monkeypatch):
-    mock_restored_value = -1.0
+def test_build_restoration_applies_boolean_porosity_ignore_mask_to_volume_averaging(
+    monkeypatch,
+):
+    captured = {}
+
+    class _FakeVolumeAveraging:
+        def __init__(self, rev, mask):
+            captured["mask"] = mask
+
+        def __call__(self, img):
+            return img
+
+    monkeypatch.setattr(
+        "darsia.presets.workflows.restoration.darsia.VolumeAveraging",
+        _FakeVolumeAveraging,
+    )
+    monkeypatch.setattr(
+        "darsia.presets.workflows.restoration.darsia.REV",
+        lambda size, img: SimpleNamespace(size=size, img=img),
+    )
+
+    restoration_config = RestorationConfig(
+        method="volume_average",
+        options=VolumeAveragingConfig(rev_size=3),
+        ignore=["boolean_porosity"],
+    )
+    baseline = darsia.ScalarImage(np.zeros((2, 2), dtype=float), space_dim=2)
+    image_porosity = darsia.ScalarImage(
+        np.array([[0.2, 0.4], [0.6, 0.8]], dtype=float), space_dim=2
+    )
+    boolean_porosity = darsia.ScalarImage(
+        np.array([[True, False], [True, True]], dtype=bool), space_dim=2
+    )
+    fluidflower = SimpleNamespace(
+        baseline=baseline,
+        image_porosity=image_porosity,
+        boolean_porosity=boolean_porosity,
+    )
+
+    build_restoration(restoration_config, fluidflower)
+
+    np.testing.assert_allclose(
+        captured["mask"].img,
+        np.array([[0.2, 0.0], [0.6, 0.8]], dtype=float),
+    )
+
+
+def test_build_restoration_applies_boolean_porosity_ignore_mask_to_tvd_weight(
+    monkeypatch,
+):
+    captured = {}
 
     class _FakeTVD:
         def __init__(self, **kwargs):
-            pass
+            captured.update(kwargs)
 
         def __call__(self, img):
-            return np.full_like(img, fill_value=mock_restored_value, dtype=float)
+            return img
 
     monkeypatch.setattr("darsia.presets.workflows.restoration.darsia.TVD", _FakeTVD)
 
     restoration_config = RestorationConfig(
         method="tvd",
-        options=TVDConfig(weight=0.1),
+        options=TVDConfig(method="chambolle", weight=2.0),
         ignore=["boolean_porosity"],
     )
+    baseline = darsia.ScalarImage(np.zeros((2, 2), dtype=float), space_dim=2)
+    image_porosity = darsia.ScalarImage(np.ones((2, 2), dtype=float), space_dim=2)
+    boolean_porosity = darsia.ScalarImage(
+        np.array([[True, False], [False, True]], dtype=bool), space_dim=2
+    )
     fluidflower = SimpleNamespace(
-        boolean_porosity=SimpleNamespace(
-            img=np.array([[True, False], [False, True]], dtype=bool)
-        )
+        baseline=baseline,
+        image_porosity=image_porosity,
+        boolean_porosity=boolean_porosity,
     )
 
-    restoration = build_restoration(restoration_config, fluidflower)
-    assert isinstance(restoration, IgnoreMaskedRestoration)
-
-    signal = np.array([[1.0, 2.0], [3.0, 4.0]])
-    restored = restoration(signal)
+    build_restoration(restoration_config, fluidflower)
 
     np.testing.assert_allclose(
-        restored,
-        np.array([[mock_restored_value, 2.0], [3.0, mock_restored_value]]),
+        captured["weight"],
+        np.array([[2.0, 0.0], [0.0, 2.0]], dtype=float),
     )
+    assert captured["method"] == "heterogeneous bregman"
 
 
 def test_build_restoration_unknown_ignore_mask_raises():
@@ -52,7 +105,8 @@ def test_build_restoration_unknown_ignore_mask_raises():
         ignore=["unknown-mask"],
     )
     fluidflower = SimpleNamespace(
-        boolean_porosity=SimpleNamespace(img=np.ones((2, 2), dtype=bool))
+        image_porosity=SimpleNamespace(img=np.ones((2, 2), dtype=float)),
+        boolean_porosity=SimpleNamespace(img=np.ones((2, 2), dtype=bool)),
     )
 
     with pytest.raises(ValueError, match="Unknown restoration ignore mask"):

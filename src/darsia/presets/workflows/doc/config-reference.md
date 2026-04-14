@@ -61,7 +61,9 @@ import_calibration_bundle = "/absolute/path/to/calibration_bundle.zip"
 ## Restoration section
 - `method`: `volume_average` or `tvd`.
 - `ignore` (optional): list of named ignore masks applied in additive mode.
-  - Currently supported: `"boolean_porosity"` (ignore regions outside the boolean porosity mask).
+  - Currently supported:
+    - `"boolean_porosity"` (ignore regions outside the boolean porosity mask)
+    - `"image_porosity"` (ignore regions with non-positive image porosity)
 - `[restoration.options]`: method-specific options (for example TVD method/weights and
   volume-averaging `rev_size`).
 
