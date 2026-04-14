@@ -645,7 +645,9 @@ class WorkflowGUI:
 
     def _setup_icon(self) -> None:
         logo_path = (
-            Path(__file__).resolve().parent / "DarSIA_Horisontal_Positiv_part.png"
+            Path(__file__).resolve().parent
+            / "interface"
+            / "DarSIA_Horisontal_Positiv_part.png"
         )
         icon = self.tk.PhotoImage(file=logo_path)
         self.root.iconphoto(True, icon)
