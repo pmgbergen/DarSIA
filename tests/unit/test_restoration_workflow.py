@@ -11,12 +11,14 @@ from darsia.presets.workflows.restoration import (
 
 
 def test_build_restoration_applies_boolean_porosity_ignore_mask(monkeypatch):
+    mock_restored_value = -1.0
+
     class _FakeTVD:
         def __init__(self, **kwargs):
             pass
 
         def __call__(self, img):
-            return np.full_like(img, fill_value=-1.0, dtype=float)
+            return np.full_like(img, fill_value=mock_restored_value, dtype=float)
 
     monkeypatch.setattr("darsia.presets.workflows.restoration.darsia.TVD", _FakeTVD)
 
@@ -37,7 +39,10 @@ def test_build_restoration_applies_boolean_porosity_ignore_mask(monkeypatch):
     signal = np.array([[1.0, 2.0], [3.0, 4.0]])
     restored = restoration(signal)
 
-    np.testing.assert_allclose(restored, np.array([[-1.0, 2.0], [3.0, -1.0]]))
+    np.testing.assert_allclose(
+        restored,
+        np.array([[mock_restored_value, 2.0], [3.0, mock_restored_value]]),
+    )
 
 
 def test_build_restoration_unknown_ignore_mask_raises():
