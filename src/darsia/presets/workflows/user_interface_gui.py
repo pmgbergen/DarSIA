@@ -634,6 +634,7 @@ class WorkflowGUI:
         except (OSError, RuntimeError) as e:
             logger.warning("Failed to initialize GUI session cache path: %s", e)
 
+        self._setup_icon()
         self._setup_logging()
         self._build_layout()
         self._setup_themes()
@@ -641,6 +642,13 @@ class WorkflowGUI:
         self._poll_stream()
         self._update_dashboard()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _setup_icon(self) -> None:
+        logo_path = (
+            Path(__file__).resolve().parent / "DarSIA_Horisontal_Positiv_part.png"
+        )
+        icon = self.tk.PhotoImage(file=logo_path)
+        self.root.iconphoto(True, icon)
 
     def _setup_logging(self) -> None:
         _configure_queue_logging(self.log_queue)
