@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 _SUPPORTED_MODES = {"exif", "ctime"}
 
 
-def get_creation_time(filepath: Path) -> datetime:
+def get_modification_time(filepath: Path) -> datetime:
     """Get file modification time as datetime."""
     return datetime.fromtimestamp(filepath.stat().st_mtime)
 
@@ -26,7 +26,7 @@ def get_creation_time(filepath: Path) -> datetime:
 def _extract_exif_datetime(path: Path) -> datetime | None:
     """Extract EXIF datetime from an image."""
     with Image.open(path) as img:
-        exif_data = img._getexif()
+        exif_data = img.getexif()
         if exif_data:
             for tag_id, value in exif_data.items():
                 tag = TAGS.get(tag_id, tag_id)
@@ -94,7 +94,7 @@ def _extract_imaging_protocol_dataframe(
         if mode == "exif":
             date_time = _extract_exif_datetime(filename)
         elif mode == "ctime":
-            date_time = get_creation_time(filename)
+            date_time = get_modification_time(filename)
         else:
             raise ValueError(f"Unknown mode: {mode}. Use 'exif' or 'ctime'.")
 
