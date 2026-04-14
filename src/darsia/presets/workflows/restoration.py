@@ -43,6 +43,8 @@ def _resolve_ignore_mask(
     ignore_mask: np.ndarray | None = None
     for ignore_key in restoration_config.ignore:
         if ignore_key == "boolean_porosity":
+            # boolean_porosity is True in regions to process; ignore masks are True
+            # in regions to preserve from restoration.
             current = ~fluidflower.boolean_porosity.img.astype(bool)
         else:
             raise ValueError(
