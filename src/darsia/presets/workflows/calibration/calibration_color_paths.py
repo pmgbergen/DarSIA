@@ -243,6 +243,9 @@ def delete_calibration(
 
     Args:
         path: Path(s) to the configuration file(s).
+        require_confirmation: If True, ask for command-line confirmation before
+            deleting. Set to False for already-confirmed non-interactive flows
+            (e.g. GUI confirmation dialogs).
 
     """
     logger.warning(
@@ -274,4 +277,3 @@ def delete_calibration(
         else:
             p.unlink(missing_ok=True)
     logger.info("Calibration data deleted.")
-        logger.info("Calibration data deletion aborted.")
