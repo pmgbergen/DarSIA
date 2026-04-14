@@ -63,7 +63,20 @@ def _load_or_compute_tracer_color_spectrum(
         logger.info(
             "Loading stored tracer spectrum from %s", tracer_color_spectrum_folder
         )
-        return darsia.LabelColorSpectrumMap.load(tracer_color_spectrum_folder)
+        try:
+            return darsia.LabelColorSpectrumMap.load(tracer_color_spectrum_folder)
+        except Exception as exc:
+            if strict_stored_artifacts:
+                raise RuntimeError(
+                    "Failed to load stored tracer color spectrum in strict mode from "
+                    f"{tracer_color_spectrum_folder}."
+                ) from exc
+            logger.warning(
+                "Failed to load stored tracer spectrum from %s (%s). Falling back to "
+                "recomputation.",
+                tracer_color_spectrum_folder,
+                exc,
+            )
 
     if strict_stored_artifacts:
         raise FileNotFoundError(

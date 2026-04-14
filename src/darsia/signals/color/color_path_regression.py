@@ -1495,13 +1495,13 @@ class LabelColorPathMapRegression:
             labels_to_process = list(color_spectrum.keys())
         else:
             labels_to_process = list(target_labels)
-            missing_in_spectrum = [
-                label for label in labels_to_process if label not in color_spectrum
-            ]
+            missing_in_spectrum = sorted(
+                set(labels_to_process) - set(color_spectrum.keys())
+            )
             if missing_in_spectrum:
                 raise ValueError(
                     "Requested target_labels are missing in color_spectrum: "
-                    f"{sorted(set(missing_in_spectrum))}."
+                    f"{missing_in_spectrum}."
                 )
             if existing_map is None:
                 raise ValueError(

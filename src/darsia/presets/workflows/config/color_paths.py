@@ -307,7 +307,7 @@ class ColorPathsConfig:
         # Label selection for single-label updates
         raw_targets = sec.get("target_labels", [])
         if isinstance(raw_targets, int):
-            self.target_labels = [int(raw_targets)]
+            self.target_labels = [raw_targets]
         elif isinstance(raw_targets, list):
             try:
                 self.target_labels = [int(label) for label in raw_targets]
