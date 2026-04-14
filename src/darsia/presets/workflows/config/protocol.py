@@ -21,6 +21,8 @@ class ProtocolConfig:
     """Path to the blacklist protocol file or (file, sheet)."""
     pressure_temperature: Path | tuple[Path, str] | None = None
     """Path to the pressure-temperature protocol file or (file, sheet)."""
+    imaging_mode: str = "exif"
+    """Datetime extraction mode for imaging protocol setup: 'exif' or 'ctime'."""
 
     def load(self, path: Path) -> "ProtocolConfig":
         sec = _get_section_from_toml(path, "protocols")
@@ -80,6 +82,15 @@ class ProtocolConfig:
                 )
         except KeyError:
             self.pressure_temperature = None
+
+        self.imaging_mode = str(
+            sec.get("imaging_mode", sec.get("mode", "exif"))
+        ).lower()
+        if self.imaging_mode not in {"exif", "ctime"}:
+            raise ValueError(
+                "Imaging mode must be either 'exif' or 'ctime' via "
+                "[protocols].imaging_mode."
+            )
 
         return self
 

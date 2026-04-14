@@ -3,6 +3,7 @@
 Setup routines:
 - depth map setup
 - labeling setup
+- protocol setup
 - rig setup
 
 Usage (for more information run with --help and/or --info flag):
@@ -12,6 +13,7 @@ Advanced usage (activate specific steps):
     python setup.py --depth
     python setup.py --segmentation
     python setup.py --facies
+    python setup.py --protocol
     python setup.py --rig
 
 """
@@ -23,6 +25,7 @@ from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.setup.setup_depth import setup_depth_map
 from darsia.presets.workflows.setup.setup_facies import setup_facies
 from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
+from darsia.presets.workflows.setup.setup_protocols import setup_imaging_protocol
 from darsia.presets.workflows.setup.setup_rig import delete_rig, setup_rig
 
 # Set logging level
@@ -46,7 +49,17 @@ def build_parser_for_setup():
     parser.add_argument(
         "--facies", action="store_true", help="Activate setup of facies."
     )
+    parser.add_argument(
+        "--protocol",
+        action="store_true",
+        help="Generate imaging/injection/pressure-temperature protocol CSV files.",
+    )
     parser.add_argument("--rig", action="store_true", help="Activate setup of rig.")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force overwrite when generating protocol CSV files.",
+    )
     parser.add_argument(
         "--delete",
         action="store_true",
@@ -73,6 +86,8 @@ def preset_setup(rig=Rig):
         segment_colored_image(args.config, args.show)
     if args.all or args.facies:
         setup_facies(rig, args.config, args.show)
+    if args.all or args.protocol:
+        setup_imaging_protocol(args.config, force=args.force, show=args.show)
     if args.all or args.rig:
         setup_rig(rig, args.config, args.show)
     if args.delete:
