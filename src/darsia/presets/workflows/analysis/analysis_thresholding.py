@@ -243,17 +243,13 @@ def analysis_thresholding_from_context(
 
             img.show(title=f"Image at {path.stem}", delay=True)
             for layer_name in layer_names:
-                mode_preview = _to_bgr_array(
-                    stream_payload[f"thresholding_{layer_name}"]
-                )
                 plt.figure()
                 plt.title(f"Thresholding {layer_name} at {path.stem}")
-                plt.imshow(cv2.cvtColor(mode_preview, cv2.COLOR_BGR2RGB))
+                plt.imshow(stream_payload[f"thresholding_{layer_name}"])
                 plt.axis("off")
-            all_preview = _to_bgr_array(stream_payload["thresholding_all"])
             plt.figure()
             plt.title(f"Thresholding all at {path.stem}")
-            plt.imshow(cv2.cvtColor(all_preview, cv2.COLOR_BGR2RGB))
+            plt.imshow(stream_payload["thresholding_all"])
             plt.axis("off")
             plt.show()
 
