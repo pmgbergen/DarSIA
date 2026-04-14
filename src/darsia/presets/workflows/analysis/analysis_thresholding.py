@@ -171,6 +171,7 @@ def analysis_thresholding_from_context(
     if has_jpg:
         for layer_name in layer_names:
             (jpg_folder / layer_name).mkdir(parents=True, exist_ok=True)
+        (jpg_folder / "all").mkdir(parents=True, exist_ok=True)
     if has_npz:
         for layer_name in layer_names:
             (npz_folder / layer_name).mkdir(parents=True, exist_ok=True)
@@ -181,6 +182,7 @@ def analysis_thresholding_from_context(
         mode_images = _extract_mode_images(result)
         stream_payload: dict[str, Any] = {"thresholding_source_image": img}
         img_bgr = _to_bgr_array(img)
+        master_preview = img_bgr.copy()
 
         for layer_name, layer in thresholding_config.layers.items():
             scalar = _to_scalar_array(mode_images[layer.mode])
@@ -216,6 +218,25 @@ def analysis_thresholding_from_context(
             stream_payload[f"thresholding_{layer_name}"] = cv2.cvtColor(
                 preview, cv2.COLOR_BGR2RGB
             )
+            master_preview = _overlay_layer(
+                master_preview,
+                mask,
+                fill=layer.fill,
+                stroke=layer.stroke,
+                fill_alpha=layer.fill_alpha,
+                stroke_width=layer.stroke_width,
+            )
+
+        master_preview = _apply_legend(
+            master_preview,
+            text="all layers",
+            legend_config=thresholding_config.legend,
+        )
+        if has_jpg:
+            cv2.imwrite(str(jpg_folder / "all" / f"{path.stem}.jpg"), master_preview)
+        stream_payload["thresholding_all"] = cv2.cvtColor(
+            master_preview, cv2.COLOR_BGR2RGB
+        )
 
         if show:
             import matplotlib.pyplot as plt
@@ -229,6 +250,11 @@ def analysis_thresholding_from_context(
                 plt.title(f"Thresholding {layer_name} at {path.stem}")
                 plt.imshow(cv2.cvtColor(mode_preview, cv2.COLOR_BGR2RGB))
                 plt.axis("off")
+            all_preview = _to_bgr_array(stream_payload["thresholding_all"])
+            plt.figure()
+            plt.title(f"Thresholding all at {path.stem}")
+            plt.imshow(cv2.cvtColor(all_preview, cv2.COLOR_BGR2RGB))
+            plt.axis("off")
             plt.show()
 
         publish_stream_images(
