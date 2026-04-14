@@ -52,6 +52,7 @@ def _write_config_snippet(
     color_paths_folder: Path | None,
     color_to_mass_folder: Path | None,
     baseline_color_spectrum_folder: Path | None,
+    tracer_color_spectrum_folder: Path | None,
     color_range_file: Path | None,
 ) -> Path:
     lines = [
@@ -69,6 +70,10 @@ def _write_config_snippet(
         if baseline_color_spectrum_folder is not None:
             lines.append(
                 f'baseline_color_spectrum_folder = "{baseline_color_spectrum_folder}"'
+            )
+        if tracer_color_spectrum_folder is not None:
+            lines.append(
+                f'tracer_color_spectrum_folder = "{tracer_color_spectrum_folder}"'
             )
         if color_range_file is not None:
             lines.append(f'color_range_file = "{color_range_file}"')
@@ -94,6 +99,7 @@ def _collect_artifact_members(
         "color_paths": [],
         "color_to_mass": [],
         "baseline_color_spectrum": [],
+        "tracer_color_spectrum": [],
         "color_range": [],
     }
     members = zip_file.infolist()
@@ -137,6 +143,11 @@ def _build_destination_roots(
             config.color_paths.baseline_color_spectrum_folder
             if target_folder == calibration_root and config.color_paths is not None
             else target_folder / "baseline_color_spectrum"
+        ),
+        "tracer_color_spectrum": (
+            config.color_paths.tracer_color_spectrum_folder
+            if target_folder == calibration_root and config.color_paths is not None
+            else target_folder / "tracer_color_spectrum"
         ),
         "color_range": (
             config.color_paths.color_range_file.with_suffix(".json")
@@ -256,6 +267,9 @@ def export_calibration_bundle(
         )
         if baseline_color_spectrum_folder.exists():
             artifact_paths["baseline_color_spectrum"] = baseline_color_spectrum_folder
+        tracer_color_spectrum_folder = config.color_paths.tracer_color_spectrum_folder
+        if tracer_color_spectrum_folder.exists():
+            artifact_paths["tracer_color_spectrum"] = tracer_color_spectrum_folder
         color_range_file = config.color_paths.color_range_file.with_suffix(".json")
         if color_range_file.exists():
             artifact_paths["color_range"] = color_range_file
@@ -372,6 +386,8 @@ def import_calibration_bundle(
             result[key] = path
     if destination_roots["baseline_color_spectrum"].exists():
         result["baseline_color_spectrum"] = destination_roots["baseline_color_spectrum"]
+    if destination_roots["tracer_color_spectrum"].exists():
+        result["tracer_color_spectrum"] = destination_roots["tracer_color_spectrum"]
     if destination_roots["color_range"].exists():
         result["color_range"] = destination_roots["color_range"]
 
@@ -380,6 +396,7 @@ def import_calibration_bundle(
         color_paths_folder=result.get("color_paths"),
         color_to_mass_folder=result.get("color_to_mass"),
         baseline_color_spectrum_folder=result.get("baseline_color_spectrum"),
+        tracer_color_spectrum_folder=result.get("tracer_color_spectrum"),
         color_range_file=result.get("color_range"),
     )
     logger.info("Imported calibration bundle to %s", target_folder)

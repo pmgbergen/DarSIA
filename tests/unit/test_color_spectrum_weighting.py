@@ -325,3 +325,92 @@ class TestFindColorPathWeighting:
         )
         assert isinstance(result, darsia.LabelColorPathMap)
         assert 0 in result
+
+
+class TestFindColorPathTargetLabels:
+    """Verify partial updates via target_labels and existing_map."""
+
+    def _make_regression(self):
+        labels_arr = np.array(
+            [
+                [0, 0, 1, 1],
+                [0, 0, 1, 1],
+                [2, 2, 2, 2],
+                [2, 2, 2, 2],
+            ],
+            dtype=int,
+        )
+        labels_img = darsia.Image(img=labels_arr, dimensions=[1.0, 1.0])
+        color_range = darsia.ColorRange(
+            min_color=np.array([-0.5, -0.5, -0.5]),
+            max_color=np.array([0.5, 0.5, 0.5]),
+            color_mode=darsia.ColorMode.RELATIVE,
+        )
+        mask_img = darsia.Image(img=np.ones((4, 4), dtype=bool), dimensions=[1.0, 1.0])
+        return darsia.LabelColorPathMapRegression(
+            labels=labels_img,
+            color_range=color_range,
+            resolution=11,
+            mask=mask_img,
+        )
+
+    def test_updates_only_target_labels(self) -> None:
+        regression = self._make_regression()
+        spectrum_map = darsia.LabelColorSpectrumMap(
+            {
+                0: _make_spectrum(resolution=11),
+                1: _make_spectrum(resolution=11),
+            }
+        )
+        existing_map = darsia.LabelColorPathMap(
+            {
+                0: darsia.ColorPath(
+                    base_color=np.zeros(3),
+                    relative_colors=[np.zeros(3), np.array([0.1, 0.0, 0.0])],
+                    mode="rgb",
+                    name="existing_0",
+                ),
+                1: darsia.ColorPath(
+                    base_color=np.zeros(3),
+                    relative_colors=[np.zeros(3), np.array([0.0, 0.1, 0.0])],
+                    mode="rgb",
+                    name="existing_1",
+                ),
+                2: darsia.ColorPath(
+                    base_color=np.zeros(3),
+                    relative_colors=[np.zeros(3), np.array([0.0, 0.0, 0.1])],
+                    mode="rgb",
+                    name="existing_2",
+                ),
+            }
+        )
+
+        result = regression.find_color_path(
+            color_spectrum=spectrum_map,
+            num_segments=1,
+            weighting="threshold",
+            mode="auto",
+            target_labels=[1],
+            existing_map=existing_map,
+        )
+
+        np.testing.assert_allclose(
+            np.array(result[0].relative_colors), np.array(existing_map[0].relative_colors)
+        )
+        np.testing.assert_allclose(
+            np.array(result[2].relative_colors), np.array(existing_map[2].relative_colors)
+        )
+        assert not np.allclose(
+            np.array(result[1].relative_colors), np.array(existing_map[1].relative_colors)
+        )
+
+    def test_target_labels_require_existing_map(self) -> None:
+        regression = self._make_regression()
+        spectrum_map = darsia.LabelColorSpectrumMap({0: _make_spectrum(resolution=11)})
+        with pytest.raises(ValueError, match="existing_map"):
+            regression.find_color_path(
+                color_spectrum=spectrum_map,
+                num_segments=1,
+                target_labels=[0],
+                existing_map=None,
+            )

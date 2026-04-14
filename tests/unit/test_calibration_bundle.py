@@ -67,6 +67,9 @@ def _create_calibration_artifacts(tmp_path: Path) -> Path:
         results / "calibration" / "baseline_color_spectrum" / "color_spectrum_0.json"
     )
     _write_file(
+        results / "calibration" / "tracer_color_spectrum" / "color_spectrum_0.json"
+    )
+    _write_file(
         results / "calibration" / "color_range.json",
         '{"min_color":[0,0,0],"max_color":[1,1,1],"color_mode":"RELATIVE"}',
     )
@@ -88,6 +91,7 @@ def test_export_calibration_bundle(tmp_path: Path):
         assert (
             "calibration_bundle/baseline_color_spectrum/color_spectrum_0.json" in names
         )
+        assert "calibration_bundle/tracer_color_spectrum/color_spectrum_0.json" in names
         assert "calibration_bundle/color_range/color_range.json" in names
         manifest = json.loads(zf.read("calibration_bundle/manifest.json"))
         assert "artifacts" in manifest
@@ -111,6 +115,7 @@ def test_import_calibration_bundle(tmp_path: Path):
         imported["color_to_mass"]
         == tmp_path / "imported" / "color_to_mass" / "from_labels"
     )
+    assert imported["tracer_color_spectrum"] == tmp_path / "imported" / "tracer_color_spectrum"
     assert imported["color_range"].exists()
 
 
@@ -145,10 +150,13 @@ def test_preview_calibration_bundle_import_conflicts_multiple_artifacts(tmp_path
     target = tmp_path / "imported"
     color_to_mass_conflict = target / "color_to_mass" / "from_labels" / "metadata.json"
     baseline_conflict = target / "baseline_color_spectrum" / "color_spectrum_0.json"
+    tracer_conflict = target / "tracer_color_spectrum" / "color_spectrum_0.json"
     color_to_mass_conflict.parent.mkdir(parents=True, exist_ok=True)
     baseline_conflict.parent.mkdir(parents=True, exist_ok=True)
+    tracer_conflict.parent.mkdir(parents=True, exist_ok=True)
     color_to_mass_conflict.write_text("{}")
     baseline_conflict.write_text("{}")
+    tracer_conflict.write_text("{}")
 
     conflicts = preview_calibration_bundle_import_conflicts(
         config_path, bundle=bundle, target_folder=target
@@ -156,6 +164,7 @@ def test_preview_calibration_bundle_import_conflicts_multiple_artifacts(tmp_path
 
     assert color_to_mass_conflict in conflicts
     assert baseline_conflict in conflicts
+    assert tracer_conflict in conflicts
 
 
 def test_import_calibration_bundle_skip_all_conflicts(tmp_path: Path):
@@ -208,6 +217,7 @@ def test_import_calibration_bundle_default_target_from_config(tmp_path: Path):
     assert imported["color_paths"] == results / "color_paths" / "from_labels"
     assert imported["color_to_mass"] == results / "color_to_mass" / "from_labels"
     assert imported["baseline_color_spectrum"] == results / "baseline_color_spectrum"
+    assert imported["tracer_color_spectrum"] == results / "tracer_color_spectrum"
     assert imported["color_range"] == results / "color_range.json"
     assert (results / "CONFIG_SNIPPET.toml").exists()
 

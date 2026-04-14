@@ -21,5 +21,8 @@ python -m darsia.presets.workflows.user_interface_calibration --mass --config /a
 ## Notes
 - Keep calibration basis settings aligned across `[color_paths]` and `[color_to_mass]`.
 - Prefer reusable data registry keys for calibration datasets.
+- `color_paths` supports `calibration_scope = "single_label"` with
+  `target_labels` for layer-by-layer manual updates while reusing stored
+  calibration artifacts.
 
 See [image selection](./image-selection.md) and [config reference](./config-reference.md).

@@ -91,6 +91,25 @@ class ColorPathsConfig:
     - ``"manual"`` – start from automated key colors and allow interactive
                      user-controlled postprocessing of key relative colors.
     """
+    calibration_scope: str = "full"
+    """Calibration scope.
+
+    Allowed values:
+
+    - ``"full"``         – full recalibration (default, preserves existing behaviour).
+    - ``"single_label"`` – update only selected labels using stored calibration
+                           artifacts as basis.
+    """
+    target_labels: list[int] = field(default_factory=list)
+    """Label ids to update when ``calibration_scope="single_label"``."""
+    tracer_color_spectrum_folder: Path = field(default_factory=Path)
+    """Path to stored tracer colour spectra used for color-path search."""
+    strict_stored_artifacts: bool = False
+    """Whether stored artifacts are required in ``single_label`` mode.
+
+    If ``True``, missing stored artifacts raise an error.
+    If ``False``, missing tracer spectrum falls back to recomputation.
+    """
 
     def load(
         self,
@@ -209,6 +228,14 @@ class ColorPathsConfig:
         if not self.color_range_file:
             assert results is not None
             self.color_range_file = results / "calibration" / "color_range"
+        self.tracer_color_spectrum_folder = _get_key(
+            sec, "tracer_color_spectrum_folder", required=False, type_=Path
+        )
+        if not self.tracer_color_spectrum_folder:
+            assert results is not None
+            self.tracer_color_spectrum_folder = (
+                results / "calibration" / "tracer_color_spectrum"
+            )
 
         # ROI support – registry reference list OR inline sub-sections
         self.rois = _get_key(sec, "rois", default=[], required=False, type_=list)
@@ -261,6 +288,43 @@ class ColorPathsConfig:
             )
         self.mode = raw_mode
 
+        # Calibration scope
+        _allowed_scope = {"full", "single_label"}
+        raw_scope = _get_key(
+            sec,
+            "calibration_scope",
+            default="full",
+            required=False,
+            type_=str,
+        )
+        if raw_scope not in _allowed_scope:
+            raise ValueError(
+                f"Invalid value '{raw_scope}' for 'calibration_scope'. "
+                f"Allowed values are: {sorted(_allowed_scope)}."
+            )
+        self.calibration_scope = raw_scope
+
+        # Label selection for single-label updates
+        raw_targets = sec.get("target_labels", [])
+        if isinstance(raw_targets, int):
+            self.target_labels = [int(raw_targets)]
+        elif isinstance(raw_targets, list):
+            self.target_labels = [int(label) for label in raw_targets]
+        else:
+            raise ValueError(
+                "Invalid value for 'target_labels'. Allowed types are int or list[int]."
+            )
+
+        self.strict_stored_artifacts = bool(
+            _get_key(
+                sec,
+                "strict_stored_artifacts",
+                default=False,
+                required=False,
+                type_=bool,
+            )
+        )
+
         # Handle inline [color_paths.roi.*] sub-sections: parse and inject into registry.
         if "roi" in sec and isinstance(sec["roi"], dict) and roi_registry is not None:
             from .roi import RoiAndLabelConfig, RoiConfig
@@ -295,6 +359,9 @@ class ColorPathsConfig:
             ignore_baseline_spectrum = "expanded"  # "none", "baseline", or "expanded"
             histogram_weighting = "threshold"  # "threshold", "wls", "wls_sqrt", or "wls_log"
             mode = "auto"  # "auto" or "manual"
+            calibration_scope = "full"  # "full" or "single_label"
+            target_labels = [3]  # int or list[int], used for single_label scope
+            strict_stored_artifacts = false
 
             Example (inline sub-section):
             ------------------------------
