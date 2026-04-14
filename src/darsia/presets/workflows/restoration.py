@@ -5,8 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import darsia
 import numpy as np
+
+import darsia
 from darsia.presets.workflows.config.restoration import RestorationConfig
 
 if TYPE_CHECKING:
@@ -48,7 +49,9 @@ def _resolve_ignore_mask(
                 f"Unknown restoration ignore mask '{ignore_key}'. "
                 "Valid values are: ['boolean_porosity']."
             )
-        ignore_mask = current if ignore_mask is None else np.logical_or(ignore_mask, current)
+        ignore_mask = (
+            current if ignore_mask is None else np.logical_or(ignore_mask, current)
+        )
 
     return ignore_mask
 
