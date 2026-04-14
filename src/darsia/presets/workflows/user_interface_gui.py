@@ -449,6 +449,7 @@ def _run_setup_workflow(
     from darsia.presets.workflows.setup.setup_depth import setup_depth_map
     from darsia.presets.workflows.setup.setup_facies import setup_facies
     from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
+    from darsia.presets.workflows.setup.setup_protocols import setup_imaging_protocol
     from darsia.presets.workflows.setup.setup_rig import delete_rig, setup_rig
 
     paths = normalize_paths(config_paths)
@@ -460,6 +461,8 @@ def _run_setup_workflow(
         segment_colored_image(paths, show=show)
     if options["all"] or options["facies"]:
         setup_facies(rig_cls, paths, show=show)
+    if options["all"] or options["protocol"]:
+        setup_imaging_protocol(paths, force=options["force"], show=show)
     if options["all"] or options["rig"]:
         setup_rig(rig_cls, paths, show=show)
     if options["delete_rig"]:
@@ -755,6 +758,7 @@ class WorkflowGUI:
         self.setup_depth = self.tk.BooleanVar(value=False)
         self.setup_seg = self.tk.BooleanVar(value=False)
         self.setup_facies = self.tk.BooleanVar(value=False)
+        self.setup_protocol = self.tk.BooleanVar(value=False)
         self.setup_rig = self.tk.BooleanVar(value=False)
         self.setup_delete = self.tk.BooleanVar(value=False)
         self.setup_show = self.tk.BooleanVar(value=False)
@@ -763,6 +767,7 @@ class WorkflowGUI:
             ("Depth", self.setup_depth),
             ("Segmentation", self.setup_seg),
             ("Facies", self.setup_facies),
+            ("Protocol", self.setup_protocol),
             ("Rig", self.setup_rig),
             ("Delete rig", self.setup_delete),
             ("Show plots", self.setup_show),
@@ -1376,11 +1381,35 @@ class WorkflowGUI:
             "depth": self.setup_depth.get(),
             "segmentation": self.setup_seg.get(),
             "facies": self.setup_facies.get(),
+            "protocol": self.setup_protocol.get(),
             "rig": self.setup_rig.get(),
             "delete_rig": self.setup_delete.get(),
             "show": self.setup_show.get(),
+            "force": False,
         }
-        actions = enabled_option_labels(options)
+        protocol_enabled = options["all"] or options["protocol"]
+        if protocol_enabled:
+            from darsia.presets.workflows.setup.setup_protocols import (
+                preview_protocol_setup_conflicts,
+            )
+
+            conflicts = preview_protocol_setup_conflicts(ctx.config_paths)
+            if conflicts:
+                max_preview = UTILS_CONFLICT_PREVIEW_LIMIT
+                preview = "\n".join(str(path) for path in conflicts[:max_preview])
+                remaining = max(0, len(conflicts) - max_preview)
+                suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
+                choice = self.messagebox.askyesnocancel(
+                    "Setup protocol conflicts",
+                    "Some protocol files already exist and would be overwritten.\n\n"
+                    f"{preview}{suffix}\n\n"
+                    "Yes: overwrite existing files\nNo/Cancel: abort",
+                )
+                if choice is not True:
+                    logger.info("Setup protocol generation aborted by user.")
+                    return
+                options["force"] = True
+        actions = enabled_option_labels(options, exclude={"force"})
         self._run_async(
             "setup",
             actions,

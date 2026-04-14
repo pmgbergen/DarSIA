@@ -10,12 +10,22 @@ This is the user-facing map of workflow TOML sections currently loaded by `Fluid
 - `[labeling]`: colored label image and generated labels artifact.
 - `[facies]`: facies properties and mapping to labels.
 - `[depth]`: depth measurements and depth-map path.
-- `[protocols]`: imaging, injection, blacklist, pressure_temperature inputs.
+- `[protocols]`: imaging, injection, blacklist, pressure_temperature inputs and imaging setup mode.
 - `[color_paths]`: color-path calibration data selection and options.
 - `[color_to_mass]`: color-to-mass calibration options.
 - `[analysis]`: analysis data and feature-specific subsections.
 - `[download]`: download utility config (optional).
 - `[utils]`: optional utility defaults (calibration bundle import/export paths).
+
+### Protocol setup mode
+Optional key under `[protocols]`:
+
+```toml
+[protocols]
+imaging_mode = "exif" # or "ctime"
+```
+
+Default is `"exif"` to match the setup protocol extractor behavior.
 
 ## Utils section
 Optional keys for utility workflows:
