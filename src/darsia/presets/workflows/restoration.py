@@ -84,6 +84,7 @@ def build_restoration(
         if not isinstance(options, VolumeAveragingConfig):
             options = VolumeAveragingConfig()
         rev_size = options.rev_size
+        # Work on a copy as the porosity image is shared in the rig object.
         image_porosity = fluidflower.image_porosity.copy()
         if active_mask is not None:
             image_porosity.img *= active_mask
