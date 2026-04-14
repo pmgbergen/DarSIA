@@ -24,11 +24,19 @@ class IgnoreMaskedRestoration:
     def __call__(self, img: np.ndarray | darsia.Image) -> np.ndarray | darsia.Image:
         result = self.model(img)
         if isinstance(img, darsia.Image):
-            assert isinstance(result, darsia.Image)
+            if not isinstance(result, darsia.Image):
+                raise TypeError(
+                    "Restoration returned an unexpected type. Expected darsia.Image "
+                    f"for darsia.Image input, got {type(result)}."
+                )
             result.img[self.ignore_mask] = img.img[self.ignore_mask]
             return result
         else:
-            assert isinstance(result, np.ndarray)
+            if not isinstance(result, np.ndarray):
+                raise TypeError(
+                    "Restoration returned an unexpected type. Expected numpy.ndarray "
+                    f"for ndarray input, got {type(result)}."
+                )
             result[self.ignore_mask] = img[self.ignore_mask]
             return result
 
@@ -43,8 +51,8 @@ def _resolve_ignore_mask(
     ignore_mask: np.ndarray | None = None
     for ignore_key in restoration_config.ignore:
         if ignore_key == "boolean_porosity":
-            # boolean_porosity is True in regions to process; ignore masks are True
-            # in regions to preserve from restoration.
+            # boolean_porosity=True means "eligible for restoration", while
+            # ignore_mask=True means "preserve original value", so invert it.
             current = ~fluidflower.boolean_porosity.img.astype(bool)
         else:
             raise ValueError(
