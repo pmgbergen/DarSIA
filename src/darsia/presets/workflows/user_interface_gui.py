@@ -484,7 +484,10 @@ def _run_calibration_workflow(
     paths = normalize_paths(config_paths)
     rig_cls = resolve_rig_class(rig_spec)
     if options["delete"]:
-        delete_calibration(paths)
+        delete_calibration(
+            paths,
+            require_confirmation=not options.get("confirm_delete", False),
+        )
         return
     if options["color_paths"]:
         calibration_color_paths(rig_cls, paths, options["show"])
@@ -1435,7 +1438,33 @@ class WorkflowGUI:
             "reset": self.cal_reset.get(),
             "show": self.cal_show.get(),
         }
+        if options["delete"]:
+            from darsia.presets.workflows.calibration.calibration_color_paths import (
+                collect_existing_calibration_paths_to_delete,
+            )
+
+            existing = collect_existing_calibration_paths_to_delete(ctx.config_paths)
+            if not existing:
+                self.messagebox.showinfo(
+                    "Delete calibration",
+                    "No existing calibration data found to delete.",
+                )
+                return
+            max_preview = UTILS_CONFLICT_PREVIEW_LIMIT
+            preview = "\n".join(str(path) for path in existing[:max_preview])
+            remaining = max(0, len(existing) - max_preview)
+            suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
+            confirmed = self.messagebox.askyesno(
+                "Confirm calibration deletion",
+                "The following calibration files/folders will be deleted:\n\n"
+                f"{preview}{suffix}\n\n"
+                "This action cannot be undone.\n\nProceed?",
+            )
+            if not confirmed:
+                logger.info("Calibration data deletion aborted by user.")
+                return
         actions = enabled_option_labels(options)
+        run_options = {**options, "confirm_delete": options["delete"]}
         self._run_async(
             "calibration",
             actions,
@@ -1444,7 +1473,7 @@ class WorkflowGUI:
             _run_calibration_workflow,
             [str(path) for path in ctx.config_paths],
             self.rig_spec.get(),
-            options,
+            run_options,
         )
 
     def _run_analysis_clicked(self) -> None:
