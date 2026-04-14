@@ -229,7 +229,7 @@ def analysis_thresholding_from_context(
 
         master_preview = _apply_legend(
             master_preview,
-            text="all layers",
+            text="All layers",
             legend_config=thresholding_config.legend,
         )
         if has_jpg:
