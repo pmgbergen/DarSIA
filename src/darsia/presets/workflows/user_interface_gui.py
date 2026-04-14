@@ -29,7 +29,7 @@ from darsia.presets.workflows.rig import Rig
 logger = logging.getLogger(__name__)
 SESSION_CACHE_FILE_NAME = "workflows_gui_session.json"
 SESSION_CACHE_VERSION = 1
-UTILS_CONFLICT_PREVIEW_LIMIT = 8
+PREVIEW_LIST_LIMIT = 8
 WORKFLOW_ERROR_DETAILS_PREFIX = "__DARSIA_WORKFLOW_ERROR_DETAILS__:"
 
 
@@ -483,7 +483,7 @@ def _run_calibration_workflow(
     if options["delete"]:
         delete_calibration(
             paths,
-            require_confirmation=not options.get("confirm_delete", False),
+            require_confirmation=not options.get("skip_delete_confirmation", False),
         )
         return
     if options["color_paths"]:
@@ -1421,7 +1421,7 @@ class WorkflowGUI:
                     "No existing calibration data found to delete.",
                 )
                 return
-            max_preview = UTILS_CONFLICT_PREVIEW_LIMIT
+            max_preview = PREVIEW_LIST_LIMIT
             preview = "\n".join(str(path) for path in existing[:max_preview])
             remaining = max(0, len(existing) - max_preview)
             suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
@@ -1435,7 +1435,9 @@ class WorkflowGUI:
                 logger.info("Calibration data deletion aborted by user.")
                 return
         actions = enabled_option_labels(options)
-        run_options = {**options, "confirm_delete": options["delete"]}
+        run_options = options.copy()
+        if options["delete"]:
+            run_options["skip_delete_confirmation"] = True
         self._run_async(
             "calibration",
             actions,
@@ -1551,7 +1553,7 @@ class WorkflowGUI:
                 Path(import_bundle),
             )
             if conflicts:
-                max_preview = UTILS_CONFLICT_PREVIEW_LIMIT
+                max_preview = PREVIEW_LIST_LIMIT
                 preview = "\n".join(str(path) for path in conflicts[:max_preview])
                 remaining = max(0, len(conflicts) - max_preview)
                 suffix = "" if remaining <= 0 else f"\n... and {remaining} more."

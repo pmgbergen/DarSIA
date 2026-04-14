@@ -19,9 +19,7 @@ def _mock_config(
     )
 
 
-def test_collect_existing_calibration_paths_to_delete_filters_non_existing_and_deduplicates(
-    tmp_path, monkeypatch
-):
+def test_collect_calibration_paths_filters_and_deduplicates(tmp_path, monkeypatch):
     color_paths_dir = tmp_path / "color_paths"
     baseline_spectrum_dir = tmp_path / "baseline_color_spectrum"
     cache_dir = tmp_path / "cache"
@@ -38,9 +36,11 @@ def test_collect_existing_calibration_paths_to_delete_filters_non_existing_and_d
         color_range_file=missing_target,
         cache=duplicate_target,
     )
-    monkeypatch.setattr(module, "FluidFlowerConfig", lambda *_args, **_kwargs: config)
+    monkeypatch.setattr(module, "FluidFlowerConfig", lambda *args, **kwargs: config)
 
-    paths = module.collect_existing_calibration_paths_to_delete(tmp_path / "config.toml")
+    paths = module.collect_existing_calibration_paths_to_delete(
+        tmp_path / "config.toml"
+    )
 
     assert paths == [duplicate_target, baseline_spectrum_dir]
 
@@ -63,13 +63,12 @@ def test_delete_calibration_without_confirmation_deletes_existing_targets(
         color_range_file=color_range_file,
         cache=cache_dir,
     )
-    monkeypatch.setattr(module, "FluidFlowerConfig", lambda *_args, **_kwargs: config)
-    monkeypatch.setattr(
-        "builtins.input",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            AssertionError("input() should not be called")
-        ),
-    )
+    monkeypatch.setattr(module, "FluidFlowerConfig", lambda *args, **kwargs: config)
+
+    def _fail_if_called(*_args, **_kwargs):
+        raise AssertionError("input() should not be called")
+
+    monkeypatch.setattr("builtins.input", _fail_if_called)
 
     module.delete_calibration(tmp_path / "config.toml", require_confirmation=False)
 
