@@ -106,9 +106,9 @@ class AnalysisThresholdingConfig:
                 )
             self.threshold_min = _get_key(sec, "threshold_min", required=False)
             self.threshold_max = _get_key(sec, "threshold_max", required=False)
-            if not self.threshold_min is None:
+            if self.threshold_min is not None:
                 self.threshold_min = float(self.threshold_min)
-            if not self.threshold_max is None:
+            if self.threshold_max is not None:
                 self.threshold_max = float(self.threshold_max)
             if (
                 self.threshold_min is not None
@@ -120,7 +120,8 @@ class AnalysisThresholdingConfig:
                 )
             if self.threshold_min is None and self.threshold_max is None:
                 raise ValueError(
-                    f"analysis.thresholding.layers.{key} must have at least one of threshold_min or threshold_max."
+                    f"analysis.thresholding.layers.{key} must have at least one of "
+                    "threshold_min or threshold_max."
                 )
 
             self.label = _get_key(sec, "label", required=False, default=key, type_=str)

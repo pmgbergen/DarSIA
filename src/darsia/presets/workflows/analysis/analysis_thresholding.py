@@ -216,7 +216,8 @@ def analysis_thresholding_from_context(
                 stroke_width=layer.stroke_width,
             )
             if threshold_min is not None and threshold_max is not None:
-                legend_text = f"{layer.label} ({layer.mode} in [{threshold_min:g}, {threshold_max:g}])"
+                legend_text = f"{layer.label} ({layer.mode} in"
+                legend_text += f" [{threshold_min:g}, {threshold_max:g}])"
             elif threshold_min is not None:
                 legend_text = f"{layer.label} ({layer.mode} >= {threshold_min:g})"
             elif threshold_max is not None:
