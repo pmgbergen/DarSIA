@@ -8,6 +8,7 @@ from pathlib import Path
 from warnings import warn
 
 from .analysis import AnalysisConfig
+from .colorrange import ColorRangeConfig
 from .color_paths import ColorPathsConfig
 from .color_to_mass import ColorToMassConfig
 from .corrections import CorrectionsConfig
@@ -164,6 +165,13 @@ class FluidFlowerConfig:
             # ValueError covers malformed/incomplete section content.
             self.color_to_mass = None
             warn(f"Section color_to_mass not found in {path}.")
+
+        # ! ---- COLOR RANGE DEFINITIONS ---- ! #
+        try:
+            self.colorrange: ColorRangeConfig | None = ColorRangeConfig()
+            self.colorrange.load(path)
+        except KeyError:
+            self.colorrange = None
 
         # ! ---- ANALYSIS DATA ---- ! #
         try:

@@ -138,3 +138,28 @@ threshold_min = 0.1
             data=tmp_path,
             results=tmp_path,
         )
+
+
+def test_analysis_thresholding_accepts_extended_modes(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+[analysis.thresholding]
+[analysis.thresholding.layers.red]
+mode = "colorchannel.rgb.r"
+threshold_min = 0.2
+[analysis.thresholding.layers.green_band]
+mode = "colorrange.custom_range"
+threshold_min = 0.5
+""".strip(),
+    )
+
+    config = AnalysisConfig().load(
+        path=config_path,
+        data=tmp_path,
+        results=tmp_path,
+    )
+    assert config.thresholding is not None
+    assert config.thresholding.layers["red"].mode == "colorchannel.rgb.r"
+    assert config.thresholding.layers["green_band"].mode == "colorrange.custom_range"

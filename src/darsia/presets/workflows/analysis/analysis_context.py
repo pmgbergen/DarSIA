@@ -14,6 +14,7 @@ from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
+from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.restoration import build_restoration
 from darsia.presets.workflows.rig import Rig
 
@@ -21,6 +22,50 @@ if TYPE_CHECKING:
     pass
 
 logger = logging.getLogger(__name__)
+
+
+def infer_require_color_to_mass_from_config(
+    path: Path | list[Path],
+    *,
+    include_segmentation: bool = False,
+    include_fingers: bool = False,
+    include_thresholding: bool = False,
+    include_mass: bool = False,
+    include_volume: bool = False,
+) -> bool:
+    """Infer if color-to-mass initialization is required for selected analyses."""
+    if include_mass or include_volume:
+        return True
+
+    config = FluidFlowerConfig(path, require_results=True, require_data=True)
+    if config.analysis is None:
+        return True
+
+    modes: list[str] = []
+    if include_segmentation and config.analysis.segmentation is not None:
+        segmentation_config = config.analysis.segmentation.config
+        if isinstance(segmentation_config, dict):
+            modes.extend(
+                cfg.mode for cfg in segmentation_config.values() if cfg.mode is not None
+            )
+        elif segmentation_config.mode is not None:
+            modes.append(segmentation_config.mode)
+
+    if include_fingers and config.analysis.fingers is not None:
+        fingers_config = config.analysis.fingers.config
+        if isinstance(fingers_config, dict):
+            modes.extend(
+                cfg.mode for cfg in fingers_config.values() if cfg.mode is not None
+            )
+        elif fingers_config.mode is not None:
+            modes.append(fingers_config.mode)
+
+    if include_thresholding and config.analysis.thresholding is not None:
+        modes.extend(layer.mode for layer in config.analysis.thresholding.layers.values())
+
+    if len(modes) == 0:
+        return True
+    return any(mode_requires_color_to_mass(mode) for mode in modes)
 
 
 @dataclass

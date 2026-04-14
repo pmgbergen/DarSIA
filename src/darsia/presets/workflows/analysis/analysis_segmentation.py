@@ -8,11 +8,13 @@ from pathlib import Path
 
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
+    infer_require_color_to_mass_from_config,
     prepare_analysis_context,
 )
 from darsia.presets.workflows.analysis.streaming import (
     publish_stream_images,
 )
+from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SegmentationContours
 
@@ -34,14 +36,24 @@ def analysis_segmentation_from_context(
     """
     assert ctx.config.analysis is not None
     assert ctx.config.analysis.segmentation is not None
-    assert ctx.color_to_mass_analysis is not None
 
     fluidflower = ctx.fluidflower
     image_paths = ctx.image_paths
-    color_to_mass_analysis = ctx.color_to_mass_analysis
 
     # Extract segmentation config (asserted not None above)
     segmentation_config = ctx.config.analysis.segmentation
+    _config = segmentation_config.config
+    if isinstance(_config, dict):
+        modes = [cfg.mode for cfg in _config.values() if cfg.mode is not None]
+    else:
+        modes = [_config.mode] if _config.mode is not None else []
+    requires_color_to_mass = any(mode_requires_color_to_mass(mode) for mode in modes)
+    if requires_color_to_mass and ctx.color_to_mass_analysis is None:
+        raise ValueError(
+            "Segmentation config uses color-to-mass modes, but color-to-mass analysis "
+            "is not initialized."
+        )
+    color_to_mass_analysis = ctx.color_to_mass_analysis
 
     # ! ---- CONTOUR PLOTTING ----
     segmentation_contours = SegmentationContours(segmentation_config.config)
@@ -50,14 +62,22 @@ def analysis_segmentation_from_context(
     for path in image_paths:
         # Extract color signal and assign mass
         img = fluidflower.read_image(path)
-        mass_analysis_result = color_to_mass_analysis(img)
+        mass_analysis_result = (
+            color_to_mass_analysis(img) if requires_color_to_mass else None
+        )
 
         # Produce contour images
         contour_image = segmentation_contours(
             img,
-            saturation_g=mass_analysis_result.saturation_g,
-            concentration_aq=mass_analysis_result.concentration_aq,
-            mass=mass_analysis_result.mass,
+            saturation_g=(
+                mass_analysis_result.saturation_g if mass_analysis_result else None
+            ),
+            concentration_aq=(
+                mass_analysis_result.concentration_aq if mass_analysis_result else None
+            ),
+            mass=mass_analysis_result.mass if mass_analysis_result else None,
+            mass_analysis_result=mass_analysis_result,
+            colorrange_config=ctx.config.colorrange,
         )
 
         if show:
@@ -97,7 +117,10 @@ def analysis_segmentation(
         cls=cls,
         path=path,
         all=all,
-        require_color_to_mass=True,
+        require_color_to_mass=infer_require_color_to_mass_from_config(
+            path,
+            include_segmentation=True,
+        ),
     )
     analysis_segmentation_from_context(
         ctx,

@@ -12,6 +12,7 @@ import numpy as np
 
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
+    infer_require_color_to_mass_from_config,
     prepare_analysis_context,
 )
 from darsia.presets.workflows.analysis.streaming import (
@@ -19,6 +20,10 @@ from darsia.presets.workflows.analysis.streaming import (
     publish_stream_images,
 )
 from darsia.presets.workflows.config.analysis import AnalysisThresholdingConfig
+from darsia.presets.workflows.mode_resolution import (
+    mode_requires_color_to_mass,
+    resolve_mode_image,
+)
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -92,16 +97,6 @@ def _apply_legend(
     return frame
 
 
-def _extract_mode_images(result: Any) -> dict[str, Any]:
-    return {
-        "concentration_aq": result.concentration_aq,
-        "saturation_g": result.saturation_g,
-        "mass_total": result.mass,
-        "mass_g": result.mass_g,
-        "mass_aq": result.mass_aq,
-    }
-
-
 def _overlay_layer(
     base_bgr: np.ndarray,
     mask: np.ndarray,
@@ -146,12 +141,10 @@ def analysis_thresholding_from_context(
     """Thresholding analysis using pre-prepared context."""
     assert ctx.config.data is not None
     assert ctx.config.analysis is not None
-    assert ctx.color_to_mass_analysis is not None
 
     config = ctx.config
     fluidflower = ctx.fluidflower
     image_paths = ctx.image_paths
-    color_to_mass_analysis = ctx.color_to_mass_analysis
 
     if config.analysis.thresholding is None:
         config.analysis.thresholding = AnalysisThresholdingConfig().load(
@@ -161,6 +154,16 @@ def analysis_thresholding_from_context(
 
     thresholding_config = config.analysis.thresholding
     thresholding_config.folder.mkdir(parents=True, exist_ok=True)
+    requires_color_to_mass = any(
+        mode_requires_color_to_mass(layer.mode)
+        for layer in thresholding_config.layers.values()
+    )
+    if requires_color_to_mass and ctx.color_to_mass_analysis is None:
+        raise ValueError(
+            "Thresholding config uses color-to-mass modes, but color-to-mass analysis "
+            "is not initialized."
+        )
+    color_to_mass_analysis = ctx.color_to_mass_analysis
 
     layer_names = list(thresholding_config.layers.keys())
     has_jpg = "jpg" in thresholding_config.formats
@@ -178,14 +181,19 @@ def analysis_thresholding_from_context(
 
     for path in image_paths:
         img = fluidflower.read_image(path)
-        result = color_to_mass_analysis(img)
-        mode_images = _extract_mode_images(result)
+        result = color_to_mass_analysis(img) if requires_color_to_mass else None
         stream_payload: dict[str, Any] = {"thresholding_source_image": img}
         img_bgr = _to_bgr_array(img)
         master_preview = img_bgr.copy()
 
         for layer_name, layer in thresholding_config.layers.items():
-            scalar = _to_scalar_array(mode_images[layer.mode])
+            mode_image = resolve_mode_image(
+                layer.mode,
+                img,
+                mass_analysis_result=result,
+                colorrange_config=config.colorrange,
+            )
+            scalar = _to_scalar_array(mode_image)
             threshold_min = layer.threshold_min
             threshold_max = layer.threshold_max
             if threshold_min is not None and threshold_max is not None:
@@ -290,6 +298,9 @@ def analysis_thresholding(
         cls=cls,
         path=path,
         all=all,
-        require_color_to_mass=True,
+        require_color_to_mass=infer_require_color_to_mass_from_config(
+            path,
+            include_thresholding=True,
+        ),
     )
     analysis_thresholding_from_context(ctx, show=show, stream_callback=stream_callback)

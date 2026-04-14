@@ -21,9 +21,57 @@ from darsia.presets.workflows.analysis.analysis_thresholding import (
 from darsia.presets.workflows.analysis.analysis_volume import (
     analysis_volume_from_context,
 )
+from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
+
+
+def _collect_requested_modes(config: FluidFlowerConfig, args) -> list[str]:
+    if config.analysis is None:
+        return []
+
+    modes: list[str] = []
+    if args.segmentation and config.analysis.segmentation is not None:
+        segmentation_config = config.analysis.segmentation.config
+        if isinstance(segmentation_config, dict):
+            modes.extend(
+                cfg.mode for cfg in segmentation_config.values() if cfg.mode is not None
+            )
+        elif segmentation_config.mode is not None:
+            modes.append(segmentation_config.mode)
+
+    if args.fingers and config.analysis.fingers is not None:
+        fingers_config = config.analysis.fingers.config
+        if isinstance(fingers_config, dict):
+            modes.extend(
+                cfg.mode for cfg in fingers_config.values() if cfg.mode is not None
+            )
+        elif fingers_config.mode is not None:
+            modes.append(fingers_config.mode)
+
+    if args.thresholding and config.analysis.thresholding is not None:
+        modes.extend(layer.mode for layer in config.analysis.thresholding.layers.values())
+
+    return modes
+
+
+def _infer_require_color_to_mass(args) -> bool:
+    # Always needed for explicit mass/volume analysis.
+    if args.mass or args.volume:
+        return True
+
+    # No potentially dependent analyses requested.
+    if not (args.segmentation or args.fingers or args.thresholding):
+        return False
+
+    config = FluidFlowerConfig(args.config, require_results=True, require_data=True)
+    modes = _collect_requested_modes(config, args)
+    if len(modes) == 0:
+        # Keep previous behavior for incomplete configs.
+        return True
+    return any(mode_requires_color_to_mass(mode) for mode in modes)
 
 
 def build_parser_for_analysis():
@@ -108,13 +156,7 @@ def run_analysis(
         )
 
     # Determine if we need color-to-mass analysis (expensive initialization)
-    require_color_to_mass = (
-        args.mass
-        or args.volume
-        or args.segmentation
-        or args.fingers
-        or args.thresholding
-    )
+    require_color_to_mass = _infer_require_color_to_mass(args)
 
     # Prepare shared context once for all analyses
     ctx = prepare_analysis_context(

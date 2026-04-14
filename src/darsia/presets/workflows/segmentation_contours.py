@@ -1,12 +1,14 @@
 """Util for contour plots."""
 
 import logging
+from types import SimpleNamespace
 
 import cv2
 import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import SegmentationConfig
+from darsia.presets.workflows.mode_resolution import resolve_mode_image
 from darsia.utils.augmented_plotting import plot_contour_on_image
 
 logger = logging.getLogger(__name__)
@@ -49,21 +51,23 @@ class SimpleSegmentation:
         saturation_g: darsia.Image | None,
         concentration_aq: darsia.Image | None,
         mass: darsia.Image | None,
+        mass_analysis_result=None,
+        colorrange_config=None,
     ) -> darsia.Image:
-        if self.mode == "saturation_g":
-            if saturation_g is None:
-                raise ValueError(f"Missing image for mode {self.mode}")
-            values = saturation_g
-        elif self.mode == "concentration_aq":
-            if concentration_aq is None:
-                raise ValueError(f"Missing image for mode {self.mode}")
-            values = concentration_aq
-        elif self.mode == "mass":
-            if mass is None:
-                raise ValueError(f"Missing image for mode {self.mode}")
-                values = mass
-            else:
-                raise ValueError(f"Unknown label {self.mode} in segmentation config.")
+        if mass_analysis_result is None:
+            mass_analysis_result = SimpleNamespace(
+                saturation_g=saturation_g,
+                concentration_aq=concentration_aq,
+                mass=mass,
+                mass_g=None,
+                mass_aq=None,
+            )
+        values = resolve_mode_image(
+            self.mode,
+            img,
+            mass_analysis_result=mass_analysis_result,
+            colorrange_config=colorrange_config,
+        )
 
         # Extract masks based on thresholds
         mask = self.extract_mask(values, [self.threshold])[0]
@@ -296,25 +300,25 @@ class SegmentationContours:
         saturation_g: darsia.Image | None,
         concentration_aq: darsia.Image | None,
         mass: darsia.Image | None,
+        mass_analysis_result=None,
+        colorrange_config=None,
     ) -> darsia.Image:
         contour_img = img.copy()
+        if mass_analysis_result is None:
+            mass_analysis_result = SimpleNamespace(
+                saturation_g=saturation_g,
+                concentration_aq=concentration_aq,
+                mass=mass,
+                mass_g=None,
+                mass_aq=None,
+            )
         for segmentation_config in self.config.values():
-            # Select values based on mode
-            mode = segmentation_config.mode
-            if mode == "saturation_g":
-                if saturation_g is None:
-                    raise ValueError(f"Missing image for mode {mode}")
-                values = saturation_g
-            elif mode == "concentration_aq":
-                if concentration_aq is None:
-                    raise ValueError(f"Missing image for mode {mode}")
-                values = concentration_aq
-            elif mode == "mass":
-                if mass is None:
-                    raise ValueError(f"Missing image for mode {mode}")
-                values = mass
-            else:
-                raise ValueError(f"Unknown label {mode} in segmentation config.")
+            values = resolve_mode_image(
+                segmentation_config.mode,
+                img,
+                mass_analysis_result=mass_analysis_result,
+                colorrange_config=colorrange_config,
+            )
 
             # Extract masks based on thresholds
             masks = self.extract_mask(values, segmentation_config.thresholds)

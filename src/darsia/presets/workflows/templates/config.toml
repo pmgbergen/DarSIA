@@ -110,6 +110,22 @@ fill = [0, 0, 255]
 stroke = [255, 255, 255]
 fill_alpha = 0.35
 stroke_width = 2
+[analysis.thresholding.layers.red]
+mode = "colorchannel.rgb.r"
+threshold_min = 0.6
+label = "High red channel"
+fill = [255, 255, 0]
+stroke = [255, 255, 255]
+fill_alpha = 0.2
+stroke_width = 1
+[analysis.thresholding.layers.green_hsv_band]
+mode = "colorrange.custom_range"
+threshold_min = 0.5
+label = "HSV green range"
+fill = [0, 255, 0]
+stroke = [255, 255, 255]
+fill_alpha = 0.2
+stroke_width = 1
 [analysis.thresholding.legend]
 show = true
 font_scale = 0.7
@@ -120,6 +136,10 @@ box_enabled = true
 box_color = [0, 0, 0]
 box_alpha = 0.4
 box_padding = 10
+
+[colorrange.custom_range]
+color_space = "HSV"
+range = [[0.2, 0.4], [0.5, "none"], [0.8, "none"]]
 
 [video]
 
