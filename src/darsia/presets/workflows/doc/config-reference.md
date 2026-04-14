@@ -72,6 +72,7 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `[analysis.mass]`: mass analysis and optional ROIs
 - `[analysis.volume]`: volume analysis and optional ROIs
 - `[analysis.fingers]`: finger detection mode/threshold and optional ROIs
+- `[analysis.thresholding]`: threshold selected analysis modes and export mask previews
 
 ### Segmentation contour options
 For each segmentation entry, the following contour styling keys are supported:
@@ -94,6 +95,45 @@ Optional contour-value labels:
 The value-label keys can be provided directly in the segmentation section or nested in
 `[analysis.segmentation.values]` (or `[analysis.segmentation.<name>.values]` for
 multiple segmentations).
+
+### Thresholding options
+Use `[analysis.thresholding]` (only under `[analysis]`) to threshold selected scalar
+analysis outputs. Supported `modes`:
+- `concentration_aq`
+- `saturation_g`
+- `mass_total`
+- `mass_g`
+- `mass_aq`
+
+Supported keys:
+- `formats` (list of output formats: `["jpg", "npz"]`)
+- `folder` (output folder, defaults to `<results>/thresholding`)
+- `[analysis.thresholding.layers.<name>]` (one mask layer per entry):
+  - `mode` (`concentration_aq`, `saturation_g`, `mass_total`, `mass_g`, `mass_aq`)
+  - `threshold_min` (float)
+  - `threshold_max` (float)
+  - `label` (string)
+  - `fill` (`[r,g,b]`)
+  - `stroke` (`[r,g,b]`)
+  - `fill_alpha` (float in `[0, 1]`)
+  - `stroke_width` (int `>= 0`)
+- `[analysis.thresholding.legend]` (compact text-box style keys aligned with
+  `[video.overlay]`):
+  - `show`
+  - `font_scale`
+  - `thickness`
+  - `line_spacing`
+  - `position`
+  - `text_color`
+  - `box_enabled`
+  - `box_color`
+  - `box_alpha`
+  - `box_padding`
+
+Notes:
+- JPG and NPZ outputs are stored in separate subfolders: `<folder>/jpg/` and `<folder>/npz/`.
+- JPG outputs are source-image overlays using each layer’s `fill` and `stroke` styling.
+- Legacy `modes` + `thresholds` is still accepted and mapped to default layers.
 
 ## Notes on legacy vs current naming
 - Current rig section is `[rig]`.

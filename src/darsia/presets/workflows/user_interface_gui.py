@@ -307,12 +307,20 @@ def open_in_file_explorer(path: Path) -> None:
             raise RuntimeError("Failed to open folder with 'xdg-open'.") from e
 
 
-_ANALYSIS_MODE_ACTIONS = {"cropping", "segmentation", "mass", "volume", "fingers"}
+_ANALYSIS_MODE_ACTIONS = {
+    "cropping",
+    "segmentation",
+    "mass",
+    "volume",
+    "fingers",
+    "thresholding",
+}
 _ANALYSIS_MODE_DEFAULT_SUBFOLDER = {
     "segmentation": "segmentation",
     "mass": "mass",
     "volume": "volume",
     "fingers": "fingers",
+    "thresholding": "thresholding",
 }
 
 
@@ -523,6 +531,7 @@ def _run_analysis_workflow(
         fingers=options["fingers"],
         mass=options["mass"],
         volume=options["volume"],
+        thresholding=options.get("thresholding", False),
         show=options["show"],
         info=False,
     )
@@ -625,6 +634,7 @@ class WorkflowGUI:
         except (OSError, RuntimeError) as e:
             logger.warning("Failed to initialize GUI session cache path: %s", e)
 
+        self._setup_icon()
         self._setup_logging()
         self._build_layout()
         self._setup_themes()
@@ -632,6 +642,15 @@ class WorkflowGUI:
         self._poll_stream()
         self._update_dashboard()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _setup_icon(self) -> None:
+        logo_path = (
+            Path(__file__).resolve().parent
+            / "interface"
+            / "DarSIA_Horisontal_Positiv_part.png"
+        )
+        icon = self.tk.PhotoImage(file=logo_path)
+        self.root.iconphoto(True, icon)
 
     def _setup_logging(self) -> None:
         _configure_queue_logging(self.log_queue)
@@ -786,6 +805,7 @@ class WorkflowGUI:
         self.an_fingers = self.tk.BooleanVar(value=False)
         self.an_mass = self.tk.BooleanVar(value=False)
         self.an_volume = self.tk.BooleanVar(value=False)
+        self.an_thresholding = self.tk.BooleanVar(value=False)
         self.an_show = self.tk.BooleanVar(value=False)
         self.an_stream = self.tk.BooleanVar(value=False)
         for label, var in [
@@ -795,6 +815,7 @@ class WorkflowGUI:
             ("Fingers", self.an_fingers),
             ("Mass", self.an_mass),
             ("Volume", self.an_volume),
+            ("Thresholding", self.an_thresholding),
             ("Show plots", self.an_show),
             ("Enable streaming", self.an_stream),
         ]:
@@ -1410,6 +1431,7 @@ class WorkflowGUI:
             "fingers": self.an_fingers.get(),
             "mass": self.an_mass.get(),
             "volume": self.an_volume.get(),
+            "thresholding": self.an_thresholding.get(),
             "show": self.an_show.get(),
             "streaming": self.an_stream.get(),
         }

@@ -21,6 +21,205 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _to_rgb(color: list[int] | tuple[int, int, int], name: str) -> tuple[int, int, int]:
+    if len(color) != 3:
+        raise ValueError(f"{name} must have exactly 3 entries [R, G, B].")
+    vals = tuple(int(v) for v in color)
+    if any(v < 0 or v > 255 for v in vals):
+        raise ValueError(f"{name} entries must be in [0, 255].")
+    return vals
+
+
+@dataclass
+class AnalysisThresholdingLegendConfig:
+    show: bool = True
+    font_scale: float = 0.7
+    thickness: int = 2
+    line_spacing: int = 8
+    position: tuple[int, int] = (20, 20)
+    text_color: tuple[int, int, int] = (255, 255, 255)
+    box_enabled: bool = True
+    box_color: tuple[int, int, int] = (0, 0, 0)
+    box_alpha: float = 0.4
+    box_padding: int = 10
+
+    def load(self, sec: dict) -> "AnalysisThresholdingLegendConfig":
+        self.show = bool(_get_key(sec, "show", required=False, default=self.show))
+        self.font_scale = float(
+            _get_key(sec, "font_scale", required=False, default=self.font_scale)
+        )
+        self.thickness = int(
+            _get_key(sec, "thickness", required=False, default=self.thickness)
+        )
+        self.line_spacing = int(
+            _get_key(sec, "line_spacing", required=False, default=self.line_spacing)
+        )
+        position = _get_key(sec, "position", required=False, default=self.position)
+        if len(position) != 2:
+            raise ValueError("analysis.thresholding.legend.position must be [x, y].")
+        self.position = (int(position[0]), int(position[1]))
+        self.text_color = _to_rgb(
+            _get_key(sec, "text_color", required=False, default=self.text_color),
+            "analysis.thresholding.legend.text_color",
+        )
+        self.box_enabled = bool(
+            _get_key(sec, "box_enabled", required=False, default=self.box_enabled)
+        )
+        self.box_color = _to_rgb(
+            _get_key(sec, "box_color", required=False, default=self.box_color),
+            "analysis.thresholding.legend.box_color",
+        )
+        self.box_alpha = float(
+            _get_key(sec, "box_alpha", required=False, default=self.box_alpha)
+        )
+        if not (0 <= self.box_alpha <= 1):
+            raise ValueError(
+                "analysis.thresholding.legend.box_alpha must be in [0, 1]."
+            )
+        self.box_padding = int(
+            _get_key(sec, "box_padding", required=False, default=self.box_padding)
+        )
+        return self
+
+
+@dataclass
+class AnalysisThresholdingConfig:
+    @dataclass
+    class LayerConfig:
+        mode: str = "concentration_aq"
+        threshold_min: float | None = None
+        threshold_max: float | None = None
+        label: str = ""
+        fill: tuple[int, int, int] = (255, 255, 255)
+        stroke: tuple[int, int, int] = (0, 0, 0)
+        fill_alpha: float = 0.35
+        stroke_width: int = 2
+
+        def load(
+            self, sec: dict, *, key: str, supported_modes: set[str]
+        ) -> "AnalysisThresholdingConfig.LayerConfig":
+            self.mode = _get_key(sec, "mode", required=True, type_=str).strip()
+            if self.mode not in supported_modes:
+                raise ValueError(
+                    f"Unsupported analysis.thresholding.layers.{key}.mode '{self.mode}'. "
+                    f"Supported modes: {', '.join(sorted(supported_modes))}."
+                )
+            self.threshold_min = _get_key(sec, "threshold_min", required=False)
+            self.threshold_max = _get_key(sec, "threshold_max", required=False)
+            if self.threshold_min is not None:
+                self.threshold_min = float(self.threshold_min)
+            if self.threshold_max is not None:
+                self.threshold_max = float(self.threshold_max)
+            if (
+                self.threshold_min is not None
+                and self.threshold_max is not None
+                and self.threshold_min > self.threshold_max
+            ):
+                raise ValueError(
+                    f"analysis.thresholding.layers.{key} has threshold_min > threshold_max."
+                )
+            if self.threshold_min is None and self.threshold_max is None:
+                raise ValueError(
+                    f"analysis.thresholding.layers.{key} must have at least one of "
+                    "threshold_min or threshold_max."
+                )
+
+            self.label = _get_key(sec, "label", required=False, default=key, type_=str)
+            self.fill = _to_rgb(
+                _get_key(sec, "fill", required=False, default=self.fill),
+                f"analysis.thresholding.layers.{key}.fill",
+            )
+            self.stroke = _to_rgb(
+                _get_key(sec, "stroke", required=False, default=self.stroke),
+                f"analysis.thresholding.layers.{key}.stroke",
+            )
+            self.fill_alpha = float(
+                _get_key(sec, "fill_alpha", required=False, default=self.fill_alpha)
+            )
+            if not (0.0 <= self.fill_alpha <= 1.0):
+                raise ValueError(
+                    f"analysis.thresholding.layers.{key}.fill_alpha must be in [0, 1]."
+                )
+            self.stroke_width = int(
+                _get_key(sec, "stroke_width", required=False, default=self.stroke_width)
+            )
+            if self.stroke_width < 0:
+                raise ValueError(
+                    f"analysis.thresholding.layers.{key}.stroke_width must be >= 0."
+                )
+
+            return self
+
+    formats: list[str] = field(default_factory=lambda: ["jpg", "npz"])
+    layers: dict[str, LayerConfig] = field(default_factory=dict)
+    modes: list[str] = field(
+        default_factory=lambda: ["concentration_aq", "saturation_g"]
+    )
+    thresholds: dict[str, float] = field(default_factory=dict)
+    legend: AnalysisThresholdingLegendConfig = field(
+        default_factory=AnalysisThresholdingLegendConfig
+    )
+    folder: Path = field(default_factory=Path)
+    """Path to the results folder for thresholding analysis."""
+
+    SUPPORTED_MODES = {
+        "concentration_aq",
+        "saturation_g",
+        "mass_total",
+        "mass_g",
+        "mass_aq",
+    }
+
+    def load(self, sec: dict, results: Path | None) -> "AnalysisThresholdingConfig":
+        sub_sec = _get_section(sec, "thresholding")
+
+        raw_formats = _get_key(sub_sec, "formats", required=False, default=self.formats)
+        if not isinstance(raw_formats, list):
+            raise ValueError("analysis.thresholding.formats must be a list.")
+        if not all(isinstance(fmt, str) for fmt in raw_formats):
+            raise ValueError("analysis.thresholding.formats entries must be strings.")
+        self.formats = [fmt.strip().lower() for fmt in raw_formats if fmt.strip()]
+        if len(self.formats) == 0:
+            raise ValueError("analysis.thresholding.formats must not be empty.")
+        supported_formats = {"jpg", "npz"}
+        invalid_formats = sorted(set(self.formats) - supported_formats)
+        if len(invalid_formats) > 0:
+            raise ValueError(
+                "Unsupported [analysis.thresholding].formats entries: "
+                f"{', '.join(invalid_formats)}. Supported formats: "
+                f"{', '.join(sorted(supported_formats))}."
+            )
+
+        raw_layers = _get_key(sub_sec, "layers", required=False, default={})
+        if not isinstance(raw_layers, dict):
+            raise ValueError("analysis.thresholding.layers must be a table/dict.")
+        self.layers = {}
+        if len(raw_layers) > 0:
+            for key in raw_layers.keys():
+                layer_sec = _get_section(raw_layers, key)
+                self.layers[key] = self.LayerConfig().load(
+                    layer_sec, key=key, supported_modes=self.SUPPORTED_MODES
+                )
+        legend = _get_key(sub_sec, "legend", required=False, default={})
+        if not isinstance(legend, dict):
+            raise ValueError("analysis.thresholding.legend must be a table/dict.")
+        self.legend.load(legend)
+
+        folder = _get_key(sub_sec, "folder", required=False, type_=Path)
+        if not folder:
+            assert results is not None
+            self.folder = results / "thresholding"
+        else:
+            self.folder = folder
+
+        return self
+
+    def error(self):
+        raise ValueError(
+            "Use [analysis.thresholding] in the config file to load thresholding."
+        )
+
+
 @dataclass
 class AnalysisSegmentationConfig:
     config: SegmentationConfig | dict[str, SegmentationConfig] = field(
@@ -270,6 +469,8 @@ class AnalysisConfig:
     """Analysis volume configuration."""
     fingers: AnalysisFingersConfig | None = None
     """Analysis fingers configuration."""
+    thresholding: AnalysisThresholdingConfig | None = None
+    """Analysis thresholding configuration."""
 
     def load(
         self,
@@ -332,5 +533,12 @@ class AnalysisConfig:
         except KeyError:
             warn("No analysis fingers found. Use [analysis.fingers].")
             self.fingers = None
+
+        # Config to load analysis thresholding
+        try:
+            self.thresholding = AnalysisThresholdingConfig().load(sec, results)
+        except KeyError:
+            warn("No analysis thresholding found. Use [analysis.thresholding].")
+            self.thresholding = None
 
         return self

@@ -15,6 +15,9 @@ from darsia.presets.workflows.analysis.analysis_mass import analysis_mass_from_c
 from darsia.presets.workflows.analysis.analysis_segmentation import (
     analysis_segmentation_from_context,
 )
+from darsia.presets.workflows.analysis.analysis_thresholding import (
+    analysis_thresholding_from_context,
+)
 from darsia.presets.workflows.analysis.analysis_volume import (
     analysis_volume_from_context,
 )
@@ -46,6 +49,9 @@ def build_parser_for_analysis():
     )
     parser.add_argument(
         "--volume", action="store_true", help="Perform color to volume analysis."
+    )
+    parser.add_argument(
+        "--thresholding", action="store_true", help="Perform thresholding analysis."
     )
     parser.add_argument(
         "--all", action="store_true", help="Perform analysis on entire dataset."
@@ -88,16 +94,26 @@ def run_analysis(
     **kwargs,
 ):
     if not (
-        args.cropping or args.mass or args.volume or args.segmentation or args.fingers
+        args.cropping
+        or args.mass
+        or args.volume
+        or args.segmentation
+        or args.fingers
+        or args.thresholding
     ):
         raise ValueError(
             """No analysis type specified. Please select at least one analysis."""
-            """Choose from --cropping, --mass, --volume, --segmentation, --fingers."""
+            """Choose from --cropping, --mass, --volume, --segmentation, """
+            """--fingers, --thresholding."""
         )
 
     # Determine if we need color-to-mass analysis (expensive initialization)
     require_color_to_mass = (
-        args.mass or args.volume or args.segmentation or args.fingers
+        args.mass
+        or args.volume
+        or args.segmentation
+        or args.fingers
+        or args.thresholding
     )
 
     # Prepare shared context once for all analyses
@@ -139,6 +155,13 @@ def run_analysis(
 
     if args.fingers:
         analysis_fingers_from_context(
+            ctx,
+            show=args.show,
+            stream_callback=stream_callback,
+        )
+
+    if args.thresholding:
+        analysis_thresholding_from_context(
             ctx,
             show=args.show,
             stream_callback=stream_callback,
