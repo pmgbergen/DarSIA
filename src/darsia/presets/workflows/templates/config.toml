@@ -82,16 +82,20 @@ threshold = 0.2
 [analysis.cropping]
 image_times = [1, 5, 10, 20, 21, 40]
 formats = ["npz", "jpg"]
+
 [analysis.color_signal]
 image_times = [1, 5, 10, 20, 21, 40]
+
 [analysis.mass]
 image_times = [1, 5, 10, 20, 21, 40]
+
 [analysis.thresholding]
 # Optional thresholding with per-layer styling and separate format outputs.
 formats = ["jpg", "npz"]
 [analysis.thresholding.layers.gas]
 mode = "saturation_g"
-threshold = 0.05
+threshold_min = 0.05
+#threshold_max = 0.15
 label = "Gas plume"
 fill = [255, 0, 0]
 stroke = [255, 255, 255]
@@ -99,7 +103,8 @@ fill_alpha = 0.35
 stroke_width = 2
 [analysis.thresholding.layers.aq]
 mode = "concentration_aq"
-threshold = 0.05
+threshold_min = 0.05
+#threshold_max = 1.0
 label = "Aqueous plume"
 fill = [0, 0, 255]
 stroke = [255, 255, 255]
