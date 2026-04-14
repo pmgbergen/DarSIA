@@ -112,7 +112,9 @@ def test_restoration_config_ignore_masks_must_be_strings(tmp_path):
         tmp_path,
         '[restoration]\nmethod = "tvd"\nignore = ["boolean_porosity", 1]\n',
     )
-    with pytest.raises(ValueError, match="restoration.ignore must be a list of strings"):
+    with pytest.raises(
+        ValueError, match="restoration.ignore must be a list of strings"
+    ):
         RestorationConfig().load(cfg_path)
 
 

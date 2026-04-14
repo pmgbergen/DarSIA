@@ -4,7 +4,10 @@ import numpy as np
 import pytest
 
 from darsia.presets.workflows.config.restoration import RestorationConfig, TVDConfig
-from darsia.presets.workflows.restoration import IgnoreMaskedRestoration, build_restoration
+from darsia.presets.workflows.restoration import (
+    IgnoreMaskedRestoration,
+    build_restoration,
+)
 
 
 def test_build_restoration_applies_boolean_porosity_ignore_mask(monkeypatch):
