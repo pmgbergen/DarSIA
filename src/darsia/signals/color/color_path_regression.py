@@ -1652,6 +1652,10 @@ class LabelColorPathMapRegression:
             assert len(coarse_preview_images) > 0
             return coarse_preview_images[current_preview_idx]
 
+        def current_original_preview_image() -> darsia.Image:
+            assert len(valid_preview_candidates) > 0
+            return valid_preview_candidates[current_preview_idx]
+
         def build_current_color_path() -> darsia.ColorPath:
             return darsia.ColorPath(
                 colors=None,
@@ -1877,24 +1881,56 @@ class LabelColorPathMapRegression:
                 logger.warning("Pipette unavailable without preview calibration data.")
                 return
 
-            current_preview = current_coarse_preview_image()
-            current_label_mask = selected_label_mask()
+            assert preview_baseline is not None
+            current_label_mask = np.logical_and(self.labels.img == label, self.mask.img)
             if not np.any(current_label_mask):
                 logger.warning(
                     "Pipette skipped because selected label has no active pixels."
                 )
                 return
 
-            assistant = darsia.BoxSelectionAssistant(current_preview)
-            samples = assistant()
-            if samples is None or len(samples) == 0:
-                logger.info("Pipette canceled.")
+            coarse_rows, coarse_cols = current_coarse_preview_image().img.shape[:2]
+            coarse_x_limits = ax_preview_image.get_xlim()
+            coarse_y_limits = ax_preview_image.get_ylim()
+            coarse_col_start = int(np.floor(max(0.0, min(coarse_x_limits))))
+            coarse_col_stop = int(
+                np.ceil(min(float(coarse_cols), max(coarse_x_limits)))
+            )
+            coarse_row_start = int(np.floor(max(0.0, min(coarse_y_limits))))
+            coarse_row_stop = int(
+                np.ceil(min(float(coarse_rows), max(coarse_y_limits)))
+            )
+
+            if (
+                coarse_row_stop <= coarse_row_start
+                or coarse_col_stop <= coarse_col_start
+            ):
+                logger.warning(
+                    "Pipette skipped because the current zoom window is empty."
+                )
                 return
 
+            full_rows, full_cols = current_original_preview_image().img.shape[:2]
+            full_row_start = int(np.floor(coarse_row_start / coarse_rows * full_rows))
+            full_row_stop = int(np.ceil(coarse_row_stop / coarse_rows * full_rows))
+            full_col_start = int(np.floor(coarse_col_start / coarse_cols * full_cols))
+            full_col_stop = int(np.ceil(coarse_col_stop / coarse_cols * full_cols))
+            full_row_start = max(0, min(full_rows - 1, full_row_start))
+            full_row_stop = max(full_row_start + 1, min(full_rows, full_row_stop))
+            full_col_start = max(0, min(full_cols - 1, full_col_start))
+            full_col_stop = max(full_col_start + 1, min(full_cols, full_col_stop))
+            sample = (
+                slice(full_row_start, full_row_stop),
+                slice(full_col_start, full_col_stop),
+            )
+
+            current_relative_preview = current_original_preview_image().img.astype(
+                float
+            ) - preview_baseline.img.astype(float)
             characteristic_colors = darsia.extract_characteristic_data(
-                signal=current_preview.img,
+                signal=current_relative_preview,
                 mask=current_label_mask,
-                samples=samples,
+                samples=[sample],
             )
             if len(characteristic_colors) == 0:
                 logger.warning(
@@ -1903,7 +1939,6 @@ class LabelColorPathMapRegression:
                 return
 
             sampled_relative_color = np.asarray(characteristic_colors[0], dtype=float)
-            sampled_relative_color -= np.asarray(base_color, dtype=float)
             new_key_relative_colors[selected_index] = sampled_relative_color
             refresh_color_fields()
             preview_signal_is_stale = True
