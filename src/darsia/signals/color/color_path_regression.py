@@ -1815,6 +1815,7 @@ class LabelColorPathMapRegression:
         b_ax = plt.axes([0.37, 0.12, 0.09, 0.06])
         update_ax = plt.axes([0.48, 0.12, 0.09, 0.06])
         finalize_ax = plt.axes([0.59, 0.12, 0.09, 0.06])
+        pipette_ax = plt.axes([0.48, 0.04, 0.09, 0.06])
         previous_preview_ax = plt.axes([0.70, 0.12, 0.10, 0.06])
         next_preview_ax = plt.axes([0.82, 0.12, 0.10, 0.06])
         rerun_preview_ax = plt.axes([0.70, 0.04, 0.22, 0.06])
@@ -1826,6 +1827,7 @@ class LabelColorPathMapRegression:
         b_box = TextBox(b_ax, "B", initial=f"{init_color[2]:.6f}")
         update_button = Button(update_ax, "Update")
         finalize_button = Button(finalize_ax, "Finalize")
+        pipette_button = Button(pipette_ax, "Pipette")
         previous_preview_button = Button(previous_preview_ax, "Previous")
         next_preview_button = Button(next_preview_ax, "Next")
         rerun_preview_button = Button(rerun_preview_ax, "Re-run pH preview")
@@ -1869,6 +1871,44 @@ class LabelColorPathMapRegression:
             preview_signal_is_stale = False
             redraw()
 
+        def on_pipette(_) -> None:
+            nonlocal preview_signal_is_stale
+            if not has_preview_data or label is None:
+                logger.warning("Pipette unavailable without preview calibration data.")
+                return
+
+            current_preview = current_coarse_preview_image()
+            current_label_mask = selected_label_mask()
+            if not np.any(current_label_mask):
+                logger.warning(
+                    "Pipette skipped because selected label has no active pixels."
+                )
+                return
+
+            assistant = darsia.BoxSelectionAssistant(current_preview)
+            samples = assistant()
+            if samples is None or len(samples) == 0:
+                logger.info("Pipette canceled.")
+                return
+
+            characteristic_colors = darsia.extract_characteristic_data(
+                signal=current_preview.img,
+                mask=current_label_mask,
+                samples=samples,
+            )
+            if len(characteristic_colors) == 0:
+                logger.warning(
+                    "Pipette skipped because no characteristic color was found."
+                )
+                return
+
+            sampled_relative_color = np.asarray(characteristic_colors[0], dtype=float)
+            sampled_relative_color -= np.asarray(base_color, dtype=float)
+            new_key_relative_colors[selected_index] = sampled_relative_color
+            refresh_color_fields()
+            preview_signal_is_stale = True
+            redraw()
+
         def on_previous_preview(_) -> None:
             nonlocal current_preview_idx
             nonlocal preview_signal
@@ -1898,6 +1938,7 @@ class LabelColorPathMapRegression:
 
         index_box.on_submit(on_index_submit)
         update_button.on_clicked(on_update)
+        pipette_button.on_clicked(on_pipette)
         previous_preview_button.on_clicked(on_previous_preview)
         next_preview_button.on_clicked(on_next_preview)
         rerun_preview_button.on_clicked(on_rerun_preview)
