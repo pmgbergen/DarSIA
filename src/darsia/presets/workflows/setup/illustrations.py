@@ -20,9 +20,10 @@ def _to_2d(array: np.ndarray) -> np.ndarray:
 
 
 def _format_value(value: float) -> str:
-    if value.is_integer():
-        return str(int(value))
-    return f"{value:.3g}"
+    scalar_value = float(value)
+    if scalar_value.is_integer():
+        return str(int(scalar_value))
+    return f"{scalar_value:.3g}"
 
 
 def save_discrete_map_illustration(
