@@ -1586,6 +1586,9 @@ class LabelColorPathMapRegression:
             label is not None and preview_baseline is not None and preview_shape_matches
         )
         preview_signal_limits_epsilon = 1e-8
+        min_preview_rows = 120
+        mask_interpolation_threshold = 0.5
+        preview_downsampling_factor = 4
         if (
             len(preview_candidates) > 0
             and preview_baseline is not None
@@ -1606,7 +1609,10 @@ class LabelColorPathMapRegression:
         current_preview_idx = 0
         if has_preview_data:
             assert preview_baseline is not None
-            preview_rows = max(120, self.labels.img.shape[0] // 4)
+            preview_rows = max(
+                min_preview_rows,
+                self.labels.img.shape[0] // preview_downsampling_factor,
+            )
             preview_rows = min(preview_rows, self.labels.img.shape[0])
             preview_cols = max(
                 1,
@@ -1636,7 +1642,7 @@ class LabelColorPathMapRegression:
                     ),
                     shape=coarse_shape,
                 ).img
-                > 0.5
+                > mask_interpolation_threshold
             )
 
         def selected_label_mask() -> np.ndarray:
@@ -1745,8 +1751,8 @@ class LabelColorPathMapRegression:
                 else:
                     ax_preview_image.imshow(preview_rgb, cmap="gray")
                 ax_preview_image.set_title(
-                    f"Calibration image {current_preview_idx + 1}"
-                    f"/{len(coarse_preview_images)} (selected label focus)"
+                    f"Calibration image {current_preview_idx + 1} / "
+                    f"{len(coarse_preview_images)} (selected label focus)"
                 )
 
                 if preview_signal is not None:
