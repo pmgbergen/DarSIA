@@ -1562,13 +1562,19 @@ class LabelColorPathMapRegression:
         ax_preview_image.axis("off")
         ax_preview_interpretation.axis("off")
 
-        has_preview_data = (
-            label is not None
-            and preview_image is not None
+        preview_shape_matches = (
+            preview_image is not None
             and preview_baseline is not None
             and preview_image.img.shape[:2] == self.labels.img.shape
             and preview_baseline.img.shape[:2] == self.labels.img.shape
         )
+        has_preview_data = (
+            label is not None
+            and preview_image is not None
+            and preview_baseline is not None
+            and preview_shape_matches
+        )
+        preview_signal_limits_epsilon = 1e-8
         if (
             preview_image is not None
             and preview_baseline is not None
@@ -1582,34 +1588,39 @@ class LabelColorPathMapRegression:
         preview_signal: np.ndarray | None = None
         preview_signal_is_stale = True
 
-        def compute_preview_signal() -> np.ndarray | None:
-            if not has_preview_data or label is None:
-                return None
+        def selected_label_mask() -> np.ndarray:
+            assert label is not None
+            return np.logical_and(self.labels.img == label, self.mask.img)
 
-            assert preview_image is not None
-            assert preview_baseline is not None
-            selected_label_mask = np.logical_and(
-                self.labels.img == label, self.mask.img
-            )
-            if not np.any(selected_label_mask):
-                return np.full(self.labels.img.shape, np.nan, dtype=float)
-
-            relative_preview = preview_image.img.astype(
-                float
-            ) - preview_baseline.img.astype(float)
-            selected_relative_colors = relative_preview[selected_label_mask].reshape(
-                (-1, 3)
-            )
-            if selected_relative_colors.shape[0] == 0:
-                return np.full(self.labels.img.shape, np.nan, dtype=float)
-
-            color_path = darsia.ColorPath(
+        def build_current_color_path() -> darsia.ColorPath:
+            return darsia.ColorPath(
                 colors=None,
                 relative_colors=new_key_relative_colors,
                 base_color=base_color,
                 mode="rgb",
                 name=name,
             )
+
+        def compute_preview_signal() -> np.ndarray | None:
+            if not has_preview_data or label is None:
+                return None
+
+            assert preview_image is not None
+            assert preview_baseline is not None
+            current_label_mask = selected_label_mask()
+            if not np.any(current_label_mask):
+                return np.full(self.labels.img.shape, np.nan, dtype=float)
+
+            relative_preview = preview_image.img.astype(
+                float
+            ) - preview_baseline.img.astype(float)
+            selected_relative_colors = relative_preview[current_label_mask].reshape(
+                (-1, 3)
+            )
+            if selected_relative_colors.shape[0] == 0:
+                return np.full(self.labels.img.shape, np.nan, dtype=float)
+
+            color_path = build_current_color_path()
             interpolation = darsia.ColorPathInterpolation(
                 color_path=color_path,
                 color_mode=darsia.ColorMode.RELATIVE,
@@ -1618,7 +1629,7 @@ class LabelColorPathMapRegression:
             )
             interpretation_values = interpolation(selected_relative_colors)
             interpretation = np.full(self.labels.img.shape, np.nan, dtype=float)
-            interpretation[selected_label_mask] = interpretation_values
+            interpretation[current_label_mask] = interpretation_values
             return interpretation
 
         def redraw() -> None:
@@ -1663,15 +1674,17 @@ class LabelColorPathMapRegression:
 
             if has_preview_data and label is not None:
                 assert preview_image is not None
-                selected_label_mask = np.logical_and(
-                    self.labels.img == label, self.mask.img
-                )
+                current_label_mask = selected_label_mask()
                 preview_rgb = preview_image.img.copy().astype(float)
                 if preview_rgb.ndim == 3:
-                    grayscale = np.mean(preview_rgb, axis=2, keepdims=True)
-                    preview_rgb[~selected_label_mask] = (
-                        0.7 * grayscale[~selected_label_mask]
-                        + 0.3 * preview_rgb[~selected_label_mask]
+                    grayscale = np.sum(
+                        preview_rgb * np.array([0.299, 0.587, 0.114])[None, None, :],
+                        axis=2,
+                        keepdims=True,
+                    )
+                    preview_rgb[~current_label_mask] = (
+                        0.7 * grayscale[~current_label_mask]
+                        + 0.3 * preview_rgb[~current_label_mask]
                     )
                     ax_preview_image.imshow(preview_rgb)
                 else:
@@ -1684,17 +1697,11 @@ class LabelColorPathMapRegression:
                         vmin = float(np.nanmin(preview_signal))
                         vmax = float(np.nanmax(preview_signal))
                         if np.isclose(vmin, vmax):
-                            vmin -= 1e-8
-                            vmax += 1e-8
+                            vmin -= preview_signal_limits_epsilon
+                            vmax += preview_signal_limits_epsilon
                     else:
                         vmin, vmax = 0.0, 1.0
-                    preview_cmap = darsia.ColorPath(
-                        colors=None,
-                        relative_colors=new_key_relative_colors,
-                        base_color=base_color,
-                        mode="rgb",
-                        name=name,
-                    ).get_color_map()
+                    preview_cmap = build_current_color_path().get_color_map()
                     ax_preview_interpretation.imshow(
                         preview_signal,
                         cmap=preview_cmap,
