@@ -8,6 +8,7 @@ import pandas as pd
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.setup.illustrations import save_discrete_map_illustration
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -52,5 +53,11 @@ def setup_facies(cls: Rig, path: Path, show: bool = False):
 
     # ! ---- SAVE FACIES ----
     facies.save(config.facies.path)
+    save_discrete_map_illustration(
+        facies.img,
+        config.facies.path.with_suffix(".jpg"),
+        title="Facies",
+        colorbar_label="Facies id",
+    )
     if show:
         facies.show(title="Facies")
