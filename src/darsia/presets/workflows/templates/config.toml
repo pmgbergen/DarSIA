@@ -19,9 +19,10 @@ measurements = "./data/depth_measurements.csv"
 depth_map = "./data/depth_map.npz"
 
 [protocols]
-injection = ["./data/protocol.xlsx", "injection"]
-imaging = ["./data/protocol.xlsx", "imaging"]
-pressure_temperature = ["./data/protocol.xlsx", "pressure_temperature"]
+injection = "./data/injection_protocol.csv"
+imaging = "./data/imaging_protocol.csv"
+pressure_temperature = "./data/pressure_temperature_protocol.csv"
+imaging_mode = "exif"
 
 [labeling]
 colored_image = "./data/segmented_baseline.png"
