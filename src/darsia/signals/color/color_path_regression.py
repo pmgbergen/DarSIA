@@ -1933,13 +1933,20 @@ class LabelColorPathMapRegression:
                 slice(full_col_start, full_col_stop),
             )
 
-            current_relative_preview = current_original_preview_image().img.astype(
+            current_original_preview = current_original_preview_image()
+            if current_original_preview.img.shape != preview_baseline.img.shape:
+                logger.warning(
+                    "Pipette skipped because preview and baseline dimensions differ."
+                )
+                return
+            current_relative_preview = current_original_preview.img.astype(
                 float
             ) - preview_baseline.img.astype(float)
+            sampled_relative_preview = current_relative_preview[sample]
+            sampled_label_mask = current_label_mask[sample]
             characteristic_colors = darsia.extract_characteristic_data(
-                signal=current_relative_preview,
-                mask=current_label_mask,
-                samples=[sample],
+                signal=sampled_relative_preview,
+                mask=sampled_label_mask,
             )
             if len(characteristic_colors) == 0:
                 logger.warning(
