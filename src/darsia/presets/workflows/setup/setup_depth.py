@@ -55,7 +55,7 @@ def setup_depth_map(path: Path | list[Path], key="mean", show: bool = False) -> 
     depth_map.save(depth_map_path)
     save_scalar_map_illustration(
         depth_map.img,
-        depth_map_path.with_suffix(".jpg"),
+        config.depth.depth_map.with_suffix(".jpg"),
         title="Depth map",
         colorbar_label="Depth",
     )
