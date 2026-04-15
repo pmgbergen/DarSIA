@@ -523,12 +523,15 @@ class LabelColorPathMapRegression:
     def _find_color_path(
         self,
         spectrum: darsia.ColorSpectrum,
+        label: int | None = None,
         ignore: darsia.ColorSpectrum | None = None,
         num_segments: int = 1,
         name: str = "Color Path",
         directory: Path | None = None,
         weighting: Literal["threshold", "wls", "wls_sqrt", "wls_log"] = "threshold",
         mode: Literal["auto", "manual"] = "auto",
+        preview_image: darsia.Image | None = None,
+        preview_baseline: darsia.Image | None = None,
         verbose: bool = False,
     ) -> darsia.ColorPath:
         """Find a relative color path through the significant boxes.
@@ -1377,6 +1380,9 @@ class LabelColorPathMapRegression:
                 ignore=ignore,
                 num_dofs=num_dofs,
                 name=name,
+                label=label,
+                preview_image=preview_image,
+                preview_baseline=preview_baseline,
             )
 
         # Step 5: Define the corresponding absolute colors
@@ -1462,6 +1468,8 @@ class LabelColorPathMapRegression:
         directory: Path | None = None,
         weighting: Literal["threshold", "wls", "wls_sqrt", "wls_log"] = "threshold",
         mode: Literal["auto", "manual"] = "auto",
+        preview_image: darsia.Image | None = None,
+        preview_baseline: darsia.Image | None = None,
         verbose: bool = False,
     ) -> darsia.LabelColorPathMap:
         """Find relative color paths for each label in the spectrum map.
@@ -1479,6 +1487,8 @@ class LabelColorPathMapRegression:
             mode (Literal): Color-path selection mode.
                 ``"auto"`` returns the automated result.
                 ``"manual"`` enables interactive key-color postprocessing.
+            preview_image (darsia.Image | None): Calibration image for manual preview.
+            preview_baseline (darsia.Image | None): Baseline used for relative color preview.
             verbose (bool): Whether to print additional information.
 
         Returns:
@@ -1491,12 +1501,15 @@ class LabelColorPathMapRegression:
                     label,
                     self._find_color_path(
                         spectrum=color_spectrum[label],
+                        label=label,
                         ignore=ignore[label] if ignore is not None else None,
                         num_segments=num_segments,
                         name=f"Color Path for Label {label}",
                         directory=directory,
                         weighting=weighting,
                         mode=mode,
+                        preview_image=preview_image,
+                        preview_baseline=preview_baseline,
                         verbose=verbose,
                     ),
                 )
@@ -1515,6 +1528,9 @@ class LabelColorPathMapRegression:
         ignore: darsia.ColorSpectrum | None,
         num_dofs: int,
         name: str,
+        label: int | None,
+        preview_image: darsia.Image | None,
+        preview_baseline: darsia.Image | None,
     ) -> list[np.ndarray]:
         """Interactively adjust key relative colors and return the updated list."""
 
@@ -1527,9 +1543,83 @@ class LabelColorPathMapRegression:
         selected_index = 0
         finalized = False
 
-        fig = plt.figure(figsize=(10, 6))
-        ax = fig.add_subplot(111, projection="3d")
-        plt.subplots_adjust(bottom=0.25)
+        fig = plt.figure(figsize=(14, 8))
+        gs = fig.add_gridspec(
+            nrows=2,
+            ncols=2,
+            width_ratios=[1, 1],
+            height_ratios=[1, 1],
+            left=0.05,
+            right=0.98,
+            bottom=0.24,
+            top=0.95,
+            wspace=0.1,
+            hspace=0.12,
+        )
+        ax = fig.add_subplot(gs[:, 0], projection="3d")
+        ax_preview_image = fig.add_subplot(gs[0, 1])
+        ax_preview_interpretation = fig.add_subplot(gs[1, 1])
+        ax_preview_image.axis("off")
+        ax_preview_interpretation.axis("off")
+
+        has_preview_data = (
+            label is not None
+            and preview_image is not None
+            and preview_baseline is not None
+            and preview_image.img.shape[:2] == self.labels.img.shape
+            and preview_baseline.img.shape[:2] == self.labels.img.shape
+        )
+        if (
+            preview_image is not None
+            and preview_baseline is not None
+            and not has_preview_data
+        ):
+            logger.warning(
+                "Skipping manual color-path preview because image dimensions do not "
+                "match the label map."
+            )
+
+        preview_signal: np.ndarray | None = None
+        preview_signal_is_stale = True
+
+        def compute_preview_signal() -> np.ndarray | None:
+            if not has_preview_data or label is None:
+                return None
+
+            assert preview_image is not None
+            assert preview_baseline is not None
+            selected_label_mask = np.logical_and(
+                self.labels.img == label, self.mask.img
+            )
+            if not np.any(selected_label_mask):
+                return np.full(self.labels.img.shape, np.nan, dtype=float)
+
+            relative_preview = preview_image.img.astype(
+                float
+            ) - preview_baseline.img.astype(float)
+            selected_relative_colors = relative_preview[selected_label_mask].reshape(
+                (-1, 3)
+            )
+            if selected_relative_colors.shape[0] == 0:
+                return np.full(self.labels.img.shape, np.nan, dtype=float)
+
+            color_path = darsia.ColorPath(
+                colors=None,
+                relative_colors=new_key_relative_colors,
+                base_color=base_color,
+                mode="rgb",
+                name=name,
+            )
+            interpolation = darsia.ColorPathInterpolation(
+                color_path=color_path,
+                color_mode=darsia.ColorMode.RELATIVE,
+                values=color_path.equidistant_distances,
+                ignore_spectrum=ignore,
+            )
+            interpretation_values = interpolation(selected_relative_colors)
+            interpretation = np.full(self.labels.img.shape, np.nan, dtype=float)
+            interpretation[selected_label_mask] = interpretation_values
+            return interpretation
 
         def redraw() -> None:
             ax.cla()
@@ -1565,14 +1655,99 @@ class LabelColorPathMapRegression:
             ax.set_xlabel("R")
             ax.set_ylabel("G")
             ax.set_zlabel("B")
+
+            ax_preview_image.cla()
+            ax_preview_interpretation.cla()
+            ax_preview_image.axis("off")
+            ax_preview_interpretation.axis("off")
+
+            if has_preview_data and label is not None:
+                assert preview_image is not None
+                selected_label_mask = np.logical_and(
+                    self.labels.img == label, self.mask.img
+                )
+                preview_rgb = preview_image.img.copy().astype(float)
+                if preview_rgb.ndim == 3:
+                    grayscale = np.mean(preview_rgb, axis=2, keepdims=True)
+                    preview_rgb[~selected_label_mask] = (
+                        0.7 * grayscale[~selected_label_mask]
+                        + 0.3 * preview_rgb[~selected_label_mask]
+                    )
+                    ax_preview_image.imshow(preview_rgb)
+                else:
+                    ax_preview_image.imshow(preview_rgb, cmap="gray")
+                ax_preview_image.set_title("Calibration image (selected label focus)")
+
+                if preview_signal is not None:
+                    finite_preview = np.isfinite(preview_signal)
+                    if np.any(finite_preview):
+                        vmin = float(np.nanmin(preview_signal))
+                        vmax = float(np.nanmax(preview_signal))
+                        if np.isclose(vmin, vmax):
+                            vmin -= 1e-8
+                            vmax += 1e-8
+                    else:
+                        vmin, vmax = 0.0, 1.0
+                    preview_cmap = darsia.ColorPath(
+                        colors=None,
+                        relative_colors=new_key_relative_colors,
+                        base_color=base_color,
+                        mode="rgb",
+                        name=name,
+                    ).get_color_map()
+                    ax_preview_interpretation.imshow(
+                        preview_signal,
+                        cmap=preview_cmap,
+                        vmin=vmin,
+                        vmax=vmax,
+                    )
+                    title = "Native pH indicator interpretation"
+                    if preview_signal_is_stale:
+                        title += " (stale - click Re-run pH preview)"
+                    ax_preview_interpretation.set_title(title)
+                else:
+                    ax_preview_interpretation.text(
+                        0.5,
+                        0.5,
+                        "No preview available.\nClick Re-run pH preview.",
+                        ha="center",
+                        va="center",
+                        transform=ax_preview_interpretation.transAxes,
+                    )
+                    ax_preview_interpretation.set_title(
+                        "Native pH indicator interpretation"
+                    )
+            else:
+                ax_preview_image.text(
+                    0.5,
+                    0.5,
+                    "Manual preview unavailable.",
+                    ha="center",
+                    va="center",
+                    transform=ax_preview_image.transAxes,
+                )
+                ax_preview_interpretation.text(
+                    0.5,
+                    0.5,
+                    "Manual preview unavailable.",
+                    ha="center",
+                    va="center",
+                    transform=ax_preview_interpretation.transAxes,
+                )
+                ax_preview_image.set_title("Calibration image")
+                ax_preview_interpretation.set_title(
+                    "Native pH indicator interpretation"
+                )
+
             fig.canvas.draw_idle()
 
-        index_ax = plt.axes([0.06, 0.12, 0.10, 0.06])
-        r_ax = plt.axes([0.22, 0.12, 0.15, 0.06])
-        g_ax = plt.axes([0.41, 0.12, 0.15, 0.06])
-        b_ax = plt.axes([0.60, 0.12, 0.15, 0.06])
-        update_ax = plt.axes([0.78, 0.12, 0.09, 0.06])
-        finalize_ax = plt.axes([0.89, 0.12, 0.09, 0.06])
+        index_ax = plt.axes([0.05, 0.12, 0.08, 0.06])
+        r_ax = plt.axes([0.15, 0.12, 0.09, 0.06])
+        g_ax = plt.axes([0.26, 0.12, 0.09, 0.06])
+        b_ax = plt.axes([0.37, 0.12, 0.09, 0.06])
+        update_ax = plt.axes([0.48, 0.12, 0.09, 0.06])
+        finalize_ax = plt.axes([0.59, 0.12, 0.09, 0.06])
+        rerun_preview_ax = plt.axes([0.74, 0.12, 0.20, 0.06])
 
         index_box = TextBox(index_ax, "Index", initial=str(selected_index))
         init_color = new_key_relative_colors[selected_index]
@@ -1581,6 +1756,7 @@ class LabelColorPathMapRegression:
         b_box = TextBox(b_ax, "B", initial=f"{init_color[2]:.6f}")
         update_button = Button(update_ax, "Update")
         finalize_button = Button(finalize_ax, "Finalize")
+        rerun_preview_button = Button(rerun_preview_ax, "Re-run pH preview")
 
         def refresh_color_fields() -> None:
             color = new_key_relative_colors[selected_index]
@@ -1599,6 +1775,7 @@ class LabelColorPathMapRegression:
             refresh_color_fields()
 
         def on_update(_) -> None:
+            nonlocal preview_signal_is_stale
             try:
                 new_color = np.array(
                     [float(r_box.text), float(g_box.text), float(b_box.text)],
@@ -1610,6 +1787,14 @@ class LabelColorPathMapRegression:
                 )
                 return
             new_key_relative_colors[selected_index] = new_color
+            preview_signal_is_stale = True
+            redraw()
+
+        def on_rerun_preview(_) -> None:
+            nonlocal preview_signal
+            nonlocal preview_signal_is_stale
+            preview_signal = compute_preview_signal()
+            preview_signal_is_stale = False
             redraw()
 
         def on_finalize(_) -> None:
@@ -1619,8 +1804,11 @@ class LabelColorPathMapRegression:
 
         index_box.on_submit(on_index_submit)
         update_button.on_clicked(on_update)
+        rerun_preview_button.on_clicked(on_rerun_preview)
         finalize_button.on_clicked(on_finalize)
 
+        preview_signal = compute_preview_signal()
+        preview_signal_is_stale = False
         redraw()
         plt.show()
         if not finalized:
