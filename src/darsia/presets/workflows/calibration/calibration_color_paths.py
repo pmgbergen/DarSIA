@@ -204,24 +204,18 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
     logger.info("Calibration of color paths completed.")
 
 
-def delete_calibration(path: Path | list[Path]) -> None:
-    """Delete existing calibration files and cached images.
-
-    Removes the color paths calibration file, baseline color spectrum folder,
-    color range file, and all cached images in the results/cache folder.
+def collect_existing_calibration_paths_to_delete(path: Path | list[Path]) -> list[Path]:
+    """Collect existing calibration paths that would be deleted.
 
     Args:
         path: Path(s) to the configuration file(s).
 
+    Returns:
+        List of unique existing paths in deletion order.
     """
-    logger.warning(
-        """\033[91mDeleting existing calibration data. Use with caution as this """
-        """will delete existing results.\033[0m"""
-    )
 
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
 
-    # Collect paths to delete
     paths_to_delete: list[Path] = []
     if config.color_paths is not None:
         paths_to_delete.append(config.color_paths.calibration_file)
@@ -230,7 +224,36 @@ def delete_calibration(path: Path | list[Path]) -> None:
     if config.data is not None and config.data.cache is not None:
         paths_to_delete.append(config.data.cache)
 
-    existing = [p for p in paths_to_delete if p.exists()]
+    existing: list[Path] = []
+    seen: set[Path] = set()
+    for current_path in paths_to_delete:
+        if current_path.exists() and current_path not in seen:
+            seen.add(current_path)
+            existing.append(current_path)
+    return existing
+
+
+def delete_calibration(
+    path: Path | list[Path], *, require_confirmation: bool = True
+) -> None:
+    """Delete existing calibration files and cached images.
+
+    Removes the color paths calibration file, baseline color spectrum folder,
+    color range file, and all cached images in the results/cache folder.
+
+    Args:
+        path: Path(s) to the configuration file(s).
+        require_confirmation: If True, ask for command-line confirmation before
+            deleting. Set to False for already-confirmed non-interactive flows
+            (e.g. GUI confirmation dialogs).
+
+    """
+    logger.warning(
+        """\033[91mDeleting existing calibration data. Use with caution as this """
+        """will delete existing results.\033[0m"""
+    )
+
+    existing = collect_existing_calibration_paths_to_delete(path)
     if not existing:
         logger.info("No existing calibration data found to delete.")
         return
@@ -239,16 +262,18 @@ def delete_calibration(path: Path | list[Path]) -> None:
     for p in existing:
         logger.info(f"  {p}")
 
-    user_input = input(
-        "\033[91mAre you sure you want to delete the existing calibration data? "
-        "This action cannot be undone. (y/n): \033[0m"
-    )
-    if user_input.lower() == "y":
-        for p in existing:
-            if p.is_dir():
-                shutil.rmtree(p, ignore_errors=True)
-            else:
-                p.unlink(missing_ok=True)
-        logger.info("Calibration data deleted.")
-    else:
-        logger.info("Calibration data deletion aborted.")
+    if require_confirmation:
+        user_input = input(
+            "\033[91mAre you sure you want to delete the existing calibration data? "
+            "This action cannot be undone. (y/n): \033[0m"
+        )
+        if user_input.lower() != "y":
+            logger.info("Calibration data deletion aborted.")
+            return
+
+    for p in existing:
+        if p.is_dir():
+            shutil.rmtree(p, ignore_errors=True)
+        else:
+            p.unlink(missing_ok=True)
+    logger.info("Calibration data deleted.")

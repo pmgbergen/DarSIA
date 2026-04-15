@@ -29,8 +29,9 @@ from darsia.presets.workflows.rig import Rig
 logger = logging.getLogger(__name__)
 SESSION_CACHE_FILE_NAME = "workflows_gui_session.json"
 SESSION_CACHE_VERSION = 1
-UTILS_CONFLICT_PREVIEW_LIMIT = 8
+PREVIEW_LIST_LIMIT = 8
 WORKFLOW_ERROR_DETAILS_PREFIX = "__DARSIA_WORKFLOW_ERROR_DETAILS__:"
+UTILS_CONFLICT_PREVIEW_LIMIT = 8
 
 
 class SupportsLogQueue(Protocol):
@@ -449,6 +450,7 @@ def _run_setup_workflow(
     from darsia.presets.workflows.setup.setup_depth import setup_depth_map
     from darsia.presets.workflows.setup.setup_facies import setup_facies
     from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
+    from darsia.presets.workflows.setup.setup_protocols import setup_imaging_protocol
     from darsia.presets.workflows.setup.setup_rig import delete_rig, setup_rig
 
     paths = normalize_paths(config_paths)
@@ -460,6 +462,8 @@ def _run_setup_workflow(
         segment_colored_image(paths, show=show)
     if options["all"] or options["facies"]:
         setup_facies(rig_cls, paths, show=show)
+    if options["all"] or options["protocol"]:
+        setup_imaging_protocol(paths, force=options["force"], show=show)
     if options["all"] or options["rig"]:
         setup_rig(rig_cls, paths, show=show)
     if options["delete_rig"]:
@@ -481,7 +485,10 @@ def _run_calibration_workflow(
     paths = normalize_paths(config_paths)
     rig_cls = resolve_rig_class(rig_spec)
     if options["delete"]:
-        delete_calibration(paths)
+        delete_calibration(
+            paths,
+            require_confirmation=not options.get("skip_delete_confirmation", False),
+        )
         return
     if options["color_paths"]:
         calibration_color_paths(rig_cls, paths, options["show"])
@@ -634,6 +641,7 @@ class WorkflowGUI:
         except (OSError, RuntimeError) as e:
             logger.warning("Failed to initialize GUI session cache path: %s", e)
 
+        self._setup_icon()
         self._setup_logging()
         self._build_layout()
         self._setup_themes()
@@ -641,6 +649,15 @@ class WorkflowGUI:
         self._poll_stream()
         self._update_dashboard()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _setup_icon(self) -> None:
+        logo_path = (
+            Path(__file__).resolve().parent
+            / "interface"
+            / "DarSIA_Horisontal_Positiv_part.png"
+        )
+        icon = self.tk.PhotoImage(file=logo_path)
+        self.root.iconphoto(True, icon)
 
     def _setup_logging(self) -> None:
         _configure_queue_logging(self.log_queue)
@@ -745,6 +762,7 @@ class WorkflowGUI:
         self.setup_depth = self.tk.BooleanVar(value=False)
         self.setup_seg = self.tk.BooleanVar(value=False)
         self.setup_facies = self.tk.BooleanVar(value=False)
+        self.setup_protocol = self.tk.BooleanVar(value=False)
         self.setup_rig = self.tk.BooleanVar(value=False)
         self.setup_delete = self.tk.BooleanVar(value=False)
         self.setup_show = self.tk.BooleanVar(value=False)
@@ -753,6 +771,7 @@ class WorkflowGUI:
             ("Depth", self.setup_depth),
             ("Segmentation", self.setup_seg),
             ("Facies", self.setup_facies),
+            ("Protocol", self.setup_protocol),
             ("Rig", self.setup_rig),
             ("Delete rig", self.setup_delete),
             ("Show plots", self.setup_show),
@@ -1366,11 +1385,35 @@ class WorkflowGUI:
             "depth": self.setup_depth.get(),
             "segmentation": self.setup_seg.get(),
             "facies": self.setup_facies.get(),
+            "protocol": self.setup_protocol.get(),
             "rig": self.setup_rig.get(),
             "delete_rig": self.setup_delete.get(),
             "show": self.setup_show.get(),
+            "force": False,
         }
-        actions = enabled_option_labels(options)
+        protocol_enabled = options["all"] or options["protocol"]
+        if protocol_enabled:
+            from darsia.presets.workflows.setup.setup_protocols import (
+                preview_protocol_setup_conflicts,
+            )
+
+            conflicts = preview_protocol_setup_conflicts(ctx.config_paths)
+            if conflicts:
+                max_preview = UTILS_CONFLICT_PREVIEW_LIMIT
+                preview = "\n".join(str(path) for path in conflicts[:max_preview])
+                remaining = max(0, len(conflicts) - max_preview)
+                suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
+                choice = self.messagebox.askyesnocancel(
+                    "Setup protocol conflicts",
+                    "Some protocol files already exist and would be overwritten.\n\n"
+                    f"{preview}{suffix}\n\n"
+                    "Yes: overwrite existing files\nNo/Cancel: abort",
+                )
+                if choice is not True:
+                    logger.info("Setup protocol generation aborted by user.")
+                    return
+                options["force"] = True
+        actions = enabled_option_labels(options, exclude={"force"})
         self._run_async(
             "setup",
             actions,
@@ -1396,7 +1439,35 @@ class WorkflowGUI:
             "reset": self.cal_reset.get(),
             "show": self.cal_show.get(),
         }
+        if options["delete"]:
+            from darsia.presets.workflows.calibration.calibration_color_paths import (
+                collect_existing_calibration_paths_to_delete,
+            )
+
+            existing = collect_existing_calibration_paths_to_delete(ctx.config_paths)
+            if not existing:
+                self.messagebox.showinfo(
+                    "Delete calibration",
+                    "No existing calibration data found to delete.",
+                )
+                return
+            max_preview = PREVIEW_LIST_LIMIT
+            preview = "\n".join(str(path) for path in existing[:max_preview])
+            remaining = max(0, len(existing) - max_preview)
+            suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
+            confirmed = self.messagebox.askyesno(
+                "Confirm calibration deletion",
+                "The following calibration files/folders will be deleted:\n\n"
+                f"{preview}{suffix}\n\n"
+                "This action cannot be undone.\n\nProceed?",
+            )
+            if not confirmed:
+                logger.info("Calibration data deletion aborted by user.")
+                return
         actions = enabled_option_labels(options)
+        run_options = options.copy()
+        if options["delete"]:
+            run_options["skip_delete_confirmation"] = True
         self._run_async(
             "calibration",
             actions,
@@ -1405,7 +1476,7 @@ class WorkflowGUI:
             _run_calibration_workflow,
             [str(path) for path in ctx.config_paths],
             self.rig_spec.get(),
-            options,
+            run_options,
         )
 
     def _run_analysis_clicked(self) -> None:
@@ -1512,7 +1583,7 @@ class WorkflowGUI:
                 Path(import_bundle),
             )
             if conflicts:
-                max_preview = UTILS_CONFLICT_PREVIEW_LIMIT
+                max_preview = PREVIEW_LIST_LIMIT
                 preview = "\n".join(str(path) for path in conflicts[:max_preview])
                 remaining = max(0, len(conflicts) - max_preview)
                 suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
