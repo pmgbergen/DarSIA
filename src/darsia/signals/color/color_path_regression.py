@@ -1894,20 +1894,25 @@ class LabelColorPathMapRegression:
                 return
 
             coarse_rows, coarse_cols = current_coarse_preview_image().img.shape[:2]
-            if coarse_rows <= 0 or coarse_cols <= 0:
+            if coarse_rows <= 0:
                 logger.warning(
                     "Pipette skipped due to invalid preview image dimensions."
                 )
                 return
-            coarse_x_limits = ax_preview_image.get_xlim()
-            coarse_y_limits = ax_preview_image.get_ylim()
-            coarse_col_start = int(np.floor(max(0.0, min(coarse_x_limits))))
+            if coarse_cols <= 0:
+                logger.warning(
+                    "Pipette skipped due to invalid preview image dimensions."
+                )
+                return
+            coarse_col_limits = ax_preview_image.get_xlim()
+            coarse_row_limits = ax_preview_image.get_ylim()
+            coarse_col_start = int(np.floor(max(0.0, min(coarse_col_limits))))
             coarse_col_stop = int(
-                np.ceil(min(float(coarse_cols), max(coarse_x_limits)))
+                np.ceil(min(float(coarse_cols), max(coarse_col_limits)))
             )
-            coarse_row_start = int(np.floor(max(0.0, min(coarse_y_limits))))
+            coarse_row_start = int(np.floor(max(0.0, min(coarse_row_limits))))
             coarse_row_stop = int(
-                np.ceil(min(float(coarse_rows), max(coarse_y_limits)))
+                np.ceil(min(float(coarse_rows), max(coarse_row_limits)))
             )
 
             if (
@@ -1939,9 +1944,11 @@ class LabelColorPathMapRegression:
                     "Pipette skipped because preview and baseline dimensions differ."
                 )
                 return
-            current_relative_preview = current_original_preview.img.astype(
-                float
-            ) - preview_baseline.img.astype(float)
+            current_relative_preview = np.subtract(
+                current_original_preview.img,
+                preview_baseline.img,
+                dtype=float,
+            )
             sampled_relative_preview = current_relative_preview[sample]
             sampled_label_mask = current_label_mask[sample]
             characteristic_colors = darsia.extract_characteristic_data(
