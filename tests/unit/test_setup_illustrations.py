@@ -67,6 +67,7 @@ def test_segment_colored_image_exports_labels_jpg(monkeypatch, tmp_path: Path) -
     assert np.array_equal(recorded["array"], labels.img)
     assert recorded["path"] == labels_path.with_suffix(".jpg")
     assert recorded["title"] == "Labels"
+    assert recorded["colorbar_label"] == "Label id"
 
 
 def test_setup_facies_exports_facies_jpg(monkeypatch, tmp_path: Path) -> None:
@@ -121,6 +122,7 @@ def test_setup_facies_exports_facies_jpg(monkeypatch, tmp_path: Path) -> None:
     assert np.array_equal(recorded["array"], facies.img)
     assert recorded["path"] == facies_path.with_suffix(".jpg")
     assert recorded["title"] == "Facies"
+    assert recorded["colorbar_label"] == "Facies id"
 
 
 def test_setup_depth_map_exports_depth_jpg(monkeypatch, tmp_path: Path) -> None:
@@ -170,3 +172,4 @@ def test_setup_depth_map_exports_depth_jpg(monkeypatch, tmp_path: Path) -> None:
     assert np.array_equal(recorded["array"], depth_map.img)
     assert recorded["path"] == depth_map_path.with_suffix(".jpg")
     assert recorded["title"] == "Depth map"
+    assert recorded["colorbar_label"] == "Depth"
