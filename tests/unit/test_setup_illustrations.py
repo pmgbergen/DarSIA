@@ -40,7 +40,9 @@ def test_segment_colored_image_exports_labels_jpg(monkeypatch, tmp_path: Path) -
         "FluidFlowerConfig",
         lambda *_args, **_kwargs: config,
     )
-    monkeypatch.setattr(setup_labeling_module.darsia, "imread", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        setup_labeling_module.darsia, "imread", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(
         setup_labeling_module.darsia,
         "label_image",
@@ -87,7 +89,9 @@ def test_setup_facies_exports_facies_jpg(monkeypatch, tmp_path: Path) -> None:
         "FluidFlowerConfig",
         lambda *_args, **_kwargs: config,
     )
-    monkeypatch.setattr(setup_facies_module.darsia, "imread", lambda *_args, **_kwargs: labels)
+    monkeypatch.setattr(
+        setup_facies_module.darsia, "imread", lambda *_args, **_kwargs: labels
+    )
     monkeypatch.setattr(
         setup_facies_module.darsia,
         "reassign_labels",
