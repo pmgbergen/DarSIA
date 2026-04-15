@@ -36,7 +36,8 @@ def save_discrete_map_illustration(
 
     data = _to_2d(array)
     fig, ax = plt.subplots(figsize=(10, 5))
-    image = ax.imshow(data, cmap="tab20", interpolation="nearest")
+    cmap = plt.get_cmap("tab20", 1 + len(np.unique(data[np.isfinite(data)])))
+    image = ax.imshow(data, cmap=cmap, interpolation="nearest")
     colorbar = fig.colorbar(image, ax=ax, shrink=0.8)
     colorbar.set_label(colorbar_label)
 
