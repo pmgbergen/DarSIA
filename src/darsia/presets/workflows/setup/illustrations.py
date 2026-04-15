@@ -89,13 +89,15 @@ def save_scalar_map_illustration(
     colorbar.set_label(colorbar_label)
     colorbar.ax.set_yticklabels([_format_value(float(tick)) for tick in ticks])
 
-    rows = np.linspace(0, data.shape[0] - 1, num=3, dtype=int)
-    cols = np.linspace(0, data.shape[1] - 1, num=3, dtype=int)
+    rows = np.linspace(0, data.shape[0] - 1, num=min(3, data.shape[0]), dtype=int)
+    cols = np.linspace(0, data.shape[1] - 1, num=min(3, data.shape[1]), dtype=int)
     finite_coords = np.argwhere(finite_mask)
-    for row, col in product(rows, cols):
+    sampled_points = {(int(row), int(col)) for row, col in product(rows, cols)}
+    for row, col in sampled_points:
         if not finite_mask[row, col]:
             distances = np.sum((finite_coords - np.array([row, col])) ** 2, axis=1)
-            row, col = finite_coords[int(np.argmin(distances))]
+            nearest_idx = int(np.argmin(distances))
+            row, col = finite_coords[nearest_idx]
         value = float(data[row, col])
         ax.text(
             col,
