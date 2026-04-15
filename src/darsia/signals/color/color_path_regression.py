@@ -1594,6 +1594,7 @@ class LabelColorPathMapRegression:
             and preview_baseline is not None
             and not has_preview_data
         ):
+            # Preview inputs were provided, but not all of them matched the label domain.
             logger.warning(
                 "Skipping manual color-path preview because image dimensions do not "
                 "match the label map."
@@ -1635,15 +1636,11 @@ class LabelColorPathMapRegression:
             coarse_labels = darsia.resize(
                 self.labels, shape=coarse_shape, interpolation="inter_nearest"
             )
-            coarse_mask = (
-                darsia.resize(
-                    darsia.ScalarImage(
-                        self.mask.img.astype(float), **self.mask.metadata()
-                    ),
-                    shape=coarse_shape,
-                ).img
-                > mask_interpolation_threshold
+            float_mask = darsia.ScalarImage(
+                self.mask.img.astype(float), **self.mask.metadata()
             )
+            resized_mask = darsia.resize(float_mask, shape=coarse_shape)
+            coarse_mask = resized_mask.img > mask_interpolation_threshold
 
         def selected_label_mask() -> np.ndarray:
             assert label is not None
