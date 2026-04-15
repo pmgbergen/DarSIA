@@ -1648,6 +1648,10 @@ class LabelColorPathMapRegression:
             assert coarse_mask is not None
             return np.logical_and(coarse_labels.img == label, coarse_mask)
 
+        def selected_label_mask_full() -> np.ndarray:
+            assert label is not None
+            return np.logical_and(self.labels.img == label, self.mask.img)
+
         def current_coarse_preview_image() -> darsia.Image:
             assert len(coarse_preview_images) > 0
             return coarse_preview_images[current_preview_idx]
@@ -1882,7 +1886,7 @@ class LabelColorPathMapRegression:
                 return
 
             assert preview_baseline is not None
-            current_label_mask = np.logical_and(self.labels.img == label, self.mask.img)
+            current_label_mask = selected_label_mask_full()
             if not np.any(current_label_mask):
                 logger.warning(
                     "Pipette skipped because selected label has no active pixels."
@@ -1890,6 +1894,11 @@ class LabelColorPathMapRegression:
                 return
 
             coarse_rows, coarse_cols = current_coarse_preview_image().img.shape[:2]
+            if coarse_rows <= 0 or coarse_cols <= 0:
+                logger.warning(
+                    "Pipette skipped due to invalid preview image dimensions."
+                )
+                return
             coarse_x_limits = ax_preview_image.get_xlim()
             coarse_y_limits = ax_preview_image.get_ylim()
             coarse_col_start = int(np.floor(max(0.0, min(coarse_x_limits))))
