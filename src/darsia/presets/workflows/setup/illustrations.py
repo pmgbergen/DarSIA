@@ -40,7 +40,8 @@ def save_discrete_map_illustration(
     colorbar = fig.colorbar(image, ax=ax, shrink=0.8)
     colorbar.set_label(colorbar_label)
 
-    unique_values = np.unique(data[np.isfinite(data)])
+    finite_mask = np.isfinite(data)
+    unique_values = np.unique(data[finite_mask])
     for value in unique_values:
         coords = np.argwhere(data == value)
         if coords.size == 0:
