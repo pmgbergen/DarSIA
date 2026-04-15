@@ -6,6 +6,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+ANNOTATION_GRID_SIZE = 3
+NUM_COLORBAR_TICKS = 7
+
 
 def _to_2d(array: np.ndarray) -> np.ndarray:
     data = np.asarray(array)
@@ -17,7 +20,7 @@ def _to_2d(array: np.ndarray) -> np.ndarray:
 
 
 def _format_value(value: float) -> str:
-    if float(value).is_integer():
+    if value.is_integer():
         return str(int(value))
     return f"{value:.3g}"
 
@@ -84,13 +87,21 @@ def save_scalar_map_illustration(
     image = ax.imshow(data, cmap="viridis")
     vmin = float(np.nanmin(data))
     vmax = float(np.nanmax(data))
-    ticks = np.linspace(vmin, vmax, num=7) if vmax > vmin else np.array([vmin])
+    ticks = (
+        np.linspace(vmin, vmax, num=NUM_COLORBAR_TICKS)
+        if vmax > vmin
+        else np.array([vmin])
+    )
     colorbar = fig.colorbar(image, ax=ax, shrink=0.8, ticks=ticks)
     colorbar.set_label(colorbar_label)
     colorbar.ax.set_yticklabels([_format_value(float(tick)) for tick in ticks])
 
-    rows = np.linspace(0, data.shape[0] - 1, num=min(3, data.shape[0]), dtype=int)
-    cols = np.linspace(0, data.shape[1] - 1, num=min(3, data.shape[1]), dtype=int)
+    rows = np.linspace(
+        0, data.shape[0] - 1, num=min(ANNOTATION_GRID_SIZE, data.shape[0]), dtype=int
+    )
+    cols = np.linspace(
+        0, data.shape[1] - 1, num=min(ANNOTATION_GRID_SIZE, data.shape[1]), dtype=int
+    )
     finite_coords = np.argwhere(finite_mask)
     sampled_points = {(int(row), int(col)) for row, col in product(rows, cols)}
     for row, col in sampled_points:
