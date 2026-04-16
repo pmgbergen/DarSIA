@@ -82,7 +82,11 @@ class ImagePorosityConfig:
         self.tol = tol
 
         patches_raw = sec.get("patches", list(self.patches))
-        self.patches = tuple(int(x) for x in patches_raw)  # type: ignore[assignment]
+        if len(patches_raw) != 2:
+            raise ValueError(
+                f"[image_porosity] patches must be a list of 2 integers, got {patches_raw!r}"
+            )
+        self.patches = (int(patches_raw[0]), int(patches_raw[1]))
 
         self.num_clusters = int(sec.get("num_clusters", self.num_clusters))
         self.sample_width = int(sec.get("sample_width", self.sample_width))
