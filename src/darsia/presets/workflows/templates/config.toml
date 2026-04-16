@@ -9,13 +9,19 @@ baseline = "baseline.JPG" # The baseline image
 results = "..."           # Main output folder
 
 [data.path.baseline_imgs]
-paths = ["...", "...", "..."]
+paths = ["img1.jpg", "img2.jpg", "img3.jpg"]
 
 [data.path.calibration_imgs]
-paths = ["...", "...", "..."]
+paths = ["img1.jpg", "img2.jpg", "img3.jpg"]
 
 [data.time.analysis_imgs]
-times = [1, 5, 10, 20, 21, 40]
+times = ["01:00:00", "01:05:00", "01:10:00", "01:20:00", "01:21:00", "01:40:00"]
+
+[data.interval.analysis_imgs2]
+start = "01:00:00"
+end = "02:00:00"
+num = 10
+tol = "00:10:00"
 
 [specs]
 dim = 2         # dimension of the model
