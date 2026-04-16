@@ -196,13 +196,15 @@ class ImagingProtocol:
         normalized_candidates = {
             file_name.name,
             file_name.as_posix(),
-            "/".join(file_name.parts[-2:]) if len(file_name.parts) >= 2 else file_name.name,
+            (
+                "/".join(file_name.parts[-2:])
+                if len(file_name.parts) >= 2
+                else file_name.name
+            ),
         }
         protocol_paths = self.df["path"]
         if protocol_paths.notna().any():
-            path_df = self.df[
-                protocol_paths.astype(str).isin(normalized_candidates)
-            ]
+            path_df = self.df[protocol_paths.astype(str).isin(normalized_candidates)]
             if not path_df.empty:
                 return path_df["datetime"].iloc[0]
 
@@ -243,7 +245,7 @@ class ImagingProtocol:
             paths = (
                 df["path"]
                 .astype(str)
-                .str.replace("\\\\", "/", regex=False)
+                .str.replace(r"\\", "/", regex=False)
                 .str.lstrip("./")
             )
         else:

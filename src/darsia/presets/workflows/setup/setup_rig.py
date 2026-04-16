@@ -65,7 +65,9 @@ def setup_rig(cls: Type[Rig], path: Path | list[Path], show: bool = False) -> No
         baseline_relative = None
         for folder in config.data.folders:
             try:
-                baseline_relative = baseline_path.resolve().relative_to(folder.resolve())
+                baseline_relative = baseline_path.resolve().relative_to(
+                    folder.resolve()
+                )
                 break
             except ValueError:
                 continue

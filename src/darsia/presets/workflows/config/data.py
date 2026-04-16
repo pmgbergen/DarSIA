@@ -73,9 +73,9 @@ class DataConfig:
         if folders_value is not None:
             if not isinstance(folders_value, list):
                 raise ValueError("[data].folders must be a list of paths.")
-            parsed_folders = [Path(folder) for folder in folders_value]
-            if len(parsed_folders) == 0:
+            if not folders_value:
                 raise ValueError("[data].folders must not be empty.")
+            parsed_folders = [Path(folder) for folder in folders_value]
             for folder in parsed_folders:
                 if folder not in self.folders:
                     self.folders.append(folder)
@@ -93,7 +93,9 @@ class DataConfig:
             self.baseline = baseline
         else:
             baseline_candidates = [folder / baseline for folder in self.folders]
-            existing_candidates = [candidate for candidate in baseline_candidates if candidate.is_file()]
+            existing_candidates = [
+                candidate for candidate in baseline_candidates if candidate.is_file()
+            ]
             if len(existing_candidates) > 0:
                 self.baseline = existing_candidates[0]
             else:
@@ -110,7 +112,11 @@ class DataConfig:
             all_data: list[Path] = []
             for folder in self.folders:
                 all_data.extend(
-                    sorted(path for path in folder.rglob(f"*{self.baseline.suffix}") if path.is_file())
+                    sorted(
+                        path
+                        for path in folder.rglob(f"*{self.baseline.suffix}")
+                        if path.is_file()
+                    )
                 )
             self.data = sorted(set(all_data))
             if len(self.data) == 0:

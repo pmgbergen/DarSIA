@@ -45,11 +45,13 @@ def load_images_with_cache(
     """
     images: list[darsia.Image] = []
     resolved_paths = [path.resolve() for path in paths]
-    common_root = (
-        Path(commonpath([str(path) for path in resolved_paths]))
-        if len(resolved_paths) > 0
-        else None
-    )
+    if resolved_paths:
+        try:
+            common_root = Path(commonpath([str(path) for path in resolved_paths]))
+        except ValueError:
+            common_root = None
+    else:
+        common_root = None
     for p in paths:
         if use_cache and cache_dir is not None:
             resolved = p.resolve()

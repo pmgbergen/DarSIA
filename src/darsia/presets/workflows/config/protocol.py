@@ -13,9 +13,7 @@ logger = logging.getLogger(__name__)
 class ProtocolConfig:
     """Protocol configuration for the setup."""
 
-    imaging: (
-        Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]] | None
-    ) = None
+    imaging: Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]] | None = None
     """Path to imaging protocol, (file, sheet), or per-folder mapping."""
     injection: Path | tuple[Path, str] | None = None
     """Path to the injection protocol file or (file, sheet)."""
@@ -29,7 +27,7 @@ class ProtocolConfig:
     def _parse_protocol_value(
         self, value: str | list[str] | tuple[str, str]
     ) -> Path | tuple[Path, str]:
-        if isinstance(value, list) or isinstance(value, tuple):
+        if isinstance(value, (list, tuple)):
             return (Path(value[0]), value[1])
         if isinstance(value, str):
             return Path(value)

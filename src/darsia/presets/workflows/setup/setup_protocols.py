@@ -61,7 +61,10 @@ def _imaging_protocol_paths(
     if protocol is None:
         return {}
     if isinstance(protocol, dict):
-        protocol_map = {Path(folder): _protocol_path(value, "imaging") for folder, value in protocol.items()}
+        protocol_map = {
+            Path(folder): _protocol_path(value, "imaging")
+            for folder, value in protocol.items()
+        }
         missing = [folder for folder in folders if folder not in protocol_map]
         extra = [folder for folder in protocol_map if folder not in folders]
         if missing:
@@ -74,7 +77,9 @@ def _imaging_protocol_paths(
                 "Imaging protocol configured for unknown folder(s): "
                 + ", ".join(str(folder) for folder in extra)
             )
-        return {folder: path for folder, path in protocol_map.items() if path is not None}
+        return {
+            folder: path for folder, path in protocol_map.items() if path is not None
+        }
 
     if len(folders) > 1:
         raise ValueError(
@@ -102,7 +107,9 @@ def preview_protocol_setup_conflicts(path: Path | list[Path]) -> list[Path]:
     config.check("protocol")
     assert config.protocol is not None
 
-    imaging_targets = _imaging_protocol_paths(config.protocol.imaging, config.data.folders)
+    imaging_targets = _imaging_protocol_paths(
+        config.protocol.imaging, config.data.folders
+    )
     targets = list(imaging_targets.values())
     targets.extend(
         [
@@ -202,7 +209,9 @@ def setup_imaging_protocol(
     assert config.protocol is not None
     assert config.protocol.imaging is not None
 
-    imaging_targets = _imaging_protocol_paths(config.protocol.imaging, config.data.folders)
+    imaging_targets = _imaging_protocol_paths(
+        config.protocol.imaging, config.data.folders
+    )
     injection_path = _protocol_path(config.protocol.injection, "injection")
     pressure_temperature_path = _protocol_path(
         config.protocol.pressure_temperature, "pressure_temperature"
@@ -238,9 +247,7 @@ def setup_imaging_protocol(
     overall_end: datetime | None = None
     suffix = config.data.baseline.suffix
     for folder, imaging_path in imaging_targets.items():
-        files = sorted(
-            path for path in folder.rglob(f"*{suffix}") if path.is_file()
-        )
+        files = sorted(path for path in folder.rglob(f"*{suffix}") if path.is_file())
         if len(files) == 0:
             raise FileNotFoundError(
                 f"No image files with suffix {suffix} found in {folder}."
@@ -253,9 +260,7 @@ def setup_imaging_protocol(
 
         start = pd.to_datetime(imaging_df["datetime"]).min().to_pydatetime()
         end = pd.to_datetime(imaging_df["datetime"]).max().to_pydatetime()
-        overall_start = (
-            start if overall_start is None else min(overall_start, start)
-        )
+        overall_start = start if overall_start is None else min(overall_start, start)
         overall_end = end if overall_end is None else max(overall_end, end)
 
     assert overall_start is not None

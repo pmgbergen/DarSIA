@@ -1,5 +1,7 @@
 """Abstract experiment class."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
@@ -36,9 +38,7 @@ class ProtocolledExperiment:
     def __init__(
         self,
         data: list[Path],
-        imaging_protocol: (
-            Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]]
-        ),
+        imaging_protocol: Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]],
         injection_protocol: Optional[Path | tuple[Path, str]] = None,
         pressure_temperature_protocol: Optional[Path | tuple[Path, str]] = None,
         blacklist_protocol: Optional[Path | tuple[Path, str]] = None,
@@ -73,9 +73,8 @@ class ProtocolledExperiment:
     def init_from_config(cls, config: FluidFlowerConfig):
         assert config.data is not None
         assert config.protocol is not None
-        if (
-            len(config.data.folders) > 1
-            and not isinstance(config.protocol.imaging, dict)
+        if len(config.data.folders) > 1 and not isinstance(
+            config.protocol.imaging, dict
         ):
             raise ValueError(
                 "Multiple [data].folders require [protocols].imaging to be a per-folder table."
@@ -153,7 +152,7 @@ class ProtocolledExperiment:
             available_paths.append(path)
             available_datetimes.append(date)
 
-        if len(available_paths) == 0:
+        if not available_paths:
             raise ValueError("No available images found in the specified paths.")
 
         selected_paths: list[Path] = []
