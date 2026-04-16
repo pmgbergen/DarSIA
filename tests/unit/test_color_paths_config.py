@@ -281,6 +281,45 @@ class TestColorPathsConfigInlineRoi:
         assert cfg.rois == []
 
 
+class TestDeprecatedInlineDataSelectors:
+    def test_color_paths_inline_selectors_emit_deprecation_warning(self, tmp_path):
+        dummy = tmp_path / "dummy.jpg"
+        dummy.touch()
+        toml_path = _write_toml(
+            tmp_path,
+            """
+            [color_paths]
+            [color_paths.baseline.path.baseline]
+            paths = ["dummy.jpg"]
+            [color_paths.data.time.calibration]
+            times = ["01:00:00"]
+            tol = "00:05:00"
+            """,
+        )
+        cfg = ColorPathsConfig()
+        with pytest.warns(DeprecationWarning, match=r"\[color_paths\."):
+            cfg.load(path=toml_path, data=tmp_path, results=tmp_path)
+        assert cfg.data is not None
+        assert cfg.data.image_times == pytest.approx([1.0])
+        assert cfg.baseline_image_paths == [dummy]
+
+    def test_color_to_mass_inline_selector_emits_deprecation_warning(self, tmp_path):
+        toml_path = _write_toml(
+            tmp_path,
+            """
+            [color_to_mass]
+            [color_to_mass.data.time.calibration]
+            times = ["01:00:00"]
+            tol = "00:05:00"
+            """,
+        )
+        cfg = ColorToMassConfig()
+        with pytest.warns(DeprecationWarning, match=r"\[color_to_mass\.data\]"):
+            cfg.load(path=toml_path, data=tmp_path, results=tmp_path)
+        assert cfg.data is not None
+        assert cfg.data.image_times == pytest.approx([1.0])
+
+
 # ---------------------------------------------------------------------------
 # RoiRegistry.register()
 # ---------------------------------------------------------------------------
