@@ -302,9 +302,10 @@ def suggested_workflow_results_folder(
     if results is None:
         return None
 
-    selected_actions = {action.strip().lower() for action in actions}
     if workflow == "analysis":
-        return suggested_analysis_results_folder(config_paths, list(selected_actions))
+        return suggested_analysis_results_folder(config_paths, actions)
+
+    selected_actions = {action.strip().lower() for action in actions}
 
     if workflow == "setup":
         setup_candidates: list[Path] = []
@@ -322,11 +323,8 @@ def suggested_workflow_results_folder(
             setup_candidates.append(results / "setup")
         if len(setup_candidates) == 0:
             return None
-        return (
-            setup_candidates[0]
-            if len(set(setup_candidates)) == 1
-            else results / "setup"
-        )
+        all_setup_same = all(path == setup_candidates[0] for path in setup_candidates)
+        return setup_candidates[0] if all_setup_same else results / "setup"
 
     if workflow == "calibration":
         if (
@@ -384,7 +382,8 @@ def suggested_workflow_results_folder(
                 utils_candidates.append(results / "raw_data")
         if len(utils_candidates) == 0:
             return None
-        return utils_candidates[0] if len(set(utils_candidates)) == 1 else results
+        all_utils_same = all(path == utils_candidates[0] for path in utils_candidates)
+        return utils_candidates[0] if all_utils_same else results
 
     return None
 
