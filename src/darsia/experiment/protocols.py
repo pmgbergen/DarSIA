@@ -193,7 +193,25 @@ class ImagingProtocol:
         # Fetch id from input file
         current_id = self.image_id(file_name)
 
-        if current_id not in self._image_datetime.index:
+        # Prefer an exact path match when the protocol contains path entries.
+        normalized_candidates = {
+            file_name.name,
+            file_name.as_posix(),
+            (
+                "/".join(file_name.parts[-2:])
+                if len(file_name.parts) >= 2
+                else file_name.name
+            ),
+        }
+        protocol_paths = self.df["path"]
+        if protocol_paths.notna().any():
+            path_df = self.df[protocol_paths.astype(str).isin(normalized_candidates)]
+            if not path_df.empty:
+                return path_df["datetime"].iloc[0]
+
+        # Fallback: image-id based lookup.
+        sub_df = self.df[self.df["image_id"] == current_id]
+        if sub_df.empty:
             raise ValueError(f"Image id {current_id} not found in protocol.")
         return self._image_datetime.loc[current_id]
 
@@ -225,7 +243,12 @@ class ImagingProtocol:
             "datetime" in df.columns
         ), "Column 'Datetime' not found in the protocol file."
         if "path" in df.columns:
-            paths = df["path"]
+            paths = (
+                df["path"]
+                .astype(str)
+                .str.replace(r"\\", "/", regex=False)
+                .str.lstrip("./")
+            )
         else:
             paths = [None] * len(df)
         images = df["image_id"]

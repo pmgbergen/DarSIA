@@ -68,7 +68,9 @@ class DataRegistry:
 
     _registry: dict[str, TimeData] = field(default_factory=dict)
 
-    def load(self, sec: dict, data_folder: Path | None = None) -> "DataRegistry":
+    def load(
+        self, sec: dict, data_folder: Path | list[Path] | None = None
+    ) -> "DataRegistry":
         """Populate the registry from a ``[data]`` config section dict.
 
         Args:

@@ -89,7 +89,13 @@ class _FakeImagingProtocol:
 class _FakeExperiment:
     def __init__(self) -> None:
         self._base = datetime(2026, 1, 1, 0, 0, 0)
-        self.imaging_protocol = _FakeImagingProtocol()
+        self._imaging_protocol = _FakeImagingProtocol()
+
+    def is_blacklisted(self, path: Path) -> bool:
+        return self._imaging_protocol.is_blacklisted(path)
+
+    def get_datetime(self, path: Path) -> datetime:
+        return self._imaging_protocol.get_datetime(path)
 
     def time_since_start(self, dt: datetime) -> float:
         return (dt - self._base).total_seconds() / 3600.0

@@ -3,6 +3,7 @@ comment = "Intro session based on glass beads experiments"
 
 [data]
 folder = "..."            # Folder with images
+## folders = ["...", "..."] # Optional multi-folder input; requires [protocols.imaging] table
 format = "JPG"            # The format of the images
 pad = 5                   # number of relevant digits in image names, e.g. 00001.JPG
 baseline = "baseline.JPG" # The baseline image
@@ -36,6 +37,10 @@ depth_map = "./data/depth_map.npz"
 [protocols]
 injection = "./data/injection_protocol.csv"
 imaging = "./data/imaging_protocol.csv"
+# For multi-folder [data].folders, use:
+# [protocols.imaging]
+# "/abs/path/to/folder_a" = "./data/imaging_protocol_a.csv"
+# "/abs/path/to/folder_b" = ["./data/imaging_protocol_b.xlsx", "Sheet1"]
 pressure_temperature = "./data/pressure_temperature_protocol.csv"
 imaging_mode = "exif"
 

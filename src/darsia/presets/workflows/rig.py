@@ -64,13 +64,13 @@ class Rig:
     def setup_reading(
         self,
         baseline_path: Path,
-        imaging_protocol: darsia.ImagingProtocol,
+        experiment: darsia.ProtocolledExperiment,
         corrections_config: CorrectionsConfig | None = None,
         log: Path | None = None,
         show_plot: bool = False,
     ):
-        # Cache imaging_protocol
-        self.imaging_protocol = imaging_protocol
+        # Cache experiment for protocol-based datetime lookup
+        self.experiment = experiment
 
         # Setup (based on baseline image without any corrections applied)
         pre_baseline = darsia.imread(baseline_path)
@@ -702,7 +702,7 @@ class Rig:
         # Initialize the rig - responsible for reading/preprocessing photographs
         self.setup_reading(
             baseline_path,
-            experiment.imaging_protocol,
+            experiment,
             corrections_config=corrections_config,
             log=log,
         )
@@ -963,10 +963,10 @@ class Rig:
 
         """
         assert hasattr(
-            self, "imaging_protocol"
-        ), "Imaging protocol not defined. Run load_experiment() first."
+            self, "experiment"
+        ), "Experiment not defined. Run load_experiment() first."
         # Convert date from path
-        date = self.imaging_protocol.get_datetime(path)
+        date = self.experiment.get_datetime(path)
 
         # Read image from file and apply corrections
         img = darsia.imread(
@@ -991,7 +991,7 @@ class Rig:
                 injection, and pressure/temperature protocols.
 
         """
-        self.imaging_protocol = experiment.imaging_protocol
+        self.experiment = experiment
         self.injection_protocol = experiment.injection_protocol
         self.pressure_temperature_protocol = experiment.pressure_temperature_protocol
         self.reference_date = experiment.experiment_start
@@ -1008,7 +1008,7 @@ class Rig:
 
         """
         # Convert date from path
-        date = self.imaging_protocol.get_datetime(path)
+        date = self.experiment.get_datetime(path)
         self.current_date = date
         self.current_time = (date - self.reference_date).total_seconds() / 3600.0
         state = self.pressure_temperature_protocol.get_state(date)

@@ -19,6 +19,7 @@ class DataConfig:
     Example for TOML section:
         [data]
         folder = "path/to/images"
+        # or folders = ["path/to/images_a", "path/to/images_b"]
         format = "JPG"
         baseline = "path/to/baseline.jpg"
         pad = 0
@@ -28,6 +29,8 @@ class DataConfig:
 
     folder: Path = field(default_factory=Path)
     """Path to the folder containing the image data."""
+    folders: list[Path] = field(default_factory=list)
+    """Paths to folders containing image data (multi-folder mode)."""
     format: str = "JPG"
     """Format of the image data (e.g., 'JPG', 'PNG')."""
     data: list[Path] = field(default_factory=list)
@@ -58,15 +61,46 @@ class DataConfig:
     ) -> "DataConfig":
         sec = _get_section_from_toml(path, "data")
 
-        # Get folder
-        self.folder = _get_key(sec, "folder", required=True, type_=Path)
-        if require_data and not self.folder.is_dir():
-            raise FileNotFoundError(f"Folder {self.folder} not found.")
+        # Get folder(s)
+        folder_value = _get_key(sec, "folder", required=False)
+        folders_value = _get_key(sec, "folders", required=False)
+        if folder_value is None and folders_value is None:
+            raise KeyError("Missing key 'folder' or 'folders' in [data].")
+
+        self.folders = []
+        if folder_value is not None:
+            self.folder = Path(folder_value)
+            self.folders.append(self.folder)
+        if folders_value is not None:
+            if not isinstance(folders_value, list):
+                raise ValueError("[data].folders must be a list of paths.")
+            if not folders_value:
+                raise ValueError("[data].folders must not be empty.")
+            parsed_folders = [Path(folder) for folder in folders_value]
+            for folder in parsed_folders:
+                if folder not in self.folders:
+                    self.folders.append(folder)
+            if folder_value is None:
+                self.folder = self.folders[0]
+
+        if require_data:
+            for folder in self.folders:
+                if not folder.is_dir():
+                    raise FileNotFoundError(f"Folder {folder} not found.")
 
         # Get baseline
-        self.baseline = self.folder / _get_key(
-            sec, "baseline", required=True, type_=Path
-        )
+        baseline = _get_key(sec, "baseline", required=True, type_=Path)
+        if baseline.is_absolute():
+            self.baseline = baseline
+        else:
+            baseline_candidates = [folder / baseline for folder in self.folders]
+            existing_candidates = [
+                candidate for candidate in baseline_candidates if candidate.is_file()
+            ]
+            if len(existing_candidates) > 0:
+                self.baseline = existing_candidates[0]
+            else:
+                self.baseline = self.folder / baseline
         if require_data and not self.baseline.is_file():
             raise FileNotFoundError(f"Baseline image {self.baseline} not found.")
 
@@ -89,7 +123,7 @@ class DataConfig:
             if len(self.data) == 0:
                 raise FileNotFoundError(
                     f"""No image files with suffix {self.baseline.suffix} found in """
-                    f"""{self.folder}."""
+                    f"""{self.folders}."""
                 )
         else:
             self.data = None
@@ -137,7 +171,9 @@ class DataConfig:
         has_registry_sections = any(key in sec for key in ("interval", "time", "path"))
         if has_registry_sections:
             try:
-                self.registry = DataRegistry().load(sec, self.folder)
+                self.registry = DataRegistry().load(
+                    sec, self.folders if len(self.folders) > 1 else self.folder
+                )
             except Exception as e:
                 logger.warning(f"Failed to load DataRegistry: {e}")
                 self.registry = None
