@@ -54,6 +54,37 @@ def _protocol_path(
     return Path(protocol)
 
 
+def _imaging_protocol_paths(
+    protocol: Path | tuple[Path, str] | dict[Path, Path | tuple[Path, str]] | None,
+    folders: list[Path],
+) -> dict[Path, Path]:
+    if protocol is None:
+        return {}
+    if isinstance(protocol, dict):
+        protocol_map = {Path(folder): _protocol_path(value, "imaging") for folder, value in protocol.items()}
+        missing = [folder for folder in folders if folder not in protocol_map]
+        extra = [folder for folder in protocol_map if folder not in folders]
+        if missing:
+            raise ValueError(
+                "Missing imaging protocol entries for folder(s): "
+                + ", ".join(str(folder) for folder in missing)
+            )
+        if extra:
+            raise ValueError(
+                "Imaging protocol configured for unknown folder(s): "
+                + ", ".join(str(folder) for folder in extra)
+            )
+        return {folder: path for folder, path in protocol_map.items() if path is not None}
+
+    if len(folders) > 1:
+        raise ValueError(
+            "Multiple [data].folders require [protocols].imaging to be a per-folder table."
+        )
+    single_path = _protocol_path(protocol, "imaging")
+    assert single_path is not None
+    return {folders[0]: single_path}
+
+
 def _assert_csv(path: Path, key: str) -> None:
     if path.suffix.lower() != ".csv":
         raise ValueError(
@@ -71,16 +102,21 @@ def preview_protocol_setup_conflicts(path: Path | list[Path]) -> list[Path]:
     config.check("protocol")
     assert config.protocol is not None
 
-    targets = [
-        _protocol_path(config.protocol.imaging, "imaging"),
-        _protocol_path(config.protocol.injection, "injection"),
-        _protocol_path(config.protocol.pressure_temperature, "pressure_temperature"),
-    ]
+    imaging_targets = _imaging_protocol_paths(config.protocol.imaging, config.data.folders)
+    targets = list(imaging_targets.values())
+    targets.extend(
+        [
+            _protocol_path(config.protocol.injection, "injection"),
+            _protocol_path(
+                config.protocol.pressure_temperature, "pressure_temperature"
+            ),
+        ]
+    )
     return _overwrite_conflicts([p for p in targets if p is not None])
 
 
 def _extract_imaging_protocol_dataframe(
-    files: list[Path], pad: int, mode: str
+    files: list[Path], pad: int, mode: str, root: Path
 ) -> pd.DataFrame:
     file_paths: list[str] = []
     file_ids: list[int] = []
@@ -103,7 +139,7 @@ def _extract_imaging_protocol_dataframe(
                 "Skipping %s because no datetime could be extracted.", filename
             )
             continue
-        file_paths.append(filename.name)
+        file_paths.append(filename.relative_to(root).as_posix())
         file_ids.append(image_id)
         date_times.append(date_time)
 
@@ -166,14 +202,14 @@ def setup_imaging_protocol(
     assert config.protocol is not None
     assert config.protocol.imaging is not None
 
-    imaging_path = _protocol_path(config.protocol.imaging, "imaging")
+    imaging_targets = _imaging_protocol_paths(config.protocol.imaging, config.data.folders)
     injection_path = _protocol_path(config.protocol.injection, "injection")
     pressure_temperature_path = _protocol_path(
         config.protocol.pressure_temperature, "pressure_temperature"
     )
-    assert imaging_path is not None
 
-    _assert_csv(imaging_path, "imaging")
+    for imaging_path in imaging_targets.values():
+        _assert_csv(imaging_path, "imaging")
     if injection_path is not None:
         _assert_csv(injection_path, "injection")
     if pressure_temperature_path is not None:
@@ -181,22 +217,14 @@ def setup_imaging_protocol(
 
     conflicts = _overwrite_conflicts(
         [
-            p
-            for p in [imaging_path, injection_path, pressure_temperature_path]
-            if p is not None
+            *imaging_targets.values(),
+            *[p for p in [injection_path, pressure_temperature_path] if p is not None],
         ]
     )
     if conflicts and not force:
         conflict_text = ", ".join(str(path) for path in conflicts)
         raise FileExistsError(
             f"Protocol file(s) already exist: {conflict_text}. Use --force to overwrite."
-        )
-
-    suffix = config.data.baseline.suffix
-    files = sorted(config.data.folder.glob(f"*{suffix}"))
-    if len(files) == 0:
-        raise FileNotFoundError(
-            f"No image files with suffix {suffix} found in {config.data.folder}."
         )
 
     mode = config.protocol.imaging_mode
@@ -206,17 +234,37 @@ def setup_imaging_protocol(
             f"Supported values are: {sorted(_SUPPORTED_MODES)}."
         )
 
-    imaging_df = _extract_imaging_protocol_dataframe(files, config.data.pad, mode)
-    _write_csv(imaging_df, imaging_path)
-    logger.info("Saved imaging protocol CSV to %s", imaging_path)
+    overall_start: datetime | None = None
+    overall_end: datetime | None = None
+    suffix = config.data.baseline.suffix
+    for folder, imaging_path in imaging_targets.items():
+        files = sorted(
+            path for path in folder.rglob(f"*{suffix}") if path.is_file()
+        )
+        if len(files) == 0:
+            raise FileNotFoundError(
+                f"No image files with suffix {suffix} found in {folder}."
+            )
+        imaging_df = _extract_imaging_protocol_dataframe(
+            files, config.data.pad, mode, folder
+        )
+        _write_csv(imaging_df, imaging_path)
+        logger.info("Saved imaging protocol CSV to %s", imaging_path)
 
-    start = pd.to_datetime(imaging_df["datetime"]).min().to_pydatetime()
-    end = pd.to_datetime(imaging_df["datetime"]).max().to_pydatetime()
+        start = pd.to_datetime(imaging_df["datetime"]).min().to_pydatetime()
+        end = pd.to_datetime(imaging_df["datetime"]).max().to_pydatetime()
+        overall_start = (
+            start if overall_start is None else min(overall_start, start)
+        )
+        overall_end = end if overall_end is None else max(overall_end, end)
+
+    assert overall_start is not None
+    assert overall_end is not None
     if injection_path is not None:
-        _write_injection_template(injection_path, start, end)
+        _write_injection_template(injection_path, overall_start, overall_end)
         logger.info("Saved injection protocol CSV template to %s", injection_path)
     if pressure_temperature_path is not None:
-        _write_pressure_temperature_template(pressure_temperature_path, start)
+        _write_pressure_temperature_template(pressure_temperature_path, overall_start)
         logger.info(
             "Saved pressure-temperature protocol CSV template to %s",
             pressure_temperature_path,
