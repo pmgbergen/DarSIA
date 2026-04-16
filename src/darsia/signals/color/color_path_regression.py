@@ -1585,7 +1585,6 @@ class LabelColorPathMapRegression:
         has_preview_data = (
             label is not None and preview_baseline is not None and preview_shape_matches
         )
-        preview_signal_limits_epsilon = 1e-8
         min_preview_rows = 120
         mask_interpolation_threshold = 0.5
         preview_downsampling_factor = 4
