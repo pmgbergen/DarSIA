@@ -250,7 +250,7 @@ def setup_imaging_protocol(
         files = sorted(
             candidate
             for candidate in folder.rglob(f"*{suffix}")
-            if candidate.is_file() and candidate.name.endswith(suffix)
+            if candidate.is_file()
         )
         if len(files) == 0:
             raise FileNotFoundError(
