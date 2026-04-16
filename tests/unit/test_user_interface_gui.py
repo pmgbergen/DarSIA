@@ -215,7 +215,7 @@ def test_suggested_analysis_results_folder_for_cropping(tmp_path: Path) -> None:
     config.write_text(f"[data]\nresults = '{results}'\n")
 
     folder = suggested_analysis_results_folder([config], ["cropping"])
-    assert folder == results / "cropped_images"
+    assert folder == results / "cropping"
 
 
 def test_suggested_analysis_results_folder_from_analysis_section(
