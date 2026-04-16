@@ -183,3 +183,68 @@ def test_find_images_for_times_reuses_cached_timeline_for_same_data_pool(
     assert len(first) == 2
     assert len(second) == 2
     assert call_count == 1
+
+
+def test_iter_available_resolves_protocol_once_per_path(
+    tmp_path: Path, monkeypatch
+) -> None:
+    start = datetime(2026, 1, 1, 0, 0, 0)
+    injection_path = tmp_path / "injection.csv"
+    pressure_path = tmp_path / "pressure.csv"
+    _write_injection_protocol(injection_path, start)
+    _write_pressure_protocol(pressure_path, start)
+
+    folder_root = tmp_path / "root"
+    folder_sub = folder_root / "sub"
+    root_images = _touch_images(folder_root, 2)
+    sub_images = _touch_images(folder_sub, 2)
+    all_images = root_images + sub_images
+
+    root_protocol = tmp_path / "imaging_root.csv"
+    sub_protocol = tmp_path / "imaging_sub.csv"
+    _write_imaging_protocol(
+        root_protocol,
+        [
+            {
+                "path": f"img_{i:05d}.JPG",
+                "image_id": i,
+                "datetime": (start + timedelta(hours=i)).isoformat(),
+            }
+            for i in range(1, 3)
+        ],
+    )
+    _write_imaging_protocol(
+        sub_protocol,
+        [
+            {
+                "path": f"sub/img_{i:05d}.JPG",
+                "image_id": i,
+                "datetime": (start + timedelta(hours=100 + i)).isoformat(),
+            }
+            for i in range(1, 3)
+        ],
+    )
+
+    experiment = ProtocolledExperiment(
+        data=all_images,
+        imaging_protocol={folder_root: root_protocol, folder_sub: sub_protocol},
+        injection_protocol=injection_path,
+        pressure_temperature_protocol=pressure_path,
+        blacklist_protocol=None,
+        pad=5,
+    )
+
+    call_count = 0
+    original_protocol_for_path = experiment._protocol_for_path
+
+    def wrapped_protocol_for_path(path: Path):
+        nonlocal call_count
+        call_count += 1
+        return original_protocol_for_path(path)
+
+    monkeypatch.setattr(experiment, "_protocol_for_path", wrapped_protocol_for_path)
+
+    available = experiment.iter_available(all_images)
+
+    assert len(available) == len(all_images)
+    assert call_count == len(all_images)

@@ -79,6 +79,7 @@ class ProtocolledExperiment:
         self.experiment_start = self.injection_protocol.df["start"].min()
         """Start of the experiment."""
         self._path_protocol_cache: dict[Path, darsia.ImagingProtocol] = {}
+        self._parent_protocol_cache: dict[Path, darsia.ImagingProtocol] = {}
         self._available_timeline_cache: dict[
             tuple[tuple[Path, ...], tuple[int, ...]],
             tuple[list[float], list[Path], list[int]],
@@ -197,15 +198,22 @@ class ProtocolledExperiment:
         if self.imaging_protocol is not None:
             return self.imaging_protocol
 
-        resolved_path = path.resolve()
+        resolved_parent = path.parent.resolve()
+        parent_cached = self._parent_protocol_cache.get(resolved_parent)
+        if parent_cached is not None:
+            return parent_cached
+
+        resolved_path = resolved_parent / path.name
         cached = self._path_protocol_cache.get(resolved_path)
         if cached is not None:
+            self._parent_protocol_cache[resolved_parent] = cached
             return cached
 
         for resolved_folder, protocol in self._resolved_protocol_folders:
             try:
                 resolved_path.relative_to(resolved_folder)
                 self._path_protocol_cache[resolved_path] = protocol
+                self._parent_protocol_cache[resolved_parent] = protocol
                 return protocol
             except ValueError:
                 continue
@@ -214,10 +222,11 @@ class ProtocolledExperiment:
     def iter_available(self, paths: list[Path]) -> list[tuple[int, Path, datetime]]:
         available: list[tuple[int, Path, datetime]] = []
         for idx, path in enumerate(paths):
-            if self.is_blacklisted(path):
-                continue
             try:
-                date = self.get_datetime(path)
+                protocol = self._protocol_for_path(path)
+                if protocol.is_blacklisted(path):
+                    continue
+                date = protocol.get_datetime(path)
             except ValueError:
                 continue
             if date is None:
