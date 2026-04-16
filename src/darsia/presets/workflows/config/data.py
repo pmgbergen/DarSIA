@@ -1,6 +1,7 @@
 """Data configuration for the setup."""
 
 import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -113,9 +114,9 @@ class DataConfig:
             for folder in self.folders:
                 all_data.extend(
                     sorted(
-                        path
-                        for path in folder.rglob(f"*{self.baseline.suffix}")
-                        if path.is_file()
+                        folder / file
+                        for file in os.listdir(folder)
+                        if file.endswith(self.baseline.suffix)
                     )
                 )
             self.data = sorted(set(all_data))
