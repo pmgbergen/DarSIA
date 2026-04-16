@@ -30,6 +30,7 @@ from darsia.presets.workflows.user_interface_gui import (
     resolve_rig_class,
     resolve_utils_bundle_defaults,
     suggested_analysis_results_folder,
+    suggested_workflow_results_folder,
     write_session_cache,
 )
 
@@ -264,6 +265,67 @@ def test_suggested_analysis_results_folder_thresholding_fallback(
 
     folder = suggested_analysis_results_folder([config], ["thresholding"])
     assert folder == results / "thresholding"
+
+
+def test_suggested_workflow_results_folder_setup(tmp_path: Path) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_workflow_results_folder("setup", [config], ["depth"])
+    assert folder == results / "setup" / "depth"
+
+
+def test_suggested_workflow_results_folder_calibration(tmp_path: Path) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_workflow_results_folder(
+        "calibration", [config], ["default mass", "show"]
+    )
+    assert folder == results / "calibration"
+
+
+def test_suggested_workflow_results_folder_comparison_events_default(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_workflow_results_folder("comparison", [config], ["events"])
+    assert folder == results / "events"
+
+
+def test_suggested_workflow_results_folder_comparison_wasserstein_override(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    wasserstein = tmp_path / "custom-w1"
+    config.write_text(
+        f"[data]\nresults = '{results}'\n\n"
+        f"[wasserstein]\nresults = '{wasserstein}'\n"
+    )
+
+    folder = suggested_workflow_results_folder(
+        "comparison", [config], ["wasserstein compute"]
+    )
+    assert folder == wasserstein
+
+
+def test_suggested_workflow_results_folder_utils_combined_defaults_to_results(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config.toml"
+    results = tmp_path / "results"
+    config.write_text(f"[data]\nresults = '{results}'\n")
+
+    folder = suggested_workflow_results_folder(
+        "utils", [config], ["download", "media", "export calibration"]
+    )
+    assert folder == results
 
 
 def test_publish_latest_queue_item_keeps_only_latest() -> None:
