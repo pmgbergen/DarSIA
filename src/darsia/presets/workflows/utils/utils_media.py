@@ -51,9 +51,9 @@ def _protocol_sort_frames(
     rows: list[tuple[Path, datetime, float]] = []
     for path in image_paths:
         try:
-            if experiment.imaging_protocol.is_blacklisted(path):
+            if experiment.is_blacklisted(path):
                 continue
-            dt = experiment.imaging_protocol.get_datetime(path)
+            dt = experiment.get_datetime(path)
         except ValueError:
             continue
         elapsed_time_h = experiment.time_since_start(dt)
