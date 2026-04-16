@@ -262,7 +262,12 @@ class ImagingProtocol:
             "datetime" in df.columns
         ), "Column 'Datetime' not found in the protocol file."
         if "path" in df.columns:
-            paths = df["path"].astype(str).map(self._normalize_protocol_path)
+            paths = (
+                df["path"]
+                .astype(str)
+                .str.replace(r"\\", "/", regex=False)
+                .str.lstrip("./")
+            )
         else:
             paths = [None] * len(df)
         images = df["image_id"]
