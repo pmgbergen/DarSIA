@@ -198,12 +198,12 @@ class ProtocolledExperiment:
         if self.imaging_protocol is not None:
             return self.imaging_protocol
 
-        resolved_parent = path.parent.resolve()
+        resolved_path = path.resolve()
+        resolved_parent = resolved_path.parent
         parent_cached = self._parent_protocol_cache.get(resolved_parent)
         if parent_cached is not None:
             return parent_cached
 
-        resolved_path = resolved_parent / path.name
         cached = self._path_protocol_cache.get(resolved_path)
         if cached is not None:
             self._parent_protocol_cache[resolved_parent] = cached
