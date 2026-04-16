@@ -11,7 +11,6 @@ from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.roi import RoiAndLabelConfig, RoiConfig
 from darsia.presets.workflows.config.roi_registry import RoiRegistry
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -281,7 +280,7 @@ class TestColorPathsConfigInlineRoi:
         assert cfg.rois == []
 
 
-class TestDeprecatedInlineDataSelectors:
+class TestColorPathsAndColorToMassDeprecatedInlineSelectors:
     def test_color_paths_inline_selectors_emit_deprecation_warning(self, tmp_path):
         dummy = tmp_path / "dummy.jpg"
         dummy.touch()
@@ -297,7 +296,11 @@ class TestDeprecatedInlineDataSelectors:
             """,
         )
         cfg = ColorPathsConfig()
-        with pytest.warns(DeprecationWarning, match=r"\[color_paths\."):
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"Inline selector definitions under "
+            r"\[color_paths\.(baseline|data)\] are deprecated",
+        ):
             cfg.load(path=toml_path, data=tmp_path, results=tmp_path)
         assert cfg.data is not None
         assert cfg.data.image_times == pytest.approx([1.0])

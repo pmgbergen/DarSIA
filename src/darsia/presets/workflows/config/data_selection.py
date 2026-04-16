@@ -8,6 +8,9 @@ from warnings import warn
 from .data_registry import DataRegistry
 from .time_data import TimeData
 
+# user code -> config.load() -> resolve_time_data_selector() -> warn()
+DEFAULT_WARNING_STACKLEVEL = 3
+
 
 def _deprecation_message(section: str, key: str) -> str:
     return (
@@ -25,6 +28,7 @@ def resolve_time_data_selector(
     data: Path | None,
     data_registry: DataRegistry | None,
     required: bool = True,
+    warning_stacklevel: int = DEFAULT_WARNING_STACKLEVEL,
 ) -> TimeData | None:
     """Resolve a workflow selector to ``TimeData``.
 
@@ -46,7 +50,11 @@ def resolve_time_data_selector(
         return data_registry.resolve(selector)
 
     if isinstance(selector, dict):
-        warn(_deprecation_message(section, key), DeprecationWarning, stacklevel=2)
+        warn(
+            _deprecation_message(section, key),
+            DeprecationWarning,
+            stacklevel=warning_stacklevel,
+        )
         return TimeData().load(selector, data)
 
     raise ValueError(
@@ -71,7 +79,8 @@ def resolve_path_selector(
         data_registry=data_registry,
         required=True,
     )
-    assert resolved is not None
+    if resolved is None:
+        raise ValueError(f"{section}.{key} is required.")
     if len(resolved.image_paths) == 0:
         raise ValueError(
             f"{section}.{key} must resolve to explicit image paths "
