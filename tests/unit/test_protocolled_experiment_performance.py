@@ -101,7 +101,11 @@ def test_find_images_for_times_uses_deepest_folder_mapping_and_deduplicates(
     _write_imaging_protocol(
         root_protocol,
         [
-            {"path": f"img_{i:05d}.JPG", "image_id": i, "datetime": (start + timedelta(hours=i)).isoformat()}
+            {
+                "path": f"img_{i:05d}.JPG",
+                "image_id": i,
+                "datetime": (start + timedelta(hours=i)).isoformat(),
+            }
             for i in range(1, 4)
         ],
     )

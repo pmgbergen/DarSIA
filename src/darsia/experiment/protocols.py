@@ -222,7 +222,7 @@ class ImagingProtocol:
 
     @staticmethod
     def _normalize_protocol_path(path: str) -> str:
-        return path.replace("\\", "/").lstrip("./")
+        return str(path).replace("\\", "/").lstrip("./")
 
     def _candidate_protocol_paths(self, file_name: Path) -> tuple[str, ...]:
         two_level = (
