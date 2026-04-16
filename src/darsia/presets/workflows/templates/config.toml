@@ -96,7 +96,7 @@ data = "analysis_imgs"
 formats = ["npz", "jpg"]
 
 [analysis.color_signal]
-image_times = [1, 5, 10, 20, 21, 40]
+data = "analysis_imgs"
 
 [analysis.mass]
 

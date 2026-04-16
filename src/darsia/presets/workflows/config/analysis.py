@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from warnings import warn
 
-from .data_selection import resolve_time_data_selector
 from .data_registry import DataRegistry
+from .data_selection import resolve_time_data_selector
 from .fingers import FingersConfig
 from .roi import RoiAndLabelConfig, RoiConfig
 from .segmentation import SegmentationConfig
