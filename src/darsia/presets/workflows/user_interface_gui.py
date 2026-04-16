@@ -462,10 +462,10 @@ def _run_setup_workflow(
         segment_colored_image(paths, show=show)
     if options["all"] or options["facies"]:
         setup_facies(rig_cls, paths, show=show)
-    if options["all"] or options["protocol"]:
-        setup_imaging_protocol(paths, force=options["force"], show=show)
     if options["all"] or options["rig"]:
         setup_rig(rig_cls, paths, show=show)
+    if options["protocol"]:
+        setup_imaging_protocol(paths, force=options["force"], show=show)
     if options["delete_rig"]:
         delete_rig(rig_cls, paths, show=show)
 
@@ -1391,7 +1391,7 @@ class WorkflowGUI:
             "show": self.setup_show.get(),
             "force": False,
         }
-        protocol_enabled = options["all"] or options["protocol"]
+        protocol_enabled = options["protocol"]
         if protocol_enabled:
             from darsia.presets.workflows.setup.setup_protocols import (
                 preview_protocol_setup_conflicts,

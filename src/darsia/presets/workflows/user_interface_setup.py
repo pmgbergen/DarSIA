@@ -86,9 +86,9 @@ def preset_setup(rig=Rig):
         segment_colored_image(args.config, args.show)
     if args.all or args.facies:
         setup_facies(rig, args.config, args.show)
-    if args.all or args.protocol:
-        setup_imaging_protocol(args.config, force=args.force, show=args.show)
     if args.all or args.rig:
         setup_rig(rig, args.config, args.show)
+    if args.protocol:
+        setup_imaging_protocol(args.config, force=args.force, show=args.show)
     if args.delete:
         delete_rig(rig, args.config, args.show)
