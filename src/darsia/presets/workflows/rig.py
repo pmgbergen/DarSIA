@@ -19,6 +19,9 @@ from darsia.presets.workflows.config.corrections import (
 )
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.facies_props import FaciesProps
+from darsia.presets.workflows.setup.illustrations import (
+    save_scalar_map_illustration,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -542,7 +545,7 @@ class Rig:
         path: Path | None = None,
         log: Path | None = None,
         config: ImagePorosityConfig | None = None,
-        **kwargs,
+        show_plot: bool = False,
     ) -> None:
         """Setup image porosity based on the baseline image.
 
@@ -550,7 +553,9 @@ class Rig:
 
         * ``mode="full"`` (default): constant porosity of ``1`` over the full domain.
         * ``mode="from_image"``: porosity derived from the baseline image via
-          :func:`~darsia.patched_porosity_analysis`.
+          :func:`~darsia.patched_porosity_analysis` using the parameters stored in
+          *config* (``patches``, ``num_clusters``, ``sample_width``,
+          ``tol_color_distance``, ``tol_color_gradient``).
 
         When *path* is provided the image is always loaded from disk regardless of
         *config*, which is useful for restoring a previously saved rig.
@@ -558,17 +563,12 @@ class Rig:
         Args:
             path (Path | None): Path to a previously saved porosity ``.npz`` file.
                 When given, the file is loaded and *config* is not used.
-            log (Path | None): Folder for diagnostic plots.
+            log (Path | None): Folder for diagnostic output.  When given, a JPG
+                illustration is stored to ``log/image_porosity/image_porosity.jpg``.
             config (ImagePorosityConfig | None): Porosity configuration.  Defaults to
                 ``ImagePorosityConfig()`` (i.e. ``mode="full"``) when not provided.
-            **kwargs: Forwarded to :func:`~darsia.patched_porosity_analysis` when
-                ``mode="from_image"``.  Common keys:
-
-                - ``patches``: number of patches as ``(rows, cols)``, e.g. ``(1, 1)``.
-                - ``num_clusters``: clusters for k-means (default ``5``).
-                - ``sample_width``: width of random samples (default ``50``).
-                - ``tol_color_distance``: tolerance for colour distance (default ``0.1``).
-                - ``tol_color_gradient``: tolerance for colour gradient (default ``0.02``).
+            show_plot (bool): When ``True`` the image porosity is displayed interactively.
+                Pass ``True`` when calling from a GUI or user-interface workflow.
 
         """
         if config is None:
@@ -578,12 +578,14 @@ class Rig:
         if path is not None:
             self.image_porosity = darsia.imread(path)
         elif config.mode == "from_image":
-            patches = kwargs.pop("patches", (1, 1))
             self.image_porosity = patched_porosity_analysis(
                 baseline=self.baseline,
-                patches=patches,
+                patches=config.patches,
                 labels=self.labels,
-                **kwargs,
+                num_clusters=config.num_clusters,
+                sample_width=config.sample_width,
+                tol_color_distance=config.tol_color_distance,
+                tol_color_gradient=config.tol_color_gradient,
             )
         else:
             # mode == "full"
@@ -593,12 +595,17 @@ class Rig:
         """Image porosity for the rig object."""
 
         if log:
-            plt.figure()
-            plt.imshow(self.image_porosity.img)
-            plt.colorbar()
-            plt.title("Image porosity")
-            plt.savefig(Path(log) / "image_porosity.png")
-            plt.close()
+            out_dir = Path(log) / "image_porosity"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            save_scalar_map_illustration(
+                self.image_porosity.img,
+                out_dir / "image_porosity.jpg",
+                title="Image porosity",
+                colorbar_label="Porosity",
+            )
+
+        if show_plot:
+            self.image_porosity.show(title="Image porosity")
 
         logger.info("Porosity setup completed.")
 
@@ -607,6 +614,7 @@ class Rig:
         threshold: float | None = None,
         log: Path | None = None,
         config: ImagePorosityConfig | None = None,
+        show_plot: bool = False,
     ) -> None:
         """Setup boolean porosity based on the defined threshold.
 
@@ -624,10 +632,15 @@ class Rig:
         Args:
             threshold (float | None): Override tolerance value.  Deprecated in favour of
                 ``config.tol``; kept for backward compatibility.
-            log (Path | None): Folder for diagnostic plots.
+            log (Path | None): Folder for diagnostic output.  When given, a JPG
+                illustration is stored to
+                ``log/image_porosity/boolean_porosity.jpg``.
             config (ImagePorosityConfig | None): Porosity configuration.  Falls back to
                 the config stored by the last call to :meth:`setup_image_porosity`, and
                 finally to ``ImagePorosityConfig()`` (``mode="full"``).
+            show_plot (bool): When ``True`` the boolean porosity is displayed
+                interactively.  Pass ``True`` when calling from a GUI or
+                user-interface workflow.
 
         """
         if config is None:
@@ -646,13 +659,17 @@ class Rig:
             self.boolean_porosity = self.image_porosity > tol
 
         if log:
-            # Plot boolean porosity
-            plt.figure()
-            plt.imshow(self.boolean_porosity.img)
-            plt.colorbar()
-            plt.title("Boolean porosity")
-            plt.savefig(Path(log) / "boolean_porosity.png")
-            plt.close()
+            out_dir = Path(log) / "image_porosity"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            save_scalar_map_illustration(
+                self.boolean_porosity.img.astype(float),
+                out_dir / "boolean_porosity.jpg",
+                title="Boolean porosity",
+                colorbar_label="Porosity (boolean)",
+            )
+
+        if show_plot:
+            self.boolean_porosity.show(title="Boolean porosity")
 
         logger.info("Boolean porosity setup completed.")
 
@@ -720,10 +737,12 @@ class Rig:
         self.setup_geometry()
 
         # Setup porosity based on baseline
-        self.setup_image_porosity(log=log, config=image_porosity_config)
+        self.setup_image_porosity(
+            log=log, config=image_porosity_config, show_plot=show_plot
+        )
 
         # Define boolean image porosity
-        self.setup_boolean_image_porosity(log=log)
+        self.setup_boolean_image_porosity(log=log, show_plot=show_plot)
 
         # Setup color corrections (wait until here to use label and porosity information)
         self.setup_color_corrections(
