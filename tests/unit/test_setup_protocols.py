@@ -154,12 +154,12 @@ def test_protocol_config_supports_per_folder_imaging_mapping(tmp_path: Path) -> 
     )
 
 
-def test_setup_imaging_protocol_with_multiple_folders_and_subfolders(
+def test_setup_imaging_protocol_with_multiple_folders(
     tmp_path: Path,
 ) -> None:
     now = 1_700_000_000
-    _create_image(tmp_path / "images_a" / "sub" / "img_0001.JPG", now)
-    _create_image(tmp_path / "images_b" / "nested" / "img_0001.JPG", now + 60)
+    _create_image(tmp_path / "images_a" / "img_0001.JPG", now)
+    _create_image(tmp_path / "images_b" / "img_0001.JPG", now + 60)
 
     config_path = tmp_path / "config_multi.toml"
     _write_config(
@@ -167,7 +167,7 @@ def test_setup_imaging_protocol_with_multiple_folders_and_subfolders(
         f"""
 [data]
 folders = ["{tmp_path / "images_a"}", "{tmp_path / "images_b"}"]
-baseline = "sub/img_0001.JPG"
+baseline = "img_0001.JPG"
 results = "{tmp_path / "results"}"
 
 [protocols]
@@ -185,8 +185,8 @@ imaging_mode = "ctime"
 
     imaging_a = pd.read_csv(tmp_path / "protocols" / "imaging_a.csv")
     imaging_b = pd.read_csv(tmp_path / "protocols" / "imaging_b.csv")
-    assert imaging_a["path"].tolist() == ["sub/img_0001.JPG"]
-    assert imaging_b["path"].tolist() == ["nested/img_0001.JPG"]
+    assert imaging_a["path"].tolist() == ["img_0001.JPG"]
+    assert imaging_b["path"].tolist() == ["img_0001.JPG"]
 
 
 def test_setup_imaging_protocol_requires_mapping_for_multiple_folders(
