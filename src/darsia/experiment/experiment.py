@@ -80,7 +80,7 @@ class ProtocolledExperiment:
         """Start of the experiment."""
         self._path_protocol_cache: dict[Path, darsia.ImagingProtocol] = {}
         self._available_timeline_cache: dict[
-            tuple[int, tuple[int, ...]],
+            tuple[tuple[Path, ...], tuple[int, ...]],
             tuple[list[float], list[Path], list[int]],
         ] = {}
         if self.imaging_protocol is not None:
@@ -228,7 +228,7 @@ class ProtocolledExperiment:
     def _available_timeline(
         self, paths: list[Path]
     ) -> tuple[list[float], list[Path], list[int]]:
-        cache_key = (id(paths), self._timeline_cache_token)
+        cache_key = (tuple(paths), self._timeline_cache_token)
         cached = self._available_timeline_cache.get(cache_key)
         if cached is not None:
             return cached

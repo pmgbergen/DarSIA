@@ -63,7 +63,7 @@ def test_imaging_protocol_prefers_path_match_and_uses_blacklist_index(tmp_path: 
         protocol_path,
         [
             {
-                "path": "sub/img_00001.JPG",
+                "path": "sub/img_00999.JPG",
                 "image_id": 999,
                 "datetime": (start + timedelta(hours=5)).isoformat(),
             },
@@ -74,12 +74,12 @@ def test_imaging_protocol_prefers_path_match_and_uses_blacklist_index(tmp_path: 
             },
         ],
     )
-    pd.DataFrame({"image_id": [1]}).to_csv(blacklist_path, index=False)
+    pd.DataFrame({"image_id": [999]}).to_csv(blacklist_path, index=False)
 
     protocol = ImagingProtocol(protocol_path, pad=5, blacklist=blacklist_path)
-    dt = protocol.get_datetime(tmp_path / "sub" / "img_00001.JPG")
+    dt = protocol.get_datetime(tmp_path / "sub" / "img_00999.JPG")
     assert dt == pd.Timestamp(start + timedelta(hours=5))
-    assert protocol.is_blacklisted(tmp_path / "sub" / "img_00001.JPG")
+    assert protocol.is_blacklisted(tmp_path / "sub" / "img_00999.JPG")
 
 
 def test_find_images_for_times_uses_deepest_folder_mapping_and_deduplicates(
