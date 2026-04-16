@@ -8,6 +8,15 @@ pad = 5                   # number of relevant digits in image names, e.g. 00001
 baseline = "baseline.JPG" # The baseline image
 results = "..."           # Main output folder
 
+[data.path.baseline_imgs]
+paths = ["...", "...", "..."]
+
+[data.path.calibration_imgs]
+paths = ["...", "...", "..."]
+
+[data.time.analysis_imgs]
+times = [1, 5, 10, 20, 21, 40]
+
 [specs]
 dim = 2         # dimension of the model
 width = 2.745   # width of the model in m
@@ -56,8 +65,8 @@ ignore_labels = [0, 1]
 resolution = [51, 51, 51]
 threshold_baseline = 0.0
 threshold_calibration = 1e-3
-baseline_images = ["...", "...", "..."]
-calibration_images = ["...", "...", "..."]
+baseline = "baseline_imgs"
+data = "calibration_imgs"
 # If omitted, defaults to results/calibration/color_paths/from_<basis>
 calibration_file = "./data/color_paths"
 reference_label = 3
@@ -80,15 +89,16 @@ threshold = 0.2
 # If omitted, defaults to results/calibration/color_to_mass/from_<basis>
 # calibration_folder = "./data/color_to_mass"
 
+[analysis]
+data = "analysis_imgs"
+
 [analysis.cropping]
-image_times = [1, 5, 10, 20, 21, 40]
 formats = ["npz", "jpg"]
 
 [analysis.color_signal]
 image_times = [1, 5, 10, 20, 21, 40]
 
 [analysis.mass]
-image_times = [1, 5, 10, 20, 21, 40]
 
 [analysis.thresholding]
 # Optional thresholding with per-layer styling and separate format outputs.
