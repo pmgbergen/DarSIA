@@ -31,7 +31,16 @@ def _format_size(total_size: int) -> str:
 
 
 def prepare_download_data(path: Path | list[Path] | list[str] | str) -> DownloadPlan:
-    """Resolve selected files, destination paths and total size for download."""
+    """Resolve selected files and metadata for a potential download.
+
+    Args:
+        path: Config path input accepted by ``FluidFlowerConfig`` (single path or
+            a list of paths as ``Path``/``str``).
+
+    Returns:
+        DownloadPlan containing selected source files, destination paths/folder,
+        and total download size (bytes and formatted string).
+    """
 
     config = FluidFlowerConfig(path, require_data=True, require_results=False)
     config.check("data")
