@@ -126,6 +126,9 @@ class ProtocolledExperiment:
 
         Args:
             times (list[float]): Times since start in hours.
+            tol (float | None, optional): Maximum allowed absolute time distance in
+                seconds between requested and matched image times. Inclusive when
+                provided.
             data (list[Path], optional): Pool of data paths to search in. If None,
                 uses the experiment's data pool.
 
@@ -160,7 +163,7 @@ class ProtocolledExperiment:
                 key=lambda i: abs((available_datetimes[i] - dt).total_seconds()),
             )
             min_distance = abs((available_datetimes[min_index] - dt).total_seconds())
-            if tol is None or min_distance < tol:
+            if tol is None or min_distance <= tol:
                 selected_paths.append(available_paths[min_index])
         paths = list(dict.fromkeys(selected_paths))
         if times_is_list:
