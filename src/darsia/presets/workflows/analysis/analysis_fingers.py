@@ -345,6 +345,12 @@ def analysis_fingers_from_context(
                         {
                             "x": float(x),
                             "travel_distance": float(travel_distance),
+                            "speed": float(speeds[-1]) if speeds else float("nan"),
+                            "vertical_speed": (
+                                float(vertical_speeds[-1])
+                                if vertical_speeds
+                                else float("nan")
+                            ),
                         }
                     )
 
@@ -367,6 +373,13 @@ def analysis_fingers_from_context(
                     float(finger["travel_distance"]) for finger in active_fingers
                 ]
 
+                # Compute the velocities of active fingers at this time
+                # (using the last velocity before or at this time).
+                speeds_at_time = [finger["speed"] for finger in active_fingers]
+                speeds_y_at_time = [
+                    finger["vertical_speed"] for finger in active_fingers
+                ]
+
                 # Count new fingers that have zero travel distance at this time
                 # (i.e., just appeared).
                 new_fingers = int(
@@ -379,6 +392,8 @@ def analysis_fingers_from_context(
                 statistics[time] = {
                     "horizontal_distances": dist_x,
                     "travel_distances": travel_distances_at_time,
+                    "finger_speeds": speeds_at_time,
+                    "finger_vertical_speeds": speeds_y_at_time,
                     "new_fingers": new_fingers,
                     "number_fingers": len(active_fingers),
                     "contour_length": contour_length,
