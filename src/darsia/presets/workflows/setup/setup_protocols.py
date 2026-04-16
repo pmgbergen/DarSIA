@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable
@@ -249,7 +248,9 @@ def setup_imaging_protocol(
     suffix = config.data.baseline.suffix
     for folder, imaging_path in imaging_targets.items():
         files = sorted(
-            folder / name for name in os.listdir(folder) if name.endswith(suffix)
+            candidate
+            for candidate in folder.rglob(f"*{suffix}")
+            if candidate.is_file() and candidate.name.endswith(suffix)
         )
         if len(files) == 0:
             raise FileNotFoundError(
