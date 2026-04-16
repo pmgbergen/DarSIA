@@ -146,6 +146,10 @@ class ImagingProtocol:
             self.blacklist_df = self._load_blacklist(blacklist)
         else:
             self.blacklist_df = pd.DataFrame(columns=["image_id"])
+        self._blacklisted_image_ids = set(self.blacklist_df["image_id"].tolist())
+
+        protocol_df = self.df.drop_duplicates(subset="image_id", keep="first")
+        self._image_datetime = protocol_df.set_index("image_id")["datetime"]
 
     def image_id(self, path: Path) -> int:
         """Extract image id from file name."""
@@ -165,16 +169,13 @@ class ImagingProtocol:
             bool: True if the image is blacklisted, False otherwise.
 
         """
-        if self.blacklist_df.empty:
+        if not self._blacklisted_image_ids:
             return False
 
         # Fetch id from input file
         current_id = self.image_id(file_name)
 
-        # Find correct interval based on id
-        row = self.blacklist_df[self.blacklist_df["image_id"] == current_id]
-
-        return not row.empty
+        return current_id in self._blacklisted_image_ids
 
     def get_datetime(self, file_name: Path) -> Optional[datetime]:
         """Get the datetime of the image based on the file name.
@@ -192,11 +193,9 @@ class ImagingProtocol:
         # Fetch id from input file
         current_id = self.image_id(file_name)
 
-        # Find correct interval based on id
-        sub_df = self.df[self.df["image_id"] == current_id]
-        if sub_df.empty:
+        if current_id not in self._image_datetime.index:
             raise ValueError(f"Image id {current_id} not found in protocol.")
-        return sub_df["datetime"].iloc[0]
+        return self._image_datetime.loc[current_id]
 
     def _load_protocol(self, path: Path | tuple[Path, str]) -> pd.DataFrame:
         if isinstance(path, list) or isinstance(path, tuple):
@@ -316,23 +315,45 @@ class ImagingProtocol:
         if df.empty:
             raise ValueError("No available images found in the specified paths.")
 
-        # Collect the closest images
-        closest_available_image_paths = []
-        for dt in datetimes:
-            closest_available_time = min(
-                df["datetime"], key=lambda t: abs((t - dt).total_seconds())
-            )
-            time_distance = abs((df["datetime"] - dt).dt.total_seconds())
-            if tol is None:
-                closest_available_image_path = available_image_ids[
-                    df[df["datetime"] == closest_available_time]["image_id"].values[0]
-                ]
-                closest_available_image_paths.append(closest_available_image_path)
-            elif time_distance.min() < tol:
-                closest_available_image_path = available_image_ids[
-                    df[df["datetime"] == closest_available_time]["image_id"].values[0]
-                ]
-                closest_available_image_paths.append(closest_available_image_path)
+        if not datetimes:
+            return []
+
+        # Keep first image id for duplicate datetimes (matching previous behavior),
+        # then perform a vectorized nearest-neighbor join.
+        available_df = (
+            df[["image_id", "datetime"]]
+            .drop_duplicates(subset="datetime", keep="first")
+            .rename(columns={"datetime": "available_datetime"})
+            .sort_values("available_datetime")
+            .reset_index(drop=True)
+        )
+        request_df = pd.DataFrame(
+            {
+                "datetime": pd.to_datetime(datetimes),
+                "request_order": np.arange(len(datetimes)),
+            }
+        )
+        request_sorted_df = request_df.sort_values("datetime").reset_index(drop=True)
+        merged = pd.merge_asof(
+            request_sorted_df,
+            available_df,
+            left_on="datetime",
+            right_on="available_datetime",
+            direction="nearest",
+        )
+        merged["time_distance"] = (
+            (merged["datetime"] - merged["available_datetime"]).dt.total_seconds().abs()
+        )
+        merged = merged.sort_values("request_order")
+        if tol is None:
+            valid = merged
+        else:
+            valid = merged[merged["time_distance"] < tol]
+
+        closest_available_image_paths = [
+            available_image_ids[int(image_id)]
+            for image_id in valid["image_id"].tolist()
+        ]
 
         # Return unique paths only but keep order
         return_paths = list(dict.fromkeys(closest_available_image_paths))
