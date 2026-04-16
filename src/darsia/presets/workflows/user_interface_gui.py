@@ -1707,7 +1707,6 @@ class WorkflowGUI:
                     return
                 import_conflict_action = policy
 
-        skip_download_confirmation = False
         if action_flags["download"]:
             from darsia.presets.workflows.utils.utils_download import prepare_download_data
 
@@ -1728,8 +1727,6 @@ class WorkflowGUI:
                 if not confirmed:
                     logger.info("Data download aborted by user.")
                     action_flags["download"] = False
-                else:
-                    skip_download_confirmation = True
 
         if not any(action_flags.values()):
             logger.info("No utility option selected after confirmations.")
@@ -1738,7 +1735,7 @@ class WorkflowGUI:
         actions = enabled_option_labels(action_flags)
         options = {
             "download": action_flags["download"],
-            "skip_download_confirmation": skip_download_confirmation,
+            "skip_download_confirmation": action_flags["download"],
             "export_calibration": action_flags["export_calibration"],
             "import_calibration": action_flags["import_calibration"],
             "export_bundle": self.utils_export_bundle.get().strip(),
