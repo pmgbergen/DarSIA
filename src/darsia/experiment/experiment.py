@@ -112,8 +112,7 @@ class ProtocolledExperiment:
         """
         available_paths: list[Path] = []
         for path in paths:
-            protocol = self._protocol_for_path(path)
-            if not protocol.is_blacklisted(path):
+            if not self.is_blacklisted(path):
                 available_paths.append(path)
         return available_paths
 
@@ -140,11 +139,10 @@ class ProtocolledExperiment:
         available_paths: list[Path] = []
         available_datetimes: list[datetime] = []
         for path in source_paths:
-            protocol = self._protocol_for_path(path)
-            if protocol.is_blacklisted(path):
+            if self.is_blacklisted(path):
                 continue
             try:
-                date = protocol.get_datetime(path)
+                date = self.get_datetime(path)
             except ValueError:
                 continue
             if date is None:
@@ -169,6 +167,14 @@ class ProtocolledExperiment:
             return paths
         else:
             return paths[0] if paths else None
+
+    def get_datetime(self, path: Path) -> datetime:
+        """Get datetime for a path using the matching imaging protocol."""
+        return self._protocol_for_path(path).get_datetime(path)
+
+    def is_blacklisted(self, path: Path) -> bool:
+        """Check blacklist state for a path using the matching imaging protocol."""
+        return self._protocol_for_path(path).is_blacklisted(path)
 
     def _protocol_for_path(self, path: Path) -> darsia.ImagingProtocol:
         if self.imaging_protocol is not None:
