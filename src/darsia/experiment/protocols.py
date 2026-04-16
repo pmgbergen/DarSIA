@@ -147,6 +147,25 @@ class ImagingProtocol:
         else:
             self.blacklist_df = pd.DataFrame(columns=["image_id"])
 
+        self.blacklist_ids: set[int] = set(
+            self.blacklist_df["image_id"].astype(int).tolist()
+        )
+        self.datetime_by_image_id: dict[int, datetime] = {}
+        for image_id, dt in zip(self.df["image_id"], self.df["datetime"]):
+            image_id_int = int(image_id)
+            if image_id_int not in self.datetime_by_image_id:
+                self.datetime_by_image_id[image_id_int] = dt
+
+        self.datetime_by_path_key: dict[str, datetime] = {}
+        for protocol_path, dt in zip(self.df["path"], self.df["datetime"]):
+            if protocol_path is None or pd.isna(protocol_path):
+                continue
+            key = self._normalize_protocol_path(str(protocol_path))
+            if key.lower() in {"nan", "none"}:
+                continue
+            if key not in self.datetime_by_path_key:
+                self.datetime_by_path_key[key] = dt
+
     def image_id(self, path: Path) -> int:
         """Extract image id from file name."""
         try:
@@ -165,16 +184,13 @@ class ImagingProtocol:
             bool: True if the image is blacklisted, False otherwise.
 
         """
-        if self.blacklist_df.empty:
+        if not self.blacklist_ids:
             return False
 
         # Fetch id from input file
         current_id = self.image_id(file_name)
 
-        # Find correct interval based on id
-        row = self.blacklist_df[self.blacklist_df["image_id"] == current_id]
-
-        return not row.empty
+        return current_id in self.blacklist_ids
 
     def get_datetime(self, file_name: Path) -> Optional[datetime]:
         """Get the datetime of the image based on the file name.
@@ -193,26 +209,30 @@ class ImagingProtocol:
         current_id = self.image_id(file_name)
 
         # Prefer an exact path match when the protocol contains path entries.
-        normalized_candidates = {
-            file_name.name,
-            file_name.as_posix(),
-            (
-                "/".join(file_name.parts[-2:])
-                if len(file_name.parts) >= 2
-                else file_name.name
-            ),
-        }
-        protocol_paths = self.df["path"]
-        if protocol_paths.notna().any():
-            path_df = self.df[protocol_paths.astype(str).isin(normalized_candidates)]
-            if not path_df.empty:
-                return path_df["datetime"].iloc[0]
+        for key in self._candidate_protocol_paths(file_name):
+            dt = self.datetime_by_path_key.get(key)
+            if dt is not None:
+                return dt
 
         # Fallback: image-id based lookup.
-        sub_df = self.df[self.df["image_id"] == current_id]
-        if sub_df.empty:
+        dt = self.datetime_by_image_id.get(current_id)
+        if dt is None:
             raise ValueError(f"Image id {current_id} not found in protocol.")
-        return sub_df["datetime"].iloc[0]
+        return dt
+
+    @staticmethod
+    def _normalize_protocol_path(path: str) -> str:
+        return path.replace("\\", "/").lstrip("./")
+
+    def _candidate_protocol_paths(self, file_name: Path) -> tuple[str, ...]:
+        two_level = (
+            "/".join(file_name.parts[-2:]) if len(file_name.parts) >= 2 else file_name.name
+        )
+        return (
+            self._normalize_protocol_path(file_name.name),
+            self._normalize_protocol_path(file_name.as_posix()),
+            self._normalize_protocol_path(two_level),
+        )
 
     def _load_protocol(self, path: Path | tuple[Path, str]) -> pd.DataFrame:
         if isinstance(path, list) or isinstance(path, tuple):
@@ -242,12 +262,7 @@ class ImagingProtocol:
             "datetime" in df.columns
         ), "Column 'Datetime' not found in the protocol file."
         if "path" in df.columns:
-            paths = (
-                df["path"]
-                .astype(str)
-                .str.replace(r"\\", "/", regex=False)
-                .str.lstrip("./")
-            )
+            paths = df["path"].astype(str).map(self._normalize_protocol_path)
         else:
             paths = [None] * len(df)
         images = df["image_id"]
