@@ -268,7 +268,7 @@ def suggested_analysis_results_folder(
 
     mode = mode_actions[0]
     if mode == "cropping":
-        return results / "cropped_images"
+        return results / "cropping"
 
     analysis = merged.get("analysis")
     if isinstance(analysis, dict):
