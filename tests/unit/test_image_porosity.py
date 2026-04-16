@@ -1,5 +1,7 @@
 """Unit tests for ImagePorosityConfig and Rig image-porosity workflow."""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -30,6 +32,11 @@ class TestImagePorosityConfig:
         cfg = ImagePorosityConfig()
         assert cfg.mode == "full"
         assert cfg.tol == pytest.approx(0.9)
+        assert cfg.patches == (1, 1)
+        assert cfg.num_clusters == 5
+        assert cfg.sample_width == 50
+        assert cfg.tol_color_distance == pytest.approx(0.1)
+        assert cfg.tol_color_gradient == pytest.approx(0.02)
 
     def test_load_full_mode(self):
         cfg = ImagePorosityConfig().load({"mode": "full", "tol": 0.8})
@@ -41,11 +48,29 @@ class TestImagePorosityConfig:
         assert cfg.mode == "from_image"
         assert cfg.tol == pytest.approx(0.9)  # default unchanged
 
+    def test_load_from_image_options(self):
+        cfg = ImagePorosityConfig().load(
+            {
+                "mode": "from_image",
+                "patches": [2, 3],
+                "num_clusters": 8,
+                "sample_width": 100,
+                "tol_color_distance": 0.05,
+                "tol_color_gradient": 0.01,
+            }
+        )
+        assert cfg.patches == (2, 3)
+        assert cfg.num_clusters == 8
+        assert cfg.sample_width == 100
+        assert cfg.tol_color_distance == pytest.approx(0.05)
+        assert cfg.tol_color_gradient == pytest.approx(0.01)
+
     def test_load_missing_section_uses_defaults(self):
         # Empty dict → all defaults
         cfg = ImagePorosityConfig().load({})
         assert cfg.mode == "full"
         assert cfg.tol == pytest.approx(0.9)
+        assert cfg.patches == (1, 1)
 
     def test_load_invalid_mode_raises(self):
         with pytest.raises(ValueError, match="mode must be"):
@@ -96,6 +121,19 @@ class TestSetupImagePorosity:
         cfg = ImagePorosityConfig(mode="from_image", tol=0.7)
         rig.setup_image_porosity(config=cfg)
         assert rig._image_porosity_config is cfg
+
+    def test_log_saves_jpg(self, tmp_path: Path):
+        """Image porosity JPG is stored when log is provided."""
+        rig = _make_rig()
+        rig.setup_image_porosity(config=ImagePorosityConfig(mode="full"), log=tmp_path)
+        assert (tmp_path / "image_porosity" / "image_porosity.jpg").exists()
+
+    def test_from_image_log_saves_jpg(self, tmp_path: Path):
+        """from_image mode also saves JPG when log is provided."""
+        rig = _make_rig(shape=(6, 8))
+        cfg = ImagePorosityConfig(mode="from_image")
+        rig.setup_image_porosity(config=cfg, log=tmp_path)
+        assert (tmp_path / "image_porosity" / "image_porosity.jpg").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -164,3 +202,10 @@ class TestSetupBooleanImagePorosity:
         rig.image_porosity.img[:] = 0.8  # all > 0.5 → should all be True
         rig.setup_boolean_image_porosity()  # no config passed
         assert np.all(rig.boolean_porosity.img)
+
+    def test_log_saves_jpg(self, tmp_path: Path):
+        """Boolean porosity JPG is stored when log is provided."""
+        rig = _make_rig()
+        rig.setup_image_porosity(config=ImagePorosityConfig(mode="full"))
+        rig.setup_boolean_image_porosity(log=tmp_path)
+        assert (tmp_path / "image_porosity" / "boolean_porosity.jpg").exists()
