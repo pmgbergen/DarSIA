@@ -564,7 +564,7 @@ class Rig:
             **kwargs: Forwarded to :func:`~darsia.patched_porosity_analysis` when
                 ``mode="from_image"``.  Common keys:
 
-                - ``patch``: number of patches, e.g. ``(1, 1)``.
+                - ``patches``: number of patches as ``(rows, cols)``, e.g. ``(1, 1)``.
                 - ``num_clusters``: clusters for k-means (default ``5``).
                 - ``sample_width``: width of random samples (default ``50``).
                 - ``tol_color_distance``: tolerance for colour distance (default ``0.1``).
@@ -578,7 +578,7 @@ class Rig:
         if path is not None:
             self.image_porosity = darsia.imread(path)
         elif config.mode == "from_image":
-            patches = kwargs.pop("patch", (1, 1))
+            patches = kwargs.pop("patches", (1, 1))
             self.image_porosity = patched_porosity_analysis(
                 baseline=self.baseline,
                 patches=patches,

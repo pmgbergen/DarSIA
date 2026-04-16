@@ -120,11 +120,13 @@ class TestSetupBooleanImagePorosity:
         assert np.all(rig.boolean_porosity.img)
 
     def test_full_mode_explicit_threshold_still_all_true(self):
-        """Even when threshold > 1 is forced, full mode stays all-True."""
+        """In full mode, boolean mask is always True even with threshold=1.0 (edge case)."""
         rig = _make_rig()
         cfg = ImagePorosityConfig(mode="full")
         rig.setup_image_porosity(config=cfg)
-        rig.setup_boolean_image_porosity(threshold=2.0)
+        # With constant porosity=1.0, threshold=1.0 would yield all-False for the old
+        # implementation (1.0 > 1.0 == False).  Full mode must stay all-True.
+        rig.setup_boolean_image_porosity(threshold=1.0)
         assert np.all(rig.boolean_porosity.img)
 
     def test_from_image_uses_tol(self):
