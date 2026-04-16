@@ -158,6 +158,7 @@ class FluidFlowerConfig:
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
                 data_registry=self.data.registry if self.data else None,
+                roi_registry=self.roi_registry,
             )
         except (ValueError, KeyError):
             # KeyError occurs when [color_to_mass] section is missing entirely.

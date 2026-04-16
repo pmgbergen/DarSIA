@@ -59,6 +59,7 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `analysis.volume.roi = ["roi_key"]`
 - `analysis.fingers.roi = ["roi_key"]`
 - `color_paths.rois = ["roi_key"]`
+- `color_to_mass.rois = ["roi_key"]`
 
 ## Analysis subsections
 - `[analysis.data]`: selected analysis image set
