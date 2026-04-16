@@ -54,7 +54,6 @@ class SupportsQueue(Protocol):
 class UtilsWorkflowOptions(TypedDict):
     media: bool
     download: bool
-    download_confirmed_in_gui: bool
     export_calibration: bool
     import_calibration: bool
     export_bundle: str
@@ -683,10 +682,7 @@ def _run_utils_workflow(config_paths: list[str], options: UtilsWorkflowOptions) 
 
     paths = normalize_paths(config_paths)
     if options["download"]:
-        download_data(
-            paths,
-            require_confirmation=not options.get("download_confirmed_in_gui", False),
-        )
+        download_data(paths, require_confirmation=False)
     if options["export_calibration"]:
         bundle = Path(options["export_bundle"]) if options["export_bundle"] else None
         export_calibration_bundle(paths, bundle=bundle)
@@ -1732,7 +1728,6 @@ class WorkflowGUI:
         actions = enabled_option_labels(action_flags)
         options = {
             "download": action_flags["download"],
-            "download_confirmed_in_gui": action_flags["download"],
             "export_calibration": action_flags["export_calibration"],
             "import_calibration": action_flags["import_calibration"],
             "export_bundle": self.utils_export_bundle.get().strip(),
