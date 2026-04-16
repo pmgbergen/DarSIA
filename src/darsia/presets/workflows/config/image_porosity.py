@@ -1,7 +1,10 @@
 """Configuration for image porosity setup."""
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
+
+from .utils import _get_section_from_toml
 
 
 @dataclass
@@ -56,8 +59,28 @@ class ImagePorosityConfig:
     tol_color_gradient: float = 0.02
     """Tolerance for colour-gradient filtering in the porosity analysis."""
 
-    def load(self, sec: dict) -> "ImagePorosityConfig":
-        """Populate from a TOML-section dictionary.
+    def load(self, path: Path | list[Path]) -> "ImagePorosityConfig":
+        """Populate from a TOML config file.
+
+        Reads the ``[image_porosity]`` section and updates the instance in-place.
+
+        Args:
+            path: Path (or list of paths) to the TOML config file(s).
+
+        Returns:
+            self – updated in-place and returned for chaining.
+
+        Raises:
+            KeyError: if the ``[image_porosity]`` section is absent.
+            ValueError: if ``mode`` is not one of the supported values.
+            ValueError: if ``tol`` is not a float in ``(0, 1]``.
+            ValueError: if ``patches`` does not have exactly 2 elements.
+        """
+        sec = _get_section_from_toml(path, "image_porosity")
+        return self._load_dict(sec)
+
+    def _load_dict(self, sec: dict) -> "ImagePorosityConfig":
+        """Populate from a plain dictionary (e.g. a parsed TOML section).
 
         Args:
             sec: Dictionary for the ``[image_porosity]`` section.
@@ -68,6 +91,7 @@ class ImagePorosityConfig:
         Raises:
             ValueError: if ``mode`` is not one of the supported values.
             ValueError: if ``tol`` is not a float in ``(0, 1]``.
+            ValueError: if ``patches`` does not have exactly 2 elements.
         """
         mode = sec.get("mode", self.mode)
         if mode not in ("full", "from_image"):

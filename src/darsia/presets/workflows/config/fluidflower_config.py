@@ -15,6 +15,7 @@ from .data import DataConfig
 from .depth import DepthConfig
 from .download import DownloadConfig
 from .facies import FaciesConfig
+from .image_porosity import ImagePorosityConfig
 from .labeling import LabelingConfig
 from .protocol import ProtocolConfig
 from .restoration import RestorationConfig
@@ -116,6 +117,13 @@ class FluidFlowerConfig:
         except KeyError:
             self.depth = None
             warn(f"Section depth not found in {path}, use [depth].")
+
+        # ! ---- IMAGE POROSITY ---- ! #
+        try:
+            self.image_porosity: ImagePorosityConfig | None = ImagePorosityConfig()
+            self.image_porosity.load(path=path)
+        except KeyError:
+            self.image_porosity = None
 
         # ! ---- PROTOCOLS ---- ! #
         try:

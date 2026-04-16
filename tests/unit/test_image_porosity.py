@@ -39,17 +39,17 @@ class TestImagePorosityConfig:
         assert cfg.tol_color_gradient == pytest.approx(0.02)
 
     def test_load_full_mode(self):
-        cfg = ImagePorosityConfig().load({"mode": "full", "tol": 0.8})
+        cfg = ImagePorosityConfig()._load_dict({"mode": "full", "tol": 0.8})
         assert cfg.mode == "full"
         assert cfg.tol == pytest.approx(0.8)
 
     def test_load_from_image_mode(self):
-        cfg = ImagePorosityConfig().load({"mode": "from_image"})
+        cfg = ImagePorosityConfig()._load_dict({"mode": "from_image"})
         assert cfg.mode == "from_image"
         assert cfg.tol == pytest.approx(0.9)  # default unchanged
 
     def test_load_from_image_options(self):
-        cfg = ImagePorosityConfig().load(
+        cfg = ImagePorosityConfig()._load_dict(
             {
                 "mode": "from_image",
                 "patches": [2, 3],
@@ -67,22 +67,40 @@ class TestImagePorosityConfig:
 
     def test_load_missing_section_uses_defaults(self):
         # Empty dict → all defaults
-        cfg = ImagePorosityConfig().load({})
+        cfg = ImagePorosityConfig()._load_dict({})
         assert cfg.mode == "full"
         assert cfg.tol == pytest.approx(0.9)
         assert cfg.patches == (1, 1)
 
     def test_load_invalid_mode_raises(self):
         with pytest.raises(ValueError, match="mode must be"):
-            ImagePorosityConfig().load({"mode": "bad_mode"})
+            ImagePorosityConfig()._load_dict({"mode": "bad_mode"})
 
     def test_load_invalid_tol_raises(self):
         with pytest.raises(ValueError, match="tol must be"):
-            ImagePorosityConfig().load({"tol": 0.0})
+            ImagePorosityConfig()._load_dict({"tol": 0.0})
 
     def test_load_tol_gt_one_raises(self):
         with pytest.raises(ValueError, match="tol must be"):
-            ImagePorosityConfig().load({"tol": 1.5})
+            ImagePorosityConfig()._load_dict({"tol": 1.5})
+
+    def test_load_from_toml_path(self, tmp_path: Path):
+        """load(path) reads [image_porosity] from a TOML file."""
+        toml_file = tmp_path / "config.toml"
+        toml_file.write_text(
+            '[image_porosity]\nmode = "from_image"\ntol = 0.75\nnum_clusters = 7\n'
+        )
+        cfg = ImagePorosityConfig().load(toml_file)
+        assert cfg.mode == "from_image"
+        assert cfg.tol == pytest.approx(0.75)
+        assert cfg.num_clusters == 7
+
+    def test_load_missing_section_raises(self, tmp_path: Path):
+        """load(path) raises KeyError when section is absent."""
+        toml_file = tmp_path / "config.toml"
+        toml_file.write_text("[data]\nfoo = 1\n")
+        with pytest.raises(KeyError):
+            ImagePorosityConfig().load(toml_file)
 
 
 # ---------------------------------------------------------------------------
