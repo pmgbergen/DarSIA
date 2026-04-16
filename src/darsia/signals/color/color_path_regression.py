@@ -1761,21 +1761,12 @@ class LabelColorPathMapRegression:
                 )
 
                 if preview_signal is not None:
-                    finite_preview = np.isfinite(preview_signal)
-                    if np.any(finite_preview):
-                        vmin = float(np.nanmin(preview_signal))
-                        vmax = float(np.nanmax(preview_signal))
-                        if np.isclose(vmin, vmax):
-                            vmin -= preview_signal_limits_epsilon
-                            vmax += preview_signal_limits_epsilon
-                    else:
-                        vmin, vmax = 0.0, 1.0
                     preview_cmap = build_current_color_path().get_color_map()
                     ax_preview_interpretation.imshow(
                         preview_signal,
                         cmap=preview_cmap,
-                        vmin=vmin,
-                        vmax=vmax,
+                        vmin=0,
+                        vmax=1,
                     )
                     title = "Native pH indicator interpretation"
                     if preview_signal_is_stale:
