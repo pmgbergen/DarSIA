@@ -357,8 +357,9 @@ def calibration_color_to_mass_analysis(
         rois = {key: roi_cfg.roi for key, roi_cfg in roi_entries.items()}
         if len(rois) == 0:
             raise ValueError(
-                "color_to_mass.rois only resolved non-plain ROI entries. "
-                "Use keys pointing to plain [roi.*] entries with corner_1/corner_2."
+                "color_to_mass.rois did not resolve to any plain ROI rectangles. "
+                "Use keys pointing to [roi.*] entries with corner_1/corner_2 (plain "
+                "RoiConfig entries)."
             )
 
     if len(rois) == 0:
