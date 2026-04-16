@@ -1,6 +1,7 @@
 """Data configuration for the setup."""
 
 import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -75,7 +76,16 @@ class DataConfig:
 
         # Get data
         if require_data:
-            self.data = list(sorted(self.folder.glob(f"*{self.baseline.suffix}")))
+            all_data: list[Path] = []
+            for folder in self.folders:
+                all_data.extend(
+                    sorted(
+                        folder / file
+                        for file in os.listdir(folder)
+                        if file.endswith(self.baseline.suffix)
+                    )
+                )
+            self.data = sorted(set(all_data))
             if len(self.data) == 0:
                 raise FileNotFoundError(
                     f"""No image files with suffix {self.baseline.suffix} found in """
