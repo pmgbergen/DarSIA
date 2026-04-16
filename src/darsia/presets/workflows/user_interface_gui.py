@@ -54,6 +54,7 @@ class SupportsQueue(Protocol):
 class UtilsWorkflowOptions(TypedDict):
     media: bool
     download: bool
+    skip_download_confirmation: bool
     export_calibration: bool
     import_calibration: bool
     export_bundle: str
@@ -682,7 +683,10 @@ def _run_utils_workflow(config_paths: list[str], options: UtilsWorkflowOptions) 
 
     paths = normalize_paths(config_paths)
     if options["download"]:
-        download_data(paths)
+        download_data(
+            paths,
+            require_confirmation=not options.get("skip_download_confirmation", False),
+        )
     if options["export_calibration"]:
         bundle = Path(options["export_bundle"]) if options["export_bundle"] else None
         export_calibration_bundle(paths, bundle=bundle)
@@ -1664,7 +1668,6 @@ class WorkflowGUI:
             "import_calibration": self.utils_import_calibration.get(),
             "media": self.utils_media.get(),
         }
-        actions = enabled_option_labels(action_flags)
         if not any(action_flags.values()):
             logger.info("No utility option selected.")
             return
@@ -1704,8 +1707,38 @@ class WorkflowGUI:
                     return
                 import_conflict_action = policy
 
+        skip_download_confirmation = False
+        if action_flags["download"]:
+            from darsia.presets.workflows.utils.utils_download import prepare_download_data
+
+            plan = prepare_download_data(ctx.config_paths)
+            if not plan.image_paths:
+                self.messagebox.showinfo(
+                    "Download data",
+                    "No files selected for download.",
+                )
+                action_flags["download"] = False
+            else:
+                confirmed = self.messagebox.askyesno(
+                    "Confirm data download",
+                    f"About to download {len(plan.image_paths)} files\n"
+                    f"Total size: {plan.total_size_string}\n"
+                    f"Destination: {plan.destination_dir}\n\nProceed?",
+                )
+                if not confirmed:
+                    logger.info("Data download aborted by user.")
+                    action_flags["download"] = False
+                else:
+                    skip_download_confirmation = True
+
+        if not any(action_flags.values()):
+            logger.info("No utility option selected after confirmations.")
+            return
+
+        actions = enabled_option_labels(action_flags)
         options = {
             "download": action_flags["download"],
+            "skip_download_confirmation": skip_download_confirmation,
             "export_calibration": action_flags["export_calibration"],
             "import_calibration": action_flags["import_calibration"],
             "export_bundle": self.utils_export_bundle.get().strip(),
