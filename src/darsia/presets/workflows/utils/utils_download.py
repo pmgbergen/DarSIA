@@ -33,6 +33,11 @@ def _format_size(total_size: int) -> str:
 def prepare_download_data(path: Path | list[Path] | list[str] | str) -> DownloadPlan:
     """Resolve selected files and metadata for a potential download.
 
+    The selection is driven by the loaded workflow config:
+    images are selected via ``select_image_paths`` using ``config.download`` and
+    ``config.download.source``. When ``config.download.skip_existing`` is set,
+    files already present in the destination folder are filtered out.
+
     Args:
         path: Config path input accepted by ``FluidFlowerConfig`` (single path or
             a list of paths as ``Path``/``str``).
