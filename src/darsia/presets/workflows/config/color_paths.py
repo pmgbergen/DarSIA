@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from ..basis import CalibrationBasis, calibration_basis_folder, parse_calibration_basis
 from .data_registry import DataRegistry
+from .data_selection import resolve_path_selector, resolve_time_data_selector
 from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
 
@@ -133,7 +134,7 @@ class ColorPathsConfig:
         Here the values are key name(s) into the global ``[data]`` registry (see
         :class:`~darsia.presets.workflows.config.data_registry.DataRegistry`).
 
-        **Inline sub-section** (legacy / still supported)::
+        **Inline sub-section** (legacy / deprecated)::
 
             [color_paths.data.interval.calibration1]
             start = "01:00:00"
@@ -188,20 +189,22 @@ class ColorPathsConfig:
             )
         )
 
-        # Data management – support registry reference or inline sub-section
-        baseline_val = sec.get("baseline")
-        if isinstance(baseline_val, (str, list)) and data_registry is not None:
-            self.baseline_image_paths = data_registry.resolve(baseline_val).image_paths
-        else:
-            self.baseline_image_paths = (
-                TimeData().load(sec["baseline"], data).image_paths
-            )
-
-        data_val = sec.get("data")
-        if isinstance(data_val, (str, list)) and data_registry is not None:
-            self.data = data_registry.resolve(data_val)
-        else:
-            self.data = TimeData().load(sec["data"], data)
+        # Data management – centralized selector resolution.
+        self.baseline_image_paths = resolve_path_selector(
+            sec,
+            "baseline",
+            section="color_paths",
+            data=data,
+            data_registry=data_registry,
+        )
+        self.data = resolve_time_data_selector(
+            sec,
+            "data",
+            section="color_paths",
+            data=data,
+            data_registry=data_registry,
+            required=True,
+        )
 
         self.calibration_file = _get_key(
             sec, "calibration_file", required=False, type_=Path

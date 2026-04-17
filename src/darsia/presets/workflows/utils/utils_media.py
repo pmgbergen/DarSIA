@@ -49,15 +49,20 @@ def _protocol_sort_frames(
     experiment: darsia.ProtocolledExperiment, image_paths: list[Path]
 ) -> list[tuple[Path, datetime, float]]:
     rows: list[tuple[Path, datetime, float]] = []
-    for path in image_paths:
-        try:
-            if experiment.imaging_protocol.is_blacklisted(path):
+    if hasattr(experiment, "iter_available"):
+        for _, path, dt in experiment.iter_available(image_paths):
+            elapsed_time_h = experiment.time_since_start(dt)
+            rows.append((path, dt, elapsed_time_h))
+    else:
+        for path in image_paths:
+            try:
+                if experiment.is_blacklisted(path):
+                    continue
+                dt = experiment.get_datetime(path)
+            except ValueError:
                 continue
-            dt = experiment.imaging_protocol.get_datetime(path)
-        except ValueError:
-            continue
-        elapsed_time_h = experiment.time_since_start(dt)
-        rows.append((path, dt, elapsed_time_h))
+            elapsed_time_h = experiment.time_since_start(dt)
+            rows.append((path, dt, elapsed_time_h))
     rows.sort(key=lambda item: item[1])
     return rows
 

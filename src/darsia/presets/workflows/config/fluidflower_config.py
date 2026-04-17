@@ -15,6 +15,7 @@ from .data import DataConfig
 from .depth import DepthConfig
 from .download import DownloadConfig
 from .facies import FaciesConfig
+from .image_porosity import ImagePorosityConfig
 from .labeling import LabelingConfig
 from .protocol import ProtocolConfig
 from .restoration import RestorationConfig
@@ -117,6 +118,13 @@ class FluidFlowerConfig:
             self.depth = None
             warn(f"Section depth not found in {path}, use [depth].")
 
+        # ! ---- IMAGE POROSITY ---- ! #
+        try:
+            self.image_porosity: ImagePorosityConfig | None = ImagePorosityConfig()
+            self.image_porosity.load(path=path)
+        except KeyError:
+            self.image_porosity = None
+
         # ! ---- PROTOCOLS ---- ! #
         try:
             self.protocol: ProtocolConfig | None = ProtocolConfig()
@@ -158,6 +166,7 @@ class FluidFlowerConfig:
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
                 data_registry=self.data.registry if self.data else None,
+                roi_registry=self.roi_registry,
             )
         except (ValueError, KeyError):
             # KeyError occurs when [color_to_mass] section is missing entirely.

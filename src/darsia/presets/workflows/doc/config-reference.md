@@ -3,19 +3,40 @@
 This is the user-facing map of workflow TOML sections currently loaded by `FluidFlowerConfig` and workflow interfaces.
 
 ## Core sections
-- `[data]`: image folder, baseline image name, results folder, optional cache toggles.
+- `[data]`: image folder(s), baseline image name, results folder, optional cache toggles.
 - `[rig]`: geometry metadata (`dim`, `width`, `height`, optional `resolution`, optional `path`).
 - `[corrections]`: type/resize/drift/curvature/color/relative_color/illumination settings.
 - `[restoration]`: restoration method and method-specific options.
 - `[labeling]`: colored label image and generated labels artifact.
 - `[facies]`: facies properties and mapping to labels.
 - `[depth]`: depth measurements and depth-map path.
-- `[protocols]`: imaging, injection, blacklist, pressure_temperature inputs.
+- `[protocols]`: imaging, injection, blacklist, pressure_temperature inputs and imaging setup mode.
 - `[color_paths]`: color-path calibration data selection and options.
 - `[color_to_mass]`: color-to-mass calibration options.
 - `[analysis]`: analysis data and feature-specific subsections.
 - `[download]`: download utility config (optional).
 - `[utils]`: optional utility defaults (calibration bundle import/export paths).
+
+### Protocol setup mode
+Optional key under `[protocols]`:
+
+```toml
+[protocols]
+imaging_mode = "exif" # or "ctime"
+```
+
+Default is `"exif"` to match the setup protocol extractor behavior.
+
+For multi-folder input via `[data].folders`, configure one imaging protocol per folder:
+
+```toml
+[data]
+folders = ["/data/run_a", "/data/run_b"]
+
+[protocols.imaging]
+"/data/run_a" = "/protocols/imaging_a.csv"
+"/data/run_b" = ["/protocols/imaging_b.xlsx", "Sheet1"]
+```
 
 ## Utils section
 Optional keys for utility workflows:
@@ -64,6 +85,7 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `analysis.volume.roi = ["roi_key"]`
 - `analysis.fingers.roi = ["roi_key"]`
 - `color_paths.rois = ["roi_key"]`
+- `color_to_mass.rois = ["roi_key"]`
 
 ## Analysis subsections
 - `[analysis.data]`: selected analysis image set

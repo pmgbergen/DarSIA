@@ -146,7 +146,9 @@ class ImagePathData:
     paths: list[Path] = field(default_factory=list)
     """List of image file paths."""
 
-    def load(self, sec: dict, data_folder: Path | None = None) -> "ImagePathData":
+    def load(
+        self, sec: dict, data_folder: Path | list[Path] | None = None
+    ) -> "ImagePathData":
         """Load image paths from config section."""
         try:
             paths_sec = _get_section(sec, "path")
@@ -160,12 +162,30 @@ class ImagePathData:
                 # Treat paths containing '*' as glob patterns
                 for p in paths:
                     if "*" in p:
-                        all_paths = sorted((data_folder or Path(".")).glob(p))
-                        self.paths.extend(all_paths)
+                        if isinstance(data_folder, list):
+                            all_paths = []
+                            for folder in data_folder:
+                                all_paths.extend(sorted(folder.glob(p)))
+                            self.paths.extend(all_paths)
+                        else:
+                            all_paths = sorted((data_folder or Path(".")).glob(p))
+                            self.paths.extend(all_paths)
                     else:
-                        self.paths.append(
-                            Path(p) if data_folder is None else data_folder / p
-                        )
+                        candidate = Path(p)
+                        if candidate.is_absolute() or data_folder is None:
+                            self.paths.append(candidate)
+                        elif isinstance(data_folder, list):
+                            existing_candidates = [
+                                folder / candidate
+                                for folder in data_folder
+                                if (folder / candidate).exists()
+                            ]
+                            if len(existing_candidates) > 0:
+                                self.paths.extend(existing_candidates)
+                            else:
+                                self.paths.append(data_folder[0] / candidate)
+                        else:
+                            self.paths.append(data_folder / candidate)
 
                 # Remove duplicates and sort
                 self.paths = sorted(set(self.paths))

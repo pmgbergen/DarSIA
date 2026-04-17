@@ -29,8 +29,9 @@ from darsia.presets.workflows.rig import Rig
 logger = logging.getLogger(__name__)
 SESSION_CACHE_FILE_NAME = "workflows_gui_session.json"
 SESSION_CACHE_VERSION = 1
-UTILS_CONFLICT_PREVIEW_LIMIT = 8
+PREVIEW_LIST_LIMIT = 8
 WORKFLOW_ERROR_DETAILS_PREFIX = "__DARSIA_WORKFLOW_ERROR_DETAILS__:"
+UTILS_CONFLICT_PREVIEW_LIMIT = 8
 
 
 class SupportsLogQueue(Protocol):
@@ -245,21 +246,33 @@ def _deep_merge_dict(base: dict[str, Any], update: dict[str, Any]) -> dict[str, 
     return base
 
 
-def suggested_analysis_results_folder(
-    config_paths: list[Path], actions: list[str]
-) -> Path | None:
-    """Return suggested analysis results folder for completed runs."""
+def _load_merged_workflow_config(config_paths: list[Path]) -> dict[str, Any]:
+    """Load and deeply merge workflow TOML config files."""
     merged: dict[str, Any] = {}
     for path in config_paths:
         _deep_merge_dict(merged, tomllib.loads(path.read_text()))
+    return merged
 
+
+def _results_folder_from_merged_config(merged: dict[str, Any]) -> Path | None:
+    """Extract configured [data].results folder from merged config."""
     data = merged.get("data")
     if not isinstance(data, dict):
         return None
     results_raw = data.get("results")
     if not isinstance(results_raw, str) or not results_raw.strip():
         return None
-    results = Path(results_raw).expanduser()
+    return Path(results_raw).expanduser()
+
+
+def suggested_analysis_results_folder(
+    config_paths: list[Path], actions: list[str]
+) -> Path | None:
+    """Return suggested analysis results folder for completed runs."""
+    merged = _load_merged_workflow_config(config_paths)
+    results = _results_folder_from_merged_config(merged)
+    if results is None:
+        return None
 
     mode_actions = [action for action in actions if action in _ANALYSIS_MODE_ACTIONS]
     if len(mode_actions) != 1:
@@ -267,7 +280,7 @@ def suggested_analysis_results_folder(
 
     mode = mode_actions[0]
     if mode == "cropping":
-        return results / "cropped_images"
+        return results / "cropping"
 
     analysis = merged.get("analysis")
     if isinstance(analysis, dict):
@@ -278,6 +291,101 @@ def suggested_analysis_results_folder(
                 return Path(folder).expanduser()
 
     return results / _ANALYSIS_MODE_DEFAULT_SUBFOLDER[mode]
+
+
+def suggested_workflow_results_folder(
+    workflow: str, config_paths: list[Path], actions: list[str]
+) -> Path | None:
+    """Return suggested output folder for successful GUI workflow runs."""
+    merged = _load_merged_workflow_config(config_paths)
+    results = _results_folder_from_merged_config(merged)
+    if results is None:
+        return None
+
+    if workflow == "analysis":
+        return suggested_analysis_results_folder(config_paths, actions)
+
+    selected_actions = {action.strip().lower() for action in actions}
+
+    if workflow == "setup":
+        setup_candidates: list[Path] = []
+        if "depth" in selected_actions:
+            setup_candidates.append(results / "setup" / "depth")
+        if "segmentation" in selected_actions:
+            setup_candidates.append(results / "setup" / "labels")
+        if "facies" in selected_actions:
+            setup_candidates.append(results / "setup" / "facies")
+        if "rig" in selected_actions:
+            setup_candidates.append(results / "setup" / "rig")
+        if "protocol" in selected_actions:
+            setup_candidates.append(results / "setup")
+        if "all" in selected_actions:
+            setup_candidates.append(results / "setup")
+        if len(setup_candidates) == 0:
+            return None
+        all_setup_same = all(path == setup_candidates[0] for path in setup_candidates)
+        return setup_candidates[0] if all_setup_same else results / "setup"
+
+    if workflow == "calibration":
+        if (
+            "color paths" in selected_actions
+            or "mass" in selected_actions
+            or "default mass" in selected_actions
+        ):
+            return results / "calibration"
+        return None
+
+    if workflow == "comparison":
+        has_events = "events" in selected_actions
+        has_wasserstein = (
+            "wasserstein compute" in selected_actions
+            or "wasserstein assemble" in selected_actions
+        )
+        if has_events and has_wasserstein:
+            return results
+        if has_events:
+            events = merged.get("events")
+            if isinstance(events, dict):
+                events_path_raw = events.get("path")
+                if isinstance(events_path_raw, str) and events_path_raw.strip():
+                    return Path(events_path_raw).expanduser().parent
+            return results / "events"
+        if has_wasserstein:
+            wasserstein = merged.get("wasserstein")
+            if isinstance(wasserstein, dict):
+                wasserstein_results_raw = wasserstein.get("results")
+                if (
+                    isinstance(wasserstein_results_raw, str)
+                    and wasserstein_results_raw.strip()
+                ):
+                    return Path(wasserstein_results_raw).expanduser()
+            return results / "wasserstein"
+        return None
+
+    if workflow == "utils":
+        utils_candidates: list[Path] = []
+        if "media" in selected_actions:
+            utils_candidates.append(results / "videos")
+        if "export calibration" in selected_actions:
+            utils_candidates.append(results / "calibration")
+        if "import calibration" in selected_actions:
+            utils_candidates.append(results / "calibration")
+        if "download" in selected_actions:
+            download = merged.get("download")
+            if isinstance(download, dict):
+                folder_raw = download.get("folder")
+                if isinstance(folder_raw, str) and folder_raw.strip():
+                    utils_candidates.append(Path(folder_raw).expanduser())
+                else:
+                    utils_candidates.append(results / "raw_data")
+            else:
+                utils_candidates.append(results / "raw_data")
+        if len(utils_candidates) == 0:
+            return None
+        all_utils_same = all(path == utils_candidates[0] for path in utils_candidates)
+        return utils_candidates[0] if all_utils_same else results
+
+    return None
 
 
 def open_in_file_explorer(path: Path) -> None:
@@ -449,6 +557,7 @@ def _run_setup_workflow(
     from darsia.presets.workflows.setup.setup_depth import setup_depth_map
     from darsia.presets.workflows.setup.setup_facies import setup_facies
     from darsia.presets.workflows.setup.setup_labeling import segment_colored_image
+    from darsia.presets.workflows.setup.setup_protocols import setup_imaging_protocol
     from darsia.presets.workflows.setup.setup_rig import delete_rig, setup_rig
 
     paths = normalize_paths(config_paths)
@@ -462,6 +571,8 @@ def _run_setup_workflow(
         setup_facies(rig_cls, paths, show=show)
     if options["all"] or options["rig"]:
         setup_rig(rig_cls, paths, show=show)
+    if options["protocol"]:
+        setup_imaging_protocol(paths, force=options["force"], show=show)
     if options["delete_rig"]:
         delete_rig(rig_cls, paths, show=show)
 
@@ -481,7 +592,10 @@ def _run_calibration_workflow(
     paths = normalize_paths(config_paths)
     rig_cls = resolve_rig_class(rig_spec)
     if options["delete"]:
-        delete_calibration(paths)
+        delete_calibration(
+            paths,
+            require_confirmation=not options.get("skip_delete_confirmation", False),
+        )
         return
     if options["color_paths"]:
         calibration_color_paths(rig_cls, paths, options["show"])
@@ -755,6 +869,7 @@ class WorkflowGUI:
         self.setup_depth = self.tk.BooleanVar(value=False)
         self.setup_seg = self.tk.BooleanVar(value=False)
         self.setup_facies = self.tk.BooleanVar(value=False)
+        self.setup_protocol = self.tk.BooleanVar(value=False)
         self.setup_rig = self.tk.BooleanVar(value=False)
         self.setup_delete = self.tk.BooleanVar(value=False)
         self.setup_show = self.tk.BooleanVar(value=False)
@@ -763,6 +878,7 @@ class WorkflowGUI:
             ("Depth", self.setup_depth),
             ("Segmentation", self.setup_seg),
             ("Facies", self.setup_facies),
+            ("Protocol", self.setup_protocol),
             ("Rig", self.setup_rig),
             ("Delete rig", self.setup_delete),
             ("Show plots", self.setup_show),
@@ -1353,13 +1469,11 @@ class WorkflowGUI:
         self._set_worker_state(False)
         if dialog_spec is not None:
             kind, title, message = dialog_spec
-            if kind == "info" and workflow == "analysis":
-                suggested_folder = suggested_analysis_results_folder(
-                    config_paths, actions
+            if kind == "info":
+                suggested_folder = suggested_workflow_results_folder(
+                    workflow, config_paths, actions
                 )
                 self._show_done_dialog_with_open_folder(message, suggested_folder)
-            elif kind == "info":
-                self.messagebox.showinfo(title, message)
             else:
                 self._show_error_dialog_with_details(
                     title, message, self._last_error_details
@@ -1376,11 +1490,35 @@ class WorkflowGUI:
             "depth": self.setup_depth.get(),
             "segmentation": self.setup_seg.get(),
             "facies": self.setup_facies.get(),
+            "protocol": self.setup_protocol.get(),
             "rig": self.setup_rig.get(),
             "delete_rig": self.setup_delete.get(),
             "show": self.setup_show.get(),
+            "force": False,
         }
-        actions = enabled_option_labels(options)
+        protocol_enabled = options["protocol"]
+        if protocol_enabled:
+            from darsia.presets.workflows.setup.setup_protocols import (
+                preview_protocol_setup_conflicts,
+            )
+
+            conflicts = preview_protocol_setup_conflicts(ctx.config_paths)
+            if conflicts:
+                max_preview = UTILS_CONFLICT_PREVIEW_LIMIT
+                preview = "\n".join(str(path) for path in conflicts[:max_preview])
+                remaining = max(0, len(conflicts) - max_preview)
+                suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
+                choice = self.messagebox.askyesnocancel(
+                    "Setup protocol conflicts",
+                    "Some protocol files already exist and would be overwritten.\n\n"
+                    f"{preview}{suffix}\n\n"
+                    "Yes: overwrite existing files\nNo/Cancel: abort",
+                )
+                if choice is not True:
+                    logger.info("Setup protocol generation aborted by user.")
+                    return
+                options["force"] = True
+        actions = enabled_option_labels(options, exclude={"force"})
         self._run_async(
             "setup",
             actions,
@@ -1406,7 +1544,35 @@ class WorkflowGUI:
             "reset": self.cal_reset.get(),
             "show": self.cal_show.get(),
         }
+        if options["delete"]:
+            from darsia.presets.workflows.calibration.calibration_color_paths import (
+                collect_existing_calibration_paths_to_delete,
+            )
+
+            existing = collect_existing_calibration_paths_to_delete(ctx.config_paths)
+            if not existing:
+                self.messagebox.showinfo(
+                    "Delete calibration",
+                    "No existing calibration data found to delete.",
+                )
+                return
+            max_preview = PREVIEW_LIST_LIMIT
+            preview = "\n".join(str(path) for path in existing[:max_preview])
+            remaining = max(0, len(existing) - max_preview)
+            suffix = "" if remaining <= 0 else f"\n... and {remaining} more."
+            confirmed = self.messagebox.askyesno(
+                "Confirm calibration deletion",
+                "The following calibration files/folders will be deleted:\n\n"
+                f"{preview}{suffix}\n\n"
+                "This action cannot be undone.\n\nProceed?",
+            )
+            if not confirmed:
+                logger.info("Calibration data deletion aborted by user.")
+                return
         actions = enabled_option_labels(options)
+        run_options = options.copy()
+        if options["delete"]:
+            run_options["skip_delete_confirmation"] = True
         self._run_async(
             "calibration",
             actions,
@@ -1415,7 +1581,7 @@ class WorkflowGUI:
             _run_calibration_workflow,
             [str(path) for path in ctx.config_paths],
             self.rig_spec.get(),
-            options,
+            run_options,
         )
 
     def _run_analysis_clicked(self) -> None:
@@ -1522,7 +1688,7 @@ class WorkflowGUI:
                 Path(import_bundle),
             )
             if conflicts:
-                max_preview = UTILS_CONFLICT_PREVIEW_LIMIT
+                max_preview = PREVIEW_LIST_LIMIT
                 preview = "\n".join(str(path) for path in conflicts[:max_preview])
                 remaining = max(0, len(conflicts) - max_preview)
                 suffix = "" if remaining <= 0 else f"\n... and {remaining} more."

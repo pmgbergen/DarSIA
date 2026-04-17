@@ -1998,17 +1998,17 @@ class HeterogeneousColorToMassAnalysis:
                             signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
 
                         # Update flash cut-off and max value lines
-                        signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
-                        signal_function_g_max_y.set_ydata(self.flash.max_value_g)
-                        signal_function_g_min_y.set_ydata(self.flash.min_value_g)
+                        signal_function_aq_max_y.set_ydata([self.flash.max_value_aq])
+                        signal_function_g_max_y.set_ydata([self.flash.max_value_g])
+                        signal_function_g_min_y.set_ydata([self.flash.min_value_g])
                         aq_max_x = signal_func.inverse(self.flash.max_value_aq)
                         aq_min_x = signal_func.inverse(self.flash.min_value_aq)
                         g_max_x = signal_func.inverse(self.flash.max_value_g)
                         g_min_x = signal_func.inverse(self.flash.min_value_g)
-                        signal_function_aq_max_x.set_xdata(aq_max_x)
-                        signal_function_aq_min_x.set_xdata(aq_min_x)
-                        signal_function_g_max_x.set_xdata(g_max_x)
-                        signal_function_g_min_x.set_xdata(g_min_x)
+                        signal_function_aq_max_x.set_xdata([aq_max_x])
+                        signal_function_aq_min_x.set_xdata([aq_min_x])
+                        signal_function_g_max_x.set_xdata([g_max_x])
+                        signal_function_g_min_x.set_xdata([g_min_x])
 
                         # Update the position of the annotaion
                         ax_signal_function.texts[0].set_position(
@@ -2338,17 +2338,17 @@ class HeterogeneousColorToMassAnalysis:
                         signal_function_scatter.set_offsets(np.c_[x_vals, y_vals])
 
                         # Update flash cut-off and max value lines
-                        signal_function_aq_max_y.set_ydata(self.flash.max_value_aq)
-                        signal_function_g_max_y.set_ydata(self.flash.max_value_g)
-                        signal_function_g_min_y.set_ydata(self.flash.min_value_g)
+                        signal_function_aq_max_y.set_ydata([self.flash.max_value_aq])
+                        signal_function_g_max_y.set_ydata([self.flash.max_value_g])
+                        signal_function_g_min_y.set_ydata([self.flash.min_value_g])
                         aq_max_x = signal_func.inverse(self.flash.max_value_aq)
                         aq_min_x = signal_func.inverse(self.flash.min_value_aq)
                         g_max_x = signal_func.inverse(self.flash.max_value_g)
                         g_min_x = signal_func.inverse(self.flash.min_value_g)
-                        signal_function_aq_max_x.set_xdata(aq_max_x)
-                        signal_function_aq_min_x.set_xdata(aq_min_x)
-                        signal_function_g_max_x.set_xdata(g_max_x)
-                        signal_function_g_min_x.set_xdata(g_min_x)
+                        signal_function_aq_max_x.set_xdata([aq_max_x])
+                        signal_function_aq_min_x.set_xdata([aq_min_x])
+                        signal_function_g_max_x.set_xdata([g_max_x])
+                        signal_function_g_min_x.set_xdata([g_min_x])
 
                         # Update the position of the annotaion
                         ax_signal_function.texts[0].set_position(

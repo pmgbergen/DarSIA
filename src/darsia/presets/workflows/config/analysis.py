@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from warnings import warn
 
 from .data_registry import DataRegistry
+from .data_selection import resolve_time_data_selector
 from .fingers import FingersConfig
 from .roi import RoiAndLabelConfig, RoiConfig
 from .segmentation import SegmentationConfig
@@ -482,16 +483,19 @@ class AnalysisConfig:
     ) -> "AnalysisConfig":
         sec = _get_section_from_toml(path, "analysis")
 
-        # Config to load analysis data – support registry reference or inline
-        data_val = sec.get("data")
-        if isinstance(data_val, (str, list)) and data_registry is not None:
-            self.data = data_registry.resolve(data_val)
-        else:
-            try:
-                self.data = TimeData().load(sec["data"], data)
-            except KeyError:
-                warn("No analysis data found. Use [analysis.data].")
-                self.data = None
+        # Config to load analysis data – centralized selector resolution.
+        try:
+            self.data = resolve_time_data_selector(
+                sec,
+                "data",
+                section="analysis",
+                data=data,
+                data_registry=data_registry,
+                required=True,
+            )
+        except KeyError:
+            warn("No analysis data found. Use [analysis.data].")
+            self.data = None
 
         # Config to load analysis cropping
         try:

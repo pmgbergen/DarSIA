@@ -11,7 +11,6 @@ from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.roi import RoiAndLabelConfig, RoiConfig
 from darsia.presets.workflows.config.roi_registry import RoiRegistry
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -281,6 +280,49 @@ class TestColorPathsConfigInlineRoi:
         assert cfg.rois == []
 
 
+class TestColorPathsAndColorToMassDeprecatedInlineSelectors:
+    def test_color_paths_inline_selectors_emit_deprecation_warning(self, tmp_path):
+        dummy = tmp_path / "dummy.jpg"
+        dummy.touch()
+        toml_path = _write_toml(
+            tmp_path,
+            """
+            [color_paths]
+            [color_paths.baseline.path.baseline]
+            paths = ["dummy.jpg"]
+            [color_paths.data.time.calibration]
+            times = ["01:00:00"]
+            tol = "00:05:00"
+            """,
+        )
+        cfg = ColorPathsConfig()
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"Inline selector definitions under "
+            r"\[color_paths\.(baseline|data)\] are deprecated",
+        ):
+            cfg.load(path=toml_path, data=tmp_path, results=tmp_path)
+        assert cfg.data is not None
+        assert cfg.data.image_times == pytest.approx([1.0])
+        assert cfg.baseline_image_paths == [dummy]
+
+    def test_color_to_mass_inline_selector_emits_deprecation_warning(self, tmp_path):
+        toml_path = _write_toml(
+            tmp_path,
+            """
+            [color_to_mass]
+            [color_to_mass.data.time.calibration]
+            times = ["01:00:00"]
+            tol = "00:05:00"
+            """,
+        )
+        cfg = ColorToMassConfig()
+        with pytest.warns(DeprecationWarning, match=r"\[color_to_mass\.data\]"):
+            cfg.load(path=toml_path, data=tmp_path, results=tmp_path)
+        assert cfg.data is not None
+        assert cfg.data.image_times == pytest.approx([1.0])
+
+
 # ---------------------------------------------------------------------------
 # RoiRegistry.register()
 # ---------------------------------------------------------------------------
@@ -479,6 +521,86 @@ class TestHistogramWeighting:
             data_registry=data_reg,
         )
         assert cfg.threshold == 0.35
+
+    def test_color_to_mass_absent_rois_defaults_to_empty_list(self, tmp_path):
+        dummy = tmp_path / "dummy.jpg"
+        dummy.touch()
+        data_reg = DataRegistry().load(
+            {"path": {"cal_imgs": {"paths": ["dummy.jpg"]}}},
+            data_folder=tmp_path,
+        )
+
+        cfg_path = _write_toml(
+            tmp_path,
+            """
+            [color_to_mass]
+            data = "cal_imgs"
+            """,
+        )
+        cfg = ColorToMassConfig().load(
+            path=cfg_path,
+            data=tmp_path,
+            results=tmp_path,
+            data_registry=data_reg,
+        )
+        assert cfg.rois == []
+
+    def test_color_to_mass_rois_list_is_stored(self, tmp_path):
+        dummy = tmp_path / "dummy.jpg"
+        dummy.touch()
+        data_reg = DataRegistry().load(
+            {"path": {"cal_imgs": {"paths": ["dummy.jpg"]}}},
+            data_folder=tmp_path,
+        )
+        roi_registry = _make_registry_with_roi("my_roi")
+
+        cfg_path = _write_toml(
+            tmp_path,
+            """
+            [color_to_mass]
+            data = "cal_imgs"
+            rois = ["my_roi"]
+            """,
+        )
+        cfg = ColorToMassConfig().load(
+            path=cfg_path,
+            data=tmp_path,
+            results=tmp_path,
+            data_registry=data_reg,
+            roi_registry=roi_registry,
+        )
+        assert cfg.rois == ["my_roi"]
+
+    def test_color_to_mass_inline_roi_is_registered_and_added(self, tmp_path):
+        dummy = tmp_path / "dummy.jpg"
+        dummy.touch()
+        data_reg = DataRegistry().load(
+            {"path": {"cal_imgs": {"paths": ["dummy.jpg"]}}},
+            data_folder=tmp_path,
+        )
+        roi_registry = RoiRegistry()
+
+        cfg_path = _write_toml(
+            tmp_path,
+            """
+            [color_to_mass]
+            data = "cal_imgs"
+
+            [color_to_mass.roi.calib_roi]
+            name = "calib_roi"
+            corner_1 = [0.1, 0.2]
+            corner_2 = [0.7, 0.8]
+            """,
+        )
+        cfg = ColorToMassConfig().load(
+            path=cfg_path,
+            data=tmp_path,
+            results=tmp_path,
+            data_registry=data_reg,
+            roi_registry=roi_registry,
+        )
+        assert cfg.rois == ["calib_roi"]
+        assert "calib_roi" in roi_registry.keys()
 
     def test_default_is_threshold(self, tmp_path):
         """When the key is absent the default must be ``'threshold'``."""

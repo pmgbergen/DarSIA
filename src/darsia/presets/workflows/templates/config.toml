@@ -3,10 +3,26 @@ comment = "Intro session based on glass beads experiments"
 
 [data]
 folder = "..."            # Folder with images
+## folders = ["...", "..."] # Optional multi-folder input; requires [protocols.imaging] table
 format = "JPG"            # The format of the images
 pad = 5                   # number of relevant digits in image names, e.g. 00001.JPG
 baseline = "baseline.JPG" # The baseline image
 results = "..."           # Main output folder
+
+[data.path.baseline_imgs]
+paths = ["img1.jpg", "img2.jpg", "img3.jpg"]
+
+[data.path.calibration_imgs]
+paths = ["img1.jpg", "img2.jpg", "img3.jpg"]
+
+[data.time.analysis_imgs]
+times = ["01:00:00", "01:05:00", "01:10:00", "01:20:00", "01:21:00", "01:40:00"]
+
+[data.interval.analysis_imgs2]
+start = "01:00:00"
+end = "02:00:00"
+num = 10
+tol = "00:10:00"
 
 [specs]
 dim = 2         # dimension of the model
@@ -19,9 +35,14 @@ measurements = "./data/depth_measurements.csv"
 depth_map = "./data/depth_map.npz"
 
 [protocols]
-injection = ["./data/protocol.xlsx", "injection"]
-imaging = ["./data/protocol.xlsx", "imaging"]
-pressure_temperature = ["./data/protocol.xlsx", "pressure_temperature"]
+injection = "./data/injection_protocol.csv"
+imaging = "./data/imaging_protocol.csv"
+# For multi-folder [data].folders, use:
+# [protocols.imaging]
+# "/abs/path/to/folder_a" = "./data/imaging_protocol_a.csv"
+# "/abs/path/to/folder_b" = ["./data/imaging_protocol_b.xlsx", "Sheet1"]
+pressure_temperature = "./data/pressure_temperature_protocol.csv"
+imaging_mode = "exif"
 
 [labeling]
 colored_image = "./data/segmented_baseline.png"
@@ -55,8 +76,8 @@ ignore_labels = [0, 1]
 resolution = [51, 51, 51]
 threshold_baseline = 0.0
 threshold_calibration = 1e-3
-baseline_images = ["...", "...", "..."]
-calibration_images = ["...", "...", "..."]
+baseline = "baseline_imgs"
+data = "calibration_imgs"
 # If omitted, defaults to results/calibration/color_paths/from_<basis>
 calibration_file = "./data/color_paths"
 reference_label = 3
@@ -79,15 +100,16 @@ threshold = 0.2
 # If omitted, defaults to results/calibration/color_to_mass/from_<basis>
 # calibration_folder = "./data/color_to_mass"
 
+[analysis]
+data = "analysis_imgs"
+
 [analysis.cropping]
-image_times = [1, 5, 10, 20, 21, 40]
 formats = ["npz", "jpg"]
 
 [analysis.color_signal]
-image_times = [1, 5, 10, 20, 21, 40]
+data = "analysis_imgs"
 
 [analysis.mass]
-image_times = [1, 5, 10, 20, 21, 40]
 
 [analysis.thresholding]
 # Optional thresholding with per-layer styling and separate format outputs.

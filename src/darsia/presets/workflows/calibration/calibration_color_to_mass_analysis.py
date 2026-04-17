@@ -69,7 +69,6 @@ def calibration_color_to_mass_analysis(
     ref_path: Path | None = None,
     reset: bool = False,
     show: bool = False,
-    rois: dict[str, darsia.CoordinateArray] | None = None,
     default: bool = False,
 ):
     """Calibration of color to mass analysis.
@@ -82,7 +81,6 @@ def calibration_color_to_mass_analysis(
         ref_path: The path to the reference configuration file (if any).
         reset: Whether to reset existing calibration data.
         show: Whether to perform a final test run to demonstrate the calibration results.
-        rois: Regions of interest for calibration (if any).
         default: Whether to perform default calibration without interactive steps.
 
     """
@@ -348,14 +346,26 @@ def calibration_color_to_mass_analysis(
 
     # ! ---- INTERACTIVE CALIBRATION ---- ! #
 
-    rois = rois or {}
-    rois.update(
-        {
-            "full": darsia.CoordinateArray(
-                [fluidflower.baseline.origin, fluidflower.baseline.opposite_corner]
+    rois: dict[str, darsia.CoordinateArray] = {}
+    if len(config.color_to_mass.rois) > 0:
+        if config.roi_registry is None:
+            raise ValueError(
+                "color_to_mass.rois is configured, but no ROI registry is available. "
+                "Define ROIs in top-level [roi.*] sections."
             )
-        }
-    )
+        roi_entries = config.roi_registry.resolve_rois(config.color_to_mass.rois)
+        rois = {key: roi_cfg.roi for key, roi_cfg in roi_entries.items()}
+        if len(rois) == 0:
+            raise ValueError(
+                "color_to_mass.rois did not resolve to any plain ROI rectangles. "
+                "Use keys pointing to [roi.*] entries with corner_1/corner_2 (plain "
+                "RoiConfig entries)."
+            )
+
+    if len(rois) == 0:
+        rois["full"] = darsia.CoordinateArray(
+            [fluidflower.baseline.origin, fluidflower.baseline.opposite_corner]
+        )
 
     # Perform local calibration
     if default:
