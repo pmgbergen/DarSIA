@@ -67,16 +67,29 @@ class SimpleSegmentation:
         mass: darsia.Image | None,
         mass_analysis_result=None,
         colorrange_config=None,
+        rescaled_saturation_g: darsia.Image | None = None,
+        rescaled_concentration_aq: darsia.Image | None = None,
+        rescaled_mass: darsia.Image | None = None,
+        scalar_products: dict[str, darsia.Image | None] | None = None,
     ) -> darsia.Image:
         if mass_analysis_result is None:
             mass_analysis_result = _compose_mass_analysis_result(
                 saturation_g, concentration_aq, mass
             )
+        products = scalar_products or {
+            "saturation_g": saturation_g,
+            "concentration_aq": concentration_aq,
+            "mass": mass,
+            "rescaled_saturation_g": rescaled_saturation_g,
+            "rescaled_concentration_aq": rescaled_concentration_aq,
+            "rescaled_mass": rescaled_mass,
+        }
         values = resolve_mode_image(
             self.mode,
             img,
             mass_analysis_result=mass_analysis_result,
             colorrange_config=colorrange_config,
+            scalar_products=products,
         )
 
         # Extract masks based on thresholds
@@ -94,6 +107,10 @@ class SegmentationContours:
             self.config = config
         else:
             self.config = {"": config}
+
+    def requested_modes(self) -> set[str]:
+        """Return configured segmentation modes."""
+        return {cfg.mode for cfg in self.config.values()}
 
     def extract_mask(
         self, img: darsia.ScalarImage, thresholds: list[float]
@@ -307,12 +324,24 @@ class SegmentationContours:
     def __call__(
         self,
         img,
-        saturation_g: darsia.Image | None,
-        concentration_aq: darsia.Image | None,
-        mass: darsia.Image | None,
+        saturation_g: darsia.Image | None = None,
+        concentration_aq: darsia.Image | None = None,
+        mass: darsia.Image | None = None,
+        rescaled_saturation_g: darsia.Image | None = None,
+        rescaled_concentration_aq: darsia.Image | None = None,
+        rescaled_mass: darsia.Image | None = None,
+        scalar_products: dict[str, darsia.Image | None] | None = None,
         mass_analysis_result=None,
         colorrange_config=None,
     ) -> darsia.Image:
+        products = scalar_products or {
+            "saturation_g": saturation_g,
+            "concentration_aq": concentration_aq,
+            "mass": mass,
+            "rescaled_saturation_g": rescaled_saturation_g,
+            "rescaled_concentration_aq": rescaled_concentration_aq,
+            "rescaled_mass": rescaled_mass,
+        }
         contour_img = img.copy()
         if mass_analysis_result is None:
             mass_analysis_result = _compose_mass_analysis_result(
@@ -324,6 +353,7 @@ class SegmentationContours:
                 img,
                 mass_analysis_result=mass_analysis_result,
                 colorrange_config=colorrange_config,
+                scalar_products=products,
             )
 
             # Extract masks based on thresholds

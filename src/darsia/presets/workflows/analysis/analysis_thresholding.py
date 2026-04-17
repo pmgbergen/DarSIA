@@ -15,6 +15,10 @@ from darsia.presets.workflows.analysis.analysis_context import (
     infer_require_color_to_mass_from_config,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.scalar_products import (
+    analysis_scalar_products,
+    requires_rescaled_modes,
+)
 from darsia.presets.workflows.analysis.streaming import (
     _to_bgr_array,
     publish_stream_images,
@@ -143,6 +147,7 @@ def analysis_thresholding_from_context(
     assert ctx.config.analysis is not None
 
     config = ctx.config
+    experiment = ctx.experiment
     fluidflower = ctx.fluidflower
     image_paths = ctx.image_paths
 
@@ -166,6 +171,8 @@ def analysis_thresholding_from_context(
     color_to_mass_analysis = ctx.color_to_mass_analysis
 
     layer_names = list(thresholding_config.layers.keys())
+    requested_modes = {layer.mode for layer in thresholding_config.layers.values()}
+    need_rescaled = requires_rescaled_modes(requested_modes)
     has_jpg = "jpg" in thresholding_config.formats
     has_npz = "npz" in thresholding_config.formats
 
@@ -182,6 +189,24 @@ def analysis_thresholding_from_context(
     for path in image_paths:
         img = fluidflower.read_image(path)
         result = color_to_mass_analysis(img) if requires_color_to_mass else None
+        mode_images = {}
+        if result is not None:
+            scalar_kwargs = {}
+            if need_rescaled:
+                co2_mass_analysis = None
+                if hasattr(color_to_mass_analysis, "co2_mass_analysis"):
+                    co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
+                scalar_kwargs = {
+                    "geometry": fluidflower.geometry,
+                    "injection_protocol": experiment.injection_protocol,
+                    "co2_mass_analysis": co2_mass_analysis,
+                    "date": img.date,
+                }
+            mode_images, _ = analysis_scalar_products(
+                mass_analysis_result=result,
+                requested_modes=requested_modes,
+                **scalar_kwargs,
+            )
         stream_payload: dict[str, Any] = {"thresholding_source_image": img}
         img_bgr = _to_bgr_array(img)
         master_preview = img_bgr.copy()
@@ -192,6 +217,7 @@ def analysis_thresholding_from_context(
                 img,
                 mass_analysis_result=result,
                 colorrange_config=getattr(config, "colorrange", None),
+                scalar_products=mode_images,
             )
             scalar = _to_scalar_array(mode_image)
             threshold_min = layer.threshold_min

@@ -77,6 +77,13 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `[analysis.cropping]`: cropping image selection and output formats (`formats = ["npz", "jpg"]`)
 - `[analysis.segmentation]`: contour config(s)
 - `[analysis.mass]`: mass analysis and optional ROIs
+  - Outputs are written per product with split format folders:
+    - `<results>/mass/{npz,jpg}/`
+    - `<results>/rescaled_mass/{npz,jpg}/`
+    - `<results>/saturation_g/{npz,jpg}/`
+    - `<results>/rescaled_saturation_g/{npz,jpg}/`
+    - `<results>/concentration_aq/{npz,jpg}/`
+    - `<results>/rescaled_concentration_aq/{npz,jpg}/`
 - `[analysis.volume]`: volume analysis and optional ROIs
 - `[analysis.fingers]`: finger detection mode/threshold and optional ROIs
 - `[analysis.thresholding]`: threshold selected analysis modes and export mask previews
@@ -99,6 +106,14 @@ Optional contour-value labels:
 - `value_max_per_contour` (int, default `3`)
 - `value_format` (string format, default `"{:.2f}"`)
 
+Supported segmentation `mode` values:
+- `saturation_g`
+- `concentration_aq`
+- `mass` (backward-compatible alias for total mass)
+- `rescaled_mass`
+- `rescaled_saturation_g`
+- `rescaled_concentration_aq`
+
 The value-label keys can be provided directly in the segmentation section or nested in
 `[analysis.segmentation.values]` (or `[analysis.segmentation.<name>.values]` for
 multiple segmentations).
@@ -113,12 +128,15 @@ analysis outputs. Supported `modes`:
 - `mass_aq`
 - `colorchannel.<space>.<channel>` (e.g. `colorchannel.rgb.r`)
 - `colorrange.<name>` (binary mask from `[colorrange.<name>]`)
+- `rescaled_mass`
+- `rescaled_saturation_g`
+- `rescaled_concentration_aq`
 
 Supported keys:
 - `formats` (list of output formats: `["jpg", "npz"]`)
 - `folder` (output folder, defaults to `<results>/thresholding`)
 - `[analysis.thresholding.layers.<name>]` (one mask layer per entry):
-  - `mode` (legacy mass modes, `colorchannel.<space>.<channel>`, `colorrange.<name>`)
+  - `mode` (legacy mass modes, rescaled modes, `colorchannel.<space>.<channel>`, `colorrange.<name>`)
   - `threshold_min` (float)
   - `threshold_max` (float)
   - `label` (string)

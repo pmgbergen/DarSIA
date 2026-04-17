@@ -105,7 +105,7 @@ class AnalysisThresholdingConfig:
             if not validate_mode_syntax(self.mode):
                 raise ValueError(
                     f"Unsupported analysis.thresholding.layers.{key}.mode '{self.mode}'. "
-                    "Supported modes are legacy mass modes, "
+                    "Supported modes are legacy mass modes, rescaled modes, "
                     "'colorchannel.<space>.<channel>', and 'colorrange.<name>'."
                 )
             self.threshold_min = _get_key(sec, "threshold_min", required=False)

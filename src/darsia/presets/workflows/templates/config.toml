@@ -113,6 +113,9 @@ data = "analysis_imgs"
 
 [analysis.thresholding]
 # Optional thresholding with per-layer styling and separate format outputs.
+# Supported layer modes:
+# concentration_aq, saturation_g, mass_total, mass_g, mass_aq,
+# rescaled_mass, rescaled_saturation_g, rescaled_concentration_aq
 formats = ["jpg", "npz"]
 [analysis.thresholding.layers.gas]
 mode = "saturation_g"
@@ -162,6 +165,14 @@ box_padding = 10
 [colorrange.custom_range]
 color_space = "HSV"
 range = [[0.2, 0.4], [0.5, "none"], [0.8, "none"]]
+
+# Optional segmentation contours (single entry example):
+#[analysis.segmentation]
+#label = "CO2 contour"
+#mode = "rescaled_mass" # also supports mass, saturation_g, concentration_aq, rescaled_*
+#thresholds = [0.01, 0.03, 0.05]
+#color = [255, 0, 0]
+#alpha = [1.0, 1.0, 1.0]
 
 [video]
 

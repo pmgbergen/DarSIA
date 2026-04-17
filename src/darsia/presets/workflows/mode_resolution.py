@@ -19,6 +19,12 @@ LEGACY_COLOR_TO_MASS_MODES = {
     "mass_aq",
 }
 
+SCALAR_PRODUCT_MODES = {
+    "rescaled_mass",
+    "rescaled_saturation_g",
+    "rescaled_concentration_aq",
+}
+
 
 @dataclass(frozen=True)
 class ColorChannelMode:
@@ -47,7 +53,7 @@ def parse_colorrange_mode(mode: str) -> ColorRangeMode | None:
 
 def validate_mode_syntax(mode: str) -> bool:
     mode = mode.strip()
-    if mode in LEGACY_COLOR_TO_MASS_MODES:
+    if mode in LEGACY_COLOR_TO_MASS_MODES or mode in SCALAR_PRODUCT_MODES:
         return True
     colorchannel = parse_colorchannel_mode(mode)
     if colorchannel is not None:
@@ -66,7 +72,7 @@ def validate_mode_syntax(mode: str) -> bool:
 
 def mode_requires_color_to_mass(mode: str) -> bool:
     mode = mode.strip()
-    if mode in LEGACY_COLOR_TO_MASS_MODES:
+    if mode in LEGACY_COLOR_TO_MASS_MODES or mode in SCALAR_PRODUCT_MODES:
         return True
     if parse_colorchannel_mode(mode) is not None:
         return False
@@ -208,8 +214,13 @@ def resolve_mode_image(
     image: darsia.Image,
     mass_analysis_result: Any = None,
     colorrange_config: ColorRangeConfig | None = None,
+    scalar_products: dict[str, darsia.Image | None] | None = None,
 ) -> darsia.Image:
     mode = mode.strip()
+    if scalar_products is not None and mode in scalar_products:
+        value = scalar_products[mode]
+        if value is not None:
+            return value
     if mode in LEGACY_COLOR_TO_MASS_MODES:
         return _resolve_legacy_mode(mode, mass_analysis_result)
     if parse_colorchannel_mode(mode) is not None:
