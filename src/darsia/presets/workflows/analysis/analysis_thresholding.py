@@ -14,7 +14,10 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
-from darsia.presets.workflows.analysis.scalar_products import analysis_scalar_products
+from darsia.presets.workflows.analysis.scalar_products import (
+    analysis_scalar_products,
+    requires_rescaled_modes,
+)
 from darsia.presets.workflows.analysis.streaming import (
     _to_bgr_array,
     publish_stream_images,
@@ -156,6 +159,7 @@ def analysis_thresholding_from_context(
 
     layer_names = list(thresholding_config.layers.keys())
     requested_modes = {layer.mode for layer in thresholding_config.layers.values()}
+    need_rescaled = requires_rescaled_modes(requested_modes)
     has_jpg = "jpg" in thresholding_config.formats
     has_npz = "npz" in thresholding_config.formats
 
@@ -172,16 +176,21 @@ def analysis_thresholding_from_context(
     for path in image_paths:
         img = fluidflower.read_image(path)
         result = color_to_mass_analysis(img)
-        co2_mass_analysis = None
-        if hasattr(color_to_mass_analysis, "co2_mass_analysis"):
-            co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
+        scalar_kwargs = {}
+        if need_rescaled:
+            co2_mass_analysis = None
+            if hasattr(color_to_mass_analysis, "co2_mass_analysis"):
+                co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
+            scalar_kwargs = {
+                "geometry": fluidflower.geometry,
+                "injection_protocol": experiment.injection_protocol,
+                "co2_mass_analysis": co2_mass_analysis,
+                "date": img.date,
+            }
         mode_images, _ = analysis_scalar_products(
             mass_analysis_result=result,
             requested_modes=requested_modes,
-            geometry=fluidflower.geometry,
-            injection_protocol=experiment.injection_protocol,
-            co2_mass_analysis=co2_mass_analysis,
-            date=img.date,
+            **scalar_kwargs,
         )
         stream_payload: dict[str, Any] = {"thresholding_source_image": img}
         img_bgr = _to_bgr_array(img)

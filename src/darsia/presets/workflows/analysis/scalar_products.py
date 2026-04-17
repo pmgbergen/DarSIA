@@ -38,7 +38,7 @@ def compute_rescaled_mass_products(
     geometry: darsia.Geometry,
     injection_protocol: Any,
     co2_mass_analysis: darsia.CO2MassAnalysis,
-    date,
+    date: Any = None,
     epsilon: float = EPSILON,
 ) -> RescaledMassProducts:
     """Compute rescaled mass products and scaling metadata."""
@@ -66,7 +66,7 @@ def analysis_scalar_products(
     geometry: darsia.Geometry | None = None,
     injection_protocol: Any | None = None,
     co2_mass_analysis: darsia.CO2MassAnalysis | None = None,
-    date=None,
+    date: Any = None,
 ) -> tuple[dict[str, darsia.Image], RescaledMassProducts | None]:
     """Map workflow analysis mode keys to scalar products.
 
@@ -76,7 +76,7 @@ def analysis_scalar_products(
         "concentration_aq": mass_analysis_result.concentration_aq,
         "saturation_g": mass_analysis_result.saturation_g,
         "mass_total": mass_analysis_result.mass,
-        "mass": mass_analysis_result.mass,  # backwards-compatible alias
+        "mass": mass_analysis_result.mass,  # backward-compatible alias
         "mass_g": mass_analysis_result.mass_g,
         "mass_aq": mass_analysis_result.mass_aq,
     }
