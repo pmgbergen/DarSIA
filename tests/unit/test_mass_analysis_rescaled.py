@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import numpy as np
 
@@ -62,7 +63,9 @@ def test_analysis_mass_writes_rescaled_artifacts(
     image_path = tmp_path / "img001.png"
 
     class _FakeInjectionProtocol:
-        def injected_mass(self, *, date, roi=None):  # noqa: ANN001, ANN202
+        def injected_mass(
+            self, *, date: datetime | None, roi: Any = None
+        ) -> float:
             del date, roi
             return injected_mass
 

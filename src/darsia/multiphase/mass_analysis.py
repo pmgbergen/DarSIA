@@ -12,6 +12,8 @@ from scipy import interpolate
 
 import darsia
 
+EPSILON = 1e-12
+
 
 class CO2MassAnalysis:
     """Interpolation routines, based on NIST data."""
@@ -412,7 +414,6 @@ class CO2MassAnalysis:
                 and component masses.
 
         """
-        eps = 1e-12
         solubility = self.solubility_co2
         density = self.density_gaseous_co2
 
@@ -420,7 +421,7 @@ class CO2MassAnalysis:
             mass.img,
             solubility,
             out=np.zeros_like(mass.img, dtype=float),
-            where=np.abs(solubility) > eps,
+            where=np.abs(solubility) > EPSILON,
         )
         c_aq_array = np.clip(c_aq_array, 0.0, 1.0)
 
@@ -430,7 +431,7 @@ class CO2MassAnalysis:
             numerator,
             denominator,
             out=np.zeros_like(mass.img, dtype=float),
-            where=np.abs(denominator) > eps,
+            where=np.abs(denominator) > EPSILON,
         )
         s_g_array = np.clip(s_g_array, 0.0, 1.0)
 
