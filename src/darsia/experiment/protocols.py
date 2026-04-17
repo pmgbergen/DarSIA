@@ -226,7 +226,9 @@ class ImagingProtocol:
 
     def _candidate_protocol_paths(self, file_name: Path) -> tuple[str, ...]:
         two_level = (
-            "/".join(file_name.parts[-2:]) if len(file_name.parts) >= 2 else file_name.name
+            "/".join(file_name.parts[-2:])
+            if len(file_name.parts) >= 2
+            else file_name.name
         )
         return (
             self._normalize_protocol_path(file_name.name),
