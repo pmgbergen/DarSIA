@@ -60,6 +60,13 @@ When GUI streaming is enabled for analysis, the latest image payload can include
 - Cropping: `cropping`
 - Segmentation: `segmentation`
 - Mass: `mass_source_image`, `mass_total`, `mass_g`, `mass_aq`
+  - Stored artifacts:
+    - `mass/{npz,jpg}/<stem>.{npz,jpg}`
+    - `rescaled_mass/{npz,jpg}/<stem>.{npz,jpg}`
+    - `saturation_g/{npz,jpg}/<stem>.{npz,jpg}`
+    - `rescaled_saturation_g/{npz,jpg}/<stem>.{npz,jpg}`
+    - `concentration_aq/{npz,jpg}/<stem>.{npz,jpg}`
+    - `rescaled_concentration_aq/{npz,jpg}/<stem>.{npz,jpg}`
 - Volume: `volume_source_image`, `saturation_g`, `concentration_aq`, `saturation_aq`
 - Thresholding: `thresholding_source_image`, `thresholding_<layer_name>`
 - Fingers: `fingers_source_image`, `fingers_segmentation`, plus ROI-specific
