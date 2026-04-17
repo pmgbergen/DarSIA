@@ -53,7 +53,7 @@ def analysis_cropping_from_context(
         )
 
     # ! ---- CROPPING ----
-    plot_folder = ctx.config.data.results / "cropped_images"
+    plot_folder = ctx.config.data.results / "cropping"
     plot_folder.mkdir(parents=True, exist_ok=True)
 
     for path in ctx.image_paths:

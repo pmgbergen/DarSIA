@@ -246,21 +246,33 @@ def _deep_merge_dict(base: dict[str, Any], update: dict[str, Any]) -> dict[str, 
     return base
 
 
-def suggested_analysis_results_folder(
-    config_paths: list[Path], actions: list[str]
-) -> Path | None:
-    """Return suggested analysis results folder for completed runs."""
+def _load_merged_workflow_config(config_paths: list[Path]) -> dict[str, Any]:
+    """Load and deeply merge workflow TOML config files."""
     merged: dict[str, Any] = {}
     for path in config_paths:
         _deep_merge_dict(merged, tomllib.loads(path.read_text()))
+    return merged
 
+
+def _results_folder_from_merged_config(merged: dict[str, Any]) -> Path | None:
+    """Extract configured [data].results folder from merged config."""
     data = merged.get("data")
     if not isinstance(data, dict):
         return None
     results_raw = data.get("results")
     if not isinstance(results_raw, str) or not results_raw.strip():
         return None
-    results = Path(results_raw).expanduser()
+    return Path(results_raw).expanduser()
+
+
+def suggested_analysis_results_folder(
+    config_paths: list[Path], actions: list[str]
+) -> Path | None:
+    """Return suggested analysis results folder for completed runs."""
+    merged = _load_merged_workflow_config(config_paths)
+    results = _results_folder_from_merged_config(merged)
+    if results is None:
+        return None
 
     mode_actions = [action for action in actions if action in _ANALYSIS_MODE_ACTIONS]
     if len(mode_actions) != 1:
@@ -268,7 +280,7 @@ def suggested_analysis_results_folder(
 
     mode = mode_actions[0]
     if mode == "cropping":
-        return results / "cropped_images"
+        return results / "cropping"
 
     analysis = merged.get("analysis")
     if isinstance(analysis, dict):
@@ -279,6 +291,101 @@ def suggested_analysis_results_folder(
                 return Path(folder).expanduser()
 
     return results / _ANALYSIS_MODE_DEFAULT_SUBFOLDER[mode]
+
+
+def suggested_workflow_results_folder(
+    workflow: str, config_paths: list[Path], actions: list[str]
+) -> Path | None:
+    """Return suggested output folder for successful GUI workflow runs."""
+    merged = _load_merged_workflow_config(config_paths)
+    results = _results_folder_from_merged_config(merged)
+    if results is None:
+        return None
+
+    if workflow == "analysis":
+        return suggested_analysis_results_folder(config_paths, actions)
+
+    selected_actions = {action.strip().lower() for action in actions}
+
+    if workflow == "setup":
+        setup_candidates: list[Path] = []
+        if "depth" in selected_actions:
+            setup_candidates.append(results / "setup" / "depth")
+        if "segmentation" in selected_actions:
+            setup_candidates.append(results / "setup" / "labels")
+        if "facies" in selected_actions:
+            setup_candidates.append(results / "setup" / "facies")
+        if "rig" in selected_actions:
+            setup_candidates.append(results / "setup" / "rig")
+        if "protocol" in selected_actions:
+            setup_candidates.append(results / "setup")
+        if "all" in selected_actions:
+            setup_candidates.append(results / "setup")
+        if len(setup_candidates) == 0:
+            return None
+        all_setup_same = all(path == setup_candidates[0] for path in setup_candidates)
+        return setup_candidates[0] if all_setup_same else results / "setup"
+
+    if workflow == "calibration":
+        if (
+            "color paths" in selected_actions
+            or "mass" in selected_actions
+            or "default mass" in selected_actions
+        ):
+            return results / "calibration"
+        return None
+
+    if workflow == "comparison":
+        has_events = "events" in selected_actions
+        has_wasserstein = (
+            "wasserstein compute" in selected_actions
+            or "wasserstein assemble" in selected_actions
+        )
+        if has_events and has_wasserstein:
+            return results
+        if has_events:
+            events = merged.get("events")
+            if isinstance(events, dict):
+                events_path_raw = events.get("path")
+                if isinstance(events_path_raw, str) and events_path_raw.strip():
+                    return Path(events_path_raw).expanduser().parent
+            return results / "events"
+        if has_wasserstein:
+            wasserstein = merged.get("wasserstein")
+            if isinstance(wasserstein, dict):
+                wasserstein_results_raw = wasserstein.get("results")
+                if (
+                    isinstance(wasserstein_results_raw, str)
+                    and wasserstein_results_raw.strip()
+                ):
+                    return Path(wasserstein_results_raw).expanduser()
+            return results / "wasserstein"
+        return None
+
+    if workflow == "utils":
+        utils_candidates: list[Path] = []
+        if "media" in selected_actions:
+            utils_candidates.append(results / "videos")
+        if "export calibration" in selected_actions:
+            utils_candidates.append(results / "calibration")
+        if "import calibration" in selected_actions:
+            utils_candidates.append(results / "calibration")
+        if "download" in selected_actions:
+            download = merged.get("download")
+            if isinstance(download, dict):
+                folder_raw = download.get("folder")
+                if isinstance(folder_raw, str) and folder_raw.strip():
+                    utils_candidates.append(Path(folder_raw).expanduser())
+                else:
+                    utils_candidates.append(results / "raw_data")
+            else:
+                utils_candidates.append(results / "raw_data")
+        if len(utils_candidates) == 0:
+            return None
+        all_utils_same = all(path == utils_candidates[0] for path in utils_candidates)
+        return utils_candidates[0] if all_utils_same else results
+
+    return None
 
 
 def open_in_file_explorer(path: Path) -> None:
@@ -462,10 +569,10 @@ def _run_setup_workflow(
         segment_colored_image(paths, show=show)
     if options["all"] or options["facies"]:
         setup_facies(rig_cls, paths, show=show)
-    if options["all"] or options["protocol"]:
-        setup_imaging_protocol(paths, force=options["force"], show=show)
     if options["all"] or options["rig"]:
         setup_rig(rig_cls, paths, show=show)
+    if options["protocol"]:
+        setup_imaging_protocol(paths, force=options["force"], show=show)
     if options["delete_rig"]:
         delete_rig(rig_cls, paths, show=show)
 
@@ -1362,13 +1469,11 @@ class WorkflowGUI:
         self._set_worker_state(False)
         if dialog_spec is not None:
             kind, title, message = dialog_spec
-            if kind == "info" and workflow == "analysis":
-                suggested_folder = suggested_analysis_results_folder(
-                    config_paths, actions
+            if kind == "info":
+                suggested_folder = suggested_workflow_results_folder(
+                    workflow, config_paths, actions
                 )
                 self._show_done_dialog_with_open_folder(message, suggested_folder)
-            elif kind == "info":
-                self.messagebox.showinfo(title, message)
             else:
                 self._show_error_dialog_with_details(
                     title, message, self._last_error_details
@@ -1391,7 +1496,7 @@ class WorkflowGUI:
             "show": self.setup_show.get(),
             "force": False,
         }
-        protocol_enabled = options["all"] or options["protocol"]
+        protocol_enabled = options["protocol"]
         if protocol_enabled:
             from darsia.presets.workflows.setup.setup_protocols import (
                 preview_protocol_setup_conflicts,

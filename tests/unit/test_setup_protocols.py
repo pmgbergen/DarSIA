@@ -130,3 +130,86 @@ imaging = "imaging_protocol.csv"
 
     config = ProtocolConfig().load(config_path)
     assert config.imaging_mode == "exif"
+
+
+def test_protocol_config_supports_per_folder_imaging_mapping(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.toml"
+    folder_a = tmp_path / "images_a"
+    folder_b = tmp_path / "images_b"
+    _write_config(
+        config_path,
+        f"""
+[protocols.imaging]
+"{folder_a}" = "{tmp_path / "protocols" / "imaging_a.csv"}"
+"{folder_b}" = ["{tmp_path / "protocols" / "imaging_b.xlsx"}", "Sheet1"]
+""",
+    )
+
+    config = ProtocolConfig().load(config_path)
+    assert isinstance(config.imaging, dict)
+    assert config.imaging[folder_a] == tmp_path / "protocols" / "imaging_a.csv"
+    assert config.imaging[folder_b] == (
+        tmp_path / "protocols" / "imaging_b.xlsx",
+        "Sheet1",
+    )
+
+
+def test_setup_imaging_protocol_with_multiple_folders(
+    tmp_path: Path,
+) -> None:
+    now = 1_700_000_000
+    _create_image(tmp_path / "images_a" / "img_0001.JPG", now)
+    _create_image(tmp_path / "images_b" / "img_0001.JPG", now + 60)
+
+    config_path = tmp_path / "config_multi.toml"
+    _write_config(
+        config_path,
+        f"""
+[data]
+folders = ["{tmp_path / "images_a"}", "{tmp_path / "images_b"}"]
+baseline = "img_0001.JPG"
+results = "{tmp_path / "results"}"
+
+[protocols]
+injection = "{tmp_path / "protocols" / "injection_protocol.csv"}"
+pressure_temperature = "{tmp_path / "protocols" / "pressure_temperature_protocol.csv"}"
+imaging_mode = "ctime"
+
+[protocols.imaging]
+"{tmp_path / "images_a"}" = "{tmp_path / "protocols" / "imaging_a.csv"}"
+"{tmp_path / "images_b"}" = "{tmp_path / "protocols" / "imaging_b.csv"}"
+""",
+    )
+
+    setup_imaging_protocol(config_path, force=False)
+
+    imaging_a = pd.read_csv(tmp_path / "protocols" / "imaging_a.csv")
+    imaging_b = pd.read_csv(tmp_path / "protocols" / "imaging_b.csv")
+    assert imaging_a["path"].tolist() == ["img_0001.JPG"]
+    assert imaging_b["path"].tolist() == ["img_0001.JPG"]
+
+
+def test_setup_imaging_protocol_requires_mapping_for_multiple_folders(
+    tmp_path: Path,
+) -> None:
+    now = 1_700_000_000
+    _create_image(tmp_path / "images_a" / "img_0001.JPG", now)
+    _create_image(tmp_path / "images_b" / "img_0001.JPG", now + 60)
+
+    config_path = tmp_path / "config_multi_invalid.toml"
+    _write_config(
+        config_path,
+        f"""
+[data]
+folders = ["{tmp_path / "images_a"}", "{tmp_path / "images_b"}"]
+baseline = "img_0001.JPG"
+results = "{tmp_path / "results"}"
+
+[protocols]
+imaging = "{tmp_path / "protocols" / "imaging_protocol.csv"}"
+imaging_mode = "ctime"
+""",
+    )
+
+    with pytest.raises(ValueError, match="per-folder table"):
+        setup_imaging_protocol(config_path, force=False)

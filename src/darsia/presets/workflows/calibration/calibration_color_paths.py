@@ -170,8 +170,7 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
         threshold_significant=config.color_paths.threshold_calibration,
         verbose=show,
     )
-    # Free memory for performance
-    del calibration_images
+    preview_calibration_image = calibration_images[0] if calibration_images else None
 
     # Find a relative color path through the significant boxes
     label_color_path_map: darsia.LabelColorPathMap = (
@@ -182,6 +181,9 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
             directory=config.color_paths.calibration_file,
             weighting=config.color_paths.histogram_weighting,
             mode=config.color_paths.mode,
+            preview_image=preview_calibration_image,
+            preview_images=calibration_images,
+            preview_baseline=fluidflower.baseline,
             verbose=show,
         )
     )

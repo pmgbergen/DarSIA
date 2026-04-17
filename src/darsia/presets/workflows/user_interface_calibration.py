@@ -100,6 +100,5 @@ def preset_calibration(rig=Rig, **kwargs):
             ref_path=ref_config,
             reset=args.reset,
             show=args.show,
-            rois=kwargs.get("rois"),
             default=args.default_mass,
         )
