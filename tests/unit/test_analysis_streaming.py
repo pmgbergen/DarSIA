@@ -172,7 +172,9 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
             analysis=SimpleNamespace(thresholding=thresholding_config),
         ),
         experiment=SimpleNamespace(
-            injection_protocol=SimpleNamespace(injected_mass=lambda **kwargs: 1.0)
+            injection_protocol=SimpleNamespace(
+                injected_mass=lambda date=None, **_: 1.0
+            )
         ),
         fluidflower=_FakeFluidFlower(),
         image_paths=[image_path],
@@ -227,14 +229,16 @@ def test_thresholding_supports_rescaled_layer_modes(tmp_path: Path) -> None:
     class _FakeFluidFlower:
         def __init__(self) -> None:
             self.geometry = darsia.Geometry(
-                space_dim=2, num_voxels=(4, 4), dimensions=[1.0, 1.0]
+                space_dim=2, num_voxels=(16, 24), dimensions=[1.0, 1.0]
             )
 
         def read_image(self, path: Path) -> _FakeImage:
             del path
             return _FakeImage()
 
-    scalar = darsia.ScalarImage(np.full((4, 4), 0.5, dtype=float), dimensions=[1.0, 1.0])
+    scalar = darsia.ScalarImage(
+        np.full((16, 24), 0.5, dtype=float), dimensions=[1.0, 1.0]
+    )
 
     class _FakeCo2Mass:
         def inverse_mass_analysis(self, mass):
@@ -264,7 +268,9 @@ def test_thresholding_supports_rescaled_layer_modes(tmp_path: Path) -> None:
             analysis=SimpleNamespace(thresholding=thresholding_config),
         ),
         experiment=SimpleNamespace(
-            injection_protocol=SimpleNamespace(injected_mass=lambda **kwargs: 1.0)
+            injection_protocol=SimpleNamespace(
+                injected_mass=lambda date=None, **_: 1.0
+            )
         ),
         fluidflower=_FakeFluidFlower(),
         image_paths=[image_path],

@@ -10,7 +10,10 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
-from darsia.presets.workflows.analysis.scalar_products import analysis_scalar_products
+from darsia.presets.workflows.analysis.scalar_products import (
+    analysis_scalar_products,
+    requires_rescaled_modes,
+)
 from darsia.presets.workflows.analysis.streaming import (
     publish_stream_images,
 )
@@ -48,22 +51,28 @@ def analysis_segmentation_from_context(
     # ! ---- CONTOUR PLOTTING ----
     segmentation_contours = SegmentationContours(segmentation_config.config)
     requested_modes = segmentation_contours.requested_modes()
+    need_rescaled = requires_rescaled_modes(requested_modes)
 
     # Loop over images and analyze
     for path in image_paths:
         # Extract color signal and assign mass
         img = fluidflower.read_image(path)
         mass_analysis_result = color_to_mass_analysis(img)
-        co2_mass_analysis = None
-        if hasattr(color_to_mass_analysis, "co2_mass_analysis"):
-            co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
+        scalar_kwargs = {}
+        if need_rescaled:
+            co2_mass_analysis = None
+            if hasattr(color_to_mass_analysis, "co2_mass_analysis"):
+                co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
+            scalar_kwargs = {
+                "geometry": fluidflower.geometry,
+                "injection_protocol": experiment.injection_protocol,
+                "co2_mass_analysis": co2_mass_analysis,
+                "date": img.date,
+            }
         scalar_products, _ = analysis_scalar_products(
             mass_analysis_result=mass_analysis_result,
             requested_modes=requested_modes,
-            geometry=fluidflower.geometry,
-            injection_protocol=experiment.injection_protocol,
-            co2_mass_analysis=co2_mass_analysis,
-            date=img.date,
+            **scalar_kwargs,
         )
 
         # Produce contour images

@@ -84,7 +84,7 @@ class SegmentationContours:
 
     def requested_modes(self) -> set[str]:
         """Return configured segmentation modes."""
-        return {cfg.mode for cfg in self.config.values() if cfg.mode is not None}
+        return {cfg.mode for cfg in self.config.values()}
 
     def extract_mask(
         self, img: darsia.ScalarImage, thresholds: list[float]

@@ -9,6 +9,11 @@ from darsia.presets.workflows.analysis.scalar_products import analysis_scalar_pr
 
 
 def _mass_result(mass_value: float) -> darsia.SimpleMassAnalysisResults:
+    """Create a compact synthetic mass result for scalar-product plumbing tests.
+
+    The fields intentionally reuse the same scalar values across products since these
+    tests only verify product selection/rescaling orchestration.
+    """
     mass = darsia.ScalarImage(np.full((2, 2), mass_value, dtype=float), dimensions=[1.0, 1.0])
     return darsia.SimpleMassAnalysisResults(
         name="img",
