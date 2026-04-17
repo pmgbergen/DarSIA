@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+from pathlib import Path
 
 from darsia.presets.workflows.helper.helper_roi import helper_roi
 from darsia.presets.workflows.rig import Rig
@@ -45,7 +46,8 @@ def print_help_for_flags(args, parser):
 def run_helper(rig_cls: type[Rig], args):
     if not args.roi:
         raise ValueError("No helper type specified. Choose from --roi.")
-    helper_roi(rig_cls, args.config, show=args.show)
+    config_paths = [Path(p) for p in args.config]
+    helper_roi(rig_cls, config_paths, show=args.show)
 
 
 def preset_helper(rig_cls: type[Rig], **kwargs):
