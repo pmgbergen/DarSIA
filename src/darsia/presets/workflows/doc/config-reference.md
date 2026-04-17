@@ -77,6 +77,13 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `[analysis.cropping]`: cropping image selection and output formats (`formats = ["npz", "jpg"]`)
 - `[analysis.segmentation]`: contour config(s)
 - `[analysis.mass]`: mass analysis and optional ROIs
+  - Outputs are written per product with split format folders:
+    - `<results>/mass/{npz,jpg}/`
+    - `<results>/rescaled_mass/{npz,jpg}/`
+    - `<results>/saturation_g/{npz,jpg}/`
+    - `<results>/rescaled_saturation_g/{npz,jpg}/`
+    - `<results>/concentration_aq/{npz,jpg}/`
+    - `<results>/rescaled_concentration_aq/{npz,jpg}/`
 - `[analysis.volume]`: volume analysis and optional ROIs
 - `[analysis.fingers]`: finger detection mode/threshold and optional ROIs
 - `[analysis.thresholding]`: threshold selected analysis modes and export mask previews

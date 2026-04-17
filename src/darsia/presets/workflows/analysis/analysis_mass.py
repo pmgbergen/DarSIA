@@ -6,8 +6,10 @@ import logging
 from collections.abc import Callable
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
+import darsia
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
@@ -17,6 +19,18 @@ from darsia.presets.workflows.config.analysis import AnalysisMassConfig
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
+
+
+def _save_scalar_image_artifacts(
+    image: darsia.Image, folder: Path, stem: str, quality: int = 50
+) -> None:
+    """Store scalar image in npz and jpg subfolders."""
+    npz_folder = folder / "npz"
+    jpg_folder = folder / "jpg"
+    npz_folder.mkdir(parents=True, exist_ok=True)
+    jpg_folder.mkdir(parents=True, exist_ok=True)
+    image.save(npz_folder / f"{stem}.npz")
+    image.write(jpg_folder / f"{stem}.jpg", quality=quality)
 
 
 def analysis_mass_from_context(
@@ -40,6 +54,11 @@ def analysis_mass_from_context(
     fluidflower = ctx.fluidflower
     image_paths = ctx.image_paths
     color_to_mass_analysis = ctx.color_to_mass_analysis
+    if not hasattr(color_to_mass_analysis, "co2_mass_analysis"):
+        raise AttributeError(
+            "Mass rescaling requires 'co2_mass_analysis' on color_to_mass_analysis."
+        )
+    co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
 
     # ! ---- ENSURE MASS CONFIGURATION ----
     if config.analysis.mass is None:
@@ -78,8 +97,16 @@ def analysis_mass_from_context(
     # ! ---- ANALYSIS ----
 
     # Plotting
-    folder_mass = config.data.results / "mass"
-    folder_mass.mkdir(parents=True, exist_ok=True)
+    output_folders = {
+        "mass": config.data.results / "mass",
+        "rescaled_mass": config.data.results / "rescaled_mass",
+        "saturation_g": config.data.results / "saturation_g",
+        "rescaled_saturation_g": config.data.results / "rescaled_saturation_g",
+        "concentration_aq": config.data.results / "concentration_aq",
+        "rescaled_concentration_aq": config.data.results / "rescaled_concentration_aq",
+    }
+    for folder in output_folders.values():
+        folder.mkdir(parents=True, exist_ok=True)
 
     # Initialize DataFrame for storing integrated masses
     detected_cols = [
@@ -108,7 +135,15 @@ def analysis_mass_from_context(
         for roi_config in config.analysis.mass.roi.values()
     ]
     columns = (
-        ["time", "datetime", "image_stem"]
+        [
+            "time",
+            "datetime",
+            "image_stem",
+            "detected_mass_total",
+            "exact_mass_total",
+            "detected_mass_total_rescaled",
+            "mass_scaling_factor",
+        ]
         + exact_cols
         + detected_cols
         + detected_cols_g
@@ -132,10 +167,52 @@ def analysis_mass_from_context(
         mass = mass_analysis_result.mass
         mass_g = mass_analysis_result.mass_g
         mass_aq = mass_analysis_result.mass_aq
+        saturation_g = mass_analysis_result.saturation_g
+        concentration_aq = mass_analysis_result.concentration_aq
+
+        # Compute total integrated mass and rescale with exact injected mass.
+        detected_mass_total = fluidflower.geometry.integrate(mass)
+        exact_mass_total = experiment.injection_protocol.injected_mass(date=img.date)
+        mass_scaling_factor = (
+            exact_mass_total / detected_mass_total
+            if np.abs(detected_mass_total) > 1e-12
+            else 0.0
+        )
+        rescaled_mass = darsia.weight(mass, mass_scaling_factor)
+        rescaled_mass_analysis_result = co2_mass_analysis.inverse_mass_analysis(
+            rescaled_mass
+        )
+        rescaled_saturation_g = rescaled_mass_analysis_result.saturation_g
+        rescaled_concentration_aq = rescaled_mass_analysis_result.concentration_aq
 
         # Store data to disk
-        mass.save(folder_mass / f"{path.stem}.npz")  # Prepare row data for DataFrame
+        _save_scalar_image_artifacts(mass, output_folders["mass"], path.stem)
+        _save_scalar_image_artifacts(
+            rescaled_mass, output_folders["rescaled_mass"], path.stem
+        )
+        _save_scalar_image_artifacts(
+            saturation_g, output_folders["saturation_g"], path.stem
+        )
+        _save_scalar_image_artifacts(
+            rescaled_saturation_g, output_folders["rescaled_saturation_g"], path.stem
+        )
+        _save_scalar_image_artifacts(
+            concentration_aq, output_folders["concentration_aq"], path.stem
+        )
+        _save_scalar_image_artifacts(
+            rescaled_concentration_aq,
+            output_folders["rescaled_concentration_aq"],
+            path.stem,
+        )
+
+        # Prepare row data for DataFrame
         row_data = {"time": time, "datetime": img.date, "image_stem": path.stem}
+        row_data["detected_mass_total"] = detected_mass_total
+        row_data["exact_mass_total"] = exact_mass_total
+        row_data["detected_mass_total_rescaled"] = fluidflower.geometry.integrate(
+            rescaled_mass
+        )
+        row_data["mass_scaling_factor"] = mass_scaling_factor
 
         # Compute exact mass in ROIs and add to row data
         for roi_config in config.analysis.mass.roi.values():
@@ -215,6 +292,9 @@ def analysis_mass_from_context(
                 "mass_total": mass,
                 "mass_g": mass_g,
                 "mass_aq": mass_aq,
+                "rescaled_mass": rescaled_mass,
+                "rescaled_saturation_g": rescaled_saturation_g,
+                "rescaled_concentration_aq": rescaled_concentration_aq,
             },
             logger=logger,
             error_message=f"Failed to stream mass previews for image '{path}'.",
