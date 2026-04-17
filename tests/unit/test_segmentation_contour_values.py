@@ -111,6 +111,48 @@ def test_contour_value_labels_toggle_changes_rendered_image():
     assert np.any(with_values.img != without_values.img)
 
 
+def test_segmentation_contours_supports_rescaled_modes():
+    """Rescaled segmentation modes are accepted and rendered."""
+    img, values = _make_test_images()
+    cfg = SegmentationConfig().load(
+        {
+            "label": "phase",
+            "mode": "rescaled_mass",
+            "thresholds": [0.5],
+            "color": [255, 0, 0],
+            "alpha": [1.0],
+        }
+    )
+
+    rendered = SegmentationContours(cfg)(
+        img,
+        scalar_products={"rescaled_mass": values},
+    )
+
+    assert rendered.img.shape == img.img.shape
+    assert np.any(rendered.img != img.img)
+
+
+def test_segmentation_contours_mass_alias_remains_supported():
+    """Legacy mass mode remains supported for backward compatibility."""
+    img, values = _make_test_images()
+    cfg = SegmentationConfig().load(
+        {
+            "label": "phase",
+            "mode": "mass",
+            "thresholds": [0.5],
+            "color": [255, 0, 0],
+            "alpha": [1.0],
+        }
+    )
+
+    rendered = SegmentationContours(cfg)(
+        img,
+        scalar_products={"mass": values},
+    )
+    assert np.any(rendered.img != img.img)
+
+
 def test_select_label_positions_respects_spacing_and_cap():
     """Selected positions satisfy min distance and max-per-contour cap."""
     contour = cv2.ellipse2Poly((100, 100), (70, 40), 0, 0, 360, 3).reshape(-1, 1, 2)

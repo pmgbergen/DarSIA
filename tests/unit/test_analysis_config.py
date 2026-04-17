@@ -141,6 +141,80 @@ threshold_min = 0.1
         )
 
 
+def test_analysis_thresholding_accepts_rescaled_modes(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+[analysis.thresholding]
+[analysis.thresholding.layers.mass_rescaled]
+mode = "rescaled_mass"
+threshold_min = 0.1
+[analysis.thresholding.layers.gas_rescaled]
+mode = "rescaled_saturation_g"
+threshold_min = 0.1
+[analysis.thresholding.layers.aq_rescaled]
+mode = "rescaled_concentration_aq"
+threshold_min = 0.1
+""".strip(),
+    )
+
+    config = AnalysisConfig().load(
+        path=config_path,
+        data=tmp_path,
+        results=tmp_path,
+    )
+
+    assert config.thresholding is not None
+    assert config.thresholding.layers["mass_rescaled"].mode == "rescaled_mass"
+    assert config.thresholding.layers["gas_rescaled"].mode == "rescaled_saturation_g"
+    assert config.thresholding.layers["aq_rescaled"].mode == "rescaled_concentration_aq"
+
+
+def test_analysis_segmentation_accepts_rescaled_mode(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+[analysis.segmentation]
+label = "Gas contour"
+mode = "rescaled_saturation_g"
+thresholds = [0.1]
+color = [255, 0, 0]
+""".strip(),
+    )
+
+    config = AnalysisConfig().load(
+        path=config_path,
+        data=tmp_path,
+        results=tmp_path,
+    )
+
+    assert config.segmentation is not None
+    assert config.segmentation.config.mode == "rescaled_saturation_g"
+
+
+def test_analysis_segmentation_rejects_invalid_mode(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+[analysis.segmentation]
+label = "Bad contour"
+mode = "invalid_mode"
+thresholds = [0.1]
+color = [255, 0, 0]
+""".strip(),
+    )
+
+    with pytest.raises(ValueError, match=r"Unsupported analysis\.segmentation\.mode"):
+        AnalysisConfig().load(
+            path=config_path,
+            data=tmp_path,
+            results=tmp_path,
+        )
+
+
 def test_analysis_data_can_be_resolved_from_data_registry(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",

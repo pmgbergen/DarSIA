@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import darsia
 
 from darsia.presets.workflows.analysis.analysis_thresholding import (
     analysis_thresholding_from_context,
@@ -170,6 +171,9 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
             data=SimpleNamespace(results=tmp_path),
             analysis=SimpleNamespace(thresholding=thresholding_config),
         ),
+        experiment=SimpleNamespace(
+            injection_protocol=SimpleNamespace(injected_mass=lambda **kwargs: 1.0)
+        ),
         fluidflower=_FakeFluidFlower(),
         image_paths=[image_path],
         color_to_mass_analysis=_fake_color_to_mass,
@@ -194,3 +198,79 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
     assert "thresholding_source_image" in stream_payloads[0]
     assert "thresholding_gas" in stream_payloads[0]
     assert "thresholding_all" in stream_payloads[0]
+
+
+def test_thresholding_supports_rescaled_layer_modes(tmp_path: Path) -> None:
+    thresholding_config = AnalysisThresholdingConfig().load(
+        sec={
+            "thresholding": {
+                "formats": ["npz"],
+                "layers": {
+                    "rescaled": {
+                        "mode": "rescaled_mass",
+                        "threshold_min": 0.2,
+                        "label": "Rescaled mass plume",
+                    }
+                },
+            }
+        },
+        results=tmp_path,
+    )
+
+    image_path = tmp_path / "img001.png"
+
+    class _FakeImage:
+        def __init__(self) -> None:
+            self.img = np.zeros((16, 24, 3), dtype=np.uint8)
+            self.date = None
+
+    class _FakeFluidFlower:
+        def __init__(self) -> None:
+            self.geometry = darsia.Geometry(
+                space_dim=2, num_voxels=(4, 4), dimensions=[1.0, 1.0]
+            )
+
+        def read_image(self, path: Path) -> _FakeImage:
+            del path
+            return _FakeImage()
+
+    scalar = darsia.ScalarImage(np.full((4, 4), 0.5, dtype=float), dimensions=[1.0, 1.0])
+
+    class _FakeCo2Mass:
+        def inverse_mass_analysis(self, mass):
+            return SimpleNamespace(
+                mass=mass,
+                saturation_g=mass,
+                concentration_aq=mass,
+            )
+
+    class _FakeColorToMass:
+        def __init__(self) -> None:
+            self.co2_mass_analysis = _FakeCo2Mass()
+
+        def __call__(self, img):
+            del img
+            return SimpleNamespace(
+                concentration_aq=scalar,
+                saturation_g=scalar,
+                mass=scalar,
+                mass_g=scalar,
+                mass_aq=scalar,
+            )
+
+    ctx = SimpleNamespace(
+        config=SimpleNamespace(
+            data=SimpleNamespace(results=tmp_path),
+            analysis=SimpleNamespace(thresholding=thresholding_config),
+        ),
+        experiment=SimpleNamespace(
+            injection_protocol=SimpleNamespace(injected_mass=lambda **kwargs: 1.0)
+        ),
+        fluidflower=_FakeFluidFlower(),
+        image_paths=[image_path],
+        color_to_mass_analysis=_FakeColorToMass(),
+    )
+
+    analysis_thresholding_from_context(ctx)
+
+    assert (tmp_path / "thresholding" / "npz" / "rescaled" / "img001.npz").exists()

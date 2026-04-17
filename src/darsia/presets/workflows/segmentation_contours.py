@@ -49,21 +49,22 @@ class SimpleSegmentation:
         saturation_g: darsia.Image | None,
         concentration_aq: darsia.Image | None,
         mass: darsia.Image | None,
+        rescaled_saturation_g: darsia.Image | None = None,
+        rescaled_concentration_aq: darsia.Image | None = None,
+        rescaled_mass: darsia.Image | None = None,
+        scalar_products: dict[str, darsia.Image | None] | None = None,
     ) -> darsia.Image:
-        if self.mode == "saturation_g":
-            if saturation_g is None:
-                raise ValueError(f"Missing image for mode {self.mode}")
-            values = saturation_g
-        elif self.mode == "concentration_aq":
-            if concentration_aq is None:
-                raise ValueError(f"Missing image for mode {self.mode}")
-            values = concentration_aq
-        elif self.mode == "mass":
-            if mass is None:
-                raise ValueError(f"Missing image for mode {self.mode}")
-                values = mass
-            else:
-                raise ValueError(f"Unknown label {self.mode} in segmentation config.")
+        products = scalar_products or {
+            "saturation_g": saturation_g,
+            "concentration_aq": concentration_aq,
+            "mass": mass,
+            "rescaled_saturation_g": rescaled_saturation_g,
+            "rescaled_concentration_aq": rescaled_concentration_aq,
+            "rescaled_mass": rescaled_mass,
+        }
+        if self.mode not in products or products[self.mode] is None:
+            raise ValueError(f"Missing image for mode {self.mode}")
+        values = products[self.mode]
 
         # Extract masks based on thresholds
         mask = self.extract_mask(values, [self.threshold])[0]
@@ -80,6 +81,10 @@ class SegmentationContours:
             self.config = config
         else:
             self.config = {"": config}
+
+    def requested_modes(self) -> set[str]:
+        """Return configured segmentation modes."""
+        return {cfg.mode for cfg in self.config.values() if cfg.mode is not None}
 
     def extract_mask(
         self, img: darsia.ScalarImage, thresholds: list[float]
@@ -293,28 +298,29 @@ class SegmentationContours:
     def __call__(
         self,
         img,
-        saturation_g: darsia.Image | None,
-        concentration_aq: darsia.Image | None,
-        mass: darsia.Image | None,
+        saturation_g: darsia.Image | None = None,
+        concentration_aq: darsia.Image | None = None,
+        mass: darsia.Image | None = None,
+        rescaled_saturation_g: darsia.Image | None = None,
+        rescaled_concentration_aq: darsia.Image | None = None,
+        rescaled_mass: darsia.Image | None = None,
+        scalar_products: dict[str, darsia.Image | None] | None = None,
     ) -> darsia.Image:
+        products = scalar_products or {
+            "saturation_g": saturation_g,
+            "concentration_aq": concentration_aq,
+            "mass": mass,
+            "rescaled_saturation_g": rescaled_saturation_g,
+            "rescaled_concentration_aq": rescaled_concentration_aq,
+            "rescaled_mass": rescaled_mass,
+        }
         contour_img = img.copy()
         for segmentation_config in self.config.values():
             # Select values based on mode
             mode = segmentation_config.mode
-            if mode == "saturation_g":
-                if saturation_g is None:
-                    raise ValueError(f"Missing image for mode {mode}")
-                values = saturation_g
-            elif mode == "concentration_aq":
-                if concentration_aq is None:
-                    raise ValueError(f"Missing image for mode {mode}")
-                values = concentration_aq
-            elif mode == "mass":
-                if mass is None:
-                    raise ValueError(f"Missing image for mode {mode}")
-                values = mass
-            else:
-                raise ValueError(f"Unknown label {mode} in segmentation config.")
+            if mode not in products or products[mode] is None:
+                raise ValueError(f"Missing image for mode {mode}")
+            values = products[mode]
 
             # Extract masks based on thresholds
             masks = self.extract_mask(values, segmentation_config.thresholds)
