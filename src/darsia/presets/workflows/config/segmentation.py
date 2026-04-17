@@ -65,12 +65,12 @@ class SegmentationConfig:
 
     SUPPORTED_MODES = frozenset(
         {
-        "saturation_g",
-        "concentration_aq",
-        "mass",
-        "rescaled_mass",
-        "rescaled_saturation_g",
-        "rescaled_concentration_aq",
+            "saturation_g",
+            "concentration_aq",
+            "mass",
+            "rescaled_mass",
+            "rescaled_saturation_g",
+            "rescaled_concentration_aq",
         }
     )
 

@@ -166,7 +166,9 @@ def analysis_mass_from_context(
         # Log time
         time = mass_analysis_result.time
 
-        products, _ = analysis_scalar_products(mass_analysis_result=mass_analysis_result)
+        products, _ = analysis_scalar_products(
+            mass_analysis_result=mass_analysis_result
+        )
         mass = products["mass_total"]
         mass_g = products["mass_g"]
         mass_aq = products["mass_aq"]

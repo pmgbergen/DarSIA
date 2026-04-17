@@ -5,8 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-import darsia
 import numpy as np
+
+import darsia
 
 # Guard threshold preventing division by (near) zero detected mass.
 EPSILON = 1e-12
