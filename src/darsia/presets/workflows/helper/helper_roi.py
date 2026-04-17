@@ -44,10 +44,7 @@ def _build_color_to_mass_analysis(
     fluidflower: Rig,
 ) -> HeterogeneousColorToMassAnalysis:
     assert config.color_to_mass is not None
-    selected_basis, analysis_labels = select_labels_for_basis(
-        fluidflower, config.color_to_mass.basis
-    )
-    del selected_basis
+    _, analysis_labels = select_labels_for_basis(fluidflower, config.color_to_mass.basis)
 
     experiment_start = experiment.experiment_start
     state = experiment.pressure_temperature_protocol.get_state(experiment_start)
@@ -264,7 +261,10 @@ def launch_roi_helper_viewer(
 
 
 def helper_roi(cls: type[Rig], path: Path | list[Path], show: bool = False) -> None:
-    del show
+    if show:
+        logger.info(
+            "helper_roi received show=True. Interactive ROI helper always opens its viewer."
+        )
     config = FluidFlowerConfig(path, require_data=True, require_results=False)
     config.check("rig", "data", "protocol")
 
