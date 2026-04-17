@@ -8,6 +8,7 @@ from typing import Any
 import darsia
 import numpy as np
 
+# Guard threshold preventing division by (near) zero detected mass.
 EPSILON = 1e-12
 
 RESCALED_MODES = {

@@ -63,14 +63,16 @@ class SegmentationValueLabelsConfig:
 class SegmentationConfig:
     """Configuration for segmentation."""
 
-    SUPPORTED_MODES = {
+    SUPPORTED_MODES = frozenset(
+        {
         "saturation_g",
         "concentration_aq",
         "mass",
         "rescaled_mass",
         "rescaled_saturation_g",
         "rescaled_concentration_aq",
-    }
+        }
+    )
 
     label: str | None = None
     """Label for segmentation."""

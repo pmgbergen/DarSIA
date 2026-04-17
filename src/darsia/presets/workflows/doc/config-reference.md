@@ -134,7 +134,15 @@ Supported keys:
 - `formats` (list of output formats: `["jpg", "npz"]`)
 - `folder` (output folder, defaults to `<results>/thresholding`)
 - `[analysis.thresholding.layers.<name>]` (one mask layer per entry):
-  - `mode` (`concentration_aq`, `saturation_g`, `mass_total`, `mass_g`, `mass_aq`, `rescaled_mass`, `rescaled_saturation_g`, `rescaled_concentration_aq`)
+  - `mode`:
+    - `concentration_aq`
+    - `saturation_g`
+    - `mass_total`
+    - `mass_g`
+    - `mass_aq`
+    - `rescaled_mass`
+    - `rescaled_saturation_g`
+    - `rescaled_concentration_aq`
   - `threshold_min` (float)
   - `threshold_max` (float)
   - `label` (string)
