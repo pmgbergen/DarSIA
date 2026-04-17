@@ -14,9 +14,7 @@ from darsia.presets.workflows.analysis.scalar_products import (
     analysis_scalar_products,
     requires_rescaled_modes,
 )
-from darsia.presets.workflows.analysis.streaming import (
-    publish_stream_images,
-)
+from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SegmentationContours
 

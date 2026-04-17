@@ -48,12 +48,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .time_data import (
-    ImagePathData,
-    ImageTimeData,
-    ImageTimeIntervalData,
-    TimeData,
-)
+from .time_data import ImagePathData, ImageTimeData, ImageTimeIntervalData, TimeData
 
 logger = logging.getLogger(__name__)
 
