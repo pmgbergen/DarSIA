@@ -673,3 +673,50 @@ class TestColorPathMode:
     def test_dataclass_default(self):
         cfg = ColorPathsConfig()
         assert cfg.mode == "auto"
+
+
+class TestColorPathSingleLabelConfig:
+    """Tests for single-label calibration configuration keys."""
+
+    def _load_cfg(self, tmp_path: Path, extra: str = "") -> ColorPathsConfig:
+        toml_path = _write_toml(tmp_path, _minimal_color_paths_toml(extra=extra))
+        data_reg = _make_data_registry(tmp_path)
+        cfg = ColorPathsConfig()
+        cfg.load(
+            path=toml_path,
+            data=tmp_path,
+            results=tmp_path,
+            data_registry=data_reg,
+        )
+        return cfg
+
+    def test_default_scope_and_flags(self, tmp_path):
+        cfg = self._load_cfg(tmp_path)
+        assert cfg.calibration_scope == "full"
+        assert cfg.target_labels == []
+        assert cfg.strict_stored_artifacts is False
+        assert cfg.tracer_color_spectrum_folder == tmp_path / "calibration" / "tracer_color_spectrum"
+
+    def test_single_label_scope(self, tmp_path):
+        cfg = self._load_cfg(tmp_path, 'calibration_scope = "single_label"')
+        assert cfg.calibration_scope == "single_label"
+
+    def test_invalid_scope_raises(self, tmp_path):
+        with pytest.raises(ValueError, match="calibration_scope"):
+            self._load_cfg(tmp_path, 'calibration_scope = "bad_scope"')
+
+    def test_target_labels_accepts_list(self, tmp_path):
+        cfg = self._load_cfg(tmp_path, "target_labels = [1, 3]")
+        assert cfg.target_labels == [1, 3]
+
+    def test_target_labels_accepts_single_int(self, tmp_path):
+        cfg = self._load_cfg(tmp_path, "target_labels = 4")
+        assert cfg.target_labels == [4]
+
+    def test_target_labels_invalid_type_raises(self, tmp_path):
+        with pytest.raises(ValueError, match="target_labels"):
+            self._load_cfg(tmp_path, 'target_labels = "a"')
+
+    def test_strict_stored_artifacts(self, tmp_path):
+        cfg = self._load_cfg(tmp_path, "strict_stored_artifacts = true")
+        assert cfg.strict_stored_artifacts is True

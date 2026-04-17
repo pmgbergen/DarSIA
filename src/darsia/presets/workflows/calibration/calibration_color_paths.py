@@ -9,13 +9,92 @@ from matplotlib import pyplot as plt
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.basis import label_ids_from_image, select_labels_for_basis
-from darsia.presets.workflows.calibration.metadata import write_calibration_metadata
+from darsia.presets.workflows.calibration.metadata import (
+    read_calibration_metadata,
+    validate_basis_metadata,
+    write_calibration_metadata,
+)
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.utils.standard_images import roi_to_mask
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_target_labels(
+    selected_labels: darsia.Image, target_labels: list[int], ignore_labels: list[int]
+) -> list[int]:
+    valid_labels = set(label_ids_from_image(selected_labels))
+    if not target_labels:
+        raise ValueError(
+            "Single-label calibration requires non-empty [color_paths].target_labels."
+        )
+    targets = list(target_labels)
+    invalid = sorted(set(targets).difference(valid_labels))
+    if invalid:
+        raise ValueError(
+            "Requested target_labels are not present in the selected basis labels: "
+            f"{invalid}."
+        )
+    ignored = sorted(set(targets).intersection(set(ignore_labels)))
+    if ignored:
+        raise ValueError(
+            "Requested target_labels include ignored labels from "
+            "[color_paths].ignore_labels: "
+            f"{ignored}."
+        )
+    return targets
+
+
+def _load_or_compute_tracer_color_spectrum(
+    *,
+    color_path_regression: darsia.LabelColorPathMapRegression,
+    calibration_images: list[darsia.Image],
+    baseline: darsia.Image,
+    ignore_spectrum: darsia.LabelColorSpectrumMap | None,
+    threshold_calibration: float,
+    tracer_color_spectrum_folder: Path,
+    strict_stored_artifacts: bool,
+    verbose: bool,
+) -> darsia.LabelColorSpectrumMap:
+    tracer_files = list(tracer_color_spectrum_folder.glob("color_spectrum_*.json"))
+    if tracer_files:
+        logger.info(
+            "Loading stored tracer spectrum from %s", tracer_color_spectrum_folder
+        )
+        try:
+            return darsia.LabelColorSpectrumMap.load(tracer_color_spectrum_folder)
+        except Exception as exc:
+            if strict_stored_artifacts:
+                raise RuntimeError(
+                    "Failed to load stored tracer color spectrum in strict mode from "
+                    f"{tracer_color_spectrum_folder}."
+                ) from exc
+            logger.warning(
+                "Failed to load stored tracer spectrum from %s (%s). Falling back to "
+                "recomputation.",
+                tracer_color_spectrum_folder,
+                exc,
+            )
+
+    if strict_stored_artifacts:
+        raise FileNotFoundError(
+            "Missing stored tracer color spectrum in strict mode: "
+            f"{tracer_color_spectrum_folder}"
+        )
+
+    logger.warning(
+        "Stored tracer spectrum not found at %s. Falling back to recomputation.",
+        tracer_color_spectrum_folder,
+    )
+    return color_path_regression.get_color_spectrum(
+        images=calibration_images,
+        baseline=baseline,
+        ignore=ignore_spectrum,
+        threshold_significant=threshold_calibration,
+        verbose=verbose,
+    )
 
 
 def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> None:
@@ -110,12 +189,21 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
 
     # ! ---- IDENTIFY AND STORE (RELATIVE) COLOR RANGE ----
 
-    tracer_color_range = darsia.ColorRange.from_images(
-        images=calibration_images,
-        baseline=fluidflower.baseline,
-        mask=calibration_mask,
-    )
-    tracer_color_range.save(config.color_paths.color_range_file)
+    if config.color_paths.calibration_scope == "single_label":
+        color_range_json = config.color_paths.color_range_file.with_suffix(".json")
+        if not color_range_json.exists():
+            raise FileNotFoundError(
+                "Single-label calibration requires stored color_range_file: "
+                f"{color_range_json}"
+            )
+        tracer_color_range = darsia.ColorRange.load(config.color_paths.color_range_file)
+    else:
+        tracer_color_range = darsia.ColorRange.from_images(
+            images=calibration_images,
+            baseline=fluidflower.baseline,
+            mask=calibration_mask,
+        )
+        tracer_color_range.save(config.color_paths.color_range_file)
 
     # ! ---- COLOR PATH TOOL ----
 
@@ -132,7 +220,39 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
     ignore_mode = config.color_paths.ignore_baseline_spectrum
     ignore_spectrum: darsia.LabelColorSpectrumMap | None = None
 
-    if ignore_mode in ("baseline", "expanded"):
+    if ignore_mode in ("baseline", "expanded") and (
+        config.color_paths.calibration_scope == "single_label"
+    ):
+        if config.color_paths.baseline_color_spectrum_folder.exists():
+            ignore_spectrum = darsia.LabelColorSpectrumMap.load(
+                config.color_paths.baseline_color_spectrum_folder
+            )
+        elif config.color_paths.strict_stored_artifacts:
+            raise FileNotFoundError(
+                "Single-label calibration in strict mode requires stored "
+                "baseline_color_spectrum_folder: "
+                f"{config.color_paths.baseline_color_spectrum_folder}"
+            )
+        else:
+            logger.warning(
+                "Stored baseline spectrum not found at %s. Falling back to "
+                "recomputation.",
+                config.color_paths.baseline_color_spectrum_folder,
+            )
+            baseline_color_spectrum = color_path_regression.get_color_spectrum(
+                images=baseline_images,
+                baseline=fluidflower.baseline,
+                threshold_significant=config.color_paths.threshold_baseline,
+                verbose=show,
+            )
+            if ignore_mode == "expanded":
+                ignore_spectrum = color_path_regression.expand_color_spectrum(
+                    color_spectrum=baseline_color_spectrum,
+                    verbose=False,
+                )
+            else:
+                ignore_spectrum = baseline_color_spectrum
+    elif ignore_mode in ("baseline", "expanded"):
         baseline_color_spectrum: darsia.LabelColorSpectrumMap = (
             color_path_regression.get_color_spectrum(
                 images=baseline_images,
@@ -163,16 +283,56 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
 
     # ! ---- EXTRACT COLOR SPECTRUM OF TRACERS ---- ! #
 
-    tracer_color_spectrum = color_path_regression.get_color_spectrum(
-        images=calibration_images,
+    tracer_color_spectrum = _load_or_compute_tracer_color_spectrum(
+        color_path_regression=color_path_regression,
+        calibration_images=calibration_images,
         baseline=fluidflower.baseline,
-        ignore=ignore_spectrum,
-        threshold_significant=config.color_paths.threshold_calibration,
+        ignore_spectrum=ignore_spectrum,
+        threshold_calibration=config.color_paths.threshold_calibration,
+        tracer_color_spectrum_folder=config.color_paths.tracer_color_spectrum_folder,
+        strict_stored_artifacts=config.color_paths.strict_stored_artifacts,
         verbose=show,
+    )
+    tracer_color_spectrum.save(config.color_paths.tracer_color_spectrum_folder)
+    write_calibration_metadata(
+        config.color_paths.tracer_color_spectrum_folder / "metadata.json",
+        basis=selected_basis,
+        label_ids=label_ids_from_image(selected_labels),
     )
     preview_calibration_image = calibration_images[0] if calibration_images else None
 
     # Find a relative color path through the significant boxes
+    if config.color_paths.calibration_scope == "single_label":
+        existing_map = darsia.LabelColorPathMap.load(
+            config.color_paths.calibration_file
+        )
+        validate_basis_metadata(
+            metadata=read_calibration_metadata(
+                config.color_paths.calibration_file / "metadata.json"
+            ),
+            expected_basis=selected_basis,
+            expected_label_ids=label_ids_from_image(selected_labels),
+            artifact="color_paths",
+            strict=True,
+        )
+        validate_basis_metadata(
+            metadata=read_calibration_metadata(
+                config.color_paths.tracer_color_spectrum_folder / "metadata.json"
+            ),
+            expected_basis=selected_basis,
+            expected_label_ids=label_ids_from_image(selected_labels),
+            artifact="tracer_color_spectrum",
+            strict=True,
+        )
+        target_labels = _resolve_target_labels(
+            selected_labels=selected_labels,
+            target_labels=config.color_paths.target_labels,
+            ignore_labels=config.color_paths.ignore_labels,
+        )
+    else:
+        existing_map = None
+        target_labels = None
+
     label_color_path_map: darsia.LabelColorPathMap = (
         color_path_regression.find_color_path(
             color_spectrum=tracer_color_spectrum,
@@ -181,6 +341,8 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
             directory=config.color_paths.calibration_file,
             weighting=config.color_paths.histogram_weighting,
             mode=config.color_paths.mode,
+            target_labels=target_labels,
+            existing_map=existing_map,
             preview_image=preview_calibration_image,
             preview_images=calibration_images,
             preview_baseline=fluidflower.baseline,
@@ -222,6 +384,7 @@ def collect_existing_calibration_paths_to_delete(path: Path | list[Path]) -> lis
     if config.color_paths is not None:
         paths_to_delete.append(config.color_paths.calibration_file)
         paths_to_delete.append(config.color_paths.baseline_color_spectrum_folder)
+        paths_to_delete.append(config.color_paths.tracer_color_spectrum_folder)
         paths_to_delete.append(config.color_paths.color_range_file)
     if config.data is not None and config.data.cache is not None:
         paths_to_delete.append(config.data.cache)

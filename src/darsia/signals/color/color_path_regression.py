@@ -1470,6 +1470,8 @@ class LabelColorPathMapRegression:
         directory: Path | None = None,
         weighting: Literal["threshold", "wls", "wls_sqrt", "wls_log"] = "threshold",
         mode: Literal["auto", "manual"] = "auto",
+        target_labels: list[int] | None = None,
+        existing_map: darsia.LabelColorPathMap | None = None,
         preview_image: darsia.Image | None = None,
         preview_images: list[darsia.Image] | None = None,
         preview_baseline: darsia.Image | None = None,
@@ -1490,6 +1492,10 @@ class LabelColorPathMapRegression:
             mode (Literal): Color-path selection mode.
                 ``"auto"`` returns the automated result.
                 ``"manual"`` enables interactive key-color postprocessing.
+            target_labels (list[int] | None): Labels to update. If ``None``, all labels
+                from ``color_spectrum`` are calibrated.
+            existing_map (LabelColorPathMap | None): Existing map used as basis when
+                ``target_labels`` is provided. Non-target labels are copied unchanged.
             preview_image (darsia.Image | None): Calibration image for manual preview.
             preview_images (list[darsia.Image] | None): Calibration images for manual
                 preview navigation.
@@ -1500,29 +1506,46 @@ class LabelColorPathMapRegression:
             LabelColorPathMap: The relative color path map through the significant boxes.
 
         """
-        label_color_path_map = darsia.LabelColorPathMap(
-            dict(
-                (
-                    label,
-                    self._find_color_path(
-                        spectrum=color_spectrum[label],
-                        label=label,
-                        ignore=ignore[label] if ignore is not None else None,
-                        num_segments=num_segments,
-                        name=f"Color Path for Label {label}",
-                        directory=directory,
-                        weighting=weighting,
-                        mode=mode,
-                        preview_image=preview_image,
-                        preview_images=preview_images,
-                        preview_baseline=preview_baseline,
-                        verbose=verbose,
-                    ),
-                )
-                for label in color_spectrum.keys()
+        if target_labels is None:
+            labels_to_process = list(color_spectrum.keys())
+        else:
+            labels_to_process = list(target_labels)
+            missing_in_spectrum = sorted(
+                set(labels_to_process) - set(color_spectrum.keys())
             )
+            if missing_in_spectrum:
+                raise ValueError(
+                    "Requested target_labels are missing in color_spectrum: "
+                    f"{missing_in_spectrum}."
+                )
+            if existing_map is None:
+                raise ValueError(
+                    "existing_map is required when target_labels is provided."
+                )
+
+        updated_map: dict[int, darsia.ColorPath] = (
+            {int(label): path for label, path in existing_map.items()}
+            if existing_map is not None
+            else {}
         )
-        return label_color_path_map
+
+        for label in labels_to_process:
+            updated_map[label] = self._find_color_path(
+                spectrum=color_spectrum[label],
+                label=label,
+                ignore=ignore[label] if ignore is not None else None,
+                num_segments=num_segments,
+                name=f"Color Path for Label {label}",
+                directory=directory,
+                weighting=weighting,
+                mode=mode,
+                preview_image=preview_image,
+                preview_images=preview_images,
+                preview_baseline=preview_baseline,
+                verbose=verbose,
+            )
+
+        return darsia.LabelColorPathMap(updated_map)
 
     def _manual_postprocess_color_path(
         self,

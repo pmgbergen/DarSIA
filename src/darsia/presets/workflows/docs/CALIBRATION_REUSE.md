@@ -27,6 +27,7 @@ The bundle includes (when available):
 - `color_paths/`
 - `color_to_mass/`
 - `baseline_color_spectrum/`
+- `tracer_color_spectrum/`
 - `color_range/color_range.json`
 - `manifest.json`
 
@@ -58,6 +59,7 @@ Copy the generated snippet entries into your config file. Typical keys are:
 
 - `[color_paths].calibration_file`
 - `[color_paths].baseline_color_spectrum_folder`
+- `[color_paths].tracer_color_spectrum_folder`
 - `[color_paths].color_range_file`
 - `[color_to_mass].calibration_folder`
 

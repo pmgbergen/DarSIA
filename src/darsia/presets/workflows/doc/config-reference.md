@@ -64,6 +64,21 @@ Define reusable selections in top-level `[data]` subsections:
 
 Then reference these keys from workflow sections (for example `color_paths.data = ["calib_a"]`).
 
+### `[color_paths]` single-label update keys
+In addition to standard full calibration, color-path calibration supports selective
+label updates from stored calibration artifacts:
+
+- `calibration_scope = "full" | "single_label"` (default: `"full"`)
+- `target_labels = 3` or `target_labels = [3, 5]` (used for `"single_label"`)
+- `tracer_color_spectrum_folder = "/absolute/path/to/tracer_color_spectrum"` (optional)
+- `strict_stored_artifacts = true | false` (default: `false`)
+
+When `calibration_scope = "single_label"`, DarSIA reuses stored:
+- `[color_paths].color_range_file`
+- `[color_paths].baseline_color_spectrum_folder` (if baseline ignore mode is enabled)
+- `[color_paths].tracer_color_spectrum_folder`
+- `[color_paths].calibration_file` (existing paths to be partially updated)
+
 ## ROI registry
 Define reusable ROI entries under top-level `[roi.<key>]` and reference keys from:
 - `analysis.mass.roi = ["roi_key"]`
