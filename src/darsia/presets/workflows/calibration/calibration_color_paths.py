@@ -350,9 +350,6 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
         )
     )
 
-    # Free memory for performance
-    del calibration_images
-
     # Store the color paths to file
     label_color_path_map.save(config.color_paths.calibration_file)
     write_calibration_metadata(
