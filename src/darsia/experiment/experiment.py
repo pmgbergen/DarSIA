@@ -198,7 +198,11 @@ class ProtocolledExperiment:
         if self.imaging_protocol is not None:
             return self.imaging_protocol
 
-        resolved_path = path.resolve()
+        # NOTE: The correct way would be to use:
+        # resolved_path = path.resolve()
+        # However, this can be very expensive for large datasets.
+        # We take the risk, and use:
+        resolved_path = path
         resolved_parent = resolved_path.parent
         parent_cached = self._parent_protocol_cache.get(resolved_parent)
         if parent_cached is not None:
@@ -218,6 +222,21 @@ class ProtocolledExperiment:
             except ValueError:
                 continue
         raise ValueError(f"No imaging protocol configured for image path: {path}")
+
+    # NOTE: The followoing method vectorizes the above logic. Kept for future reference.
+
+    # def _protocol_for_paths(self, paths: list[Path]) -> list[darsia.ImagingProtocol]:
+    #     if self.imaging_protocol is not None:
+    #         # The single-protocol case.
+    #         protocols = [self.imaging_protocol] * len(paths)
+    #     else:
+    #         # The multi-protocol case.
+    #         parents = [path.parent for path in paths]
+    #         protocol_map = {
+    #             folder: protocol for folder, protocol in self._resolved_protocol_folders
+    #         }
+    #         protocols = [protocol_map.get(parent_id, None) for parent_id in parents]
+    #     return protocols
 
     def iter_available(self, paths: list[Path]) -> list[tuple[int, Path, datetime]]:
         available: list[tuple[int, Path, datetime]] = []
