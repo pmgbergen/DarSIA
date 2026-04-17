@@ -169,6 +169,9 @@ class AnalysisThresholdingConfig:
         "mass_total",
         "mass_g",
         "mass_aq",
+        "rescaled_mass",
+        "rescaled_saturation_g",
+        "rescaled_concentration_aq",
     }
 
     def load(self, sec: dict, results: Path | None) -> "AnalysisThresholdingConfig":

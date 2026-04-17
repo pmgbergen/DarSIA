@@ -63,6 +63,17 @@ class SegmentationValueLabelsConfig:
 class SegmentationConfig:
     """Configuration for segmentation."""
 
+    SUPPORTED_MODES = frozenset(
+        {
+            "saturation_g",
+            "concentration_aq",
+            "mass",
+            "rescaled_mass",
+            "rescaled_saturation_g",
+            "rescaled_concentration_aq",
+        }
+    )
+
     label: str | None = None
     """Label for segmentation."""
     mode: str | None = None
@@ -83,6 +94,11 @@ class SegmentationConfig:
     def load(self, sec: dict) -> "SegmentationConfig":
         self.label = _get_key(sec, "label", required=True, type_=str)
         self.mode = _get_key(sec, "mode", required=True, type_=str)
+        if self.mode not in self.SUPPORTED_MODES:
+            raise ValueError(
+                f"Unsupported analysis.segmentation.mode '{self.mode}'. Supported modes: "
+                f"{', '.join(sorted(self.SUPPORTED_MODES))}."
+            )
         self.thresholds = _get_key(sec, "thresholds", required=True, type_=list)
         self.color = _get_key(sec, "color", required=True, type_=list)
         self.alpha = _get_key(sec, "alpha", required=False, type_=list)

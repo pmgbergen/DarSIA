@@ -6,7 +6,6 @@ import logging
 from collections.abc import Callable
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 import darsia
@@ -14,12 +13,15 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.scalar_products import (
+    analysis_scalar_products,
+    compute_rescaled_mass_products,
+)
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.config.analysis import AnalysisMassConfig
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
-EPSILON = 1e-12
 
 
 def _save_scalar_image_artifacts(
@@ -164,27 +166,25 @@ def analysis_mass_from_context(
         # Log time
         time = mass_analysis_result.time
 
-        # Fetch results
-        mass = mass_analysis_result.mass
-        mass_g = mass_analysis_result.mass_g
-        mass_aq = mass_analysis_result.mass_aq
-        saturation_g = mass_analysis_result.saturation_g
-        concentration_aq = mass_analysis_result.concentration_aq
+        products, _ = analysis_scalar_products(
+            mass_analysis_result=mass_analysis_result
+        )
+        mass = products["mass_total"]
+        mass_g = products["mass_g"]
+        mass_aq = products["mass_aq"]
+        saturation_g = products["saturation_g"]
+        concentration_aq = products["concentration_aq"]
 
-        # Compute total integrated mass and rescale with exact injected mass.
-        detected_mass_total = fluidflower.geometry.integrate(mass)
-        exact_mass_total = experiment.injection_protocol.injected_mass(date=img.date)
-        mass_scaling_factor = (
-            exact_mass_total / detected_mass_total
-            if np.abs(detected_mass_total) > EPSILON
-            else 1.0
+        rescaled = compute_rescaled_mass_products(
+            mass_analysis_result=mass_analysis_result,
+            geometry=fluidflower.geometry,
+            injection_protocol=experiment.injection_protocol,
+            co2_mass_analysis=co2_mass_analysis,
+            date=img.date,
         )
-        rescaled_mass = darsia.weight(mass, mass_scaling_factor)
-        rescaled_mass_analysis_result = co2_mass_analysis.inverse_mass_analysis(
-            rescaled_mass
-        )
-        rescaled_saturation_g = rescaled_mass_analysis_result.saturation_g
-        rescaled_concentration_aq = rescaled_mass_analysis_result.concentration_aq
+        rescaled_mass = rescaled.rescaled_result.mass
+        rescaled_saturation_g = rescaled.rescaled_result.saturation_g
+        rescaled_concentration_aq = rescaled.rescaled_result.concentration_aq
 
         # Store data to disk
         _save_scalar_image_artifacts(mass, output_folders["mass"], path.stem)
@@ -208,12 +208,12 @@ def analysis_mass_from_context(
 
         # Prepare row data for DataFrame
         row_data = {"time": time, "datetime": img.date, "image_stem": path.stem}
-        row_data["detected_mass_total"] = detected_mass_total
-        row_data["exact_mass_total"] = exact_mass_total
+        row_data["detected_mass_total"] = rescaled.detected_mass_total
+        row_data["exact_mass_total"] = rescaled.exact_mass_total
         row_data["detected_mass_total_rescaled"] = fluidflower.geometry.integrate(
             rescaled_mass
         )
-        row_data["mass_scaling_factor"] = mass_scaling_factor
+        row_data["mass_scaling_factor"] = rescaled.mass_scaling_factor
 
         # Compute exact mass in ROIs and add to row data
         for roi_config in config.analysis.mass.roi.values():
