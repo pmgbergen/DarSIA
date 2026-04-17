@@ -38,6 +38,7 @@ class HelperRoiConfig:
         data: Path | None,
         data_registry: DataRegistry | None,
     ) -> "HelperRoiConfig":
+        """Load ROI-helper configuration into this instance and return ``self``."""
         sub_sec = _get_section(sec, "roi")
         raw_mode = _get_key(
             sub_sec, "mode", default=self.mode, required=False, type_=str

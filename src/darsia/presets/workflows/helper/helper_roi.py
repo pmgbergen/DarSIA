@@ -167,8 +167,8 @@ def _corners_from_box(
     row1 = int(max(row0, row_slice.stop - 1))
     col0 = int(col_slice.start)
     col1 = int(max(col0, col_slice.stop - 1))
-    voxels = darsia.VoxelArray([[row0, col0], [row1, col1]])
-    coords = image.coordinatesystem.coordinate(voxels)
+    pixels = darsia.VoxelArray([[row0, col0], [row1, col1]])
+    coords = image.coordinatesystem.coordinate(pixels)
     return np.asarray(coords[0]), np.asarray(coords[1])
 
 
