@@ -23,4 +23,9 @@ python -m darsia.presets.workflows.user_interface_analysis --mass --segmentation
 python -m darsia.presets.workflows.user_interface_comparison --events --config /abs/path/multi.toml
 ```
 
+## 5) Helper (optional)
+```bash
+python -m darsia.presets.workflows.user_interface_helper --roi --config /abs/path/common.toml /abs/path/run.toml
+```
+
 See [config reference](./config-reference.md) for required sections.

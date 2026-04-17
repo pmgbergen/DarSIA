@@ -19,6 +19,16 @@ roi = ["storage"]
 ## Inline ROI definitions
 Inline blocks are also supported (for example under analysis fingers or color paths).
 
+## ROI helper template output
+The ROI helper emits a copy-ready template in ROI registry format:
+
+```toml
+[roi.roi_name]
+name = "roi_name"
+corner_1 = [x1, y1]
+corner_2 = [x2, y2]
+```
+
 ## Coordinate convention
 - Coordinates are physical domain coordinates (meters).
 - ROI corners are normalized from the two opposite corners.

@@ -14,6 +14,7 @@ This is the user-facing map of workflow TOML sections currently loaded by `Fluid
 - `[color_paths]`: color-path calibration data selection and options.
 - `[color_to_mass]`: color-to-mass calibration options.
 - `[analysis]`: analysis data and feature-specific subsections.
+- `[helper]`: optional helper workflows (currently ROI helper).
 - `[download]`: download utility config (optional).
 - `[utils]`: optional utility defaults (calibration bundle import/export paths).
 
@@ -87,6 +88,21 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `[analysis.volume]`: volume analysis and optional ROIs
 - `[analysis.fingers]`: finger detection mode/threshold and optional ROIs
 - `[analysis.thresholding]`: threshold selected analysis modes and export mask previews
+
+## Helper subsections
+- `[helper.roi]`: interactive ROI assistant on selected data.
+  - `mode` (default `none`): one of
+    - `none`
+    - `concentration_aq`
+    - `saturation_g`
+    - `mass` (alias for `mass_total`)
+    - `mass_total`
+    - `mass_g`
+    - `mass_aq`
+    - `rescaled_mass`
+    - `rescaled_saturation_g`
+    - `rescaled_concentration_aq`
+  - `data`: selector key or keys resolved from top-level `[data.*]` registry.
 
 ### Segmentation contour options
 For each segmentation entry, the following contour styling keys are supported:
