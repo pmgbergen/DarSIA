@@ -399,7 +399,9 @@ class CO2MassAnalysis:
             color_signal=None,  # Exclude! TODO
         )
 
-    def inverse_mass_analysis(self, mass: darsia.Image) -> darsia.SimpleMassAnalysisResults:
+    def inverse_mass_analysis(
+        self, mass: darsia.Image
+    ) -> "darsia.SimpleMassAnalysisResults":
         """Determine phase maps from a total mass map and recompute components.
 
         Args:
