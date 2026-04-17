@@ -44,7 +44,7 @@ def test_corners_from_box_returns_two_coordinates() -> None:
     assert not np.allclose(corner_1, corner_2)
 
 
-def test_scalar_image_for_mode_maps_mass_alias(monkeypatch) -> None:
+def test_scalar_image_for_mode_maps_mass_to_mass_total(monkeypatch) -> None:
     mass_image = darsia.ScalarImage(np.ones((2, 2), dtype=float), dimensions=[1.0, 1.0])
     called = {"requested_modes": None}
 

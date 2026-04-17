@@ -39,9 +39,10 @@ class HelperRoiConfig:
         data_registry: DataRegistry | None,
     ) -> "HelperRoiConfig":
         sub_sec = _get_section(sec, "roi")
-        self.mode = _get_key(
+        raw_mode = _get_key(
             sub_sec, "mode", default=self.mode, required=False, type_=str
-        ).strip()
+        )
+        self.mode = str(raw_mode).strip()
         if self.mode not in self.SUPPORTED_MODES:
             raise ValueError(
                 f"Unsupported helper.roi.mode '{self.mode}'. Supported modes: "
