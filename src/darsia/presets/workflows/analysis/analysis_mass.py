@@ -177,7 +177,7 @@ def analysis_mass_from_context(
         mass_scaling_factor = (
             exact_mass_total / detected_mass_total
             if np.abs(detected_mass_total) > EPSILON
-            else 0.0
+            else 1.0
         )
         rescaled_mass = darsia.weight(mass, mass_scaling_factor)
         rescaled_mass_analysis_result = co2_mass_analysis.inverse_mass_analysis(

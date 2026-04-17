@@ -66,7 +66,7 @@ def test_analysis_mass_writes_rescaled_artifacts(
         def injected_mass(
             self, *, date: datetime | None, roi: Any = None
         ) -> float:
-            del date, roi
+            _ = (date, roi)
             return injected_mass
 
     class _FakeFluidFlower:
@@ -75,8 +75,7 @@ def test_analysis_mass_writes_rescaled_artifacts(
                 space_dim=2, num_voxels=(4, 4), dimensions=[1.0, 1.0]
             )
 
-        def read_image(self, path: Path) -> darsia.Image:
-            del path
+        def read_image(self, _path: Path) -> darsia.Image:
             return darsia.Image(
                 np.zeros((4, 4, 3), dtype=np.uint8),
                 dimensions=[1.0, 1.0],
@@ -90,7 +89,7 @@ def test_analysis_mass_writes_rescaled_artifacts(
         def __init__(self, co2_mass_analysis: CO2MassAnalysis) -> None:
             self.co2_mass_analysis = co2_mass_analysis
 
-        def __call__(self, image: darsia.Image):  # noqa: ANN201
+        def __call__(self, image: darsia.Image) -> darsia.SimpleMassAnalysisResults:
             c_aq = darsia.ScalarImage(
                 np.full((4, 4), 0.4, dtype=float),
                 dimensions=[1.0, 1.0],
