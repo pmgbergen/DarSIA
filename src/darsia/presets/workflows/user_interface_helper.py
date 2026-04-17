@@ -1,0 +1,57 @@
+"""User interface to helper workflows."""
+
+import argparse
+import logging
+
+from darsia.presets.workflows.helper.helper_roi import helper_roi
+from darsia.presets.workflows.rig import Rig
+
+logger = logging.getLogger(__name__)
+
+
+def build_parser_for_helper():
+    parser = argparse.ArgumentParser(description="Helper run.")
+    parser.add_argument(
+        "--config",
+        type=str,
+        nargs="+",
+        required=True,
+        help="Path(s) to config file(s). Multiple files can be specified.",
+    )
+    parser.add_argument(
+        "--roi",
+        action="store_true",
+        help="Run ROI helper workflow.",
+    )
+    parser.add_argument(
+        "--show",
+        action="store_true",
+        help="Reserved for parity with other workflow interfaces.",
+    )
+    parser.add_argument(
+        "--info", action="store_true", help="Provide help for activated flags."
+    )
+    return parser
+
+
+def print_help_for_flags(args, parser):
+    if args.info:
+        if args.roi:
+            print("ROI helper: interactive ROI selection with copy-ready TOML template.")
+        if not args.roi:
+            parser.print_help()
+
+
+def run_helper(rig_cls: type[Rig], args):
+    if not args.roi:
+        raise ValueError("No helper type specified. Choose from --roi.")
+    if args.roi:
+        helper_roi(rig_cls, args.config, show=args.show)
+
+
+def preset_helper(rig_cls: type[Rig], **kwargs):
+    del kwargs
+    parser = build_parser_for_helper()
+    args = parser.parse_args()
+    print_help_for_flags(args, parser)
+    run_helper(rig_cls, args)

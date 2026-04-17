@@ -652,6 +652,25 @@ def _run_analysis_workflow(
     run_analysis(rig_cls, args, stream_callback=stream_callback)
 
 
+def _run_helper_workflow(
+    config_paths: list[str],
+    rig_spec: str,
+    options: dict[str, bool],
+) -> None:
+    """Run helper workflow in a worker process."""
+    from darsia.presets.workflows.user_interface_helper import run_helper
+
+    paths = normalize_paths(config_paths)
+    rig_cls = resolve_rig_class(rig_spec)
+    args = argparse.Namespace(
+        config=paths,
+        roi=options["roi"],
+        show=options["show"],
+        info=False,
+    )
+    run_helper(rig_cls, args)
+
+
 def _run_comparison_workflow(
     config_path: str, rig_spec: str, options: dict[str, bool]
 ) -> None:
@@ -850,17 +869,20 @@ class WorkflowGUI:
         self.setup_frame = self.ttk.Frame(notebook)
         self.calibration_frame = self.ttk.Frame(notebook)
         self.analysis_frame = self.ttk.Frame(notebook)
+        self.helper_frame = self.ttk.Frame(notebook)
         self.comparison_frame = self.ttk.Frame(notebook)
         self.utils_frame = self.ttk.Frame(notebook)
         notebook.add(self.setup_frame, text="Setup")
         notebook.add(self.calibration_frame, text="Calibration")
         notebook.add(self.analysis_frame, text="Analysis")
+        notebook.add(self.helper_frame, text="Helper")
         notebook.add(self.comparison_frame, text="Comparison")
         notebook.add(self.utils_frame, text="Utils")
 
         self._build_setup_tab()
         self._build_calibration_tab()
         self._build_analysis_tab()
+        self._build_helper_tab()
         self._build_comparison_tab()
         self._build_utils_tab()
 
@@ -958,6 +980,20 @@ class WorkflowGUI:
             self.comparison_frame,
             text="Run comparison",
             command=self._run_comparison_clicked,
+        ).pack(fill=self.tk.X, pady=6)
+
+    def _build_helper_tab(self) -> None:
+        self.helper_roi = self.tk.BooleanVar(value=False)
+        self.helper_show = self.tk.BooleanVar(value=False)
+        for label, var in [
+            ("ROI", self.helper_roi),
+            ("Show plots", self.helper_show),
+        ]:
+            self.ttk.Checkbutton(self.helper_frame, text=label, variable=var).pack(
+                anchor=self.tk.W
+            )
+        self.ttk.Button(
+            self.helper_frame, text="Run helper", command=self._run_helper_clicked
         ).pack(fill=self.tk.X, pady=6)
 
     def _build_utils_tab(self) -> None:
@@ -1645,6 +1681,28 @@ class WorkflowGUI:
             self.rig_spec.get(),
             _run_comparison_workflow,
             str(ctx.config_paths[0]),
+            self.rig_spec.get(),
+            options,
+        )
+
+    def _run_helper_clicked(self) -> None:
+        try:
+            ctx = self._context()
+        except Exception as e:
+            self.messagebox.showerror("Invalid configuration", str(e))
+            return
+        options = {
+            "roi": self.helper_roi.get(),
+            "show": self.helper_show.get(),
+        }
+        actions = enabled_option_labels(options)
+        self._run_async(
+            "helper",
+            actions,
+            ctx.config_paths,
+            self.rig_spec.get(),
+            _run_helper_workflow,
+            [str(path) for path in ctx.config_paths],
             self.rig_spec.get(),
             options,
         )
