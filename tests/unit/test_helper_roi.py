@@ -6,6 +6,7 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.helper.helper_roi import (
+    _box_from_rectangle_selection,
     _box_from_zoom_limits,
     _corners_from_box,
     _scalar_image_for_mode,
@@ -31,6 +32,33 @@ def test_box_from_zoom_limits_clips_to_shape() -> None:
     assert box is not None
     rows, cols = box
     assert rows.start == 2
+    assert rows.stop == 10
+    assert cols.start == 0
+    assert cols.stop == 9
+
+
+def test_box_from_rectangle_selection_handles_none_event_data() -> None:
+    box = _box_from_rectangle_selection(
+        x_press=None,
+        y_press=1.0,
+        x_release=2.0,
+        y_release=3.0,
+        shape=(10, 20),
+    )
+    assert box is None
+
+
+def test_box_from_rectangle_selection_clips_to_shape() -> None:
+    box = _box_from_rectangle_selection(
+        x_press=-2.0,
+        y_press=1.1,
+        x_release=8.5,
+        y_release=100.0,
+        shape=(10, 20),
+    )
+    assert box is not None
+    rows, cols = box
+    assert rows.start == 1
     assert rows.stop == 10
     assert cols.start == 0
     assert cols.stop == 9

@@ -172,6 +172,31 @@ def _corners_from_box(
     return np.asarray(coords[0]), np.asarray(coords[1])
 
 
+def _box_from_rectangle_selection(
+    *,
+    x_press: float | None,
+    y_press: float | None,
+    x_release: float | None,
+    y_release: float | None,
+    shape: tuple[int, int],
+) -> tuple[slice, slice] | None:
+    if (
+        x_press is None
+        or y_press is None
+        or x_release is None
+        or y_release is None
+    ):
+        return None
+    rows, cols = shape
+    row_start = int(np.floor(max(0.0, min(y_press, y_release))))
+    row_stop = int(np.ceil(min(float(rows), max(y_press, y_release))))
+    col_start = int(np.floor(max(0.0, min(x_press, x_release))))
+    col_stop = int(np.ceil(min(float(cols), max(x_press, x_release))))
+    if row_stop <= row_start or col_stop <= col_start:
+        return None
+    return (slice(row_start, row_stop), slice(col_start, col_stop))
+
+
 def launch_roi_helper_viewer(
     images: list[darsia.Image], *, mode: str, title_prefix: str = "ROI helper"
 ) -> None:
@@ -205,14 +230,13 @@ def launch_roi_helper_viewer(
         fig.canvas.draw_idle()
 
     def _on_select(eclick: Any, erelease: Any) -> None:
-        rows, cols = _current_image().img.shape[:2]
-        row_start = int(np.floor(max(0.0, min(eclick.ydata, erelease.ydata))))
-        row_stop = int(np.ceil(min(float(rows), max(eclick.ydata, erelease.ydata))))
-        col_start = int(np.floor(max(0.0, min(eclick.xdata, erelease.xdata))))
-        col_stop = int(np.ceil(min(float(cols), max(eclick.xdata, erelease.xdata))))
-        if row_stop <= row_start or col_stop <= col_start:
-            return
-        state["box"] = (slice(row_start, row_stop), slice(col_start, col_stop))
+        state["box"] = _box_from_rectangle_selection(
+            x_press=eclick.xdata,
+            y_press=eclick.ydata,
+            x_release=erelease.xdata,
+            y_release=erelease.ydata,
+            shape=_current_image().img.shape[:2],
+        )
 
     def _on_previous(_: Any) -> None:
         state["idx"] = (state["idx"] - 1) % len(images)
