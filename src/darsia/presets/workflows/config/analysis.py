@@ -387,6 +387,53 @@ class AnalysisVolumeConfig:
 
 
 @dataclass
+class AnalysisExpertKnowledgeConfig:
+    """Configuration for expert-knowledge ROI constraints on analysis fields."""
+
+    saturation_g: list[str] = field(default_factory=list)
+    """ROI registry keys constraining where saturation_g may be non-zero."""
+    concentration_aq: list[str] = field(default_factory=list)
+    """ROI registry keys constraining where concentration_aq may be non-zero."""
+
+    def load(
+        self, sec: dict, roi_registry: RoiRegistry | None = None
+    ) -> "AnalysisExpertKnowledgeConfig":
+        sub_sec = _get_section(sec, "expert_knowledge")
+
+        self.saturation_g = _get_key(
+            sub_sec, "saturation_g", required=False, default=[]
+        )
+        self.concentration_aq = _get_key(
+            sub_sec, "concentration_aq", required=False, default=[]
+        )
+
+        if not isinstance(self.saturation_g, list) or not all(
+            isinstance(key, str) for key in self.saturation_g
+        ):
+            raise ValueError("analysis.expert_knowledge.saturation_g must be a list[str].")
+        if not isinstance(self.concentration_aq, list) or not all(
+            isinstance(key, str) for key in self.concentration_aq
+        ):
+            raise ValueError(
+                "analysis.expert_knowledge.concentration_aq must be a list[str]."
+            )
+
+        # Validate registry references eagerly when provided.
+        if roi_registry is not None:
+            if len(self.saturation_g) > 0:
+                roi_registry.resolve_rois(self.saturation_g)
+            if len(self.concentration_aq) > 0:
+                roi_registry.resolve_rois(self.concentration_aq)
+        elif len(self.saturation_g) > 0 or len(self.concentration_aq) > 0:
+            raise ValueError(
+                "analysis.expert_knowledge requires a loaded ROI registry when "
+                "saturation_g or concentration_aq keys are provided."
+            )
+
+        return self
+
+
+@dataclass
 class AnalysisFingersConfig:
     config: FingersConfig | dict[str, FingersConfig] = field(
         default_factory=lambda: FingersConfig()
@@ -475,6 +522,10 @@ class AnalysisConfig:
     """Analysis fingers configuration."""
     thresholding: AnalysisThresholdingConfig | None = None
     """Analysis thresholding configuration."""
+    expert_knowledge: AnalysisExpertKnowledgeConfig = field(
+        default_factory=AnalysisExpertKnowledgeConfig
+    )
+    """Expert knowledge constraints for selected scalar analysis fields."""
 
     def load(
         self,
@@ -547,5 +598,13 @@ class AnalysisConfig:
         except KeyError:
             warn("No analysis thresholding found. Use [analysis.thresholding].")
             self.thresholding = None
+
+        # Config to load analysis expert knowledge. Missing section is a no-op default.
+        try:
+            self.expert_knowledge = AnalysisExpertKnowledgeConfig().load(
+                sec, roi_registry=roi_registry
+            )
+        except KeyError:
+            self.expert_knowledge = AnalysisExpertKnowledgeConfig()
 
         return self

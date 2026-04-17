@@ -8,8 +8,11 @@ from typing import Any
 import numpy as np
 
 import darsia
+from darsia import make_coordinate
 from darsia.multiphase.mass_analysis import CO2MassAnalysis
+from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.analysis.analysis_mass import analysis_mass_from_context
+from darsia.presets.workflows.config.roi import RoiConfig
 
 
 def _make_co2_mass_analysis(shape: tuple[int, int]) -> CO2MassAnalysis:
@@ -120,6 +123,7 @@ def test_analysis_mass_writes_rescaled_artifacts(
         image_paths=[image_path],
         color_to_mass_analysis=_FakeColorToMass(co2),
         analysis_labels=darsia.ScalarImage(np.zeros((4, 4), dtype=np.uint8)),
+        expert_knowledge_adapter=None,
     )
 
     def _stream_callback(payload):
@@ -146,3 +150,81 @@ def test_analysis_mass_writes_rescaled_artifacts(
     assert "rescaled_mass" in stream_payloads[0]
     assert "rescaled_saturation_g" in stream_payloads[0]
     assert "rescaled_concentration_aq" in stream_payloads[0]
+
+
+def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(tmp_path: Path) -> None:
+    injected_mass = 8.0
+    image_path = tmp_path / "img001.png"
+    roi = RoiConfig()
+    roi.roi = make_coordinate([[0.0, 0.0], [0.5, 1.0]])
+    roi.name = "left_half"
+    adapter = ExpertKnowledgeAdapter(
+        saturation_g_rois={"left_half": roi},
+        concentration_aq_rois={"left_half": roi},
+    )
+
+    class _FakeInjectionProtocol:
+        def injected_mass(self, *, date: datetime | None, roi: Any = None) -> float:
+            _ = (date, roi)
+            return injected_mass
+
+    class _FakeFluidFlower:
+        def __init__(self) -> None:
+            self.geometry = darsia.Geometry(
+                space_dim=2, num_voxels=(4, 4), dimensions=[1.0, 1.0]
+            )
+
+        def read_image(self, _path: Path) -> darsia.Image:
+            return darsia.Image(
+                np.zeros((4, 4, 3), dtype=np.uint8),
+                dimensions=[1.0, 1.0],
+                scalar=False,
+                time=1.0,
+                date=datetime(2025, 1, 1, 0, 0, 0),
+                name="img001",
+            )
+
+    class _FakeColorToMass:
+        def __init__(self, co2_mass_analysis: CO2MassAnalysis) -> None:
+            self.co2_mass_analysis = co2_mass_analysis
+
+        def __call__(self, image: darsia.Image) -> darsia.SimpleMassAnalysisResults:
+            c_aq = darsia.ScalarImage(
+                np.full((4, 4), 0.4, dtype=float),
+                dimensions=[1.0, 1.0],
+                time=image.time,
+                date=image.date,
+                name=image.name,
+            )
+            s_g = darsia.ScalarImage(
+                np.full((4, 4), 0.2, dtype=float),
+                dimensions=[1.0, 1.0],
+                time=image.time,
+                date=image.date,
+                name=image.name,
+            )
+            return self.co2_mass_analysis.mass_analysis(c_aq=c_aq, s_g=s_g)
+
+    co2 = _make_co2_mass_analysis((4, 4))
+    co2.solubility_co2 = np.full((4, 4), 2.0)
+    co2.density_gaseous_co2 = np.full((4, 4), 10.0)
+
+    ctx = SimpleNamespace(
+        config=SimpleNamespace(
+            data=SimpleNamespace(results=tmp_path),
+            analysis=SimpleNamespace(mass=SimpleNamespace(roi={}, roi_and_label={})),
+        ),
+        experiment=SimpleNamespace(injection_protocol=_FakeInjectionProtocol()),
+        fluidflower=_FakeFluidFlower(),
+        image_paths=[image_path],
+        color_to_mass_analysis=_FakeColorToMass(co2),
+        analysis_labels=darsia.ScalarImage(np.zeros((4, 4), dtype=np.uint8)),
+        expert_knowledge_adapter=adapter,
+    )
+
+    analysis_mass_from_context(ctx)
+
+    sat = darsia.imread(tmp_path / "rescaled_saturation_g" / "npz" / "img001.npz")
+    caq = darsia.imread(tmp_path / "rescaled_concentration_aq" / "npz" / "img001.npz")
+    assert np.any(sat.img == 0.0)
+    assert np.any(caq.img == 0.0)

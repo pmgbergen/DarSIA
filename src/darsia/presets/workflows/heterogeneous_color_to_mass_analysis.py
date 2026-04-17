@@ -21,6 +21,7 @@ from darsia.presets.workflows.calibration.metadata import (
     validate_basis_metadata,
     write_calibration_metadata,
 )
+from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
@@ -45,6 +46,7 @@ class HeterogeneousColorToMassAnalysis:
         restoration: darsia.Model | None = None,
         ignore_labels: list[int] | None = None,
         basis: CalibrationBasis = CalibrationBasis.LABELS,
+        expert_knowledge_adapter: ExpertKnowledgeAdapter | None = None,
     ):
         base_model = darsia.CombinedModel(
             [
@@ -131,6 +133,8 @@ class HeterogeneousColorToMassAnalysis:
         """Color path interpretations for different labels."""
         self.basis = parse_calibration_basis(basis)
         """Label-space basis used during calibration."""
+        self.expert_knowledge_adapter = expert_knowledge_adapter
+        """Optional adapter constraining saturation/concentration via expert ROIs."""
 
     @property
     def labels(self) -> darsia.Image:
@@ -152,6 +156,9 @@ class HeterogeneousColorToMassAnalysis:
     ) -> SimpleMassAnalysisResults:
         """Run the mass analysis on a single image."""
         c_aq, s_g = self.flash(pH)
+        if self.expert_knowledge_adapter is not None:
+            c_aq = self.expert_knowledge_adapter.apply(c_aq, "concentration_aq")
+            s_g = self.expert_knowledge_adapter.apply(s_g, "saturation_g")
         mass_analysis_result: SimpleMassAnalysisResults = (
             self.co2_mass_analysis.mass_analysis(
                 c_aq=c_aq,
@@ -2823,6 +2830,7 @@ class HeterogeneousColorToMassAnalysis:
         geometry: darsia.ExtrudedPorousGeometry,
         restoration: darsia.Model | None = None,
         basis: CalibrationBasis = CalibrationBasis.LABELS,
+        expert_knowledge_adapter: ExpertKnowledgeAdapter | None = None,
     ) -> "HeterogeneousColorToMassAnalysis":
         """Load the calibration data from json file.
 
@@ -2879,4 +2887,5 @@ class HeterogeneousColorToMassAnalysis:
             restoration=restoration,
             ignore_labels=ignore_labels,
             basis=parsed_basis,
+            expert_knowledge_adapter=expert_knowledge_adapter,
         )

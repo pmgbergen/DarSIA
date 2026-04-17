@@ -167,7 +167,8 @@ def analysis_mass_from_context(
         time = mass_analysis_result.time
 
         products, _ = analysis_scalar_products(
-            mass_analysis_result=mass_analysis_result
+            mass_analysis_result=mass_analysis_result,
+            expert_knowledge_adapter=ctx.expert_knowledge_adapter,
         )
         mass = products["mass_total"]
         mass_g = products["mass_g"]
@@ -185,6 +186,13 @@ def analysis_mass_from_context(
         rescaled_mass = rescaled.rescaled_result.mass
         rescaled_saturation_g = rescaled.rescaled_result.saturation_g
         rescaled_concentration_aq = rescaled.rescaled_result.concentration_aq
+        if ctx.expert_knowledge_adapter is not None:
+            rescaled_saturation_g = ctx.expert_knowledge_adapter.apply(
+                rescaled_saturation_g, "saturation_g"
+            )
+            rescaled_concentration_aq = ctx.expert_knowledge_adapter.apply(
+                rescaled_concentration_aq, "concentration_aq"
+            )
 
         # Store data to disk
         _save_scalar_image_artifacts(mass, output_folders["mass"], path.stem)

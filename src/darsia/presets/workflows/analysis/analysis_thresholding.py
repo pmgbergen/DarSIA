@@ -190,6 +190,7 @@ def analysis_thresholding_from_context(
         mode_images, _ = analysis_scalar_products(
             mass_analysis_result=result,
             requested_modes=requested_modes,
+            expert_knowledge_adapter=ctx.expert_knowledge_adapter,
             **scalar_kwargs,
         )
         stream_payload: dict[str, Any] = {"thresholding_source_image": img}

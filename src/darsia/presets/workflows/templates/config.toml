@@ -111,6 +111,12 @@ data = "analysis_imgs"
 
 [analysis.mass]
 
+[analysis.expert_knowledge]
+# Optional ROI constraints (keys from top-level [roi.*]).
+# Defaults are empty lists (strict no-op).
+# saturation_g = ["roi_key_1", "roi_key_2"]
+# concentration_aq = ["roi_key_3"]
+
 [analysis.thresholding]
 # Optional thresholding with per-layer styling and separate format outputs.
 # Supported layer modes:

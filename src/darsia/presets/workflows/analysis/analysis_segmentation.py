@@ -72,6 +72,7 @@ def analysis_segmentation_from_context(
         scalar_products, _ = analysis_scalar_products(
             mass_analysis_result=mass_analysis_result,
             requested_modes=requested_modes,
+            expert_knowledge_adapter=ctx.expert_knowledge_adapter,
             **scalar_kwargs,
         )
 

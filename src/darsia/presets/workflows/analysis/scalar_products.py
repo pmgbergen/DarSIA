@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 import darsia
+
+if TYPE_CHECKING:
+    from darsia.presets.workflows.analysis.expert_knowledge import (
+        ExpertKnowledgeAdapter,
+    )
 
 # Guard threshold preventing division by (near) zero detected mass.
 EPSILON = 1e-12
@@ -69,6 +74,7 @@ def analysis_scalar_products(
     injection_protocol: Any | None = None,
     co2_mass_analysis: darsia.CO2MassAnalysis | None = None,
     date: Any = None,
+    expert_knowledge_adapter: "ExpertKnowledgeAdapter | None" = None,
 ) -> tuple[dict[str, darsia.Image], RescaledMassProducts | None]:
     """Map workflow analysis mode keys to scalar products.
 
@@ -82,6 +88,13 @@ def analysis_scalar_products(
         "mass_g": mass_analysis_result.mass_g,
         "mass_aq": mass_analysis_result.mass_aq,
     }
+    if expert_knowledge_adapter is not None:
+        products["concentration_aq"] = expert_knowledge_adapter.apply(
+            products["concentration_aq"], "concentration_aq"
+        )
+        products["saturation_g"] = expert_knowledge_adapter.apply(
+            products["saturation_g"], "saturation_g"
+        )
 
     requested_modes = set(requested_modes or [])
     if not requires_rescaled_modes(requested_modes):
@@ -103,4 +116,11 @@ def analysis_scalar_products(
     products["rescaled_mass"] = rescaled.rescaled_result.mass
     products["rescaled_saturation_g"] = rescaled.rescaled_result.saturation_g
     products["rescaled_concentration_aq"] = rescaled.rescaled_result.concentration_aq
+    if expert_knowledge_adapter is not None:
+        products["rescaled_saturation_g"] = expert_knowledge_adapter.apply(
+            products["rescaled_saturation_g"], "saturation_g"
+        )
+        products["rescaled_concentration_aq"] = expert_knowledge_adapter.apply(
+            products["rescaled_concentration_aq"], "concentration_aq"
+        )
     return products, rescaled
