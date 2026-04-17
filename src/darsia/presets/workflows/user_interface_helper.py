@@ -45,8 +45,7 @@ def print_help_for_flags(args, parser):
 def run_helper(rig_cls: type[Rig], args):
     if not args.roi:
         raise ValueError("No helper type specified. Choose from --roi.")
-    if args.roi:
-        helper_roi(rig_cls, args.config, show=args.show)
+    helper_roi(rig_cls, args.config, show=args.show)
 
 
 def preset_helper(rig_cls: type[Rig], **kwargs):
