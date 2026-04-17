@@ -270,6 +270,7 @@ class ConcentrationAnalysis:
 
         # Balance signal (take into account possible heterogeneous effects)
         balanced_signal = self._balance_signal(clean_signal)
+        self._inspect_balanced_signal(balanced_signal)
 
         logger.debug(f"processing: {time() - tic}")
 
@@ -285,9 +286,11 @@ class ConcentrationAnalysis:
         else:
             tic = time()
             nonsmooth_concentration = self._convert_signal(balanced_signal, diff)
+            self._inspect_nonsmooth_concentration(nonsmooth_concentration)
             logger.debug(f"conversion: {time() - tic}")
             tic = time()
             concentration = self._restore_signal(nonsmooth_concentration)
+            self._inspect_concentration(concentration)
             logger.debug(f"restoration: {time() - tic}")
 
         # Invoke plot
@@ -340,6 +343,42 @@ class ConcentrationAnalysis:
         """
         if self.verbosity >= 2:
             plt.figure("Clean signal")
+            plt.imshow(img)
+
+    def _inspect_balanced_signal(self, img: np.ndarray) -> None:
+        """Routine allowing for plotting of intermediate results.
+        Requires overwrite.
+
+        Args:
+            img (np.ndarray): image
+
+        """
+        if self.verbosity >= 2:
+            plt.figure("Balanced signal")
+            plt.imshow(img)
+
+    def _inspect_nonsmooth_concentration(self, img: np.ndarray) -> None:
+        """Routine allowing for plotting of intermediate results.
+        Requires overwrite.
+
+        Args:
+            img (np.ndarray): image
+
+        """
+        if self.verbosity >= 2:
+            plt.figure("Nonsmooth concentration")
+            plt.imshow(img)
+
+    def _inspect_concentration(self, img: np.ndarray) -> None:
+        """Routine allowing for plotting of intermediate results.
+        Requires overwrite.
+
+        Args:
+            img (np.ndarray): image
+
+        """
+        if self.verbosity >= 2:
+            plt.figure("Concentration")
             plt.imshow(img)
 
     # ! ---- Pre- and post-processing methods ---- ! #
