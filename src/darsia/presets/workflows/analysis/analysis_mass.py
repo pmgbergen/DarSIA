@@ -19,6 +19,7 @@ from darsia.presets.workflows.config.analysis import AnalysisMassConfig
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
+EPSILON = 1e-12
 
 
 def _save_scalar_image_artifacts(
@@ -175,7 +176,7 @@ def analysis_mass_from_context(
         exact_mass_total = experiment.injection_protocol.injected_mass(date=img.date)
         mass_scaling_factor = (
             exact_mass_total / detected_mass_total
-            if np.abs(detected_mass_total) > 1e-12
+            if np.abs(detected_mass_total) > EPSILON
             else 0.0
         )
         rescaled_mass = darsia.weight(mass, mass_scaling_factor)
