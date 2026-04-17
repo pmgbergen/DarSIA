@@ -91,4 +91,3 @@ class ExpertKnowledgeAdapter:
         constrained = image.copy()
         constrained.img[~mask] = 0.0
         return constrained
-

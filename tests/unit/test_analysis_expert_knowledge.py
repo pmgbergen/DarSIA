@@ -60,7 +60,9 @@ def test_adapter_unions_multiple_rois() -> None:
 
     constrained = adapter.apply(img, "saturation_g")
     expected = roi_to_mask([roi_left.roi, roi_right.roi], img).img
+    gap = roi_to_mask(make_coordinate([[0.9, 0.0], [1.1, 1.0]]), img).img
 
     assert constrained is not None
     assert np.allclose(constrained.img[expected], 1.0)
     assert np.allclose(constrained.img[~expected], 0.0)
+    assert np.allclose(constrained.img[gap], 0.0)
