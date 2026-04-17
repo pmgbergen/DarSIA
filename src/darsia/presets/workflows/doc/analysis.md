@@ -52,6 +52,13 @@ placement in `[analysis.segmentation.values]` (and similarly for
 
 Use registry keys for image selection and ROIs where possible.
 
+### Segmentation and thresholding mode notes
+- Segmentation `mode` supports: `saturation_g`, `concentration_aq`, `mass`,
+  `rescaled_mass`, `rescaled_saturation_g`, `rescaled_concentration_aq`.
+- Thresholding layer `mode` supports the standard mass products plus
+  `rescaled_mass`, `rescaled_saturation_g`, and `rescaled_concentration_aq`.
+- `mass` remains a segmentation alias for total mass (`mass_total`).
+
 ## Output expectations
 Depending on enabled tasks, analysis typically produces derived crops, plots/maps, and result artifacts in the configured results directory.
 

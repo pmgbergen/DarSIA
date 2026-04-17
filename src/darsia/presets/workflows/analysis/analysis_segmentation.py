@@ -10,6 +10,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.scalar_products import analysis_scalar_products
 from darsia.presets.workflows.analysis.streaming import (
     publish_stream_images,
 )
@@ -37,6 +38,7 @@ def analysis_segmentation_from_context(
     assert ctx.color_to_mass_analysis is not None
 
     fluidflower = ctx.fluidflower
+    experiment = ctx.experiment
     image_paths = ctx.image_paths
     color_to_mass_analysis = ctx.color_to_mass_analysis
 
@@ -45,19 +47,29 @@ def analysis_segmentation_from_context(
 
     # ! ---- CONTOUR PLOTTING ----
     segmentation_contours = SegmentationContours(segmentation_config.config)
+    requested_modes = segmentation_contours.requested_modes()
 
     # Loop over images and analyze
     for path in image_paths:
         # Extract color signal and assign mass
         img = fluidflower.read_image(path)
         mass_analysis_result = color_to_mass_analysis(img)
+        co2_mass_analysis = None
+        if hasattr(color_to_mass_analysis, "co2_mass_analysis"):
+            co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
+        scalar_products, _ = analysis_scalar_products(
+            mass_analysis_result=mass_analysis_result,
+            requested_modes=requested_modes,
+            geometry=fluidflower.geometry,
+            injection_protocol=experiment.injection_protocol,
+            co2_mass_analysis=co2_mass_analysis,
+            date=img.date,
+        )
 
         # Produce contour images
         contour_image = segmentation_contours(
             img,
-            saturation_g=mass_analysis_result.saturation_g,
-            concentration_aq=mass_analysis_result.concentration_aq,
-            mass=mass_analysis_result.mass,
+            scalar_products=scalar_products,
         )
 
         if show:

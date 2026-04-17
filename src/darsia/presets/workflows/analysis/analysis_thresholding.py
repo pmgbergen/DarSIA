@@ -14,6 +14,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.scalar_products import analysis_scalar_products
 from darsia.presets.workflows.analysis.streaming import (
     _to_bgr_array,
     publish_stream_images,
@@ -92,16 +93,6 @@ def _apply_legend(
     return frame
 
 
-def _extract_mode_images(result: Any) -> dict[str, Any]:
-    return {
-        "concentration_aq": result.concentration_aq,
-        "saturation_g": result.saturation_g,
-        "mass_total": result.mass,
-        "mass_g": result.mass_g,
-        "mass_aq": result.mass_aq,
-    }
-
-
 def _overlay_layer(
     base_bgr: np.ndarray,
     mask: np.ndarray,
@@ -149,6 +140,7 @@ def analysis_thresholding_from_context(
     assert ctx.color_to_mass_analysis is not None
 
     config = ctx.config
+    experiment = ctx.experiment
     fluidflower = ctx.fluidflower
     image_paths = ctx.image_paths
     color_to_mass_analysis = ctx.color_to_mass_analysis
@@ -163,6 +155,7 @@ def analysis_thresholding_from_context(
     thresholding_config.folder.mkdir(parents=True, exist_ok=True)
 
     layer_names = list(thresholding_config.layers.keys())
+    requested_modes = {layer.mode for layer in thresholding_config.layers.values()}
     has_jpg = "jpg" in thresholding_config.formats
     has_npz = "npz" in thresholding_config.formats
 
@@ -179,7 +172,17 @@ def analysis_thresholding_from_context(
     for path in image_paths:
         img = fluidflower.read_image(path)
         result = color_to_mass_analysis(img)
-        mode_images = _extract_mode_images(result)
+        co2_mass_analysis = None
+        if hasattr(color_to_mass_analysis, "co2_mass_analysis"):
+            co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
+        mode_images, _ = analysis_scalar_products(
+            mass_analysis_result=result,
+            requested_modes=requested_modes,
+            geometry=fluidflower.geometry,
+            injection_protocol=experiment.injection_protocol,
+            co2_mass_analysis=co2_mass_analysis,
+            date=img.date,
+        )
         stream_payload: dict[str, Any] = {"thresholding_source_image": img}
         img_bgr = _to_bgr_array(img)
         master_preview = img_bgr.copy()
