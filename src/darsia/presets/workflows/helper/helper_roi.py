@@ -32,6 +32,7 @@ def _normalize_mode(mode: str) -> str:
 
 
 def _to_scalar_display_array(image: darsia.Image) -> np.ndarray:
+    """Return image data as a display-ready 2D scalar array."""
     array = np.asarray(image.img)
     if array.ndim == 3 and array.shape[2] == 1:
         array = array[..., 0]
