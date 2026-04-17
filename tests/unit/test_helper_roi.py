@@ -1,5 +1,6 @@
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
+import importlib
 
 import numpy as np
 
@@ -10,6 +11,10 @@ from darsia.presets.workflows.helper.helper_roi import (
     _scalar_image_for_mode,
     helper_roi,
     format_roi_template,
+)
+
+helper_roi_module = importlib.import_module(
+    "darsia.presets.workflows.helper.helper_roi"
 )
 
 
@@ -49,8 +54,7 @@ def test_scalar_image_for_mode_maps_mass_alias(monkeypatch) -> None:
         return {"mass_total": mass_image}, None
 
     monkeypatch.setattr(
-        "darsia.presets.workflows.helper.helper_roi.analysis_scalar_products",
-        _fake_analysis_scalar_products,
+        helper_roi_module, "analysis_scalar_products", _fake_analysis_scalar_products
     )
 
     result = _scalar_image_for_mode(
@@ -102,23 +106,24 @@ def test_helper_roi_mode_none_dispatches_viewer_with_source_images(
             del args
 
     monkeypatch.setattr(
-        "darsia.presets.workflows.helper.helper_roi.FluidFlowerConfig",
+        helper_roi_module,
+        "FluidFlowerConfig",
         lambda path, require_data, require_results: _FakeConfig(),
     )
     monkeypatch.setattr(
-        "darsia.presets.workflows.helper.helper_roi.darsia.ProtocolledExperiment.init_from_config",
+        helper_roi_module.darsia.ProtocolledExperiment,
+        "init_from_config",
         lambda config: SimpleNamespace(injection_protocol=SimpleNamespace()),
     )
     monkeypatch.setattr(
-        "darsia.presets.workflows.helper.helper_roi.select_image_paths",
+        helper_roi_module,
+        "select_image_paths",
         lambda *args, **kwargs: [Path("/tmp/img_001.jpg")],
     )
+    monkeypatch.setattr(helper_roi_module, "load_images_with_cache", lambda **kwargs: [img])
     monkeypatch.setattr(
-        "darsia.presets.workflows.helper.helper_roi.load_images_with_cache",
-        lambda **kwargs: [img],
-    )
-    monkeypatch.setattr(
-        "darsia.presets.workflows.helper.helper_roi.launch_roi_helper_viewer",
+        helper_roi_module,
+        "launch_roi_helper_viewer",
         lambda images, mode: captured.update({"images": images, "mode": mode}),
     )
 
