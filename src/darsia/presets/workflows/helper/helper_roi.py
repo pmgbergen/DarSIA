@@ -1,5 +1,8 @@
 """ROI helper workflow."""
 
+# TODO: Add option to use coarser images, but keep physical coordinates for the output.
+# TODO: This can be done by utilizing the coordinatesystem of the darsia.Image.
+
 from __future__ import annotations
 
 import logging
@@ -106,47 +109,24 @@ def format_roi_template(corner_1: np.ndarray, corner_2: np.ndarray) -> str:
     )
 
 
-def _show_roi_template_dialog(template: str) -> None:
+def _copy_roi_to_clipboard(template: str) -> None:
     try:
         import tkinter as tk
-        from tkinter import messagebox, scrolledtext, ttk
     except ModuleNotFoundError:
         logger.info("ROI template:\n%s", template)
         return
 
-    root = tk.Tk()
-    root.withdraw()
-    dialog = tk.Toplevel(root)
-    dialog.title("ROI template")
-    dialog.resizable(True, True)
-
-    frame = ttk.Frame(dialog, padding=8)
-    frame.pack(fill=tk.BOTH, expand=True)
-    text = scrolledtext.ScrolledText(frame, width=64, height=12, wrap=tk.WORD)
-    text.pack(fill=tk.BOTH, expand=True)
-    text.insert("1.0", template)
-    text.focus_set()
-
-    def _copy() -> None:
-        try:
-            root.clipboard_clear()
-            root.clipboard_append(template)
-            messagebox.showinfo("ROI template", "Template copied to clipboard.")
-        except Exception as exc:  # pragma: no cover - platform specific
-            messagebox.showwarning("ROI template", f"Copy to clipboard failed:\n{exc}")
-
-    buttons = ttk.Frame(frame)
-    buttons.pack(fill=tk.X, pady=(8, 0))
-    ttk.Button(buttons, text="Copy", command=_copy).pack(side=tk.RIGHT)
-    ttk.Button(buttons, text="Close", command=dialog.destroy).pack(
-        side=tk.RIGHT, padx=6
-    )
-
-    dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
-    dialog.transient(root)
-    dialog.grab_set()
-    root.wait_window(dialog)
-    root.destroy()
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        root.clipboard_clear()
+        root.clipboard_append(template)
+        logger.info("ROI template copied to clipboard.")
+    except Exception as exc:  # pragma: no cover - platform specific
+        logger.warning(f"Copy to clipboard failed:\n{exc}")
+    finally:
+        if "root" in locals():
+            root.destroy()
 
 
 def _box_from_zoom_limits(
@@ -184,12 +164,7 @@ def _box_from_rectangle_selection(
     y_release: float | None,
     shape: tuple[int, int],
 ) -> tuple[slice, slice] | None:
-    if (
-        x_press is None
-        or y_press is None
-        or x_release is None
-        or y_release is None
-    ):
+    if x_press is None or y_press is None or x_release is None or y_release is None:
         return None
     rows, cols = shape
     row_start = int(np.floor(max(0.0, min(y_press, y_release))))
@@ -263,7 +238,9 @@ def launch_roi_helper_viewer(
             return
         corner_1, corner_2 = _corners_from_box(_current_image(), box)
         template = format_roi_template(corner_1, corner_2)
-        _show_roi_template_dialog(template)
+
+        logger.info("ROI template:\n%s", template)
+        _copy_roi_to_clipboard(template)
 
     prev_ax = fig.add_axes([0.58, 0.04, 0.12, 0.07])
     next_ax = fig.add_axes([0.72, 0.04, 0.12, 0.07])
