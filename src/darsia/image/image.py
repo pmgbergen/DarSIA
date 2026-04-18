@@ -1994,12 +1994,11 @@ class ScalarImage(Image):
         # CoordinateSystem stores flattened voxel data in Fortran-style index order.
         # Reshape with order="F" and flatten with order="C" to export rows with
         # x-fastest ordering (then y, then z), matching the required CSV layout.
-        coordinate_columns = [
-            coordinates[:, axis].reshape(arr.shape, order="F").reshape(-1, order="C")
-            for axis in range(self.space_dim)
-        ]
+        coordinate_columns = coordinates.reshape(
+            (*arr.shape, self.space_dim), order="F"
+        ).reshape(-1, self.space_dim, order="C")
         values = np.asarray(arr, dtype=float).reshape(-1, order="C")
-        data = np.column_stack([*coordinate_columns, values])
+        data = np.column_stack([coordinate_columns, values])
 
         np.savetxt(
             path,
