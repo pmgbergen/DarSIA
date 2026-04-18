@@ -94,6 +94,12 @@ When GUI streaming is enabled for analysis, the latest image payload can include
 - Fingers: `fingers_source_image`, `fingers_segmentation`, plus ROI-specific
   `fingers_tips_<roi_key>` and `fingers_paths_<roi_key>`
 
+## GUI batch progress telemetry
+- Analysis execution also emits dedicated progress events for GUI batch monitoring
+  (separate from image streaming).
+- Progress events include analysis step transitions plus per-image progress with:
+  current image path, processed/total counters, last-image runtime, and step elapsed time.
+
 ## Related guides
 - [Workflow analysis](./workflow-analysis.md)
 - [Finger analysis](./finger_analysis.md)

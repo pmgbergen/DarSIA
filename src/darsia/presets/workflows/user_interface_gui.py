@@ -24,6 +24,10 @@ from pathlib import Path
 from queue import Empty, Full
 from typing import Any, Callable, Protocol, TypedDict
 
+from darsia.presets.workflows.analysis.progress import (
+    AnalysisProgressEvent,
+    normalize_progress_event,
+)
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -431,6 +435,9 @@ _ANALYSIS_MODE_DEFAULT_SUBFOLDER = {
     "thresholding": "thresholding",
 }
 
+_BATCH_MONITOR_IDLE_MESSAGE = "No active analysis batch."
+_BATCH_MONITOR_WAITING_MESSAGE = "Waiting for analysis progress..."
+
 
 def enabled_option_labels(
     options: dict[str, bool], *, exclude: set[str] | None = None
@@ -442,6 +449,94 @@ def enabled_option_labels(
         for key, value in options.items()
         if value and key not in excluded
     ]
+
+
+def format_duration_seconds(seconds: float | None) -> str:
+    """Format duration in seconds as H:MM:SS or M:SS."""
+    if seconds is None or not isinstance(seconds, (float, int)):
+        return "n/a"
+    seconds_float = float(seconds)
+    if seconds_float < 0 or seconds_float != seconds_float:
+        return "n/a"
+    seconds_int = int(round(seconds_float))
+    hours, remainder = divmod(seconds_int, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours > 0:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes}:{secs:02d}"
+
+
+def rolling_average_runtime(
+    runtimes: list[float], *, max_samples: int = 5
+) -> float | None:
+    """Return rolling average runtime based on last valid samples."""
+    if max_samples <= 0:
+        return None
+    valid = [
+        runtime
+        for runtime in runtimes
+        if isinstance(runtime, (float, int)) and runtime > 0 and runtime == runtime
+    ]
+    if len(valid) == 0:
+        return None
+    tail = valid[-max_samples:]
+    return float(sum(tail) / len(tail))
+
+
+def remaining_image_count(processed: int, total: int) -> int:
+    """Return remaining image count."""
+    return max(0, max(0, total) - max(0, processed))
+
+
+def estimate_remaining_time_seconds(
+    avg_runtime_seconds: float | None,
+    processed_images: int,
+    total_images: int,
+) -> float | None:
+    """Estimate remaining time from average runtime and remaining image count."""
+    if avg_runtime_seconds is None:
+        return None
+    if processed_images < 2:
+        return None
+    if avg_runtime_seconds <= 0:
+        return None
+    remaining = remaining_image_count(processed_images, total_images)
+    if remaining <= 0:
+        return 0.0
+    return avg_runtime_seconds * remaining
+
+
+def progress_percent(processed: int, total: int) -> float:
+    """Compute progress percentage in [0, 100]."""
+    if total <= 0:
+        return 0.0
+    return min(100.0, max(0.0, 100.0 * max(0, processed) / total))
+
+
+def format_batch_monitor_text(
+    *,
+    step: str,
+    image_path: str,
+    processed: int,
+    total: int,
+    last_image_seconds: float | None,
+    step_elapsed_seconds: float | None,
+    overall_elapsed_seconds: float | None,
+    eta_seconds: float | None,
+) -> str:
+    """Format human-readable batch monitor status text."""
+    percent = progress_percent(processed, total)
+    step_name = step if step else "n/a"
+    current_image = image_path if image_path else "n/a"
+    return (
+        f"Current analysis step: {step_name}\n"
+        f"Current image path: {current_image}\n"
+        f"Image count: {processed}/{total} ({percent:.1f}%)\n"
+        f"Last image elapsed: {format_duration_seconds(last_image_seconds)}\n"
+        f"Current step elapsed: {format_duration_seconds(step_elapsed_seconds)}\n"
+        f"Overall elapsed: {format_duration_seconds(overall_elapsed_seconds)}\n"
+        f"Estimated remaining: {format_duration_seconds(eta_seconds)}"
+    )
 
 
 def resolve_utils_bundle_defaults(config_paths: list[str]) -> tuple[str, str]:
@@ -614,6 +709,7 @@ def _run_analysis_workflow(
     rig_spec: str,
     options: dict[str, bool],
     stream_queue: SupportsQueue | None = None,
+    progress_queue: SupportsQueue | None = None,
 ) -> None:
     """Run analysis workflow in a worker process."""
     from darsia.presets.workflows.user_interface_analysis import run_analysis
@@ -621,6 +717,7 @@ def _run_analysis_workflow(
     paths = normalize_paths(config_paths)
     rig_cls = resolve_rig_class(rig_spec)
     stream_callback: Callable[[dict[str, bytes] | None], None] | None = None
+    progress_callback: Callable[[AnalysisProgressEvent], None] | None = None
     if options.get("streaming", False) and stream_queue is not None:
 
         def _stream_callback(payload: dict[str, bytes] | None) -> None:
@@ -637,6 +734,15 @@ def _run_analysis_workflow(
                     pass
 
         stream_callback = _stream_callback
+    if progress_queue is not None:
+
+        def _progress_callback(payload: AnalysisProgressEvent) -> None:
+            try:
+                publish_latest_queue_item(progress_queue, payload)
+            except Exception:
+                logger.exception("Failed to publish progress payload to GUI queue.")
+
+        progress_callback = _progress_callback
     args = argparse.Namespace(
         config=paths,
         all=options["all"],
@@ -649,7 +755,12 @@ def _run_analysis_workflow(
         show=options["show"],
         info=False,
     )
-    run_analysis(rig_cls, args, stream_callback=stream_callback)
+    run_analysis(
+        rig_cls,
+        args,
+        stream_callback=stream_callback,
+        progress_callback=progress_callback,
+    )
 
 
 def _run_helper_workflow(
@@ -749,6 +860,7 @@ class WorkflowGUI:
         self.log_queue: SupportsLogQueue = self._mp_context.Queue()
         # maxsize=1 keeps only the newest preview frame and bounds memory usage.
         self.stream_queue: SupportsQueue = self._mp_context.Queue(maxsize=1)
+        self.progress_queue: SupportsQueue = self._mp_context.Queue(maxsize=1)
         self._worker_process: mp.Process | None = None
         self._abort_requested = False
         self._active_workflow = ""
@@ -759,6 +871,19 @@ class WorkflowGUI:
         self._last_error_details = ""
         self._latest_stream_payload: dict[str, bytes | None] | None = None
         self._stream_photo: Any | None = None
+        self._batch_active = False
+        self._batch_overall_total = 0
+        self._batch_overall_processed = 0
+        self._batch_step_total = 0
+        self._batch_step_processed = 0
+        self._batch_last_step_index = 0
+        self._batch_current_step = ""
+        self._batch_current_image_path = ""
+        self._batch_last_image_runtime: float | None = None
+        self._batch_step_elapsed: float | None = None
+        self._batch_overall_started_at: float | None = None
+        self._batch_elapsed_override: float | None = None
+        self._batch_recent_image_runtimes: list[float] = []
         self._sv_ttk: Any = None
         self._native_theme_name: str | None = None
         self._session_cache_file: Path | None = None
@@ -773,6 +898,7 @@ class WorkflowGUI:
         self._setup_themes()
         self._poll_logs()
         self._poll_stream()
+        self._poll_batch_progress()
         self._update_dashboard()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -1116,15 +1242,18 @@ class WorkflowGUI:
     def _build_batch_monitor(self, parent) -> None:
         frame = self.ttk.LabelFrame(parent, text="Batch monitor")
         frame.pack(fill=self.tk.BOTH, expand=True, padx=8, pady=8)
-        self.batch_monitor_text = self.tk.StringVar(
-            value=(
-                "Batch monitor is currently a placeholder.\n"
-                "Future versions will show active analyses and image-level progress."
-            )
-        )
+        self.batch_monitor_text = self.tk.StringVar(value=_BATCH_MONITOR_IDLE_MESSAGE)
+        self.batch_monitor_progress = self.tk.DoubleVar(value=0.0)
         self.ttk.Label(frame, textvariable=self.batch_monitor_text).pack(
             anchor=self.tk.W, padx=5, pady=5
         )
+        self.ttk.Progressbar(
+            frame,
+            orient=self.tk.HORIZONTAL,
+            mode="determinate",
+            maximum=100.0,
+            variable=self.batch_monitor_progress,
+        ).pack(fill=self.tk.X, padx=5, pady=(0, 5))
 
     def _build_streaming_mode(self, parent) -> None:
         frame = self.ttk.LabelFrame(parent, text="Streaming monitor")
@@ -1326,6 +1455,134 @@ class WorkflowGUI:
             pass
         self.root.after(100, self._poll_stream)
 
+    def _reset_batch_monitor_state(
+        self, message: str = _BATCH_MONITOR_IDLE_MESSAGE
+    ) -> None:
+        """Reset batch monitor counters and UI state."""
+        self._batch_active = False
+        self._batch_overall_total = 0
+        self._batch_overall_processed = 0
+        self._batch_step_total = 0
+        self._batch_step_processed = 0
+        self._batch_last_step_index = 0
+        self._batch_current_step = ""
+        self._batch_current_image_path = ""
+        self._batch_last_image_runtime = None
+        self._batch_step_elapsed = None
+        self._batch_overall_started_at = None
+        self._batch_elapsed_override = None
+        self._batch_recent_image_runtimes = []
+        self.batch_monitor_text.set(message)
+        self.batch_monitor_progress.set(0.0)
+
+    def _poll_batch_progress(self) -> None:
+        try:
+            while True:
+                payload = self.progress_queue.get_nowait()
+                self._consume_batch_progress_payload(payload)
+        except Empty:
+            pass
+        self.root.after(100, self._poll_batch_progress)
+
+    def _consume_batch_progress_payload(self, payload: Any) -> None:
+        event = normalize_progress_event(payload)
+        if event is None:
+            return
+
+        event_name = event.get("event")
+        step = event.get("step", "")
+        image_total = event.get("image_total", 0)
+
+        if event_name == "step_start":
+            if self._batch_overall_started_at is None:
+                self._batch_overall_started_at = time.monotonic()
+            self._batch_active = True
+            self._batch_current_step = step
+            self._batch_step_total = image_total
+            self._batch_step_processed = 0
+            self._batch_last_step_index = 0
+            self._batch_step_elapsed = 0.0
+            self._batch_overall_total += image_total
+            self._update_batch_monitor_display()
+            return
+
+        if event_name == "image_progress":
+            image_index = event.get("image_index", 0)
+            delta = max(0, image_index - self._batch_last_step_index)
+            self._batch_overall_processed += delta
+            self._batch_last_step_index = max(self._batch_last_step_index, image_index)
+            self._batch_step_processed = max(0, image_index)
+            if image_total > 0:
+                self._batch_step_total = image_total
+            self._batch_current_step = step
+            self._batch_current_image_path = event.get("image_path", "")
+            self._batch_last_image_runtime = event.get("image_duration_s")
+            step_elapsed = event.get("step_elapsed_s")
+            if step_elapsed is not None:
+                self._batch_step_elapsed = step_elapsed
+            if self._batch_last_image_runtime is not None:
+                self._batch_recent_image_runtimes.append(self._batch_last_image_runtime)
+            self._update_batch_monitor_display()
+            return
+
+        if event_name == "step_complete":
+            if image_total > 0:
+                missing = max(0, image_total - self._batch_last_step_index)
+                self._batch_overall_processed += missing
+                self._batch_last_step_index = image_total
+                self._batch_step_total = image_total
+                self._batch_step_processed = image_total
+            self._batch_current_step = step
+            step_elapsed = event.get("step_elapsed_s")
+            if step_elapsed is not None:
+                self._batch_step_elapsed = step_elapsed
+            self._update_batch_monitor_display()
+
+    def _overall_elapsed_seconds(self) -> float | None:
+        """Return current overall elapsed seconds."""
+        if self._batch_elapsed_override is not None:
+            return self._batch_elapsed_override
+        if self._batch_overall_started_at is None:
+            return None
+        return max(0.0, time.monotonic() - self._batch_overall_started_at)
+
+    def _update_batch_monitor_display(self, prefix: str | None = None) -> None:
+        """Refresh batch monitor text and progressbar."""
+        overall_elapsed = self._overall_elapsed_seconds()
+        avg_runtime = rolling_average_runtime(self._batch_recent_image_runtimes)
+        eta_seconds = estimate_remaining_time_seconds(
+            avg_runtime,
+            self._batch_overall_processed,
+            self._batch_overall_total,
+        )
+        text = format_batch_monitor_text(
+            step=self._batch_current_step,
+            image_path=self._batch_current_image_path,
+            processed=self._batch_overall_processed,
+            total=self._batch_overall_total,
+            last_image_seconds=self._batch_last_image_runtime,
+            step_elapsed_seconds=self._batch_step_elapsed,
+            overall_elapsed_seconds=overall_elapsed,
+            eta_seconds=eta_seconds,
+        )
+        if prefix:
+            text = f"{prefix}\n{text}"
+        self.batch_monitor_text.set(text)
+        self.batch_monitor_progress.set(
+            progress_percent(self._batch_overall_processed, self._batch_overall_total)
+        )
+
+    def _finalize_batch_monitor_state(self, status: str) -> None:
+        """Finalize batch monitor after analysis workflow termination."""
+        self._batch_active = False
+        elapsed = self._overall_elapsed_seconds()
+        self._batch_elapsed_override = elapsed
+        if self._batch_overall_total <= 0:
+            self.batch_monitor_text.set(f"{status}\n{_BATCH_MONITOR_IDLE_MESSAGE}")
+            self.batch_monitor_progress.set(0.0)
+            return
+        self._update_batch_monitor_display(prefix=status)
+
     def _consume_stream_payload(self, payload: Any) -> None:
         if payload is None:
             self._latest_stream_payload = None
@@ -1437,6 +1694,8 @@ class WorkflowGUI:
         if self._worker_process is not None and self._worker_process.is_alive():
             self.messagebox.showwarning("Busy", "Another workflow is still running.")
             return
+        if workflow != "analysis":
+            self._reset_batch_monitor_state(_BATCH_MONITOR_IDLE_MESSAGE)
         self._active_workflow = workflow
         self._active_actions = actions
         self._active_config_paths = config_paths
@@ -1496,6 +1755,15 @@ class WorkflowGUI:
             self.log_queue.put(
                 format_workflow_error_message(workflow, actions, exit_code)
             )
+        if workflow == "analysis":
+            if self._abort_requested:
+                self._finalize_batch_monitor_state("Analysis aborted.")
+            elif exit_code == 0:
+                self._finalize_batch_monitor_state("Analysis completed.")
+            else:
+                self._finalize_batch_monitor_state(
+                    f"Analysis failed (exit code {exit_code})."
+                )
         self._worker_process = None
         self._worker_started_at = None
         self._active_workflow = ""
@@ -1642,6 +1910,8 @@ class WorkflowGUI:
             self._show_stream_message("Streaming enabled. Waiting for data...")
         else:
             self._show_stream_message("Streaming disabled.")
+        clear_queue(self.progress_queue)
+        self._reset_batch_monitor_state(_BATCH_MONITOR_WAITING_MESSAGE)
         actions = enabled_option_labels(options)
         self._run_async(
             "analysis",
@@ -1653,6 +1923,7 @@ class WorkflowGUI:
             self.rig_spec.get(),
             options,
             self.stream_queue,
+            self.progress_queue,
         )
 
     def _run_comparison_clicked(self) -> None:

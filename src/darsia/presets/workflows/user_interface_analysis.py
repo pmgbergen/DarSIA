@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import time
 from collections.abc import Callable
 
 from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_context
@@ -20,6 +21,11 @@ from darsia.presets.workflows.analysis.analysis_thresholding import (
 )
 from darsia.presets.workflows.analysis.analysis_volume import (
     analysis_volume_from_context,
+)
+from darsia.presets.workflows.analysis.progress import (
+    AnalysisProgressEvent,
+    publish_step_complete,
+    publish_step_start,
 )
 from darsia.presets.workflows.rig import Rig
 
@@ -91,6 +97,7 @@ def run_analysis(
     rig_cls: type[Rig],
     args,
     stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
+    progress_callback: Callable[[AnalysisProgressEvent], None] | None = None,
     **kwargs,
 ):
     if not (
@@ -126,45 +133,111 @@ def run_analysis(
 
     # Run requested analyses using shared context
     if args.cropping:
+        step_started_at = time.monotonic()
+        publish_step_start(
+            progress_callback, step="cropping", image_total=len(ctx.image_paths)
+        )
         analysis_cropping_from_context(
             ctx,
             show=args.show,
             stream_callback=stream_callback,
+            progress_callback=progress_callback,
+        )
+        publish_step_complete(
+            progress_callback,
+            step="cropping",
+            image_total=len(ctx.image_paths),
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     if args.mass:
+        step_started_at = time.monotonic()
+        publish_step_start(
+            progress_callback, step="mass", image_total=len(ctx.image_paths)
+        )
         analysis_mass_from_context(
             ctx,
             show=args.show,
             stream_callback=stream_callback,
+            progress_callback=progress_callback,
+        )
+        publish_step_complete(
+            progress_callback,
+            step="mass",
+            image_total=len(ctx.image_paths),
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     if args.volume:
+        step_started_at = time.monotonic()
+        publish_step_start(
+            progress_callback, step="volume", image_total=len(ctx.image_paths)
+        )
         analysis_volume_from_context(
             ctx,
             show=args.show,
             stream_callback=stream_callback,
+            progress_callback=progress_callback,
+        )
+        publish_step_complete(
+            progress_callback,
+            step="volume",
+            image_total=len(ctx.image_paths),
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     if args.segmentation:
+        step_started_at = time.monotonic()
+        publish_step_start(
+            progress_callback, step="segmentation", image_total=len(ctx.image_paths)
+        )
         analysis_segmentation_from_context(
             ctx,
             show=args.show,
             stream_callback=stream_callback,
+            progress_callback=progress_callback,
+        )
+        publish_step_complete(
+            progress_callback,
+            step="segmentation",
+            image_total=len(ctx.image_paths),
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     if args.fingers:
+        step_started_at = time.monotonic()
+        publish_step_start(
+            progress_callback, step="fingers", image_total=len(ctx.image_paths)
+        )
         analysis_fingers_from_context(
             ctx,
             show=args.show,
             stream_callback=stream_callback,
+            progress_callback=progress_callback,
+        )
+        publish_step_complete(
+            progress_callback,
+            step="fingers",
+            image_total=len(ctx.image_paths),
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     if args.thresholding:
+        step_started_at = time.monotonic()
+        publish_step_start(
+            progress_callback, step="thresholding", image_total=len(ctx.image_paths)
+        )
         analysis_thresholding_from_context(
             ctx,
             show=args.show,
             stream_callback=stream_callback,
+            progress_callback=progress_callback,
+        )
+        publish_step_complete(
+            progress_callback,
+            step="thresholding",
+            image_total=len(ctx.image_paths),
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
 
