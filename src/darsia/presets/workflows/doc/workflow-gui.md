@@ -25,6 +25,8 @@ The GUI is additive: it does not replace CLI workflow modules.
 
 ## Helper tab
 - `ROI`: launch interactive ROI helper from `[helper.roi]` config.
+- `ROI Viewer`: launch interactive ROI viewer for registry entries from
+  `[helper.roi_viewer]` or shorthand `[helper] data = [...]`.
 - `Show plots`: parity option with other workflow tabs.
 
 ## Batch monitor tab

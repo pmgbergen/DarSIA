@@ -543,11 +543,46 @@ def test_run_helper_workflow_dispatches_roi(
     _run_helper_workflow(
         [str(config_path)],
         "darsia.presets.workflows.rig:Rig",
-        {"roi": True, "show": False},
+        {"roi": True, "roi_viewer": False, "show": False},
     )
 
     args = called["args"]
     assert args.roi is True
+    assert args.roi_viewer is False
     assert args.show is False
     assert args.info is False
     assert args.config == [config_path.resolve()]
+
+
+def test_run_helper_workflow_dispatches_roi_viewer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    called: dict[str, object] = {}
+
+    def _fake_run_helper(rig_cls, args):
+        called["rig_cls"] = rig_cls
+        called["args"] = args
+
+    fake_helper_module = types.ModuleType(
+        "darsia.presets.workflows.user_interface_helper"
+    )
+    fake_helper_module.run_helper = _fake_run_helper
+    monkeypatch.setitem(
+        sys.modules,
+        "darsia.presets.workflows.user_interface_helper",
+        fake_helper_module,
+    )
+
+    config_path = tmp_path / "run.toml"
+    config_path.write_text("[data]\nfolder='.'\n")
+
+    _run_helper_workflow(
+        [str(config_path)],
+        "darsia.presets.workflows.rig:Rig",
+        {"roi": False, "roi_viewer": True, "show": False},
+    )
+
+    args = called["args"]
+    assert args.roi is False
+    assert args.roi_viewer is True
+    assert args.show is False
