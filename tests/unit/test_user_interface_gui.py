@@ -10,6 +10,7 @@ import pytest
 
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.user_interface_gui import (
+    _run_helper_workflow,
     _run_utils_workflow,
     abort_process,
     clear_queue,
@@ -439,3 +440,38 @@ def test_run_utils_workflow_dispatches_download_and_media(
     assert calls[1][0] == "media"
     assert calls[0][1] == [config_path.resolve()]
     assert calls[1][1] == [config_path.resolve()]
+
+
+def test_run_helper_workflow_dispatches_roi(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    called: dict[str, object] = {}
+
+    def _fake_run_helper(rig_cls, args):
+        called["rig_cls"] = rig_cls
+        called["args"] = args
+
+    fake_helper_module = types.ModuleType(
+        "darsia.presets.workflows.user_interface_helper"
+    )
+    fake_helper_module.run_helper = _fake_run_helper
+    monkeypatch.setitem(
+        sys.modules,
+        "darsia.presets.workflows.user_interface_helper",
+        fake_helper_module,
+    )
+
+    config_path = tmp_path / "run.toml"
+    config_path.write_text("[data]\nfolder='.'\n")
+
+    _run_helper_workflow(
+        [str(config_path)],
+        "darsia.presets.workflows.rig:Rig",
+        {"roi": True, "show": False},
+    )
+
+    args = called["args"]
+    assert args.roi is True
+    assert args.show is False
+    assert args.info is False
+    assert args.config == [config_path.resolve()]
