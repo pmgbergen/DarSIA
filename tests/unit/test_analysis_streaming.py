@@ -4,9 +4,11 @@ import logging
 from pathlib import Path
 from types import SimpleNamespace
 
-import numpy as np
-
 import darsia
+import numpy as np
+from darsia import make_coordinate
+
+from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.analysis.analysis_thresholding import (
     analysis_thresholding_from_context,
 )
@@ -15,6 +17,7 @@ from darsia.presets.workflows.analysis.streaming import (
     publish_stream_images,
 )
 from darsia.presets.workflows.config.analysis import AnalysisThresholdingConfig
+from darsia.presets.workflows.config.roi import RoiConfig
 from darsia.presets.workflows.user_interface_analysis import run_analysis
 
 
@@ -215,6 +218,7 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
         fluidflower=_FakeFluidFlower(),
         image_paths=[image_path],
         color_to_mass_analysis=_fake_color_to_mass,
+        expert_knowledge_adapter=None,
     )
 
     def _stream_callback(payload):
@@ -309,8 +313,76 @@ def test_thresholding_supports_rescaled_layer_modes(tmp_path: Path) -> None:
         fluidflower=_FakeFluidFlower(),
         image_paths=[image_path],
         color_to_mass_analysis=_FakeColorToMass(),
+        expert_knowledge_adapter=None,
     )
 
     analysis_thresholding_from_context(ctx)
 
     assert (tmp_path / "thresholding" / "npz" / "rescaled" / "img001.npz").exists()
+
+
+def test_thresholding_applies_expert_knowledge_constraints(tmp_path: Path) -> None:
+    thresholding_config = AnalysisThresholdingConfig().load(
+        sec={
+            "thresholding": {
+                "formats": ["npz"],
+                "layers": {
+                    "gas": {
+                        "mode": "saturation_g",
+                        "threshold_min": 0.1,
+                        "label": "Gas plume",
+                    }
+                },
+            }
+        },
+        results=tmp_path,
+    )
+
+    image_path = tmp_path / "img001.png"
+    scalar = darsia.ScalarImage(
+        np.full((16, 24), 0.5, dtype=float), dimensions=[1.0, 1.0]
+    )
+    roi = RoiConfig()
+    roi.roi = make_coordinate([[0.0, 0.0], [0.5, 1.0]])
+    roi.name = "left_half"
+    adapter = ExpertKnowledgeAdapter(saturation_g_rois={"left_half": roi})
+
+    class _FakeImage:
+        def __init__(self) -> None:
+            self.img = np.zeros((16, 24, 3), dtype=np.uint8)
+            self.date = None
+
+    class _FakeFluidFlower:
+        def read_image(self, path: Path) -> _FakeImage:
+            del path
+            return _FakeImage()
+
+    def _fake_color_to_mass(img):
+        del img
+        return SimpleNamespace(
+            concentration_aq=scalar,
+            saturation_g=scalar,
+            mass=scalar,
+            mass_g=scalar,
+            mass_aq=scalar,
+        )
+
+    ctx = SimpleNamespace(
+        config=SimpleNamespace(
+            data=SimpleNamespace(results=tmp_path),
+            analysis=SimpleNamespace(thresholding=thresholding_config),
+        ),
+        experiment=SimpleNamespace(
+            injection_protocol=SimpleNamespace(
+                injected_mass=lambda date=None, **_: 1.0
+            )
+        ),
+        fluidflower=_FakeFluidFlower(),
+        image_paths=[image_path],
+        color_to_mass_analysis=_fake_color_to_mass,
+        expert_knowledge_adapter=adapter,
+    )
+
+    analysis_thresholding_from_context(ctx)
+    mask = np.load(tmp_path / "thresholding" / "npz" / "gas" / "img001.npz")["mask"]
+    assert np.any(mask == 0)

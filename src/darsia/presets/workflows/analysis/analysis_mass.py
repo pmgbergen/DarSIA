@@ -175,25 +175,28 @@ def analysis_mass_from_context(
         # Log time
         image_time = mass_analysis_result.time
 
-        products, _ = analysis_scalar_products(
-            mass_analysis_result=mass_analysis_result
+        products, rescaled = analysis_scalar_products(
+            mass_analysis_result=mass_analysis_result,
+            requested_modes={
+                "rescaled_mass",
+                "rescaled_saturation_g",
+                "rescaled_concentration_aq",
+            },
+            geometry=fluidflower.geometry,
+            injection_protocol=experiment.injection_protocol,
+            co2_mass_analysis=co2_mass_analysis,
+            date=img.date,
+            expert_knowledge_adapter=ctx.expert_knowledge_adapter,
         )
         mass = products["mass_total"]
         mass_g = products["mass_g"]
         mass_aq = products["mass_aq"]
         saturation_g = products["saturation_g"]
         concentration_aq = products["concentration_aq"]
-
-        rescaled = compute_rescaled_mass_products(
-            mass_analysis_result=mass_analysis_result,
-            geometry=fluidflower.geometry,
-            injection_protocol=experiment.injection_protocol,
-            co2_mass_analysis=co2_mass_analysis,
-            date=img.date,
-        )
-        rescaled_mass = rescaled.rescaled_result.mass
-        rescaled_saturation_g = rescaled.rescaled_result.saturation_g
-        rescaled_concentration_aq = rescaled.rescaled_result.concentration_aq
+        assert rescaled is not None
+        rescaled_mass = products["rescaled_mass"]
+        rescaled_saturation_g = products["rescaled_saturation_g"]
+        rescaled_concentration_aq = products["rescaled_concentration_aq"]
 
         # Store data to disk
         _save_scalar_image_artifacts(mass, output_folders["mass"], path.stem)
