@@ -110,4 +110,3 @@ class FormatRegistry:
                 )
             specs.append(self._registry[key])
         return specs
-

@@ -235,19 +235,37 @@ def analysis_thresholding_from_context(
             elif threshold_max is not None:
                 mask = (scalar <= threshold_max).astype(np.uint8)
 
-            mask_meta = {}
-            if hasattr(mode_image, "metadata"):
-                mask_meta = mode_image.metadata()
-            elif hasattr(img, "metadata"):
-                mask_meta = img.metadata()
-            mask_image = darsia.ScalarImage(mask.astype(np.float32), **mask_meta)
-            exporter.export_image(
-                mask_image,
-                thresholding_config.folder,
-                path.stem,
-                supported_types={"npz", "npy", "csv"},
-                subfolder=layer_name,
-            )
+            for spec in exporter.formats:
+                if spec.type == "npz":
+                    out_dir = thresholding_config.folder / spec.folder_name / layer_name
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    np.savez_compressed(
+                        out_dir / f"{path.stem}.npz",
+                        mask=mask,
+                        threshold_min=threshold_min,
+                        threshold_max=threshold_max,
+                        mode=layer.mode,
+                        layer=layer_name,
+                    )
+                elif spec.type == "npy":
+                    out_dir = thresholding_config.folder / spec.folder_name / layer_name
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    np.save(out_dir / f"{path.stem}.npy", mask)
+                elif spec.type == "csv":
+                    out_dir = thresholding_config.folder / spec.folder_name / layer_name
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    fmt = spec.float_format.strip()
+                    if fmt.startswith("{:") and fmt.endswith("}"):
+                        fmt = "%" + fmt[2:-1]
+                    header = "" if spec.header in (None, "none") else str(spec.header)
+                    np.savetxt(
+                        out_dir / f"{path.stem}.csv",
+                        mask,
+                        delimiter=spec.delimiter,
+                        header=header,
+                        comments="",
+                        fmt=fmt,
+                    )
 
             preview = _overlay_layer(
                 img_bgr,

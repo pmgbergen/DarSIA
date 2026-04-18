@@ -141,8 +141,8 @@ def test_analysis_mass_writes_rescaled_artifacts(
         "rescaled_concentration_aq",
     ]
     for product in products:
-        assert (tmp_path / product / "npz" / "img001.npz").exists()
-        assert (tmp_path / product / "jpg" / "img001.jpg").exists()
+        assert (tmp_path / product / "npz_npz" / "img001.npz").exists()
+        assert (tmp_path / product / "jpg_jpg" / "img001.jpg").exists()
 
     assert (tmp_path / "sparse_data" / "integrated_mass.csv").exists()
     assert len(stream_payloads) == 1
@@ -224,7 +224,11 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(tmp_path: Pat
 
     analysis_mass_from_context(ctx)
 
-    sat = darsia.imread(tmp_path / "rescaled_saturation_g" / "npz" / "img001.npz")
-    caq = darsia.imread(tmp_path / "rescaled_concentration_aq" / "npz" / "img001.npz")
+    sat = darsia.imread(
+        tmp_path / "rescaled_saturation_g" / "npz_npz" / "img001.npz"
+    )
+    caq = darsia.imread(
+        tmp_path / "rescaled_concentration_aq" / "npz_npz" / "img001.npz"
+    )
     assert np.any(sat.img == 0.0)
     assert np.any(caq.img == 0.0)

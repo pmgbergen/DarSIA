@@ -162,3 +162,16 @@ def test_io():
 
     # ! ---- Remove test file
     os.remove("test_image.npz")
+
+
+def test_scalar_image_to_csv(tmp_path):
+    image = darsia.ScalarImage(
+        np.array([[1.0, 2.0], [3.0, 4.0]], dtype=float),
+        dimensions=[1.0, 1.0],
+    )
+    path = tmp_path / "scalar.csv"
+    image.to_csv(path, delimiter=";", header="a;b", float_format="{:.2f}")
+    assert path.exists()
+    lines = path.read_text().splitlines()
+    assert lines[0] == "a;b"
+    assert lines[1] == "1.00;2.00"

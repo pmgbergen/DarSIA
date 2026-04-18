@@ -14,6 +14,7 @@ This is the user-facing map of workflow TOML sections currently loaded by `Fluid
 - `[color_paths]`: color-path calibration data selection and options.
 - `[color_to_mass]`: color-to-mass calibration options.
 - `[analysis]`: analysis data and feature-specific subsections.
+- `[format]`: named export-format presets for analysis image outputs.
 - `[helper]`: optional helper workflows (currently ROI helper).
 - `[download]`: download utility config (optional).
 - `[utils]`: optional utility defaults (calibration bundle import/export paths).
@@ -75,8 +76,37 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `color_paths.rois = ["roi_key"]`
 - `color_to_mass.rois = ["roi_key"]`
 
+## Format registry
+Define reusable export presets under top-level `[format.<type>.<identifier>]`.
+Supported `<type>` values:
+- `jpg`
+- `png`
+- `npz`
+- `npy`
+- `csv`
+
+Example:
+```toml
+[format.jpg.4k]
+resolution = [2160, 4096]
+cmap = "matplotlib.viridis"
+
+[format.npy.my_npy]
+dtype = "np.float32"
+```
+
+Use these identifiers from `[analysis].formats`:
+```toml
+[analysis]
+data = ["analysis_set"]
+formats = ["my_npy", "4k"]
+```
+
+Outputs are written to `<type>_<identifier>` subfolders (for example `jpg_4k`).
+
 ## Analysis subsections
 - `[analysis.data]`: selected analysis image set
+- `[analysis]`: optional `formats` (list of format identifiers from `[format.*.*]`)
 - `[analysis.cropping]`: cropping image selection and output formats (`formats = ["npz", "jpg"]`)
 - `[analysis.segmentation]`: contour config(s)
 - `[analysis.mass]`: mass analysis and optional ROIs

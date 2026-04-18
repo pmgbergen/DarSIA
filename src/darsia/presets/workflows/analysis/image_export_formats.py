@@ -197,4 +197,3 @@ class ImageExportFormats:
 
             written.append(path)
         return written
-

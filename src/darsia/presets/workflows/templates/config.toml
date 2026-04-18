@@ -102,6 +102,16 @@ threshold = 0.2
 
 [analysis]
 data = "analysis_imgs"
+formats = ["npz_default", "jpg_preview"]
+
+[format.npz.npz_default]
+# resolution = [500, 1000]
+# keep_ratio = true
+# dtype = "np.float32"
+
+[format.jpg.jpg_preview]
+# resolution = [2160, 4096]
+# cmap = "matplotlib.viridis"
 
 [analysis.cropping]
 formats = ["npz", "jpg"]
