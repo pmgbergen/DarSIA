@@ -227,6 +227,7 @@ def analysis_thresholding_from_context(
                 img,
                 mass_analysis_result=result,
                 colorrange_config=getattr(config, "colorrange", None),
+                colorchannel_registry=getattr(config, "colorchannel", None),
                 scalar_products=mode_images,
             )
             scalar = _to_scalar_array(mode_image)

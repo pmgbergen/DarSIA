@@ -8,6 +8,7 @@ from pathlib import Path
 from warnings import warn
 
 from .analysis import AnalysisConfig
+from .colorchannel_registry import ColorChannelRegistry
 from .color_paths import ColorPathsConfig
 from .color_to_mass import ColorToMassConfig
 from .colorrange import ColorRangeConfig
@@ -183,6 +184,13 @@ class FluidFlowerConfig:
         except KeyError:
             self.colorrange = None
 
+        # ! ---- COLOR CHANNEL REGISTRY ---- ! #
+        try:
+            self.colorchannel: ColorChannelRegistry | None = ColorChannelRegistry()
+            self.colorchannel.load(path)
+        except KeyError:
+            self.colorchannel = None
+
         # ! ---- ANALYSIS DATA ---- ! #
         try:
             self.analysis = AnalysisConfig()
@@ -192,6 +200,7 @@ class FluidFlowerConfig:
                 results=self.data.results if self.data else None,
                 data_registry=self.data.registry if self.data else None,
                 roi_registry=self.roi_registry,
+                colorchannel_registry=self.colorchannel,
             )
         except KeyError:
             self.analysis = None

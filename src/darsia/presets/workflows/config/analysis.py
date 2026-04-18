@@ -19,6 +19,7 @@ from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
 
 if TYPE_CHECKING:
+    from .colorchannel_registry import ColorChannelRegistry
     from .roi_registry import RoiRegistry
 
 logger = logging.getLogger(__name__)
@@ -99,14 +100,21 @@ class AnalysisThresholdingConfig:
         stroke_width: int = 2
 
         def load(
-            self, sec: dict, *, key: str
+            self,
+            sec: dict,
+            *,
+            key: str,
+            colorchannel_registry: ColorChannelRegistry | None = None,
         ) -> "AnalysisThresholdingConfig.LayerConfig":
             self.mode = _get_key(sec, "mode", required=True, type_=str).strip()
-            if not validate_mode_syntax(self.mode):
+            if not validate_mode_syntax(
+                self.mode, colorchannel_registry=colorchannel_registry
+            ):
                 raise ValueError(
                     f"Unsupported analysis.thresholding.layers.{key}.mode '{self.mode}'. "
                     "Supported modes are legacy mass modes, rescaled modes, "
-                    "'colorchannel.<space>.<channel>', and 'colorrange.<name>'."
+                    "'colorchannel.<name>' (defined under [colorchannel.<name>]), "
+                    "and 'colorrange.<name>'."
                 )
             self.threshold_min = _get_key(sec, "threshold_min", required=False)
             self.threshold_max = _get_key(sec, "threshold_max", required=False)
@@ -166,7 +174,12 @@ class AnalysisThresholdingConfig:
     folder: Path = field(default_factory=Path)
     """Path to the results folder for thresholding analysis."""
 
-    def load(self, sec: dict, results: Path | None) -> "AnalysisThresholdingConfig":
+    def load(
+        self,
+        sec: dict,
+        results: Path | None,
+        colorchannel_registry: ColorChannelRegistry | None = None,
+    ) -> "AnalysisThresholdingConfig":
         sub_sec = _get_section(sec, "thresholding")
 
         raw_formats = _get_key(sub_sec, "formats", required=False, default=self.formats)
@@ -193,7 +206,11 @@ class AnalysisThresholdingConfig:
         if len(raw_layers) > 0:
             for key in raw_layers.keys():
                 layer_sec = _get_section(raw_layers, key)
-                self.layers[key] = self.LayerConfig().load(layer_sec, key=key)
+                self.layers[key] = self.LayerConfig().load(
+                    layer_sec,
+                    key=key,
+                    colorchannel_registry=colorchannel_registry,
+                )
         legend = _get_key(sub_sec, "legend", required=False, default={})
         if not isinstance(legend, dict):
             raise ValueError("analysis.thresholding.legend must be a table/dict.")
@@ -222,21 +239,32 @@ class AnalysisSegmentationConfig:
     folder: Path = field(default_factory=Path)
     """Path to the results folder for segmentation."""
 
-    def load(self, sec: dict, results: Path | None) -> "AnalysisSegmentationConfig":
+    def load(
+        self,
+        sec: dict,
+        results: Path | None,
+        colorchannel_registry: ColorChannelRegistry | None = None,
+    ) -> "AnalysisSegmentationConfig":
         # Allow for two scenarios: single segmentation or multiple segmentations
         sub_sec = _get_section(sec, "segmentation")
 
         try:
-            self.config = SegmentationConfig().load(sub_sec)
+            self.config = SegmentationConfig().load(
+                sub_sec, colorchannel_registry=colorchannel_registry
+            )
         except KeyError:
             self.config = {}
             for key in sub_sec.keys():
-                self.config[key] = SegmentationConfig().load(_get_section(sub_sec, key))
+                self.config[key] = SegmentationConfig().load(
+                    _get_section(sub_sec, key),
+                    colorchannel_registry=colorchannel_registry,
+                )
             try:
                 self.config = {}
                 for key in sub_sec.keys():
                     self.config[key] = SegmentationConfig().load(
-                        _get_section(sub_sec, key)
+                        _get_section(sub_sec, key),
+                        colorchannel_registry=colorchannel_registry,
                     )
             except KeyError as e:
                 raise KeyError(
@@ -526,6 +554,7 @@ class AnalysisConfig:
         results: Path | None,
         data_registry: DataRegistry | None = None,
         roi_registry: RoiRegistry | None = None,
+        colorchannel_registry: ColorChannelRegistry | None = None,
     ) -> "AnalysisConfig":
         sec = _get_section_from_toml(path, "analysis")
 
@@ -552,7 +581,11 @@ class AnalysisConfig:
 
         # Config to load analysis segmentation
         try:
-            self.segmentation = AnalysisSegmentationConfig().load(sec, results)
+            self.segmentation = AnalysisSegmentationConfig().load(
+                sec,
+                results,
+                colorchannel_registry=colorchannel_registry,
+            )
         except KeyError:
             warn("No analysis segmentation found. Use [analysis.segmentation].")
             self.segmentation = None
@@ -586,7 +619,11 @@ class AnalysisConfig:
 
         # Config to load analysis thresholding
         try:
-            self.thresholding = AnalysisThresholdingConfig().load(sec, results)
+            self.thresholding = AnalysisThresholdingConfig().load(
+                sec,
+                results,
+                colorchannel_registry=colorchannel_registry,
+            )
         except KeyError:
             warn("No analysis thresholding found. Use [analysis.thresholding].")
             self.thresholding = None
