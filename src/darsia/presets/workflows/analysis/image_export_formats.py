@@ -113,7 +113,9 @@ class ImageExportFormats:
             return self._load_color_path_cmap(cmap_name)
         return None
 
-    def _prepare_image(self, image: darsia.Image, spec: ImageExportFormat) -> darsia.Image:
+    def _prepare_image(
+        self, image: darsia.Image, spec: ImageExportFormat
+    ) -> darsia.Image:
         prepared = image.copy()
 
         if spec.resolution is not None:
@@ -150,7 +152,11 @@ class ImageExportFormats:
             if subfolder is not None:
                 out_dir = out_dir / Path(subfolder)
             out_dir.mkdir(parents=True, exist_ok=True)
-            path = out_dir / f"{stem}.{spec.type}"
+            if spec.name == "stem":
+                filename_stem = stem
+            else:
+                raise NotImplementedError
+            path = out_dir / f"{filename_stem}.{spec.type}"
 
             if spec.type == "npz":
                 prepared.save(path)

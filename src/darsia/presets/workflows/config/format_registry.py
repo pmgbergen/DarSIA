@@ -16,6 +16,7 @@ class ImageExportFormat:
 
     type: str
     identifier: str
+    name: str
     resolution: tuple[int, int] | None = None
     dpi: int | None = None
     cmap: str | None = None
@@ -73,6 +74,7 @@ class FormatRegistry:
                     )
 
                 spec = ImageExportFormat(type=_type, identifier=str(identifier))
+                spec.name = str(entry.get("name", "stem")).lower()
                 spec.resolution = _parse_resolution(entry.get("resolution"))
                 spec.keep_ratio = bool(entry.get("keep_ratio", False))
 
