@@ -35,6 +35,27 @@ def _format_to_numpy_fmt(float_format: str) -> str:
     return fmt
 
 
+def _seconds_from_image(image: darsia.Image) -> int:
+    if getattr(image, "time", None) is None:
+        return 0
+    seconds = int(round(float(image.time)))
+    return max(0, seconds)
+
+
+def _time_hh_mm_ss(seconds: int, *, pad_hours: bool) -> str:
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    secs = seconds % 60
+    hour_part = f"{hours:02d}" if pad_hours else f"{hours}"
+    return f"{hour_part}_{minutes:02d}_{secs:02d}"
+
+
+def _time_mm_ss(seconds: int) -> str:
+    minutes = seconds // 60
+    secs = seconds % 60
+    return f"{minutes}_{secs:02d}"
+
+
 class ImageExportFormats:
     """Resolve analysis export format identifiers and write images to disk."""
 
@@ -131,6 +152,24 @@ class ImageExportFormats:
 
         return prepared
 
+    def _filename_stem(self, image: darsia.Image, stem: str, spec: ImageExportFormat) -> str:
+        if spec.name == "stem":
+            return stem
+
+        image_name = str(getattr(image, "name", "")).strip() or "image"
+        seconds = _seconds_from_image(image)
+
+        if spec.name == "time_hh:mm:ss":
+            return f"time_{_time_hh_mm_ss(seconds, pad_hours=True)}_hrs"
+        if spec.name == "time_mm:ss":
+            return f"time_{_time_mm_ss(seconds)}_hrs"
+        if spec.name == "name_time_hh:mm:ss":
+            return f"{image_name}_{_time_hh_mm_ss(seconds, pad_hours=False)}_hrs"
+        if spec.name == "name_stem":
+            return f"{image_name}_{stem}"
+
+        raise ValueError(f"Unsupported name option '{spec.name}'.")
+
     def export_image(
         self,
         image: darsia.Image,
@@ -152,10 +191,7 @@ class ImageExportFormats:
             if subfolder is not None:
                 out_dir = out_dir / Path(subfolder)
             out_dir.mkdir(parents=True, exist_ok=True)
-            if spec.name == "stem":
-                filename_stem = stem
-            else:
-                raise NotImplementedError
+            filename_stem = self._filename_stem(image, stem, spec)
             path = out_dir / f"{filename_stem}.{spec.type}"
 
             if spec.type == "npz":

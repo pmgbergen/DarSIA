@@ -8,6 +8,13 @@ from pathlib import Path
 from .utils import _convert_none, _get_section_from_toml
 
 SUPPORTED_EXPORT_FORMATS = {"jpg", "png", "npz", "npy", "csv"}
+SUPPORTED_EXPORT_NAMES = {
+    "stem",
+    "time_hh:mm:ss",
+    "time_mm:ss",
+    "name_time_hh:mm:ss",
+    "name_stem",
+}
 
 
 @dataclass
@@ -16,7 +23,7 @@ class ImageExportFormat:
 
     type: str
     identifier: str
-    name: str
+    name: str = "stem"
     resolution: tuple[int, int] | None = None
     dpi: int | None = None
     cmap: str | None = None
@@ -75,6 +82,12 @@ class FormatRegistry:
 
                 spec = ImageExportFormat(type=_type, identifier=str(identifier))
                 spec.name = str(entry.get("name", "stem")).lower()
+                if spec.name not in SUPPORTED_EXPORT_NAMES:
+                    raise ValueError(
+                        f"Unsupported name option '{spec.name}' for "
+                        f"[format.{_type}.{identifier}]. Supported: "
+                        f"{sorted(SUPPORTED_EXPORT_NAMES)}"
+                    )
                 spec.resolution = _parse_resolution(entry.get("resolution"))
                 spec.keep_ratio = bool(entry.get("keep_ratio", False))
 
