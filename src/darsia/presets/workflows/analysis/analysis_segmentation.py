@@ -107,6 +107,7 @@ def analysis_segmentation_from_context(
             scalar_products=scalar_products,
             mass_analysis_result=mass_analysis_result,
             colorrange_config=getattr(ctx.config, "colorrange", None),
+            colorchannel_registry=getattr(ctx.config, "colorchannel", None),
         )
 
         if show:

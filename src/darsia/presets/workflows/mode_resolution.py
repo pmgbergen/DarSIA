@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 
 import darsia
+from darsia.presets.workflows.config.colorchannel_registry import ColorChannelRegistry
 from darsia.presets.workflows.config.colorrange import ColorRangeConfig
 
 LEGACY_COLOR_TO_MASS_MODES = {
@@ -28,8 +29,7 @@ SCALAR_PRODUCT_MODES = {
 
 @dataclass(frozen=True)
 class ColorChannelMode:
-    color_space: str
-    channel: str
+    name: str
 
 
 @dataclass(frozen=True)
@@ -39,9 +39,11 @@ class ColorRangeMode:
 
 def parse_colorchannel_mode(mode: str) -> ColorChannelMode | None:
     parts = mode.split(".")
-    if len(parts) != 3 or parts[0].lower() != "colorchannel":
+    if len(parts) != 2 or parts[0].lower() != "colorchannel":
         return None
-    return ColorChannelMode(color_space=parts[1].upper(), channel=parts[2].lower())
+    if len(parts[1].strip()) == 0:
+        return None
+    return ColorChannelMode(name=parts[1].strip())
 
 
 def parse_colorrange_mode(mode: str) -> ColorRangeMode | None:
@@ -51,22 +53,22 @@ def parse_colorrange_mode(mode: str) -> ColorRangeMode | None:
     return ColorRangeMode(name=parts[1])
 
 
-def validate_mode_syntax(mode: str) -> bool:
+def validate_mode_syntax(
+    mode: str, colorchannel_registry: ColorChannelRegistry | None = None
+) -> bool:
     mode = mode.strip()
     if mode in LEGACY_COLOR_TO_MASS_MODES or mode in SCALAR_PRODUCT_MODES:
         return True
     colorchannel = parse_colorchannel_mode(mode)
     if colorchannel is not None:
-        if colorchannel.color_space not in {"RGB", "BGR", "HSV", "HLS", "LAB"}:
-            return False
-        allowed_channels = {
-            "RGB": {"r", "g", "b"},
-            "BGR": {"r", "g", "b"},
-            "HSV": {"h", "s", "v"},
-            "HLS": {"h", "l", "s"},
-            "LAB": {"l", "a", "b"},
-        }
-        return colorchannel.channel in allowed_channels[colorchannel.color_space]
+        if colorchannel_registry is None:
+            return True
+        return colorchannel.name in colorchannel_registry.channels
+
+    # Explicitly reject removed fast syntax: colorchannel.<space>.<channel>
+    parts = mode.split(".")
+    if len(parts) == 3 and parts[0].lower() == "colorchannel":
+        return False
     return parse_colorrange_mode(mode) is not None
 
 
@@ -157,12 +159,31 @@ def _resolve_legacy_mode(mode: str, mass_analysis_result: Any) -> darsia.Image:
     raise ValueError(f"Unsupported legacy mode '{mode}'.")
 
 
-def _resolve_colorchannel_mode(mode: str, image: darsia.Image) -> darsia.ScalarImage:
+def _resolve_colorchannel_mode(
+    mode: str,
+    image: darsia.Image,
+    colorchannel_registry: ColorChannelRegistry | None = None,
+) -> darsia.ScalarImage:
     parsed = parse_colorchannel_mode(mode)
     if parsed is None:
         raise ValueError(f"Invalid color channel mode '{mode}'.")
-    trichromatic, color_space = _normalized_trichromatic(image, parsed.color_space)
-    index = _channel_index(color_space, parsed.channel)
+    if colorchannel_registry is None:
+        raise ValueError(
+            "Color channel mode resolution requires a colorchannel registry. "
+            "Define [colorchannel.<name>] and use mode 'colorchannel.<name>'."
+        )
+    try:
+        named_colorchannel = colorchannel_registry.resolve(parsed.name)[parsed.name]
+    except KeyError as exc:
+        raise ValueError(
+            f"Undefined colorchannel '{parsed.name}'. "
+            f"Configure [colorchannel.{parsed.name}]."
+        ) from exc
+
+    trichromatic, color_space = _normalized_trichromatic(
+        image, named_colorchannel.color_space
+    )
+    index = _channel_index(color_space, named_colorchannel.channel)
     return _to_scalar_image(image, trichromatic[..., index].astype(np.float32))
 
 
@@ -214,6 +235,7 @@ def resolve_mode_image(
     image: darsia.Image,
     mass_analysis_result: Any = None,
     colorrange_config: ColorRangeConfig | None = None,
+    colorchannel_registry: ColorChannelRegistry | None = None,
     scalar_products: dict[str, darsia.Image | None] | None = None,
 ) -> darsia.Image:
     mode = mode.strip()
@@ -224,7 +246,14 @@ def resolve_mode_image(
     if mode in LEGACY_COLOR_TO_MASS_MODES:
         return _resolve_legacy_mode(mode, mass_analysis_result)
     if parse_colorchannel_mode(mode) is not None:
-        return _resolve_colorchannel_mode(mode, image)
+        return _resolve_colorchannel_mode(mode, image, colorchannel_registry)
+    parts = mode.split(".")
+    if len(parts) == 3 and parts[0].lower() == "colorchannel":
+        raise ValueError(
+            "Inline colorchannel modes like 'colorchannel.<space>.<channel>' are no "
+            "longer supported. Define [colorchannel.<name>] and use "
+            "'colorchannel.<name>'."
+        )
     if parse_colorrange_mode(mode) is not None:
         return _resolve_colorrange_mode(mode, image, colorrange_config)
     raise ValueError(f"Unsupported analysis mode '{mode}'.")

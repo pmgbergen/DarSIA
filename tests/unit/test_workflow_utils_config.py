@@ -62,3 +62,28 @@ import_bundle = "{tmp_path / "bundle_in.zip"}"
         config.workflow_utils.export_calibration_bundle == tmp_path / "bundle_out.zip"
     )
     assert config.workflow_utils.import_calibration_bundle == tmp_path / "bundle_in.zip"
+
+
+def test_fluidflower_config_loads_colorchannel_registry(tmp_path: Path) -> None:
+    data_folder = tmp_path / "data"
+    data_folder.mkdir(parents=True, exist_ok=True)
+    (data_folder / "baseline.jpg").touch()
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        f"""
+[data]
+folder = "{data_folder}"
+baseline = "baseline.jpg"
+results = "{tmp_path / "results"}"
+
+[colorchannel.red_channel]
+color_space = "RGB"
+channel = "r"
+"""
+    )
+
+    config = FluidFlowerConfig(config_path, require_data=False, require_results=False)
+    assert config.colorchannel is not None
+    resolved = config.colorchannel.resolve("red_channel")
+    assert resolved["red_channel"].color_space == "RGB"
+    assert resolved["red_channel"].channel == "r"
