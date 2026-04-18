@@ -10,6 +10,7 @@ from warnings import warn
 from .analysis import AnalysisConfig
 from .color_paths import ColorPathsConfig
 from .color_to_mass import ColorToMassConfig
+from .colorchannel_registry import ColorChannelRegistry
 from .colorrange import ColorRangeConfig
 from .corrections import CorrectionsConfig
 from .data import DataConfig
@@ -190,6 +191,12 @@ class FluidFlowerConfig:
             self.format_registry.load(path)
         except KeyError:
             self.format_registry = None
+        # ! ---- COLOR CHANNEL REGISTRY ---- ! #
+        try:
+            self.colorchannel: ColorChannelRegistry | None = ColorChannelRegistry()
+            self.colorchannel.load(path)
+        except KeyError:
+            self.colorchannel = None
 
         # ! ---- ANALYSIS DATA ---- ! #
         try:
@@ -201,6 +208,7 @@ class FluidFlowerConfig:
                 data_registry=self.data.registry if self.data else None,
                 roi_registry=self.roi_registry,
                 format_registry=self.format_registry,
+                colorchannel_registry=self.colorchannel,
             )
         except KeyError:
             self.analysis = None
