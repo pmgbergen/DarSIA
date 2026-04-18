@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from darsia.presets.workflows.analysis.progress import normalize_progress_event
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.user_interface_gui import (
     _run_helper_workflow,
@@ -20,16 +21,22 @@ from darsia.presets.workflows.user_interface_gui import (
     default_session_cache_file,
     enabled_option_labels,
     encode_workflow_error_details,
+    estimate_remaining_time_seconds,
+    format_batch_monitor_text,
+    format_duration_seconds,
     format_error_details_text,
     format_workflow_done_message,
     format_workflow_error_message,
     format_workflow_start_message,
     map_conflict_dialog_choice_to_policy,
     normalize_paths,
+    progress_percent,
     publish_latest_queue_item,
     read_session_cache,
+    remaining_image_count,
     resolve_rig_class,
     resolve_utils_bundle_defaults,
+    rolling_average_runtime,
     suggested_analysis_results_folder,
     suggested_workflow_results_folder,
     write_session_cache,
@@ -349,6 +356,75 @@ def test_map_conflict_dialog_choice_to_policy() -> None:
     assert map_conflict_dialog_choice_to_policy(True) == "overwrite_all"
     assert map_conflict_dialog_choice_to_policy(False) == "skip_all"
     assert map_conflict_dialog_choice_to_policy(None) is None
+
+
+def test_format_duration_seconds() -> None:
+    assert format_duration_seconds(None) == "n/a"
+    assert format_duration_seconds(float("nan")) == "n/a"
+    assert format_duration_seconds(65.2) == "1:05"
+    assert format_duration_seconds(3661.0) == "1:01:01"
+
+
+def test_rolling_average_runtime_limits_to_last_samples() -> None:
+    assert rolling_average_runtime([]) is None
+    assert rolling_average_runtime([0.0, -1.0]) is None
+    assert rolling_average_runtime([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]) == pytest.approx(4.0)
+
+
+def test_remaining_image_count_and_progress_percent() -> None:
+    assert remaining_image_count(3, 10) == 7
+    assert remaining_image_count(12, 10) == 0
+    assert progress_percent(0, 0) == 0.0
+    assert progress_percent(5, 10) == pytest.approx(50.0)
+    assert progress_percent(15, 10) == pytest.approx(100.0)
+
+
+def test_estimate_remaining_time_seconds_requires_statistics() -> None:
+    assert estimate_remaining_time_seconds(None, 5, 10) is None
+    assert estimate_remaining_time_seconds(2.0, 1, 10) is None
+    assert estimate_remaining_time_seconds(2.0, 5, 10) == pytest.approx(10.0)
+    assert estimate_remaining_time_seconds(2.0, 10, 10) == pytest.approx(0.0)
+
+
+def test_format_batch_monitor_text_contains_requested_fields() -> None:
+    text = format_batch_monitor_text(
+        step="mass",
+        image_path="/tmp/image.png",
+        processed=3,
+        total=10,
+        last_image_seconds=1.2,
+        step_elapsed_seconds=7.0,
+        overall_elapsed_seconds=12.4,
+        eta_seconds=20.0,
+    )
+    assert "Current analysis step: mass" in text
+    assert "Current image path: /tmp/image.png" in text
+    assert "Image count: 3/10 (30.0%)" in text
+    assert "Last image elapsed:" in text
+    assert "Current step elapsed:" in text
+    assert "Overall elapsed:" in text
+    assert "Estimated remaining:" in text
+
+
+def test_normalize_progress_event_payloads() -> None:
+    valid = normalize_progress_event(
+        {
+            "event": "image_progress",
+            "step": "mass",
+            "image_path": "/tmp/img.png",
+            "image_index": 2,
+            "image_total": 10,
+            "image_duration_s": 1.2,
+            "step_elapsed_s": 8.4,
+        }
+    )
+    assert valid is not None
+    assert valid["event"] == "image_progress"
+    assert valid["step"] == "mass"
+    assert valid["image_index"] == 2
+    assert valid["image_total"] == 10
+    assert normalize_progress_event({"event": "invalid", "step": "mass"}) is None
+    assert normalize_progress_event("not-a-dict") is None
 
 
 def test_resolve_utils_bundle_defaults(tmp_path: Path) -> None:

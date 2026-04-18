@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,10 @@ import numpy as np
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
+)
+from darsia.presets.workflows.analysis.progress import (
+    AnalysisProgressEvent,
+    publish_image_progress,
 )
 from darsia.presets.workflows.analysis.scalar_products import (
     analysis_scalar_products,
@@ -136,6 +141,7 @@ def analysis_thresholding_from_context(
     ctx: AnalysisContext,
     show: bool = False,
     stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
+    progress_callback: Callable[[AnalysisProgressEvent], None] | None = None,
 ) -> None:
     """Thresholding analysis using pre-prepared context."""
     assert ctx.config.data is not None
@@ -173,7 +179,10 @@ def analysis_thresholding_from_context(
         for layer_name in layer_names:
             (npz_folder / layer_name).mkdir(parents=True, exist_ok=True)
 
-    for path in image_paths:
+    step_started_at = time.monotonic()
+    image_total = len(image_paths)
+    for image_index, path in enumerate(image_paths, start=1):
+        image_started_at = time.monotonic()
         img = fluidflower.read_image(path)
         result = color_to_mass_analysis(img)
         scalar_kwargs = {}
@@ -287,6 +296,15 @@ def analysis_thresholding_from_context(
             image_payload=stream_payload,
             logger=logger,
             error_message=f"Failed to stream thresholding previews for image '{path}'.",
+        )
+        publish_image_progress(
+            progress_callback,
+            step="thresholding",
+            image_path=str(path.resolve()),
+            image_index=image_index,
+            image_total=image_total,
+            image_duration_s=time.monotonic() - image_started_at,
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
 

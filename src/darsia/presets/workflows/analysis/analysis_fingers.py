@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time as tm
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,10 @@ import darsia
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
+)
+from darsia.presets.workflows.analysis.progress import (
+    AnalysisProgressEvent,
+    publish_image_progress,
 )
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.rig import Rig
@@ -32,6 +37,7 @@ def analysis_fingers_from_context(
     ctx: AnalysisContext,
     show: bool = False,
     stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
+    progress_callback: Callable[[AnalysisProgressEvent], None] | None = None,
 ) -> None:
     """Segmentation analysis using pre-prepared context.
 
@@ -106,7 +112,10 @@ def analysis_fingers_from_context(
     highlight_roi = False
 
     # Loop over images and analyze
-    for path in image_paths:
+    step_started_at = tm.monotonic()
+    image_total = len(image_paths)
+    for image_index, path in enumerate(image_paths, start=1):
+        image_started_at = tm.monotonic()
         # Extract color signal and assign mass
         img = fluidflower.read_image(path)
         mass_analysis_result = color_to_mass_analysis(img)
@@ -127,8 +136,8 @@ def analysis_fingers_from_context(
             }
 
         # Extract time from image.
-        time = img.time
-        path_statistics["times"].append(float(time))
+        image_time = img.time
+        path_statistics["times"].append(float(image_time))
         path_statistics["images"].append(path.name)
 
         for key, roi_config in fingers_config.roi.items():
@@ -455,6 +464,15 @@ def analysis_fingers_from_context(
                 logger=logger,
                 error_message=f"Failed to stream finger previews for image '{path}'.",
             )
+        publish_image_progress(
+            progress_callback,
+            step="fingers",
+            image_path=str(path.resolve()),
+            image_index=image_index,
+            image_total=image_total,
+            image_duration_s=tm.monotonic() - image_started_at,
+            step_elapsed_s=tm.monotonic() - step_started_at,
+        )
 
 
 def analysis_fingers(

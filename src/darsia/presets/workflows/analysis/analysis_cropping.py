@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -13,6 +14,10 @@ import darsia
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
+)
+from darsia.presets.workflows.analysis.progress import (
+    AnalysisProgressEvent,
+    publish_image_progress,
 )
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.rig import Rig
@@ -28,6 +33,7 @@ def analysis_cropping_from_context(
     ctx: AnalysisContext,
     show: bool = False,
     stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
+    progress_callback: Callable[[AnalysisProgressEvent], None] | None = None,
 ) -> None:
     """Cropping analysis using pre-prepared context.
 
@@ -56,7 +62,10 @@ def analysis_cropping_from_context(
     plot_folder = ctx.config.data.results / "cropping"
     plot_folder.mkdir(parents=True, exist_ok=True)
 
-    for path in ctx.image_paths:
+    step_started_at = time.monotonic()
+    image_total = len(ctx.image_paths)
+    for image_index, path in enumerate(ctx.image_paths, start=1):
+        image_started_at = time.monotonic()
         # Read image
         img = ctx.fluidflower.read_image(path)
 
@@ -79,6 +88,15 @@ def analysis_cropping_from_context(
             image_payload={"cropping": img},
             logger=logger,
             error_message=f"Failed to stream cropped preview for image '{path}'.",
+        )
+        publish_image_progress(
+            progress_callback,
+            step="cropping",
+            image_path=str(path.resolve()),
+            image_index=image_index,
+            image_total=image_total,
+            image_duration_s=time.monotonic() - image_started_at,
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
     print("Done. Analysis.")
