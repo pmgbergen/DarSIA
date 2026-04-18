@@ -85,21 +85,23 @@ def _time_dd_hh(seconds: int) -> str:
 def _replace_identifier_tokens(mask: str, *, stem: str, seconds: int) -> str:
     total_hours = seconds // 3600
     total_minutes = seconds // 60
+    mask_lower = mask.lower()
     values = {
         "stem": stem,
         "dd": f"{total_hours // 24:02d}",
         "hh": f"{total_hours:02d}",
         "mm": (
             f"{(seconds % 3600) // 60:02d}"
-            if ("hh" in mask or "dd" in mask)
+            if ("hh" in mask_lower or "dd" in mask_lower)
             else f"{total_minutes:02d}"
         ),
         "ss": f"{seconds % 60:02d}",
     }
     return re.sub(
-        r"(?<![a-z0-9])(stem|dd|hh|mm|ss)(?![a-z0-9])",
-        lambda m: values[m.group(1)],
+        r"(?<![A-Za-z0-9])(stem|dd|hh|mm|ss)(?![A-Za-z0-9])",
+        lambda m: values[m.group(1).lower()],
         mask,
+        flags=re.IGNORECASE,
     )
 
 
@@ -202,40 +204,42 @@ class ImageExportFormats:
     def _filename_stem(
         self, image: darsia.Image, stem: str, spec: ImageExportFormat
     ) -> str:
-        if spec.name == "stem":
+        name = spec.name
+        name_lower = name.lower()
+        if name_lower == "stem":
             return stem
 
         seconds = _seconds_from_image(image)
 
-        if spec.name == "time_hh":
+        if name_lower == "time_hh":
             return f"time_{_time_hh(seconds)}_hrs"
-        if spec.name == "time_hh:mm":
+        if name_lower == "time_hh:mm":
             return f"time_{_time_hh_mm(seconds)}_hrs"
-        if spec.name == "time_hh:mm:ss":
+        if name_lower == "time_hh:mm:ss":
             return f"time_{_time_hh_mm_ss(seconds, pad_hours=True)}_hrs"
-        if spec.name == "time_mm:ss":
+        if name_lower == "time_mm:ss":
             return f"time_{_time_mm_ss(seconds)}_hrs"
-        if spec.name == "time_dd:hh:mm":
+        if name_lower == "time_dd:hh:mm":
             return f"time_{_time_dd_hh_mm(seconds)}_days_hrs"
-        if spec.name == "time_dd:hh":
+        if name_lower == "time_dd:hh":
             return f"time_{_time_dd_hh(seconds)}_days_hrs"
-        if spec.name == "stem_time_hh":
+        if name_lower == "stem_time_hh":
             return f"{stem}_{_time_hh(seconds)}_hrs"
-        if spec.name == "stem_time_hh:mm":
+        if name_lower == "stem_time_hh:mm":
             return f"{stem}_{_time_hh_mm(seconds)}_hrs"
-        if spec.name == "stem_time_hh:mm:ss":
+        if name_lower == "stem_time_hh:mm:ss":
             return f"{stem}_{_time_hh_mm_ss(seconds, pad_hours=True)}_hrs"
-        if spec.name == "stem_time_dd:hh:mm":
+        if name_lower == "stem_time_dd:hh:mm":
             return f"{stem}_{_time_dd_hh_mm(seconds)}_days_hrs"
-        if spec.name == "stem_time_dd:hh":
+        if name_lower == "stem_time_dd:hh":
             return f"{stem}_{_time_dd_hh(seconds)}_days_hrs"
 
-        if any(token in spec.name for token in ("stem", "dd", "hh", "mm", "ss")):
-            return _replace_identifier_tokens(spec.name, stem=stem, seconds=seconds).replace(
+        if any(token in name_lower for token in ("stem", "dd", "hh", "mm", "ss")):
+            return _replace_identifier_tokens(name, stem=stem, seconds=seconds).replace(
                 ":", "_"
             )
 
-        raise ValueError(f"Unsupported name option '{spec.name}'.")
+        raise ValueError(f"Unsupported name option '{name}'.")
 
     def export_image(
         self,

@@ -39,7 +39,7 @@ float_format = "{:.6g}"
     assert specs["4k"].type == "jpg"
     assert specs["4k"].resolution == (2160, 4096)
     assert specs["4k"].cmap == "matplotlib.viridis"
-    assert specs["4k"].name == "time_hh:mm"
+    assert specs["4k"].name == "time_HH:MM"
     assert specs["4k"].quality == 77
     assert specs["my_npz"].keep_ratio is True
     assert specs["my_npz"].dtype == "np.float32"

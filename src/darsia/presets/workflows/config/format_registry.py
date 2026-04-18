@@ -10,7 +10,10 @@ from .utils import _convert_none, _get_section_from_toml
 
 SUPPORTED_EXPORT_FORMATS = {"jpg", "png", "npz", "npy", "csv"}
 REMOVED_EXPORT_NAMES = {"name_stem", "name_time_hh:mm:ss"}
-NAME_IDENTIFIER_PATTERN = re.compile(r"(?<![a-z0-9])(stem|dd|hh|mm|ss)(?![a-z0-9])")
+NAME_IDENTIFIER_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9])(stem|dd|hh|mm|ss)(?![A-Za-z0-9])",
+    flags=re.IGNORECASE,
+)
 
 
 @dataclass
@@ -37,7 +40,8 @@ class ImageExportFormat:
 
 
 def _validate_name_mask(name: str, context: str) -> None:
-    if name in REMOVED_EXPORT_NAMES:
+    lower_name = name.lower()
+    if lower_name in REMOVED_EXPORT_NAMES:
         raise ValueError(
             f"Unsupported name option '{name}' for {context}. "
             f"Removed options: {sorted(REMOVED_EXPORT_NAMES)}."
@@ -92,7 +96,7 @@ class FormatRegistry:
                     )
 
                 spec = ImageExportFormat(type=_type, identifier=str(identifier))
-                spec.name = str(entry.get("name", "stem")).lower()
+                spec.name = str(entry.get("name", "stem")).strip()
                 _validate_name_mask(spec.name, f"[format.{_type}.{identifier}]")
                 spec.resolution = _parse_resolution(entry.get("resolution"))
                 spec.keep_ratio = bool(entry.get("keep_ratio", False))
