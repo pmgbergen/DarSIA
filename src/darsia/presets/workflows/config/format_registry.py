@@ -74,6 +74,7 @@ class FormatRegistry:
 
                 spec = ImageExportFormat(type=_type, identifier=str(identifier))
                 spec.resolution = _parse_resolution(entry.get("resolution"))
+                spec.keep_ratio = bool(entry.get("keep_ratio", False))
 
                 if _type in {"jpg", "png"}:
                     dpi = _convert_none(entry.get("dpi"))
@@ -82,7 +83,6 @@ class FormatRegistry:
                     spec.cmap = None if cmap is None else str(cmap)
 
                 if _type in {"npz", "npy", "csv"}:
-                    spec.keep_ratio = bool(entry.get("keep_ratio", False))
                     dtype = _convert_none(entry.get("dtype"))
                     spec.dtype = None if dtype is None else str(dtype)
 
