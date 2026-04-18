@@ -10,8 +10,8 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.format_registry import (
-    ImageExportFormat,
     SUPPORTED_EXPORT_FORMATS,
+    ImageExportFormat,
 )
 
 logger = logging.getLogger(__name__)
@@ -152,7 +152,9 @@ class ImageExportFormats:
 
         return prepared
 
-    def _filename_stem(self, image: darsia.Image, stem: str, spec: ImageExportFormat) -> str:
+    def _filename_stem(
+        self, image: darsia.Image, stem: str, spec: ImageExportFormat
+    ) -> str:
         if spec.name == "stem":
             return stem
 

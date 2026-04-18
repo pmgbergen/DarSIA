@@ -71,7 +71,9 @@ def analysis_segmentation_from_context(
     segmentation_contours = SegmentationContours(segmentation_config.config)
     requested_modes = segmentation_contours.requested_modes()
     need_rescaled = requires_rescaled_modes(requested_modes)
-    exporter = ImageExportFormats.from_analysis_config(ctx.config, fallback_formats=["jpg"])
+    exporter = ImageExportFormats.from_analysis_config(
+        ctx.config, fallback_formats=["jpg"]
+    )
 
     # Loop over images and analyze
     step_started_at = time.monotonic()
