@@ -1985,8 +1985,15 @@ class ScalarImage(Image):
                     f"(space_dim + 1), got {len(header_columns)}."
                 )
 
-        voxels = np.asarray(self.coordinatesystem.voxels, dtype=float) + 0.5
-        coordinates = np.asarray(self.coordinatesystem.coordinate(voxels), dtype=float)
+        coordinates = np.asarray(
+            self.coordinatesystem.coordinate(
+                np.asarray(self.coordinatesystem.voxels, dtype=float) + 0.5
+            ),
+            dtype=float,
+        )
+        # CoordinateSystem stores flattened voxel data in Fortran-style index order.
+        # Reshape with order="F" and flatten with order="C" to export rows with
+        # x-fastest ordering (then y, then z), matching the required CSV layout.
         coordinate_columns = [
             coordinates[:, axis].reshape(arr.shape, order="F").reshape(-1, order="C")
             for axis in range(self.space_dim)
