@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from warnings import warn
 
+from darsia.presets.workflows.mode_resolution import validate_mode_syntax
+
 from .data_registry import DataRegistry
 from .data_selection import resolve_time_data_selector
 from .fingers import FingersConfig
@@ -97,13 +99,14 @@ class AnalysisThresholdingConfig:
         stroke_width: int = 2
 
         def load(
-            self, sec: dict, *, key: str, supported_modes: set[str]
+            self, sec: dict, *, key: str
         ) -> "AnalysisThresholdingConfig.LayerConfig":
             self.mode = _get_key(sec, "mode", required=True, type_=str).strip()
-            if self.mode not in supported_modes:
+            if not validate_mode_syntax(self.mode):
                 raise ValueError(
                     f"Unsupported analysis.thresholding.layers.{key}.mode '{self.mode}'. "
-                    f"Supported modes: {', '.join(sorted(supported_modes))}."
+                    "Supported modes are legacy mass modes, rescaled modes, "
+                    "'colorchannel.<space>.<channel>', and 'colorrange.<name>'."
                 )
             self.threshold_min = _get_key(sec, "threshold_min", required=False)
             self.threshold_max = _get_key(sec, "threshold_max", required=False)
@@ -163,17 +166,6 @@ class AnalysisThresholdingConfig:
     folder: Path = field(default_factory=Path)
     """Path to the results folder for thresholding analysis."""
 
-    SUPPORTED_MODES = {
-        "concentration_aq",
-        "saturation_g",
-        "mass_total",
-        "mass_g",
-        "mass_aq",
-        "rescaled_mass",
-        "rescaled_saturation_g",
-        "rescaled_concentration_aq",
-    }
-
     def load(self, sec: dict, results: Path | None) -> "AnalysisThresholdingConfig":
         sub_sec = _get_section(sec, "thresholding")
 
@@ -201,9 +193,7 @@ class AnalysisThresholdingConfig:
         if len(raw_layers) > 0:
             for key in raw_layers.keys():
                 layer_sec = _get_section(raw_layers, key)
-                self.layers[key] = self.LayerConfig().load(
-                    layer_sec, key=key, supported_modes=self.SUPPORTED_MODES
-                )
+                self.layers[key] = self.LayerConfig().load(layer_sec, key=key)
         legend = _get_key(sub_sec, "legend", required=False, default={})
         if not isinstance(legend, dict):
             raise ValueError("analysis.thresholding.legend must be a table/dict.")

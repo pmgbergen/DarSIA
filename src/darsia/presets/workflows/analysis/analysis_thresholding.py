@@ -13,6 +13,7 @@ import numpy as np
 
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
+    infer_require_color_to_mass_from_config,
     prepare_analysis_context,
 )
 from darsia.presets.workflows.analysis.progress import (
@@ -28,6 +29,10 @@ from darsia.presets.workflows.analysis.streaming import (
     publish_stream_images,
 )
 from darsia.presets.workflows.config.analysis import AnalysisThresholdingConfig
+from darsia.presets.workflows.mode_resolution import (
+    mode_requires_color_to_mass,
+    resolve_mode_image,
+)
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
@@ -146,13 +151,11 @@ def analysis_thresholding_from_context(
     """Thresholding analysis using pre-prepared context."""
     assert ctx.config.data is not None
     assert ctx.config.analysis is not None
-    assert ctx.color_to_mass_analysis is not None
 
     config = ctx.config
     experiment = ctx.experiment
     fluidflower = ctx.fluidflower
     image_paths = ctx.image_paths
-    color_to_mass_analysis = ctx.color_to_mass_analysis
 
     if config.analysis.thresholding is None:
         config.analysis.thresholding = AnalysisThresholdingConfig().load(
@@ -162,6 +165,16 @@ def analysis_thresholding_from_context(
 
     thresholding_config = config.analysis.thresholding
     thresholding_config.folder.mkdir(parents=True, exist_ok=True)
+    requires_color_to_mass = any(
+        mode_requires_color_to_mass(layer.mode)
+        for layer in thresholding_config.layers.values()
+    )
+    if requires_color_to_mass and ctx.color_to_mass_analysis is None:
+        raise ValueError(
+            "Thresholding config uses color-to-mass modes, but color-to-mass analysis "
+            "is not initialized."
+        )
+    color_to_mass_analysis = ctx.color_to_mass_analysis
 
     layer_names = list(thresholding_config.layers.keys())
     requested_modes = {layer.mode for layer in thresholding_config.layers.values()}
@@ -184,30 +197,39 @@ def analysis_thresholding_from_context(
     for image_index, path in enumerate(image_paths, start=1):
         image_started_at = time.monotonic()
         img = fluidflower.read_image(path)
-        result = color_to_mass_analysis(img)
-        scalar_kwargs = {}
-        if need_rescaled:
-            co2_mass_analysis = None
-            if hasattr(color_to_mass_analysis, "co2_mass_analysis"):
-                co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
-            scalar_kwargs = {
-                "geometry": fluidflower.geometry,
-                "injection_protocol": experiment.injection_protocol,
-                "co2_mass_analysis": co2_mass_analysis,
-                "date": img.date,
-            }
-        mode_images, _ = analysis_scalar_products(
-            mass_analysis_result=result,
-            requested_modes=requested_modes,
-            expert_knowledge_adapter=ctx.expert_knowledge_adapter,
-            **scalar_kwargs,
-        )
+        result = color_to_mass_analysis(img) if requires_color_to_mass else None
+        mode_images = {}
+        if result is not None:
+            scalar_kwargs = {}
+            if need_rescaled:
+                co2_mass_analysis = None
+                if hasattr(color_to_mass_analysis, "co2_mass_analysis"):
+                    co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
+                scalar_kwargs = {
+                    "geometry": fluidflower.geometry,
+                    "injection_protocol": experiment.injection_protocol,
+                    "co2_mass_analysis": co2_mass_analysis,
+                    "date": img.date,
+                }
+            mode_images, _ = analysis_scalar_products(
+                mass_analysis_result=result,
+                requested_modes=requested_modes,
+                expert_knowledge_adapter=ctx.expert_knowledge_adapter,
+                **scalar_kwargs,
+            )
         stream_payload: dict[str, Any] = {"thresholding_source_image": img}
         img_bgr = _to_bgr_array(img)
         master_preview = img_bgr.copy()
 
         for layer_name, layer in thresholding_config.layers.items():
-            scalar = _to_scalar_array(mode_images[layer.mode])
+            mode_image = resolve_mode_image(
+                layer.mode,
+                img,
+                mass_analysis_result=result,
+                colorrange_config=getattr(config, "colorrange", None),
+                scalar_products=mode_images,
+            )
+            scalar = _to_scalar_array(mode_image)
             threshold_min = layer.threshold_min
             threshold_max = layer.threshold_max
             if threshold_min is not None and threshold_max is not None:
@@ -321,6 +343,9 @@ def analysis_thresholding(
         cls=cls,
         path=path,
         all=all,
-        require_color_to_mass=True,
+        require_color_to_mass=infer_require_color_to_mass_from_config(
+            path,
+            include_thresholding=True,
+        ),
     )
     analysis_thresholding_from_context(ctx, show=show, stream_callback=stream_callback)

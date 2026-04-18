@@ -10,6 +10,7 @@ from warnings import warn
 from .analysis import AnalysisConfig
 from .color_paths import ColorPathsConfig
 from .color_to_mass import ColorToMassConfig
+from .colorrange import ColorRangeConfig
 from .corrections import CorrectionsConfig
 from .data import DataConfig
 from .depth import DepthConfig
@@ -174,6 +175,13 @@ class FluidFlowerConfig:
             # ValueError covers malformed/incomplete section content.
             self.color_to_mass = None
             warn(f"Section color_to_mass not found in {path}.")
+
+        # ! ---- COLOR RANGE DEFINITIONS ---- ! #
+        try:
+            self.colorrange: ColorRangeConfig | None = ColorRangeConfig()
+            self.colorrange.load(path)
+        except KeyError:
+            self.colorrange = None
 
         # ! ---- ANALYSIS DATA ---- ! #
         try:

@@ -145,6 +145,8 @@ analysis outputs. Supported `modes`:
 - `mass_total`
 - `mass_g`
 - `mass_aq`
+- `colorchannel.<space>.<channel>` (e.g. `colorchannel.rgb.r`)
+- `colorrange.<name>` (binary mask from `[colorrange.<name>]`)
 - `rescaled_mass`
 - `rescaled_saturation_g`
 - `rescaled_concentration_aq`
@@ -153,15 +155,7 @@ Supported keys:
 - `formats` (list of output formats: `["jpg", "npz"]`)
 - `folder` (output folder, defaults to `<results>/thresholding`)
 - `[analysis.thresholding.layers.<name>]` (one mask layer per entry):
-  - `mode`:
-    - `concentration_aq`
-    - `saturation_g`
-    - `mass_total`
-    - `mass_g`
-    - `mass_aq`
-    - `rescaled_mass`
-    - `rescaled_saturation_g`
-    - `rescaled_concentration_aq`
+  - `mode` (legacy mass modes, rescaled modes, `colorchannel.<space>.<channel>`, `colorrange.<name>`)
   - `threshold_min` (float)
   - `threshold_max` (float)
   - `label` (string)
@@ -187,6 +181,19 @@ Notes:
 - JPG outputs are source-image overlays using each layer’s `fill` and `stroke` styling.
 - Legacy `modes` + `thresholds` is still accepted and mapped to default layers.
 
+## Named color-range section
+Define reusable binary color ranges (used by `colorrange.<name>` modes):
+
+```toml
+[colorrange.custom_range]
+color_space = "HSV" # one of RGB, BGR, HSV, HLS, LAB
+range = [[0.2, 0.4], [0.5, "none"], [0.8, "none"]]
+```
+
+- `range` must contain exactly 3 channel bounds.
+- Each channel bound is `[min, max]`.
+- Use `"none"` for open bounds.
+- Hue wrap-around is supported in HSV/HLS by using `min > max`.
 ### Expert-knowledge options
 Use `[analysis.expert_knowledge]` to constrain where selected scalar products may be
 non-zero.

@@ -16,6 +16,7 @@ import pandas as pd
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
+    infer_require_color_to_mass_from_config,
     prepare_analysis_context,
 )
 from darsia.presets.workflows.analysis.progress import (
@@ -23,6 +24,7 @@ from darsia.presets.workflows.analysis.progress import (
     publish_image_progress,
 )
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
+from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SimpleSegmentation
 from darsia.single_image_analysis.contouranalysis import (
@@ -48,15 +50,20 @@ def analysis_fingers_from_context(
     """
     assert ctx.config.analysis is not None
     assert ctx.config.analysis.fingers is not None
-    assert ctx.color_to_mass_analysis is not None
 
     fluidflower = ctx.fluidflower
     image_paths = ctx.image_paths
-    color_to_mass_analysis = ctx.color_to_mass_analysis
 
     # Extract finger analysis config (asserted not None above)
     fingers_config = ctx.config.analysis.fingers.config
     assert fingers_config.roi is not None
+    requires_color_to_mass = mode_requires_color_to_mass(fingers_config.mode)
+    if requires_color_to_mass and ctx.color_to_mass_analysis is None:
+        raise ValueError(
+            "Fingers config uses color-to-mass modes, but color-to-mass analysis "
+            "is not initialized."
+        )
+    color_to_mass_analysis = ctx.color_to_mass_analysis
     segmentation_analysis = SimpleSegmentation(
         mode=fingers_config.mode, threshold=fingers_config.threshold
     )
@@ -118,14 +125,22 @@ def analysis_fingers_from_context(
         image_started_at = monotonic()
         # Extract color signal and assign mass
         img = fluidflower.read_image(path)
-        mass_analysis_result = color_to_mass_analysis(img)
+        mass_analysis_result = (
+            color_to_mass_analysis(img) if requires_color_to_mass else None
+        )
 
         # Produce contour images
         segmentation = segmentation_analysis(
             img,
-            saturation_g=mass_analysis_result.saturation_g,
-            concentration_aq=mass_analysis_result.concentration_aq,
-            mass=mass_analysis_result.mass,
+            saturation_g=(
+                mass_analysis_result.saturation_g if mass_analysis_result else None
+            ),
+            concentration_aq=(
+                mass_analysis_result.concentration_aq if mass_analysis_result else None
+            ),
+            mass=mass_analysis_result.mass if mass_analysis_result else None,
+            mass_analysis_result=mass_analysis_result,
+            colorrange_config=getattr(ctx.config, "colorrange", None),
         )
 
         stream_images: dict[str, Any] | None = None
@@ -495,6 +510,9 @@ def analysis_fingers(
         cls=cls,
         path=path,
         all=all,
-        require_color_to_mass=True,
+        require_color_to_mass=infer_require_color_to_mass_from_config(
+            path,
+            include_fingers=True,
+        ),
     )
     analysis_fingers_from_context(ctx, show=show, stream_callback=stream_callback)

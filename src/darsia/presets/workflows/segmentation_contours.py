@@ -1,15 +1,31 @@
 """Util for contour plots."""
 
 import logging
+from types import SimpleNamespace
 
 import cv2
 import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import SegmentationConfig
+from darsia.presets.workflows.mode_resolution import resolve_mode_image
 from darsia.utils.augmented_plotting import plot_contour_on_image
 
 logger = logging.getLogger(__name__)
+
+
+def _compose_mass_analysis_result(
+    saturation_g: darsia.Image | None,
+    concentration_aq: darsia.Image | None,
+    mass: darsia.Image | None,
+):
+    return SimpleNamespace(
+        saturation_g=saturation_g,
+        concentration_aq=concentration_aq,
+        mass=mass,
+        mass_g=None,
+        mass_aq=None,
+    )
 
 
 class SimpleSegmentation:
@@ -49,11 +65,17 @@ class SimpleSegmentation:
         saturation_g: darsia.Image | None,
         concentration_aq: darsia.Image | None,
         mass: darsia.Image | None,
+        mass_analysis_result=None,
+        colorrange_config=None,
         rescaled_saturation_g: darsia.Image | None = None,
         rescaled_concentration_aq: darsia.Image | None = None,
         rescaled_mass: darsia.Image | None = None,
         scalar_products: dict[str, darsia.Image | None] | None = None,
     ) -> darsia.Image:
+        if mass_analysis_result is None:
+            mass_analysis_result = _compose_mass_analysis_result(
+                saturation_g, concentration_aq, mass
+            )
         products = scalar_products or {
             "saturation_g": saturation_g,
             "concentration_aq": concentration_aq,
@@ -62,9 +84,13 @@ class SimpleSegmentation:
             "rescaled_concentration_aq": rescaled_concentration_aq,
             "rescaled_mass": rescaled_mass,
         }
-        if self.mode not in products or products[self.mode] is None:
-            raise ValueError(f"Missing image for mode {self.mode}")
-        values = products[self.mode]
+        values = resolve_mode_image(
+            self.mode,
+            img,
+            mass_analysis_result=mass_analysis_result,
+            colorrange_config=colorrange_config,
+            scalar_products=products,
+        )
 
         # Extract masks based on thresholds
         mask = self.extract_mask(values, [self.threshold])[0]
@@ -305,6 +331,8 @@ class SegmentationContours:
         rescaled_concentration_aq: darsia.Image | None = None,
         rescaled_mass: darsia.Image | None = None,
         scalar_products: dict[str, darsia.Image | None] | None = None,
+        mass_analysis_result=None,
+        colorrange_config=None,
     ) -> darsia.Image:
         products = scalar_products or {
             "saturation_g": saturation_g,
@@ -315,12 +343,18 @@ class SegmentationContours:
             "rescaled_mass": rescaled_mass,
         }
         contour_img = img.copy()
+        if mass_analysis_result is None:
+            mass_analysis_result = _compose_mass_analysis_result(
+                saturation_g, concentration_aq, mass
+            )
         for segmentation_config in self.config.values():
-            # Select values based on mode
-            mode = segmentation_config.mode
-            if mode not in products or products[mode] is None:
-                raise ValueError(f"Missing image for mode {mode}")
-            values = products[mode]
+            values = resolve_mode_image(
+                segmentation_config.mode,
+                img,
+                mass_analysis_result=mass_analysis_result,
+                colorrange_config=colorrange_config,
+                scalar_products=products,
+            )
 
             # Extract masks based on thresholds
             masks = self.extract_mask(values, segmentation_config.thresholds)

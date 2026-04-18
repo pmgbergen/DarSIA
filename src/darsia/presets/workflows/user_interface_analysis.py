@@ -5,7 +5,10 @@ import logging
 import time
 from collections.abc import Callable
 
-from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_context
+from darsia.presets.workflows.analysis.analysis_context import (
+    infer_require_color_to_mass_from_config,
+    prepare_analysis_context,
+)
 from darsia.presets.workflows.analysis.analysis_cropping import (
     analysis_cropping_from_context,
 )
@@ -115,12 +118,13 @@ def run_analysis(
         )
 
     # Determine if we need color-to-mass analysis (expensive initialization)
-    require_color_to_mass = (
-        args.mass
-        or args.volume
-        or args.segmentation
-        or args.fingers
-        or args.thresholding
+    require_color_to_mass = infer_require_color_to_mass_from_config(
+        args.config,
+        include_segmentation=args.segmentation,
+        include_fingers=args.fingers,
+        include_thresholding=args.thresholding,
+        include_mass=args.mass,
+        include_volume=args.volume,
     )
 
     # Prepare shared context once for all analyses

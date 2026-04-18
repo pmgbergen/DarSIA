@@ -143,7 +143,7 @@ threshold_min = 0.1
         )
 
 
-def test_analysis_thresholding_accepts_rescaled_modes(tmp_path: Path) -> None:
+def test_analysis_thresholding_accepts_extended_modes(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
@@ -158,6 +158,12 @@ threshold_min = 0.1
 [analysis.thresholding.layers.aq_rescaled]
 mode = "rescaled_concentration_aq"
 threshold_min = 0.1
+[analysis.thresholding.layers.red]
+mode = "colorchannel.rgb.r"
+threshold_min = 0.2
+[analysis.thresholding.layers.green_band]
+mode = "colorrange.custom_range"
+threshold_min = 0.5
 """.strip(),
     )
 
@@ -171,6 +177,8 @@ threshold_min = 0.1
     assert config.thresholding.layers["mass_rescaled"].mode == "rescaled_mass"
     assert config.thresholding.layers["gas_rescaled"].mode == "rescaled_saturation_g"
     assert config.thresholding.layers["aq_rescaled"].mode == "rescaled_concentration_aq"
+    assert config.thresholding.layers["red"].mode == "colorchannel.rgb.r"
+    assert config.thresholding.layers["green_band"].mode == "colorrange.custom_range"
 
 
 def test_analysis_segmentation_accepts_rescaled_mode(tmp_path: Path) -> None:

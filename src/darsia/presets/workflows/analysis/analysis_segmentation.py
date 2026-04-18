@@ -9,6 +9,7 @@ from pathlib import Path
 
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
+    infer_require_color_to_mass_from_config,
     prepare_analysis_context,
 )
 from darsia.presets.workflows.analysis.progress import (
@@ -19,7 +20,10 @@ from darsia.presets.workflows.analysis.scalar_products import (
     analysis_scalar_products,
     requires_rescaled_modes,
 )
-from darsia.presets.workflows.analysis.streaming import publish_stream_images
+from darsia.presets.workflows.analysis.streaming import (
+    publish_stream_images,
+)
+from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SegmentationContours
 
@@ -42,15 +46,25 @@ def analysis_segmentation_from_context(
     """
     assert ctx.config.analysis is not None
     assert ctx.config.analysis.segmentation is not None
-    assert ctx.color_to_mass_analysis is not None
 
     fluidflower = ctx.fluidflower
     experiment = ctx.experiment
     image_paths = ctx.image_paths
-    color_to_mass_analysis = ctx.color_to_mass_analysis
 
     # Extract segmentation config (asserted not None above)
     segmentation_config = ctx.config.analysis.segmentation
+    _config = segmentation_config.config
+    if isinstance(_config, dict):
+        modes = [cfg.mode for cfg in _config.values() if cfg.mode is not None]
+    else:
+        modes = [_config.mode] if _config.mode is not None else []
+    requires_color_to_mass = any(mode_requires_color_to_mass(mode) for mode in modes)
+    if requires_color_to_mass and ctx.color_to_mass_analysis is None:
+        raise ValueError(
+            "Segmentation config uses color-to-mass modes, but color-to-mass analysis "
+            "is not initialized."
+        )
+    color_to_mass_analysis = ctx.color_to_mass_analysis
 
     # ! ---- CONTOUR PLOTTING ----
     segmentation_contours = SegmentationContours(segmentation_config.config)
@@ -64,29 +78,35 @@ def analysis_segmentation_from_context(
         image_started_at = time.monotonic()
         # Extract color signal and assign mass
         img = fluidflower.read_image(path)
-        mass_analysis_result = color_to_mass_analysis(img)
-        scalar_kwargs = {}
-        if need_rescaled:
-            co2_mass_analysis = None
-            if hasattr(color_to_mass_analysis, "co2_mass_analysis"):
-                co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
-            scalar_kwargs = {
-                "geometry": fluidflower.geometry,
-                "injection_protocol": experiment.injection_protocol,
-                "co2_mass_analysis": co2_mass_analysis,
-                "date": img.date,
-            }
-        scalar_products, _ = analysis_scalar_products(
-            mass_analysis_result=mass_analysis_result,
-            requested_modes=requested_modes,
-            expert_knowledge_adapter=ctx.expert_knowledge_adapter,
-            **scalar_kwargs,
+        mass_analysis_result = (
+            color_to_mass_analysis(img) if requires_color_to_mass else None
         )
+        scalar_products = {}
+        if mass_analysis_result is not None:
+            scalar_kwargs = {}
+            if need_rescaled:
+                co2_mass_analysis = None
+                if hasattr(color_to_mass_analysis, "co2_mass_analysis"):
+                    co2_mass_analysis = color_to_mass_analysis.co2_mass_analysis
+                scalar_kwargs = {
+                    "geometry": fluidflower.geometry,
+                    "injection_protocol": experiment.injection_protocol,
+                    "co2_mass_analysis": co2_mass_analysis,
+                    "date": img.date,
+                }
+            scalar_products, _ = analysis_scalar_products(
+                mass_analysis_result=mass_analysis_result,
+                requested_modes=requested_modes,
+                expert_knowledge_adapter=ctx.expert_knowledge_adapter,
+                **scalar_kwargs,
+            )
 
         # Produce contour images
         contour_image = segmentation_contours(
             img,
             scalar_products=scalar_products,
+            mass_analysis_result=mass_analysis_result,
+            colorrange_config=getattr(ctx.config, "colorrange", None),
         )
 
         if show:
@@ -135,7 +155,10 @@ def analysis_segmentation(
         cls=cls,
         path=path,
         all=all,
-        require_color_to_mass=True,
+        require_color_to_mass=infer_require_color_to_mass_from_config(
+            path,
+            include_segmentation=True,
+        ),
     )
     analysis_segmentation_from_context(
         ctx,
