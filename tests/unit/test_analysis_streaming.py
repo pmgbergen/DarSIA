@@ -4,9 +4,11 @@ import logging
 from pathlib import Path
 from types import SimpleNamespace
 
-import numpy as np
 import darsia
+import numpy as np
+from darsia import make_coordinate
 
+from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.analysis.analysis_thresholding import (
     analysis_thresholding_from_context,
 )
@@ -15,6 +17,7 @@ from darsia.presets.workflows.analysis.streaming import (
     publish_stream_images,
 )
 from darsia.presets.workflows.config.analysis import AnalysisThresholdingConfig
+from darsia.presets.workflows.config.roi import RoiConfig
 from darsia.presets.workflows.user_interface_analysis import run_analysis
 
 
@@ -53,14 +56,25 @@ def test_publish_stream_images_encodes_images() -> None:
     assert isinstance(received[0]["b"], bytes)
 
 
-def test_run_analysis_forwards_stream_callback_to_all_modes(monkeypatch) -> None:
-    recorded: dict[str, object] = {}
+def test_run_analysis_forwards_stream_and_progress_callbacks_to_all_modes(
+    monkeypatch,
+) -> None:
+    recorded_stream: dict[str, object] = {}
+    recorded_progress: dict[str, object] = {}
     stream_callback = lambda payload: payload  # noqa: E731
-    fake_ctx = object()
+    progress_events: list[dict[str, object]] = []
+
+    def progress_callback(payload):
+        progress_events.append(payload)
+
+    fake_ctx = SimpleNamespace(
+        image_paths=[Path("/tmp/img1.png"), Path("/tmp/img2.png")]
+    )
 
     def _capture(name):
         def _inner(ctx, **kwargs):
-            recorded[name] = kwargs.get("stream_callback")
+            recorded_stream[name] = kwargs.get("stream_callback")
+            recorded_progress[name] = kwargs.get("progress_callback")
             assert ctx is fake_ctx
 
         return _inner
@@ -107,9 +121,14 @@ def test_run_analysis_forwards_stream_callback_to_all_modes(monkeypatch) -> None
         save_jpg=False,
         save_npz=False,
     )
-    run_analysis(rig_cls=object, args=args, stream_callback=stream_callback)
+    run_analysis(
+        rig_cls=object,
+        args=args,
+        stream_callback=stream_callback,
+        progress_callback=progress_callback,
+    )
 
-    assert recorded == {
+    assert recorded_stream == {
         "cropping": stream_callback,
         "mass": stream_callback,
         "volume": stream_callback,
@@ -117,6 +136,28 @@ def test_run_analysis_forwards_stream_callback_to_all_modes(monkeypatch) -> None
         "fingers": stream_callback,
         "thresholding": stream_callback,
     }
+    assert recorded_progress == {
+        "cropping": progress_callback,
+        "mass": progress_callback,
+        "volume": progress_callback,
+        "segmentation": progress_callback,
+        "fingers": progress_callback,
+        "thresholding": progress_callback,
+    }
+    assert [event["event"] for event in progress_events] == [
+        "step_start",
+        "step_complete",
+        "step_start",
+        "step_complete",
+        "step_start",
+        "step_complete",
+        "step_start",
+        "step_complete",
+        "step_start",
+        "step_complete",
+        "step_start",
+        "step_complete",
+    ]
 
 
 def test_thresholding_writes_separated_formats_and_streams_layer_keys(
@@ -172,13 +213,12 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
             analysis=SimpleNamespace(thresholding=thresholding_config),
         ),
         experiment=SimpleNamespace(
-            injection_protocol=SimpleNamespace(
-                injected_mass=lambda date=None, **_: 1.0
-            )
+            injection_protocol=SimpleNamespace(injected_mass=lambda date=None, **_: 1.0)
         ),
         fluidflower=_FakeFluidFlower(),
         image_paths=[image_path],
         color_to_mass_analysis=_fake_color_to_mass,
+        expert_knowledge_adapter=None,
     )
 
     def _stream_callback(payload):
@@ -268,15 +308,81 @@ def test_thresholding_supports_rescaled_layer_modes(tmp_path: Path) -> None:
             analysis=SimpleNamespace(thresholding=thresholding_config),
         ),
         experiment=SimpleNamespace(
+            injection_protocol=SimpleNamespace(injected_mass=lambda date=None, **_: 1.0)
+        ),
+        fluidflower=_FakeFluidFlower(),
+        image_paths=[image_path],
+        color_to_mass_analysis=_FakeColorToMass(),
+        expert_knowledge_adapter=None,
+    )
+
+    analysis_thresholding_from_context(ctx)
+
+    assert (tmp_path / "thresholding" / "npz" / "rescaled" / "img001.npz").exists()
+
+
+def test_thresholding_applies_expert_knowledge_constraints(tmp_path: Path) -> None:
+    thresholding_config = AnalysisThresholdingConfig().load(
+        sec={
+            "thresholding": {
+                "formats": ["npz"],
+                "layers": {
+                    "gas": {
+                        "mode": "saturation_g",
+                        "threshold_min": 0.1,
+                        "label": "Gas plume",
+                    }
+                },
+            }
+        },
+        results=tmp_path,
+    )
+
+    image_path = tmp_path / "img001.png"
+    scalar = darsia.ScalarImage(
+        np.full((16, 24), 0.5, dtype=float), dimensions=[1.0, 1.0]
+    )
+    roi = RoiConfig()
+    roi.roi = make_coordinate([[0.0, 0.0], [0.5, 1.0]])
+    roi.name = "left_half"
+    adapter = ExpertKnowledgeAdapter(saturation_g_rois={"left_half": roi})
+
+    class _FakeImage:
+        def __init__(self) -> None:
+            self.img = np.zeros((16, 24, 3), dtype=np.uint8)
+            self.date = None
+
+    class _FakeFluidFlower:
+        def read_image(self, path: Path) -> _FakeImage:
+            del path
+            return _FakeImage()
+
+    def _fake_color_to_mass(img):
+        del img
+        return SimpleNamespace(
+            concentration_aq=scalar,
+            saturation_g=scalar,
+            mass=scalar,
+            mass_g=scalar,
+            mass_aq=scalar,
+        )
+
+    ctx = SimpleNamespace(
+        config=SimpleNamespace(
+            data=SimpleNamespace(results=tmp_path),
+            analysis=SimpleNamespace(thresholding=thresholding_config),
+        ),
+        experiment=SimpleNamespace(
             injection_protocol=SimpleNamespace(
                 injected_mass=lambda date=None, **_: 1.0
             )
         ),
         fluidflower=_FakeFluidFlower(),
         image_paths=[image_path],
-        color_to_mass_analysis=_FakeColorToMass(),
+        color_to_mass_analysis=_fake_color_to_mass,
+        expert_knowledge_adapter=adapter,
     )
 
     analysis_thresholding_from_context(ctx)
-
-    assert (tmp_path / "thresholding" / "npz" / "rescaled" / "img001.npz").exists()
+    mask = np.load(tmp_path / "thresholding" / "npz" / "gas" / "img001.npz")["mask"]
+    assert np.any(mask == 0)

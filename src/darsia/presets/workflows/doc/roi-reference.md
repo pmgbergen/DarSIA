@@ -1,6 +1,8 @@
 # ROI Reference
 
 ROIs are used in mass/volume/fingers workflows and optionally for color-path calibration.
+They can also be used by analysis expert knowledge to constrain saturation and
+concentration fields.
 
 ## Global ROI registry
 ```toml
@@ -16,8 +18,27 @@ Then reference by key:
 roi = ["storage"]
 ```
 
+Expert-knowledge usage:
+```toml
+[analysis.expert_knowledge]
+saturation_g = ["storage"]
+concentration_aq = ["storage"]
+```
+
+If these lists are empty (default), expert knowledge is not applied.
+
 ## Inline ROI definitions
 Inline blocks are also supported (for example under analysis fingers or color paths).
+
+## ROI helper template output
+The ROI helper emits a copy-ready template in ROI registry format:
+
+```toml
+[roi.roi_name]
+name = "roi_name"
+corner_1 = [x1, y1]
+corner_2 = [x2, y2]
+```
 
 ## Coordinate convention
 - Coordinates are physical domain coordinates (meters).

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable
 from pathlib import Path
 
@@ -13,10 +14,11 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
-from darsia.presets.workflows.analysis.scalar_products import (
-    analysis_scalar_products,
-    compute_rescaled_mass_products,
+from darsia.presets.workflows.analysis.progress import (
+    AnalysisProgressEvent,
+    publish_image_progress,
 )
+from darsia.presets.workflows.analysis.scalar_products import analysis_scalar_products
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.config.analysis import AnalysisMassConfig
 from darsia.presets.workflows.rig import Rig
@@ -40,6 +42,7 @@ def analysis_mass_from_context(
     ctx: AnalysisContext,
     show: bool = False,
     stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
+    progress_callback: Callable[[AnalysisProgressEvent], None] | None = None,
 ) -> None:
     """Mass analysis using pre-prepared context.
 
@@ -158,33 +161,39 @@ def analysis_mass_from_context(
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Loop over images and analyze
-    for path in image_paths:
+    step_started_at = time.monotonic()
+    image_total = len(image_paths)
+    for image_index, path in enumerate(image_paths, start=1):
+        image_started_at = time.monotonic()
         # Extract color signal and assign mass
         img = fluidflower.read_image(path)
         mass_analysis_result = color_to_mass_analysis(img)
 
         # Log time
-        time = mass_analysis_result.time
+        image_time = mass_analysis_result.time
 
-        products, _ = analysis_scalar_products(
-            mass_analysis_result=mass_analysis_result
+        products, rescaled = analysis_scalar_products(
+            mass_analysis_result=mass_analysis_result,
+            requested_modes={
+                "rescaled_mass",
+                "rescaled_saturation_g",
+                "rescaled_concentration_aq",
+            },
+            geometry=fluidflower.geometry,
+            injection_protocol=experiment.injection_protocol,
+            co2_mass_analysis=co2_mass_analysis,
+            date=img.date,
+            expert_knowledge_adapter=ctx.expert_knowledge_adapter,
         )
         mass = products["mass_total"]
         mass_g = products["mass_g"]
         mass_aq = products["mass_aq"]
         saturation_g = products["saturation_g"]
         concentration_aq = products["concentration_aq"]
-
-        rescaled = compute_rescaled_mass_products(
-            mass_analysis_result=mass_analysis_result,
-            geometry=fluidflower.geometry,
-            injection_protocol=experiment.injection_protocol,
-            co2_mass_analysis=co2_mass_analysis,
-            date=img.date,
-        )
-        rescaled_mass = rescaled.rescaled_result.mass
-        rescaled_saturation_g = rescaled.rescaled_result.saturation_g
-        rescaled_concentration_aq = rescaled.rescaled_result.concentration_aq
+        assert rescaled is not None
+        rescaled_mass = products["rescaled_mass"]
+        rescaled_saturation_g = products["rescaled_saturation_g"]
+        rescaled_concentration_aq = products["rescaled_concentration_aq"]
 
         # Store data to disk
         _save_scalar_image_artifacts(mass, output_folders["mass"], path.stem)
@@ -207,7 +216,7 @@ def analysis_mass_from_context(
         )
 
         # Prepare row data for DataFrame
-        row_data = {"time": time, "datetime": img.date, "image_stem": path.stem}
+        row_data = {"time": image_time, "datetime": img.date, "image_stem": path.stem}
         row_data["detected_mass_total"] = rescaled.detected_mass_total
         row_data["exact_mass_total"] = rescaled.exact_mass_total
         row_data["detected_mass_total_rescaled"] = fluidflower.geometry.integrate(
@@ -265,7 +274,7 @@ def analysis_mass_from_context(
 
         # Save DataFrame to CSV after each image analysis
         mass_df.to_csv(csv_path, index=False)  # Log the current analysis results
-        logger.info(f"Processed {path.stem} at time {time}")
+        logger.info(f"Processed {path.stem} at time {image_time}")
 
         for roi_config in config.analysis.mass.roi.values():
             key = roi_config.name
@@ -299,6 +308,15 @@ def analysis_mass_from_context(
             },
             logger=logger,
             error_message=f"Failed to stream mass previews for image '{path}'.",
+        )
+        publish_image_progress(
+            progress_callback,
+            step="mass",
+            image_path=str(path.resolve()),
+            image_index=image_index,
+            image_total=image_total,
+            image_duration_s=time.monotonic() - image_started_at,
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
 

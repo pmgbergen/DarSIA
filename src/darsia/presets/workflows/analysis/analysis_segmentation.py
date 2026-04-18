@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable
 from pathlib import Path
 
@@ -10,6 +11,10 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     infer_require_color_to_mass_from_config,
     prepare_analysis_context,
+)
+from darsia.presets.workflows.analysis.progress import (
+    AnalysisProgressEvent,
+    publish_image_progress,
 )
 from darsia.presets.workflows.analysis.scalar_products import (
     analysis_scalar_products,
@@ -29,6 +34,7 @@ def analysis_segmentation_from_context(
     ctx: AnalysisContext,
     show: bool = False,
     stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
+    progress_callback: Callable[[AnalysisProgressEvent], None] | None = None,
 ) -> None:
     """Segmentation analysis using pre-prepared context.
 
@@ -66,7 +72,10 @@ def analysis_segmentation_from_context(
     need_rescaled = requires_rescaled_modes(requested_modes)
 
     # Loop over images and analyze
-    for path in image_paths:
+    step_started_at = time.monotonic()
+    image_total = len(image_paths)
+    for image_index, path in enumerate(image_paths, start=1):
+        image_started_at = time.monotonic()
         # Extract color signal and assign mass
         img = fluidflower.read_image(path)
         mass_analysis_result = (
@@ -88,6 +97,7 @@ def analysis_segmentation_from_context(
             scalar_products, _ = analysis_scalar_products(
                 mass_analysis_result=mass_analysis_result,
                 requested_modes=requested_modes,
+                expert_knowledge_adapter=ctx.expert_knowledge_adapter,
                 **scalar_kwargs,
             )
 
@@ -112,6 +122,15 @@ def analysis_segmentation_from_context(
             image_payload={"segmentation": contour_image},
             logger=logger,
             error_message=f"Failed to stream segmentation preview for image '{path}'.",
+        )
+        publish_image_progress(
+            progress_callback,
+            step="segmentation",
+            image_path=str(path.resolve()),
+            image_index=image_index,
+            image_total=image_total,
+            image_duration_s=time.monotonic() - image_started_at,
+            step_elapsed_s=time.monotonic() - step_started_at,
         )
 
 

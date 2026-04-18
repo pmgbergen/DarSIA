@@ -19,9 +19,7 @@ from darsia.presets.workflows.config.corrections import (
 )
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.facies_props import FaciesProps
-from darsia.presets.workflows.setup.illustrations import (
-    save_scalar_map_illustration,
-)
+from darsia.presets.workflows.setup.illustrations import save_scalar_map_illustration
 
 logger = logging.getLogger(__name__)
 

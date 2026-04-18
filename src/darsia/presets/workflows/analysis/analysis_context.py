@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import darsia
+from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.basis import select_labels_for_basis
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
@@ -98,6 +99,7 @@ class AnalysisContext:
     # Optional - only initialized for mass/volume/segmentation analyses
     restoration: darsia.VolumeAveraging | darsia.TVD | None = None
     color_to_mass_analysis: HeterogeneousColorToMassAnalysis | None = None
+    expert_knowledge_adapter: ExpertKnowledgeAdapter | None = None
 
 
 def select_image_paths(
@@ -238,6 +240,12 @@ def prepare_analysis_context(
     restoration = build_restoration(config.restoration, fluidflower)
 
     color_to_mass_analysis = None
+    expert_knowledge_adapter = ExpertKnowledgeAdapter.from_config(
+        config=(
+            config.analysis.expert_knowledge if config.analysis is not None else None
+        ),
+        roi_registry=config.roi_registry,
+    )
 
     if require_color_to_mass:
         # ! ---- FROM COLOR PATH TO MASS ----
@@ -264,6 +272,7 @@ def prepare_analysis_context(
             geometry=fluidflower.geometry,
             restoration=restoration,
             basis=config.color_to_mass.basis,
+            expert_knowledge_adapter=expert_knowledge_adapter,
         )
 
     return AnalysisContext(
@@ -274,4 +283,5 @@ def prepare_analysis_context(
         image_paths=image_paths,
         restoration=restoration,
         color_to_mass_analysis=color_to_mass_analysis,
+        expert_knowledge_adapter=expert_knowledge_adapter,
     )

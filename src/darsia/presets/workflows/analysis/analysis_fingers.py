@@ -6,6 +6,7 @@ import json
 import logging
 from collections.abc import Callable
 from pathlib import Path
+from time import monotonic
 from typing import Any
 
 import cv2
@@ -17,6 +18,10 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     infer_require_color_to_mass_from_config,
     prepare_analysis_context,
+)
+from darsia.presets.workflows.analysis.progress import (
+    AnalysisProgressEvent,
+    publish_image_progress,
 )
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
@@ -34,6 +39,7 @@ def analysis_fingers_from_context(
     ctx: AnalysisContext,
     show: bool = False,
     stream_callback: Callable[[dict[str, bytes] | None], None] | None = None,
+    progress_callback: Callable[[AnalysisProgressEvent], None] | None = None,
 ) -> None:
     """Segmentation analysis using pre-prepared context.
 
@@ -113,7 +119,10 @@ def analysis_fingers_from_context(
     highlight_roi = False
 
     # Loop over images and analyze
-    for path in image_paths:
+    step_started_at = monotonic()
+    image_total = len(image_paths)
+    for image_index, path in enumerate(image_paths, start=1):
+        image_started_at = monotonic()
         # Extract color signal and assign mass
         img = fluidflower.read_image(path)
         mass_analysis_result = (
@@ -142,8 +151,8 @@ def analysis_fingers_from_context(
             }
 
         # Extract time from image.
-        time = img.time
-        path_statistics["times"].append(float(time))
+        image_time = img.time
+        path_statistics["times"].append(float(image_time))
         path_statistics["images"].append(path.name)
 
         for key, roi_config in fingers_config.roi.items():
@@ -470,6 +479,15 @@ def analysis_fingers_from_context(
                 logger=logger,
                 error_message=f"Failed to stream finger previews for image '{path}'.",
             )
+        publish_image_progress(
+            progress_callback,
+            step="fingers",
+            image_path=str(path.resolve()),
+            image_index=image_index,
+            image_total=image_total,
+            image_duration_s=monotonic() - image_started_at,
+            step_elapsed_s=monotonic() - step_started_at,
+        )
 
 
 def analysis_fingers(

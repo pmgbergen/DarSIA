@@ -33,6 +33,7 @@ Commonly used sections:
 - `[analysis.volume]`
 - `[analysis.fingers]`
 - `[analysis.thresholding]`
+- `[analysis.expert_knowledge]`
 
 ### Segmentation contour labels
 Segmentation contour plots can optionally print the contour threshold values directly
@@ -59,6 +60,20 @@ Use registry keys for image selection and ROIs where possible.
   `rescaled_mass`, `rescaled_saturation_g`, and `rescaled_concentration_aq`.
 - `mass` remains a segmentation alias for total mass (`mass_total`).
 
+### Expert knowledge ROI constraints
+Optionally constrain where selected scalar fields may be non-zero:
+```toml
+[analysis.expert_knowledge]
+saturation_g = ["roi_key_1", "roi_key_2"]
+concentration_aq = ["roi_key_3"]
+```
+
+- Keys reference ROIs from the global ROI registry (`[roi.*]`).
+- Both lists default to empty (no-op).
+- When configured, values outside the union ROI are forced to zero for:
+  - `saturation_g` and `rescaled_saturation_g`
+  - `concentration_aq` and `rescaled_concentration_aq`
+
 ## Output expectations
 Depending on enabled tasks, analysis typically produces derived crops, plots/maps, and result artifacts in the configured results directory.
 
@@ -78,6 +93,12 @@ When GUI streaming is enabled for analysis, the latest image payload can include
 - Thresholding: `thresholding_source_image`, `thresholding_<layer_name>`
 - Fingers: `fingers_source_image`, `fingers_segmentation`, plus ROI-specific
   `fingers_tips_<roi_key>` and `fingers_paths_<roi_key>`
+
+## GUI batch progress telemetry
+- Analysis execution also emits dedicated progress events for GUI batch monitoring
+  (separate from image streaming).
+- Progress events include analysis step transitions plus per-image progress with:
+  current image path, processed/total counters, last-image runtime, and step elapsed time.
 
 ## Related guides
 - [Workflow analysis](./workflow-analysis.md)

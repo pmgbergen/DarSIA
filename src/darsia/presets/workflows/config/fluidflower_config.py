@@ -16,6 +16,7 @@ from .data import DataConfig
 from .depth import DepthConfig
 from .download import DownloadConfig
 from .facies import FaciesConfig
+from .helper import HelperConfig
 from .image_porosity import ImagePorosityConfig
 from .labeling import LabelingConfig
 from .protocol import ProtocolConfig
@@ -195,6 +196,17 @@ class FluidFlowerConfig:
         except KeyError:
             self.analysis = None
             warn(f"Section analysis not found in {path}, use [analysis].")
+
+        # ! ---- HELPER ---- ! #
+        try:
+            self.helper = HelperConfig()
+            self.helper.load(
+                path,
+                data=self.data.folder if self.data else None,
+                data_registry=self.data.registry if self.data else None,
+            )
+        except KeyError:
+            self.helper = None
 
         # ! ---- DOWNLOAD CONFIG ---- ! #
         # TODO make utils config

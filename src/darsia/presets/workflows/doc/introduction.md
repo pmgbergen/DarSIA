@@ -27,7 +27,8 @@ python -m darsia.presets.workflows.user_interface_analysis \
 1. Setup (`user_interface_setup`)
 2. Calibration (`user_interface_calibration`)
 3. Analysis (`user_interface_analysis`)
-4. Comparison (`user_interface_comparison`, optional)
+4. Helper (`user_interface_helper`, optional)
+5. Comparison (`user_interface_comparison`, optional)
 
 ## Where to continue
 - [Overview](./overview.md)

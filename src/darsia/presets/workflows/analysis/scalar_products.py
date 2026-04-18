@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 import darsia
+
+if TYPE_CHECKING:
+    from darsia.presets.workflows.analysis.expert_knowledge import (
+        ExpertKnowledgeAdapter,
+    )
 
 # Guard threshold preventing division by (near) zero detected mass.
 EPSILON = 1e-12
@@ -27,6 +32,27 @@ class RescaledMassProducts:
     mass_scaling_factor: float
     detected_mass_total: float
     exact_mass_total: float
+
+
+def _apply_expert_knowledge_constraints(
+    products: dict[str, darsia.Image],
+    expert_knowledge_adapter: "ExpertKnowledgeAdapter | None",
+) -> dict[str, darsia.Image]:
+    """Apply expert-knowledge constraints to supported scalar products."""
+    if expert_knowledge_adapter is None:
+        return products
+
+    constrained = dict(products)
+    mode_map = {
+        "concentration_aq": "concentration_aq",
+        "saturation_g": "saturation_g",
+        "rescaled_concentration_aq": "concentration_aq",
+        "rescaled_saturation_g": "saturation_g",
+    }
+    for key, mode in mode_map.items():
+        if key in constrained:
+            constrained[key] = expert_knowledge_adapter.apply(constrained[key], mode)
+    return constrained
 
 
 def requires_rescaled_modes(modes: set[str] | list[str] | tuple[str, ...]) -> bool:
@@ -69,6 +95,7 @@ def analysis_scalar_products(
     injection_protocol: Any | None = None,
     co2_mass_analysis: darsia.CO2MassAnalysis | None = None,
     date: Any = None,
+    expert_knowledge_adapter: "ExpertKnowledgeAdapter | None" = None,
 ) -> tuple[dict[str, darsia.Image], RescaledMassProducts | None]:
     """Map workflow analysis mode keys to scalar products.
 
@@ -82,6 +109,7 @@ def analysis_scalar_products(
         "mass_g": mass_analysis_result.mass_g,
         "mass_aq": mass_analysis_result.mass_aq,
     }
+    products = _apply_expert_knowledge_constraints(products, expert_knowledge_adapter)
 
     requested_modes = set(requested_modes or [])
     if not requires_rescaled_modes(requested_modes):
@@ -103,4 +131,5 @@ def analysis_scalar_products(
     products["rescaled_mass"] = rescaled.rescaled_result.mass
     products["rescaled_saturation_g"] = rescaled.rescaled_result.saturation_g
     products["rescaled_concentration_aq"] = rescaled.rescaled_result.concentration_aq
+    products = _apply_expert_knowledge_constraints(products, expert_knowledge_adapter)
     return products, rescaled

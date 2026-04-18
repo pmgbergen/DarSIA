@@ -14,6 +14,7 @@ This is the user-facing map of workflow TOML sections currently loaded by `Fluid
 - `[color_paths]`: color-path calibration data selection and options.
 - `[color_to_mass]`: color-to-mass calibration options.
 - `[analysis]`: analysis data and feature-specific subsections.
+- `[helper]`: optional helper workflows (currently ROI helper).
 - `[download]`: download utility config (optional).
 - `[utils]`: optional utility defaults (calibration bundle import/export paths).
 
@@ -69,6 +70,8 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `analysis.mass.roi = ["roi_key"]`
 - `analysis.volume.roi = ["roi_key"]`
 - `analysis.fingers.roi = ["roi_key"]`
+- `analysis.expert_knowledge.saturation_g = ["roi_key"]`
+- `analysis.expert_knowledge.concentration_aq = ["roi_key"]`
 - `color_paths.rois = ["roi_key"]`
 - `color_to_mass.rois = ["roi_key"]`
 
@@ -87,6 +90,22 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `[analysis.volume]`: volume analysis and optional ROIs
 - `[analysis.fingers]`: finger detection mode/threshold and optional ROIs
 - `[analysis.thresholding]`: threshold selected analysis modes and export mask previews
+- `[analysis.expert_knowledge]`: optional ROI constraints for saturation and concentration
+
+## Helper subsections
+- `[helper.roi]`: interactive ROI assistant on selected data.
+  - `mode` (default `none`): one of
+    - `none`
+    - `concentration_aq`
+    - `saturation_g`
+    - `mass` (alias for `mass_total`)
+    - `mass_total`
+    - `mass_g`
+    - `mass_aq`
+    - `rescaled_mass`
+    - `rescaled_saturation_g`
+    - `rescaled_concentration_aq`
+  - `data`: selector key or keys resolved from top-level `[data.*]` registry.
 
 ### Segmentation contour options
 For each segmentation entry, the following contour styling keys are supported:
@@ -175,6 +194,25 @@ range = [[0.2, 0.4], [0.5, "none"], [0.8, "none"]]
 - Each channel bound is `[min, max]`.
 - Use `"none"` for open bounds.
 - Hue wrap-around is supported in HSV/HLS by using `min > max`.
+### Expert-knowledge options
+Use `[analysis.expert_knowledge]` to constrain where selected scalar products may be
+non-zero.
+
+Supported keys:
+- `saturation_g` (list of ROI registry keys)
+- `concentration_aq` (list of ROI registry keys)
+
+Example:
+```toml
+[analysis.expert_knowledge]
+saturation_g = ["roi_key_1", "roi_key_2"]
+concentration_aq = ["roi_key_3"]
+```
+
+Notes:
+- Both lists default to empty.
+- Empty lists are a strict no-op (analysis behavior is unchanged).
+- If provided, values outside the union of the configured ROIs are set to zero.
 
 ## Notes on legacy vs current naming
 - Current rig section is `[rig]`.
