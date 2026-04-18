@@ -41,8 +41,6 @@ def parse_colorchannel_mode(mode: str) -> ColorChannelMode | None:
     parts = mode.split(".")
     if len(parts) != 2 or parts[0].lower() != "colorchannel":
         return None
-    if len(parts[1].strip()) == 0:
-        return None
     return ColorChannelMode(name=parts[1].strip())
 
 

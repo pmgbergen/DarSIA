@@ -197,7 +197,10 @@ threshold_min = 0.1
 """.strip(),
     )
 
-    with pytest.raises(ValueError, match=r"colorchannel\.<name>"):
+    with pytest.raises(
+        ValueError,
+        match=r"Unsupported analysis\.thresholding\.layers\.bad\.mode 'colorchannel\.rgb\.r'",
+    ):
         AnalysisConfig().load(
             path=config_path,
             data=tmp_path,
@@ -262,7 +265,10 @@ color = [255, 0, 0]
 """.strip(),
     )
 
-    with pytest.raises(ValueError, match=r"colorchannel\.<name>"):
+    with pytest.raises(
+        ValueError,
+        match=r"Unsupported analysis\.segmentation\.mode 'colorchannel\.rgb\.r'",
+    ):
         AnalysisConfig().load(
             path=config_path,
             data=tmp_path,
