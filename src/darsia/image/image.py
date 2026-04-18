@@ -1987,15 +1987,18 @@ class ScalarImage(Image):
 
         coordinates = np.asarray(self.coordinatesystem.coordinates, dtype=float)
 
-        def _axis_direction(axis: str) -> float:
+        def _axis_offset_sign(axis: str) -> float:
             _, is_reversed = darsia.interpret_indexing(axis, self.indexing)
             return -1.0 if is_reversed else 1.0
 
+        axis_offset_signs = np.asarray(
+            [_axis_offset_sign(axis) for axis in self.coordinatesystem.axes], dtype=float
+        )
         half_voxel_offset_per_axis = 0.5 * np.asarray(
             [
-                _axis_direction(axis)
+                axis_offset_signs[i]
                 * self.coordinatesystem.voxel_size[axis]
-                for axis in self.coordinatesystem.axes
+                for i, axis in enumerate(self.coordinatesystem.axes)
             ],
             dtype=float,
         )
