@@ -123,7 +123,6 @@ def analysis_segmentation_from_context(
             segmentation_config.folder,
             path.stem,
             supported_types={"jpg", "png"},
-            jpg_quality=80,
         )
 
         publish_stream_images(

@@ -228,13 +228,13 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
     analysis_thresholding_from_context(ctx, stream_callback=_stream_callback)
 
     assert (
-        tmp_path / "thresholding" / "jpg_jpg" / "gas" / "img001.jpg"
+        tmp_path / "thresholding" / "jpg" / "gas" / "img001.jpg"
     ).exists(), "JPG output should be written to format-specific subfolder."
     assert (
-        tmp_path / "thresholding" / "jpg_jpg" / "all" / "img001.jpg"
+        tmp_path / "thresholding" / "jpg" / "all" / "img001.jpg"
     ).exists(), "Combined JPG output should be written to jpg/all subfolder."
     assert (
-        tmp_path / "thresholding" / "npz_npz" / "gas" / "img001.npz"
+        tmp_path / "thresholding" / "npz" / "gas" / "img001.npz"
     ).exists(), "NPZ output should be written to format-specific subfolder."
     assert len(stream_payloads) == 1
     assert "thresholding_source_image" in stream_payloads[0]
@@ -318,7 +318,7 @@ def test_thresholding_supports_rescaled_layer_modes(tmp_path: Path) -> None:
 
     analysis_thresholding_from_context(ctx)
 
-    assert (tmp_path / "thresholding" / "npz_npz" / "rescaled" / "img001.npz").exists()
+    assert (tmp_path / "thresholding" / "npz" / "rescaled" / "img001.npz").exists()
 
 
 def test_thresholding_applies_expert_knowledge_constraints(tmp_path: Path) -> None:
@@ -384,7 +384,7 @@ def test_thresholding_applies_expert_knowledge_constraints(tmp_path: Path) -> No
     )
 
     analysis_thresholding_from_context(ctx)
-    mask = np.load(tmp_path / "thresholding" / "npz_npz" / "gas" / "img001.npz")[
+    mask = np.load(tmp_path / "thresholding" / "npz" / "gas" / "img001.npz")[
         "mask"
     ]
     assert np.any(mask == 0)

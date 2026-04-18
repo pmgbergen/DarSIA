@@ -2,19 +2,15 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from .utils import _convert_none, _get_section_from_toml
 
 SUPPORTED_EXPORT_FORMATS = {"jpg", "png", "npz", "npy", "csv"}
-SUPPORTED_EXPORT_NAMES = {
-    "stem",
-    "time_hh:mm:ss",
-    "time_mm:ss",
-    "name_time_hh:mm:ss",
-    "name_stem",
-}
+REMOVED_EXPORT_NAMES = {"name_stem", "name_time_hh:mm:ss"}
+NAME_IDENTIFIER_PATTERN = re.compile(r"(?<![a-z0-9])(stem|dd|hh|mm|ss)(?![a-z0-9])")
 
 
 @dataclass
@@ -29,13 +25,28 @@ class ImageExportFormat:
     cmap: str | None = None
     keep_ratio: bool = False
     dtype: str | None = None
+    quality: int | None = None
+    compression: int | None = None
     delimiter: str = ","
     header: str | None = None
     float_format: str = "{:.2e}"
 
     @property
     def folder_name(self) -> str:
-        return f"{self.type}_{self.identifier}"
+        return self.identifier
+
+
+def _validate_name_mask(name: str, context: str) -> None:
+    if name in REMOVED_EXPORT_NAMES:
+        raise ValueError(
+            f"Unsupported name option '{name}' for {context}. "
+            f"Removed options: {sorted(REMOVED_EXPORT_NAMES)}."
+        )
+    if NAME_IDENTIFIER_PATTERN.search(name) is None:
+        raise ValueError(
+            f"Unsupported name option '{name}' for {context}. "
+            "Name must contain at least one identifier token: stem, hh, mm, ss, or dd."
+        )
 
 
 def _parse_resolution(value) -> tuple[int, int] | None:
@@ -82,12 +93,7 @@ class FormatRegistry:
 
                 spec = ImageExportFormat(type=_type, identifier=str(identifier))
                 spec.name = str(entry.get("name", "stem")).lower()
-                if spec.name not in SUPPORTED_EXPORT_NAMES:
-                    raise ValueError(
-                        f"Unsupported name option '{spec.name}' for "
-                        f"[format.{_type}.{identifier}]. Supported: "
-                        f"{sorted(SUPPORTED_EXPORT_NAMES)}"
-                    )
+                _validate_name_mask(spec.name, f"[format.{_type}.{identifier}]")
                 spec.resolution = _parse_resolution(entry.get("resolution"))
                 spec.keep_ratio = bool(entry.get("keep_ratio", False))
 
@@ -96,6 +102,20 @@ class FormatRegistry:
                     spec.dpi = None if dpi is None else int(dpi)
                     cmap = _convert_none(entry.get("cmap"))
                     spec.cmap = None if cmap is None else str(cmap)
+                    quality = _convert_none(entry.get("quality"))
+                    spec.quality = None if quality is None else int(quality)
+                    if spec.quality is not None and not (0 <= spec.quality <= 100):
+                        raise ValueError(
+                            f"quality in [format.{_type}.{identifier}] must be in [0, 100]."
+                        )
+                    compression = _convert_none(entry.get("compression"))
+                    spec.compression = (
+                        None if compression is None else int(compression)
+                    )
+                    if spec.compression is not None and not (0 <= spec.compression <= 9):
+                        raise ValueError(
+                            f"compression in [format.{_type}.{identifier}] must be in [0, 9]."
+                        )
 
                 if _type in {"npz", "npy", "csv"}:
                     dtype = _convert_none(entry.get("dtype"))

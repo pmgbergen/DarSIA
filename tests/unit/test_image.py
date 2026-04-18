@@ -8,6 +8,7 @@ import os
 
 import cv2
 import numpy as np
+import pytest
 from deepdiff import DeepDiff
 
 import darsia
@@ -170,8 +171,34 @@ def test_scalar_image_to_csv(tmp_path):
         dimensions=[1.0, 1.0],
     )
     path = tmp_path / "scalar.csv"
-    image.to_csv(path, delimiter=";", header="a;b", float_format="{:.2f}")
+    image.to_csv(path, delimiter=";", header="x;y;value", float_format="{:.2f}")
     assert path.exists()
     lines = path.read_text().splitlines()
-    assert lines[0] == "a;b"
-    assert lines[1] == "1.00;2.00"
+    assert lines[0] == "x;y;value"
+    assert lines[1] == "0.25;0.75;1.00"
+    assert lines[2] == "0.75;0.75;2.00"
+    assert lines[3] == "0.25;0.25;3.00"
+    assert lines[4] == "0.75;0.25;4.00"
+
+
+def test_scalar_image_to_csv_checks_header_length(tmp_path):
+    image = darsia.ScalarImage(
+        np.array([[1.0, 2.0], [3.0, 4.0]], dtype=float),
+        dimensions=[1.0, 1.0],
+    )
+    with pytest.raises(ValueError, match="space_dim \\+ 1"):
+        image.to_csv(tmp_path / "bad_header.csv", header="x;value")
+
+
+def test_scalar_image_to_csv_3d(tmp_path):
+    image = darsia.ScalarImage(
+        np.arange(8, dtype=float).reshape((2, 2, 2)),
+        dimensions=[2.0, 2.0, 2.0],
+        space_dim=3,
+    )
+    path = tmp_path / "scalar_3d.csv"
+    image.to_csv(path, delimiter=",", header="x,y,z,value", float_format="{:.1f}")
+    lines = path.read_text().splitlines()
+    assert lines[0] == "x,y,z,value"
+    assert lines[1].endswith(",0.0")
+    assert lines[-1].endswith(",7.0")

@@ -1950,7 +1950,7 @@ class ScalarImage(Image):
         header: str | None = None,
         float_format: str = "{:.2e}",
     ) -> None:
-        """Write scalar image array to CSV file.
+        """Write scalar image cell-center data to CSV file.
 
         Args:
             path: Target CSV path.
@@ -1961,10 +1961,13 @@ class ScalarImage(Image):
         """
         path.parent.mkdir(parents=True, exist_ok=True)
         arr = np.asarray(self.img)
-        if arr.ndim > 2:
-            raise ValueError("ScalarImage.to_csv supports only 1D/2D arrays.")
-        if arr.ndim == 1:
-            arr = arr.reshape(1, -1)
+        if arr.ndim != self.space_dim:
+            raise ValueError(
+                "ScalarImage.to_csv requires non-series scalar images with "
+                "array dimensions equal to space_dim."
+            )
+        if self.space_dim not in (1, 2, 3):
+            raise ValueError("ScalarImage.to_csv supports only 1D/2D/3D images.")
 
         fmt = float_format.strip()
         if fmt.startswith("{:") and fmt.endswith("}"):
@@ -1973,10 +1976,47 @@ class ScalarImage(Image):
         use_header = None if header is None else str(header).strip()
         if use_header is not None and use_header.lower() == "none":
             use_header = None
+        if use_header is not None:
+            header_columns = [part.strip() for part in use_header.split(delimiter)]
+            expected_columns = self.space_dim + 1
+            if len(header_columns) != expected_columns:
+                raise ValueError(
+                    f"CSV header must provide {expected_columns} columns "
+                    f"(space_dim + 1), got {len(header_columns)}."
+                )
+
+        shape = arr.shape
+        rows: list[list[float]] = []
+        if self.space_dim == 1:
+            for x in range(shape[0]):
+                voxel = np.array([x], dtype=float) + 0.5
+                coordinate = self.coordinatesystem.coordinate(voxel)
+                rows.append([float(coordinate[0]), float(arr[x])])
+        elif self.space_dim == 2:
+            for y in range(shape[0]):
+                for x in range(shape[1]):
+                    voxel = np.array([y, x], dtype=float) + 0.5
+                    coordinate = self.coordinatesystem.coordinate(voxel)
+                    rows.append([float(coordinate[0]), float(coordinate[1]), float(arr[y, x])])
+        else:
+            for z in range(shape[0]):
+                for y in range(shape[1]):
+                    for x in range(shape[2]):
+                        voxel = np.array([z, y, x], dtype=float) + 0.5
+                        coordinate = self.coordinatesystem.coordinate(voxel)
+                        rows.append(
+                            [
+                                float(coordinate[0]),
+                                float(coordinate[1]),
+                                float(coordinate[2]),
+                                float(arr[z, y, x]),
+                            ]
+                        )
+        data = np.asarray(rows, dtype=float)
 
         np.savetxt(
             path,
-            arr,
+            data,
             delimiter=delimiter,
             header="" if use_header is None else use_header,
             comments="",

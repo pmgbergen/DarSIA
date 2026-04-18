@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -54,6 +55,52 @@ def _time_mm_ss(seconds: int) -> str:
     minutes = seconds // 60
     secs = seconds % 60
     return f"{minutes}_{secs:02d}"
+
+
+def _time_hh_mm(seconds: int) -> str:
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    return f"{hours:02d}_{minutes:02d}"
+
+
+def _time_hh(seconds: int) -> str:
+    return f"{seconds // 3600:02d}"
+
+
+def _time_dd_hh_mm(seconds: int) -> str:
+    total_hours = seconds // 3600
+    days = total_hours // 24
+    hours = total_hours % 24
+    minutes = (seconds % 3600) // 60
+    return f"{days:02d}_{hours:02d}_{minutes:02d}"
+
+
+def _time_dd_hh(seconds: int) -> str:
+    total_hours = seconds // 3600
+    days = total_hours // 24
+    hours = total_hours % 24
+    return f"{days:02d}_{hours:02d}"
+
+
+def _replace_identifier_tokens(mask: str, *, stem: str, seconds: int) -> str:
+    total_hours = seconds // 3600
+    total_minutes = seconds // 60
+    values = {
+        "stem": stem,
+        "dd": f"{total_hours // 24:02d}",
+        "hh": f"{total_hours:02d}",
+        "mm": (
+            f"{(seconds % 3600) // 60:02d}"
+            if ("hh" in mask or "dd" in mask)
+            else f"{total_minutes:02d}"
+        ),
+        "ss": f"{seconds % 60:02d}",
+    }
+    return re.sub(
+        r"(?<![a-z0-9])(stem|dd|hh|mm|ss)(?![a-z0-9])",
+        lambda m: values[m.group(1)],
+        mask,
+    )
 
 
 class ImageExportFormats:
@@ -158,17 +205,35 @@ class ImageExportFormats:
         if spec.name == "stem":
             return stem
 
-        image_name = str(getattr(image, "name", "")).strip() or "image"
         seconds = _seconds_from_image(image)
 
+        if spec.name == "time_hh":
+            return f"time_{_time_hh(seconds)}_hrs"
+        if spec.name == "time_hh:mm":
+            return f"time_{_time_hh_mm(seconds)}_hrs"
         if spec.name == "time_hh:mm:ss":
             return f"time_{_time_hh_mm_ss(seconds, pad_hours=True)}_hrs"
         if spec.name == "time_mm:ss":
             return f"time_{_time_mm_ss(seconds)}_hrs"
-        if spec.name == "name_time_hh:mm:ss":
-            return f"{image_name}_{_time_hh_mm_ss(seconds, pad_hours=False)}_hrs"
-        if spec.name == "name_stem":
-            return f"{image_name}_{stem}"
+        if spec.name == "time_dd:hh:mm":
+            return f"time_{_time_dd_hh_mm(seconds)}_days_hrs"
+        if spec.name == "time_dd:hh":
+            return f"time_{_time_dd_hh(seconds)}_days_hrs"
+        if spec.name == "stem_time_hh":
+            return f"{stem}_{_time_hh(seconds)}_hrs"
+        if spec.name == "stem_time_hh:mm":
+            return f"{stem}_{_time_hh_mm(seconds)}_hrs"
+        if spec.name == "stem_time_hh:mm:ss":
+            return f"{stem}_{_time_hh_mm_ss(seconds, pad_hours=True)}_hrs"
+        if spec.name == "stem_time_dd:hh:mm":
+            return f"{stem}_{_time_dd_hh_mm(seconds)}_days_hrs"
+        if spec.name == "stem_time_dd:hh":
+            return f"{stem}_{_time_dd_hh(seconds)}_days_hrs"
+
+        if any(token in spec.name for token in ("stem", "dd", "hh", "mm", "ss")):
+            return _replace_identifier_tokens(spec.name, stem=stem, seconds=seconds).replace(
+                ":", "_"
+            )
 
         raise ValueError(f"Unsupported name option '{spec.name}'.")
 
@@ -228,9 +293,15 @@ class ImageExportFormats:
             elif spec.type in {"jpg", "png"}:
                 kwargs: dict[str, Any] = {}
                 if spec.type == "jpg":
-                    kwargs["quality"] = jpg_quality
+                    kwargs["quality"] = (
+                        spec.quality if spec.quality is not None else jpg_quality
+                    )
                 if spec.type == "png":
-                    kwargs["compression"] = png_compression
+                    kwargs["compression"] = (
+                        spec.compression
+                        if spec.compression is not None
+                        else png_compression
+                    )
                 if prepared.scalar:
                     cmap = self._resolve_cmap(spec.cmap)
                     if cmap is not None:

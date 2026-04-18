@@ -78,7 +78,7 @@ def analysis_cropping_from_context(
 
         export_image = img.img_as(np.uint8)
         export_image.original_dtype = np.uint8  # Hack to allow plotting
-        exporter.export_image(export_image, plot_folder, path.stem, jpg_quality=50)
+        exporter.export_image(export_image, plot_folder, path.stem)
 
         publish_stream_images(
             stream_callback=stream_callback,
