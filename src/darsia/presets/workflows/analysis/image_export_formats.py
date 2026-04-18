@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import Path
 from typing import Any
 
@@ -98,12 +97,7 @@ def _replace_identifier_tokens(mask: str, *, stem: str, seconds: int) -> str:
         ),
         "ss": f"{seconds % 60:02d}",
     }
-    return re.sub(
-        r"(?<![A-Za-z0-9])(stem|dd|hh|mm|ss)(?![A-Za-z0-9])",
-        lambda m: values[m.group(1).lower()],
-        mask,
-        flags=re.IGNORECASE,
-    )
+    return NAME_IDENTIFIER_PATTERN.sub(lambda m: values[m.group(1).lower()], mask)
 
 
 class ImageExportFormats:
