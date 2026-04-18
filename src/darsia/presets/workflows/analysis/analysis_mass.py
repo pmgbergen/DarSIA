@@ -18,10 +18,7 @@ from darsia.presets.workflows.analysis.progress import (
     AnalysisProgressEvent,
     publish_image_progress,
 )
-from darsia.presets.workflows.analysis.scalar_products import (
-    analysis_scalar_products,
-    compute_rescaled_mass_products,
-)
+from darsia.presets.workflows.analysis.scalar_products import analysis_scalar_products
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.config.analysis import AnalysisMassConfig
 from darsia.presets.workflows.rig import Rig
