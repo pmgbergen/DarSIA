@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
-import time as tm
 from collections.abc import Callable
 from pathlib import Path
+from time import monotonic
 from typing import Any
 
 import cv2
@@ -112,10 +112,10 @@ def analysis_fingers_from_context(
     highlight_roi = False
 
     # Loop over images and analyze
-    step_started_at = tm.monotonic()
+    step_started_at = monotonic()
     image_total = len(image_paths)
     for image_index, path in enumerate(image_paths, start=1):
-        image_started_at = tm.monotonic()
+        image_started_at = monotonic()
         # Extract color signal and assign mass
         img = fluidflower.read_image(path)
         mass_analysis_result = color_to_mass_analysis(img)
@@ -470,8 +470,8 @@ def analysis_fingers_from_context(
             image_path=str(path.resolve()),
             image_index=image_index,
             image_total=image_total,
-            image_duration_s=tm.monotonic() - image_started_at,
-            step_elapsed_s=tm.monotonic() - step_started_at,
+            image_duration_s=monotonic() - image_started_at,
+            step_elapsed_s=monotonic() - step_started_at,
         )
 
 
