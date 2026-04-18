@@ -38,7 +38,9 @@ def build_parser_for_helper():
 def print_help_for_flags(args, parser):
     if args.info:
         if args.roi:
-            print("ROI helper: interactive ROI selection with copy-ready TOML template.")
+            print(
+                "ROI helper: interactive ROI selection with copy-ready TOML template."
+            )
         if not args.roi:
             parser.print_help()
 

@@ -45,7 +45,9 @@ def _build_color_to_mass_analysis(
     fluidflower: Rig,
 ) -> HeterogeneousColorToMassAnalysis:
     assert config.color_to_mass is not None
-    _, analysis_labels = select_labels_for_basis(fluidflower, config.color_to_mass.basis)
+    _, analysis_labels = select_labels_for_basis(
+        fluidflower, config.color_to_mass.basis
+    )
 
     experiment_start = experiment.experiment_start
     state = experiment.pressure_temperature_protocol.get_state(experiment_start)
@@ -136,7 +138,9 @@ def _show_roi_template_dialog(template: str) -> None:
     buttons = ttk.Frame(frame)
     buttons.pack(fill=tk.X, pady=(8, 0))
     ttk.Button(buttons, text="Copy", command=_copy).pack(side=tk.RIGHT)
-    ttk.Button(buttons, text="Close", command=dialog.destroy).pack(side=tk.RIGHT, padx=6)
+    ttk.Button(buttons, text="Close", command=dialog.destroy).pack(
+        side=tk.RIGHT, padx=6
+    )
 
     dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
     dialog.transient(root)
