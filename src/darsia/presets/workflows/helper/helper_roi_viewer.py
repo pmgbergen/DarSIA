@@ -7,7 +7,12 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.widgets import Button, Dropdown
+from matplotlib.widgets import Button, RadioButtons
+
+try:
+    from matplotlib.widgets import Dropdown
+except ImportError:  # pragma: no cover - depends on matplotlib version
+    Dropdown = None
 
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
@@ -27,8 +32,7 @@ def _compute_coarse_shape(
     shape: tuple[int, int], *, min_rows: int = 120, downsampling_factor: int = 4
 ) -> tuple[int, int]:
     rows, cols = shape
-    coarse_rows = max(min_rows, rows // downsampling_factor)
-    coarse_rows = min(coarse_rows, rows)
+    coarse_rows = min(rows, max(min_rows, rows // downsampling_factor))
     coarse_cols = max(1, int(round(cols / rows * coarse_rows)))
     return (coarse_rows, coarse_cols)
 
@@ -112,24 +116,31 @@ def launch_roi_viewer(
     prev_btn.on_clicked(_on_previous)
     next_btn.on_clicked(_on_next)
 
-    roi_selector = Dropdown(
-        selector_ax,
-        "ROI",
-        selection_order,
-        value=state["selection"],
-    )
-    roi_selector.on_select(_on_selection)
+    if Dropdown is not None:
+        roi_selector = Dropdown(
+            selector_ax,
+            "ROI",
+            selection_order,
+            value=state["selection"],
+        )
+        roi_selector.on_select(_on_selection)
+    else:  # pragma: no cover - compatibility path
+        selector_ax.remove()
+        radio_ax = fig.add_axes([0.08, 0.01, 0.24, 0.13])
+        roi_selector = RadioButtons(radio_ax, selection_order, active=0)
+        roi_selector.on_clicked(_on_selection)
 
     _render()
     plt.show()
 
 
 def helper_roi_viewer(
-    cls: type[Rig], path: Path | list[Path], show: bool = False
+    rig_cls: type[Rig], path: Path | list[Path], show: bool = False
 ) -> None:
     if show:
         logger.info(
-            "helper_roi_viewer received show=True. Interactive ROI viewer always opens its viewer."
+            "helper_roi_viewer received show=True. "
+            "Interactive ROI viewer always opens its viewer."
         )
     config = FluidFlowerConfig(path, require_data=True, require_results=False)
     config.check("rig", "data", "protocol")
@@ -152,7 +163,7 @@ def helper_roi_viewer(
 
     helper_config = config.helper.roi_viewer
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
-    fluidflower = cls.load(config.rig.path, config.corrections)
+    fluidflower = rig_cls.load(config.rig.path, config.corrections)
     fluidflower.load_experiment(experiment)
 
     image_paths = select_image_paths(
