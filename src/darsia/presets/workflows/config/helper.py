@@ -115,7 +115,7 @@ class HelperConfig:
                 data=data,
                 data_registry=data_registry,
             )
-        elif "data" in sec:
+        elif "data" in sec and set(sec.keys()).issubset({"data", "roi"}):
             # Shorthand support:
             # [helper]
             # data = ["registry_key"]

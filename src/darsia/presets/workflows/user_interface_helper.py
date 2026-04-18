@@ -49,7 +49,8 @@ def print_help_for_flags(args, parser):
             )
         if args.roi_viewer:
             print(
-                "ROI viewer: interactive ROI browsing for ROI registry entries on selected data."
+                "ROI viewer: interactive ROI browsing for ROI registry entries "
+                "on selected data."
             )
         if not args.roi and not args.roi_viewer:
             parser.print_help()

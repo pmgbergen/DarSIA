@@ -68,7 +68,7 @@ def render_active_region(
     if image_data.ndim == 2:
         rendered = image_data
     else:
-        rendered = image_data.copy()
+        rendered = image_data
         gray = np.asarray(image.to_monochromatic("gray").img)
         rendered[~mask] = gray[~mask][:, None]
 
