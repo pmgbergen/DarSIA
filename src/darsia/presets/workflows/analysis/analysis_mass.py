@@ -13,9 +13,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
-from darsia.presets.workflows.analysis.scalar_products import (
-    analysis_scalar_products,
-)
+from darsia.presets.workflows.analysis.scalar_products import analysis_scalar_products
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.config.analysis import AnalysisMassConfig
 from darsia.presets.workflows.rig import Rig

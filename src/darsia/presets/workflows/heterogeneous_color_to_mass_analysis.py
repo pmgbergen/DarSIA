@@ -11,6 +11,7 @@ from matplotlib.widgets import Button, Slider
 from scipy.optimize import minimize
 
 import darsia
+from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.basis import (
     CalibrationBasis,
     label_ids_from_image,
@@ -21,7 +22,6 @@ from darsia.presets.workflows.calibration.metadata import (
     validate_basis_metadata,
     write_calibration_metadata,
 )
-from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,

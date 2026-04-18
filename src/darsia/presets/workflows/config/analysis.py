@@ -410,7 +410,9 @@ class AnalysisExpertKnowledgeConfig:
         if not isinstance(self.saturation_g, list) or not all(
             isinstance(key, str) for key in self.saturation_g
         ):
-            raise ValueError("analysis.expert_knowledge.saturation_g must be a list[str].")
+            raise ValueError(
+                "analysis.expert_knowledge.saturation_g must be a list[str]."
+            )
         if not isinstance(self.concentration_aq, list) or not all(
             isinstance(key, str) for key in self.concentration_aq
         ):

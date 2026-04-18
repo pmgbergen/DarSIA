@@ -8,13 +8,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import darsia
+from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.basis import select_labels_for_basis
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
-from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.restoration import build_restoration
 from darsia.presets.workflows.rig import Rig
 
@@ -194,7 +194,9 @@ def prepare_analysis_context(
 
     color_to_mass_analysis = None
     expert_knowledge_adapter = ExpertKnowledgeAdapter.from_config(
-        config=config.analysis.expert_knowledge if config.analysis is not None else None,
+        config=(
+            config.analysis.expert_knowledge if config.analysis is not None else None
+        ),
         roi_registry=config.roi_registry,
     )
 
