@@ -70,6 +70,8 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `analysis.mass.roi = ["roi_key"]`
 - `analysis.volume.roi = ["roi_key"]`
 - `analysis.fingers.roi = ["roi_key"]`
+- `analysis.expert_knowledge.saturation_g = ["roi_key"]`
+- `analysis.expert_knowledge.concentration_aq = ["roi_key"]`
 - `color_paths.rois = ["roi_key"]`
 - `color_to_mass.rois = ["roi_key"]`
 
@@ -88,6 +90,7 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `[analysis.volume]`: volume analysis and optional ROIs
 - `[analysis.fingers]`: finger detection mode/threshold and optional ROIs
 - `[analysis.thresholding]`: threshold selected analysis modes and export mask previews
+- `[analysis.expert_knowledge]`: optional ROI constraints for saturation and concentration
 
 ## Helper subsections
 - `[helper.roi]`: interactive ROI assistant on selected data.
@@ -183,6 +186,26 @@ Notes:
 - JPG and NPZ outputs are stored in separate subfolders: `<folder>/jpg/` and `<folder>/npz/`.
 - JPG outputs are source-image overlays using each layer’s `fill` and `stroke` styling.
 - Legacy `modes` + `thresholds` is still accepted and mapped to default layers.
+
+### Expert-knowledge options
+Use `[analysis.expert_knowledge]` to constrain where selected scalar products may be
+non-zero.
+
+Supported keys:
+- `saturation_g` (list of ROI registry keys)
+- `concentration_aq` (list of ROI registry keys)
+
+Example:
+```toml
+[analysis.expert_knowledge]
+saturation_g = ["roi_key_1", "roi_key_2"]
+concentration_aq = ["roi_key_3"]
+```
+
+Notes:
+- Both lists default to empty.
+- Empty lists are a strict no-op (analysis behavior is unchanged).
+- If provided, values outside the union of the configured ROIs are set to zero.
 
 ## Notes on legacy vs current naming
 - Current rig section is `[rig]`.

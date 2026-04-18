@@ -4,6 +4,8 @@ import pytest
 
 from darsia.presets.workflows.config.analysis import AnalysisConfig
 from darsia.presets.workflows.config.data_registry import DataRegistry
+from darsia.presets.workflows.config.roi import RoiConfig
+from darsia.presets.workflows.config.roi_registry import RoiRegistry
 
 
 def _write(path: Path, content: str) -> Path:
@@ -265,3 +267,66 @@ tol = "00:05:00"
 
     assert config.data is not None
     assert config.data.image_times == pytest.approx([1.0, 2.0])
+
+
+def test_analysis_expert_knowledge_defaults_to_empty_lists(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+""".strip(),
+    )
+
+    config = AnalysisConfig().load(
+        path=config_path,
+        data=tmp_path,
+        results=tmp_path,
+    )
+
+    assert config.expert_knowledge.saturation_g == []
+    assert config.expert_knowledge.concentration_aq == []
+
+
+def test_analysis_expert_knowledge_resolves_roi_registry_keys(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+[analysis.expert_knowledge]
+saturation_g = ["storage"]
+concentration_aq = ["storage"]
+""".strip(),
+    )
+    roi = RoiConfig().load(
+        {"name": "storage", "corner_1": [0.0, 0.0], "corner_2": [1.0, 1.0]}
+    )
+    roi_registry = RoiRegistry()
+    roi_registry.register("storage", roi)
+
+    config = AnalysisConfig().load(
+        path=config_path,
+        data=tmp_path,
+        results=tmp_path,
+        roi_registry=roi_registry,
+    )
+
+    assert config.expert_knowledge.saturation_g == ["storage"]
+    assert config.expert_knowledge.concentration_aq == ["storage"]
+
+
+def test_analysis_expert_knowledge_rejects_non_list_values(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+[analysis.expert_knowledge]
+saturation_g = "storage"
+""".strip(),
+    )
+
+    with pytest.raises(ValueError, match="analysis\\.expert_knowledge\\.saturation_g"):
+        AnalysisConfig().load(
+            path=config_path,
+            data=tmp_path,
+            results=tmp_path,
+        )
