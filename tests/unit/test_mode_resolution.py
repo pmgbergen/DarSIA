@@ -6,7 +6,10 @@ from darsia.presets.workflows.config.colorchannel_registry import (
     ColorChannelRegistry,
     NamedColorChannelConfig,
 )
-from darsia.presets.workflows.config.colorrange import ColorRangeConfig, NamedColorRangeConfig
+from darsia.presets.workflows.config.colorrange import (
+    ColorRangeConfig,
+    NamedColorRangeConfig,
+)
 from darsia.presets.workflows.mode_resolution import (
     mode_requires_color_to_mass,
     resolve_mode_image,
@@ -61,9 +64,13 @@ def test_resolve_colorrange_hsv_binary_mask() -> None:
             )
         }
     )
-    mask = resolve_mode_image("colorrange.custom_range", img, colorrange_config=colorrange)
+    mask = resolve_mode_image(
+        "colorrange.custom_range", img, colorrange_config=colorrange
+    )
     assert isinstance(mask, darsia.ScalarImage)
-    assert np.array_equal(mask.img.astype(np.uint8), np.array([[0, 1, 0]], dtype=np.uint8))
+    assert np.array_equal(
+        mask.img.astype(np.uint8), np.array([[0, 1, 0]], dtype=np.uint8)
+    )
 
 
 def test_simple_segmentation_supports_colorchannel_mode_without_mass_inputs() -> None:

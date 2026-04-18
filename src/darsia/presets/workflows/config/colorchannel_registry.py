@@ -65,9 +65,7 @@ class ColorChannelRegistry:
             self.channels[key] = NamedColorChannelConfig().load(sec[key], key)
         return self
 
-    def resolve(
-        self, keys: str | list[str]
-    ) -> dict[str, NamedColorChannelConfig]:
+    def resolve(self, keys: str | list[str]) -> dict[str, NamedColorChannelConfig]:
         if isinstance(keys, str):
             keys = [keys]
         result = {}

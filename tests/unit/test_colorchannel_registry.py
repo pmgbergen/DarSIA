@@ -40,7 +40,9 @@ channel = "x"
         ColorChannelRegistry().load(config_path)
 
 
-def test_colorchannel_registry_resolve_missing_key_lists_available(tmp_path: Path) -> None:
+def test_colorchannel_registry_resolve_missing_key_lists_available(
+    tmp_path: Path,
+) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """

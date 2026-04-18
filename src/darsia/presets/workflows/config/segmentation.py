@@ -82,9 +82,7 @@ class SegmentationConfig:
     )
     """Contour value labels configuration."""
 
-    def load(
-        self, sec: dict, colorchannel_registry=None
-    ) -> "SegmentationConfig":
+    def load(self, sec: dict, colorchannel_registry=None) -> "SegmentationConfig":
         self.label = _get_key(sec, "label", required=True, type_=str)
         self.mode = _get_key(sec, "mode", required=True, type_=str)
         if not validate_mode_syntax(
