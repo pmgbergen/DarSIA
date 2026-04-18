@@ -15,6 +15,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.analysis.progress import (
     AnalysisProgressEvent,
     publish_image_progress,
@@ -47,12 +48,12 @@ def analysis_cropping_from_context(
     assert ctx.config.analysis is not None
 
     cropping_config = ctx.config.analysis.cropping
-    formats = cropping_config.formats if cropping_config is not None else ["jpg"]
+    legacy_formats = cropping_config.formats if cropping_config is not None else ["jpg"]
+    exporter = ImageExportFormats.from_analysis_config(
+        ctx.config, fallback_formats=legacy_formats
+    )
 
-    save_jpg = "jpg" in formats
-    save_npz = "npz" in formats
-
-    if not (show or save_jpg or save_npz):
+    if not (show or len(exporter.formats) > 0):
         raise ValueError(
             "Cropping requires output selection via [analysis.cropping].formats, "
             'e.g. ["jpg"], ["npz"], or ["jpg", "npz"], or --show.'
@@ -75,13 +76,9 @@ def analysis_cropping_from_context(
         if show:
             img.show()
 
-        if save_npz:
-            img.save(plot_folder / f"{path.stem}.npz")
-
-        if save_jpg:
-            img = img.img_as(np.uint8)
-            img.original_dtype = np.uint8  # Hack to allow plotting
-            img.write(plot_folder / f"{path.stem}.jpg", quality=50)
+        export_image = img.img_as(np.uint8)
+        export_image.original_dtype = np.uint8  # Hack to allow plotting
+        exporter.export_image(export_image, plot_folder, path.stem, jpg_quality=50)
 
         publish_stream_images(
             stream_callback=stream_callback,

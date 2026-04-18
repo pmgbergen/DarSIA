@@ -1942,6 +1942,48 @@ class ScalarImage(Image):
 
         logger.info("\033[92mImage saved as: " + str(Path(path)) + "\033[0m")
 
+    def to_csv(
+        self,
+        path: Path,
+        *,
+        delimiter: str = ",",
+        header: str | None = None,
+        float_format: str = "{:.2e}",
+    ) -> None:
+        """Write scalar image array to CSV file.
+
+        Args:
+            path: Target CSV path.
+            delimiter: Delimiter used between values.
+            header: Optional header line. ``None`` or ``"none"`` disables header.
+            float_format: Float formatting string.
+
+        """
+        path.parent.mkdir(parents=True, exist_ok=True)
+        arr = np.asarray(self.img)
+        if arr.ndim > 2:
+            raise ValueError("ScalarImage.to_csv supports only 1D/2D arrays.")
+        if arr.ndim == 1:
+            arr = arr.reshape(1, -1)
+
+        fmt = float_format.strip()
+        if fmt.startswith("{:") and fmt.endswith("}"):
+            fmt = "%" + fmt[2:-1]
+
+        use_header = None if header is None else str(header).strip()
+        if use_header is not None and use_header.lower() == "none":
+            use_header = None
+
+        np.savetxt(
+            path,
+            arr,
+            delimiter=delimiter,
+            header="" if use_header is None else use_header,
+            comments="",
+            fmt=fmt,
+        )
+        logger.info("\033[92mImage saved as: " + str(Path(path)) + "\033[0m")
+
 
 class OpticalImage(Image):
     """Special case of 2d trichromatic optical images, typically originating from

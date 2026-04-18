@@ -19,6 +19,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     infer_require_color_to_mass_from_config,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.analysis.progress import (
     AnalysisProgressEvent,
     publish_image_progress,
@@ -77,10 +78,16 @@ def analysis_fingers_from_context(
     # Data management.
     results_folder = ctx.config.analysis.fingers.folder
     results_folder.mkdir(parents=True, exist_ok=True)
+    raw_plot_folder = results_folder / "_raw"
+    raw_plot_folder.mkdir(parents=True, exist_ok=True)
+    exporter = ImageExportFormats.from_analysis_config(
+        ctx.config,
+        fallback_formats=["png"],
+    )
     for key in fingers_config.roi:
-        (results_folder / "tips" / key).mkdir(parents=True, exist_ok=True)
-        (results_folder / "fjords" / key).mkdir(parents=True, exist_ok=True)
-        (results_folder / "paths" / key).mkdir(parents=True, exist_ok=True)
+        (raw_plot_folder / "tips" / key).mkdir(parents=True, exist_ok=True)
+        (raw_plot_folder / "fjords" / key).mkdir(parents=True, exist_ok=True)
+        (raw_plot_folder / "paths" / key).mkdir(parents=True, exist_ok=True)
 
     # DataFrame to store results.
     df = pd.DataFrame(
@@ -108,7 +115,6 @@ def analysis_fingers_from_context(
 
     # Config of plotting.
     # TODO enable control from config.
-    plot_format = ".png"
     contour_color = "w"
     peak_color = "r"
     peak_size = 5
@@ -184,8 +190,8 @@ def analysis_fingers_from_context(
                 )
 
             # Plot finger peaks and contours.
-            tips_path = (results_folder / "tips" / key / f"{path.stem}").with_suffix(
-                plot_format
+            tips_path = (raw_plot_folder / "tips" / key / f"{path.stem}").with_suffix(
+                ".png"
             )
             contour_analysis.plot_peaks(
                 img,
@@ -210,7 +216,7 @@ def analysis_fingers_from_context(
                 valleys,
                 roi_config.roi,
                 contours=contours,
-                path=results_folder / "fjords" / key / f"{path.stem}.png",
+                path=raw_plot_folder / "fjords" / key / f"{path.stem}.png",
                 show=show,
                 **{
                     "valley_color": "c",
@@ -231,8 +237,8 @@ def analysis_fingers_from_context(
             contour_evolution_times[key].append(float(img.time))
 
             # Plotting.
-            paths_path = (results_folder / "paths" / key / f"{path.stem}").with_suffix(
-                plot_format
+            paths_path = (raw_plot_folder / "paths" / key / f"{path.stem}").with_suffix(
+                ".png"
             )
             contour_evolution_analysis[key].plot_paths(
                 img,
@@ -240,6 +246,44 @@ def analysis_fingers_from_context(
                 path=paths_path,
                 show=show,
             )
+
+            tips_raw = cv2.imread(str(tips_path), cv2.IMREAD_COLOR)
+            if tips_raw is not None:
+                tips_image = darsia.OpticalImage(
+                    cv2.cvtColor(tips_raw, cv2.COLOR_BGR2RGB), color_space="RGB"
+                )
+                exporter.export_image(
+                    tips_image,
+                    results_folder / "tips",
+                    path.stem,
+                    supported_types={"jpg", "png"},
+                    subfolder=key,
+                )
+            fjords_raw_path = raw_plot_folder / "fjords" / key / f"{path.stem}.png"
+            fjords_raw = cv2.imread(str(fjords_raw_path), cv2.IMREAD_COLOR)
+            if fjords_raw is not None:
+                fjords_image = darsia.OpticalImage(
+                    cv2.cvtColor(fjords_raw, cv2.COLOR_BGR2RGB), color_space="RGB"
+                )
+                exporter.export_image(
+                    fjords_image,
+                    results_folder / "fjords",
+                    path.stem,
+                    supported_types={"jpg", "png"},
+                    subfolder=key,
+                )
+            paths_raw = cv2.imread(str(paths_path), cv2.IMREAD_COLOR)
+            if paths_raw is not None:
+                paths_image = darsia.OpticalImage(
+                    cv2.cvtColor(paths_raw, cv2.COLOR_BGR2RGB), color_space="RGB"
+                )
+                exporter.export_image(
+                    paths_image,
+                    results_folder / "paths",
+                    path.stem,
+                    supported_types={"jpg", "png"},
+                    subfolder=key,
+                )
 
             # Fetch ROI top-left corner in pixel coordinates for path coordinate conversion.
             roi_top_left_row = 0
@@ -461,16 +505,16 @@ def analysis_fingers_from_context(
             df.to_csv(results_folder / "statistics.csv", index=False)
 
             if stream_images is not None:
-                tips_plot = cv2.cvtColor(
-                    cv2.imread(str(tips_path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB
-                )
-                if tips_plot is not None:
-                    stream_images[f"fingers_tips_{key}"] = tips_plot
-                paths_plot = cv2.cvtColor(
-                    cv2.imread(str(paths_path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB
-                )
-                if paths_plot is not None:
-                    stream_images[f"fingers_paths_{key}"] = paths_plot
+                tips_plot_raw = cv2.imread(str(tips_path), cv2.IMREAD_UNCHANGED)
+                if tips_plot_raw is not None:
+                    stream_images[f"fingers_tips_{key}"] = cv2.cvtColor(
+                        tips_plot_raw, cv2.COLOR_BGR2RGB
+                    )
+                paths_plot_raw = cv2.imread(str(paths_path), cv2.IMREAD_UNCHANGED)
+                if paths_plot_raw is not None:
+                    stream_images[f"fingers_paths_{key}"] = cv2.cvtColor(
+                        paths_plot_raw, cv2.COLOR_BGR2RGB
+                    )
 
         if stream_images is not None:
             publish_stream_images(

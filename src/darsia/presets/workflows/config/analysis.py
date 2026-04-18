@@ -19,6 +19,7 @@ from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
 
 if TYPE_CHECKING:
+    from .format_registry import FormatRegistry
     from .roi_registry import RoiRegistry
 
 logger = logging.getLogger(__name__)
@@ -502,6 +503,8 @@ class AnalysisCroppingConfig:
 class AnalysisConfig:
     data: TimeData | None = None
     """Analysis data configuration."""
+    formats: list[str] | None = None
+    """Optional analysis-wide export format identifiers."""
     cropping: AnalysisCroppingConfig | None = None
     """Analysis cropping configuration."""
     segmentation: AnalysisSegmentationConfig | None = None
@@ -526,6 +529,7 @@ class AnalysisConfig:
         results: Path | None,
         data_registry: DataRegistry | None = None,
         roi_registry: RoiRegistry | None = None,
+        format_registry: FormatRegistry | None = None,
     ) -> "AnalysisConfig":
         sec = _get_section_from_toml(path, "analysis")
 
@@ -542,6 +546,33 @@ class AnalysisConfig:
         except KeyError:
             warn("No analysis data found. Use [analysis.data].")
             self.data = None
+
+        raw_formats = _get_key(sec, "formats", required=False, default=None)
+        if raw_formats is None:
+            self.formats = None
+        else:
+            if not isinstance(raw_formats, list):
+                raise ValueError("analysis.formats must be a list.")
+            if not all(isinstance(fmt, str) for fmt in raw_formats):
+                raise ValueError("analysis.formats entries must be strings.")
+            self.formats = [fmt.strip() for fmt in raw_formats if fmt.strip()]
+            if len(self.formats) == 0:
+                raise ValueError("analysis.formats must not be empty.")
+            # Validate against global registry keys when available.
+            if format_registry is not None:
+                available = set(format_registry.keys())
+                unsupported = sorted(
+                    key
+                    for key in self.formats
+                    if key not in available
+                    and key.lower() not in {"jpg", "png", "npz", "npy", "csv"}
+                )
+                if len(unsupported) > 0:
+                    raise ValueError(
+                        "Unsupported [analysis].formats entries: "
+                        f"{', '.join(unsupported)}. "
+                        "Use top-level [format.<type>.<identifier>] keys."
+                    )
 
         # Config to load analysis cropping
         try:

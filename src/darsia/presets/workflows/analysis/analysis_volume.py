@@ -13,6 +13,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.analysis.progress import (
     AnalysisProgressEvent,
     publish_image_progress,
@@ -117,6 +118,7 @@ def analysis_volume_from_context(
     folder_concentration_aq = config.data.results / "concentration_aq"
     folder_saturation_g.mkdir(parents=True, exist_ok=True)
     folder_concentration_aq.mkdir(parents=True, exist_ok=True)
+    exporter = ImageExportFormats.from_analysis_config(config, fallback_formats=["npz"])
 
     # ! ---- ANALYSIS ----
 
@@ -139,8 +141,18 @@ def analysis_volume_from_context(
         saturation_aq.img *= 1 - saturation_g.img
 
         # Store coarse data to disk
-        saturation_g.save(folder_saturation_g / f"{path.stem}.npz")
-        concentration_aq.save(folder_concentration_aq / f"{path.stem}.npz")
+        exporter.export_image(
+            saturation_g,
+            folder_saturation_g,
+            path.stem,
+            supported_types={"jpg", "png", "npz", "npy", "csv"},
+        )
+        exporter.export_image(
+            concentration_aq,
+            folder_concentration_aq,
+            path.stem,
+            supported_types={"jpg", "png", "npz", "npy", "csv"},
+        )
 
         # Prepare row data for DataFrame
         row_data = {"time": image_time, "datetime": img.date, "stem": path.stem}

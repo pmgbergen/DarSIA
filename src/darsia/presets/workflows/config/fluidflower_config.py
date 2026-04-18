@@ -16,6 +16,7 @@ from .data import DataConfig
 from .depth import DepthConfig
 from .download import DownloadConfig
 from .facies import FaciesConfig
+from .format_registry import FormatRegistry
 from .helper import HelperConfig
 from .image_porosity import ImagePorosityConfig
 from .labeling import LabelingConfig
@@ -183,6 +184,13 @@ class FluidFlowerConfig:
         except KeyError:
             self.colorrange = None
 
+        # ! ---- FORMAT REGISTRY ---- ! #
+        try:
+            self.format_registry: FormatRegistry | None = FormatRegistry()
+            self.format_registry.load(path)
+        except KeyError:
+            self.format_registry = None
+
         # ! ---- ANALYSIS DATA ---- ! #
         try:
             self.analysis = AnalysisConfig()
@@ -192,6 +200,7 @@ class FluidFlowerConfig:
                 results=self.data.results if self.data else None,
                 data_registry=self.data.registry if self.data else None,
                 roi_registry=self.roi_registry,
+                format_registry=self.format_registry,
             )
         except KeyError:
             self.analysis = None
