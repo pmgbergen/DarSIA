@@ -5,13 +5,13 @@ import pytest
 from darsia.presets.workflows.config.colorchannel_registry import ColorChannelRegistry
 
 
-def _write(path: Path, content: str) -> Path:
+def _write_config(path: Path, content: str) -> Path:
     path.write_text(content)
     return path
 
 
-def test_colorchannel_registry_loads_case_insensitive_entries(tmp_path: Path) -> None:
-    config_path = _write(
+def test_colorchannel_registry_normalizes_case(tmp_path: Path) -> None:
+    config_path = _write_config(
         tmp_path / "config.toml",
         """
 [colorchannel.my_channel]
@@ -27,7 +27,7 @@ channel = "R"
 
 
 def test_colorchannel_registry_rejects_invalid_channel(tmp_path: Path) -> None:
-    config_path = _write(
+    config_path = _write_config(
         tmp_path / "config.toml",
         """
 [colorchannel.bad]
@@ -43,7 +43,7 @@ channel = "x"
 def test_colorchannel_registry_resolve_missing_key_lists_available(
     tmp_path: Path,
 ) -> None:
-    config_path = _write(
+    config_path = _write_config(
         tmp_path / "config.toml",
         """
 [colorchannel.red]

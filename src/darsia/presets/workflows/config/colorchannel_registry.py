@@ -42,7 +42,7 @@ class NamedColorChannelConfig:
         allowed_channels = self.SUPPORTED_CHANNELS[self.color_space]
         if self.channel not in allowed_channels:
             raise ValueError(
-                f"Unsupported colorchannel.{name}.channel '{channel}' for "
+                f"Unsupported colorchannel.{name}.channel '{self.channel}' for "
                 f"color space '{self.color_space}'. Supported: "
                 f"{', '.join(sorted(allowed_channels))}."
             )
