@@ -11,6 +11,7 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.config.format_registry import (
+    NAME_IDENTIFIER_PATTERN,
     SUPPORTED_EXPORT_FORMATS,
     ImageExportFormat,
 )
@@ -234,7 +235,7 @@ class ImageExportFormats:
         if name_lower == "stem_time_dd:hh":
             return f"{stem}_{_time_dd_hh(seconds)}_days_hrs"
 
-        if any(token in name_lower for token in ("stem", "dd", "hh", "mm", "ss")):
+        if NAME_IDENTIFIER_PATTERN.search(name) is not None:
             return _replace_identifier_tokens(name, stem=stem, seconds=seconds).replace(
                 ":", "_"
             )
