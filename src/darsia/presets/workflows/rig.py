@@ -948,6 +948,81 @@ class Rig:
 
     # ! ---- I/O ----
 
+    def import_from_csv(
+        self,
+        path: Path,
+        *,
+        delimiter: str = ",",
+        date=None,
+        reference_date=None,
+        name: str | None = None,
+    ) -> darsia.ScalarImage:
+        """Import scalar result data from CSV and map it to baseline geometry."""
+        if not path.exists():
+            raise FileNotFoundError(f"CSV file {path} does not exist.")
+
+        expected_shape = tuple(self.baseline.num_voxels)
+        expected_size = int(np.prod(expected_shape))
+        expected_columns = self.baseline.space_dim + 1
+
+        try:
+            data = np.loadtxt(path, delimiter=delimiter)
+        except ValueError:
+            data = np.loadtxt(path, delimiter=delimiter, skiprows=1)
+
+        if data.ndim == 1:
+            data = np.atleast_2d(data)
+            if data.shape[0] == 1 and data.shape[1] == expected_size:
+                data = data.reshape(expected_shape)
+
+        array: np.ndarray
+        if data.ndim == 2 and data.shape == expected_shape:
+            array = data
+        elif data.ndim == 2 and data.shape[1] == expected_columns:
+            if data.shape[0] != expected_size:
+                raise ValueError(
+                    f"CSV coordinate format expected {expected_size} rows, "
+                    f"got {data.shape[0]}."
+                )
+            coordinates = np.asarray(data[:, : self.baseline.space_dim], dtype=float)
+            values = np.asarray(data[:, -1], dtype=float)
+            voxels = np.asarray(self.baseline.coordinatesystem.voxel(coordinates), dtype=int)
+            array = np.zeros(expected_shape, dtype=values.dtype)
+            for axis in range(self.baseline.space_dim):
+                if np.any(voxels[:, axis] < 0) or np.any(
+                    voxels[:, axis] >= expected_shape[axis]
+                ):
+                    raise ValueError(
+                        f"CSV coordinates in {path} map outside baseline bounds."
+                    )
+            array[tuple(voxels[:, axis] for axis in range(self.baseline.space_dim))] = (
+                values
+            )
+        elif data.size == expected_size:
+            array = np.asarray(data, dtype=float).reshape(expected_shape)
+        else:
+            raise ValueError(
+                f"Cannot map CSV data from {path} to baseline shape {expected_shape}. "
+                f"Loaded shape: {data.shape}."
+            )
+
+        metadata = self.baseline.metadata()
+        metadata.pop("type", None)
+        metadata.pop("date", None)
+        metadata.pop("time", None)
+        metadata.pop("reference_date", None)
+        metadata.pop("name", None)
+        metadata["series"] = False
+        metadata["scalar"] = True
+        metadata["date"] = date
+        metadata["reference_date"] = (
+            reference_date
+            if reference_date is not None
+            else getattr(self, "reference_date", None)
+        )
+        metadata["name"] = name if name is not None else path.name
+        return darsia.ScalarImage(np.asarray(array), **metadata)
+
     def read_image(self, path: Path) -> darsia.Image:
         """Read image from file and apply corrections.
 

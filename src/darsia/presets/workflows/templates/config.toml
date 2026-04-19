@@ -137,6 +137,18 @@ data = "analysis_imgs"
 # ROI Viewer data selection. Supports `all` / `none` / single ROI key selector in UI.
 data = "analysis_imgs"
 
+[helper.results]
+# ResultReader input selection from [data.*] registry.
+data = "analysis_imgs"
+# Any scalar result folder produced by mass analysis (e.g. rescaled_mass, mass, ...)
+mode = "rescaled_mass"
+# Either direct type (csv/npz) or a [format.*.*] registry key resolving to csv/npz.
+format = "csv"
+# Optional colormap (matplotlib.<name> or color_path.from_<basis>.<label>)
+# cmap = "matplotlib.viridis"
+# Optional ROI keys from top-level [roi.*]; when omitted, full image is used.
+# roi = ["main"]
+
 #[helper]
 # Shorthand for ROI Viewer:
 # data = ["analysis_imgs"]
