@@ -121,6 +121,7 @@ Outputs are written to `<type>_<identifier>` subfolders (for example `jpg_4k`).
       - `rescaled_saturation_g`
       - `concentration_aq`
       - `rescaled_concentration_aq`
+    - Values are parsed case-insensitively.
   - Outputs are written per selected product with split format folders:
     - `<results>/mass/{npz,jpg}/`
     - `<results>/rescaled_mass/{npz,jpg}/`
