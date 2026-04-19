@@ -221,6 +221,8 @@ class FluidFlowerConfig:
                 path,
                 data=self.data.folder if self.data else None,
                 data_registry=self.data.registry if self.data else None,
+                format_registry=self.format_registry,
+                roi_registry=self.roi_registry,
             )
         except KeyError:
             self.helper = None

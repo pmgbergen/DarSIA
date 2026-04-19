@@ -154,6 +154,12 @@ Outputs are written to `<type>_<identifier>` subfolders (for example `jpg_4k`).
   - `data`: selector key or keys resolved from top-level `[data.*]` registry.
   - ROI selector in the viewer supports `all`, `none`, and each ROI registry key.
   - Images are downscaled and preloaded in-memory for fast image/ROI switching.
+- `[helper.results]`: interactive result reader for scalar analysis artifacts.
+  - `data`: selector key(s) resolved from top-level `[data.*]` registry.
+  - `mode`: result mode folder name under `<results>/` (for example `rescaled_mass`).
+  - `format`: `npz`/`csv` or format registry key resolving to `npz`/`csv`.
+  - `cmap` (optional): `matplotlib.<name>` or `color_path.from_<basis>.<label>`.
+  - `roi` (optional): ROI key/list from top-level `[roi.*]`; omitted means full image.
 
 Shorthand is supported for ROI Viewer:
 ```toml
