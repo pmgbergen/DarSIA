@@ -969,12 +969,19 @@ class Rig:
         except ValueError:
             data = np.loadtxt(path, delimiter=delimiter, skiprows=1)
 
-        # Extract coordinates (x, y) and values if in coordinate format, otherwise treat as array data
+        # Apply lex sort
+        # Sort, such that 0th column changes fasters, then 1st column.
+        indices = np.lexsort((data[:, 0], data[:, 1]))
+        data = data[indices]
+
+        # Extract coordinates (x, y) and values if in coordinate format,
+        # otherwise treat as array data
         coordinates_x = data[:, 0]
         coordinates_y = data[:, 1]
         values = data[:, 2]
 
-        # Determine the shape = frequency of x_coordinates (fastest changing) and y_coordinates (slowest changing)
+        # Determine the shape = frequency of x_coordinates
+        # (fastest changing) and y_coordinates (slowest changing)
         unique_x = np.unique(coordinates_x)
         unique_y = np.unique(coordinates_y)
 
@@ -995,12 +1002,14 @@ class Rig:
             np.max(coordinates_x) - np.min(coordinates_x) + dx,
         )
 
-        # Reshape values to the determined shape, remember that the values are ordered wrt. Euclidean coordinates,
-        # with x changing fastest, so we need to reshape accordingly. Also, we need to switch to row-col order,
-        # with origin at the top-left corner, so we need to flip the y-coordinates and reshape accordingly.
+        # Reshape values to the determined shape, remember that the
+        # values are ordered wrt. Euclidean coordinates, with x changing
+        # fastest, so we need to reshape accordingly. Also, we need to
+        # switch to row-col order, with origin at the top-left corner,
+        # so we need to flip the y-coordinates and reshape accordingly.
         values_reshaped = values.reshape(
-            shape, order="F"
-        )  # Reshape to (row, col) with Fortran order (y changes fastest)
+            shape, order="C"
+        )  # Reshape to (row, col) with C order (x changes fastest)
         values_reshaped = np.flip(values_reshaped, axis=0)  # Flip
 
         # Collect the metadata
