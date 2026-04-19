@@ -110,9 +110,22 @@ Outputs are written to `<type>_<identifier>` subfolders (for example `jpg_4k`).
 - `[analysis.cropping]`: cropping image selection and output formats (`formats = ["npz", "jpg"]`)
 - `[analysis.segmentation]`: contour config(s)
 - `[analysis.mass]`: mass analysis and optional ROIs
-  - Outputs are written per product with split format folders:
+  - Optional `export` controls which scalar products are written to disk.
+    - Default (`None`): `["mass"]`
+    - Supported values:
+      - `mass`
+      - `rescaled_mass`
+      - `extensive_mass`
+      - `extensive_rescaled_mass`
+      - `saturation_g`
+      - `rescaled_saturation_g`
+      - `concentration_aq`
+      - `rescaled_concentration_aq`
+  - Outputs are written per selected product with split format folders:
     - `<results>/mass/{npz,jpg}/`
     - `<results>/rescaled_mass/{npz,jpg}/`
+    - `<results>/extensive_mass/{npz,jpg}/`
+    - `<results>/extensive_rescaled_mass/{npz,jpg}/`
     - `<results>/saturation_g/{npz,jpg}/`
     - `<results>/rescaled_saturation_g/{npz,jpg}/`
     - `<results>/concentration_aq/{npz,jpg}/`

@@ -25,6 +25,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+SUPPORTED_ANALYSIS_MASS_EXPORT_MODES = {
+    "mass",
+    "rescaled_mass",
+    "extensive_mass",
+    "extensive_rescaled_mass",
+    "saturation_g",
+    "rescaled_saturation_g",
+    "concentration_aq",
+    "rescaled_concentration_aq",
+}
+
 
 def _to_rgb(color: list[int] | tuple[int, int, int], name: str) -> tuple[int, int, int]:
     if len(color) != 3:
@@ -290,6 +301,8 @@ class AnalysisMassConfig:
     """ROI configurations for mass analysis."""
     roi_and_label: dict[str, RoiAndLabelConfig] = field(default_factory=dict)
     """ROI and label configurations for mass analysis."""
+    export: list[str] | None = None
+    """Optional selection of mass-analysis scalar fields exported to disk."""
     folder: Path = field(default_factory=Path)
     """Path to the results folder for mass analysis."""
 
@@ -336,10 +349,33 @@ class AnalysisMassConfig:
             except KeyError:
                 self.roi_and_label = {}
 
+        raw_export = _get_key(sub_sec, "export", required=False, default=None)
+        if raw_export is None:
+            self.export = None
+        else:
+            if not isinstance(raw_export, list):
+                raise ValueError("analysis.mass.export must be a list.")
+            if not all(isinstance(mode, str) for mode in raw_export):
+                raise ValueError("analysis.mass.export entries must be strings.")
+            export_modes = [mode.strip().lower() for mode in raw_export if mode.strip()]
+            invalid_modes = sorted(
+                set(export_modes) - SUPPORTED_ANALYSIS_MASS_EXPORT_MODES
+            )
+            if len(invalid_modes) > 0:
+                raise ValueError(
+                    "Unsupported [analysis.mass].export entries: "
+                    f"{', '.join(invalid_modes)}. "
+                    "Supported values: "
+                    f"{', '.join(sorted(SUPPORTED_ANALYSIS_MASS_EXPORT_MODES))}."
+                )
+            self.export = list(dict.fromkeys(export_modes))
+
         folder = _get_key(sub_sec, "folder", required=False, type_=Path)
         if not folder:
             assert results is not None
             self.folder = results / "mass"
+        else:
+            self.folder = folder
         return self
 
 
