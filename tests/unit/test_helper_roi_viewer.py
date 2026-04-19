@@ -17,15 +17,15 @@ def _make_image(shape: tuple[int, int] = (200, 100)) -> darsia.Image:
 
 
 def test_compute_coarse_shape_respects_min_rows_and_aspect_ratio() -> None:
-    coarse_shape = _compute_coarse_shape((200, 100), min_rows=120, downsampling_factor=4)
+    coarse_shape = _compute_coarse_shape(
+        (200, 100), min_rows=120, downsampling_factor=4
+    )
     assert coarse_shape == (120, 60)
 
 
 def test_preload_coarse_images_resizes_once_for_all_images() -> None:
     images = [_make_image((200, 100)), _make_image((200, 100))]
-    coarse_images = _preload_coarse_images(
-        images, min_rows=50, downsampling_factor=4
-    )
+    coarse_images = _preload_coarse_images(images, min_rows=50, downsampling_factor=4)
     assert len(coarse_images) == 2
     assert coarse_images[0].img.shape[:2] == (50, 25)
     assert coarse_images[1].img.shape[:2] == (50, 25)
