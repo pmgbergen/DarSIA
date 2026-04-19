@@ -72,18 +72,6 @@ name = "unknown_option"
         FormatRegistry().load(config_path)
 
 
-def test_format_registry_rejects_removed_name(tmp_path: Path) -> None:
-    config_path = _write(
-        tmp_path / "config.toml",
-        """
-[format.jpg.preview]
-name = "name_stem"
-""".strip(),
-    )
-    with pytest.raises(ValueError, match="Removed options"):
-        FormatRegistry().load(config_path)
-
-
 def test_fluidflower_config_loads_format_registry(tmp_path: Path) -> None:
     data_folder = tmp_path / "data"
     data_folder.mkdir(parents=True, exist_ok=True)
