@@ -19,7 +19,7 @@ python -m darsia.presets.workflows.user_interface_helper --roi --config /abs/pat
 - Configure ROI viewer with either:
   - `[helper.roi_viewer] data = ["data_key"]`, or
   - shorthand `[helper] data = ["data_key"]`.
-- Configure ResultReader in `[helper.results]`:
+- Configure ResultViewer in `[helper.results]`:
   - `data`: selector key(s) from top-level `[data.*]` registry
   - `mode`: result mode folder (for example `rescaled_mass`)
   - `format`: `npz`/`csv` or a format registry key resolving to `npz`/`csv`
@@ -34,7 +34,7 @@ python -m darsia.presets.workflows.user_interface_helper --roi --config /abs/pat
   - ROI selector dropdown with `all`, `none`, and every ROI registry key
   - immediate redraw of the active-region overlay when selection changes
   - coarse-image and coarse-ROI-mask preloading for responsive switching
-- ResultReader supports:
+- ResultViewer supports:
   - loading scalar results from `npz` and `csv`
   - previous/next navigation (buttons and image click)
   - per-image stats overlay: min, max, sum, and Rig-geometry integral

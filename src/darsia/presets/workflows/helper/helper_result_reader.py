@@ -27,7 +27,6 @@ class ResultFrame:
     result_path: Path
     minimum: float
     maximum: float
-    value_sum: float
     integral: float
 
 
@@ -36,7 +35,7 @@ def _to_scalar_array(image: darsia.Image) -> np.ndarray:
     if arr.ndim == 3 and arr.shape[2] == 1:
         arr = arr[..., 0]
     if arr.ndim != 2:
-        raise ValueError("ResultReader supports 2D scalar images only.")
+        raise ValueError("ResultViewer supports 2D scalar images only.")
     return arr
 
 
@@ -57,7 +56,7 @@ def _resolve_result_format(
         key = format_key.strip().lower()
         spec = ImageExportFormat(type=key, identifier=key)
     if spec.type not in {"npz", "csv"}:
-        raise ValueError("ResultReader supports only npz and csv formats.")
+        raise ValueError("ResultViewer supports only npz and csv formats.")
     return spec
 
 
@@ -93,9 +92,8 @@ def _compute_statistics(
     arr = _to_scalar_array(image).astype(float, copy=False)
     minimum = float(np.nanmin(arr))
     maximum = float(np.nanmax(arr))
-    value_sum = float(np.nansum(arr))
     integral = float(geometry.integrate(image))
-    return minimum, maximum, value_sum, integral
+    return minimum, maximum, integral
 
 
 def _resolve_cmap(config: FluidFlowerConfig, cmap: str | None):
@@ -108,7 +106,7 @@ def _resolve_cmap(config: FluidFlowerConfig, cmap: str | None):
 
 def launch_result_reader(frames: list[ResultFrame], *, mode: str, cmap) -> None:
     if len(frames) == 0:
-        raise ValueError("ResultReader received no result frames.")
+        raise ValueError("ResultViewer received no result frames.")
 
     fig, ax = plt.subplots(figsize=(11, 8))
     plt.subplots_adjust(bottom=0.16)
@@ -124,13 +122,12 @@ def launch_result_reader(frames: list[ResultFrame], *, mode: str, cmap) -> None:
         ax.imshow(arr, cmap=cmap)
         ax.set_axis_off()
         ax.set_title(
-            f"ResultReader: {mode} [{state['idx'] + 1}/{len(frames)}] - "
+            f"ResultViewer: {mode} [{state['idx'] + 1}/{len(frames)}] - "
             f"{frame.source_name}"
         )
         stats = (
             f"min: {frame.minimum:.6g}\n"
             f"max: {frame.maximum:.6g}\n"
-            f"sum: {frame.value_sum:.6g}\n"
             f"integral: {frame.integral:.6g}"
         )
         ax.text(
@@ -180,7 +177,7 @@ def helper_result_reader(
     if show:
         logger.info(
             "helper_result_reader received show=True. "
-            "Interactive ResultReader always opens its viewer."
+            "Interactive ResultViewer always opens its viewer."
         )
 
     config = FluidFlowerConfig(path, require_data=True, require_results=True)
@@ -213,7 +210,7 @@ def helper_result_reader(
         roi_key = helper_config.roi[0]
         if len(helper_config.roi) > 1:
             logger.warning(
-                "ResultReader currently supports one active ROI. "
+                "ResultViewer currently supports one active ROI. "
                 f"Using first ROI key '{roi_key}'."
             )
         roi = config.roi_registry.resolve_rois([roi_key])[roi_key].roi
@@ -231,10 +228,11 @@ def helper_result_reader(
                 date=date,
                 reference_date=getattr(fluidflower, "reference_date", None),
                 name=source_path.name,
+                is_extensive="extensive" in str(result_path).lower(),
             )
         if roi is not None:
             image = image.subregion(roi)
-        minimum, maximum, value_sum, integral = _compute_statistics(
+        minimum, maximum, integral = _compute_statistics(
             image,
             geometry=geometry,
         )
@@ -245,7 +243,6 @@ def helper_result_reader(
                 result_path=result_path,
                 minimum=minimum,
                 maximum=maximum,
-                value_sum=value_sum,
                 integral=integral,
             )
         )

@@ -60,7 +60,7 @@ def print_help_for_flags(args, parser):
             )
         if args.results:
             print(
-                "ResultReader: interactive loading of scalar analysis results from "
+                "Result viewer: interactive loading of scalar analysis results from "
                 "npz/csv."
             )
         if not args.roi and not args.roi_viewer and not args.results:
