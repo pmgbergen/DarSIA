@@ -14,6 +14,7 @@ This is the user-facing map of workflow TOML sections currently loaded by `Fluid
 - `[color_paths]`: color-path calibration data selection and options.
 - `[color_to_mass]`: color-to-mass calibration options.
 - `[analysis]`: analysis data and feature-specific subsections.
+- `[format]`: named export-format presets for analysis image outputs.
 - `[helper]`: optional helper workflows (currently ROI helper).
 - `[download]`: download utility config (optional).
 - `[utils]`: optional utility defaults (calibration bundle import/export paths).
@@ -75,8 +76,37 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `color_paths.rois = ["roi_key"]`
 - `color_to_mass.rois = ["roi_key"]`
 
+## Format registry
+Define reusable export presets under top-level `[format.<type>.<identifier>]`.
+Supported `<type>` values:
+- `jpg`
+- `png`
+- `npz`
+- `npy`
+- `csv`
+
+Example:
+```toml
+[format.jpg.4k]
+resolution = [2160, 4096]
+cmap = "matplotlib.viridis"
+
+[format.npy.my_npy]
+dtype = "np.float32"
+```
+
+Use these identifiers from `[analysis].formats`:
+```toml
+[analysis]
+data = ["analysis_set"]
+formats = ["my_npy", "4k"]
+```
+
+Outputs are written to `<type>_<identifier>` subfolders (for example `jpg_4k`).
+
 ## Analysis subsections
 - `[analysis.data]`: selected analysis image set
+- `[analysis]`: optional `formats` (list of format identifiers from `[format.*.*]`)
 - `[analysis.cropping]`: cropping image selection and output formats (`formats = ["npz", "jpg"]`)
 - `[analysis.segmentation]`: contour config(s)
 - `[analysis.mass]`: mass analysis and optional ROIs
@@ -155,7 +185,7 @@ analysis outputs. Supported `modes`:
 - `mass_total`
 - `mass_g`
 - `mass_aq`
-- `colorchannel.<space>.<channel>` (e.g. `colorchannel.rgb.r`)
+- `colorchannel.<name>` (named entry from top-level `[colorchannel.<name>]`)
 - `colorrange.<name>` (binary mask from `[colorrange.<name>]`)
 - `rescaled_mass`
 - `rescaled_saturation_g`
@@ -165,7 +195,7 @@ Supported keys:
 - `formats` (list of output formats: `["jpg", "npz"]`)
 - `folder` (output folder, defaults to `<results>/thresholding`)
 - `[analysis.thresholding.layers.<name>]` (one mask layer per entry):
-  - `mode` (legacy mass modes, rescaled modes, `colorchannel.<space>.<channel>`, `colorrange.<name>`)
+  - `mode` (legacy mass modes, rescaled modes, `colorchannel.<name>`, `colorrange.<name>`)
   - `threshold_min` (float)
   - `threshold_max` (float)
   - `label` (string)
@@ -190,6 +220,15 @@ Notes:
 - JPG and NPZ outputs are stored in separate subfolders: `<folder>/jpg/` and `<folder>/npz/`.
 - JPG outputs are source-image overlays using each layer’s `fill` and `stroke` styling.
 - Legacy `modes` + `thresholds` is still accepted and mapped to default layers.
+
+## Named colorchannel section
+Define reusable color channels (used by `colorchannel.<name>` modes):
+
+```toml
+[colorchannel.my_channel]
+color_space = "RGB" # one of RGB, BGR, HSV, HLS, LAB
+channel = "r"       # channel name depends on color_space; case-insensitive
+```
 
 ## Named color-range section
 Define reusable binary color ranges (used by `colorrange.<name>` modes):

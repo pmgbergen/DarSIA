@@ -1942,6 +1942,94 @@ class ScalarImage(Image):
 
         logger.info("\033[92mImage saved as: " + str(Path(path)) + "\033[0m")
 
+    def to_csv(
+        self,
+        path: Path,
+        *,
+        delimiter: str = ",",
+        header: str | None = None,
+        float_format: str = "{:.2e}",
+    ) -> None:
+        """Write scalar image cell-center data to CSV file.
+
+        Args:
+            path: Target CSV path.
+            delimiter: Delimiter used between values.
+            header: Optional header line. ``None`` or ``"none"`` disables header.
+            float_format: Float formatting string.
+
+        """
+        path.parent.mkdir(parents=True, exist_ok=True)
+        arr = np.asarray(self.img)
+        if arr.ndim != self.space_dim:
+            raise ValueError(
+                "ScalarImage.to_csv requires non-series scalar images with "
+                "array dimensions equal to space_dim."
+            )
+        if self.space_dim not in (1, 2, 3):
+            raise ValueError("ScalarImage.to_csv supports only 1D/2D/3D images.")
+
+        fmt = float_format.strip()
+        if fmt.startswith("{:") and fmt.endswith("}"):
+            fmt = "%" + fmt[2:-1]
+
+        use_header = None if header is None else str(header).strip()
+        if use_header is not None and use_header.lower() == "none":
+            use_header = None
+        if use_header is not None:
+            header_columns = [part.strip() for part in use_header.split(delimiter)]
+            expected_columns = self.space_dim + 1
+            if len(header_columns) != expected_columns:
+                raise ValueError(
+                    f"CSV header must provide {expected_columns} columns "
+                    f"(space_dim + 1), got {len(header_columns)}."
+                )
+
+        coordinates = np.asarray(self.coordinatesystem.coordinates, dtype=float)
+
+        def _axis_offset_sign(axis: str) -> float:
+            _, is_reversed = darsia.interpret_indexing(axis, self.indexing)
+            return -1.0 if is_reversed else 1.0
+
+        axis_offset_signs = np.asarray(
+            [_axis_offset_sign(axis) for axis in self.coordinatesystem.axes],
+            dtype=float,
+        )
+        half_voxel_offset_per_axis = 0.5 * np.asarray(
+            [
+                axis_offset_signs[i] * self.coordinatesystem.voxel_size[axis]
+                for i, axis in enumerate(self.coordinatesystem.axes)
+            ],
+            dtype=float,
+        )
+        coordinates = coordinates + half_voxel_offset_per_axis
+        # CoordinateSystem stores flattened voxel data in Fortran-style index order.
+        # Reshape with order="F" and flatten with order="C" to export rows with
+        # x-fastest ordering (then y, then z), matching the required CSV layout.
+        coordinate_columns = coordinates.reshape(
+            (*arr.shape, self.space_dim), order="F"
+        ).reshape(-1, self.space_dim, order="C")
+        values = np.asarray(arr, dtype=float).reshape(-1, order="C")
+        # Combine coordinate and value columns
+        data = np.column_stack([coordinate_columns, values])
+
+        # Coordinates are sorted wrt voxel indices (and not coordinates itself).
+        # Mainly because coordinates have a different origin and orientation than voxel
+        # indices. Apply lexsort to the data to effectivley sort by coordinate values.
+        # Since each coordinate only appears once, the sorting is not impacted by the values.
+        sort_order = np.lexsort(np.fliplr(coordinate_columns).T)
+        data = data[sort_order]
+
+        np.savetxt(
+            path,
+            data,
+            delimiter=delimiter,
+            header="" if use_header is None else use_header,
+            comments="",
+            fmt=fmt,
+        )
+        logger.info("\033[92mImage saved as: " + str(Path(path)) + "\033[0m")
+
 
 class OpticalImage(Image):
     """Special case of 2d trichromatic optical images, typically originating from

@@ -11,11 +11,13 @@ from typing import Any
 import cv2
 import numpy as np
 
+import darsia
 from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     infer_require_color_to_mass_from_config,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.analysis.progress import (
     AnalysisProgressEvent,
     publish_image_progress,
@@ -179,18 +181,10 @@ def analysis_thresholding_from_context(
     layer_names = list(thresholding_config.layers.keys())
     requested_modes = {layer.mode for layer in thresholding_config.layers.values()}
     need_rescaled = requires_rescaled_modes(requested_modes)
-    has_jpg = "jpg" in thresholding_config.formats
-    has_npz = "npz" in thresholding_config.formats
-
-    jpg_folder = thresholding_config.folder / "jpg"
-    npz_folder = thresholding_config.folder / "npz"
-    if has_jpg:
-        for layer_name in layer_names:
-            (jpg_folder / layer_name).mkdir(parents=True, exist_ok=True)
-        (jpg_folder / "all").mkdir(parents=True, exist_ok=True)
-    if has_npz:
-        for layer_name in layer_names:
-            (npz_folder / layer_name).mkdir(parents=True, exist_ok=True)
+    exporter = ImageExportFormats.from_analysis_config(
+        config,
+        fallback_formats=thresholding_config.formats,
+    )
 
     step_started_at = time.monotonic()
     image_total = len(image_paths)
@@ -227,6 +221,7 @@ def analysis_thresholding_from_context(
                 img,
                 mass_analysis_result=result,
                 colorrange_config=getattr(config, "colorrange", None),
+                colorchannel_registry=getattr(config, "colorchannel", None),
                 scalar_products=mode_images,
             )
             scalar = _to_scalar_array(mode_image)
@@ -241,15 +236,37 @@ def analysis_thresholding_from_context(
             elif threshold_max is not None:
                 mask = (scalar <= threshold_max).astype(np.uint8)
 
-            if has_npz:
-                np.savez_compressed(
-                    npz_folder / layer_name / f"{path.stem}.npz",
-                    mask=mask,
-                    threshold_min=threshold_min,
-                    threshold_max=threshold_max,
-                    mode=layer.mode,
-                    layer=layer_name,
-                )
+            for spec in exporter.formats:
+                if spec.type == "npz":
+                    out_dir = thresholding_config.folder / spec.folder_name / layer_name
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    np.savez_compressed(
+                        out_dir / f"{path.stem}.npz",
+                        mask=mask,
+                        threshold_min=threshold_min,
+                        threshold_max=threshold_max,
+                        mode=layer.mode,
+                        layer=layer_name,
+                    )
+                elif spec.type == "npy":
+                    out_dir = thresholding_config.folder / spec.folder_name / layer_name
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    np.save(out_dir / f"{path.stem}.npy", mask)
+                elif spec.type == "csv":
+                    out_dir = thresholding_config.folder / spec.folder_name / layer_name
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    fmt = spec.float_format.strip()
+                    if fmt.startswith("{:") and fmt.endswith("}"):
+                        fmt = "%" + fmt[2:-1]
+                    header = "" if spec.header in (None, "none") else str(spec.header)
+                    np.savetxt(
+                        out_dir / f"{path.stem}.csv",
+                        mask,
+                        delimiter=spec.delimiter,
+                        header=header,
+                        comments="",
+                        fmt=fmt,
+                    )
 
             preview = _overlay_layer(
                 img_bgr,
@@ -273,8 +290,16 @@ def analysis_thresholding_from_context(
                 legend_config=thresholding_config.legend,
             )
 
-            if has_jpg:
-                cv2.imwrite(str(jpg_folder / layer_name / f"{path.stem}.jpg"), preview)
+            preview_image = darsia.OpticalImage(
+                cv2.cvtColor(preview, cv2.COLOR_BGR2RGB), color_space="RGB"
+            )
+            exporter.export_image(
+                preview_image,
+                thresholding_config.folder,
+                path.stem,
+                supported_types={"jpg", "png"},
+                subfolder=layer_name,
+            )
 
             stream_payload[f"thresholding_{layer_name}"] = cv2.cvtColor(
                 preview, cv2.COLOR_BGR2RGB
@@ -293,8 +318,16 @@ def analysis_thresholding_from_context(
             text="All layers",
             legend_config=thresholding_config.legend,
         )
-        if has_jpg:
-            cv2.imwrite(str(jpg_folder / "all" / f"{path.stem}.jpg"), master_preview)
+        master_preview_image = darsia.OpticalImage(
+            cv2.cvtColor(master_preview, cv2.COLOR_BGR2RGB), color_space="RGB"
+        )
+        exporter.export_image(
+            master_preview_image,
+            thresholding_config.folder,
+            path.stem,
+            supported_types={"jpg", "png"},
+            subfolder="all",
+        )
         stream_payload["thresholding_all"] = cv2.cvtColor(
             master_preview, cv2.COLOR_BGR2RGB
         )

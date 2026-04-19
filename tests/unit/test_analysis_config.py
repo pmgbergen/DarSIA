@@ -4,6 +4,7 @@ import pytest
 
 from darsia.presets.workflows.config.analysis import AnalysisConfig
 from darsia.presets.workflows.config.data_registry import DataRegistry
+from darsia.presets.workflows.config.format_registry import FormatRegistry
 from darsia.presets.workflows.config.roi import RoiConfig
 from darsia.presets.workflows.config.roi_registry import RoiRegistry
 
@@ -148,6 +149,10 @@ def test_analysis_thresholding_accepts_extended_modes(tmp_path: Path) -> None:
         tmp_path / "config.toml",
         """
 [analysis]
+[colorchannel.red_channel]
+color_space = "RGB"
+channel = "r"
+
 [analysis.thresholding]
 [analysis.thresholding.layers.mass_rescaled]
 mode = "rescaled_mass"
@@ -159,7 +164,7 @@ threshold_min = 0.1
 mode = "rescaled_concentration_aq"
 threshold_min = 0.1
 [analysis.thresholding.layers.red]
-mode = "colorchannel.rgb.r"
+mode = "colorchannel.red_channel"
 threshold_min = 0.2
 [analysis.thresholding.layers.green_band]
 mode = "colorrange.custom_range"
@@ -177,8 +182,31 @@ threshold_min = 0.5
     assert config.thresholding.layers["mass_rescaled"].mode == "rescaled_mass"
     assert config.thresholding.layers["gas_rescaled"].mode == "rescaled_saturation_g"
     assert config.thresholding.layers["aq_rescaled"].mode == "rescaled_concentration_aq"
-    assert config.thresholding.layers["red"].mode == "colorchannel.rgb.r"
+    assert config.thresholding.layers["red"].mode == "colorchannel.red_channel"
     assert config.thresholding.layers["green_band"].mode == "colorrange.custom_range"
+
+
+def test_analysis_thresholding_rejects_inline_colorchannel_mode(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+[analysis.thresholding]
+[analysis.thresholding.layers.bad]
+mode = "colorchannel.rgb.r"
+threshold_min = 0.1
+""".strip(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=r"Unsupported analysis\.thresholding\.layers\.bad\.mode 'colorchannel\.rgb\.r'",
+    ):
+        AnalysisConfig().load(
+            path=config_path,
+            data=tmp_path,
+            results=tmp_path,
+        )
 
 
 def test_analysis_segmentation_accepts_rescaled_mode(tmp_path: Path) -> None:
@@ -225,6 +253,30 @@ color = [255, 0, 0]
         )
 
 
+def test_analysis_segmentation_rejects_inline_colorchannel_mode(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+[analysis.segmentation]
+label = "Bad contour"
+mode = "colorchannel.rgb.r"
+thresholds = [0.1]
+color = [255, 0, 0]
+""".strip(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=r"Unsupported analysis\.segmentation\.mode 'colorchannel\.rgb\.r'",
+    ):
+        AnalysisConfig().load(
+            path=config_path,
+            data=tmp_path,
+            results=tmp_path,
+        )
+
+
 def test_analysis_data_can_be_resolved_from_data_registry(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
@@ -253,6 +305,32 @@ data = "analysis_set"
 
     assert config.data is not None
     assert config.data.image_times == pytest.approx([1.0, 2.0])
+
+
+def test_analysis_formats_load_from_registry_identifiers(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+formats = ["my_npy", "4k"]
+
+[format.npy.my_npy]
+dtype = "np.float32"
+
+[format.jpg.4k]
+resolution = [2160, 4096]
+""".strip(),
+    )
+    format_registry = FormatRegistry().load(config_path)
+
+    config = AnalysisConfig().load(
+        path=config_path,
+        data=tmp_path,
+        results=tmp_path,
+        format_registry=format_registry,
+    )
+
+    assert config.formats == ["my_npy", "4k"]
 
 
 def test_analysis_inline_data_selector_is_deprecated(tmp_path: Path) -> None:

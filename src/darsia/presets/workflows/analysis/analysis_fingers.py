@@ -108,7 +108,6 @@ def analysis_fingers_from_context(
 
     # Config of plotting.
     # TODO enable control from config.
-    plot_format = ".png"
     contour_color = "w"
     peak_color = "r"
     peak_size = 5
@@ -141,6 +140,7 @@ def analysis_fingers_from_context(
             mass=mass_analysis_result.mass if mass_analysis_result else None,
             mass_analysis_result=mass_analysis_result,
             colorrange_config=getattr(ctx.config, "colorrange", None),
+            colorchannel_registry=getattr(ctx.config, "colorchannel", None),
         )
 
         stream_images: dict[str, Any] | None = None
@@ -185,7 +185,7 @@ def analysis_fingers_from_context(
 
             # Plot finger peaks and contours.
             tips_path = (results_folder / "tips" / key / f"{path.stem}").with_suffix(
-                plot_format
+                ".png"
             )
             contour_analysis.plot_peaks(
                 img,
@@ -232,7 +232,7 @@ def analysis_fingers_from_context(
 
             # Plotting.
             paths_path = (results_folder / "paths" / key / f"{path.stem}").with_suffix(
-                plot_format
+                ".png"
             )
             contour_evolution_analysis[key].plot_paths(
                 img,
@@ -461,16 +461,16 @@ def analysis_fingers_from_context(
             df.to_csv(results_folder / "statistics.csv", index=False)
 
             if stream_images is not None:
-                tips_plot = cv2.cvtColor(
-                    cv2.imread(str(tips_path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB
-                )
-                if tips_plot is not None:
-                    stream_images[f"fingers_tips_{key}"] = tips_plot
-                paths_plot = cv2.cvtColor(
-                    cv2.imread(str(paths_path), cv2.IMREAD_UNCHANGED), cv2.COLOR_BGR2RGB
-                )
-                if paths_plot is not None:
-                    stream_images[f"fingers_paths_{key}"] = paths_plot
+                tips_plot_raw = cv2.imread(str(tips_path), cv2.IMREAD_UNCHANGED)
+                if tips_plot_raw is not None:
+                    stream_images[f"fingers_tips_{key}"] = cv2.cvtColor(
+                        tips_plot_raw, cv2.COLOR_BGR2RGB
+                    )
+                paths_plot_raw = cv2.imread(str(paths_path), cv2.IMREAD_UNCHANGED)
+                if paths_plot_raw is not None:
+                    stream_images[f"fingers_paths_{key}"] = cv2.cvtColor(
+                        paths_plot_raw, cv2.COLOR_BGR2RGB
+                    )
 
         if stream_images is not None:
             publish_stream_images(

@@ -384,5 +384,7 @@ def test_thresholding_applies_expert_knowledge_constraints(tmp_path: Path) -> No
     )
 
     analysis_thresholding_from_context(ctx)
-    mask = np.load(tmp_path / "thresholding" / "npz" / "gas" / "img001.npz")["mask"]
+    mask = np.load(tmp_path / "thresholding" / "npz" / "gas" / "img001.npz")[
+        "mask"
+    ]
     assert np.any(mask == 0)
