@@ -179,6 +179,7 @@ class Geometry:
 
         weighted_sum = np.multiply(self.cached_voxel_volume, data.img)
         metadata = data.metadata()
+        # Remove "type" as it is informational only and not an __init__ argument.
         metadata.pop("type", None)
         weighted_sum_image = darsia.ExtensiveImage(weighted_sum, **metadata)
 

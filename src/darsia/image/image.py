@@ -2044,7 +2044,7 @@ class ExtensiveImage(Image):
         super().__init__(img, transformations, **kwargs)
 
     def copy(self) -> ExtensiveImage:
-        """Copy constructor."""
+        """Create a deep copy of the extensive image."""
         return copy.deepcopy(self)
 
 
