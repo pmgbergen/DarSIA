@@ -40,8 +40,13 @@ def _to_scalar_array(image: darsia.Image) -> np.ndarray:
     return arr
 
 
-def _resolve_result_format(config: FluidFlowerConfig, format_key: str) -> ImageExportFormat:
-    if config.format_registry is not None and format_key in config.format_registry.keys():
+def _resolve_result_format(
+    config: FluidFlowerConfig, format_key: str
+) -> ImageExportFormat:
+    if (
+        config.format_registry is not None
+        and format_key in config.format_registry.keys()
+    ):
         specs = config.format_registry.resolve(format_key)
         if len(specs) != 1:
             raise ValueError(
@@ -169,7 +174,9 @@ def launch_result_reader(frames: list[ResultFrame], *, mode: str, cmap) -> None:
     plt.show()
 
 
-def helper_result_reader(rig_cls: type[Rig], path: Path | list[Path], show: bool = False):
+def helper_result_reader(
+    rig_cls: type[Rig], path: Path | list[Path], show: bool = False
+):
     if show:
         logger.info(
             "helper_result_reader received show=True. "
