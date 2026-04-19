@@ -955,75 +955,71 @@ class Rig:
         delimiter: str = ",",
         date=None,
         reference_date=None,
+        time=None,
         name: str | None = None,
-    ) -> darsia.ScalarImage:
-        """Import scalar result data from CSV and map it to baseline geometry."""
+        is_extensive: bool = False,
+    ) -> darsia.ScalarImage | darsia.ExtensiveImage:
+        """Import scalar result data from CSV."""
         if not path.exists():
             raise FileNotFoundError(f"CSV file {path} does not exist.")
 
-        expected_shape = tuple(self.baseline.num_voxels)
-        expected_size = int(np.prod(expected_shape))
-        expected_columns = self.baseline.space_dim + 1
-
+        # Read csv
         try:
             data = np.loadtxt(path, delimiter=delimiter)
         except ValueError:
             data = np.loadtxt(path, delimiter=delimiter, skiprows=1)
 
-        if data.ndim == 1:
-            data = np.atleast_2d(data)
-            if data.shape[0] == 1 and data.shape[1] == expected_size:
-                data = data.reshape(expected_shape)
+        # Extract coordinates (x, y) and values if in coordinate format, otherwise treat as array data
+        coordinates_x = data[:, 0]
+        coordinates_y = data[:, 1]
+        values = data[:, 2]
 
-        array: np.ndarray
-        if data.ndim == 2 and data.shape == expected_shape:
-            array = data
-        elif data.ndim == 2 and data.shape[1] == expected_columns:
-            if data.shape[0] != expected_size:
-                raise ValueError(
-                    f"CSV coordinate format expected {expected_size} rows, "
-                    f"got {data.shape[0]}."
-                )
-            coordinates = np.asarray(data[:, : self.baseline.space_dim], dtype=float)
-            values = np.asarray(data[:, -1], dtype=float)
-            voxels = np.asarray(
-                self.baseline.coordinatesystem.voxel(coordinates), dtype=int
-            )
-            array = np.zeros(expected_shape, dtype=values.dtype)
-            for axis in range(self.baseline.space_dim):
-                if np.any(voxels[:, axis] < 0) or np.any(
-                    voxels[:, axis] >= expected_shape[axis]
-                ):
-                    raise ValueError(
-                        f"CSV coordinates in {path} map outside baseline bounds."
-                    )
-            array[tuple(voxels[:, axis] for axis in range(self.baseline.space_dim))] = (
-                values
-            )
-        elif data.size == expected_size:
-            array = np.asarray(data, dtype=float).reshape(expected_shape)
-        else:
-            raise ValueError(
-                f"Cannot map CSV data from {path} to baseline shape {expected_shape}. "
-                f"Loaded shape: {data.shape}."
-            )
+        # Determine the shape = frequency of x_coordinates (fastest changing) and y_coordinates (slowest changing)
+        unique_x = np.unique(coordinates_x)
+        unique_y = np.unique(coordinates_y)
 
-        metadata = self.baseline.metadata()
-        metadata.pop("type", None)
-        metadata.pop("date", None)
-        metadata.pop("time", None)
-        metadata.pop("reference_date", None)
-        metadata.pop("name", None)
-        metadata["series"] = False
-        metadata["scalar"] = True
-        metadata["date"] = date
-        metadata["reference_date"] = (
-            reference_date
-            if reference_date is not None
-            else getattr(self, "reference_date", None)
+        row = len(unique_y)
+        col = len(unique_x)
+        shape = (row, col)
+
+        # Determine the cell size in dx and dy direction
+        dx = np.min(np.diff(unique_x))
+        dy = np.min(np.diff(unique_y))
+
+        # Determine origin
+        origin = (unique_x[0] - dx / 2, unique_y[-1] + dy / 2)
+
+        # Determine the dimensions
+        dimensions = (
+            np.max(coordinates_y) - np.min(coordinates_y) + dy,
+            np.max(coordinates_x) - np.min(coordinates_x) + dx,
         )
-        metadata["name"] = name if name is not None else path.name
-        return darsia.ScalarImage(np.asarray(array), **metadata)
+
+        # Reshape values to the determined shape, remember that the values are ordered wrt. Euclidean coordinates,
+        # with x changing fastest, so we need to reshape accordingly. Also, we need to switch to row-col order,
+        # with origin at the top-left corner, so we need to flip the y-coordinates and reshape accordingly.
+        values_reshaped = values.reshape(
+            shape, order="F"
+        )  # Reshape to (row, col) with Fortran order (y changes fastest)
+        values_reshaped = np.flip(values_reshaped, axis=0)  # Flip
+
+        # Collect the metadata
+        metadata = {
+            "origin": origin,
+            "cell_size": (dx, dy),
+            "dimensions": dimensions,
+            "name": name,
+            "time": time,
+            "date": date,
+            "reference_date": reference_date,
+            "series": False,
+            "scalar": True,
+        }
+
+        if is_extensive:
+            return darsia.ExtensiveImage(values_reshaped, **metadata)
+        else:
+            return darsia.ScalarImage(values_reshaped, **metadata)
 
     def read_image(self, path: Path) -> darsia.Image:
         """Read image from file and apply corrections.
