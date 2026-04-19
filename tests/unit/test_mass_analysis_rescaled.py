@@ -306,7 +306,13 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
     ctx = SimpleNamespace(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
-            analysis=SimpleNamespace(mass=SimpleNamespace(roi={}, roi_and_label={})),
+            analysis=SimpleNamespace(
+                mass=SimpleNamespace(
+                    roi={},
+                    roi_and_label={},
+                    export=["rescaled_saturation_g", "rescaled_concentration_aq"],
+                )
+            ),
         ),
         experiment=SimpleNamespace(injection_protocol=_FakeInjectionProtocol()),
         fluidflower=_FakeFluidFlower(),
