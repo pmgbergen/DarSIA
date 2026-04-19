@@ -132,6 +132,12 @@ class Geometry:
         # Fetch data
         fetched_data = data if isinstance(data, np.ndarray) else data.img
         fetched_shape = list(fetched_data.shape[: self.space_dim])
+        if isinstance(data, darsia.ExtensiveImage):
+            extensive_sum = data.img
+            for _ in range(self.space_dim):
+                extensive_sum = np.sum(extensive_sum, axis=0)
+            return extensive_sum
+
         self._prepare_cached_voxel_volume(fetched_shape)
 
         # ! ---- Perform spatial integration
@@ -145,14 +151,14 @@ class Geometry:
             weighted_sum = np.sum(weighted_sum, axis=0)
         return weighted_sum
 
-    def make_extensive(self, data: darsia.Image) -> darsia.Image:
+    def make_extensive(self, data: darsia.Image) -> darsia.ExtensiveImage:
         """Convert intensive values to integrated per-cell values on geometry grid.
 
         Args:
             data (darsia.Image): image of intensive values.
 
         Returns:
-            darsia.Image: extensive image represented on geometry voxelization.
+            darsia.ExtensiveImage: extensive image represented on geometry voxelization.
 
         Raises:
             ValueError: if data is not an image, dimensions are incompatible, or
@@ -172,7 +178,9 @@ class Geometry:
         self._prepare_cached_voxel_volume(fetched_shape)
 
         weighted_sum = np.multiply(self.cached_voxel_volume, data.img)
-        weighted_sum_image = type(data)(weighted_sum, **data.metadata())
+        metadata = data.metadata()
+        metadata.pop("type", None)
+        weighted_sum_image = darsia.ExtensiveImage(weighted_sum, **metadata)
 
         # If required, map weighted values conservatively to the geometry grid.
         if not all([i == j for i, j in zip(fetched_shape, self.num_voxels)]):
@@ -182,10 +190,6 @@ class Geometry:
             weighted_sum_image = darsia.resize(
                 weighted_sum_image,
                 shape=tuple(self.num_voxels[:2]),
-                interpolation="inter_area",
-            )
-            weighted_sum_image.img *= np.prod(
-                np.divide(fetched_shape[:2], self.num_voxels[:2])
             )
 
         return weighted_sum_image
