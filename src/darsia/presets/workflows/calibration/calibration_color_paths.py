@@ -3,7 +3,6 @@ import shutil
 from pathlib import Path
 
 import numpy as np
-import skimage.measure
 from matplotlib import pyplot as plt
 
 import darsia
@@ -13,6 +12,7 @@ from darsia.presets.workflows.calibration.metadata import write_calibration_meta
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.utils.images import load_images_with_cache
+from darsia.presets.workflows.utils.roi_visualization import draw_active_region
 from darsia.utils.standard_images import roi_to_mask
 
 logger = logging.getLogger(__name__)
@@ -92,20 +92,13 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
 
     if show:
         # Plot the calibration mask for sanity check with contours of the ROIs if provided.
-        full_image = fluidflower.baseline.copy()
-        gray_full_image = full_image.to_monochromatic("gray")
-        full_image.img[~calibration_mask.img] = gray_full_image.img[
-            ~calibration_mask.img
-        ][:, None]
-        contours = skimage.measure.find_contours(
-            calibration_mask.img.astype(float), level=0.5
+        _, ax = plt.subplots(num="calibration mask")
+        draw_active_region(
+            ax=ax,
+            image=fluidflower.baseline,
+            active_mask=calibration_mask,
+            title="Calibration Mask for Color Path Calibration",
         )
-        plt.figure("calibration mask")
-        plt.imshow(full_image.img)
-        for contour in contours:
-            plt.plot(contour[:, 1], contour[:, 0], color="white", linewidth=2)
-        plt.title("Calibration Mask for Color Path Calibration")
-        plt.axis("off")
         plt.show()
 
     # ! ---- IDENTIFY AND STORE (RELATIVE) COLOR RANGE ----
