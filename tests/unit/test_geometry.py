@@ -579,3 +579,117 @@ def test_geometry_normalization():
     # Test integration
     integral = geometry.integrate(normalized_random_image)
     assert np.isclose(integral, 0.25**2 * (0.5 + 0.75 - 0.2 + 0.6 + 0.1))
+
+
+def test_make_extensive_compatible_2d():
+    """Test extensive conversion for compatible scalar image."""
+    space_dim = 2
+    num_voxels = (2, 4)
+    dimensions = [0.5, 1.0]
+    geometry = darsia.Geometry(
+        space_dim=space_dim, num_voxels=num_voxels, dimensions=dimensions
+    )
+
+    data = np.arange(np.prod(num_voxels), dtype=float).reshape(num_voxels)
+    image = darsia.Image(data, dimensions=dimensions, series=False, scalar=True)
+
+    extensive = geometry.make_extensive(image)
+
+    assert extensive.shape == image.shape
+    assert np.allclose(extensive.img, geometry.voxel_volume * data)
+
+
+def test_make_extensive_incompatible_2d_conservative():
+    """Test extensive conversion for incompatible 2d shape with conservative mapping."""
+    space_dim = 2
+    num_voxels = (2, 4)
+    dimensions = [0.5, 1.0]
+    geometry = darsia.Geometry(
+        space_dim=space_dim, num_voxels=num_voxels, dimensions=dimensions
+    )
+
+    input_shape = (4, 8)
+    data = np.arange(np.prod(input_shape), dtype=float).reshape(input_shape)
+    image = darsia.Image(data, dimensions=dimensions, series=False, scalar=True)
+
+    extensive = geometry.make_extensive(image)
+
+    assert extensive.shape == num_voxels
+    assert np.isclose(np.sum(extensive.img), geometry.integrate(image))
+    assert np.allclose(extensive.dimensions, image.dimensions)
+
+
+def test_make_extensive_weighted_geometry():
+    """Test extensive conversion for weighted geometry."""
+    space_dim = 2
+    num_voxels = (2, 4)
+    dimensions = [0.5, 1.0]
+    depth = np.ones(num_voxels, dtype=float)
+    depth[0, 2] = 0.2
+    depth[1, 1] = 0.5
+    depth[1, 2] = 0.8
+    geometry = darsia.ExtrudedGeometry(
+        depth, space_dim=space_dim, num_voxels=num_voxels, dimensions=dimensions
+    )
+
+    data = np.arange(np.prod(num_voxels), dtype=float).reshape(num_voxels)
+    image = darsia.Image(data, dimensions=dimensions, series=False, scalar=True)
+
+    extensive = geometry.make_extensive(image)
+    assert np.allclose(extensive.img, np.multiply(geometry.voxel_volume, data))
+
+
+def test_make_extensive_vector_series():
+    """Test extensive conversion for vector-valued time-series image."""
+    space_dim = 2
+    num_voxels = (2, 4)
+    dimensions = [0.5, 1.0]
+    geometry = darsia.Geometry(
+        space_dim=space_dim, num_voxels=num_voxels, dimensions=dimensions
+    )
+
+    input_shape = (4, 8, 2, 3)  # rows x cols x time x components
+    data = np.arange(np.prod(input_shape), dtype=float).reshape(input_shape)
+    image = darsia.Image(
+        data,
+        dimensions=dimensions,
+        series=True,
+        scalar=False,
+        time=[0, 1],
+    )
+
+    extensive = geometry.make_extensive(image)
+
+    assert extensive.shape == (2, 4, 2, 3)
+    assert np.allclose(np.sum(extensive.img, axis=(0, 1)), geometry.integrate(image))
+
+
+def test_make_extensive_incompatible_dimensions():
+    """Test extensive conversion with incompatible physical dimensions."""
+    geometry = darsia.Geometry(space_dim=2, num_voxels=(2, 4), dimensions=[0.5, 1.0])
+    image = darsia.Image(
+        np.ones((2, 4), dtype=float),
+        dimensions=[0.6, 1.0],
+        series=False,
+        scalar=True,
+    )
+
+    with pytest.raises(ValueError):
+        geometry.make_extensive(image)
+
+
+def test_make_extensive_incompatible_3d_reshape():
+    """Test that incompatible reshape is rejected for non-2d geometries."""
+    geometry = darsia.Geometry(
+        space_dim=3, num_voxels=(2, 4, 3), dimensions=[0.5, 1.0, 0.75]
+    )
+    image = darsia.Image(
+        np.ones((4, 8, 6), dtype=float),
+        space_dim=3,
+        dimensions=[0.5, 1.0, 0.75],
+        series=False,
+        scalar=True,
+    )
+
+    with pytest.raises(ValueError):
+        geometry.make_extensive(image)
