@@ -333,6 +333,69 @@ resolution = [2160, 4096]
     assert config.formats == ["my_npy", "4k"]
 
 
+def test_analysis_mass_export_defaults_to_none(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+[analysis.mass]
+""".strip(),
+    )
+
+    config = AnalysisConfig().load(
+        path=config_path,
+        data=tmp_path,
+        results=tmp_path,
+    )
+
+    assert config.mass is not None
+    assert config.mass.export is None
+
+
+def test_analysis_mass_export_accepts_supported_modes(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+[analysis.mass]
+export = ["mass", "extensive_mass", "rescaled_concentration_aq"]
+""".strip(),
+    )
+
+    config = AnalysisConfig().load(
+        path=config_path,
+        data=tmp_path,
+        results=tmp_path,
+    )
+
+    assert config.mass is not None
+    assert config.mass.export == [
+        "mass",
+        "extensive_mass",
+        "rescaled_concentration_aq",
+    ]
+
+
+def test_analysis_mass_export_rejects_unsupported_modes(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+[analysis.mass]
+export = ["mass", "not_supported"]
+""".strip(),
+    )
+
+    with pytest.raises(
+        ValueError, match=r"Unsupported \[analysis\.mass\]\.export entries"
+    ):
+        AnalysisConfig().load(
+            path=config_path,
+            data=tmp_path,
+            results=tmp_path,
+        )
+
+
 def test_analysis_inline_data_selector_is_deprecated(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",

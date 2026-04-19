@@ -21,10 +21,15 @@ from darsia.presets.workflows.analysis.progress import (
 )
 from darsia.presets.workflows.analysis.scalar_products import analysis_scalar_products
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
-from darsia.presets.workflows.config.analysis import AnalysisMassConfig
+from darsia.presets.workflows.config.analysis import (
+    SUPPORTED_ANALYSIS_MASS_EXPORT_MODES,
+    AnalysisMassConfig,
+)
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_MASS_EXPORT_MODES = ["mass"]
 
 
 def _save_scalar_image_artifacts(
@@ -109,16 +114,28 @@ def analysis_mass_from_context(
     # ! ---- ANALYSIS ----
 
     # Plotting
+    raw_export_modes = getattr(config.analysis.mass, "export", None)
+    export_modes = (
+        _DEFAULT_MASS_EXPORT_MODES
+        if raw_export_modes is None
+        else [
+            mode
+            for mode in raw_export_modes
+            if mode in SUPPORTED_ANALYSIS_MASS_EXPORT_MODES
+        ]
+    )
     output_folders = {
         "mass": config.data.results / "mass",
         "rescaled_mass": config.data.results / "rescaled_mass",
+        "extensive_mass": config.data.results / "extensive_mass",
+        "extensive_rescaled_mass": config.data.results / "extensive_rescaled_mass",
         "saturation_g": config.data.results / "saturation_g",
         "rescaled_saturation_g": config.data.results / "rescaled_saturation_g",
         "concentration_aq": config.data.results / "concentration_aq",
         "rescaled_concentration_aq": config.data.results / "rescaled_concentration_aq",
     }
-    for folder in output_folders.values():
-        folder.mkdir(parents=True, exist_ok=True)
+    for mode in export_modes:
+        output_folders[mode].mkdir(parents=True, exist_ok=True)
     exporter = ImageExportFormats.from_analysis_config(
         config, fallback_formats=["npz", "jpg"]
     )
@@ -205,39 +222,27 @@ def analysis_mass_from_context(
         rescaled_concentration_aq = products["rescaled_concentration_aq"]
 
         # Store data to disk
-        _save_scalar_image_artifacts(
-            mass, output_folders["mass"], path.stem, exporter=exporter
-        )
-        _save_scalar_image_artifacts(
-            rescaled_mass,
-            output_folders["rescaled_mass"],
-            path.stem,
-            exporter=exporter,
-        )
-        _save_scalar_image_artifacts(
-            saturation_g,
-            output_folders["saturation_g"],
-            path.stem,
-            exporter=exporter,
-        )
-        _save_scalar_image_artifacts(
-            rescaled_saturation_g,
-            output_folders["rescaled_saturation_g"],
-            path.stem,
-            exporter=exporter,
-        )
-        _save_scalar_image_artifacts(
-            concentration_aq,
-            output_folders["concentration_aq"],
-            path.stem,
-            exporter=exporter,
-        )
-        _save_scalar_image_artifacts(
-            rescaled_concentration_aq,
-            output_folders["rescaled_concentration_aq"],
-            path.stem,
-            exporter=exporter,
-        )
+        export_images: dict[str, darsia.Image] = {
+            "mass": mass,
+            "rescaled_mass": rescaled_mass,
+            "saturation_g": saturation_g,
+            "rescaled_saturation_g": rescaled_saturation_g,
+            "concentration_aq": concentration_aq,
+            "rescaled_concentration_aq": rescaled_concentration_aq,
+        }
+        if "extensive_mass" in export_modes:
+            export_images["extensive_mass"] = fluidflower.geometry.make_extensive(mass)
+        if "extensive_rescaled_mass" in export_modes:
+            export_images["extensive_rescaled_mass"] = (
+                fluidflower.geometry.make_extensive(rescaled_mass)
+            )
+        for mode in export_modes:
+            _save_scalar_image_artifacts(
+                export_images[mode],
+                output_folders[mode],
+                path.stem,
+                exporter=exporter,
+            )
 
         # Prepare row data for DataFrame
         row_data = {"time": image_time, "datetime": img.date, "image_stem": path.stem}

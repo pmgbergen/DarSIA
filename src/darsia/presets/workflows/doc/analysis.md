@@ -53,6 +53,20 @@ placement in `[analysis.segmentation.values]` (and similarly for
 
 Use registry keys for image selection and ROIs where possible.
 
+### Mass export selection
+`[analysis.mass]` supports optional `export` (list of modes). If omitted (`None`),
+only `mass` is exported to disk.
+
+Supported `export` values:
+- `mass`
+- `rescaled_mass`
+- `extensive_mass`
+- `extensive_rescaled_mass`
+- `saturation_g`
+- `rescaled_saturation_g`
+- `concentration_aq`
+- `rescaled_concentration_aq`
+
 ### Segmentation and thresholding mode notes
 - Segmentation `mode` supports: `saturation_g`, `concentration_aq`, `mass`,
   `rescaled_mass`, `rescaled_saturation_g`, `rescaled_concentration_aq`.
@@ -82,9 +96,11 @@ When GUI streaming is enabled for analysis, the latest image payload can include
 - Cropping: `cropping`
 - Segmentation: `segmentation`
 - Mass: `mass_source_image`, `mass_total`, `mass_g`, `mass_aq`
-  - Stored artifacts:
+  - Stored artifacts (only for modes selected in `[analysis.mass].export`; default only `mass`):
     - `mass/<type>_<identifier>/<stem>.<type>`
     - `rescaled_mass/<type>_<identifier>/<stem>.<type>`
+    - `extensive_mass/<type>_<identifier>/<stem>.<type>`
+    - `extensive_rescaled_mass/<type>_<identifier>/<stem>.<type>`
     - `saturation_g/<type>_<identifier>/<stem>.<type>`
     - `rescaled_saturation_g/<type>_<identifier>/<stem>.<type>`
     - `concentration_aq/<type>_<identifier>/<stem>.<type>`

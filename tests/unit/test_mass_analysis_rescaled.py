@@ -58,7 +58,7 @@ def test_inverse_mass_analysis_handles_zero_denominator() -> None:
     assert np.allclose(result.concentration_aq.img, 1.0)
 
 
-def test_analysis_mass_writes_rescaled_artifacts(
+def test_analysis_mass_writes_default_artifacts_only(
     tmp_path: Path,
 ) -> None:
     injected_mass = 8.0
@@ -130,17 +130,19 @@ def test_analysis_mass_writes_rescaled_artifacts(
 
     analysis_mass_from_context(ctx, stream_callback=_stream_callback)
 
-    products = [
-        "mass",
+    assert (tmp_path / "mass" / "npz" / "img001.npz").exists()
+    assert (tmp_path / "mass" / "jpg" / "img001.jpg").exists()
+    non_default_products = [
         "rescaled_mass",
+        "extensive_mass",
+        "extensive_rescaled_mass",
         "saturation_g",
         "rescaled_saturation_g",
         "concentration_aq",
         "rescaled_concentration_aq",
     ]
-    for product in products:
-        assert (tmp_path / product / "npz" / "img001.npz").exists()
-        assert (tmp_path / product / "jpg" / "img001.jpg").exists()
+    for product in non_default_products:
+        assert not (tmp_path / product).exists()
 
     assert (tmp_path / "sparse_data" / "integrated_mass.csv").exists()
     assert len(stream_payloads) == 1
@@ -148,6 +150,98 @@ def test_analysis_mass_writes_rescaled_artifacts(
     assert "rescaled_mass" in stream_payloads[0]
     assert "rescaled_saturation_g" in stream_payloads[0]
     assert "rescaled_concentration_aq" in stream_payloads[0]
+
+
+def test_analysis_mass_writes_configured_export_subset_with_extensive_modes(
+    tmp_path: Path,
+) -> None:
+    injected_mass = 8.0
+    image_path = tmp_path / "img001.png"
+    configured_export = [
+        "rescaled_mass",
+        "extensive_mass",
+        "extensive_rescaled_mass",
+    ]
+
+    class _FakeInjectionProtocol:
+        def injected_mass(self, *, date: datetime | None, roi: Any = None) -> float:
+            _ = (date, roi)
+            return injected_mass
+
+    class _FakeFluidFlower:
+        def __init__(self) -> None:
+            self.geometry = darsia.Geometry(
+                space_dim=2, num_voxels=(4, 4), dimensions=[1.0, 1.0]
+            )
+
+        def read_image(self, _path: Path) -> darsia.Image:
+            return darsia.Image(
+                np.zeros((4, 4, 3), dtype=np.uint8),
+                dimensions=[1.0, 1.0],
+                scalar=False,
+                time=1.0,
+                date=datetime(2025, 1, 1, 0, 0, 0),
+                name="img001",
+            )
+
+    class _FakeColorToMass:
+        def __init__(self, co2_mass_analysis: CO2MassAnalysis) -> None:
+            self.co2_mass_analysis = co2_mass_analysis
+
+        def __call__(self, image: darsia.Image) -> darsia.SimpleMassAnalysisResults:
+            c_aq = darsia.ScalarImage(
+                np.full((4, 4), 0.4, dtype=float),
+                dimensions=[1.0, 1.0],
+                time=image.time,
+                date=image.date,
+                name=image.name,
+            )
+            s_g = darsia.ScalarImage(
+                np.full((4, 4), 0.2, dtype=float),
+                dimensions=[1.0, 1.0],
+                time=image.time,
+                date=image.date,
+                name=image.name,
+            )
+            return self.co2_mass_analysis.mass_analysis(c_aq=c_aq, s_g=s_g)
+
+    co2 = _make_co2_mass_analysis((4, 4))
+    co2.solubility_co2 = np.full((4, 4), 2.0)
+    co2.density_gaseous_co2 = np.full((4, 4), 10.0)
+
+    ctx = SimpleNamespace(
+        config=SimpleNamespace(
+            data=SimpleNamespace(results=tmp_path),
+            analysis=SimpleNamespace(
+                mass=SimpleNamespace(roi={}, roi_and_label={}, export=configured_export)
+            ),
+        ),
+        experiment=SimpleNamespace(injection_protocol=_FakeInjectionProtocol()),
+        fluidflower=_FakeFluidFlower(),
+        image_paths=[image_path],
+        color_to_mass_analysis=_FakeColorToMass(co2),
+        analysis_labels=darsia.ScalarImage(np.zeros((4, 4), dtype=np.uint8)),
+        expert_knowledge_adapter=None,
+    )
+
+    analysis_mass_from_context(ctx)
+
+    selected_products = [
+        "rescaled_mass",
+        "extensive_mass",
+        "extensive_rescaled_mass",
+    ]
+    for product in selected_products:
+        assert (tmp_path / product / "npz" / "img001.npz").exists()
+        assert (tmp_path / product / "jpg" / "img001.jpg").exists()
+    for product in [
+        "mass",
+        "saturation_g",
+        "rescaled_saturation_g",
+        "concentration_aq",
+        "rescaled_concentration_aq",
+    ]:
+        assert not (tmp_path / product).exists()
 
 
 def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
@@ -212,7 +306,13 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
     ctx = SimpleNamespace(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
-            analysis=SimpleNamespace(mass=SimpleNamespace(roi={}, roi_and_label={})),
+            analysis=SimpleNamespace(
+                mass=SimpleNamespace(
+                    roi={},
+                    roi_and_label={},
+                    export=["rescaled_saturation_g", "rescaled_concentration_aq"],
+                )
+            ),
         ),
         experiment=SimpleNamespace(injection_protocol=_FakeInjectionProtocol()),
         fluidflower=_FakeFluidFlower(),

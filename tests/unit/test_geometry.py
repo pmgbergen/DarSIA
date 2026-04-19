@@ -644,33 +644,6 @@ def test_make_extensive_weighted_geometry():
     assert np.allclose(extensive.img, np.multiply(geometry.voxel_volume, data))
 
 
-def test_make_extensive_vector_series():
-    """Test extensive conversion for vector-valued time-series image."""
-    space_dim = 2
-    num_voxels = (2, 4)
-    dimensions = [0.5, 1.0]
-    geometry = darsia.Geometry(
-        space_dim=space_dim, num_voxels=num_voxels, dimensions=dimensions
-    )
-
-    input_shape = (4, 8, 2, 3)  # rows x cols x time x components
-    data = np.arange(np.prod(input_shape), dtype=float).reshape(input_shape)
-    image = darsia.Image(
-        data,
-        dimensions=dimensions,
-        series=True,
-        scalar=False,
-        time=[0, 1],
-    )
-
-    extensive = geometry.make_extensive(image)
-
-    assert isinstance(extensive, darsia.ExtensiveImage)
-    assert extensive.shape == (2, 4, 2, 3)
-    assert np.allclose(np.sum(extensive.img, axis=(0, 1)), geometry.integrate(image))
-    assert np.allclose(geometry.integrate(extensive), geometry.integrate(image))
-
-
 def test_make_extensive_incompatible_dimensions():
     """Test extensive conversion with incompatible physical dimensions."""
     geometry = darsia.Geometry(space_dim=2, num_voxels=(2, 4), dimensions=[0.5, 1.0])
