@@ -233,8 +233,8 @@ def analysis_mass_from_context(
         if "extensive_mass" in export_modes:
             export_images["extensive_mass"] = fluidflower.geometry.make_extensive(mass)
         if "extensive_rescaled_mass" in export_modes:
-            export_images["extensive_rescaled_mass"] = fluidflower.geometry.make_extensive(
-                rescaled_mass
+            export_images["extensive_rescaled_mass"] = (
+                fluidflower.geometry.make_extensive(rescaled_mass)
             )
         for mode in export_modes:
             _save_scalar_image_artifacts(
