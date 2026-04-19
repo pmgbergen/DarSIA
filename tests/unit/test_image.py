@@ -175,10 +175,10 @@ def test_scalar_image_to_csv(tmp_path):
     assert path.exists()
     lines = path.read_text().splitlines()
     assert lines[0] == "x;y;value"
-    assert lines[1] == "0.25;0.75;1.00"
-    assert lines[2] == "0.75;0.75;2.00"
-    assert lines[3] == "0.25;0.25;3.00"
-    assert lines[4] == "0.75;0.25;4.00"
+    assert lines[1] == "0.25;0.25;3.00"
+    assert lines[2] == "0.25;0.75;1.00"
+    assert lines[3] == "0.75;0.25;4.00"
+    assert lines[4] == "0.75;0.75;2.00"
 
 
 def test_scalar_image_to_csv_checks_header_length(tmp_path):
