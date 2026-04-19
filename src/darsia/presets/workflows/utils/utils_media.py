@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 import cv2
 import numpy as np
+from natsort import natsorted, ns
 from PIL import Image as PILImage
 
 import darsia
@@ -46,24 +48,41 @@ def _scan_source_images(
 
 
 def _protocol_sort_frames(
-    experiment: darsia.ProtocolledExperiment, image_paths: list[Path]
+    experiment: darsia.ProtocolledExperiment,
+    image_paths: list[Path],
+    sorting_method: Literal["protocol", "name"],
 ) -> list[tuple[Path, datetime, float]]:
-    rows: list[tuple[Path, datetime, float]] = []
-    if hasattr(experiment, "iter_available"):
-        for _, path, dt in experiment.iter_available(image_paths):
-            elapsed_time_h = experiment.time_since_start(dt)
-            rows.append((path, dt, elapsed_time_h))
-    else:
-        for path in image_paths:
-            try:
-                if experiment.is_blacklisted(path):
+    if sorting_method == "name":
+        # Sort by filename only, ignoring protocol datetimes and blacklisting.
+        # Elapsed time is set to 0.
+        rows = [(path, None, 0) for path in natsorted(image_paths, alg=ns.IGNORECASE)]
+    elif sorting_method == "protocol":
+        rows: list[tuple[Path, datetime, float]] = []
+        if (
+            hasattr(experiment, "iter_available")
+            and len(experiment.iter_available(image_paths)) > 0
+        ):
+            for _, path, dt in experiment.iter_available(image_paths):
+                print(path, dt)
+                elapsed_time_h = experiment.time_since_start(dt)
+                rows.append((path, dt, elapsed_time_h))
+        else:
+            for path in image_paths:
+                print(path)
+                try:
+                    if experiment.is_blacklisted(path):
+                        continue
+                    dt = experiment.get_datetime(path)
+                except ValueError:
                     continue
-                dt = experiment.get_datetime(path)
-            except ValueError:
-                continue
-            elapsed_time_h = experiment.time_since_start(dt)
-            rows.append((path, dt, elapsed_time_h))
-    rows.sort(key=lambda item: item[1])
+                elapsed_time_h = experiment.time_since_start(dt)
+                rows.append((path, dt, elapsed_time_h))
+            rows.sort(key=lambda item: item[1])
+    else:
+        raise ValueError(
+            f"Unsupported video source sorting method: '{sorting_method}'. "
+            "Supported methods: 'protocol', 'name'."
+        )
     return rows
 
 
@@ -216,7 +235,9 @@ def build_media(path: Path | list[Path]) -> dict[str, Path]:
     )
     if not source_paths:
         raise FileNotFoundError(f"No source images found in '{source_folder}'.")
-    ordered = _protocol_sort_frames(experiment, source_paths)
+    ordered = _protocol_sort_frames(
+        experiment, source_paths, config.video.source.sorting
+    )
     if not ordered:
         raise ValueError(
             "No source images could be matched to the imaging protocol (or all were "
