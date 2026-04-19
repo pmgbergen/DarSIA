@@ -22,7 +22,9 @@ class ActiveRegionRenderData:
     contours: list[np.ndarray]
 
 
-def _as_bool_mask(mask: np.ndarray | darsia.Image, shape: tuple[int, int]) -> np.ndarray:
+def _as_bool_mask(
+    mask: np.ndarray | darsia.Image, shape: tuple[int, int]
+) -> np.ndarray:
     """Return mask as bool array and validate shape."""
 
     array = mask if isinstance(mask, np.ndarray) else np.asarray(mask.img)
@@ -93,7 +95,12 @@ def draw_active_region(
     render_data = render_active_region(image, active_mask=active_mask)
     ax.imshow(render_data.image)
     for contour in render_data.contours:
-        ax.plot(contour[:, 1], contour[:, 0], color=contour_color, linewidth=contour_linewidth)
+        ax.plot(
+            contour[:, 1],
+            contour[:, 0],
+            color=contour_color,
+            linewidth=contour_linewidth,
+        )
     if title is not None:
         ax.set_title(title)
     ax.axis("off")
