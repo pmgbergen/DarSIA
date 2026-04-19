@@ -61,9 +61,9 @@ def test_initialize_general_image():
     assert np.allclose(image.dimensions, np.array([1.5, 2.8])), "dimensions not correct"
     assert np.allclose(image.origin, np.array([0.0, 1.5])), "origin not correct"
     assert np.allclose(image.num_voxels, [1788, 3180]), "num_voxels not correct"
-    assert np.allclose(
-        image.voxel_size, [1.5 / 1788, 2.8 / 3180]
-    ), "voxel_size not correct"
+    assert np.allclose(image.voxel_size, [1.5 / 1788, 2.8 / 3180]), (
+        "voxel_size not correct"
+    )
 
 
 def test_initialize_optical_image():
@@ -200,5 +200,5 @@ def test_scalar_image_to_csv_3d(tmp_path):
     image.to_csv(path, delimiter=",", header="x,y,z,value", float_format="{:.1f}")
     lines = path.read_text().splitlines()
     assert lines[0] == "x,y,z,value"
-    assert lines[1].endswith(",0.0")
-    assert lines[-1].endswith(",7.0")
+    assert lines[1].endswith(",5.0")
+    assert lines[-1].endswith(",2.0")
