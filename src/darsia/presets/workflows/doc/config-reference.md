@@ -133,9 +133,19 @@ Outputs are written to `<type>_<identifier>` subfolders (for example `jpg_4k`).
     - `mass_g`
     - `mass_aq`
     - `rescaled_mass`
-    - `rescaled_saturation_g`
-    - `rescaled_concentration_aq`
+  - `rescaled_saturation_g`
+  - `rescaled_concentration_aq`
   - `data`: selector key or keys resolved from top-level `[data.*]` registry.
+- `[helper.roi_viewer]`: interactive ROI viewer for ROI registry entries.
+  - `data`: selector key or keys resolved from top-level `[data.*]` registry.
+  - ROI selector in the viewer supports `all`, `none`, and each ROI registry key.
+  - Images are downscaled and preloaded in-memory for fast image/ROI switching.
+
+Shorthand is supported for ROI Viewer:
+```toml
+[helper]
+data = ["analysis_imgs"]
+```
 
 ### Segmentation contour options
 For each segmentation entry, the following contour styling keys are supported:

@@ -133,6 +133,14 @@ data = "analysis_imgs"
 mode = "none"
 data = "analysis_imgs"
 
+[helper.roi_viewer]
+# ROI Viewer data selection. Supports `all` / `none` / single ROI key selector in UI.
+data = "analysis_imgs"
+
+#[helper]
+# Shorthand for ROI Viewer:
+# data = ["analysis_imgs"]
+
 [analysis.thresholding]
 # Optional thresholding with per-layer styling and separate format outputs.
 # Supported layer modes:
