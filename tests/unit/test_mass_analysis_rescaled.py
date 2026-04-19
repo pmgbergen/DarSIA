@@ -10,8 +10,8 @@ import numpy as np
 import darsia
 from darsia import make_coordinate
 from darsia.multiphase.mass_analysis import CO2MassAnalysis
-from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.analysis.analysis_mass import analysis_mass_from_context
+from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.config.roi import RoiConfig
 
 
@@ -66,9 +66,7 @@ def test_analysis_mass_writes_rescaled_artifacts(
     image_path = tmp_path / "img001.png"
 
     class _FakeInjectionProtocol:
-        def injected_mass(
-            self, *, date: datetime | None, roi: Any = None
-        ) -> float:
+        def injected_mass(self, *, date: datetime | None, roi: Any = None) -> float:
             _ = (date, roi)
             return injected_mass
 
@@ -152,7 +150,9 @@ def test_analysis_mass_writes_rescaled_artifacts(
     assert "rescaled_concentration_aq" in stream_payloads[0]
 
 
-def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(tmp_path: Path) -> None:
+def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
+    tmp_path: Path,
+) -> None:
     injected_mass = 8.0
     image_path = tmp_path / "img001.png"
     roi = RoiConfig()

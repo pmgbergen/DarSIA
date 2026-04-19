@@ -10,7 +10,6 @@ from darsia.presets.workflows.config.time_data import (
     TimeData,
 )
 
-
 # ---------------------------------------------------------------------------
 # DataRegistry tests
 # ---------------------------------------------------------------------------
@@ -51,7 +50,12 @@ def _make_registry_sec():
 class TestDataRegistryLoad:
     def test_keys_populated(self):
         reg = DataRegistry().load(_make_registry_sec())
-        assert set(reg.keys()) == {"calibration1", "calibration2", "phase_1", "manual_snap"}
+        assert set(reg.keys()) == {
+            "calibration1",
+            "calibration2",
+            "phase_1",
+            "manual_snap",
+        }
 
     def test_interval_entry_has_times(self):
         reg = DataRegistry().load(_make_registry_sec())
@@ -158,33 +162,21 @@ class TestDataRegistryResolve:
 
 class TestTimeDataNewSectionKeys:
     def test_interval_key(self):
-        sec = {
-            "interval": {
-                "cal": {"start": "01:00:00", "end": "05:00:00", "num": 5}
-            }
-        }
+        sec = {"interval": {"cal": {"start": "01:00:00", "end": "05:00:00", "num": 5}}}
         td = TimeData().load(sec)
         assert len(td.image_times) == 5
         assert td.mode == "intervals"
 
     def test_time_key(self):
-        sec = {
-            "time": {
-                "snap": {"times": ["01:00:00", "02:00:00"], "tol": "00:05:00"}
-            }
-        }
+        sec = {"time": {"snap": {"times": ["01:00:00", "02:00:00"], "tol": "00:05:00"}}}
         td = TimeData().load(sec)
         assert td.image_times == pytest.approx([1.0, 2.0])
         assert td.mode == "times"
 
     def test_mixed_interval_and_time(self):
         sec = {
-            "interval": {
-                "cal": {"start": "01:00:00", "end": "03:00:00", "num": 3}
-            },
-            "time": {
-                "snap": {"times": ["00:30:00"], "tol": "00:05:00"}
-            },
+            "interval": {"cal": {"start": "01:00:00", "end": "03:00:00", "num": 3}},
+            "time": {"snap": {"times": ["00:30:00"], "tol": "00:05:00"}},
         }
         td = TimeData().load(sec)
         assert td.mode == "mixed"

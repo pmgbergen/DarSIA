@@ -4,14 +4,14 @@ import logging
 from pathlib import Path
 from types import SimpleNamespace
 
-import darsia
 import numpy as np
-from darsia import make_coordinate
 
-from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
+import darsia
+from darsia import make_coordinate
 from darsia.presets.workflows.analysis.analysis_thresholding import (
     analysis_thresholding_from_context,
 )
+from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.analysis.streaming import (
     encode_low_resolution_png,
     publish_stream_images,
@@ -373,9 +373,7 @@ def test_thresholding_applies_expert_knowledge_constraints(tmp_path: Path) -> No
             analysis=SimpleNamespace(thresholding=thresholding_config),
         ),
         experiment=SimpleNamespace(
-            injection_protocol=SimpleNamespace(
-                injected_mass=lambda date=None, **_: 1.0
-            )
+            injection_protocol=SimpleNamespace(injected_mass=lambda date=None, **_: 1.0)
         ),
         fluidflower=_FakeFluidFlower(),
         image_paths=[image_path],
@@ -384,7 +382,5 @@ def test_thresholding_applies_expert_knowledge_constraints(tmp_path: Path) -> No
     )
 
     analysis_thresholding_from_context(ctx)
-    mask = np.load(tmp_path / "thresholding" / "npz" / "gas" / "img001.npz")[
-        "mask"
-    ]
+    mask = np.load(tmp_path / "thresholding" / "npz" / "gas" / "img001.npz")["mask"]
     assert np.any(mask == 0)

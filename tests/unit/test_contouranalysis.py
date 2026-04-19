@@ -16,9 +16,10 @@ def test_plot_valleys_respects_range_and_optional_dots():
     valleys = np.array([[[2, 3]], [[5, 4]]], dtype=int)
 
     contour_analysis = ContourAnalysis()
-    with mock.patch.object(plt, "vlines") as vlines_mock, mock.patch.object(
-        plt, "scatter"
-    ) as scatter_mock:
+    with (
+        mock.patch.object(plt, "vlines") as vlines_mock,
+        mock.patch.object(plt, "scatter") as scatter_mock,
+    ):
         contour_analysis.plot_valleys(
             img,
             valleys,
@@ -52,8 +53,12 @@ def test_find_valley_paths_tracks_valleys_over_time():
 
     assert len(contour_evolution_analysis.valley_paths) == 2
 
-    starts = sorted([tuple(path[0].position) for path in contour_evolution_analysis.valley_paths])
-    ends = sorted([tuple(path[1].position) for path in contour_evolution_analysis.valley_paths])
+    starts = sorted(
+        [tuple(path[0].position) for path in contour_evolution_analysis.valley_paths]
+    )
+    ends = sorted(
+        [tuple(path[1].position) for path in contour_evolution_analysis.valley_paths]
+    )
     assert starts == [(1, 2), (6, 2)]
     assert ends == [(2, 3), (7, 3)]
 
