@@ -33,6 +33,17 @@ logger = logging.getLogger(__name__)
 _DEFAULT_MASS_EXPORT_MODES = ["mass"]
 
 
+def _safe_finite_max(name: str, values: np.ndarray) -> float:
+    """Return max finite value and fail with clear error for all-NaN arrays."""
+    arr = np.asarray(values, dtype=float)
+    finite = arr[np.isfinite(arr)]
+    if finite.size == 0:
+        raise ValueError(
+            f"Cannot determine scalar export vmax: '{name}' contains no finite values."
+        )
+    return float(np.max(finite))
+
+
 def _save_scalar_image_artifacts(
     image: darsia.Image,
     folder: Path,
@@ -143,18 +154,16 @@ def analysis_mass_from_context(
         config, fallback_formats=["npz", "jpg"]
     )
 
-    vmax_mass = float(
-        max(
-            np.nanmax(np.asarray(co2_mass_analysis.solubility_co2)),
-            np.nanmax(np.asarray(co2_mass_analysis.density_gaseous_co2)),
-        )
+    vmax_mass = max(
+        _safe_finite_max("solubility_co2", co2_mass_analysis.solubility_co2),
+        _safe_finite_max("density_gaseous_co2", co2_mass_analysis.density_gaseous_co2),
     )
     geometry_voxel_size = float(np.prod(np.asarray(fluidflower.geometry.voxel_size)))
     depth = getattr(fluidflower.geometry, "depth", 1.0)
     if hasattr(depth, "img"):
-        max_depth = float(np.nanmax(np.asarray(depth.img)))
+        max_depth = _safe_finite_max("geometry.depth", depth.img)
     else:
-        max_depth = float(np.nanmax(np.asarray(depth)))
+        max_depth = _safe_finite_max("geometry.depth", depth)
     vmax_extensive_mass = geometry_voxel_size * max_depth * vmax_mass
     scalar_write_kwargs_by_mode: dict[str, dict[str, float]] = {
         "mass": {"vmin": 0.0, "vmax": vmax_mass},
