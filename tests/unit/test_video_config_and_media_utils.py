@@ -109,7 +109,7 @@ def test_protocol_sort_frames_filters_blacklist_and_invalid_and_sorts() -> None:
         Path("noise.png"),
         Path("img_00003.png"),
     ]
-    ordered = _protocol_sort_frames(exp, paths)
+    ordered = _protocol_sort_frames(exp, paths, "protocol")
     assert [p.name for p, _, _ in ordered] == ["img_00002.png", "img_00004.png"]
     assert [round(elapsed, 2) for _, _, elapsed in ordered] == [2.0, 4.0]
 
