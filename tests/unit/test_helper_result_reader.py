@@ -42,12 +42,13 @@ def test_collect_result_files_prefers_stem_match(tmp_path: Path) -> None:
 
 
 def test_compute_statistics_uses_geometry_integral() -> None:
-    image = darsia.ScalarImage(np.array([[1.0, 2.0], [3.0, 4.0]]), dimensions=[2.0, 2.0])
+    image = darsia.ScalarImage(
+        np.array([[1.0, 2.0], [3.0, 4.0]]), dimensions=[2.0, 2.0]
+    )
     geometry = darsia.Geometry(space_dim=2, num_voxels=(2, 2), dimensions=(2.0, 2.0))
 
-    minimum, maximum, value_sum, integral = _compute_statistics(image, geometry=geometry)
+    minimum, maximum, integral = _compute_statistics(image, geometry=geometry)
 
     assert minimum == 1.0
     assert maximum == 4.0
-    assert value_sum == 10.0
     assert integral == 10.0
