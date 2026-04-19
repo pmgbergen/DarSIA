@@ -107,6 +107,8 @@ class Geometry:
             if all([i == j for i, j in zip(fetched_shape, self.num_voxels)]):
                 self.cached_voxel_volume = self.voxel_volume.copy()
             else:
+                if not self.space_dim == 2:
+                    raise ValueError("Incompatible data format only supported in 2d.")
                 self.cached_voxel_volume = self.voxel_volume * scaling
 
     def integrate(self, data: darsia.Image | np.ndarray) -> float | np.ndarray:
