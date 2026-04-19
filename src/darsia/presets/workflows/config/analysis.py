@@ -357,7 +357,11 @@ class AnalysisMassConfig:
                 raise ValueError("analysis.mass.export must be a list.")
             if not all(isinstance(mode, str) for mode in raw_export):
                 raise ValueError("analysis.mass.export entries must be strings.")
-            export_modes = [mode.strip().lower() for mode in raw_export if mode.strip()]
+            export_modes = []
+            for mode in raw_export:
+                stripped_mode = mode.strip()
+                if stripped_mode:
+                    export_modes.append(stripped_mode.lower())
             invalid_modes = sorted(
                 set(export_modes) - SUPPORTED_ANALYSIS_MASS_EXPORT_MODES
             )
@@ -368,6 +372,7 @@ class AnalysisMassConfig:
                     "Supported values: "
                     f"{', '.join(sorted(SUPPORTED_ANALYSIS_MASS_EXPORT_MODES))}."
                 )
+            # Deduplicate while preserving first-seen order.
             self.export = list(dict.fromkeys(export_modes))
 
         folder = _get_key(sub_sec, "folder", required=False, type_=Path)

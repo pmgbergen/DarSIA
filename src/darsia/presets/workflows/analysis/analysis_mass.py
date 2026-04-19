@@ -21,22 +21,15 @@ from darsia.presets.workflows.analysis.progress import (
 )
 from darsia.presets.workflows.analysis.scalar_products import analysis_scalar_products
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
-from darsia.presets.workflows.config.analysis import AnalysisMassConfig
+from darsia.presets.workflows.config.analysis import (
+    SUPPORTED_ANALYSIS_MASS_EXPORT_MODES,
+    AnalysisMassConfig,
+)
 from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MASS_EXPORT_MODES = ["mass"]
-_SUPPORTED_MASS_EXPORT_MODES = {
-    "mass",
-    "rescaled_mass",
-    "extensive_mass",
-    "extensive_rescaled_mass",
-    "saturation_g",
-    "rescaled_saturation_g",
-    "concentration_aq",
-    "rescaled_concentration_aq",
-}
 
 
 def _save_scalar_image_artifacts(
@@ -125,7 +118,11 @@ def analysis_mass_from_context(
     export_modes = (
         _DEFAULT_MASS_EXPORT_MODES
         if raw_export_modes is None
-        else [mode for mode in raw_export_modes if mode in _SUPPORTED_MASS_EXPORT_MODES]
+        else [
+            mode
+            for mode in raw_export_modes
+            if mode in SUPPORTED_ANALYSIS_MASS_EXPORT_MODES
+        ]
     )
     output_folders = {
         "mass": config.data.results / "mass",
