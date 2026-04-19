@@ -165,14 +165,23 @@ def test_import_from_csv_supports_matrix_layout(tmp_path):
         dimensions=[2.0, 3.0],
     )
 
-    values = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    values = np.array(
+        [
+            [0.5, 0.5, 3.0],
+            [1.5, 0.5, 3.0],
+            [2.5, 0.5, 3.0],
+            [0.5, 1.5, 6.0],
+            [1.5, 1.5, 6.0],
+            [2.5, 1.5, 6.0],
+        ]
+    )
     csv_path = tmp_path / "result.csv"
     np.savetxt(csv_path, values, delimiter=",")
 
     image = rig.import_from_csv(csv_path)
 
     assert isinstance(image, darsia.ScalarImage)
-    assert np.allclose(image.img, values)
+    assert np.allclose(image.img, np.array([[6.0, 6.0, 6.0], [3.0, 3.0, 3.0]]))
 
 
 def test_import_from_csv_supports_coordinate_layout(tmp_path):
