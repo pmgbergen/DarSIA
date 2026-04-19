@@ -14,16 +14,14 @@ requires-python = ">=3.10"
 keywords = ["darcy", "image analysis", "porous media", "flow"]
 
 authors = [
-  { name = "Jakub Wiktor Both",  email = "jakub.both@uib.no" },
+  { name = "Jakub Wiktor Both", email = "jakub.both@uib.no" },
   { name = "Trygve Tegnander" },
   { name = "Enrico Facca" },
   { name = "Erlend Storvik" },
   { name = "Jan Martin Nordbotten" },
 ]
 
-maintainers = [
-  { name = "Jakub Wiktor Both", email = "jakub.both@uib.no" },
-]
+maintainers = [{ name = "Jakub Wiktor Both", email = "jakub.both@uib.no" }]
 
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -38,6 +36,7 @@ classifiers = [
 ]
 
 dependencies = [
+  "natsort",
   "numpy",
   "opencv-python",
   "scipy",
@@ -59,9 +58,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage    = "https://github.com/pmgbergen/DarSIA"
-Repository  = "https://github.com/pmgbergen/DarSIA.git"
-Issues      = "https://github.com/pmgbergen/DarSIA/issues"
+Homepage = "https://github.com/pmgbergen/DarSIA"
+Repository = "https://github.com/pmgbergen/DarSIA.git"
+Issues = "https://github.com/pmgbergen/DarSIA/issues"
 
 # ── Optional dependencies (replaces extras_require in setup.py) ───────────────
 [project.optional-dependencies]
