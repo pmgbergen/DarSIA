@@ -100,6 +100,17 @@ def _replace_identifier_tokens(mask: str, *, stem: str, seconds: int) -> str:
     return NAME_IDENTIFIER_PATTERN.sub(lambda m: values[m.group(1).lower()], mask)
 
 
+def _largest_time_unit_suffix(mask: str) -> str:
+    tokens = {token.lower() for token in NAME_IDENTIFIER_PATTERN.findall(mask)}
+    if "dd" in tokens and "hh" in tokens:
+        return "days_hrs"
+    if "hh" in tokens:
+        return "hrs"
+    if "mm" in tokens:
+        return "min"
+    return ""
+
+
 class ImageExportFormats:
     """Resolve analysis export format identifiers and write images to disk."""
 
@@ -213,7 +224,7 @@ class ImageExportFormats:
         if name_lower == "time_hh:mm:ss":
             return f"time_{_time_hh_mm_ss(seconds, pad_hours=True)}_hrs"
         if name_lower == "time_mm:ss":
-            return f"time_{_time_mm_ss(seconds)}_hrs"
+            return f"time_{_time_mm_ss(seconds)}_min"
         if name_lower == "time_dd:hh:mm":
             return f"time_{_time_dd_hh_mm(seconds)}_days_hrs"
         if name_lower == "time_dd:hh":
@@ -230,9 +241,13 @@ class ImageExportFormats:
             return f"{stem}_{_time_dd_hh(seconds)}_days_hrs"
 
         if NAME_IDENTIFIER_PATTERN.search(name) is not None:
-            return _replace_identifier_tokens(name, stem=stem, seconds=seconds).replace(
+            base = _replace_identifier_tokens(name, stem=stem, seconds=seconds).replace(
                 ":", "_"
             )
+            largest_unit = _largest_time_unit_suffix(name)
+            if largest_unit:
+                return f"{base}_{largest_unit}"
+            return base
 
         raise ValueError(f"Unsupported name option '{name}'.")
 
