@@ -1929,7 +1929,9 @@ class ScalarImage(Image):
                 vmin = kwargs.get("vmin", float(np.min(finite_values)))
                 vmax = kwargs.get("vmax", float(np.max(finite_values)))
                 if vmax > vmin:
-                    normalized_float_image = np.zeros_like(float_image, dtype=np.float32)
+                    normalized_float_image = np.zeros_like(
+                        float_image, dtype=np.float32
+                    )
                     normalized_float_image[finite_mask] = (
                         float_image[finite_mask] - float(vmin)
                     ) / float(vmax - vmin)
