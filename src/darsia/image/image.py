@@ -1992,12 +1992,12 @@ class ScalarImage(Image):
             return -1.0 if is_reversed else 1.0
 
         axis_offset_signs = np.asarray(
-            [_axis_offset_sign(axis) for axis in self.coordinatesystem.axes], dtype=float
+            [_axis_offset_sign(axis) for axis in self.coordinatesystem.axes],
+            dtype=float,
         )
         half_voxel_offset_per_axis = 0.5 * np.asarray(
             [
-                axis_offset_signs[i]
-                * self.coordinatesystem.voxel_size[axis]
+                axis_offset_signs[i] * self.coordinatesystem.voxel_size[axis]
                 for i, axis in enumerate(self.coordinatesystem.axes)
             ],
             dtype=float,
@@ -2010,7 +2010,15 @@ class ScalarImage(Image):
             (*arr.shape, self.space_dim), order="F"
         ).reshape(-1, self.space_dim, order="C")
         values = np.asarray(arr, dtype=float).reshape(-1, order="C")
+        # Combine coordinate and value columns
         data = np.column_stack([coordinate_columns, values])
+
+        # Coordinates are sorted wrt voxel indices (and not coordinates itself).
+        # Mainly because coordinates have a different origin and orientation than voxel
+        # indices. Apply lexsort to the data to effectivley sort by coordinate values.
+        # Since each coordinate only appears once, the sorting is not impacted by the values.
+        sort_order = np.lexsort(np.fliplr(coordinate_columns).T)
+        data = data[sort_order]
 
         np.savetxt(
             path,
