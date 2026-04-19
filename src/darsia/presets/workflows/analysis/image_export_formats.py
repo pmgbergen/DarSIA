@@ -43,45 +43,6 @@ def _seconds_from_image(image: darsia.Image) -> int:
     return max(0, seconds)
 
 
-def _time_hh_mm_ss(seconds: int, *, pad_hours: bool) -> str:
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
-    secs = seconds % 60
-    hour_part = f"{hours:02d}" if pad_hours else f"{hours}"
-    return f"{hour_part}_{minutes:02d}_{secs:02d}"
-
-
-def _time_mm_ss(seconds: int) -> str:
-    minutes = seconds // 60
-    secs = seconds % 60
-    return f"{minutes}_{secs:02d}"
-
-
-def _time_hh_mm(seconds: int) -> str:
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
-    return f"{hours:02d}_{minutes:02d}"
-
-
-def _time_hh(seconds: int) -> str:
-    return f"{seconds // 3600:02d}"
-
-
-def _time_dd_hh_mm(seconds: int) -> str:
-    total_hours = seconds // 3600
-    days = total_hours // 24
-    hours = total_hours % 24
-    minutes = (seconds % 3600) // 60
-    return f"{days:02d}_{hours:02d}_{minutes:02d}"
-
-
-def _time_dd_hh(seconds: int) -> str:
-    total_hours = seconds // 3600
-    days = total_hours // 24
-    hours = total_hours % 24
-    return f"{days:02d}_{hours:02d}"
-
-
 def _replace_identifier_tokens(mask: str, *, stem: str, seconds: int) -> str:
     total_hours = seconds // 3600
     total_minutes = seconds // 60
@@ -211,34 +172,7 @@ class ImageExportFormats:
         self, image: darsia.Image, stem: str, spec: ImageExportFormat
     ) -> str:
         name = spec.name
-        name_lower = name.lower()
-        if name_lower == "stem":
-            return stem
-
         seconds = _seconds_from_image(image)
-
-        if name_lower == "time_hh":
-            return f"time_{_time_hh(seconds)}_hrs"
-        if name_lower == "time_hh:mm":
-            return f"time_{_time_hh_mm(seconds)}_hrs"
-        if name_lower == "time_hh:mm:ss":
-            return f"time_{_time_hh_mm_ss(seconds, pad_hours=True)}_hrs"
-        if name_lower == "time_mm:ss":
-            return f"time_{_time_mm_ss(seconds)}_min"
-        if name_lower == "time_dd:hh:mm":
-            return f"time_{_time_dd_hh_mm(seconds)}_days_hrs"
-        if name_lower == "time_dd:hh":
-            return f"time_{_time_dd_hh(seconds)}_days_hrs"
-        if name_lower == "stem_time_hh":
-            return f"{stem}_{_time_hh(seconds)}_hrs"
-        if name_lower == "stem_time_hh:mm":
-            return f"{stem}_{_time_hh_mm(seconds)}_hrs"
-        if name_lower == "stem_time_hh:mm:ss":
-            return f"{stem}_{_time_hh_mm_ss(seconds, pad_hours=True)}_hrs"
-        if name_lower == "stem_time_dd:hh:mm":
-            return f"{stem}_{_time_dd_hh_mm(seconds)}_days_hrs"
-        if name_lower == "stem_time_dd:hh":
-            return f"{stem}_{_time_dd_hh(seconds)}_days_hrs"
 
         if NAME_IDENTIFIER_PATTERN.search(name) is not None:
             base = _replace_identifier_tokens(name, stem=stem, seconds=seconds).replace(

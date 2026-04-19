@@ -9,7 +9,6 @@ from pathlib import Path
 from .utils import _convert_none, _get_section_from_toml
 
 SUPPORTED_EXPORT_FORMATS = {"jpg", "png", "npz", "npy", "csv"}
-REMOVED_EXPORT_NAMES = {"name_stem", "name_time_hh:mm:ss"}
 NAME_IDENTIFIER_PATTERN = re.compile(
     r"(?<![A-Za-z0-9])(stem|dd|hh|mm|ss)(?![A-Za-z0-9])",
     flags=re.IGNORECASE,
@@ -40,12 +39,6 @@ class ImageExportFormat:
 
 
 def _validate_name_mask(name: str, context: str) -> None:
-    lower_name = name.lower()
-    if lower_name in REMOVED_EXPORT_NAMES:
-        raise ValueError(
-            f"Unsupported name option '{name}' for {context}. "
-            f"Removed options: {sorted(REMOVED_EXPORT_NAMES)}."
-        )
     if NAME_IDENTIFIER_PATTERN.search(name) is None:
         raise ValueError(
             f"Unsupported name option '{name}' for {context}. "
