@@ -36,7 +36,7 @@ name = "time_DD:HH"
 name = "time_DD:HH:MM"
 
 [format.npy.opt_stem_time_hh_mm]
-name = "stem_time_HH:MM"
+name = "stem_HH:MM"
 
 [format.npy.opt_custom]
 name = "spatial_map_hh_mm_h"
