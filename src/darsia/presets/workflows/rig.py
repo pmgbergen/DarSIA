@@ -986,7 +986,9 @@ class Rig:
                 )
             coordinates = np.asarray(data[:, : self.baseline.space_dim], dtype=float)
             values = np.asarray(data[:, -1], dtype=float)
-            voxels = np.asarray(self.baseline.coordinatesystem.voxel(coordinates), dtype=int)
+            voxels = np.asarray(
+                self.baseline.coordinatesystem.voxel(coordinates), dtype=int
+            )
             array = np.zeros(expected_shape, dtype=values.dtype)
             for axis in range(self.baseline.space_dim):
                 if np.any(voxels[:, axis] < 0) or np.any(
