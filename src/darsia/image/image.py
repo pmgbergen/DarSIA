@@ -2031,7 +2031,7 @@ class ScalarImage(Image):
         logger.info("\033[92mImage saved as: " + str(Path(path)) + "\033[0m")
 
 
-class ExtensiveImage(Image):
+class ExtensiveImage(ScalarImage):
     """Image type for extensive quantities stored per voxel."""
 
     def __init__(
