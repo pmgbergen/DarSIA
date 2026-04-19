@@ -172,31 +172,23 @@ class Geometry:
         self._prepare_cached_voxel_volume(fetched_shape)
 
         weighted_sum = np.multiply(self.cached_voxel_volume, data.img)
+        weighted_sum_image = type(data)(weighted_sum, **data.metadata())
 
         # If required, map weighted values conservatively to the geometry grid.
         if not all([i == j for i, j in zip(fetched_shape, self.num_voxels)]):
             if not self.space_dim == 2:
                 raise ValueError("Incompatible data format only supported in 2d.")
 
-            original_shape = weighted_sum.shape
-            flattened = np.reshape(weighted_sum, (*original_shape[:2], -1))
-            channels = cv2.split(flattened)
-            resized_channels = []
-            for channel in channels:
-                resized_channels.append(
-                    cv2.resize(
-                        channel,
-                        tuple(reversed(self.num_voxels[:2])),
-                        interpolation=cv2.INTER_AREA,
-                    )
-                )
-            resized = cv2.merge(resized_channels)
-            weighted_sum = np.reshape(
-                resized, (*self.num_voxels[:2], *original_shape[2:])
+            weighted_sum_image = darsia.resize(
+                weighted_sum_image,
+                shape=tuple(self.num_voxels[:2]),
+                interpolation="inter_area",
             )
-            weighted_sum *= np.prod(np.divide(fetched_shape[:2], self.num_voxels[:2]))
+            weighted_sum_image.img *= np.prod(
+                np.divide(fetched_shape[:2], self.num_voxels[:2])
+            )
 
-        return type(data)(weighted_sum, **data.metadata())
+        return weighted_sum_image
 
     def normalize(
         self, img: darsia.Image, img_ref: darsia.Image, return_ratio: bool = False
