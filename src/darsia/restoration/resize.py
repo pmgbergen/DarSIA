@@ -103,7 +103,9 @@ class Resize:
             )
 
         # Check for conservative rescaling
-        self.is_conservative = kwargs.get(key + "resize conservative", False)
+        conservative_key = key + "resize conservative"
+        self._conservative_explicit = conservative_key in kwargs
+        self.is_conservative = kwargs.get(conservative_key, False)
 
     def __str__(self) -> str:
         """String representation of the resize correction."""
@@ -131,6 +133,9 @@ class Resize:
         input_is_image = isinstance(img, darsia.Image)
         if input_is_image:
             assert img.space_dim == 2
+        input_is_extensive_image = input_is_image and isinstance(
+            img, darsia.ExtensiveImage
+        )
 
         # Extract original image
         img_array = img.img.copy() if input_is_image else img.copy()
@@ -145,9 +150,14 @@ class Resize:
         img_channels: tuple[np.ndarray] = cv2.split(multi_channel_img_array)
 
         # Apply resizing to each channel separately
+        interpolation = (
+            cv2.INTER_AREA
+            if input_is_extensive_image and self.interpolation is None
+            else self.interpolation
+        )
         resized_channels = []
         for channel in img_channels:
-            if self.interpolation is None:
+            if interpolation is None:
                 resized_channels.append(
                     cv2.resize(
                         channel,
@@ -163,7 +173,7 @@ class Resize:
                         dsize=self.dsize,
                         fx=self.fx,
                         fy=self.fy,
-                        interpolation=self.interpolation,
+                        interpolation=interpolation,
                     )
                 )
 
@@ -173,7 +183,10 @@ class Resize:
         resized_img_array = np.reshape(resized_multi_channel_img_array, resized_shape)
 
         # Conserve the (weighted) sum
-        if self.is_conservative:
+        conservative_rescaling = self.is_conservative or (
+            input_is_extensive_image and not self._conservative_explicit
+        )
+        if conservative_rescaling:
             resized_img_array *= np.prod(img_array.shape[:2]) / np.prod(
                 resized_img_array.shape[:2]
             )
@@ -237,6 +250,7 @@ class Resize:
         self.is_conservative = (
             data["is_conservative"].item() if "is_conservative" in data else None
         )
+        self._conservative_explicit = "is_conservative" in data
 
 
 def resize(

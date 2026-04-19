@@ -595,8 +595,10 @@ def test_make_extensive_compatible_2d():
 
     extensive = geometry.make_extensive(image)
 
+    assert isinstance(extensive, darsia.ExtensiveImage)
     assert extensive.shape == image.shape
     assert np.allclose(extensive.img, geometry.voxel_volume * data)
+    assert np.isclose(geometry.integrate(extensive), np.sum(extensive.img))
 
 
 def test_make_extensive_incompatible_2d_conservative():
@@ -614,8 +616,10 @@ def test_make_extensive_incompatible_2d_conservative():
 
     extensive = geometry.make_extensive(image)
 
+    assert isinstance(extensive, darsia.ExtensiveImage)
     assert extensive.shape == num_voxels
     assert np.isclose(np.sum(extensive.img), geometry.integrate(image))
+    assert np.isclose(geometry.integrate(extensive), geometry.integrate(image))
     assert np.allclose(extensive.dimensions, image.dimensions)
 
 
@@ -636,6 +640,7 @@ def test_make_extensive_weighted_geometry():
     image = darsia.Image(data, dimensions=dimensions, series=False, scalar=True)
 
     extensive = geometry.make_extensive(image)
+    assert isinstance(extensive, darsia.ExtensiveImage)
     assert np.allclose(extensive.img, np.multiply(geometry.voxel_volume, data))
 
 
@@ -660,8 +665,10 @@ def test_make_extensive_vector_series():
 
     extensive = geometry.make_extensive(image)
 
+    assert isinstance(extensive, darsia.ExtensiveImage)
     assert extensive.shape == (2, 4, 2, 3)
     assert np.allclose(np.sum(extensive.img, axis=(0, 1)), geometry.integrate(image))
+    assert np.allclose(geometry.integrate(extensive), geometry.integrate(image))
 
 
 def test_make_extensive_incompatible_dimensions():
