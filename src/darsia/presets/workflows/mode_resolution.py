@@ -99,7 +99,7 @@ def _normalized_trichromatic(
     elif cs in {"HSV", "HLS"}:
         # OpenCV conventions differ by dtype; normalize all channels to [0, 1].
         hue = arr[..., 0]
-        hue_scale = 360.0 if np.max(hue) > 180.0 else 180.0
+        hue_scale = 360.0 if np.max(hue) > 180.0 and np.min(hue) >= 0.0 else 180.0
         arr[..., 0] = hue / hue_scale
         if np.max(arr[..., 1:]) > 1.0:
             arr[..., 1:] = arr[..., 1:] / 255.0
