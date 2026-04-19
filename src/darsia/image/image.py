@@ -1985,34 +1985,32 @@ class ScalarImage(Image):
                     f"(space_dim + 1), got {len(header_columns)}."
                 )
 
-        shape = arr.shape
-        rows: list[list[float]] = []
-        if self.space_dim == 1:
-            for x in range(shape[0]):
-                voxel = np.array([x], dtype=float) + 0.5
-                coordinate = self.coordinatesystem.coordinate(voxel)
-                rows.append([float(coordinate[0]), float(arr[x])])
-        elif self.space_dim == 2:
-            for y in range(shape[0]):
-                for x in range(shape[1]):
-                    voxel = np.array([y, x], dtype=float) + 0.5
-                    coordinate = self.coordinatesystem.coordinate(voxel)
-                    rows.append([float(coordinate[0]), float(coordinate[1]), float(arr[y, x])])
-        else:
-            for z in range(shape[0]):
-                for y in range(shape[1]):
-                    for x in range(shape[2]):
-                        voxel = np.array([z, y, x], dtype=float) + 0.5
-                        coordinate = self.coordinatesystem.coordinate(voxel)
-                        rows.append(
-                            [
-                                float(coordinate[0]),
-                                float(coordinate[1]),
-                                float(coordinate[2]),
-                                float(arr[z, y, x]),
-                            ]
-                        )
-        data = np.asarray(rows, dtype=float)
+        coordinates = np.asarray(self.coordinatesystem.coordinates, dtype=float)
+
+        def _axis_offset_sign(axis: str) -> float:
+            _, is_reversed = darsia.interpret_indexing(axis, self.indexing)
+            return -1.0 if is_reversed else 1.0
+
+        axis_offset_signs = np.asarray(
+            [_axis_offset_sign(axis) for axis in self.coordinatesystem.axes], dtype=float
+        )
+        half_voxel_offset_per_axis = 0.5 * np.asarray(
+            [
+                axis_offset_signs[i]
+                * self.coordinatesystem.voxel_size[axis]
+                for i, axis in enumerate(self.coordinatesystem.axes)
+            ],
+            dtype=float,
+        )
+        coordinates = coordinates + half_voxel_offset_per_axis
+        # CoordinateSystem stores flattened voxel data in Fortran-style index order.
+        # Reshape with order="F" and flatten with order="C" to export rows with
+        # x-fastest ordering (then y, then z), matching the required CSV layout.
+        coordinate_columns = coordinates.reshape(
+            (*arr.shape, self.space_dim), order="F"
+        ).reshape(-1, self.space_dim, order="C")
+        values = np.asarray(arr, dtype=float).reshape(-1, order="C")
+        data = np.column_stack([coordinate_columns, values])
 
         np.savetxt(
             path,
