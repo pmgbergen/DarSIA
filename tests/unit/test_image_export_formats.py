@@ -77,5 +77,6 @@ def test_scalar_write_respects_vmin_vmax_for_png(tmp_path: Path) -> None:
     assert gray is not None
     assert gray.shape == (1, 3)
     assert int(gray[0, 0]) == 0
-    assert 120 <= int(gray[0, 1]) <= 135
+    # Mid-value should map to 127/128 due to uint8 quantization.
+    assert int(gray[0, 1]) in {127, 128}
     assert int(gray[0, 2]) == 255

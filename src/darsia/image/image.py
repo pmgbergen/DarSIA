@@ -1921,24 +1921,29 @@ class ScalarImage(Image):
         ubyte_image = self.img_as(np.uint8).img
         normalized_float_image = None
 
-        if ("vmin" in kwargs) or ("vmax" in kwargs):
+        if ("vmin" in kwargs) != ("vmax" in kwargs):
+            raise ValueError(
+                "ScalarImage.write requires both 'vmin' and 'vmax' when "
+                "providing explicit normalization bounds."
+            )
+
+        if ("vmin" in kwargs) and ("vmax" in kwargs):
             float_image = self.img_as(np.float32).img
             finite_mask = np.isfinite(float_image)
             if np.any(finite_mask):
                 finite_values = float_image[finite_mask]
                 vmin = kwargs.get("vmin", float(np.min(finite_values)))
                 vmax = kwargs.get("vmax", float(np.max(finite_values)))
-                if vmax > vmin:
-                    normalized_float_image = np.zeros_like(
-                        float_image, dtype=np.float32
+                if vmax <= vmin:
+                    raise ValueError(
+                        "ScalarImage.write requires 'vmax' to be greater than 'vmin'."
                     )
-                    normalized_float_image[finite_mask] = (
-                        float_image[finite_mask] - float(vmin)
-                    ) / float(vmax - vmin)
-                    normalized_float_image = np.clip(normalized_float_image, 0.0, 1.0)
-                    ubyte_image = skimage.img_as_ubyte(normalized_float_image)
-                else:
-                    ubyte_image = np.zeros_like(float_image, dtype=np.uint8)
+                normalized_float_image = np.zeros_like(float_image, dtype=np.float32)
+                normalized_float_image[finite_mask] = (
+                    float_image[finite_mask] - vmin
+                ) / (vmax - vmin)
+                normalized_float_image = np.clip(normalized_float_image, 0.0, 1.0)
+                ubyte_image = skimage.img_as_ubyte(normalized_float_image)
             else:
                 ubyte_image = np.zeros_like(float_image, dtype=np.uint8)
         suffix = Path(path).suffix.lower()
