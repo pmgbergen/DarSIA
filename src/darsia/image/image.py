@@ -1919,11 +1919,41 @@ class ScalarImage(Image):
 
         # Write image, using the conventional matrix indexing
         ubyte_image = self.img_as(np.uint8).img
+        normalized_float_image = None
+
+        if ("vmin" in kwargs) != ("vmax" in kwargs):
+            raise ValueError(
+                "ScalarImage.write requires both 'vmin' and 'vmax' when "
+                "providing explicit normalization bounds."
+            )
+
+        if ("vmin" in kwargs) and ("vmax" in kwargs):
+            float_image = self.img_as(np.float32).img
+            finite_mask = np.isfinite(float_image)
+            if np.any(finite_mask):
+                finite_values = float_image[finite_mask]
+                vmin = kwargs.get("vmin", float(np.min(finite_values)))
+                vmax = kwargs.get("vmax", float(np.max(finite_values)))
+                if vmax <= vmin:
+                    raise ValueError(
+                        "ScalarImage.write requires 'vmax' to be greater than 'vmin'."
+                    )
+                normalized_float_image = np.zeros_like(float_image, dtype=np.float32)
+                normalized_float_image[finite_mask] = (
+                    float_image[finite_mask] - vmin
+                ) / (vmax - vmin)
+                normalized_float_image = np.clip(normalized_float_image, 0.0, 1.0)
+                ubyte_image = skimage.img_as_ubyte(normalized_float_image)
+            else:
+                ubyte_image = np.zeros_like(float_image, dtype=np.uint8)
         suffix = Path(path).suffix.lower()
 
         if "cmap" in kwargs:
             cmap = kwargs.get("cmap")
-            colored_image = cmap(self.img_as(np.float32).img)
+            if normalized_float_image is not None:
+                colored_image = cmap(normalized_float_image)
+            else:
+                colored_image = cmap(self.img_as(np.float32).img)
             ubyte_image = skimage.img_as_ubyte(colored_image[..., :3])
             ubyte_image = ubyte_image[..., ::-1]
 

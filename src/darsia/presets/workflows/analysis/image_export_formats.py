@@ -195,6 +195,7 @@ class ImageExportFormats:
         subfolder: str | Path | None = None,
         jpg_quality: int = 50,
         png_compression: int = 6,
+        scalar_write_kwargs: dict[str, Any] | None = None,
     ) -> list[Path]:
         written: list[Path] = []
         for spec in self.formats:
@@ -254,6 +255,8 @@ class ImageExportFormats:
                     cmap = self._resolve_cmap(spec.cmap)
                     if cmap is not None:
                         kwargs["cmap"] = cmap
+                    if scalar_write_kwargs is not None:
+                        kwargs.update(scalar_write_kwargs)
                 prepared.write(path, **kwargs)
             else:
                 raise ValueError(f"Unsupported export format type '{spec.type}'.")

@@ -7,6 +7,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 import darsia
@@ -32,12 +33,24 @@ logger = logging.getLogger(__name__)
 _DEFAULT_MASS_EXPORT_MODES = ["mass"]
 
 
+def _safe_finite_max(name: str, values: np.ndarray) -> float:
+    """Return max finite value and fail with clear error for all-NaN arrays."""
+    arr = np.asarray(values, dtype=float)
+    finite = arr[np.isfinite(arr)]
+    if finite.size == 0:
+        raise ValueError(
+            f"Cannot determine scalar export vmax: '{name}' contains no finite values."
+        )
+    return float(np.max(finite))
+
+
 def _save_scalar_image_artifacts(
     image: darsia.Image,
     folder: Path,
     stem: str,
     exporter: ImageExportFormats,
     quality: int = 50,
+    scalar_write_kwargs: dict[str, float] | None = None,
 ) -> None:
     """Store scalar image in configured analysis export formats."""
     exporter.export_image(
@@ -46,6 +59,7 @@ def _save_scalar_image_artifacts(
         stem,
         supported_types={"jpg", "png", "npz", "npy", "csv"},
         jpg_quality=quality,
+        scalar_write_kwargs=scalar_write_kwargs,
     )
 
 
@@ -139,6 +153,28 @@ def analysis_mass_from_context(
     exporter = ImageExportFormats.from_analysis_config(
         config, fallback_formats=["npz", "jpg"]
     )
+
+    vmax_mass = max(
+        _safe_finite_max("solubility_co2", co2_mass_analysis.solubility_co2),
+        _safe_finite_max("density_gaseous_co2", co2_mass_analysis.density_gaseous_co2),
+    )
+    geometry_voxel_size = float(np.prod(np.asarray(fluidflower.geometry.voxel_size)))
+    depth = getattr(fluidflower.geometry, "depth", 1.0)
+    if hasattr(depth, "img"):
+        max_depth = _safe_finite_max("geometry.depth", depth.img)
+    else:
+        max_depth = _safe_finite_max("geometry.depth", depth)
+    vmax_extensive_mass = geometry_voxel_size * max_depth * vmax_mass
+    scalar_write_kwargs_by_mode: dict[str, dict[str, float]] = {
+        "mass": {"vmin": 0.0, "vmax": vmax_mass},
+        "rescaled_mass": {"vmin": 0.0, "vmax": vmax_mass},
+        "extensive_mass": {"vmin": 0.0, "vmax": vmax_extensive_mass},
+        "extensive_rescaled_mass": {"vmin": 0.0, "vmax": vmax_extensive_mass},
+        "saturation_g": {"vmin": 0.0, "vmax": 1.0},
+        "rescaled_saturation_g": {"vmin": 0.0, "vmax": 1.0},
+        "concentration_aq": {"vmin": 0.0, "vmax": 1.0},
+        "rescaled_concentration_aq": {"vmin": 0.0, "vmax": 1.0},
+    }
 
     # Initialize DataFrame for storing integrated masses
     detected_cols = [
@@ -242,6 +278,7 @@ def analysis_mass_from_context(
                 output_folders[mode],
                 path.stem,
                 exporter=exporter,
+                scalar_write_kwargs=scalar_write_kwargs_by_mode.get(mode),
             )
 
         # Prepare row data for DataFrame
