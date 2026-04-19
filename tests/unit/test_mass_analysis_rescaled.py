@@ -10,6 +10,7 @@ import numpy as np
 import darsia
 from darsia import make_coordinate
 from darsia.multiphase.mass_analysis import CO2MassAnalysis
+from darsia.presets.workflows.analysis import analysis_mass as analysis_mass_module
 from darsia.presets.workflows.analysis.analysis_mass import analysis_mass_from_context
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.config.roi import RoiConfig
@@ -328,3 +329,119 @@ def test_analysis_mass_applies_expert_knowledge_to_rescaled_fields(
     caq = darsia.imread(tmp_path / "rescaled_concentration_aq" / "npz" / "img001.npz")
     assert np.any(sat.img == 0.0)
     assert np.any(caq.img == 0.0)
+
+
+def test_analysis_mass_passes_natural_scalar_write_bounds(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    injected_mass = 8.0
+    image_path = tmp_path / "img001.png"
+    configured_export = [
+        "mass",
+        "rescaled_mass",
+        "extensive_mass",
+        "extensive_rescaled_mass",
+        "saturation_g",
+        "rescaled_saturation_g",
+        "concentration_aq",
+        "rescaled_concentration_aq",
+    ]
+
+    class _FakeInjectionProtocol:
+        def injected_mass(self, *, date: datetime | None, roi: Any = None) -> float:
+            _ = (date, roi)
+            return injected_mass
+
+    class _FakeFluidFlower:
+        def __init__(self) -> None:
+            depth = darsia.ScalarImage(np.full((4, 4), 2.0, dtype=float))
+            self.geometry = darsia.ExtrudedPorousGeometry(
+                porosity=1.0,
+                depth=depth,
+                space_dim=2,
+                num_voxels=(4, 4),
+                dimensions=[1.0, 1.0],
+            )
+
+        def read_image(self, _path: Path) -> darsia.Image:
+            return darsia.Image(
+                np.zeros((4, 4, 3), dtype=np.uint8),
+                dimensions=[1.0, 1.0],
+                scalar=False,
+                time=1.0,
+                date=datetime(2025, 1, 1, 0, 0, 0),
+                name="img001",
+            )
+
+    class _FakeColorToMass:
+        def __init__(self, co2_mass_analysis: CO2MassAnalysis) -> None:
+            self.co2_mass_analysis = co2_mass_analysis
+
+        def __call__(self, image: darsia.Image) -> darsia.SimpleMassAnalysisResults:
+            c_aq = darsia.ScalarImage(
+                np.full((4, 4), 0.4, dtype=float),
+                dimensions=[1.0, 1.0],
+                time=image.time,
+                date=image.date,
+                name=image.name,
+            )
+            s_g = darsia.ScalarImage(
+                np.full((4, 4), 0.2, dtype=float),
+                dimensions=[1.0, 1.0],
+                time=image.time,
+                date=image.date,
+                name=image.name,
+            )
+            return self.co2_mass_analysis.mass_analysis(c_aq=c_aq, s_g=s_g)
+
+    co2 = _make_co2_mass_analysis((4, 4))
+    co2.solubility_co2 = np.full((4, 4), 2.0)
+    co2.density_gaseous_co2 = np.full((4, 4), 10.0)
+
+    ctx = SimpleNamespace(
+        config=SimpleNamespace(
+            data=SimpleNamespace(results=tmp_path),
+            analysis=SimpleNamespace(
+                mass=SimpleNamespace(roi={}, roi_and_label={}, export=configured_export)
+            ),
+        ),
+        experiment=SimpleNamespace(injection_protocol=_FakeInjectionProtocol()),
+        fluidflower=_FakeFluidFlower(),
+        image_paths=[image_path],
+        color_to_mass_analysis=_FakeColorToMass(co2),
+        analysis_labels=darsia.ScalarImage(np.zeros((4, 4), dtype=np.uint8)),
+        expert_knowledge_adapter=None,
+    )
+
+    captured_bounds: dict[str, dict[str, float] | None] = {}
+
+    def _capture_export(self, image, folder, stem, **kwargs):
+        _ = (self, image, stem)
+        captured_bounds[folder.name] = kwargs.get("scalar_write_kwargs")
+        return []
+
+    monkeypatch.setattr(
+        analysis_mass_module.ImageExportFormats, "export_image", _capture_export
+    )
+
+    analysis_mass_from_context(ctx)
+
+    voxel_area = (1.0 / 4.0) * (1.0 / 4.0)
+    expected_mass_vmax = 10.0
+    expected_extensive_vmax = voxel_area * 2.0 * expected_mass_vmax
+
+    assert captured_bounds["mass"] == {"vmin": 0.0, "vmax": expected_mass_vmax}
+    assert captured_bounds["rescaled_mass"] == {"vmin": 0.0, "vmax": expected_mass_vmax}
+    assert captured_bounds["saturation_g"] == {"vmin": 0.0, "vmax": 1.0}
+    assert captured_bounds["rescaled_saturation_g"] == {"vmin": 0.0, "vmax": 1.0}
+    assert captured_bounds["concentration_aq"] == {"vmin": 0.0, "vmax": 1.0}
+    assert captured_bounds["rescaled_concentration_aq"] == {"vmin": 0.0, "vmax": 1.0}
+    assert captured_bounds["extensive_mass"] == {
+        "vmin": 0.0,
+        "vmax": expected_extensive_vmax,
+    }
+    assert captured_bounds["extensive_rescaled_mass"] == {
+        "vmin": 0.0,
+        "vmax": expected_extensive_vmax,
+    }

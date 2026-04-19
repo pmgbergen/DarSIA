@@ -7,6 +7,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 import darsia
@@ -38,6 +39,7 @@ def _save_scalar_image_artifacts(
     stem: str,
     exporter: ImageExportFormats,
     quality: int = 50,
+    scalar_write_kwargs: dict[str, float] | None = None,
 ) -> None:
     """Store scalar image in configured analysis export formats."""
     exporter.export_image(
@@ -46,6 +48,7 @@ def _save_scalar_image_artifacts(
         stem,
         supported_types={"jpg", "png", "npz", "npy", "csv"},
         jpg_quality=quality,
+        scalar_write_kwargs=scalar_write_kwargs,
     )
 
 
@@ -139,6 +142,30 @@ def analysis_mass_from_context(
     exporter = ImageExportFormats.from_analysis_config(
         config, fallback_formats=["npz", "jpg"]
     )
+
+    vmax_mass = float(
+        max(
+            np.nanmax(np.asarray(co2_mass_analysis.solubility_co2)),
+            np.nanmax(np.asarray(co2_mass_analysis.density_gaseous_co2)),
+        )
+    )
+    geometry_voxel_size = float(np.prod(np.asarray(fluidflower.geometry.voxel_size)))
+    depth = getattr(fluidflower.geometry, "depth", 1.0)
+    if hasattr(depth, "img"):
+        max_depth = float(np.nanmax(np.asarray(depth.img)))
+    else:
+        max_depth = float(np.nanmax(np.asarray(depth)))
+    vmax_extensive_mass = geometry_voxel_size * max_depth * vmax_mass
+    scalar_write_kwargs_by_mode: dict[str, dict[str, float]] = {
+        "mass": {"vmin": 0.0, "vmax": vmax_mass},
+        "rescaled_mass": {"vmin": 0.0, "vmax": vmax_mass},
+        "extensive_mass": {"vmin": 0.0, "vmax": vmax_extensive_mass},
+        "extensive_rescaled_mass": {"vmin": 0.0, "vmax": vmax_extensive_mass},
+        "saturation_g": {"vmin": 0.0, "vmax": 1.0},
+        "rescaled_saturation_g": {"vmin": 0.0, "vmax": 1.0},
+        "concentration_aq": {"vmin": 0.0, "vmax": 1.0},
+        "rescaled_concentration_aq": {"vmin": 0.0, "vmax": 1.0},
+    }
 
     # Initialize DataFrame for storing integrated masses
     detected_cols = [
@@ -242,6 +269,7 @@ def analysis_mass_from_context(
                 output_folders[mode],
                 path.stem,
                 exporter=exporter,
+                scalar_write_kwargs=scalar_write_kwargs_by_mode.get(mode),
             )
 
         # Prepare row data for DataFrame
