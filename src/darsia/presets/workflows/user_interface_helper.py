@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 from darsia.presets.workflows.helper.helper_roi import helper_roi
+from darsia.presets.workflows.helper.helper_result_reader import helper_result_reader
 from darsia.presets.workflows.helper.helper_roi_viewer import helper_roi_viewer
 from darsia.presets.workflows.rig import Rig
 
@@ -31,6 +32,11 @@ def build_parser_for_helper():
         help="Run ROI viewer workflow.",
     )
     parser.add_argument(
+        "--results",
+        action="store_true",
+        help="Run result reader helper workflow.",
+    )
+    parser.add_argument(
         "--show",
         action="store_true",
         help="Reserved for parity with other workflow interfaces.",
@@ -52,18 +58,27 @@ def print_help_for_flags(args, parser):
                 "ROI viewer: interactive ROI browsing for ROI registry entries "
                 "on selected data."
             )
-        if not args.roi and not args.roi_viewer:
+        if args.results:
+            print(
+                "ResultReader: interactive loading of scalar analysis results from "
+                "npz/csv."
+            )
+        if not args.roi and not args.roi_viewer and not args.results:
             parser.print_help()
 
 
 def run_helper(rig_cls: type[Rig], args):
-    if not args.roi and not args.roi_viewer:
-        raise ValueError("No helper type specified. Choose from --roi, --roi-viewer.")
+    if not args.roi and not args.roi_viewer and not args.results:
+        raise ValueError(
+            "No helper type specified. Choose from --roi, --roi-viewer, --results."
+        )
     config_paths = [Path(p) for p in args.config]
     if args.roi:
         helper_roi(rig_cls, config_paths, show=args.show)
     if args.roi_viewer:
         helper_roi_viewer(rig_cls, config_paths, show=args.show)
+    if args.results:
+        helper_result_reader(rig_cls, config_paths, show=args.show)
 
 
 def preset_helper(rig_cls: type[Rig], **kwargs):

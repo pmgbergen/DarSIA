@@ -777,6 +777,7 @@ def _run_helper_workflow(
         config=paths,
         roi=options["roi"],
         roi_viewer=options.get("roi_viewer", False),
+        results=options.get("results", False),
         show=options["show"],
         info=False,
     )
@@ -1112,10 +1113,12 @@ class WorkflowGUI:
     def _build_helper_tab(self) -> None:
         self.helper_roi = self.tk.BooleanVar(value=False)
         self.helper_roi_viewer = self.tk.BooleanVar(value=False)
+        self.helper_results = self.tk.BooleanVar(value=False)
         self.helper_show = self.tk.BooleanVar(value=False)
         for label, var in [
             ("ROI", self.helper_roi),
             ("ROI Viewer", self.helper_roi_viewer),
+            ("ResultReader", self.helper_results),
             ("Show plots", self.helper_show),
         ]:
             self.ttk.Checkbutton(self.helper_frame, text=label, variable=var).pack(
@@ -1968,6 +1971,7 @@ class WorkflowGUI:
         options = {
             "roi": self.helper_roi.get(),
             "roi_viewer": self.helper_roi_viewer.get(),
+            "results": self.helper_results.get(),
             "show": self.helper_show.get(),
         }
         actions = enabled_option_labels(options)
