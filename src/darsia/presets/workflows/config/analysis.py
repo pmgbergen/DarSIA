@@ -378,9 +378,8 @@ class AnalysisMassConfig:
         folder = _get_key(sub_sec, "folder", required=False, type_=Path)
         if not folder:
             assert results is not None
-            self.folder = results / "mass"
-        else:
-            self.folder = folder
+            folder = results / "mass"
+        self.folder = folder
         return self
 
 
