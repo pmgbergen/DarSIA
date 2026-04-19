@@ -104,7 +104,7 @@ class Resize:
 
         # Check for conservative rescaling
         conservative_key = key + "resize conservative"
-        self._is_conservative_provided = conservative_key in kwargs
+        self._conservative_explicit = conservative_key in kwargs
         self.is_conservative = kwargs.get(conservative_key, False)
 
     def __str__(self) -> str:
@@ -184,7 +184,7 @@ class Resize:
 
         # Conserve the (weighted) sum
         conservative_rescaling = self.is_conservative or (
-            input_is_extensive_image and not self._is_conservative_provided
+            input_is_extensive_image and not self._conservative_explicit
         )
         if conservative_rescaling:
             resized_img_array *= np.prod(img_array.shape[:2]) / np.prod(
@@ -250,7 +250,7 @@ class Resize:
         self.is_conservative = (
             data["is_conservative"].item() if "is_conservative" in data else None
         )
-        self._is_conservative_provided = "is_conservative" in data
+        self._conservative_explicit = "is_conservative" in data
 
 
 def resize(
