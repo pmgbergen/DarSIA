@@ -17,7 +17,9 @@ def _mass_result(mass_value: float) -> darsia.SimpleMassAnalysisResults:
     The fields intentionally reuse the same scalar values across products since these
     tests only verify product selection/rescaling orchestration.
     """
-    mass = darsia.ScalarImage(np.full((2, 2), mass_value, dtype=float), dimensions=[1.0, 1.0])
+    mass = darsia.ScalarImage(
+        np.full((2, 2), mass_value, dtype=float), dimensions=[1.0, 1.0]
+    )
     return darsia.SimpleMassAnalysisResults(
         name="img",
         date=None,

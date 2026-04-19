@@ -55,7 +55,9 @@ def _touch_images(folder: Path, count: int) -> list[Path]:
     return paths
 
 
-def test_imaging_protocol_prefers_path_match_and_uses_blacklist_index(tmp_path: Path) -> None:
+def test_imaging_protocol_prefers_path_match_and_uses_blacklist_index(
+    tmp_path: Path,
+) -> None:
     start = datetime(2026, 1, 1, 0, 0, 0)
     protocol_path = tmp_path / "imaging.csv"
     blacklist_path = tmp_path / "blacklist.csv"

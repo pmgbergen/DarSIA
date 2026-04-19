@@ -231,9 +231,7 @@ def test_eval_linear_coordinate_array():
     #   Point 2: frac [0, 0]    -> x=0,     y=1
     coords = darsia.CoordinateArray(np.array([[0.625, 2.0 / 3.0], [0.0, 1.0]]))
     result = image.eval(coords, interpolation="linear")
-    expected = np.array(
-        [0.5 * arr[1, 2] + 0.5 * arr[1, 3], arr[0, 0]], dtype=float
-    )
+    expected = np.array([0.5 * arr[1, 2] + 0.5 * arr[1, 3], arr[0, 0]], dtype=float)
     assert np.allclose(result, expected)
 
 

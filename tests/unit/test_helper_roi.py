@@ -1,6 +1,6 @@
+import importlib
 from pathlib import Path
 from types import SimpleNamespace
-import importlib
 
 import numpy as np
 
@@ -10,8 +10,8 @@ from darsia.presets.workflows.helper.helper_roi import (
     _box_from_zoom_limits,
     _corners_from_box,
     _scalar_image_for_mode,
-    helper_roi,
     format_roi_template,
+    helper_roi,
 )
 
 helper_roi_module = importlib.import_module(
@@ -76,7 +76,9 @@ def test_scalar_image_for_mode_maps_mass_to_mass_total(monkeypatch) -> None:
     mass_image = darsia.ScalarImage(np.ones((2, 2), dtype=float), dimensions=[1.0, 1.0])
     called = {"requested_modes": None}
 
-    def _fake_analysis_scalar_products(*, mass_analysis_result, requested_modes, **kwargs):
+    def _fake_analysis_scalar_products(
+        *, mass_analysis_result, requested_modes, **kwargs
+    ):
         del mass_analysis_result, kwargs
         called["requested_modes"] = set(requested_modes)
         return {"mass_total": mass_image}, None
@@ -148,7 +150,9 @@ def test_helper_roi_mode_none_dispatches_viewer_with_source_images(
         "select_image_paths",
         lambda *args, **kwargs: [Path("/tmp/img_001.jpg")],
     )
-    monkeypatch.setattr(helper_roi_module, "load_images_with_cache", lambda **kwargs: [img])
+    monkeypatch.setattr(
+        helper_roi_module, "load_images_with_cache", lambda **kwargs: [img]
+    )
     monkeypatch.setattr(
         helper_roi_module,
         "launch_roi_helper_viewer",

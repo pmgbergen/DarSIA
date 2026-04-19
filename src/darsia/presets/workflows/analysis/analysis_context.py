@@ -220,7 +220,7 @@ def prepare_analysis_context(
     fluidflower.load_experiment(experiment)
     if require_color_to_mass:
         assert config.color_to_mass is not None
-        selected_basis, analysis_labels = select_labels_for_basis(
+        _, analysis_labels = select_labels_for_basis(
             fluidflower, config.color_to_mass.basis
         )
     else:
