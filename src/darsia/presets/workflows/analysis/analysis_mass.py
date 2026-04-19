@@ -14,6 +14,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     AnalysisContext,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.analysis.progress import (
     AnalysisProgressEvent,
     publish_image_progress,
@@ -27,15 +28,20 @@ logger = logging.getLogger(__name__)
 
 
 def _save_scalar_image_artifacts(
-    image: darsia.Image, folder: Path, stem: str, quality: int = 50
+    image: darsia.Image,
+    folder: Path,
+    stem: str,
+    exporter: ImageExportFormats,
+    quality: int = 50,
 ) -> None:
-    """Store scalar image in npz and jpg subfolders."""
-    npz_folder = folder / "npz"
-    jpg_folder = folder / "jpg"
-    npz_folder.mkdir(parents=True, exist_ok=True)
-    jpg_folder.mkdir(parents=True, exist_ok=True)
-    image.save(npz_folder / f"{stem}.npz")
-    image.write(jpg_folder / f"{stem}.jpg", quality=quality)
+    """Store scalar image in configured analysis export formats."""
+    exporter.export_image(
+        image,
+        folder,
+        stem,
+        supported_types={"jpg", "png", "npz", "npy", "csv"},
+        jpg_quality=quality,
+    )
 
 
 def analysis_mass_from_context(
@@ -113,6 +119,9 @@ def analysis_mass_from_context(
     }
     for folder in output_folders.values():
         folder.mkdir(parents=True, exist_ok=True)
+    exporter = ImageExportFormats.from_analysis_config(
+        config, fallback_formats=["npz", "jpg"]
+    )
 
     # Initialize DataFrame for storing integrated masses
     detected_cols = [
@@ -196,23 +205,38 @@ def analysis_mass_from_context(
         rescaled_concentration_aq = products["rescaled_concentration_aq"]
 
         # Store data to disk
-        _save_scalar_image_artifacts(mass, output_folders["mass"], path.stem)
         _save_scalar_image_artifacts(
-            rescaled_mass, output_folders["rescaled_mass"], path.stem
+            mass, output_folders["mass"], path.stem, exporter=exporter
         )
         _save_scalar_image_artifacts(
-            saturation_g, output_folders["saturation_g"], path.stem
+            rescaled_mass,
+            output_folders["rescaled_mass"],
+            path.stem,
+            exporter=exporter,
         )
         _save_scalar_image_artifacts(
-            rescaled_saturation_g, output_folders["rescaled_saturation_g"], path.stem
+            saturation_g,
+            output_folders["saturation_g"],
+            path.stem,
+            exporter=exporter,
         )
         _save_scalar_image_artifacts(
-            concentration_aq, output_folders["concentration_aq"], path.stem
+            rescaled_saturation_g,
+            output_folders["rescaled_saturation_g"],
+            path.stem,
+            exporter=exporter,
+        )
+        _save_scalar_image_artifacts(
+            concentration_aq,
+            output_folders["concentration_aq"],
+            path.stem,
+            exporter=exporter,
         )
         _save_scalar_image_artifacts(
             rescaled_concentration_aq,
             output_folders["rescaled_concentration_aq"],
             path.stem,
+            exporter=exporter,
         )
 
         # Prepare row data for DataFrame

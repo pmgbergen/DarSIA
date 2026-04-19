@@ -4,6 +4,7 @@ import pytest
 
 from darsia.presets.workflows.config.analysis import AnalysisConfig
 from darsia.presets.workflows.config.data_registry import DataRegistry
+from darsia.presets.workflows.config.format_registry import FormatRegistry
 from darsia.presets.workflows.config.roi import RoiConfig
 from darsia.presets.workflows.config.roi_registry import RoiRegistry
 
@@ -304,6 +305,32 @@ data = "analysis_set"
 
     assert config.data is not None
     assert config.data.image_times == pytest.approx([1.0, 2.0])
+
+
+def test_analysis_formats_load_from_registry_identifiers(tmp_path: Path) -> None:
+    config_path = _write(
+        tmp_path / "config.toml",
+        """
+[analysis]
+formats = ["my_npy", "4k"]
+
+[format.npy.my_npy]
+dtype = "np.float32"
+
+[format.jpg.4k]
+resolution = [2160, 4096]
+""".strip(),
+    )
+    format_registry = FormatRegistry().load(config_path)
+
+    config = AnalysisConfig().load(
+        path=config_path,
+        data=tmp_path,
+        results=tmp_path,
+        format_registry=format_registry,
+    )
+
+    assert config.formats == ["my_npy", "4k"]
 
 
 def test_analysis_inline_data_selector_is_deprecated(tmp_path: Path) -> None:

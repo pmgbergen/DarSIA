@@ -12,6 +12,7 @@ from darsia.presets.workflows.analysis.analysis_context import (
     infer_require_color_to_mass_from_config,
     prepare_analysis_context,
 )
+from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.analysis.progress import (
     AnalysisProgressEvent,
     publish_image_progress,
@@ -20,9 +21,7 @@ from darsia.presets.workflows.analysis.scalar_products import (
     analysis_scalar_products,
     requires_rescaled_modes,
 )
-from darsia.presets.workflows.analysis.streaming import (
-    publish_stream_images,
-)
+from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SegmentationContours
@@ -70,6 +69,9 @@ def analysis_segmentation_from_context(
     segmentation_contours = SegmentationContours(segmentation_config.config)
     requested_modes = segmentation_contours.requested_modes()
     need_rescaled = requires_rescaled_modes(requested_modes)
+    exporter = ImageExportFormats.from_analysis_config(
+        ctx.config, fallback_formats=["jpg"]
+    )
 
     # Loop over images and analyze
     step_started_at = time.monotonic()
@@ -115,8 +117,12 @@ def analysis_segmentation_from_context(
                 title=f"Contours for {path.stem} | {img.time} seconds", delay=False
             )
 
-        contour_path = segmentation_config.folder / f"{path.stem}.jpg"
-        contour_image.write(contour_path, quality=80)
+        exporter.export_image(
+            contour_image,
+            segmentation_config.folder,
+            path.stem,
+            supported_types={"jpg", "png"},
+        )
 
         publish_stream_images(
             stream_callback=stream_callback,
