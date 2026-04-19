@@ -9,11 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.widgets import Button, RadioButtons
 
-try:
-    from matplotlib.widgets import Dropdown
-except ImportError:  # pragma: no cover - depends on matplotlib version
-    Dropdown = None
-
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
@@ -116,19 +111,10 @@ def launch_roi_viewer(
     prev_btn.on_clicked(_on_previous)
     next_btn.on_clicked(_on_next)
 
-    if Dropdown is not None:
-        roi_selector = Dropdown(
-            selector_ax,
-            "ROI",
-            selection_order,
-            value=state["selection"],
-        )
-        roi_selector.on_select(_on_selection)
-    else:  # pragma: no cover - compatibility path
-        selector_ax.remove()
-        radio_ax = fig.add_axes([0.08, 0.01, 0.24, 0.13])
-        roi_selector = RadioButtons(radio_ax, selection_order, active=0)
-        roi_selector.on_clicked(_on_selection)
+    selector_ax.remove()
+    radio_ax = fig.add_axes([0.08, 0.01, 0.24, 0.13])
+    roi_selector = RadioButtons(radio_ax, selection_order, active=0)
+    roi_selector.on_clicked(_on_selection)
 
     _render()
     plt.show()
@@ -157,9 +143,7 @@ def helper_roi_viewer(
 
     roi_entries = config.roi_registry.resolve_rois(config.roi_registry.keys())
     if len(roi_entries) == 0:
-        raise ValueError(
-            "ROI Viewer requires plain ROI entries in the ROI registry."
-        )
+        raise ValueError("ROI Viewer requires plain ROI entries in the ROI registry.")
 
     helper_config = config.helper.roi_viewer
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
