@@ -19,8 +19,8 @@ from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
 
 if TYPE_CHECKING:
-    from .format_registry import FormatRegistry
     from .colorchannel_registry import ColorChannelRegistry
+    from .format_registry import FormatRegistry
     from .roi_registry import RoiRegistry
 
 logger = logging.getLogger(__name__)

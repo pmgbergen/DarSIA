@@ -113,10 +113,10 @@ class FormatRegistry:
                             f"quality in [format.{_type}.{identifier}] must be in [0, 100]."
                         )
                     compression = _convert_none(entry.get("compression"))
-                    spec.compression = (
-                        None if compression is None else int(compression)
-                    )
-                    if spec.compression is not None and not (0 <= spec.compression <= 9):
+                    spec.compression = None if compression is None else int(compression)
+                    if spec.compression is not None and not (
+                        0 <= spec.compression <= 9
+                    ):
                         raise ValueError(
                             f"compression in [format.{_type}.{identifier}] must be in [0, 9]."
                         )
