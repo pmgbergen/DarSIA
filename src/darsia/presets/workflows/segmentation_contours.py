@@ -66,8 +66,8 @@ class SimpleSegmentation:
         concentration_aq: darsia.Image | None,
         mass: darsia.Image | None,
         mass_analysis_result=None,
-        colorrange_config=None,
-        colorchannel_registry=None,
+        color_embedding_registry=None,
+        color_embedding_runtime=None,
         rescaled_saturation_g: darsia.Image | None = None,
         rescaled_concentration_aq: darsia.Image | None = None,
         rescaled_mass: darsia.Image | None = None,
@@ -89,8 +89,8 @@ class SimpleSegmentation:
             self.mode,
             img,
             mass_analysis_result=mass_analysis_result,
-            colorrange_config=colorrange_config,
-            colorchannel_registry=colorchannel_registry,
+            color_embedding_registry=color_embedding_registry,
+            color_embedding_runtime=color_embedding_runtime,
             scalar_products=products,
         )
 
@@ -334,8 +334,8 @@ class SegmentationContours:
         rescaled_mass: darsia.Image | None = None,
         scalar_products: dict[str, darsia.Image | None] | None = None,
         mass_analysis_result=None,
-        colorrange_config=None,
-        colorchannel_registry=None,
+        color_embedding_registry=None,
+        color_embedding_runtime=None,
     ) -> darsia.Image:
         products = scalar_products or {
             "saturation_g": saturation_g,
@@ -355,8 +355,8 @@ class SegmentationContours:
                 segmentation_config.mode,
                 img,
                 mass_analysis_result=mass_analysis_result,
-                colorrange_config=colorrange_config,
-                colorchannel_registry=colorchannel_registry,
+                color_embedding_registry=color_embedding_registry,
+                color_embedding_runtime=color_embedding_runtime,
                 scalar_products=products,
             )
 

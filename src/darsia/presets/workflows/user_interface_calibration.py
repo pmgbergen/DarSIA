@@ -37,7 +37,7 @@ def build_parser_for_calibration():
         help="Path to reference/global config file.",
     )
     parser.add_argument(
-        "--color-paths", action="store_true", help="Calibrate color paths."
+        "--color-embedding", action="store_true", help="Calibrate color embedding."
     )
     parser.add_argument("--mass", action="store_true", help="Calibrate mass.")
     parser.add_argument(
@@ -63,10 +63,11 @@ def build_parser_for_calibration():
 
 def print_help_for_flags(args, parser):
     if args.info:
-        if args.color_path:
+        if args.color_embedding:
             print(
-                "The --color-path flag activates the setup of color paths. "
-                "This involves segmenting colored images and calibrating the color paths "
+                "The --color-embedding flag activates calibration of the configured "
+                "color embedding. "
+                "This involves segmenting colored images and calibrating the color path "
                 "based on the provided configuration."
             )
         if args.mass:
@@ -85,7 +86,7 @@ def preset_calibration(rig=Rig, **kwargs):
         delete_calibration(args.config)
         return
 
-    if args.color_paths:
+    if args.color_embedding:
         calibration_color_paths(
             rig,
             args.config,

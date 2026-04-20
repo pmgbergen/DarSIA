@@ -47,10 +47,14 @@ def _build_color_to_mass_analysis(
     experiment: darsia.ProtocolledExperiment,
     fluidflower: Rig,
 ) -> HeterogeneousColorToMassAnalysis:
-    assert config.color_to_mass is not None
-    _, analysis_labels = select_labels_for_basis(
-        fluidflower, config.color_to_mass.basis
-    )
+    assert config.analysis is not None and config.analysis.mass is not None
+    assert config.color is not None
+    embedding = config.color.resolve(config.analysis.mass.color)
+    if embedding.__class__.__name__ != "ColorPathEmbedding":
+        raise NotImplementedError(
+            "ROI helper currently supports only color path embeddings for mass modes."
+        )
+    _, analysis_labels = select_labels_for_basis(fluidflower, embedding.calibration_basis())
 
     experiment_start = experiment.experiment_start
     state = experiment.pressure_temperature_protocol.get_state(experiment_start)
@@ -63,13 +67,13 @@ def _build_color_to_mass_analysis(
         atmospheric_temperature_gradient=gradient.temperature,
     )
     return HeterogeneousColorToMassAnalysis.load(
-        folder=config.color_to_mass.calibration_folder,
+        folder=embedding.color_to_mass_folder,
         baseline=fluidflower.baseline,
         labels=analysis_labels,
         co2_mass_analysis=co2_mass_analysis,
         geometry=fluidflower.geometry,
         restoration=None,
-        basis=config.color_to_mass.basis,
+        basis=embedding.calibration_basis(),
     )
 
 
@@ -302,9 +306,9 @@ def helper_roi(cls: type[Rig], path: Path | list[Path], show: bool = False) -> N
     if mode == "none":
         display_images = source_images
     else:
-        if config.color_to_mass is None:
+        if config.analysis is None or config.analysis.mass is None:
             raise ValueError(
-                "helper.roi.mode requires [color_to_mass] calibration when mode != 'none'."
+                "helper.roi.mode requires [analysis.mass] with a color embedding when mode != 'none'."
             )
         color_to_mass_analysis = _build_color_to_mass_analysis(
             config, experiment, fluidflower

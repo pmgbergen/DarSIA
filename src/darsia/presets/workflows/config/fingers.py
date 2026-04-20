@@ -6,6 +6,8 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from darsia.presets.workflows.mode_resolution import validate_mode_syntax
+
 from .roi import RoiConfig
 from .utils import _get_key, _get_section
 
@@ -27,9 +29,19 @@ class FingersConfig:
     """ROIs for analysis."""
 
     def load(
-        self, sec: dict, roi_registry: RoiRegistry | None = None
+        self,
+        sec: dict,
+        roi_registry: RoiRegistry | None = None,
+        color_embedding_registry=None,
     ) -> "FingersConfig":
         self.mode = _get_key(sec, "mode", required=True, type_=str)
+        if not validate_mode_syntax(
+            self.mode, color_embedding_registry=color_embedding_registry
+        ):
+            raise ValueError(
+                f"Unsupported analysis.fingers.mode '{self.mode}'. Supported modes "
+                "are legacy mass modes, rescaled modes, and 'color.<id>'."
+            )
         self.threshold = _get_key(sec, "threshold", required=True, type_=float)
 
         # Load ROIs – support both registry-key references and inline definitions.

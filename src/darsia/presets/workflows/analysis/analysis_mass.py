@@ -93,9 +93,15 @@ def analysis_mass_from_context(
 
     # ! ---- ENSURE MASS CONFIGURATION ----
     if config.analysis.mass is None:
+        if getattr(config, "color", None) is None or len(config.color.keys()) == 0:
+            raise ValueError(
+                "analysis.mass requires a configured color embedding under [color.*.*]."
+            )
+        default_color = config.color.keys()[0]
         config.analysis.mass = AnalysisMassConfig().load(
             sec={
                 "mass": {
+                    "color": default_color,
                     "roi": {
                         "full": {
                             "name": "full",

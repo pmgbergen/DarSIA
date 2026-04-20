@@ -8,8 +8,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import darsia
+from darsia.presets.workflows.color_embedding import (
+    ColorEmbeddingBasis,
+    ColorEmbeddingRuntime,
+)
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
-from darsia.presets.workflows.basis import select_labels_for_basis
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
@@ -100,6 +103,7 @@ class AnalysisContext:
     restoration: darsia.VolumeAveraging | darsia.TVD | None = None
     color_to_mass_analysis: HeterogeneousColorToMassAnalysis | None = None
     expert_knowledge_adapter: ExpertKnowledgeAdapter | None = None
+    color_embedding_runtime: ColorEmbeddingRuntime | None = None
 
 
 def select_image_paths(
@@ -218,11 +222,23 @@ def prepare_analysis_context(
     # ! ---- LOAD RIG ----
     fluidflower = cls.load(config.rig.path, config.corrections)
     fluidflower.load_experiment(experiment)
+    color_embedding_runtime = ColorEmbeddingRuntime(rig=fluidflower)
     if require_color_to_mass:
-        assert config.color_to_mass is not None
-        _, analysis_labels = select_labels_for_basis(
-            fluidflower, config.color_to_mass.basis
-        )
+        assert config.color is not None
+        assert config.analysis is not None and config.analysis.mass is not None
+        embedding = config.color.resolve(config.analysis.mass.color)
+        if embedding.basis == ColorEmbeddingBasis.SINGLE:
+            raise NotImplementedError(
+                "Mass analysis does not support color embeddings with basis='single'."
+            )
+        if embedding.basis == ColorEmbeddingBasis.FACIES:
+            if not hasattr(fluidflower, "facies"):
+                raise ValueError(
+                    "Mass analysis requests facies basis but rig has no facies image."
+                )
+            analysis_labels = fluidflower.facies
+        else:
+            analysis_labels = fluidflower.labels
     else:
         analysis_labels = fluidflower.labels
 
@@ -249,7 +265,18 @@ def prepare_analysis_context(
 
     if require_color_to_mass:
         # ! ---- FROM COLOR PATH TO MASS ----
-        assert config.color_to_mass is not None
+        assert config.color is not None
+        assert config.analysis is not None
+        assert config.analysis.mass is not None
+        embedding = config.color.resolve(config.analysis.mass.color)
+        if not hasattr(embedding, "color_to_mass_folder"):
+            raise NotImplementedError(
+                "Mass analysis currently only supports color-path embeddings."
+            )
+        if embedding.__class__.__name__ != "ColorPathEmbedding":
+            raise NotImplementedError(
+                "Mass analysis currently only supports color-path embeddings."
+            )
 
         experiment_start = experiment.experiment_start
         state = experiment.pressure_temperature_protocol.get_state(experiment_start)
@@ -265,13 +292,13 @@ def prepare_analysis_context(
         )
 
         color_to_mass_analysis = HeterogeneousColorToMassAnalysis.load(
-            folder=config.color_to_mass.calibration_folder,
+            folder=embedding.color_to_mass_folder,
             baseline=fluidflower.baseline,
             labels=analysis_labels,
             co2_mass_analysis=co2_mass_analysis,
             geometry=fluidflower.geometry,
             restoration=restoration,
-            basis=config.color_to_mass.basis,
+            basis=embedding.calibration_basis(),
             expert_knowledge_adapter=expert_knowledge_adapter,
         )
 
@@ -284,4 +311,5 @@ def prepare_analysis_context(
         restoration=restoration,
         color_to_mass_analysis=color_to_mass_analysis,
         expert_knowledge_adapter=expert_knowledge_adapter,
+        color_embedding_runtime=color_embedding_runtime,
     )
