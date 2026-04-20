@@ -25,7 +25,9 @@ class ColorEmbeddingBasis(StrEnum):
     SINGLE = "single"
 
 
-def parse_color_embedding_basis(value: str | ColorEmbeddingBasis) -> ColorEmbeddingBasis:
+def parse_color_embedding_basis(
+    value: str | ColorEmbeddingBasis,
+) -> ColorEmbeddingBasis:
     if isinstance(value, ColorEmbeddingBasis):
         return value
     return ColorEmbeddingBasis(value.lower().strip())
@@ -56,7 +58,9 @@ class ColorEmbedding(ABC):
     calibration_root: Path
 
     @abstractmethod
-    def canonical_transform(self, runtime: ColorEmbeddingRuntime) -> ColorEmbeddingTransform:
+    def canonical_transform(
+        self, runtime: ColorEmbeddingRuntime
+    ) -> ColorEmbeddingTransform:
         raise NotImplementedError
 
     def to_scalar_image(
@@ -274,7 +278,9 @@ class ColorPathEmbedding(ColorEmbedding):
             / calibration_basis_folder(self.calibration_basis())
         )
 
-    def canonical_transform(self, runtime: ColorEmbeddingRuntime) -> ColorEmbeddingTransform:
+    def canonical_transform(
+        self, runtime: ColorEmbeddingRuntime
+    ) -> ColorEmbeddingTransform:
         labels = self.labels_for_runtime(runtime)
         color_paths = darsia.LabelColorPathMap.load(self.color_paths_folder)
         interpolation = {
@@ -295,7 +301,9 @@ class ColorPathEmbedding(ColorEmbedding):
             ]
         )
         analysis = darsia.ConcentrationAnalysis(
-            base=runtime.rig.baseline if self.mode == darsia.ColorMode.RELATIVE else None,
+            base=(
+                runtime.rig.baseline if self.mode == darsia.ColorMode.RELATIVE else None
+            ),
             labels=labels,
             restoration=None,
             model=model,
@@ -319,7 +327,9 @@ class ColorRangeEmbedding(ColorEmbedding):
     def config_file(self) -> Path:
         return self.calibration_root / "embedding.json"
 
-    def canonical_transform(self, runtime: ColorEmbeddingRuntime) -> ColorEmbeddingTransform:
+    def canonical_transform(
+        self, runtime: ColorEmbeddingRuntime
+    ) -> ColorEmbeddingTransform:
         if self.basis != ColorEmbeddingBasis.SINGLE:
             raise NotImplementedError(
                 "Color range embedding currently only supports basis='single'."
@@ -347,7 +357,9 @@ class ColorChannelEmbedding(ColorEmbedding):
     def config_file(self) -> Path:
         return self.calibration_root / "embedding.json"
 
-    def canonical_transform(self, runtime: ColorEmbeddingRuntime) -> ColorEmbeddingTransform:
+    def canonical_transform(
+        self, runtime: ColorEmbeddingRuntime
+    ) -> ColorEmbeddingTransform:
         if self.basis != ColorEmbeddingBasis.SINGLE:
             raise NotImplementedError(
                 "Color channel embedding currently only supports basis='single'."
@@ -358,4 +370,3 @@ class ColorChannelEmbedding(ColorEmbedding):
             mode=self.mode,
             baseline=runtime.rig.baseline,
         )
-

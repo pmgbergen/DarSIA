@@ -67,19 +67,15 @@ horizontal_center_offset = -579
 vertical_stretch = -0.0
 vertical_center_offset = 405
 
-[color_paths]
-# Basis for calibration label-space: "labels" (default) or "facies".
-# - facies: coarse geological regions
-# - labels: fine segmentation labels
-basis = "labels"
+[color.path.my_colorpath]
+mode = "relative" # or "absolute"
+basis = "labels"  # or "facies"; "single" is not implemented for color path
 ignore_labels = [0, 1]
-resolution = [51, 51, 51]
+resolution = 51
 threshold_baseline = 0.0
 threshold_calibration = 1e-3
 baseline = "baseline_imgs"
 data = "calibration_imgs"
-# If omitted, defaults to results/calibration/color_paths/from_<basis>
-calibration_file = "./data/color_paths"
 reference_label = 3
 
 [color_signal]
@@ -92,13 +88,25 @@ analysis_times = [1, 5, 10, 20, 21, 40]
 calibration_image_times = [1, 5, 10, 20]
 calibration_file = "./data/mass_calibration.json"
 
-[color_to_mass]
-# Keep this aligned with [color_paths].basis.
-basis = "labels"
-# Label sensitivity threshold for deactivating insensitive color paths.
+[color.channel.red_channel]
+mode = "absolute"
+basis = "single" # labels/facies currently not implemented for channel embedding
+color_space = "RGB"
+channel = "r"
+
+[color.range.custom_range]
+mode = "absolute"
+basis = "single" # labels/facies currently not implemented for range embedding
+color_space = "HSV"
+range = [[0.2, 0.4], [0.5, "none"], [0.8, "none"]]
+
+[calibration.color]
+color = "my_colorpath"
+
+[calibration.mass]
+color = "my_colorpath"
 threshold = 0.2
-# If omitted, defaults to results/calibration/color_to_mass/from_<basis>
-# calibration_folder = "./data/color_to_mass"
+data = "calibration_imgs"
 
 [analysis]
 data = "analysis_imgs"
@@ -120,6 +128,7 @@ formats = ["npz", "jpg"]
 data = "analysis_imgs"
 
 [analysis.mass]
+color = "my_colorpath"
 
 [analysis.expert_knowledge]
 # Optional ROI constraints (keys from top-level [roi.*]).
@@ -158,7 +167,7 @@ format = "csv"
 # Supported layer modes:
 # concentration_aq, saturation_g, mass_total, mass_g, mass_aq,
 # rescaled_mass, rescaled_saturation_g, rescaled_concentration_aq,
-# colorchannel.<name>, colorrange.<name>
+# color.<id>
 formats = ["jpg", "npz"]
 [analysis.thresholding.layers.gas]
 mode = "saturation_g"
@@ -179,7 +188,7 @@ stroke = [255, 255, 255]
 fill_alpha = 0.35
 stroke_width = 2
 [analysis.thresholding.layers.red]
-mode = "colorchannel.red_channel"
+mode = "color.red_channel"
 threshold_min = 0.6
 label = "High red channel"
 fill = [255, 255, 0]
@@ -187,7 +196,7 @@ stroke = [255, 255, 255]
 fill_alpha = 0.2
 stroke_width = 1
 [analysis.thresholding.layers.green_hsv_band]
-mode = "colorrange.custom_range"
+mode = "color.custom_range"
 threshold_min = 0.5
 label = "HSV green range"
 fill = [0, 255, 0]
@@ -204,14 +213,6 @@ box_enabled = true
 box_color = [0, 0, 0]
 box_alpha = 0.4
 box_padding = 10
-
-[colorchannel.red_channel]
-color_space = "RGB"
-channel = "r"
-
-[colorrange.custom_range]
-color_space = "HSV"
-range = [[0.2, 0.4], [0.5, "none"], [0.8, "none"]]
 
 # Optional segmentation contours (single entry example):
 #[analysis.segmentation]

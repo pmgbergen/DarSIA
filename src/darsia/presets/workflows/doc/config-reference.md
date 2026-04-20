@@ -11,8 +11,8 @@ This is the user-facing map of workflow TOML sections currently loaded by `Fluid
 - `[facies]`: facies properties and mapping to labels.
 - `[depth]`: depth measurements and depth-map path.
 - `[protocols]`: imaging, injection, blacklist, pressure_temperature inputs and imaging setup mode.
-- `[color_paths]`: color-path calibration data selection and options.
-- `[color_to_mass]`: color-to-mass calibration options.
+- `[color]`: centralized color embedding registry (`[color.path.*]`, `[color.range.*]`, `[color.channel.*]`).
+- `[calibration]`: calibration entrypoints (`[calibration.color]`, `[calibration.mass]`).
 - `[analysis]`: analysis data and feature-specific subsections.
 - `[format]`: named export-format presets for analysis image outputs.
 - `[helper]`: optional helper workflows (currently ROI helper).
@@ -205,8 +205,7 @@ analysis outputs. Supported `modes`:
 - `mass_total`
 - `mass_g`
 - `mass_aq`
-- `colorchannel.<name>` (named entry from top-level `[colorchannel.<name>]`)
-- `colorrange.<name>` (binary mask from `[colorrange.<name>]`)
+- `color.<id>` (named entry from top-level `[color.path.*]`, `[color.range.*]`, `[color.channel.*]`)
 - `rescaled_mass`
 - `rescaled_saturation_g`
 - `rescaled_concentration_aq`
@@ -215,7 +214,7 @@ Supported keys:
 - `formats` (list of output formats: `["jpg", "npz"]`)
 - `folder` (output folder, defaults to `<results>/thresholding`)
 - `[analysis.thresholding.layers.<name>]` (one mask layer per entry):
-  - `mode` (legacy mass modes, rescaled modes, `colorchannel.<name>`, `colorrange.<name>`)
+  - `mode` (legacy mass modes, rescaled modes, `color.<id>`)
   - `threshold_min` (float)
   - `threshold_max` (float)
   - `label` (string)
@@ -241,22 +240,31 @@ Notes:
 - JPG outputs are source-image overlays using each layer’s `fill` and `stroke` styling.
 - Legacy `modes` + `thresholds` is still accepted and mapped to default layers.
 
-## Named colorchannel section
-Define reusable color channels (used by `colorchannel.<name>` modes):
+## Color embedding registry
+Define reusable color embeddings in one registry:
 
 ```toml
-[colorchannel.my_channel]
+[color.channel.my_channel]
+mode = "absolute" # or "relative"
+basis = "single"  # labels/facies for channel are not implemented
 color_space = "RGB" # one of RGB, BGR, HSV, HLS, LAB
 channel = "r"       # channel name depends on color_space; case-insensitive
 ```
 
-## Named color-range section
-Define reusable binary color ranges (used by `colorrange.<name>` modes):
-
 ```toml
-[colorrange.custom_range]
+[color.range.custom_range]
+mode = "absolute" # or "relative"
+basis = "single"  # labels/facies for range are not implemented
 color_space = "HSV" # one of RGB, BGR, HSV, HLS, LAB
 range = [[0.2, 0.4], [0.5, "none"], [0.8, "none"]]
+```
+
+```toml
+[color.path.my_color_path]
+mode = "relative" # or "absolute"
+basis = "labels"  # or "facies" (single is not implemented for path)
+baseline = "baseline_imgs"
+data = "calibration_imgs"
 ```
 
 - `range` must contain exactly 3 channel bounds.

@@ -175,7 +175,7 @@ class AnalysisThresholdingConfig:
 
     formats: list[str] = field(default_factory=lambda: ["jpg", "npz"])
     layers: dict[str, LayerConfig] = field(default_factory=dict)
-    color: str | None = None
+    color_embedding_id: str | None = None
     modes: list[str] = field(
         default_factory=lambda: ["concentration_aq", "saturation_g"]
     )
@@ -194,7 +194,9 @@ class AnalysisThresholdingConfig:
     ) -> "AnalysisThresholdingConfig":
         sub_sec = _get_section(sec, "thresholding")
         color = _get_key(sub_sec, "color", required=False, type_=str)
-        self.color = color.strip() if isinstance(color, str) and color.strip() else None
+        self.color_embedding_id = (
+            color.strip() if isinstance(color, str) and color.strip() else None
+        )
 
         raw_formats = _get_key(sub_sec, "formats", required=False, default=self.formats)
         if not isinstance(raw_formats, list):
@@ -225,22 +227,30 @@ class AnalysisThresholdingConfig:
                     key=key,
                     color_embedding_registry=color_embedding_registry,
                 )
-        elif self.color is not None:
+        elif self.color_embedding_id is not None:
             single_layer = {
-                "mode": f"color.{self.color}",
+                "mode": f"color.{self.color_embedding_id}",
                 "threshold_min": _get_key(sub_sec, "threshold_min", required=False),
                 "threshold_max": _get_key(sub_sec, "threshold_max", required=False),
                 "label": _get_key(
                     sub_sec,
                     "label",
                     required=False,
-                    default=self.color,
+                    default=self.color_embedding_id,
                     type_=str,
                 ),
-                "fill": _get_key(sub_sec, "fill", required=False, default=(255, 255, 255)),
-                "stroke": _get_key(sub_sec, "stroke", required=False, default=(0, 0, 0)),
-                "fill_alpha": _get_key(sub_sec, "fill_alpha", required=False, default=0.35),
-                "stroke_width": _get_key(sub_sec, "stroke_width", required=False, default=2),
+                "fill": _get_key(
+                    sub_sec, "fill", required=False, default=(255, 255, 255)
+                ),
+                "stroke": _get_key(
+                    sub_sec, "stroke", required=False, default=(0, 0, 0)
+                ),
+                "fill_alpha": _get_key(
+                    sub_sec, "fill_alpha", required=False, default=0.35
+                ),
+                "stroke_width": _get_key(
+                    sub_sec, "stroke_width", required=False, default=2
+                ),
             }
             self.layers["default"] = self.LayerConfig().load(
                 single_layer,
@@ -322,7 +332,11 @@ class AnalysisSegmentationConfig:
 @dataclass
 class AnalysisMassConfig:
     color: str = ""
-    """Color embedding identifier used for mass conversion."""
+    """Color embedding identifier used for mass conversion.
+
+    The value must be a non-empty key defined in the centralized
+    ``[color.*.*]`` registry.
+    """
     roi: dict[str, RoiConfig] = field(default_factory=dict)
     """ROI configurations for mass analysis."""
     roi_and_label: dict[str, RoiAndLabelConfig] = field(default_factory=dict)

@@ -9,11 +9,12 @@ from typing import TYPE_CHECKING
 from warnings import warn
 
 import darsia
+from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.color_embedding import (
+    ColorPathEmbedding,
     ColorEmbeddingBasis,
     ColorEmbeddingRuntime,
 )
-from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.time_data import TimeData
@@ -279,11 +280,7 @@ def prepare_analysis_context(
         assert config.analysis is not None
         assert config.analysis.mass is not None
         embedding = config.color.resolve(config.analysis.mass.color)
-        if not hasattr(embedding, "color_to_mass_folder"):
-            raise NotImplementedError(
-                "Mass analysis currently only supports color-path embeddings."
-            )
-        if embedding.__class__.__name__ != "ColorPathEmbedding":
+        if not isinstance(embedding, ColorPathEmbedding):
             raise NotImplementedError(
                 "Mass analysis currently only supports color-path embeddings."
             )

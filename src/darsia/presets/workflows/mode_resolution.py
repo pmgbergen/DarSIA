@@ -7,7 +7,9 @@ from typing import Any
 
 import darsia
 from darsia.presets.workflows.color_embedding import ColorEmbeddingRuntime
-from darsia.presets.workflows.config.color_embedding_registry import ColorEmbeddingRegistry
+from darsia.presets.workflows.config.color_embedding_registry import (
+    ColorEmbeddingRegistry,
+)
 
 LEGACY_COLOR_TO_MASS_MODES = {
     "concentration_aq",
@@ -120,4 +122,3 @@ def resolve_mode_image(
             color_embedding_runtime,
         )
     raise ValueError(f"Unsupported analysis mode '{mode}'.")
-

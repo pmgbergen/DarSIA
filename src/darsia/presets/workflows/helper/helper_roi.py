@@ -19,6 +19,7 @@ from darsia.presets.workflows.analysis.scalar_products import (
     analysis_scalar_products,
     requires_rescaled_modes,
 )
+from darsia.presets.workflows.color_embedding import ColorPathEmbedding
 from darsia.presets.workflows.basis import select_labels_for_basis
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
@@ -50,11 +51,13 @@ def _build_color_to_mass_analysis(
     assert config.analysis is not None and config.analysis.mass is not None
     assert config.color is not None
     embedding = config.color.resolve(config.analysis.mass.color)
-    if embedding.__class__.__name__ != "ColorPathEmbedding":
+    if not isinstance(embedding, ColorPathEmbedding):
         raise NotImplementedError(
             "ROI helper currently supports only color path embeddings for mass modes."
         )
-    _, analysis_labels = select_labels_for_basis(fluidflower, embedding.calibration_basis())
+    _, analysis_labels = select_labels_for_basis(
+        fluidflower, embedding.calibration_basis()
+    )
 
     experiment_start = experiment.experiment_start
     state = experiment.pressure_temperature_protocol.get_state(experiment_start)
@@ -308,7 +311,8 @@ def helper_roi(cls: type[Rig], path: Path | list[Path], show: bool = False) -> N
     else:
         if config.analysis is None or config.analysis.mass is None:
             raise ValueError(
-                "helper.roi.mode requires [analysis.mass] with a color embedding when mode != 'none'."
+                "helper.roi.mode requires [analysis.mass] with a color embedding "
+                "when mode != 'none'."
             )
         color_to_mass_analysis = _build_color_to_mass_analysis(
             config, experiment, fluidflower

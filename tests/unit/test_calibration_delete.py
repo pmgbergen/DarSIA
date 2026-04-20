@@ -3,37 +3,31 @@ from types import SimpleNamespace
 from darsia.presets.workflows.calibration import calibration_color_paths as module
 
 
-def _mock_config(
-    calibration_file,
-    baseline_color_spectrum_folder,
-    color_range_file,
-    cache,
-):
+def _mock_config(calibration_root_1, calibration_root_2, cache):
     return SimpleNamespace(
-        color_paths=SimpleNamespace(
-            calibration_file=calibration_file,
-            baseline_color_spectrum_folder=baseline_color_spectrum_folder,
-            color_range_file=color_range_file,
+        color=SimpleNamespace(
+            embeddings={
+                "a": SimpleNamespace(calibration_root=calibration_root_1),
+                "b": SimpleNamespace(calibration_root=calibration_root_2),
+            }
         ),
         data=SimpleNamespace(cache=cache),
     )
 
 
 def test_collect_calibration_paths_filters_and_deduplicates(tmp_path, monkeypatch):
-    color_paths_dir = tmp_path / "color_paths"
-    baseline_spectrum_dir = tmp_path / "baseline_color_spectrum"
+    color_embedding_1 = tmp_path / "color" / "embedding_a"
+    color_embedding_2 = tmp_path / "color" / "embedding_b"
     cache_dir = tmp_path / "cache"
-    color_paths_dir.mkdir()
-    baseline_spectrum_dir.mkdir()
+    color_embedding_1.mkdir(parents=True)
+    color_embedding_2.mkdir(parents=True)
     cache_dir.mkdir()
 
-    duplicate_target = color_paths_dir
-    missing_target = tmp_path / "missing_color_range"
+    duplicate_target = color_embedding_1
 
     config = _mock_config(
-        calibration_file=duplicate_target,
-        baseline_color_spectrum_folder=baseline_spectrum_dir,
-        color_range_file=missing_target,
+        calibration_root_1=duplicate_target,
+        calibration_root_2=color_embedding_2,
         cache=duplicate_target,
     )
     monkeypatch.setattr(module, "FluidFlowerConfig", lambda *args, **kwargs: config)
@@ -42,25 +36,22 @@ def test_collect_calibration_paths_filters_and_deduplicates(tmp_path, monkeypatc
         tmp_path / "config.toml"
     )
 
-    assert paths == [duplicate_target, baseline_spectrum_dir]
+    assert paths == [duplicate_target, color_embedding_2]
 
 
 def test_delete_calibration_without_confirmation_deletes_existing_targets(
     tmp_path, monkeypatch
 ):
-    color_paths_dir = tmp_path / "color_paths"
-    baseline_spectrum_dir = tmp_path / "baseline_color_spectrum"
-    color_range_file = tmp_path / "color_range.npy"
+    color_embedding_1 = tmp_path / "color" / "embedding_a"
+    color_embedding_2 = tmp_path / "color" / "embedding_b"
     cache_dir = tmp_path / "cache"
-    color_paths_dir.mkdir()
-    baseline_spectrum_dir.mkdir()
+    color_embedding_1.mkdir(parents=True)
+    color_embedding_2.mkdir(parents=True)
     cache_dir.mkdir()
-    color_range_file.write_text("x")
 
     config = _mock_config(
-        calibration_file=color_paths_dir,
-        baseline_color_spectrum_folder=baseline_spectrum_dir,
-        color_range_file=color_range_file,
+        calibration_root_1=color_embedding_1,
+        calibration_root_2=color_embedding_2,
         cache=cache_dir,
     )
     monkeypatch.setattr(module, "FluidFlowerConfig", lambda *args, **kwargs: config)
@@ -72,7 +63,6 @@ def test_delete_calibration_without_confirmation_deletes_existing_targets(
 
     module.delete_calibration(tmp_path / "config.toml", require_confirmation=False)
 
-    assert not color_paths_dir.exists()
-    assert not baseline_spectrum_dir.exists()
-    assert not color_range_file.exists()
+    assert not color_embedding_1.exists()
+    assert not color_embedding_2.exists()
     assert not cache_dir.exists()
