@@ -82,17 +82,16 @@ class SegmentationConfig:
     )
     """Contour value labels configuration."""
 
-    def load(self, sec: dict, colorchannel_registry=None) -> "SegmentationConfig":
+    def load(self, sec: dict, color_embedding_registry=None) -> "SegmentationConfig":
         self.label = _get_key(sec, "label", required=True, type_=str)
         self.mode = _get_key(sec, "mode", required=True, type_=str)
         if not validate_mode_syntax(
-            self.mode, colorchannel_registry=colorchannel_registry
+            self.mode, color_embedding_registry=color_embedding_registry
         ):
             raise ValueError(
                 f"Unsupported analysis.segmentation.mode '{self.mode}'. Supported modes "
                 "are legacy mass modes, rescaled modes, "
-                "'colorchannel.<name>' (defined under [colorchannel.<name>]), "
-                "and 'colorrange.<name>'."
+                "and 'color.<id>' (defined under [color.*.*])."
             )
         self.thresholds = _get_key(sec, "thresholds", required=True, type_=list)
         self.color = _get_key(sec, "color", required=True, type_=list)

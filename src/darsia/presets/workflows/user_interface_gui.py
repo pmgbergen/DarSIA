@@ -332,7 +332,7 @@ def suggested_workflow_results_folder(
 
     if workflow == "calibration":
         if (
-            "color paths" in selected_actions
+            "color embedding" in selected_actions
             or "mass" in selected_actions
             or "default mass" in selected_actions
         ):
@@ -692,7 +692,7 @@ def _run_calibration_workflow(
             require_confirmation=not options.get("skip_delete_confirmation", False),
         )
         return
-    if options["color_paths"]:
+    if options["color_embedding"]:
         calibration_color_paths(rig_cls, paths, options["show"])
     if options["mass"] or options["default_mass"]:
         c2m_analysis_module.calibration_color_to_mass_analysis(
@@ -1041,14 +1041,14 @@ class WorkflowGUI:
         ).pack(fill=self.tk.X, pady=6)
 
     def _build_calibration_tab(self) -> None:
-        self.cal_color_paths = self.tk.BooleanVar(value=False)
+        self.cal_color_embedding = self.tk.BooleanVar(value=False)
         self.cal_mass = self.tk.BooleanVar(value=False)
         self.cal_default_mass = self.tk.BooleanVar(value=False)
         self.cal_reset = self.tk.BooleanVar(value=False)
         self.cal_delete = self.tk.BooleanVar(value=False)
         self.cal_show = self.tk.BooleanVar(value=False)
         for label, var in [
-            ("Color paths", self.cal_color_paths),
+            ("Color embedding", self.cal_color_embedding),
             ("Mass", self.cal_mass),
             ("Default mass", self.cal_default_mass),
             ("Reset", self.cal_reset),
@@ -1848,7 +1848,7 @@ class WorkflowGUI:
             return
         options = {
             "delete": self.cal_delete.get(),
-            "color_paths": self.cal_color_paths.get(),
+            "color_embedding": self.cal_color_embedding.get(),
             "mass": self.cal_mass.get(),
             "default_mass": self.cal_default_mass.get(),
             "reset": self.cal_reset.get(),

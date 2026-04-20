@@ -220,8 +220,8 @@ def analysis_thresholding_from_context(
                 layer.mode,
                 img,
                 mass_analysis_result=result,
-                colorrange_config=getattr(config, "colorrange", None),
-                colorchannel_registry=getattr(config, "colorchannel", None),
+                color_embedding_registry=getattr(config, "color", None),
+                color_embedding_runtime=ctx.color_embedding_runtime,
                 scalar_products=mode_images,
             )
             scalar = _to_scalar_array(mode_image)

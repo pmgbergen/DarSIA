@@ -108,8 +108,8 @@ def analysis_segmentation_from_context(
             img,
             scalar_products=scalar_products,
             mass_analysis_result=mass_analysis_result,
-            colorrange_config=getattr(ctx.config, "colorrange", None),
-            colorchannel_registry=getattr(ctx.config, "colorchannel", None),
+            color_embedding_registry=getattr(ctx.config, "color", None),
+            color_embedding_runtime=ctx.color_embedding_runtime,
         )
 
         if show:
