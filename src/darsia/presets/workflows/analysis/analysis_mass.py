@@ -108,7 +108,7 @@ def analysis_mass_from_context(
                             "corner_1": fluidflower.baseline.origin,
                             "corner_2": fluidflower.baseline.opposite_corner,
                         }
-                    }
+                    },
                 }
             },
             results=config.data.results,

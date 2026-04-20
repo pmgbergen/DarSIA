@@ -4,13 +4,13 @@ from pathlib import Path
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.color_embedding import ColorPathEmbedding
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.basis import label_ids_from_image, select_labels_for_basis
 from darsia.presets.workflows.calibration.metadata import (
     read_calibration_metadata,
     validate_basis_metadata,
 )
+from darsia.presets.workflows.color_embedding import ColorPathEmbedding
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
@@ -290,9 +290,9 @@ def calibration_color_to_mass_analysis(
             raise NotImplementedError(
                 "Reference mass calibration currently supports only color path embeddings."
             )
-        assert ref_embedding.color_to_mass_folder.exists(), (
-            "Reference calibration folder does not exist."
-        )
+        assert (
+            ref_embedding.color_to_mass_folder.exists()
+        ), "Reference calibration folder does not exist."
         color_analysis = HeterogeneousColorToMassAnalysis.load(
             folder=ref_embedding.color_to_mass_folder,
             baseline=fluidflower.baseline,

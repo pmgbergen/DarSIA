@@ -18,7 +18,6 @@ from darsia.presets.workflows.color_embedding import (
 
 from .data_registry import DataRegistry
 from .data_selection import resolve_path_selector, resolve_time_data_selector
-from .time_data import TimeData
 from .utils import _convert_none, _get_section_from_toml
 
 if TYPE_CHECKING:
@@ -67,14 +66,20 @@ class ColorEmbeddingRegistry:
                         f"Duplicate color embedding identifier '{embedding_id}'."
                     )
                 seen.add(embedding_id)
-                mode = _parse_mode(cfg.get("mode", "relative"), context=f"color.path.{embedding_id}")
+                mode = _parse_mode(
+                    cfg.get("mode", "relative"), context=f"color.path.{embedding_id}"
+                )
                 basis = parse_color_embedding_basis(cfg.get("basis", "labels"))
                 if basis == ColorEmbeddingBasis.SINGLE:
                     raise NotImplementedError(
                         "color.path.<id> with basis='single' is not implemented."
                     )
-                calibration_root = Path(cfg["calibration_folder"]) if "calibration_folder" in cfg else (
-                    color_root / embedding_id if color_root is not None else Path()
+                calibration_root = (
+                    Path(cfg["calibration_folder"])
+                    if "calibration_folder" in cfg
+                    else (
+                        color_root / embedding_id if color_root is not None else Path()
+                    )
                 )
                 embedding = ColorPathEmbedding(
                     embedding_id=embedding_id,
@@ -91,8 +96,12 @@ class ColorEmbeddingRegistry:
                     ignore_baseline_spectrum=str(
                         cfg.get("ignore_baseline_spectrum", "expanded")
                     ),
-                    histogram_weighting=str(cfg.get("histogram_weighting", "threshold")),
-                    calibration_mode=str(cfg.get("mode_calibration", cfg.get("calibration_mode", "auto"))),
+                    histogram_weighting=str(
+                        cfg.get("histogram_weighting", "threshold")
+                    ),
+                    calibration_mode=str(
+                        cfg.get("mode_calibration", cfg.get("calibration_mode", "auto"))
+                    ),
                 )
                 embedding.baseline_image_paths = resolve_path_selector(
                     cfg,
@@ -109,7 +118,11 @@ class ColorEmbeddingRegistry:
                     data_registry=data_registry,
                     required=True,
                 )
-                if "roi" in cfg and isinstance(cfg["roi"], dict) and roi_registry is not None:
+                if (
+                    "roi" in cfg
+                    and isinstance(cfg["roi"], dict)
+                    and roi_registry is not None
+                ):
                     from .roi import RoiAndLabelConfig, RoiConfig
 
                     for key, entry in cfg["roi"].items():
@@ -132,7 +145,9 @@ class ColorEmbeddingRegistry:
                         f"Duplicate color embedding identifier '{embedding_id}'."
                     )
                 seen.add(embedding_id)
-                mode = _parse_mode(cfg.get("mode", "absolute"), context=f"color.range.{embedding_id}")
+                mode = _parse_mode(
+                    cfg.get("mode", "absolute"), context=f"color.range.{embedding_id}"
+                )
                 basis = parse_color_embedding_basis(cfg.get("basis", "single"))
                 if basis != ColorEmbeddingBasis.SINGLE:
                     raise NotImplementedError(
@@ -141,7 +156,8 @@ class ColorEmbeddingRegistry:
                 raw_range = cfg.get("range")
                 if not isinstance(raw_range, list) or len(raw_range) != 3:
                     raise ValueError(
-                        f"color.range.{embedding_id}.range must be a list of 3 [min,max] bounds."
+                        f"color.range.{embedding_id}.range must be a list of 3 "
+                        "[min,max] bounds."
                     )
                 ranges: list[tuple[float | None, float | None]] = []
                 for i, bound in enumerate(raw_range):
@@ -157,8 +173,12 @@ class ColorEmbeddingRegistry:
                             None if high is None else float(high),
                         )
                     )
-                calibration_root = Path(cfg["calibration_folder"]) if "calibration_folder" in cfg else (
-                    color_root / embedding_id if color_root is not None else Path()
+                calibration_root = (
+                    Path(cfg["calibration_folder"])
+                    if "calibration_folder" in cfg
+                    else (
+                        color_root / embedding_id if color_root is not None else Path()
+                    )
                 )
                 self.embeddings[embedding_id] = ColorRangeEmbedding(
                     embedding_id=embedding_id,
@@ -178,14 +198,20 @@ class ColorEmbeddingRegistry:
                         f"Duplicate color embedding identifier '{embedding_id}'."
                     )
                 seen.add(embedding_id)
-                mode = _parse_mode(cfg.get("mode", "absolute"), context=f"color.channel.{embedding_id}")
+                mode = _parse_mode(
+                    cfg.get("mode", "absolute"), context=f"color.channel.{embedding_id}"
+                )
                 basis = parse_color_embedding_basis(cfg.get("basis", "single"))
                 if basis != ColorEmbeddingBasis.SINGLE:
                     raise NotImplementedError(
                         "color.channel.<id> currently only supports basis='single'."
                     )
-                calibration_root = Path(cfg["calibration_folder"]) if "calibration_folder" in cfg else (
-                    color_root / embedding_id if color_root is not None else Path()
+                calibration_root = (
+                    Path(cfg["calibration_folder"])
+                    if "calibration_folder" in cfg
+                    else (
+                        color_root / embedding_id if color_root is not None else Path()
+                    )
                 )
                 self.embeddings[embedding_id] = ColorChannelEmbedding(
                     embedding_id=embedding_id,
@@ -201,7 +227,8 @@ class ColorEmbeddingRegistry:
         if embedding_id not in self.embeddings:
             available = sorted(self.embeddings.keys())
             raise KeyError(
-                f"ColorEmbeddingRegistry: key '{embedding_id}' not found. Available keys: {available}"
+                "ColorEmbeddingRegistry: key "
+                f"'{embedding_id}' not found. Available keys: {available}"
             )
         return self.embeddings[embedding_id]
 
@@ -216,4 +243,3 @@ class ColorEmbeddingRegistry:
 
     def keys(self) -> list[str]:
         return sorted(self.embeddings.keys())
-

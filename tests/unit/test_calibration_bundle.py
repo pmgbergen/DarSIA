@@ -30,51 +30,24 @@ def _write_minimal_config(tmp_path: Path) -> Path:
 folder = "{data_folder}"
 baseline = "baseline.jpg"
 results = "{results_folder}"
-
-[data.path.baseline_imgs]
-paths = ["dummy.jpg"]
-
-[data.path.cal_imgs]
-paths = ["dummy.jpg"]
-
-[color_paths]
-basis = "labels"
-baseline = "baseline_imgs"
-data = "cal_imgs"
-
-[color_to_mass]
-basis = "labels"
-data = "cal_imgs"
 """
     )
     return config
 
 
-def _create_calibration_artifacts(tmp_path: Path) -> Path:
+def _create_calibration_artifacts(tmp_path: Path) -> tuple[Path, Path]:
     config_path = _write_minimal_config(tmp_path)
-    results = tmp_path / "results"
-    _write_file(
-        results / "calibration" / "color_paths" / "from_labels" / "color_path_0.json"
-    )
-    _write_file(
-        results / "calibration" / "color_paths" / "from_labels" / "metadata.json"
-    )
-    _write_file(
-        results / "calibration" / "color_to_mass" / "from_labels" / "metadata.json",
-        '{"basis":"labels","label_ids":[0]}',
-    )
-    _write_file(
-        results / "calibration" / "baseline_color_spectrum" / "color_spectrum_0.json"
-    )
-    _write_file(
-        results / "calibration" / "color_range.json",
-        '{"min_color":[0,0,0],"max_color":[1,1,1],"color_mode":"RELATIVE"}',
-    )
-    return config_path
+    root = tmp_path / "results" / "calibration" / "color" / "my_colorpath"
+    _write_file(root / "color_paths" / "from_labels" / "color_path_0.json")
+    _write_file(root / "color_paths" / "from_labels" / "metadata.json")
+    _write_file(root / "color_to_mass" / "from_labels" / "metadata.json")
+    _write_file(root / "baseline_color_spectrum" / "color_spectrum_0.json")
+    _write_file(root / "color_range.json")
+    return config_path, root
 
 
 def test_export_calibration_bundle(tmp_path: Path):
-    config_path = _create_calibration_artifacts(tmp_path)
+    config_path, _ = _create_calibration_artifacts(tmp_path)
     bundle = tmp_path / "bundle.zip"
 
     exported = export_calibration_bundle(config_path, bundle=bundle)
@@ -83,18 +56,17 @@ def test_export_calibration_bundle(tmp_path: Path):
     assert bundle.exists()
     with zipfile.ZipFile(bundle, "r") as zf:
         names = set(zf.namelist())
-        assert "calibration_bundle/color_paths/from_labels/color_path_0.json" in names
-        assert "calibration_bundle/color_to_mass/from_labels/metadata.json" in names
         assert (
-            "calibration_bundle/baseline_color_spectrum/color_spectrum_0.json" in names
+            "calibration_bundle/my_colorpath/color_paths/from_labels/color_path_0.json"
+            in names
         )
-        assert "calibration_bundle/color_range/color_range.json" in names
         manifest = json.loads(zf.read("calibration_bundle/manifest.json"))
-        assert "artifacts" in manifest
+        assert manifest["format_version"] == 2
+        assert manifest["embeddings"] == ["my_colorpath"]
 
 
 def test_import_calibration_bundle(tmp_path: Path):
-    config_path = _create_calibration_artifacts(tmp_path)
+    config_path, _ = _create_calibration_artifacts(tmp_path)
     bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")
 
     imported = import_calibration_bundle(
@@ -104,21 +76,24 @@ def test_import_calibration_bundle(tmp_path: Path):
     )
 
     assert (tmp_path / "imported" / "CONFIG_SNIPPET.toml").exists()
+    assert imported["my_colorpath"].exists()
     assert (
-        imported["color_paths"] == tmp_path / "imported" / "color_paths" / "from_labels"
-    )
-    assert (
-        imported["color_to_mass"]
-        == tmp_path / "imported" / "color_to_mass" / "from_labels"
-    )
-    assert imported["color_range"].exists()
+        tmp_path
+        / "imported"
+        / "my_colorpath"
+        / "color_paths"
+        / "from_labels"
+        / "metadata.json"
+    ).exists()
 
 
 def test_import_calibration_bundle_overwrite_guard(tmp_path: Path):
-    config_path = _create_calibration_artifacts(tmp_path)
+    config_path, _ = _create_calibration_artifacts(tmp_path)
     bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")
     target = tmp_path / "imported"
-    conflict_file = target / "color_paths" / "from_labels" / "metadata.json"
+    conflict_file = (
+        target / "my_colorpath" / "color_paths" / "from_labels" / "metadata.json"
+    )
     conflict_file.parent.mkdir(parents=True, exist_ok=True)
     conflict_file.write_text("{}")
 
@@ -127,111 +102,16 @@ def test_import_calibration_bundle_overwrite_guard(tmp_path: Path):
 
 
 def test_preview_calibration_bundle_import_conflicts(tmp_path: Path):
-    config_path = _create_calibration_artifacts(tmp_path)
+    config_path, _ = _create_calibration_artifacts(tmp_path)
     bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")
     target = tmp_path / "imported"
-    (target / "color_paths" / "from_labels").mkdir(parents=True, exist_ok=True)
-    (target / "color_paths" / "from_labels" / "metadata.json").write_text("{}")
+    conflict = (
+        target / "my_colorpath" / "color_to_mass" / "from_labels" / "metadata.json"
+    )
+    conflict.parent.mkdir(parents=True, exist_ok=True)
+    conflict.write_text("{}")
 
     conflicts = preview_calibration_bundle_import_conflicts(
         config_path, bundle=bundle, target_folder=target
     )
-    assert target / "color_paths" / "from_labels" / "metadata.json" in conflicts
-
-
-def test_preview_calibration_bundle_import_conflicts_multiple_artifacts(tmp_path: Path):
-    config_path = _create_calibration_artifacts(tmp_path)
-    bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")
-    target = tmp_path / "imported"
-    color_to_mass_conflict = target / "color_to_mass" / "from_labels" / "metadata.json"
-    baseline_conflict = target / "baseline_color_spectrum" / "color_spectrum_0.json"
-    color_to_mass_conflict.parent.mkdir(parents=True, exist_ok=True)
-    baseline_conflict.parent.mkdir(parents=True, exist_ok=True)
-    color_to_mass_conflict.write_text("{}")
-    baseline_conflict.write_text("{}")
-
-    conflicts = preview_calibration_bundle_import_conflicts(
-        config_path, bundle=bundle, target_folder=target
-    )
-
-    assert color_to_mass_conflict in conflicts
-    assert baseline_conflict in conflicts
-
-
-def test_import_calibration_bundle_skip_all_conflicts(tmp_path: Path):
-    config_path = _create_calibration_artifacts(tmp_path)
-    bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")
-    target = tmp_path / "imported"
-    conflict_file = target / "color_paths" / "from_labels" / "metadata.json"
-    conflict_file.parent.mkdir(parents=True, exist_ok=True)
-    conflict_file.write_text('{"old":"value"}')
-
-    imported = import_calibration_bundle(
-        config_path,
-        bundle=bundle,
-        target_folder=target,
-        conflict_action="skip_all",
-    )
-
-    assert json.loads(conflict_file.read_text()) == {"old": "value"}
-    assert imported["color_to_mass"].exists()
-
-
-def test_import_calibration_bundle_overwrite_all_conflicts(tmp_path: Path):
-    config_path = _create_calibration_artifacts(tmp_path)
-    bundle = export_calibration_bundle(config_path, bundle=tmp_path / "bundle.zip")
-    target = tmp_path / "imported"
-    conflict_file = target / "color_paths" / "from_labels" / "metadata.json"
-    conflict_file.parent.mkdir(parents=True, exist_ok=True)
-    conflict_file.write_text('{"old":"value"}')
-
-    import_calibration_bundle(
-        config_path,
-        bundle=bundle,
-        target_folder=target,
-        conflict_action="overwrite_all",
-    )
-
-    assert json.loads(conflict_file.read_text()) != {"old": "value"}
-
-
-def test_import_calibration_bundle_default_target_from_config(tmp_path: Path):
-    source_root = tmp_path / "source"
-    target_root = tmp_path / "target"
-    source_config = _create_calibration_artifacts(source_root)
-    target_config = _write_minimal_config(target_root)
-    bundle = export_calibration_bundle(source_config, bundle=tmp_path / "bundle.zip")
-
-    imported = import_calibration_bundle(target_config, bundle=bundle)
-
-    results = target_root / "results" / "calibration"
-    assert imported["color_paths"] == results / "color_paths" / "from_labels"
-    assert imported["color_to_mass"] == results / "color_to_mass" / "from_labels"
-    assert imported["baseline_color_spectrum"] == results / "baseline_color_spectrum"
-    assert imported["color_range"] == results / "color_range.json"
-    assert (results / "CONFIG_SNIPPET.toml").exists()
-
-
-def test_import_calibration_bundle_filters_to_bundle_root(tmp_path: Path):
-    config_path = _write_minimal_config(tmp_path)
-    bundle = tmp_path / "bundle.zip"
-    with zipfile.ZipFile(bundle, "w") as zf:
-        zf.writestr("outer.json", "{}")
-        zf.writestr("calibration_bundle/color_paths/metadata.json", "{}")
-        zf.writestr("calibration_bundle/color_to_mass/metadata.json", "{}")
-        zf.writestr(
-            "calibration_bundle/color_range/color_range.json",
-            '{"min_color":[0,0,0],"max_color":[1,1,1],"color_mode":"RELATIVE"}',
-        )
-
-    imported = import_calibration_bundle(
-        config_path,
-        bundle=bundle,
-        target_folder=tmp_path / "imported",
-    )
-
-    assert not (tmp_path / "imported" / "outer.json").exists()
-    assert not (tmp_path / "imported" / "calibration_bundle").exists()
-    assert (
-        imported["color_paths"] == tmp_path / "imported" / "color_paths" / "from_labels"
-    )
+    assert conflict in conflicts

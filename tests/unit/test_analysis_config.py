@@ -149,9 +149,6 @@ def test_analysis_thresholding_accepts_extended_modes(tmp_path: Path) -> None:
         tmp_path / "config.toml",
         """
 [analysis]
-[colorchannel.red_channel]
-color_space = "RGB"
-channel = "r"
 
 [analysis.thresholding]
 [analysis.thresholding.layers.mass_rescaled]
@@ -164,10 +161,10 @@ threshold_min = 0.1
 mode = "rescaled_concentration_aq"
 threshold_min = 0.1
 [analysis.thresholding.layers.red]
-mode = "colorchannel.red_channel"
+mode = "color.red_channel"
 threshold_min = 0.2
 [analysis.thresholding.layers.green_band]
-mode = "colorrange.custom_range"
+mode = "color.green_band"
 threshold_min = 0.5
 """.strip(),
     )
@@ -182,25 +179,25 @@ threshold_min = 0.5
     assert config.thresholding.layers["mass_rescaled"].mode == "rescaled_mass"
     assert config.thresholding.layers["gas_rescaled"].mode == "rescaled_saturation_g"
     assert config.thresholding.layers["aq_rescaled"].mode == "rescaled_concentration_aq"
-    assert config.thresholding.layers["red"].mode == "colorchannel.red_channel"
-    assert config.thresholding.layers["green_band"].mode == "colorrange.custom_range"
+    assert config.thresholding.layers["red"].mode == "color.red_channel"
+    assert config.thresholding.layers["green_band"].mode == "color.green_band"
 
 
-def test_analysis_thresholding_rejects_inline_colorchannel_mode(tmp_path: Path) -> None:
+def test_analysis_thresholding_rejects_invalid_color_mode_token(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
 [analysis]
 [analysis.thresholding]
 [analysis.thresholding.layers.bad]
-mode = "colorchannel.rgb.r"
+mode = "color.rgb.r"
 threshold_min = 0.1
 """.strip(),
     )
 
     with pytest.raises(
         ValueError,
-        match=r"Unsupported analysis\.thresholding\.layers\.bad\.mode 'colorchannel\.rgb\.r'",
+        match=r"Unsupported analysis\.thresholding\.layers\.bad\.mode 'color\.rgb\.r'",
     ):
         AnalysisConfig().load(
             path=config_path,
@@ -253,14 +250,14 @@ color = [255, 0, 0]
         )
 
 
-def test_analysis_segmentation_rejects_inline_colorchannel_mode(tmp_path: Path) -> None:
+def test_analysis_segmentation_rejects_invalid_color_mode_token(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
 [analysis]
 [analysis.segmentation]
 label = "Bad contour"
-mode = "colorchannel.rgb.r"
+mode = "color.rgb.r"
 thresholds = [0.1]
 color = [255, 0, 0]
 """.strip(),
@@ -268,7 +265,7 @@ color = [255, 0, 0]
 
     with pytest.raises(
         ValueError,
-        match=r"Unsupported analysis\.segmentation\.mode 'colorchannel\.rgb\.r'",
+        match=r"Unsupported analysis\.segmentation\.mode 'color\.rgb\.r'",
     ):
         AnalysisConfig().load(
             path=config_path,
@@ -339,6 +336,7 @@ def test_analysis_mass_export_defaults_to_none(tmp_path: Path) -> None:
         """
 [analysis]
 [analysis.mass]
+color = "my_colorpath"
 """.strip(),
     )
 
@@ -358,6 +356,7 @@ def test_analysis_mass_export_accepts_supported_modes(tmp_path: Path) -> None:
         """
 [analysis]
 [analysis.mass]
+color = "my_colorpath"
 export = ["mass", "extensive_mass", "rescaled_concentration_aq"]
 """.strip(),
     )
@@ -382,6 +381,7 @@ def test_analysis_mass_export_rejects_unsupported_modes(tmp_path: Path) -> None:
         """
 [analysis]
 [analysis.mass]
+color = "my_colorpath"
 export = ["mass", "not_supported"]
 """.strip(),
     )

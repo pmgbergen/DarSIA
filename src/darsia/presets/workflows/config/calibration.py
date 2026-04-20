@@ -46,7 +46,9 @@ class CalibrationMassConfig:
         self.color = _get_key(sec, "color", required=True, type_=str).strip()
         self.mode = _get_key(sec, "mode", default="manual", required=False, type_=str)
         self.fluid = _get_key(sec, "fluid", default="co2", required=False, type_=str)
-        self.threshold = _get_key(sec, "threshold", default=0.2, required=False, type_=float)
+        self.threshold = _get_key(
+            sec, "threshold", default=0.2, required=False, type_=float
+        )
         self.rois = _get_key(sec, "rois", default=[], required=False, type_=list)
         try:
             self.data = resolve_time_data_selector(
@@ -96,4 +98,3 @@ class CalibrationConfig:
             self.mass = None
 
         return self
-

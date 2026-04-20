@@ -69,9 +69,9 @@ Supported `export` values:
 
 ### Segmentation and thresholding mode notes
 - Segmentation `mode` supports: `saturation_g`, `concentration_aq`, `mass`,
-  `rescaled_mass`, `rescaled_saturation_g`, `rescaled_concentration_aq`.
+  `rescaled_mass`, `rescaled_saturation_g`, `rescaled_concentration_aq`, and `color.<id>`.
 - Thresholding layer `mode` supports the standard mass products plus
-  `rescaled_mass`, `rescaled_saturation_g`, and `rescaled_concentration_aq`.
+  `rescaled_mass`, `rescaled_saturation_g`, `rescaled_concentration_aq`, and `color.<id>`.
 - `mass` remains a segmentation alias for total mass (`mass_total`).
 
 ### Expert knowledge ROI constraints

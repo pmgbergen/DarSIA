@@ -3,7 +3,7 @@
 Module: `darsia.presets.workflows.user_interface_calibration`
 
 ## Main flags
-- `--color-paths`
+- `--color-embedding`
 - `--mass`
 - `--default-mass`
 - `--volume`
@@ -14,12 +14,13 @@ Module: `darsia.presets.workflows.user_interface_calibration`
 
 ## Typical sequence
 ```bash
-python -m darsia.presets.workflows.user_interface_calibration --color-paths --config /abs/path/common.toml /abs/path/run.toml
+python -m darsia.presets.workflows.user_interface_calibration --color-embedding --config /abs/path/common.toml /abs/path/run.toml
 python -m darsia.presets.workflows.user_interface_calibration --mass --config /abs/path/common.toml /abs/path/run.toml
 ```
 
 ## Notes
-- Keep calibration basis settings aligned across `[color_paths]` and `[color_to_mass]`.
-- Prefer reusable data registry keys for calibration datasets.
+- Configure all color embeddings under `[color.path.*]`, `[color.range.*]`, `[color.channel.*]`.
+- Use `[calibration.color]` and `[calibration.mass]` as calibration entrypoints.
+- Mass calibration currently supports only color-path embeddings.
 
 See [image selection](./image-selection.md) and [config reference](./config-reference.md).

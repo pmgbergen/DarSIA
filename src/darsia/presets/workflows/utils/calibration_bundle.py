@@ -79,7 +79,9 @@ def preview_calibration_bundle_import_conflicts(
         raise FileNotFoundError(f"Calibration bundle not found: {bundle}")
 
     target_root = (
-        _calibration_color_root(config) if target_folder is None else Path(target_folder)
+        _calibration_color_root(config)
+        if target_folder is None
+        else Path(target_folder)
     )
     with ZipFile(bundle, mode="r") as zip_file:
         targets = _collect_bundle_targets(zip_file, target_root)
@@ -99,10 +101,16 @@ def export_calibration_bundle(
 
     embedding_folders = sorted([p for p in calibration_root.iterdir() if p.is_dir()])
     if len(embedding_folders) == 0:
-        raise FileNotFoundError("No color embedding calibration folders found to export.")
+        raise FileNotFoundError(
+            "No color embedding calibration folders found to export."
+        )
+
+    assert config.data is not None
+    assert config.data.results is not None
+    results_root = config.data.results
 
     if bundle is None:
-        bundle_dir = config.data.results / "calibration" / "bundles"  # type: ignore[union-attr]
+        bundle_dir = results_root / "calibration" / "bundles"
         bundle_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         bundle = bundle_dir / f"calibration_bundle_{timestamp}.zip"
@@ -115,8 +123,10 @@ def export_calibration_bundle(
         for embedding_folder in embedding_folders:
             for file_path in sorted(embedding_folder.rglob("*")):
                 if file_path.is_file():
-                    archive_path = archive_root / embedding_folder.name / file_path.relative_to(
-                        embedding_folder
+                    archive_path = (
+                        archive_root
+                        / embedding_folder.name
+                        / file_path.relative_to(embedding_folder)
                     )
                     zip_file.write(file_path, arcname=str(archive_path))
         zip_file.writestr(
@@ -149,7 +159,9 @@ def import_calibration_bundle(
         raise FileNotFoundError(f"Calibration bundle not found: {bundle}")
 
     destination_root = (
-        _calibration_color_root(config) if target_folder is None else Path(target_folder)
+        _calibration_color_root(config)
+        if target_folder is None
+        else Path(target_folder)
     )
     destination_root.mkdir(parents=True, exist_ok=True)
 
@@ -181,5 +193,6 @@ def import_calibration_bundle(
     snippet_path = _write_config_snippet(destination_root, embedding_ids)
     logger.info("Imported calibration bundle to %s", destination_root)
     logger.info("Config snippet written to %s", snippet_path)
-    return {embedding_id: destination_root / embedding_id for embedding_id in embedding_ids}
-
+    return {
+        embedding_id: destination_root / embedding_id for embedding_id in embedding_ids
+    }
