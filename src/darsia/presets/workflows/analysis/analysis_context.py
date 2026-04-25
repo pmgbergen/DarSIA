@@ -11,9 +11,9 @@ from warnings import warn
 import darsia
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.color_embedding import (
-    ColorPathEmbedding,
     ColorEmbeddingBasis,
     ColorEmbeddingRuntime,
+    ColorPathEmbedding,
 )
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig

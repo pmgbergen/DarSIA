@@ -19,8 +19,8 @@ from darsia.presets.workflows.analysis.scalar_products import (
     analysis_scalar_products,
     requires_rescaled_modes,
 )
-from darsia.presets.workflows.color_embedding import ColorPathEmbedding
 from darsia.presets.workflows.basis import select_labels_for_basis
+from darsia.presets.workflows.color_embedding import ColorPathEmbedding
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
