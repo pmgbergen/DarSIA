@@ -6,11 +6,13 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
+from warnings import warn
 
 import darsia
 from darsia.presets.workflows.basis import select_labels_for_basis
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.time_data import TimeData
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
@@ -83,7 +85,7 @@ def select_image_paths(
         paths = config.data.data
         image_paths = experiment.find_images_for_paths(paths=paths)
     elif hasattr(sub_config, "data") and isinstance(sub_config.data, (str, list)):
-        # Resolve registry reference if sub_config.data is a raw registry key
+        # Resolve registry reference if sub_config.data is a (list of) raw registry key
         if data_registry is not None:
             resolved = data_registry.resolve(sub_config.data)
             if len(resolved.image_paths) > 0:
@@ -99,29 +101,40 @@ def select_image_paths(
                 "sub_config.data is a registry key reference but no data_registry "
                 "was provided to resolve it."
             )
-    elif (
-        hasattr(sub_config, "data")
-        and sub_config.data is not None
-        and len(sub_config.data.image_paths) > 0
-    ):
-        paths = sub_config.data.image_paths
-        image_paths = experiment.find_images_for_paths(paths=paths)
-    elif (
-        hasattr(sub_config, "image_paths")
-        and sub_config.image_paths is not None
-        and len(sub_config.image_paths) > 0
-    ):
-        # Fallback for cropping which uses sub_config.image_paths directly
-        paths = sub_config.image_paths
-        image_paths = experiment.find_images_for_paths(paths=paths)
+    elif hasattr(sub_config, "data") and isinstance(sub_config.data, TimeData):
+        image_paths = []
+        image_paths += experiment.find_images_for_paths(
+            paths=sub_config.data.image_paths
+        )
+        image_paths += experiment.find_images_for_times(
+            times=sub_config.data.image_times, data=source
+        )
     else:
-        # Use times from config
-        if hasattr(sub_config, "data") and sub_config.data is not None:
-            times = sub_config.data.image_times
-        elif hasattr(sub_config, "image_times"):
+        # Support legacy format, but throw deprecation warning.
+        warn("Using legacy image_paths format in sub_config.", DeprecationWarning)
+        image_paths = []
+        if hasattr(sub_config, "image_paths") and sub_config.image_paths is not None:
+            paths = sub_config.image_paths
+            image_paths += experiment.find_images_for_paths(paths=paths)
+        if (
+            hasattr(sub_config, "data")
+            and hasattr(sub_config.data, "image_paths")
+            and sub_config.data.image_paths is not None
+        ):
+            paths = sub_config.data.image_paths
+            image_paths += experiment.find_images_for_paths(paths=paths)
+        if hasattr(sub_config, "image_times") and sub_config.image_times is not None:
             times = sub_config.image_times
-        else:
-            raise ValueError("No image paths or times specified in config.")
+            image_paths += experiment.find_images_for_times(times=times, data=source)
+        if (
+            hasattr(sub_config, "data")
+            and hasattr(sub_config.data, "image_times")
+            and sub_config.data.image_times is not None
+        ):
+            times = sub_config.data.image_times
+            image_paths += experiment.find_images_for_times(times=times, data=source)
+
+        # Use times from config
         image_paths = experiment.find_images_for_times(times=times, data=source)
 
     assert len(image_paths) > 0, "No images found for analysis."
