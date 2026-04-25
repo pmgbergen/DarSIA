@@ -124,7 +124,7 @@ def test_select_image_paths_supports_mixed_timedata_paths_and_times(
 
     assert resolved == [selected_from_path, selected_from_time]
     assert experiment.paths_calls == [[tmp_path / "configured_path.jpg"]]
-    assert experiment.times_calls == [([1.0, 2.0, 3.0], source)]
+    assert experiment.times_calls == [(data.image_times, source)]
 
 
 def test_select_image_paths_supports_mixed_legacy_paths_and_times(
