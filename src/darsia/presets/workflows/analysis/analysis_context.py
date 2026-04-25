@@ -134,9 +134,6 @@ def select_image_paths(
             times = sub_config.data.image_times
             image_paths += experiment.find_images_for_times(times=times, data=source)
 
-        # Use times from config
-        image_paths = experiment.find_images_for_times(times=times, data=source)
-
     assert len(image_paths) > 0, "No images found for analysis."
     return image_paths
 
