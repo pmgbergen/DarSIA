@@ -454,7 +454,7 @@ def test_run_utils_workflow_dispatches_download_and_media(
 ) -> None:
     calls: list[tuple[str, list[Path]]] = []
 
-    def _fake_download(paths):
+    def _fake_download(paths, require_confirmation=True):
         calls.append(("download", paths))
 
     def _fake_media(paths):
