@@ -205,13 +205,13 @@ class FluidFlowerConfig:
             self.helper = None
 
         # ! ---- DOWNLOAD CONFIG ---- ! #
-        # TODO make utils config
         try:
             self.download = DownloadConfig()
             self.download.load(
                 path,
                 data=self.data.folder if self.data else None,
                 results=self.data.results if self.data else None,
+                data_registry=self.data.registry if self.data else None,
             )
         except KeyError:
             self.download = None
