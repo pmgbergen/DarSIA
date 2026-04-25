@@ -273,7 +273,9 @@ class ImagingProtocol:
 
         """
         available_paths = [p for p in paths if not self.is_blacklisted(p)]
-        logger.info(f"Skipping {len(paths) - len(available_paths)} blacklisted paths.")
+        num_skipped = len(paths) - len(available_paths)
+        if num_skipped > 0:
+            logger.info(f"Skipping {num_skipped} blacklisted paths.")
         return available_paths
 
     def find_images_for_datetimes(
@@ -293,7 +295,7 @@ class ImagingProtocol:
             list[darsia.Image]: List of images corresponding to the specified times.
 
         """
-        # Restrict df from imagign_interval to available image ids
+        # Restrict df from imaging_interval to available image ids
         if isinstance(paths, list):
             all_paths = paths
         else:
