@@ -1701,7 +1701,9 @@ class WorkflowGUI:
                 import_conflict_action = policy
 
         if action_flags["download"]:
-            from darsia.presets.workflows.utils.utils_download import prepare_download_data
+            from darsia.presets.workflows.utils.utils_download import (
+                prepare_download_data,
+            )
 
             plan = prepare_download_data(ctx.config_paths)
             if not plan.image_paths:

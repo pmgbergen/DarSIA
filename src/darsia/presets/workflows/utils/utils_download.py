@@ -27,7 +27,9 @@ def _format_size(total_size: int) -> str:
     """Format bytes as MB/GB string."""
     total_size_mb = total_size / (1024 * 1024)
     total_size_gb = total_size / (1024 * 1024 * 1024)
-    return f"{total_size_mb:.2f} MB" if total_size_mb < 1024 else f"{total_size_gb:.2f} GB"
+    return (
+        f"{total_size_mb:.2f} MB" if total_size_mb < 1024 else f"{total_size_gb:.2f} GB"
+    )
 
 
 def prepare_download_data(path: Path | list[Path] | list[str] | str) -> DownloadPlan:
@@ -98,7 +100,9 @@ def prepare_download_data(path: Path | list[Path] | list[str] | str) -> Download
     )
 
 
-def download_data(path: Path | list[Path] | list[str] | str, require_confirmation: bool = True):
+def download_data(
+    path: Path | list[Path] | list[str] | str, require_confirmation: bool = True
+):
     """Download raw data for preset workflows."""
 
     plan = prepare_download_data(path)

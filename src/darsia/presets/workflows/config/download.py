@@ -26,7 +26,11 @@ class DownloadConfig:
     If not provided, defaults to [data.results/raw_data]."""
 
     def load(
-        self, path: Path, data: Path | None, results: Path | None, data_registry: DataRegistry | None,
+        self,
+        path: Path,
+        data: Path | None,
+        results: Path | None,
+        data_registry: DataRegistry | None,
     ) -> "DownloadConfig":
         sec = _get_section_from_toml(path, "download")
 
