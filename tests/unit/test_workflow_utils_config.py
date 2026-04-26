@@ -78,7 +78,7 @@ results = "{tmp_path / "results"}"
 
 [color.channel.red_channel]
 mode = "absolute"
-basis = "single"
+basis = "global"
 color_space = "RGB"
 channel = "r"
 """

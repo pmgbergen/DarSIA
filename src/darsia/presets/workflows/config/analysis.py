@@ -19,6 +19,8 @@ from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
 
 if TYPE_CHECKING:
+    from darsia.presets.workflows.color_embedding import ColorEmbedding
+
     from .color_embedding_registry import ColorEmbeddingRegistry
     from .format_registry import FormatRegistry
     from .roi_registry import RoiRegistry
@@ -331,7 +333,7 @@ class AnalysisSegmentationConfig:
 
 @dataclass
 class AnalysisMassConfig:
-    color: str = ""
+    color: "ColorEmbedding | None" = None
     """Color embedding identifier used for mass conversion.
 
     The value must be a non-empty key defined in the centralized
@@ -347,10 +349,25 @@ class AnalysisMassConfig:
     """Path to the results folder for mass analysis."""
 
     def load(
-        self, sec: dict, results: Path | None, roi_registry: RoiRegistry | None = None
+        self,
+        sec: dict,
+        results: Path | None,
+        roi_registry: RoiRegistry | None = None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "AnalysisMassConfig":
         sub_sec = _get_section(sec, "mass")
-        self.color = _get_key(sub_sec, "color", required=True, type_=str).strip()
+        color_key = _get_key(sub_sec, "color", required=True, type_=str).strip()
+        if color_embedding_registry is None:
+            raise ValueError(
+                "analysis.mass.color references [color.*.*], but no "
+                "ColorEmbeddingRegistry is available."
+            )
+        try:
+            self.color = color_embedding_registry.resolve(color_key)
+        except KeyError as exc:
+            raise ValueError(
+                f"Unknown analysis.mass.color embedding '{color_key}'."
+            ) from exc
 
         # Load ROIs – support registry-key references (list) and inline dicts.
         roi_raw = sub_sec.get("roi")
@@ -714,7 +731,10 @@ class AnalysisConfig:
         # Config to load analysis mass
         try:
             self.mass = AnalysisMassConfig().load(
-                sec, results, roi_registry=roi_registry
+                sec,
+                results,
+                roi_registry=roi_registry,
+                color_embedding_registry=color_embedding_registry,
             )
         except KeyError:
             warn("No analysis mass found. Use [analysis.mass].")

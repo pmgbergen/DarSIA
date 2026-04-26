@@ -17,6 +17,7 @@ class CalibrationBasis(StrEnum):
 
     LABELS = "labels"
     FACIES = "facies"
+    GLOBAL = "global"
 
 
 def parse_calibration_basis(
@@ -30,7 +31,10 @@ def parse_calibration_basis(
     if isinstance(value, CalibrationBasis):
         return value
     if isinstance(value, str):
-        return CalibrationBasis(value.lower())
+        token = value.lower().strip()
+        if token == "single":
+            token = CalibrationBasis.GLOBAL.value
+        return CalibrationBasis(token)
     raise TypeError(f"Unsupported calibration basis value type: {type(value)}")
 
 

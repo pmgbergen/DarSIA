@@ -246,7 +246,7 @@ Define reusable color embeddings in one registry:
 ```toml
 [color.channel.my_channel]
 mode = "absolute" # or "relative"
-basis = "single"  # labels/facies for channel are not implemented
+basis = "global"  # labels/facies for channel are not implemented
 color_space = "RGB" # one of RGB, BGR, HSV, HLS, LAB
 channel = "r"       # channel name depends on color_space; case-insensitive
 ```
@@ -254,7 +254,7 @@ channel = "r"       # channel name depends on color_space; case-insensitive
 ```toml
 [color.range.custom_range]
 mode = "absolute" # or "relative"
-basis = "single"  # labels/facies for range are not implemented
+basis = "global"  # labels/facies for range are not implemented
 color_space = "HSV" # one of RGB, BGR, HSV, HLS, LAB
 range = [[0.2, 0.4], [0.5, "none"], [0.8, "none"]]
 ```
@@ -262,9 +262,19 @@ range = [[0.2, 0.4], [0.5, "none"], [0.8, "none"]]
 ```toml
 [color.path.my_color_path]
 mode = "relative" # or "absolute"
-basis = "labels"  # or "facies" (single is not implemented for path)
+basis = "labels"  # or "facies" (global is not implemented for path)
 baseline = "baseline_imgs"
 data = "calibration_imgs"
+num_segments = 1
+ignore_labels = [0, 1]
+resolution = 51
+threshold_baseline = 0.0
+threshold_calibration = 1e-3
+reference_label = 3
+rois = ["main_roi"]
+ignore_baseline_spectrum = "expanded" # none | baseline | expanded
+histogram_weighting = "threshold"
+calibration_mode = "auto" # auto | manual
 ```
 
 - `range` must contain exactly 3 channel bounds.

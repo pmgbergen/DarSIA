@@ -24,7 +24,6 @@ from darsia.presets.workflows.analysis.scalar_products import analysis_scalar_pr
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.config.analysis import (
     SUPPORTED_ANALYSIS_MASS_EXPORT_MODES,
-    AnalysisMassConfig,
 )
 from darsia.presets.workflows.rig import Rig
 
@@ -93,26 +92,7 @@ def analysis_mass_from_context(
 
     # ! ---- ENSURE MASS CONFIGURATION ----
     if config.analysis.mass is None:
-        if getattr(config, "color", None) is None or len(config.color.keys()) == 0:
-            raise ValueError(
-                "analysis.mass requires a configured color embedding under [color.*.*]."
-            )
-        default_color = config.color.keys()[0]
-        config.analysis.mass = AnalysisMassConfig().load(
-            sec={
-                "mass": {
-                    "color": default_color,
-                    "roi": {
-                        "full": {
-                            "name": "full",
-                            "corner_1": fluidflower.baseline.origin,
-                            "corner_2": fluidflower.baseline.opposite_corner,
-                        }
-                    },
-                }
-            },
-            results=config.data.results,
-        )
+        raise ValueError("Mass analysis requires an explicit [analysis.mass] section.")
 
     # ! ---- GEOMETRY FOR INTEGRATION ----
     geometry = {}

@@ -49,7 +49,7 @@ def test_resolve_color_channel_by_registry_key() -> None:
             "red_channel": ColorChannelEmbedding(
                 embedding_id="red_channel",
                 mode=darsia.ColorMode.ABSOLUTE,
-                basis=ColorEmbeddingBasis.SINGLE,
+                basis=ColorEmbeddingBasis.GLOBAL,
                 calibration_root=Path("."),
                 color_space="RGB",
                 channel="r",
@@ -83,7 +83,7 @@ def test_resolve_color_range_hsv_binary_mask() -> None:
             "custom_range": ColorRangeEmbedding(
                 embedding_id="custom_range",
                 mode=darsia.ColorMode.ABSOLUTE,
-                basis=ColorEmbeddingBasis.SINGLE,
+                basis=ColorEmbeddingBasis.GLOBAL,
                 calibration_root=Path("."),
                 color_space="HSV",
                 ranges=[(0.2, 0.4), (0.5, None), (0.8, None)],
@@ -110,7 +110,7 @@ def test_simple_segmentation_supports_color_mode_without_mass_inputs() -> None:
             "red_channel": ColorChannelEmbedding(
                 embedding_id="red_channel",
                 mode=darsia.ColorMode.ABSOLUTE,
-                basis=ColorEmbeddingBasis.SINGLE,
+                basis=ColorEmbeddingBasis.GLOBAL,
                 calibration_root=Path("."),
                 color_space="RGB",
                 channel="r",

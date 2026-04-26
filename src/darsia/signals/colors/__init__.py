@@ -1,5 +1,3 @@
-"""Backward-compatible imports for workflow color embedding abstractions."""
-
 from darsia.signals.colors.color_embedding import (
     ColorEmbedding,
     ColorEmbeddingBasis,

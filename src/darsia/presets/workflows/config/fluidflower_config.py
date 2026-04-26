@@ -165,6 +165,7 @@ class FluidFlowerConfig:
                 path=path,
                 data=self.data.folder if self.data else None,
                 data_registry=self.data.registry if self.data else None,
+                color_embedding_registry=self.color,
             )
         except (ValueError, KeyError):
             self.calibration = None

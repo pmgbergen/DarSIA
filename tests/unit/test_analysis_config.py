@@ -3,6 +3,9 @@ from pathlib import Path
 import pytest
 
 from darsia.presets.workflows.config.analysis import AnalysisConfig
+from darsia.presets.workflows.config.color_embedding_registry import (
+    ColorEmbeddingRegistry,
+)
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.format_registry import FormatRegistry
 from darsia.presets.workflows.config.roi import RoiConfig
@@ -12,6 +15,14 @@ from darsia.presets.workflows.config.roi_registry import RoiRegistry
 def _write(path: Path, content: str) -> Path:
     path.write_text(content)
     return path
+
+
+def _load_color_registry(config_path: Path, tmp_path: Path) -> ColorEmbeddingRegistry:
+    return ColorEmbeddingRegistry().load(
+        path=config_path,
+        data=tmp_path,
+        results=tmp_path,
+    )
 
 
 def test_analysis_cropping_formats_are_loaded(tmp_path: Path) -> None:
@@ -334,16 +345,24 @@ def test_analysis_mass_export_defaults_to_none(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
+[color.channel.my_colorpath]
+mode = "absolute"
+basis = "global"
+color_space = "RGB"
+channel = "r"
+
 [analysis]
 [analysis.mass]
 color = "my_colorpath"
 """.strip(),
     )
+    color_registry = _load_color_registry(config_path, tmp_path)
 
     config = AnalysisConfig().load(
         path=config_path,
         data=tmp_path,
         results=tmp_path,
+        color_embedding_registry=color_registry,
     )
 
     assert config.mass is not None
@@ -354,17 +373,25 @@ def test_analysis_mass_export_accepts_supported_modes(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
+[color.channel.my_colorpath]
+mode = "absolute"
+basis = "global"
+color_space = "RGB"
+channel = "r"
+
 [analysis]
 [analysis.mass]
 color = "my_colorpath"
 export = ["mass", "extensive_mass", "rescaled_concentration_aq"]
 """.strip(),
     )
+    color_registry = _load_color_registry(config_path, tmp_path)
 
     config = AnalysisConfig().load(
         path=config_path,
         data=tmp_path,
         results=tmp_path,
+        color_embedding_registry=color_registry,
     )
 
     assert config.mass is not None
@@ -379,12 +406,19 @@ def test_analysis_mass_export_rejects_unsupported_modes(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
+[color.channel.my_colorpath]
+mode = "absolute"
+basis = "global"
+color_space = "RGB"
+channel = "r"
+
 [analysis]
 [analysis.mass]
 color = "my_colorpath"
 export = ["mass", "not_supported"]
 """.strip(),
     )
+    color_registry = _load_color_registry(config_path, tmp_path)
 
     with pytest.raises(
         ValueError, match=r"Unsupported \[analysis\.mass\]\.export entries"
@@ -393,6 +427,7 @@ export = ["mass", "not_supported"]
             path=config_path,
             data=tmp_path,
             results=tmp_path,
+            color_embedding_registry=color_registry,
         )
 
 

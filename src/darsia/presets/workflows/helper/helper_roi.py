@@ -49,15 +49,13 @@ def _build_color_to_mass_analysis(
     fluidflower: Rig,
 ) -> HeterogeneousColorToMassAnalysis:
     assert config.analysis is not None and config.analysis.mass is not None
-    assert config.color is not None
-    embedding = config.color.resolve(config.analysis.mass.color)
+    embedding = config.analysis.mass.color
+    assert embedding is not None
     if not isinstance(embedding, ColorPathEmbedding):
         raise NotImplementedError(
             "ROI helper currently supports only color path embeddings for mass modes."
         )
-    _, analysis_labels = select_labels_for_basis(
-        fluidflower, embedding.calibration_basis()
-    )
+    _, analysis_labels = select_labels_for_basis(fluidflower, embedding.basis)
 
     experiment_start = experiment.experiment_start
     state = experiment.pressure_temperature_protocol.get_state(experiment_start)
@@ -76,7 +74,7 @@ def _build_color_to_mass_analysis(
         co2_mass_analysis=co2_mass_analysis,
         geometry=fluidflower.geometry,
         restoration=None,
-        basis=embedding.calibration_basis(),
+        basis=embedding.basis,
     )
 
 

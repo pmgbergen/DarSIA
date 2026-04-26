@@ -49,6 +49,11 @@ colored_image = "./data/segmented_baseline.png"
 labels = "./data/labels.npz"
 water_label = 0
 
+[roi.main_roi]
+name = "main_roi"
+corner_1 = [0.0, 0.0]
+corner_2 = [2.745, 1.5]
+
 [curvature.init]
 horizontal_bulge = 1e-9
 vertical_bulge = 0.0
@@ -69,7 +74,8 @@ vertical_center_offset = 405
 
 [color.path.my_colorpath]
 mode = "relative" # or "absolute"
-basis = "labels"  # or "facies"; "single" is not implemented for color path
+basis = "labels"  # or "facies"; "global" is not implemented for color path
+num_segments = 1
 ignore_labels = [0, 1]
 resolution = 51
 threshold_baseline = 0.0
@@ -77,6 +83,10 @@ threshold_calibration = 1e-3
 baseline = "baseline_imgs"
 data = "calibration_imgs"
 reference_label = 3
+rois = ["main_roi"]
+ignore_baseline_spectrum = "expanded" # none | baseline | expanded
+histogram_weighting = "threshold"
+calibration_mode = "auto" # auto | manual
 
 [color_signal]
 num_clusters = 2
@@ -90,13 +100,13 @@ calibration_file = "./data/mass_calibration.json"
 
 [color.channel.red_channel]
 mode = "absolute"
-basis = "single" # labels/facies currently not implemented for channel embedding
+basis = "global" # labels/facies currently not implemented for channel embedding
 color_space = "RGB"
 channel = "r"
 
 [color.range.custom_range]
 mode = "absolute"
-basis = "single" # labels/facies currently not implemented for range embedding
+basis = "global" # labels/facies currently not implemented for range embedding
 color_space = "HSV"
 range = [[0.2, 0.4], [0.5, "none"], [0.8, "none"]]
 
@@ -105,6 +115,7 @@ color = "my_colorpath"
 
 [calibration.mass]
 color = "my_colorpath"
+mode = "manual" # manual | auto
 threshold = 0.2
 data = "calibration_imgs"
 

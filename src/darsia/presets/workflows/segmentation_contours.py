@@ -1,15 +1,24 @@
 """Util for contour plots."""
 
+from __future__ import annotations
+
 import logging
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
 
 import darsia
+from darsia.presets.workflows.color_embedding import ColorEmbeddingRuntime
 from darsia.presets.workflows.config.fluidflower_config import SegmentationConfig
 from darsia.presets.workflows.mode_resolution import resolve_mode_image
 from darsia.utils.augmented_plotting import plot_contour_on_image
+
+if TYPE_CHECKING:
+    from darsia.presets.workflows.config.color_embedding_registry import (
+        ColorEmbeddingRegistry,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +75,8 @@ class SimpleSegmentation:
         concentration_aq: darsia.Image | None,
         mass: darsia.Image | None,
         mass_analysis_result=None,
-        color_embedding_registry=None,
-        color_embedding_runtime=None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
+        color_embedding_runtime: ColorEmbeddingRuntime | None = None,
         rescaled_saturation_g: darsia.Image | None = None,
         rescaled_concentration_aq: darsia.Image | None = None,
         rescaled_mass: darsia.Image | None = None,
@@ -334,8 +343,8 @@ class SegmentationContours:
         rescaled_mass: darsia.Image | None = None,
         scalar_products: dict[str, darsia.Image | None] | None = None,
         mass_analysis_result=None,
-        color_embedding_registry=None,
-        color_embedding_runtime=None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
+        color_embedding_runtime: ColorEmbeddingRuntime | None = None,
     ) -> darsia.Image:
         products = scalar_products or {
             "saturation_g": saturation_g,

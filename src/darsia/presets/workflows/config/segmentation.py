@@ -1,11 +1,17 @@
 """Configuration for segmentation."""
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from darsia.presets.workflows.mode_resolution import validate_mode_syntax
 
 from .utils import _get_key
+
+if TYPE_CHECKING:
+    from .color_embedding_registry import ColorEmbeddingRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +88,9 @@ class SegmentationConfig:
     )
     """Contour value labels configuration."""
 
-    def load(self, sec: dict, color_embedding_registry=None) -> "SegmentationConfig":
+    def load(
+        self, sec: dict, color_embedding_registry: ColorEmbeddingRegistry | None = None
+    ) -> "SegmentationConfig":
         self.label = _get_key(sec, "label", required=True, type_=str)
         self.mode = _get_key(sec, "mode", required=True, type_=str)
         if not validate_mode_syntax(

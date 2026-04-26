@@ -235,14 +235,14 @@ def prepare_analysis_context(
     fluidflower.load_experiment(experiment)
     color_embedding_runtime = ColorEmbeddingRuntime(rig=fluidflower)
     if require_color_to_mass:
-        assert config.color is not None
         assert config.analysis is not None and config.analysis.mass is not None
-        embedding = config.color.resolve(config.analysis.mass.color)
-        if embedding.basis == ColorEmbeddingBasis.SINGLE:
-            raise NotImplementedError(
-                "Mass analysis does not support color embeddings with basis='single'."
+        embedding = config.analysis.mass.color
+        assert embedding is not None
+        if embedding.basis == ColorEmbeddingBasis.GLOBAL:
+            analysis_labels = darsia.zeros_like(
+                fluidflower.baseline, mode="voxels", dtype=int
             )
-        if embedding.basis == ColorEmbeddingBasis.FACIES:
+        elif embedding.basis == ColorEmbeddingBasis.FACIES:
             if not hasattr(fluidflower, "facies"):
                 raise ValueError(
                     "Mass analysis requests facies basis but rig has no facies image."
@@ -276,10 +276,10 @@ def prepare_analysis_context(
 
     if require_color_to_mass:
         # ! ---- FROM COLOR PATH TO MASS ----
-        assert config.color is not None
         assert config.analysis is not None
         assert config.analysis.mass is not None
-        embedding = config.color.resolve(config.analysis.mass.color)
+        embedding = config.analysis.mass.color
+        assert embedding is not None
         if not isinstance(embedding, ColorPathEmbedding):
             raise NotImplementedError(
                 "Mass analysis currently only supports color-path embeddings."
@@ -305,7 +305,7 @@ def prepare_analysis_context(
             co2_mass_analysis=co2_mass_analysis,
             geometry=fluidflower.geometry,
             restoration=restoration,
-            basis=embedding.calibration_basis(),
+            basis=embedding.basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
         )
 

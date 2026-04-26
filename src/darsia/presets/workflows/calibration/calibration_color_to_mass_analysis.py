@@ -98,7 +98,8 @@ def calibration_color_to_mass_analysis(
     assert config.calibration.mass is not None
     assert config.rig is not None
     mass_cfg = config.calibration.mass
-    embedding = config.color.resolve(mass_cfg.color)
+    embedding = mass_cfg.color
+    assert embedding is not None
     if not isinstance(embedding, ColorPathEmbedding):
         raise NotImplementedError(
             "calibration.mass currently supports only color path embeddings."
@@ -114,13 +115,13 @@ def calibration_color_to_mass_analysis(
     # ! ---- LOAD COLOR PATHS ----
 
     selected_basis, selected_labels = select_labels_for_basis(
-        fluidflower, embedding.calibration_basis()
+        fluidflower, embedding.basis
     )
     current_label_ids = label_ids_from_image(selected_labels)
 
-    color_paths_calibration_file = embedding.color_paths_folder
+    calibration_folder = embedding.color_paths_folder
     color_paths_metadata = read_calibration_metadata(
-        color_paths_calibration_file / "metadata.json"
+        calibration_folder / "metadata.json"
     )
     validate_basis_metadata(
         metadata=color_paths_metadata,
@@ -129,7 +130,7 @@ def calibration_color_to_mass_analysis(
         artifact="color_paths",
     )
 
-    color_paths = darsia.LabelColorPathMap.load(color_paths_calibration_file)
+    color_paths = darsia.LabelColorPathMap.load(calibration_folder)
 
     # Pick a reference color path - merely for visualization
     reference_label = embedding.reference_label
@@ -285,7 +286,7 @@ def calibration_color_to_mass_analysis(
             ref_path, require_data=False, require_results=False
         )
         assert ref_config.color is not None
-        ref_embedding = ref_config.color.resolve(mass_cfg.color)
+        ref_embedding = ref_config.color.resolve(embedding.embedding_id)
         if not isinstance(ref_embedding, ColorPathEmbedding):
             raise NotImplementedError(
                 "Reference mass calibration currently supports only color path embeddings."

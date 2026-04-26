@@ -1,6 +1,7 @@
 import logging
 import shutil
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -49,12 +50,13 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
     fluidflower = cls.load(config.rig.path)
     fluidflower.load_experiment(experiment)
 
-    embedding = config.color.resolve(config.calibration.color.color)
+    embedding = config.calibration.color.color
+    assert embedding is not None
     if not isinstance(embedding, ColorPathEmbedding):
         raise NotImplementedError(
             "calibration.color currently supports only color path embeddings."
         )
-    requested_basis = embedding.calibration_basis()
+    requested_basis = embedding.basis
     selected_basis, selected_labels = select_labels_for_basis(
         fluidflower, requested_basis
     )
@@ -69,9 +71,16 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
     )
 
     # Cache baseline images for performance
+    baseline_sub_config = SimpleNamespace(data=embedding.baseline_data)
+    baseline_image_paths = select_image_paths(
+        config,
+        experiment,
+        all=False,
+        sub_config=baseline_sub_config,
+    )
     baseline_images: list[darsia.Image] = load_images_with_cache(
         rig=fluidflower,
-        paths=embedding.baseline_image_paths,
+        paths=baseline_image_paths,
         use_cache=config.data.use_cache,
         cache_dir=config.data.cache,
     )

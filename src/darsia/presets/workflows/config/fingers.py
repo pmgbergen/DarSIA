@@ -12,6 +12,7 @@ from .roi import RoiConfig
 from .utils import _get_key, _get_section
 
 if TYPE_CHECKING:
+    from .color_embedding_registry import ColorEmbeddingRegistry
     from .roi_registry import RoiRegistry
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ class FingersConfig:
         self,
         sec: dict,
         roi_registry: RoiRegistry | None = None,
-        color_embedding_registry=None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "FingersConfig":
         self.mode = _get_key(sec, "mode", required=True, type_=str)
         if not validate_mode_syntax(

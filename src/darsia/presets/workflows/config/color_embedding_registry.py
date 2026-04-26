@@ -17,7 +17,7 @@ from darsia.presets.workflows.color_embedding import (
 )
 
 from .data_registry import DataRegistry
-from .data_selection import resolve_path_selector, resolve_time_data_selector
+from .time_data import TimeData
 from .utils import _convert_none, _get_section_from_toml
 
 if TYPE_CHECKING:
@@ -32,6 +32,35 @@ def _parse_mode(value: str, *, context: str) -> darsia.ColorMode:
             f"Invalid {context}.mode '{value}'. Supported values are 'relative' and "
             "'absolute'."
         ) from exc
+
+
+def _resolve_selector(
+    cfg: dict,
+    key: str,
+    *,
+    section: str,
+    data_registry: DataRegistry | None,
+    required: bool = True,
+) -> TimeData | None:
+    if key not in cfg:
+        if required:
+            raise KeyError(f"{section}.{key}")
+        return None
+    selector = cfg[key]
+    if isinstance(selector, list) and not all(
+        isinstance(token, str) for token in selector
+    ):
+        raise ValueError(f"{section}.{key} selector lists must contain only strings.")
+    if not isinstance(selector, (str, list)):
+        raise ValueError(
+            f"{section}.{key} must reference [data.*] selector key(s) as string/list."
+        )
+    if data_registry is None:
+        raise ValueError(
+            f"{section}.{key} references [data.*] selector key(s), but no "
+            "DataRegistry is available."
+        )
+    return data_registry.resolve(selector)
 
 
 @dataclass
@@ -70,9 +99,9 @@ class ColorEmbeddingRegistry:
                     cfg.get("mode", "relative"), context=f"color.path.{embedding_id}"
                 )
                 basis = parse_color_embedding_basis(cfg.get("basis", "labels"))
-                if basis == ColorEmbeddingBasis.SINGLE:
+                if basis == ColorEmbeddingBasis.GLOBAL:
                     raise NotImplementedError(
-                        "color.path.<id> with basis='single' is not implemented."
+                        "color.path.<id> with basis='global' is not implemented."
                     )
                 calibration_root = (
                     Path(cfg["calibration_folder"])
@@ -103,20 +132,17 @@ class ColorEmbeddingRegistry:
                         cfg.get("mode_calibration", cfg.get("calibration_mode", "auto"))
                     ),
                 )
-                embedding.baseline_image_paths = resolve_path_selector(
+                embedding.baseline_data = _resolve_selector(
                     cfg,
                     "baseline",
                     section=f"color.path.{embedding_id}",
-                    data=data,
                     data_registry=data_registry,
                 )
-                embedding.data = resolve_time_data_selector(
+                embedding.data = _resolve_selector(
                     cfg,
                     "data",
                     section=f"color.path.{embedding_id}",
-                    data=data,
                     data_registry=data_registry,
-                    required=True,
                 )
                 if (
                     "roi" in cfg
@@ -148,10 +174,10 @@ class ColorEmbeddingRegistry:
                 mode = _parse_mode(
                     cfg.get("mode", "absolute"), context=f"color.range.{embedding_id}"
                 )
-                basis = parse_color_embedding_basis(cfg.get("basis", "single"))
-                if basis != ColorEmbeddingBasis.SINGLE:
+                basis = parse_color_embedding_basis(cfg.get("basis", "global"))
+                if basis != ColorEmbeddingBasis.GLOBAL:
                     raise NotImplementedError(
-                        "color.range.<id> currently only supports basis='single'."
+                        "color.range.<id> currently only supports basis='global'."
                     )
                 raw_range = cfg.get("range")
                 if not isinstance(raw_range, list) or len(raw_range) != 3:
@@ -180,12 +206,16 @@ class ColorEmbeddingRegistry:
                         color_root / embedding_id if color_root is not None else Path()
                     )
                 )
+                if "color_space" not in cfg:
+                    raise ValueError(
+                        f"color.range.{embedding_id}.color_space is required."
+                    )
                 self.embeddings[embedding_id] = ColorRangeEmbedding(
                     embedding_id=embedding_id,
                     mode=mode,
                     basis=basis,
                     calibration_root=calibration_root,
-                    color_space=str(cfg.get("color_space", "RGB")).upper().strip(),
+                    color_space=str(cfg["color_space"]).upper().strip(),
                     ranges=ranges,
                 )
 
@@ -201,10 +231,10 @@ class ColorEmbeddingRegistry:
                 mode = _parse_mode(
                     cfg.get("mode", "absolute"), context=f"color.channel.{embedding_id}"
                 )
-                basis = parse_color_embedding_basis(cfg.get("basis", "single"))
-                if basis != ColorEmbeddingBasis.SINGLE:
+                basis = parse_color_embedding_basis(cfg.get("basis", "global"))
+                if basis != ColorEmbeddingBasis.GLOBAL:
                     raise NotImplementedError(
-                        "color.channel.<id> currently only supports basis='single'."
+                        "color.channel.<id> currently only supports basis='global'."
                     )
                 calibration_root = (
                     Path(cfg["calibration_folder"])
@@ -213,13 +243,21 @@ class ColorEmbeddingRegistry:
                         color_root / embedding_id if color_root is not None else Path()
                     )
                 )
+                if "color_space" not in cfg:
+                    raise ValueError(
+                        f"color.channel.{embedding_id}.color_space is required."
+                    )
+                if "channel" not in cfg:
+                    raise ValueError(
+                        f"color.channel.{embedding_id}.channel is required."
+                    )
                 self.embeddings[embedding_id] = ColorChannelEmbedding(
                     embedding_id=embedding_id,
                     mode=mode,
                     basis=basis,
                     calibration_root=calibration_root,
-                    color_space=str(cfg.get("color_space", "RGB")).upper().strip(),
-                    channel=str(cfg.get("channel", "r")).lower().strip(),
+                    color_space=str(cfg["color_space"]).upper().strip(),
+                    channel=str(cfg["channel"]).lower().strip(),
                 )
         return self
 
