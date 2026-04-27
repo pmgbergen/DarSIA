@@ -36,13 +36,11 @@ class FingersConfig:
         color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "FingersConfig":
         self.mode = _get_key(sec, "mode", required=True, type_=str)
-        if not validate_mode_syntax(
-            self.mode, color_embedding_registry=color_embedding_registry
-        ):
-            raise ValueError(
-                f"Unsupported analysis.fingers.mode '{self.mode}'. Supported modes "
-                "are legacy mass modes, rescaled modes, and 'color.<id>'."
-            )
+        validate_mode_syntax(
+            self.mode,
+            color_embedding_registry,
+            "analysis.fingers.mode",
+        )
         self.threshold = _get_key(sec, "threshold", required=True, type_=float)
 
         # Load ROIs – support both registry-key references and inline definitions.

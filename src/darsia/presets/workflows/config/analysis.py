@@ -121,14 +121,11 @@ class AnalysisThresholdingConfig:
             color_embedding_registry: ColorEmbeddingRegistry | None = None,
         ) -> "AnalysisThresholdingConfig.LayerConfig":
             self.mode = _get_key(sec, "mode", required=True, type_=str).strip()
-            if not validate_mode_syntax(
-                self.mode, color_embedding_registry=color_embedding_registry
-            ):
-                raise ValueError(
-                    f"Unsupported analysis.thresholding.layers.{key}.mode '{self.mode}'. "
-                    "Supported modes are legacy mass modes, rescaled modes, "
-                    "and 'color.<id>' (defined under [color.*.*])."
-                )
+            validate_mode_syntax(
+                self.mode,
+                color_embedding_registry,
+                "analysis.thresholding.layers.{key}.mode",
+            )
             self.threshold_min = _get_key(sec, "threshold_min", required=False)
             self.threshold_max = _get_key(sec, "threshold_max", required=False)
             if self.threshold_min is not None:
