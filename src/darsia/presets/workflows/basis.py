@@ -50,19 +50,3 @@ def label_ids_from_image(labels_img) -> list[int]:
 
     return sorted([int(label) for label in np.unique(labels_img.img) if label >= 0])
 
-
-def select_labels_for_basis(
-    rig: Rig, basis: str | CalibrationBasis
-) -> tuple[CalibrationBasis, object]:
-    """Return selected basis and corresponding labels image without mutating the rig."""
-
-    parsed = parse_calibration_basis(basis)
-    if parsed == CalibrationBasis.FACIES:
-        if not hasattr(rig, "facies"):
-            warn(
-                "Calibration basis is 'facies' but rig has no 'facies' attribute. "
-                "Using labels instead."
-            )
-            return CalibrationBasis.LABELS, rig.labels
-        return parsed, rig.facies
-    return parsed, rig.labels

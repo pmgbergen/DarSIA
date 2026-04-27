@@ -5,7 +5,7 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
-from darsia.presets.workflows.basis import label_ids_from_image, select_labels_for_basis
+from darsia.presets.workflows.basis import label_ids_from_image
 from darsia.presets.workflows.calibration.metadata import (
     read_calibration_metadata,
     validate_basis_metadata,
@@ -114,9 +114,8 @@ def calibration_color_to_mass_analysis(
 
     # ! ---- LOAD COLOR PATHS ----
 
-    selected_basis, selected_labels = select_labels_for_basis(
-        fluidflower, embedding.basis
-    )
+    selected_basis = embedding.basis
+    selected_labels = embedding.get_labels(fluidflower)
     current_label_ids = label_ids_from_image(selected_labels)
 
     calibration_folder = embedding.color_paths_folder

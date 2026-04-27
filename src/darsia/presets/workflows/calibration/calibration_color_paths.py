@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
-from darsia.presets.workflows.basis import label_ids_from_image, select_labels_for_basis
+from darsia.presets.workflows.basis import label_ids_from_image
 from darsia.presets.workflows.calibration.metadata import write_calibration_metadata
 from darsia.presets.workflows.color_embedding import ColorPathEmbedding
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
@@ -56,10 +56,8 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
         raise NotImplementedError(
             "calibration.color currently supports only color path embeddings."
         )
-    requested_basis = embedding.basis
-    selected_basis, selected_labels = select_labels_for_basis(
-        fluidflower, requested_basis
-    )
+    selected_basis = embedding.basis
+    selected_labels = embedding.get_labels(fluidflower)
 
     # ! ---- LOAD IMAGES ----
 
