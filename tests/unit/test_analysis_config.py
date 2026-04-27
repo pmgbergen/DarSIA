@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -159,6 +160,16 @@ def test_analysis_thresholding_accepts_extended_modes(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
+[color.channel.red_channel]
+mode = "absolute"
+color_space = "RGB"
+channel = "r"
+
+[color.range.green_band]
+mode = "relative"
+color_space = "RGB"
+range = [[0.0, 1.0], [0.2, 0.8], [0.0, 1.0]]
+
 [analysis]
 
 [analysis.thresholding]
@@ -172,43 +183,59 @@ threshold_min = 0.1
 mode = "rescaled_concentration_aq"
 threshold_min = 0.1
 [analysis.thresholding.layers.red]
-mode = "color.red_channel"
+mode = "red_channel"
 threshold_min = 0.2
 [analysis.thresholding.layers.green_band]
-mode = "color.green_band"
+mode = "green_band"
 threshold_min = 0.5
 """.strip(),
+    )
+
+    registry = ColorEmbeddingRegistry().load(
+        path=config_path,
+        data=tmp_path,
+        results=tmp_path,
     )
 
     config = AnalysisConfig().load(
         path=config_path,
         data=tmp_path,
         results=tmp_path,
+        color_embedding_registry=registry,
     )
 
     assert config.thresholding is not None
     assert config.thresholding.layers["mass_rescaled"].mode == "rescaled_mass"
     assert config.thresholding.layers["gas_rescaled"].mode == "rescaled_saturation_g"
     assert config.thresholding.layers["aq_rescaled"].mode == "rescaled_concentration_aq"
-    assert config.thresholding.layers["red"].mode == "color.red_channel"
-    assert config.thresholding.layers["green_band"].mode == "color.green_band"
+    assert config.thresholding.layers["red"].mode == "red_channel"
+    assert config.thresholding.layers["green_band"].mode == "green_band"
 
 
 def test_analysis_thresholding_rejects_invalid_color_mode_token(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
+[color.channel.red_channel]
+mode = "absolute"
+color_space = "RGB"
+channel = "r"
+
 [analysis]
 [analysis.thresholding]
 [analysis.thresholding.layers.bad]
-mode = "color.rgb.r"
+mode = "red_channel"
 threshold_min = 0.1
 """.strip(),
     )
 
     with pytest.raises(
         ValueError,
-        match=r"Unsupported analysis\.thresholding\.layers\.bad\.mode 'color\.rgb\.r'",
+        match=re.escape(
+            "Unsupported analysis.thresholding.layers.{key}.mode 'red_channel'. "
+            "Supported modes are legacy mass modes, rescaled modes, and 'color.<id>' "
+            "(defined under [color.*.*])."
+        ),
     ):
         AnalysisConfig().load(
             path=config_path,

@@ -21,7 +21,9 @@ from darsia.presets.workflows.segmentation_contours import SimpleSegmentation
 
 
 def _optical_image(arr: np.ndarray) -> darsia.OpticalImage:
-    return darsia.OpticalImage(img=arr, space_dim=2, indexing="ij", color_space="RGB")
+    return darsia.OpticalImage(
+        img=arr, space_dim=2, indexing="ij", color_space="RGB", dtype=int
+    )
 
 
 def _runtime(baseline: darsia.OpticalImage):
@@ -36,13 +38,16 @@ def _runtime(baseline: darsia.OpticalImage):
 
 
 def test_resolve_color_channel_by_registry_key() -> None:
-    arr = np.array(
-        [
-            [[0, 0, 0], [255, 0, 0]],
-            [[127, 10, 10], [64, 0, 0]],
-        ],
-        dtype=np.uint8,
-    )
+    arr = (
+        np.array(
+            [
+                [[0, 0, 0], [255, 0, 0]],
+                [[127, 10, 10], [64, 0, 0]],
+            ],
+            dtype=np.uint8,
+        )
+        / 255.0
+    )  # Apply scaling to [0,1] range for RGB mode
     img = _optical_image(arr)
     registry = ColorEmbeddingRegistry(
         embeddings={
@@ -57,7 +62,7 @@ def test_resolve_color_channel_by_registry_key() -> None:
         }
     )
     signal = resolve_mode_image(
-        "color.red_channel",
+        "red_channel",
         img,
         color_embedding_registry=registry,
         color_embedding_runtime=_runtime(img),
@@ -91,7 +96,7 @@ def test_resolve_color_range_hsv_binary_mask() -> None:
         }
     )
     mask = resolve_mode_image(
-        "color.custom_range",
+        "custom_range",
         img,
         color_embedding_registry=registry,
         color_embedding_runtime=_runtime(img),
@@ -117,7 +122,7 @@ def test_simple_segmentation_supports_color_mode_without_mass_inputs() -> None:
             )
         }
     )
-    segmentation = SimpleSegmentation(mode="color.red_channel", threshold=0.5)
+    segmentation = SimpleSegmentation(mode="red_channel", threshold=0.5)
     mask = segmentation(
         img,
         saturation_g=None,
