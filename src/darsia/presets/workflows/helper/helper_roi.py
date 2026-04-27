@@ -15,7 +15,8 @@ from matplotlib.widgets import Button, RectangleSelector
 
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import (
-    select_image_paths, _build_color_to_mass_analysis,
+    select_image_paths,
+    _build_color_to_mass_analysis,
 )
 from darsia.presets.workflows.analysis.scalar_products import (
     analysis_scalar_products,
