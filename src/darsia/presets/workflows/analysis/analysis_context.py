@@ -323,7 +323,7 @@ def prepare_analysis_context(
         config=config,
         experiment=experiment,
         fluidflower=fluidflower,
-        analysis_labels=analysis_labels,  # TODO: remove, not used much, only mass/volume analysis.
+        analysis_labels=analysis_labels,  # TODO: remove, not used much
         image_paths=image_paths,
         restoration=restoration,
         color_to_mass_analysis=color_to_mass_analysis,

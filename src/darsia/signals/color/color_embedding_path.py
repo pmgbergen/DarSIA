@@ -6,10 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import darsia
-from darsia.presets.workflows.basis import (
-    CalibrationBasis,
-    calibration_basis_folder
-)
+from darsia.presets.workflows.basis import CalibrationBasis, calibration_basis_folder
 from darsia.signals.color.color_embedding import (
     ColorEmbedding,
     ColorEmbeddingRuntime,

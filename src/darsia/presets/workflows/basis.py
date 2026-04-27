@@ -4,12 +4,8 @@ from __future__ import annotations
 
 from enum import StrEnum
 from typing import TYPE_CHECKING
-from warnings import warn
 
 import numpy as np
-
-if TYPE_CHECKING:
-    from darsia.presets.workflows.rig import Rig
 
 
 class CalibrationBasis(StrEnum):
