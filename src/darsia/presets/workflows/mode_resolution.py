@@ -60,13 +60,7 @@ def validate_mode_syntax(
 
 
 def mode_requires_color_to_mass(mode: str) -> bool:
-    mode = mode.strip()
-    if mode in LEGACY_COLOR_TO_MASS_MODES or mode in SCALAR_PRODUCT_MODES:
-        return True
-    if parse_color_mode(mode) is not None:
-        return False
-    # Keep conservative default for unknown modes.
-    return True
+    return mode.strip() in LEGACY_COLOR_TO_MASS_MODES or mode in SCALAR_PRODUCT_MODES
 
 
 def _resolve_legacy_mode(mode: str, mass_analysis_result: Any) -> darsia.Image:
