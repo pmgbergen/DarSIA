@@ -59,7 +59,25 @@ class ColorEmbedding(ABC):
         if self.embedding_id not in runtime.cache:
             runtime.cache[self.embedding_id] = self.canonical_transform(runtime)
         return runtime.cache[self.embedding_id](image)
-
+    
+    def get_labels(self, runtime: ColorEmbeddingRuntime | "Rig") -> darsia.Image:
+        if self.basis == ColorEmbeddingBasis.GLOBAL:
+            if isinstance(runtime, ColorEmbeddingRuntime):
+                return darsia.zeroes_like(runtime.rig.baseline, dtype=int)
+            else:
+                return darsia.zeroes_like(runtime.baseline, dtype=int)
+        elif self.basis == ColorEmbeddingBasis.FACIES:
+            if isinstance(runtime, ColorEmbeddingRuntime):
+                return runtime.rig.facies
+            else:
+                return runtime.facies
+        elif self.basis == ColorEmbeddingBasis.LABELS:
+            if isinstance(runtime, ColorEmbeddingRuntime):
+                return runtime.rig.labels
+            else:
+                return runtime.labels
+        else:
+            raise ValueError(f"Unsupported color embedding basis '{self.basis}'.")
 
 def to_scalar_image(template: darsia.Image, values: np.ndarray) -> darsia.ScalarImage:
     metadata = template.metadata()

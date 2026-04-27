@@ -8,10 +8,9 @@ from pathlib import Path
 import darsia
 from darsia.presets.workflows.basis import (
     CalibrationBasis,
-    calibration_basis_folder,
-    select_labels_for_basis,
+    calibration_basis_folder
 )
-from darsia.signals.colors.color_embedding import (
+from darsia.signals.color.color_embedding import (
     ColorEmbedding,
     ColorEmbeddingRuntime,
     ColorEmbeddingTransform,
@@ -74,7 +73,7 @@ class ColorPathEmbedding(ColorEmbedding):
     def canonical_transform(
         self, runtime: ColorEmbeddingRuntime
     ) -> ColorEmbeddingTransform:
-        _, labels = select_labels_for_basis(runtime.rig, self.basis)
+        labels = self.get_labels(runtime)
         color_paths = darsia.LabelColorPathMap.load(self.color_paths_folder)
         interpolation = {
             label: darsia.ColorPathInterpolation(

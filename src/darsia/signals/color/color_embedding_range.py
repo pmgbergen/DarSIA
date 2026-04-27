@@ -9,7 +9,7 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.basis import CalibrationBasis
-from darsia.signals.colors.color_embedding import (
+from darsia.signals.color.color_embedding import (
     ColorEmbedding,
     ColorEmbeddingRuntime,
     ColorEmbeddingTransform,
