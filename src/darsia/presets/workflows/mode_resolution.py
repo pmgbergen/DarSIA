@@ -81,7 +81,7 @@ def _resolve_legacy_mode(mode: str, mass_analysis_result: Any) -> darsia.Image:
 
 
 def _resolve_color_mode(
-    mode: str,
+    embedding_id: str,
     image: darsia.Image,
     color_embedding_registry: ColorEmbeddingRegistry | None,
     color_embedding_runtime: ColorEmbeddingRuntime | None,
@@ -95,7 +95,7 @@ def _resolve_color_mode(
         raise ValueError(
             "Color mode resolution requires runtime context with rig/baseline."
         )
-    embedding = color_embedding_registry.resolve_mode(mode)
+    embedding = color_embedding_registry.resolve(embedding_id)
     return embedding.to_scalar_image(image, color_embedding_runtime)
 
 
@@ -108,13 +108,16 @@ def resolve_mode_image(
     scalar_products: dict[str, darsia.Image | None] | None = None,
 ) -> darsia.Image:
     mode = mode.strip()
+    # Rescaled mode.
     if scalar_products is not None and mode in scalar_products:
         value = scalar_products[mode]
         if value is not None:
             return value
+    # Mass, concentration, saturation modes.
     if mode in LEGACY_COLOR_TO_MASS_MODES:
         return _resolve_legacy_mode(mode, mass_analysis_result)
-    if parse_color_mode(mode) is not None:
+    # Color embeddings.
+    if color_embedding_registry is not None and mode in color_embedding_registry.embeddings:
         return _resolve_color_mode(
             mode,
             image,
