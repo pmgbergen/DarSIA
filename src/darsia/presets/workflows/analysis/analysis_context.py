@@ -11,7 +11,6 @@ from warnings import warn
 import darsia
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.color_embedding import (
-    ColorEmbeddingBasis,
     ColorEmbeddingRuntime,
     ColorPathEmbedding,
 )
@@ -192,6 +191,52 @@ def select_image_paths(
     return image_paths
 
 
+def _build_color_to_mass_analysis(
+    config: FluidFlowerConfig,
+    experiment: darsia.ProtocolledExperiment,
+    rig: Rig,
+    restoration: darsia.VolumeAveraging | darsia.TVD | None,
+    expert_knowledge_adapter: ExpertKnowledgeAdapter | None,
+) -> HeterogeneousColorToMassAnalysis:
+    # ! ---- COLOR EMBEDDING ----
+    assert config.color is not None
+    assert config.analysis is not None
+    assert config.analysis.mass is not None
+    embedding = config.color.resolve(config.analysis.mass.color)
+    if not isinstance(embedding, ColorPathEmbedding):
+        raise NotImplementedError(
+            "Mass analysis currently only supports color-path embeddings."
+        )
+
+    # ! ---- ANALYSIS LABELS ----
+    analysis_labels = embedding.get_labels(rig)
+
+    # ! ---- CO2 MASS ANALYSIS ----
+    experiment_start = experiment.experiment_start
+    state = experiment.pressure_temperature_protocol.get_state(experiment_start)
+    gradient = experiment.pressure_temperature_protocol.get_gradient(experiment_start)
+    co2_mass_analysis = darsia.CO2MassAnalysis(
+        baseline=rig.baseline,
+        atmospheric_pressure=state.pressure,
+        atmospheric_temperature=state.temperature,
+        atmospheric_pressure_gradient=gradient.pressure,
+        atmospheric_temperature_gradient=gradient.temperature,
+    )
+
+    # ! ---- COLOR TO MASS ANALYSIS ----
+    color_to_mass_analysis = HeterogeneousColorToMassAnalysis.load(
+        folder=embedding.color_to_mass_folder,
+        baseline=rig.baseline,
+        labels=analysis_labels,
+        co2_mass_analysis=co2_mass_analysis,
+        geometry=rig.geometry,
+        restoration=restoration,
+        basis=embedding.basis,
+        expert_knowledge_adapter=expert_knowledge_adapter,
+    )
+    return color_to_mass_analysis
+
+
 def prepare_analysis_context(
     cls: type[Rig],
     path: Path | list[Path],
@@ -233,25 +278,6 @@ def prepare_analysis_context(
     # ! ---- LOAD RIG ----
     fluidflower = cls.load(config.rig.path, config.corrections)
     fluidflower.load_experiment(experiment)
-    color_embedding_runtime = ColorEmbeddingRuntime(rig=fluidflower)
-    if require_color_to_mass:
-        assert config.analysis is not None and config.analysis.mass is not None
-        embedding = config.analysis.mass.color
-        assert embedding is not None
-        if embedding.basis == ColorEmbeddingBasis.GLOBAL:
-            analysis_labels = darsia.zeros_like(
-                fluidflower.baseline, mode="voxels", dtype=int
-            )
-        elif embedding.basis == ColorEmbeddingBasis.FACIES:
-            if not hasattr(fluidflower, "facies"):
-                raise ValueError(
-                    "Mass analysis requests facies basis but rig has no facies image."
-                )
-            analysis_labels = fluidflower.facies
-        else:
-            analysis_labels = fluidflower.labels
-    else:
-        analysis_labels = fluidflower.labels
 
     # ! ---- SELECT IMAGE PATHS ----
     image_paths = select_image_paths(
@@ -263,10 +289,9 @@ def prepare_analysis_context(
     )
 
     # ! ---- RESTORATION ----
-    # Always build restoration so it is available to all analysis workflows.
     restoration = build_restoration(config.restoration, fluidflower)
 
-    color_to_mass_analysis = None
+    # ! ---- EXPERT KNOWLEDGE ADAPTER (for all analyses) ----
     expert_knowledge_adapter = ExpertKnowledgeAdapter.from_config(
         config=(
             config.analysis.expert_knowledge if config.analysis is not None else None
@@ -274,46 +299,31 @@ def prepare_analysis_context(
         roi_registry=config.roi_registry,
     )
 
+    # ! ---- COLOR EMBEDDING RUNTIME CONTEXT (for all analyses) ----
+    color_embedding_runtime = ColorEmbeddingRuntime(rig=fluidflower)
+
+    # ! ---- COLOR-TO-MASS ANALYSIS (only if required) ----
     if require_color_to_mass:
-        # ! ---- FROM COLOR PATH TO MASS ----
-        assert config.analysis is not None
-        assert config.analysis.mass is not None
-        embedding = config.analysis.mass.color
-        assert embedding is not None
-        if not isinstance(embedding, ColorPathEmbedding):
-            raise NotImplementedError(
-                "Mass analysis currently only supports color-path embeddings."
-            )
-
-        experiment_start = experiment.experiment_start
-        state = experiment.pressure_temperature_protocol.get_state(experiment_start)
-        gradient = experiment.pressure_temperature_protocol.get_gradient(
-            experiment_start
-        )
-        co2_mass_analysis = darsia.CO2MassAnalysis(
-            baseline=fluidflower.baseline,
-            atmospheric_pressure=state.pressure,
-            atmospheric_temperature=state.temperature,
-            atmospheric_pressure_gradient=gradient.pressure,
-            atmospheric_temperature_gradient=gradient.temperature,
-        )
-
-        color_to_mass_analysis = HeterogeneousColorToMassAnalysis.load(
-            folder=embedding.color_to_mass_folder,
-            baseline=fluidflower.baseline,
-            labels=analysis_labels,
-            co2_mass_analysis=co2_mass_analysis,
-            geometry=fluidflower.geometry,
+        color_to_mass_analysis = _build_color_to_mass_analysis(
+            config=config,
+            experiment=experiment,
+            rig=fluidflower,
             restoration=restoration,
-            basis=embedding.basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
         )
+
+        # TODO: refactor and remove analysis_labels.
+        embedding = config.color.resolve(config.analysis.mass.color)
+        analysis_labels = embedding.get_labels(fluidflower)
+    else:
+        color_to_mass_analysis = None
+        analysis_labels = None
 
     return AnalysisContext(
         config=config,
         experiment=experiment,
         fluidflower=fluidflower,
-        analysis_labels=analysis_labels,
+        analysis_labels=analysis_labels,  # TODO: remove, not used much, only mass/volume analysis.
         image_paths=image_paths,
         restoration=restoration,
         color_to_mass_analysis=color_to_mass_analysis,
