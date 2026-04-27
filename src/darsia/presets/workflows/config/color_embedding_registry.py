@@ -1,5 +1,7 @@
 """Centralized registry for color embeddings."""
 
+# TODO: refactor, and extract the three single embedding setups.
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -34,6 +36,7 @@ def _parse_mode(value: str, *, context: str) -> darsia.ColorMode:
         ) from exc
 
 
+# TODO Make this part of DataRegistry?
 def _resolve_selector(
     cfg: dict,
     key: str,
@@ -99,10 +102,6 @@ class ColorEmbeddingRegistry:
                     cfg.get("mode", "relative"), context=f"color.path.{embedding_id}"
                 )
                 basis = parse_color_embedding_basis(cfg.get("basis", "labels"))
-                if basis == ColorEmbeddingBasis.GLOBAL:
-                    raise NotImplementedError(
-                        "color.path.<id> with basis='global' is not implemented."
-                    )
                 calibration_root = (
                     Path(cfg["calibration_folder"])
                     if "calibration_folder" in cfg
@@ -175,10 +174,6 @@ class ColorEmbeddingRegistry:
                     cfg.get("mode", "absolute"), context=f"color.range.{embedding_id}"
                 )
                 basis = parse_color_embedding_basis(cfg.get("basis", "global"))
-                if basis != ColorEmbeddingBasis.GLOBAL:
-                    raise NotImplementedError(
-                        "color.range.<id> currently only supports basis='global'."
-                    )
                 raw_range = cfg.get("range")
                 if not isinstance(raw_range, list) or len(raw_range) != 3:
                     raise ValueError(
@@ -243,14 +238,11 @@ class ColorEmbeddingRegistry:
                         color_root / embedding_id if color_root is not None else Path()
                     )
                 )
-                if "color_space" not in cfg:
-                    raise ValueError(
-                        f"color.channel.{embedding_id}.color_space is required."
-                    )
-                if "channel" not in cfg:
-                    raise ValueError(
-                        f"color.channel.{embedding_id}.channel is required."
-                    )
+                for key in ["color_space", "channel"]:
+                    if key not in cfg:
+                        raise ValueError(
+                            f"color.channel.{embedding_id}.{key} is required."
+                        )
                 self.embeddings[embedding_id] = ColorChannelEmbedding(
                     embedding_id=embedding_id,
                     mode=mode,
@@ -261,23 +253,23 @@ class ColorEmbeddingRegistry:
                 )
         return self
 
-    def resolve(self, embedding_id: str) -> ColorEmbedding:
-        if embedding_id not in self.embeddings:
-            available = sorted(self.embeddings.keys())
-            raise KeyError(
-                "ColorEmbeddingRegistry: key "
-                f"'{embedding_id}' not found. Available keys: {available}"
-            )
-        return self.embeddings[embedding_id]
-
-    def resolve_mode(self, mode: str) -> ColorEmbedding:
-        token = mode.strip()
-        parts = token.split(".")
-        if len(parts) != 2 or parts[0].lower() != "color":
-            raise ValueError(
-                f"Invalid color mode token '{mode}'. Expected format 'color.<id>'."
-            )
-        return self.resolve(parts[1].strip())
+    def resolve(self, embedding: str | ColorEmbedding) -> ColorEmbedding:
+        if isinstance(embedding, str):
+            if embedding not in self.embeddings:
+                available = sorted(self.embeddings.keys())
+                raise KeyError(
+                    "ColorEmbeddingRegistry: key "
+                    f"'{embedding}' not found. Available keys: {available}"
+                )
+            return self.embeddings[embedding]
+        else:
+            # Make sure embedding is registered in self.embeddings.
+            if embedding.embedding_id not in self.embeddings:
+                raise KeyError(
+                    f"ColorEmbeddingRegistry: embedding with id "
+                    f"'{embedding.embedding_id}' not found in registry."
+                )
+        return embedding
 
     def keys(self) -> list[str]:
         return sorted(self.embeddings.keys())
