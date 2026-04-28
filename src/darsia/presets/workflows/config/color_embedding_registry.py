@@ -52,20 +52,11 @@ def _resolve_selector(
             raise KeyError(f"{section}.{key}")
         return None
     selector = cfg[key]
-    if isinstance(selector, dict):
-        return resolve_time_data_selector(
-            cfg,
-            key,
-            section=section,
-            data=data,
-            data_registry=data_registry,
-            required=required,
-        )
     if isinstance(selector, list) and not all(
         isinstance(token, str) for token in selector
     ):
         raise ValueError(f"{section}.{key} selector lists must contain only strings.")
-    if not isinstance(selector, (str, list)):
+    if not isinstance(selector, (str, list, dict)):
         raise ValueError(
             f"{section}.{key} must be a selector key (str), list of selector keys, or "
             "inline table (dict)."
@@ -145,10 +136,11 @@ class ColorEmbeddingRegistry:
                     context=f"color.path.{embedding_id}",
                     key="histogram_weighting",
                 )
+                raw_calibration_mode = cfg.get("mode_calibration")
+                if raw_calibration_mode is None:
+                    raw_calibration_mode = cfg.get("calibration_mode", "auto")
                 calibration_mode = _validate_choice(
-                    str(
-                        cfg.get("mode_calibration", cfg.get("calibration_mode", "auto"))
-                    ).strip(),
+                    str(raw_calibration_mode).strip(),
                     allowed={"auto", "manual"},
                     context=f"color.path.{embedding_id}",
                     key="calibration_mode",
