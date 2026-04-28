@@ -18,13 +18,13 @@ from darsia.presets.workflows.calibration.metadata import (
     validate_basis_metadata,
     write_calibration_metadata,
 )
-from darsia.signals.color.color_embedding import (
-    ColorEmbeddingBasis,
-    parse_color_embedding_basis,
-)
 from darsia.presets.workflows.simple_run_analysis import (
     SimpleMassAnalysisResults,
     SimpleRunAnalysis,
+)
+from darsia.signals.color.color_embedding import (
+    ColorEmbeddingBasis,
+    parse_color_embedding_basis,
 )
 
 logger = logging.getLogger(__name__)
