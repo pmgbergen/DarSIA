@@ -18,8 +18,8 @@ from darsia.signals.color import (
     parse_color_embedding_basis,
 )
 
-from .data_selection import resolve_time_data_selector
 from .data_registry import DataRegistry
+from .data_selection import resolve_time_data_selector
 from .time_data import TimeData
 from .utils import _convert_none, _get_section_from_toml
 
@@ -71,9 +71,7 @@ def _resolve_selector(
     )
 
 
-def _validate_choice(
-    value: str, *, allowed: set[str], context: str, key: str
-) -> str:
+def _validate_choice(value: str, *, allowed: set[str], context: str, key: str) -> str:
     if value not in allowed:
         raise ValueError(
             f"Invalid {context}.{key} '{value}'. Allowed values are: {sorted(allowed)}."
