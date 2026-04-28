@@ -58,8 +58,8 @@ def _resolve_selector(
         raise ValueError(f"{section}.{key} selector lists must contain only strings.")
     if not isinstance(selector, (str, list, dict)):
         raise ValueError(
-            f"{section}.{key} must be a selector key, list of selector keys, or inline "
-            "table."
+            f"{section}.{key} must be a selector key (str), list of selector keys, or "
+            "inline table (dict)."
         )
     return resolve_time_data_selector(
         cfg,
