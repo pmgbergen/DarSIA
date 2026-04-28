@@ -10,8 +10,7 @@ from warnings import warn
 
 from darsia.presets.workflows.mode_resolution import validate_mode_syntax
 
-from .data_registry import DataRegistry
-from .data_selection import resolve_time_data_selector
+from .data_registry import DataRegistry, resolve_time_data_selector
 from .fingers import FingersConfig
 from .roi import RoiAndLabelConfig, RoiConfig
 from .segmentation import SegmentationConfig

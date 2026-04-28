@@ -5,8 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from warnings import warn
 
-from .data_registry import DataRegistry
-from .data_selection import resolve_time_data_selector
+from .data_registry import DataRegistry, resolve_time_data_selector
 from .time_data import TimeData
 from .utils import _get_section_from_toml
 

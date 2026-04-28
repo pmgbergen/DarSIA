@@ -6,8 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..basis import CalibrationBasis, calibration_basis_folder, parse_calibration_basis
-from .data_registry import DataRegistry
-from .data_selection import resolve_path_selector, resolve_time_data_selector
+from .data_registry import DataRegistry, resolve_path_selector, resolve_time_data_selector
 from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
 

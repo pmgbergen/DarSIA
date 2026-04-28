@@ -5,8 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .data_registry import DataRegistry
-from .data_selection import resolve_time_data_selector
+from .data_registry import DataRegistry, resolve_time_data_selector
 from .format_registry import FormatRegistry
 from .roi_registry import RoiRegistry
 from .time_data import TimeData
