@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import darsia
-from darsia.presets.workflows.color_embedding import (
+from darsia.signals.color import (
     ColorChannelEmbedding,
     ColorEmbedding,
     ColorEmbeddingBasis,

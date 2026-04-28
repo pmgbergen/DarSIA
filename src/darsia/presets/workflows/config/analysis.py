@@ -19,7 +19,7 @@ from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
 
 if TYPE_CHECKING:
-    from darsia.presets.workflows.color_embedding import ColorEmbedding
+    from darsia.signals.color import ColorEmbedding
 
     from .color_embedding_registry import ColorEmbeddingRegistry
     from .format_registry import FormatRegistry

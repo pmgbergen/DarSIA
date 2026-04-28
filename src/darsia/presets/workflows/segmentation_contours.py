@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.color_embedding import ColorEmbeddingRuntime
+from darsia.signals.color import ColorEmbeddingRuntime
 from darsia.presets.workflows.config.fluidflower_config import SegmentationConfig
 from darsia.presets.workflows.mode_resolution import resolve_mode_image
 from darsia.utils.augmented_plotting import plot_contour_on_image
