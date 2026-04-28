@@ -24,6 +24,9 @@ python -m darsia.presets.workflows.user_interface_analysis \
 - segmentation visualizations
 - fingers analysis outputs
 
+Color-based scalar modes are now configured via centralized color embeddings and used as
+`color.<id>` in segmentation/fingers/thresholding modes.
+
 For analysis exports, define global format identifiers under `[analysis].formats`:
 ```toml
 [analysis]

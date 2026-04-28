@@ -1,18 +1,20 @@
 import logging
 import shutil
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 from matplotlib import pyplot as plt
 
 import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
-from darsia.presets.workflows.basis import label_ids_from_image, select_labels_for_basis
+from darsia.presets.workflows.basis import label_ids_from_image
 from darsia.presets.workflows.calibration.metadata import write_calibration_metadata
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.presets.workflows.utils.roi_visualization import draw_active_region
+from darsia.signals.color import ColorPathEmbedding
 from darsia.utils.standard_images import roi_to_mask
 
 logger = logging.getLogger(__name__)
@@ -28,10 +30,12 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
     """
 
     config = FluidFlowerConfig(path, require_data=True, require_results=False)
-    config.check("rig", "data", "protocol", "color_paths")
+    config.check("rig", "data", "protocol", "color", "calibration.color")
 
     # Mypy type checking
-    assert config.color_paths is not None
+    assert config.color is not None
+    assert config.calibration is not None
+    assert config.calibration.color is not None
     assert config.rig is not None
     assert config.data is not None
     assert config.protocol is not None
@@ -46,21 +50,35 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
     fluidflower = cls.load(config.rig.path)
     fluidflower.load_experiment(experiment)
 
-    requested_basis = config.color_paths.basis
-    selected_basis, selected_labels = select_labels_for_basis(
-        fluidflower, requested_basis
-    )
+    embedding = config.calibration.color.color
+    assert embedding is not None
+    if not isinstance(embedding, ColorPathEmbedding):
+        raise NotImplementedError(
+            "calibration.color currently supports only color path embeddings."
+        )
+    selected_basis = embedding.basis
+    selected_labels = embedding.get_labels(fluidflower)
 
     # ! ---- LOAD IMAGES ----
 
     calibration_image_paths = select_image_paths(
-        config, experiment, all=False, sub_config=config.color_paths
+        config,
+        experiment,
+        all=False,
+        sub_config=embedding,
     )
 
     # Cache baseline images for performance
+    baseline_sub_config = SimpleNamespace(data=embedding.baseline_data)
+    baseline_image_paths = select_image_paths(
+        config,
+        experiment,
+        all=False,
+        sub_config=baseline_sub_config,
+    )
     baseline_images: list[darsia.Image] = load_images_with_cache(
         rig=fluidflower,
-        paths=config.color_paths.baseline_image_paths,
+        paths=baseline_image_paths,
         use_cache=config.data.use_cache,
         cache_dir=config.data.cache,
     )
@@ -77,8 +95,8 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
 
     # Porosity mask restricted to the union of ROIs listed in config.color_paths.rois.
     calibration_mask = fluidflower.boolean_porosity.copy()
-    if config.color_paths.rois and config.roi_registry is not None:
-        roi_entries = config.roi_registry.resolve_rois(config.color_paths.rois)
+    if embedding.rois and config.roi_registry is not None:
+        roi_entries = config.roi_registry.resolve_rois(embedding.rois)
         rois = [roi_cfg.roi for roi_cfg in roi_entries.values()]
         union_mask = roi_to_mask(rois, calibration_mask, mode="voxels")
         calibration_mask.img &= union_mask.img
@@ -108,7 +126,7 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
         baseline=fluidflower.baseline,
         mask=calibration_mask,
     )
-    tracer_color_range.save(config.color_paths.color_range_file)
+    tracer_color_range.save(embedding.color_range_file)
 
     # ! ---- COLOR PATH TOOL ----
 
@@ -116,13 +134,13 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
         labels=selected_labels,
         color_range=tracer_color_range,
         mask=calibration_mask,
-        resolution=config.color_paths.resolution,
-        ignore_labels=config.color_paths.ignore_labels,
+        resolution=embedding.resolution,
+        ignore_labels=embedding.ignore_labels,
     )
 
     # ! ---- ANALYZE FLUCTUATIONS IN BASELINE IMAGES ----
 
-    ignore_mode = config.color_paths.ignore_baseline_spectrum
+    ignore_mode = embedding.ignore_baseline_spectrum
     ignore_spectrum: darsia.LabelColorSpectrumMap | None = None
 
     if ignore_mode in ("baseline", "expanded"):
@@ -130,11 +148,11 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
             color_path_regression.get_color_spectrum(
                 images=baseline_images,
                 baseline=fluidflower.baseline,
-                threshold_significant=config.color_paths.threshold_baseline,
+                threshold_significant=embedding.threshold_baseline,
                 verbose=show,
             )
         )
-        baseline_color_spectrum.save(config.color_paths.baseline_color_spectrum_folder)
+        baseline_color_spectrum.save(embedding.baseline_color_spectrum_folder)
 
         if ignore_mode == "expanded":
             # Expand the baseline color spectrum through linear regression
@@ -145,7 +163,7 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
                 )
             )
             expanded_baseline_color_spectrum.save(
-                config.color_paths.baseline_color_spectrum_folder
+                embedding.baseline_color_spectrum_folder
             )
             ignore_spectrum = expanded_baseline_color_spectrum
         else:
@@ -160,7 +178,7 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
         images=calibration_images,
         baseline=fluidflower.baseline,
         ignore=ignore_spectrum,
-        threshold_significant=config.color_paths.threshold_calibration,
+        threshold_significant=embedding.threshold_calibration,
         verbose=show,
     )
     preview_calibration_image = calibration_images[0] if calibration_images else None
@@ -170,10 +188,10 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
         color_path_regression.find_color_path(
             color_spectrum=tracer_color_spectrum,
             ignore=ignore_spectrum,
-            num_segments=config.color_paths.num_segments,
-            directory=config.color_paths.calibration_file,
-            weighting=config.color_paths.histogram_weighting,
-            mode=config.color_paths.mode,
+            num_segments=embedding.num_segments,
+            directory=embedding.color_paths_folder,
+            weighting=embedding.histogram_weighting,
+            mode=embedding.calibration_mode,
             preview_image=preview_calibration_image,
             preview_images=calibration_images,
             preview_baseline=fluidflower.baseline,
@@ -182,9 +200,9 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
     )
 
     # Store the color paths to file
-    label_color_path_map.save(config.color_paths.calibration_file)
+    label_color_path_map.save(embedding.color_paths_folder)
     write_calibration_metadata(
-        config.color_paths.calibration_file / "metadata.json",
+        embedding.color_paths_folder / "metadata.json",
         basis=selected_basis,
         label_ids=label_ids_from_image(selected_labels),
     )
@@ -212,10 +230,9 @@ def collect_existing_calibration_paths_to_delete(path: Path | list[Path]) -> lis
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
 
     paths_to_delete: list[Path] = []
-    if config.color_paths is not None:
-        paths_to_delete.append(config.color_paths.calibration_file)
-        paths_to_delete.append(config.color_paths.baseline_color_spectrum_folder)
-        paths_to_delete.append(config.color_paths.color_range_file)
+    if config.color is not None:
+        for embedding in config.color.embeddings.values():
+            paths_to_delete.append(embedding.calibration_root)
     if config.data is not None and config.data.cache is not None:
         paths_to_delete.append(config.data.cache)
 

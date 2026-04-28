@@ -3,13 +3,8 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TYPE_CHECKING
-from warnings import warn
 
 import numpy as np
-
-if TYPE_CHECKING:
-    from darsia.presets.workflows.rig import Rig
 
 
 class CalibrationBasis(StrEnum):
@@ -17,6 +12,7 @@ class CalibrationBasis(StrEnum):
 
     LABELS = "labels"
     FACIES = "facies"
+    GLOBAL = "global"
 
 
 def parse_calibration_basis(
@@ -30,7 +26,8 @@ def parse_calibration_basis(
     if isinstance(value, CalibrationBasis):
         return value
     if isinstance(value, str):
-        return CalibrationBasis(value.lower())
+        token = value.lower().strip()
+        return CalibrationBasis(token)
     raise TypeError(f"Unsupported calibration basis value type: {type(value)}")
 
 
@@ -45,20 +42,3 @@ def label_ids_from_image(labels_img) -> list[int]:
     """Extract sorted non-negative label ids from an image-like labels container."""
 
     return sorted([int(label) for label in np.unique(labels_img.img) if label >= 0])
-
-
-def select_labels_for_basis(
-    rig: Rig, basis: str | CalibrationBasis
-) -> tuple[CalibrationBasis, object]:
-    """Return selected basis and corresponding labels image without mutating the rig."""
-
-    parsed = parse_calibration_basis(basis)
-    if parsed == CalibrationBasis.FACIES:
-        if not hasattr(rig, "facies"):
-            warn(
-                "Calibration basis is 'facies' but rig has no 'facies' attribute. "
-                "Using labels instead."
-            )
-            return CalibrationBasis.LABELS, rig.labels
-        return parsed, rig.facies
-    return parsed, rig.labels

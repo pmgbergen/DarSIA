@@ -14,12 +14,14 @@ import numpy as np
 from matplotlib.widgets import Button, RectangleSelector
 
 import darsia
-from darsia.presets.workflows.analysis.analysis_context import select_image_paths
+from darsia.presets.workflows.analysis.analysis_context import (
+    _build_color_to_mass_analysis,
+    select_image_paths,
+)
 from darsia.presets.workflows.analysis.scalar_products import (
     analysis_scalar_products,
     requires_rescaled_modes,
 )
-from darsia.presets.workflows.basis import select_labels_for_basis
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
@@ -40,37 +42,6 @@ def _to_scalar_display_array(image: darsia.Image) -> np.ndarray:
     if array.ndim == 3 and array.shape[2] == 1:
         array = array[..., 0]
     return array
-
-
-def _build_color_to_mass_analysis(
-    config: FluidFlowerConfig,
-    experiment: darsia.ProtocolledExperiment,
-    fluidflower: Rig,
-) -> HeterogeneousColorToMassAnalysis:
-    assert config.color_to_mass is not None
-    _, analysis_labels = select_labels_for_basis(
-        fluidflower, config.color_to_mass.basis
-    )
-
-    experiment_start = experiment.experiment_start
-    state = experiment.pressure_temperature_protocol.get_state(experiment_start)
-    gradient = experiment.pressure_temperature_protocol.get_gradient(experiment_start)
-    co2_mass_analysis = darsia.CO2MassAnalysis(
-        baseline=fluidflower.baseline,
-        atmospheric_pressure=state.pressure,
-        atmospheric_temperature=state.temperature,
-        atmospheric_pressure_gradient=gradient.pressure,
-        atmospheric_temperature_gradient=gradient.temperature,
-    )
-    return HeterogeneousColorToMassAnalysis.load(
-        folder=config.color_to_mass.calibration_folder,
-        baseline=fluidflower.baseline,
-        labels=analysis_labels,
-        co2_mass_analysis=co2_mass_analysis,
-        geometry=fluidflower.geometry,
-        restoration=None,
-        basis=config.color_to_mass.basis,
-    )
 
 
 def _scalar_image_for_mode(
@@ -302,9 +273,10 @@ def helper_roi(cls: type[Rig], path: Path | list[Path], show: bool = False) -> N
     if mode == "none":
         display_images = source_images
     else:
-        if config.color_to_mass is None:
+        if config.analysis is None or config.analysis.mass is None:
             raise ValueError(
-                "helper.roi.mode requires [color_to_mass] calibration when mode != 'none'."
+                "helper.roi.mode requires [analysis.mass] with a color embedding "
+                "when mode != 'none'."
             )
         color_to_mass_analysis = _build_color_to_mass_analysis(
             config, experiment, fluidflower

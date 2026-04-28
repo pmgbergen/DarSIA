@@ -1,8 +1,12 @@
+import re
 from pathlib import Path
 
 import pytest
 
 from darsia.presets.workflows.config.analysis import AnalysisConfig
+from darsia.presets.workflows.config.color_embedding_registry import (
+    ColorEmbeddingRegistry,
+)
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.format_registry import FormatRegistry
 from darsia.presets.workflows.config.roi import RoiConfig
@@ -12,6 +16,14 @@ from darsia.presets.workflows.config.roi_registry import RoiRegistry
 def _write(path: Path, content: str) -> Path:
     path.write_text(content)
     return path
+
+
+def _load_color_registry(config_path: Path, tmp_path: Path) -> ColorEmbeddingRegistry:
+    return ColorEmbeddingRegistry().load(
+        path=config_path,
+        data=tmp_path,
+        results=tmp_path,
+    )
 
 
 def test_analysis_cropping_formats_are_loaded(tmp_path: Path) -> None:
@@ -61,13 +73,13 @@ def test_analysis_thresholding_layers_and_formats_are_loaded(tmp_path: Path) -> 
 [analysis]
 [analysis.thresholding]
 formats = ["jpg", "npz"]
-[analysis.thresholding.layers.gas]
+[analysis.thresholding.layer.gas]
 mode = "saturation_g"
 threshold_min = 0.15
 label = "Gas plume"
 fill = [255, 0, 0]
 stroke = [255, 255, 255]
-[analysis.thresholding.layers.aq]
+[analysis.thresholding.layer.aq]
 mode = "concentration_aq"
 threshold_max = 0.05
 label = "Aqueous plume"
@@ -107,13 +119,20 @@ def test_analysis_thresholding_rejects_invalid_layer_mode(tmp_path: Path) -> Non
         """
 [analysis]
 [analysis.thresholding]
-[analysis.thresholding.layers.bad]
+[analysis.thresholding.layer.bad]
 mode = "not_supported"
 threshold_min = 0.1
 """.strip(),
     )
 
-    with pytest.raises(ValueError, match=r"Unsupported analysis\.thresholding\.layers"):
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Unsupported analysis.thresholding.layer.{key}.mode 'not_supported'. "
+            "Supported modes are legacy mass modes, rescaled modes, and 'color.<id>' "
+            "(defined under [color.*.*])."
+        ),
+    ):
         AnalysisConfig().load(
             path=config_path,
             data=tmp_path,
@@ -128,7 +147,7 @@ def test_analysis_thresholding_rejects_invalid_formats(tmp_path: Path) -> None:
 [analysis]
 [analysis.thresholding]
 formats = ["jpg", "png"]
-[analysis.thresholding.layers.gas]
+[analysis.thresholding.layer.gas]
 mode = "saturation_g"
 threshold_min = 0.1
 """.strip(),
@@ -148,59 +167,82 @@ def test_analysis_thresholding_accepts_extended_modes(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
-[analysis]
-[colorchannel.red_channel]
+[color.channel.red_channel]
+mode = "absolute"
 color_space = "RGB"
 channel = "r"
 
+[color.range.green_band]
+mode = "relative"
+color_space = "RGB"
+range = [[0.0, 1.0], [0.2, 0.8], [0.0, 1.0]]
+
+[analysis]
+
 [analysis.thresholding]
-[analysis.thresholding.layers.mass_rescaled]
+[analysis.thresholding.layer.mass_rescaled]
 mode = "rescaled_mass"
 threshold_min = 0.1
-[analysis.thresholding.layers.gas_rescaled]
+[analysis.thresholding.layer.gas_rescaled]
 mode = "rescaled_saturation_g"
 threshold_min = 0.1
-[analysis.thresholding.layers.aq_rescaled]
+[analysis.thresholding.layer.aq_rescaled]
 mode = "rescaled_concentration_aq"
 threshold_min = 0.1
-[analysis.thresholding.layers.red]
-mode = "colorchannel.red_channel"
+[analysis.thresholding.layer.red]
+mode = "red_channel"
 threshold_min = 0.2
-[analysis.thresholding.layers.green_band]
-mode = "colorrange.custom_range"
+[analysis.thresholding.layer.green_band]
+mode = "green_band"
 threshold_min = 0.5
 """.strip(),
+    )
+
+    registry = ColorEmbeddingRegistry().load(
+        path=config_path,
+        data=tmp_path,
+        results=tmp_path,
     )
 
     config = AnalysisConfig().load(
         path=config_path,
         data=tmp_path,
         results=tmp_path,
+        color_embedding_registry=registry,
     )
 
     assert config.thresholding is not None
     assert config.thresholding.layers["mass_rescaled"].mode == "rescaled_mass"
     assert config.thresholding.layers["gas_rescaled"].mode == "rescaled_saturation_g"
     assert config.thresholding.layers["aq_rescaled"].mode == "rescaled_concentration_aq"
-    assert config.thresholding.layers["red"].mode == "colorchannel.red_channel"
-    assert config.thresholding.layers["green_band"].mode == "colorrange.custom_range"
+    assert config.thresholding.layers["red"].mode == "red_channel"
+    assert config.thresholding.layers["green_band"].mode == "green_band"
 
 
-def test_analysis_thresholding_rejects_inline_colorchannel_mode(tmp_path: Path) -> None:
+def test_analysis_thresholding_rejects_invalid_color_mode_token(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
+[color.channel.red_channel]
+mode = "absolute"
+color_space = "RGB"
+channel = "r"
+
 [analysis]
 [analysis.thresholding]
-[analysis.thresholding.layers.bad]
-mode = "colorchannel.rgb.r"
+[analysis.thresholding.layer.bad]
+mode = "red_channel"
 threshold_min = 0.1
 """.strip(),
     )
 
     with pytest.raises(
         ValueError,
-        match=r"Unsupported analysis\.thresholding\.layers\.bad\.mode 'colorchannel\.rgb\.r'",
+        match=re.escape(
+            "Unsupported analysis.thresholding.layer.{key}.mode 'red_channel'. "
+            "Supported modes are legacy mass modes, rescaled modes, and 'color.<id>' "
+            "(defined under [color.*.*])."
+        ),
     ):
         AnalysisConfig().load(
             path=config_path,
@@ -253,14 +295,14 @@ color = [255, 0, 0]
         )
 
 
-def test_analysis_segmentation_rejects_inline_colorchannel_mode(tmp_path: Path) -> None:
+def test_analysis_segmentation_rejects_invalid_color_mode_token(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
 [analysis]
 [analysis.segmentation]
 label = "Bad contour"
-mode = "colorchannel.rgb.r"
+mode = "color.rgb.r"
 thresholds = [0.1]
 color = [255, 0, 0]
 """.strip(),
@@ -268,7 +310,7 @@ color = [255, 0, 0]
 
     with pytest.raises(
         ValueError,
-        match=r"Unsupported analysis\.segmentation\.mode 'colorchannel\.rgb\.r'",
+        match=r"Unsupported analysis\.segmentation\.mode 'color\.rgb\.r'",
     ):
         AnalysisConfig().load(
             path=config_path,
@@ -337,15 +379,24 @@ def test_analysis_mass_export_defaults_to_none(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
+[color.channel.my_colorpath]
+mode = "absolute"
+basis = "global"
+color_space = "RGB"
+channel = "r"
+
 [analysis]
 [analysis.mass]
+color = "my_colorpath"
 """.strip(),
     )
+    color_registry = _load_color_registry(config_path, tmp_path)
 
     config = AnalysisConfig().load(
         path=config_path,
         data=tmp_path,
         results=tmp_path,
+        color_embedding_registry=color_registry,
     )
 
     assert config.mass is not None
@@ -356,16 +407,25 @@ def test_analysis_mass_export_accepts_supported_modes(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
+[color.channel.my_colorpath]
+mode = "absolute"
+basis = "global"
+color_space = "RGB"
+channel = "r"
+
 [analysis]
 [analysis.mass]
+color = "my_colorpath"
 export = ["mass", "extensive_mass", "rescaled_concentration_aq"]
 """.strip(),
     )
+    color_registry = _load_color_registry(config_path, tmp_path)
 
     config = AnalysisConfig().load(
         path=config_path,
         data=tmp_path,
         results=tmp_path,
+        color_embedding_registry=color_registry,
     )
 
     assert config.mass is not None
@@ -380,11 +440,19 @@ def test_analysis_mass_export_rejects_unsupported_modes(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
         """
+[color.channel.my_colorpath]
+mode = "absolute"
+basis = "global"
+color_space = "RGB"
+channel = "r"
+
 [analysis]
 [analysis.mass]
+color = "my_colorpath"
 export = ["mass", "not_supported"]
 """.strip(),
     )
+    color_registry = _load_color_registry(config_path, tmp_path)
 
     with pytest.raises(
         ValueError, match=r"Unsupported \[analysis\.mass\]\.export entries"
@@ -393,6 +461,7 @@ export = ["mass", "not_supported"]
             path=config_path,
             data=tmp_path,
             results=tmp_path,
+            color_embedding_registry=color_registry,
         )
 
 

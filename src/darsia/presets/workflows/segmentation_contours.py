@@ -1,7 +1,10 @@
 """Util for contour plots."""
 
+from __future__ import annotations
+
 import logging
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
@@ -9,7 +12,13 @@ import numpy as np
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import SegmentationConfig
 from darsia.presets.workflows.mode_resolution import resolve_mode_image
+from darsia.signals.color import ColorEmbeddingRuntime
 from darsia.utils.augmented_plotting import plot_contour_on_image
+
+if TYPE_CHECKING:
+    from darsia.presets.workflows.config.color_embedding_registry import (
+        ColorEmbeddingRegistry,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +75,8 @@ class SimpleSegmentation:
         concentration_aq: darsia.Image | None,
         mass: darsia.Image | None,
         mass_analysis_result=None,
-        colorrange_config=None,
-        colorchannel_registry=None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
+        color_embedding_runtime: ColorEmbeddingRuntime | None = None,
         rescaled_saturation_g: darsia.Image | None = None,
         rescaled_concentration_aq: darsia.Image | None = None,
         rescaled_mass: darsia.Image | None = None,
@@ -89,8 +98,8 @@ class SimpleSegmentation:
             self.mode,
             img,
             mass_analysis_result=mass_analysis_result,
-            colorrange_config=colorrange_config,
-            colorchannel_registry=colorchannel_registry,
+            color_embedding_registry=color_embedding_registry,
+            color_embedding_runtime=color_embedding_runtime,
             scalar_products=products,
         )
 
@@ -334,8 +343,8 @@ class SegmentationContours:
         rescaled_mass: darsia.Image | None = None,
         scalar_products: dict[str, darsia.Image | None] | None = None,
         mass_analysis_result=None,
-        colorrange_config=None,
-        colorchannel_registry=None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
+        color_embedding_runtime: ColorEmbeddingRuntime | None = None,
     ) -> darsia.Image:
         products = scalar_products or {
             "saturation_g": saturation_g,
@@ -355,8 +364,8 @@ class SegmentationContours:
                 segmentation_config.mode,
                 img,
                 mass_analysis_result=mass_analysis_result,
-                colorrange_config=colorrange_config,
-                colorchannel_registry=colorchannel_registry,
+                color_embedding_registry=color_embedding_registry,
+                color_embedding_runtime=color_embedding_runtime,
                 scalar_products=products,
             )
 

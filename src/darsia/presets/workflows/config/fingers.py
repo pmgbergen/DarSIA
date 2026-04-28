@@ -6,10 +6,13 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from darsia.presets.workflows.mode_resolution import validate_mode_syntax
+
 from .roi import RoiConfig
 from .utils import _get_key, _get_section
 
 if TYPE_CHECKING:
+    from .color_embedding_registry import ColorEmbeddingRegistry
     from .roi_registry import RoiRegistry
 
 logger = logging.getLogger(__name__)
@@ -27,9 +30,17 @@ class FingersConfig:
     """ROIs for analysis."""
 
     def load(
-        self, sec: dict, roi_registry: RoiRegistry | None = None
+        self,
+        sec: dict,
+        roi_registry: RoiRegistry | None = None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "FingersConfig":
         self.mode = _get_key(sec, "mode", required=True, type_=str)
+        validate_mode_syntax(
+            self.mode,
+            color_embedding_registry,
+            "analysis.fingers.mode",
+        )
         self.threshold = _get_key(sec, "threshold", required=True, type_=float)
 
         # Load ROIs – support both registry-key references and inline definitions.

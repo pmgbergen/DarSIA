@@ -19,7 +19,9 @@ from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
 
 if TYPE_CHECKING:
-    from .colorchannel_registry import ColorChannelRegistry
+    from darsia.signals.color import ColorEmbedding
+
+    from .color_embedding_registry import ColorEmbeddingRegistry
     from .format_registry import FormatRegistry
     from .roi_registry import RoiRegistry
 
@@ -116,18 +118,14 @@ class AnalysisThresholdingConfig:
             sec: dict,
             *,
             key: str,
-            colorchannel_registry: ColorChannelRegistry | None = None,
+            color_embedding_registry: ColorEmbeddingRegistry | None = None,
         ) -> "AnalysisThresholdingConfig.LayerConfig":
             self.mode = _get_key(sec, "mode", required=True, type_=str).strip()
-            if not validate_mode_syntax(
-                self.mode, colorchannel_registry=colorchannel_registry
-            ):
-                raise ValueError(
-                    f"Unsupported analysis.thresholding.layers.{key}.mode '{self.mode}'. "
-                    "Supported modes are legacy mass modes, rescaled modes, "
-                    "'colorchannel.<name>' (defined under [colorchannel.<name>]), "
-                    "and 'colorrange.<name>'."
-                )
+            validate_mode_syntax(
+                self.mode,
+                color_embedding_registry,
+                "analysis.thresholding.layer.{key}.mode",
+            )
             self.threshold_min = _get_key(sec, "threshold_min", required=False)
             self.threshold_max = _get_key(sec, "threshold_max", required=False)
             if self.threshold_min is not None:
@@ -140,46 +138,42 @@ class AnalysisThresholdingConfig:
                 and self.threshold_min > self.threshold_max
             ):
                 raise ValueError(
-                    f"analysis.thresholding.layers.{key} has threshold_min > threshold_max."
+                    f"analysis.thresholding.layer.{key} has threshold_min > threshold_max."
                 )
             if self.threshold_min is None and self.threshold_max is None:
                 raise ValueError(
-                    f"analysis.thresholding.layers.{key} must have at least one of "
+                    f"analysis.thresholding.layer.{key} must have at least one of "
                     "threshold_min or threshold_max."
                 )
 
             self.label = _get_key(sec, "label", required=False, default=key, type_=str)
             self.fill = _to_rgb(
                 _get_key(sec, "fill", required=False, default=self.fill),
-                f"analysis.thresholding.layers.{key}.fill",
+                f"analysis.thresholding.layer.{key}.fill",
             )
             self.stroke = _to_rgb(
                 _get_key(sec, "stroke", required=False, default=self.stroke),
-                f"analysis.thresholding.layers.{key}.stroke",
+                f"analysis.thresholding.layer.{key}.stroke",
             )
             self.fill_alpha = float(
                 _get_key(sec, "fill_alpha", required=False, default=self.fill_alpha)
             )
             if not (0.0 <= self.fill_alpha <= 1.0):
                 raise ValueError(
-                    f"analysis.thresholding.layers.{key}.fill_alpha must be in [0, 1]."
+                    f"analysis.thresholding.layer.{key}.fill_alpha must be in [0, 1]."
                 )
             self.stroke_width = int(
                 _get_key(sec, "stroke_width", required=False, default=self.stroke_width)
             )
             if self.stroke_width < 0:
                 raise ValueError(
-                    f"analysis.thresholding.layers.{key}.stroke_width must be >= 0."
+                    f"analysis.thresholding.layer.{key}.stroke_width must be >= 0."
                 )
 
             return self
 
     formats: list[str] = field(default_factory=lambda: ["jpg", "npz"])
     layers: dict[str, LayerConfig] = field(default_factory=dict)
-    modes: list[str] = field(
-        default_factory=lambda: ["concentration_aq", "saturation_g"]
-    )
-    thresholds: dict[str, float] = field(default_factory=dict)
     legend: AnalysisThresholdingLegendConfig = field(
         default_factory=AnalysisThresholdingLegendConfig
     )
@@ -190,7 +184,7 @@ class AnalysisThresholdingConfig:
         self,
         sec: dict,
         results: Path | None,
-        colorchannel_registry: ColorChannelRegistry | None = None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "AnalysisThresholdingConfig":
         sub_sec = _get_section(sec, "thresholding")
 
@@ -211,9 +205,9 @@ class AnalysisThresholdingConfig:
                 f"{', '.join(sorted(supported_formats))}."
             )
 
-        raw_layers = _get_key(sub_sec, "layers", required=False, default={})
+        raw_layers = _get_key(sub_sec, "layer", required=False, default={})
         if not isinstance(raw_layers, dict):
-            raise ValueError("analysis.thresholding.layers must be a table/dict.")
+            raise ValueError("analysis.thresholding.layer must be a table/dict.")
         self.layers = {}
         if len(raw_layers) > 0:
             for key in raw_layers.keys():
@@ -221,7 +215,7 @@ class AnalysisThresholdingConfig:
                 self.layers[key] = self.LayerConfig().load(
                     layer_sec,
                     key=key,
-                    colorchannel_registry=colorchannel_registry,
+                    color_embedding_registry=color_embedding_registry,
                 )
         legend = _get_key(sub_sec, "legend", required=False, default={})
         if not isinstance(legend, dict):
@@ -255,28 +249,28 @@ class AnalysisSegmentationConfig:
         self,
         sec: dict,
         results: Path | None,
-        colorchannel_registry: ColorChannelRegistry | None = None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "AnalysisSegmentationConfig":
         # Allow for two scenarios: single segmentation or multiple segmentations
         sub_sec = _get_section(sec, "segmentation")
 
         try:
             self.config = SegmentationConfig().load(
-                sub_sec, colorchannel_registry=colorchannel_registry
+                sub_sec, color_embedding_registry=color_embedding_registry
             )
         except KeyError:
             self.config = {}
             for key in sub_sec.keys():
                 self.config[key] = SegmentationConfig().load(
                     _get_section(sub_sec, key),
-                    colorchannel_registry=colorchannel_registry,
+                    color_embedding_registry=color_embedding_registry,
                 )
             try:
                 self.config = {}
                 for key in sub_sec.keys():
                     self.config[key] = SegmentationConfig().load(
                         _get_section(sub_sec, key),
-                        colorchannel_registry=colorchannel_registry,
+                        color_embedding_registry=color_embedding_registry,
                     )
             except KeyError as e:
                 raise KeyError(
@@ -297,6 +291,12 @@ class AnalysisSegmentationConfig:
 
 @dataclass
 class AnalysisMassConfig:
+    color: "ColorEmbedding | None" = None
+    """Color embedding identifier used for mass conversion.
+
+    The value must be a non-empty key defined in the centralized
+    ``[color.*.*]`` registry.
+    """
     roi: dict[str, RoiConfig] = field(default_factory=dict)
     """ROI configurations for mass analysis."""
     roi_and_label: dict[str, RoiAndLabelConfig] = field(default_factory=dict)
@@ -307,9 +307,25 @@ class AnalysisMassConfig:
     """Path to the results folder for mass analysis."""
 
     def load(
-        self, sec: dict, results: Path | None, roi_registry: RoiRegistry | None = None
+        self,
+        sec: dict,
+        results: Path | None,
+        roi_registry: RoiRegistry | None = None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "AnalysisMassConfig":
         sub_sec = _get_section(sec, "mass")
+        color_key = _get_key(sub_sec, "color", required=True, type_=str).strip()
+        if color_embedding_registry is None:
+            raise ValueError(
+                "analysis.mass.color references [color.*.*], but no "
+                "ColorEmbeddingRegistry is available."
+            )
+        try:
+            self.color = color_embedding_registry.resolve(color_key)
+        except KeyError as exc:
+            raise ValueError(
+                f"Unknown analysis.mass.color embedding '{color_key}'."
+            ) from exc
 
         # Load ROIs – support registry-key references (list) and inline dicts.
         roi_raw = sub_sec.get("roi")
@@ -509,23 +525,32 @@ class AnalysisFingersConfig:
         sec: dict,
         results: Path | None,
         roi_registry: RoiRegistry | None = None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "AnalysisFingersConfig":
         # Allow for two scenarios: single fingers or multiple fingers
         sub_sec = _get_section(sec, "fingers")
 
         try:
-            self.config = FingersConfig().load(sub_sec, roi_registry=roi_registry)
+            self.config = FingersConfig().load(
+                sub_sec,
+                roi_registry=roi_registry,
+                color_embedding_registry=color_embedding_registry,
+            )
         except KeyError:
             self.config = {}
             for key in sub_sec.keys():
                 self.config[key] = FingersConfig().load(
-                    _get_section(sub_sec, key), roi_registry=roi_registry
+                    _get_section(sub_sec, key),
+                    roi_registry=roi_registry,
+                    color_embedding_registry=color_embedding_registry,
                 )
             try:
                 self.config = {}
                 for key in sub_sec.keys():
                     self.config[key] = FingersConfig().load(
-                        _get_section(sub_sec, key), roi_registry=roi_registry
+                        _get_section(sub_sec, key),
+                        roi_registry=roi_registry,
+                        color_embedding_registry=color_embedding_registry,
                     )
             except KeyError as e:
                 raise KeyError(
@@ -598,7 +623,7 @@ class AnalysisConfig:
         data_registry: DataRegistry | None = None,
         roi_registry: RoiRegistry | None = None,
         format_registry: FormatRegistry | None = None,
-        colorchannel_registry: ColorChannelRegistry | None = None,
+        color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "AnalysisConfig":
         sec = _get_section_from_toml(path, "analysis")
 
@@ -655,7 +680,7 @@ class AnalysisConfig:
             self.segmentation = AnalysisSegmentationConfig().load(
                 sec,
                 results,
-                colorchannel_registry=colorchannel_registry,
+                color_embedding_registry=color_embedding_registry,
             )
         except KeyError:
             warn("No analysis segmentation found. Use [analysis.segmentation].")
@@ -664,7 +689,10 @@ class AnalysisConfig:
         # Config to load analysis mass
         try:
             self.mass = AnalysisMassConfig().load(
-                sec, results, roi_registry=roi_registry
+                sec,
+                results,
+                roi_registry=roi_registry,
+                color_embedding_registry=color_embedding_registry,
             )
         except KeyError:
             warn("No analysis mass found. Use [analysis.mass].")
@@ -682,7 +710,10 @@ class AnalysisConfig:
         # Config to load analysis fingers
         try:
             self.fingers = AnalysisFingersConfig().load(
-                sec, results, roi_registry=roi_registry
+                sec,
+                results,
+                roi_registry=roi_registry,
+                color_embedding_registry=color_embedding_registry,
             )
         except KeyError:
             warn("No analysis fingers found. Use [analysis.fingers].")
@@ -693,7 +724,7 @@ class AnalysisConfig:
             self.thresholding = AnalysisThresholdingConfig().load(
                 sec,
                 results,
-                colorchannel_registry=colorchannel_registry,
+                color_embedding_registry=color_embedding_registry,
             )
         except KeyError:
             warn("No analysis thresholding found. Use [analysis.thresholding].")

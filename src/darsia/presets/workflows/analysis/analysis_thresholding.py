@@ -191,8 +191,14 @@ def analysis_thresholding_from_context(
     for image_index, path in enumerate(image_paths, start=1):
         image_started_at = time.monotonic()
         img = fluidflower.read_image(path)
+
+        # Perform color-to-mass analysis if any layer requires it, and cache results for
+        # mode resolution.
         result = color_to_mass_analysis(img) if requires_color_to_mass else None
         mode_images = {}
+
+        # Pre-compute scalar products for all requested modes to avoid redundant computations
+        # during mode resolution.
         if result is not None:
             scalar_kwargs = {}
             if need_rescaled:
@@ -220,8 +226,8 @@ def analysis_thresholding_from_context(
                 layer.mode,
                 img,
                 mass_analysis_result=result,
-                colorrange_config=getattr(config, "colorrange", None),
-                colorchannel_registry=getattr(config, "colorchannel", None),
+                color_embedding_registry=getattr(config, "color", None),
+                color_embedding_runtime=getattr(ctx, "color_embedding_runtime", None),
                 scalar_products=mode_images,
             )
             scalar = _to_scalar_array(mode_image)
