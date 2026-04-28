@@ -274,7 +274,7 @@ reference_label = 3
 rois = ["main_roi"]
 ignore_baseline_spectrum = "expanded" # none | baseline | expanded
 histogram_weighting = "threshold"
-calibration_mode = "auto" # auto | manual
+calibration_mode = "auto" # auto | manual (legacy alias: mode_calibration)
 ```
 
 - `range` must contain exactly 3 channel bounds.
