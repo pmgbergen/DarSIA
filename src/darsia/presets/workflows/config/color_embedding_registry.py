@@ -18,6 +18,7 @@ from darsia.signals.color import (
     parse_color_embedding_basis,
 )
 
+from .data_selection import resolve_time_data_selector
 from .data_registry import DataRegistry
 from .time_data import TimeData
 from .utils import _convert_none, _get_section_from_toml
@@ -42,6 +43,7 @@ def _resolve_selector(
     key: str,
     *,
     section: str,
+    data: Path | None,
     data_registry: DataRegistry | None,
     required: bool = True,
 ) -> TimeData | None:
@@ -54,16 +56,28 @@ def _resolve_selector(
         isinstance(token, str) for token in selector
     ):
         raise ValueError(f"{section}.{key} selector lists must contain only strings.")
-    if not isinstance(selector, (str, list)):
+    if not isinstance(selector, (str, list, dict)):
         raise ValueError(
-            f"{section}.{key} must reference [data.*] selector key(s) as string/list."
+            f"{section}.{key} must be a selector key, list of selector keys, or table."
         )
-    if data_registry is None:
+    return resolve_time_data_selector(
+        cfg,
+        key,
+        section=section,
+        data=data,
+        data_registry=data_registry,
+        required=required,
+    )
+
+
+def _validate_choice(
+    value: str, *, allowed: set[str], context: str, key: str
+) -> str:
+    if value not in allowed:
         raise ValueError(
-            f"{section}.{key} references [data.*] selector key(s), but no "
-            "DataRegistry is available."
+            f"Invalid {context}.{key} '{value}'. Allowed values are: {sorted(allowed)}."
         )
-    return data_registry.resolve(selector)
+    return value
 
 
 @dataclass
@@ -109,6 +123,27 @@ class ColorEmbeddingRegistry:
                         color_root / embedding_id if color_root is not None else Path()
                     )
                 )
+                ignore_baseline_spectrum = _validate_choice(
+                    str(cfg.get("ignore_baseline_spectrum", "expanded")).strip(),
+                    allowed={"none", "baseline", "expanded"},
+                    context=f"color.path.{embedding_id}",
+                    key="ignore_baseline_spectrum",
+                )
+                histogram_weighting = _validate_choice(
+                    str(cfg.get("histogram_weighting", "threshold")).strip(),
+                    allowed={"threshold", "wls", "wls_sqrt", "wls_log"},
+                    context=f"color.path.{embedding_id}",
+                    key="histogram_weighting",
+                )
+                calibration_mode = _validate_choice(
+                    str(
+                        cfg.get("mode_calibration", cfg.get("calibration_mode", "auto"))
+                    ).strip(),
+                    allowed={"auto", "manual"},
+                    context=f"color.path.{embedding_id}",
+                    key="calibration_mode",
+                )
+
                 embedding = ColorPathEmbedding(
                     embedding_id=embedding_id,
                     mode=mode,
@@ -121,26 +156,22 @@ class ColorEmbeddingRegistry:
                     threshold_calibration=float(cfg.get("threshold_calibration", 0.0)),
                     reference_label=int(cfg.get("reference_label", 0)),
                     rois=list(cfg.get("rois", [])),
-                    ignore_baseline_spectrum=str(
-                        cfg.get("ignore_baseline_spectrum", "expanded")
-                    ),
-                    histogram_weighting=str(
-                        cfg.get("histogram_weighting", "threshold")
-                    ),
-                    calibration_mode=str(
-                        cfg.get("mode_calibration", cfg.get("calibration_mode", "auto"))
-                    ),
+                    ignore_baseline_spectrum=ignore_baseline_spectrum,
+                    histogram_weighting=histogram_weighting,
+                    calibration_mode=calibration_mode,
                 )
                 embedding.baseline_data = _resolve_selector(
                     cfg,
                     "baseline",
                     section=f"color.path.{embedding_id}",
+                    data=data,
                     data_registry=data_registry,
                 )
                 embedding.data = _resolve_selector(
                     cfg,
                     "data",
                     section=f"color.path.{embedding_id}",
+                    data=data,
                     data_registry=data_registry,
                 )
                 if (

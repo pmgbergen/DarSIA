@@ -20,7 +20,7 @@ python -m darsia.presets.workflows.user_interface_analysis \
 ## Recommended config organization
 - Keep reusable data selectors in top-level `[data.*]` registries.
 - Keep reusable ROIs in top-level `[roi.*]` registries.
-- Reference registry keys from workflow sections (`color_paths`, `analysis.mass`, `analysis.fingers`, ...).
+- Reference registry keys from workflow sections (`color.path.<id>`, `calibration.mass`, `analysis.mass`, ...).
 - Keep calibration and analysis sections in dedicated files when possible.
 
 ## Typical end-to-end sequence

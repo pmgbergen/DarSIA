@@ -93,7 +93,7 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
 
     # ! ---- BUILD CALIBRATION MASK ----
 
-    # Porosity mask restricted to the union of ROIs listed in config.color_paths.rois.
+    # Porosity mask restricted to the union of ROIs listed on the embedding.
     calibration_mask = fluidflower.boolean_porosity.copy()
     if embedding.rois and config.roi_registry is not None:
         roi_entries = config.roi_registry.resolve_rois(embedding.rois)
