@@ -64,7 +64,7 @@ Define reusable selections in top-level `[data]` subsections:
 - `[data.time.<key>]`
 - `[data.path.<key>]`
 
-Then reference these keys from workflow sections (for example `color_paths.data = ["calib_a"]`).
+Then reference these keys from workflow sections (for example `color.path.<id>.data = ["calib_a"]`).
 
 ## ROI registry
 Define reusable ROI entries under top-level `[roi.<key>]` and reference keys from:
@@ -73,7 +73,7 @@ Define reusable ROI entries under top-level `[roi.<key>]` and reference keys fro
 - `analysis.fingers.roi = ["roi_key"]`
 - `analysis.expert_knowledge.saturation_g = ["roi_key"]`
 - `analysis.expert_knowledge.concentration_aq = ["roi_key"]`
-- `color_paths.rois = ["roi_key"]`
+- `color.path.<id>.rois = ["roi_key"]`
 - `color_to_mass.rois = ["roi_key"]`
 
 ## Format registry

@@ -35,7 +35,7 @@ Example TOML structure::
 
 Tasks reference entries by key::
 
-    [color_paths]
+    [color.path.calibration]
     data = ["calibration1"]
 
     [analysis.mass]

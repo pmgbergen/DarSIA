@@ -7,7 +7,7 @@ through reusable top-level registries.
 
 1. Define reusable selectors under top-level `[data.interval.*]`, `[data.time.*]`, and
    `[data.path.*]`.
-2. Reference selector keys from workflow sections (for example `color_paths.data` or
+2. Reference selector keys from workflow sections (for example `color.path.<id>.data` or
    analysis data selectors).
 3. Reference selector keys from calibration/analysis sections.
 4. Inline selectors under workflow sections are deprecated.
@@ -44,7 +44,7 @@ paths = ["DSC00160.JPG", "baseline/*.JPG"]
 Reference selector keys from a workflow section:
 
 ```toml
-[color_paths]
+[color.path.my_color_path]
 data = ["calibration", "qa", "manual"]
 ```
 
@@ -73,7 +73,7 @@ end = "04:00:00"
 num = 8
 tol = "00:05:00"
 
-[color_paths]
+[color.path.my_color_path]
 data = ["calibration"]
 ```
 The same registry pattern applies across setup/calibration/analysis usage.
