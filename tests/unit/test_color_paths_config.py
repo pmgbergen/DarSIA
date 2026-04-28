@@ -49,7 +49,7 @@ def _make_data_registry(tmp_path: Path) -> DataRegistry:
     return DataRegistry().load(sec, data_folder=tmp_path)
 
 
-def _minimal_color_path_toml(extra: str = "", rois_line: str = "") -> str:
+def _minimal_color_path_embedding_toml(extra: str = "", rois_line: str = "") -> str:
     """Return a minimal [color.path.*] TOML section using registry references.
 
     Args:
@@ -77,7 +77,7 @@ class TestColorEmbeddingRegistryRoisFromRegistry:
         """A ``rois = [...]`` key is stored verbatim in embedding.rois."""
         toml_path = _write_toml(
             tmp_path,
-            _minimal_color_path_toml(rois_line='rois = ["my_roi"]'),
+            _minimal_color_path_embedding_toml(rois_line='rois = ["my_roi"]'),
         )
         data_reg = _make_data_registry(tmp_path)
         roi_registry = _make_registry_with_roi("my_roi")
@@ -102,7 +102,7 @@ class TestColorEmbeddingRegistryInlineRoi:
         """Inline ``[color.path.<id>.roi.*]`` entries are added to the registry."""
         toml_path = _write_toml(
             tmp_path,
-            _minimal_color_path_toml(
+            _minimal_color_path_embedding_toml(
                 extra="""
                 [color.path.default.roi.box1]
                 name     = "box1"
@@ -129,7 +129,7 @@ class TestColorEmbeddingRegistryInlineRoi:
         """Inline ROIs with a ``label`` key become :class:`RoiAndLabelConfig`."""
         toml_path = _write_toml(
             tmp_path,
-            _minimal_color_path_toml(
+            _minimal_color_path_embedding_toml(
                 extra="""
                 [color.path.default.roi.sand]
                 name     = "sand"
@@ -158,7 +158,7 @@ class TestColorEmbeddingRegistryInlineRoi:
         """Inline ROIs listed in ``rois`` appear only once in embedding.rois."""
         toml_path = _write_toml(
             tmp_path,
-            _minimal_color_path_toml(
+            _minimal_color_path_embedding_toml(
                 rois_line='rois = ["box1"]',
                 extra="""
                 [color.path.default.roi.box1]
@@ -184,7 +184,7 @@ class TestColorEmbeddingRegistryInlineRoi:
         """Inline ROIs are ignored when no registry is provided."""
         toml_path = _write_toml(
             tmp_path,
-            _minimal_color_path_toml(
+            _minimal_color_path_embedding_toml(
                 extra="""
                 [color.path.default.roi.box1]
                 name     = "box1"
@@ -251,7 +251,7 @@ class TestColorEmbeddingRegistrySelectors:
     def test_invalid_color_path_values_raise(self, tmp_path, key, value):
         toml_path = _write_toml(
             tmp_path,
-            _minimal_color_path_toml(extra=f'{key} = "{value}"'),
+            _minimal_color_path_embedding_toml(extra=f'{key} = "{value}"'),
         )
         data_reg = _make_data_registry(tmp_path)
         with pytest.raises(ValueError, match=key):
