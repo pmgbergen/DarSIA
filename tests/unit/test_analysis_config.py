@@ -119,13 +119,20 @@ def test_analysis_thresholding_rejects_invalid_layer_mode(tmp_path: Path) -> Non
         """
 [analysis]
 [analysis.thresholding]
-[analysis.thresholding.layers.bad]
+[analysis.thresholding.layer.bad]
 mode = "not_supported"
 threshold_min = 0.1
 """.strip(),
     )
 
-    with pytest.raises(ValueError, match=r"Unsupported analysis\.thresholding\.layers"):
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Unsupported analysis.thresholding.layer.{key}.mode 'not_supported'. "
+            "Supported modes are legacy mass modes, rescaled modes, and 'color.<id>' "
+            "(defined under [color.*.*])."
+        ),
+    ):
         AnalysisConfig().load(
             path=config_path,
             data=tmp_path,
