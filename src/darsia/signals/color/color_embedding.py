@@ -126,18 +126,19 @@ def normalized_trichromatic(
 
     converted = image.to_trichromatic(cs, return_image=True)
     arr = converted.img.astype(np.float32, copy=False)
-    # NOTE: Scaling in RGB mode not needed, as the to_trichromatic conversion
-    # already normalizes to [0, 1].
     if cs in {"RGB", "BGR"}:
-        ...
+        # NOTE: Scaling in RGB mode not needed, as the to_trichromatic conversion
+        # already normalizes to [0, 1].
+        if arr.dtype in [int, np.uint8, np.uint16]:
+            arr = arr / 255.0
     elif cs in {"HSV", "HLS"}:
         hue = arr[..., 0]
         hue_scale = 360.0 if np.max(hue) > 180.0 and np.min(hue) >= 0.0 else 180.0
         arr[..., 0] = hue / hue_scale
         # NOTE: Only scaling of hue channel needed, as saturation and value/lightness
         # channels are already in [0, 1] range from to_trichromatic conversion.
-        # if np.max(arr[..., 1:]) > 1.0:
-        #     arr[..., 1:] = arr[..., 1:] / 255.0
+        if arr[..., 1:].dtype in [int, np.uint8, np.uint16]:
+            arr[..., 1:] = arr[..., 1:] / 255.0
     elif cs == "LAB":
         if np.nanmin(arr[..., 1:]) < 0.0:
             arr[..., 0] = arr[..., 0] / 100.0
