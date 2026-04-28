@@ -27,8 +27,6 @@ def parse_calibration_basis(
         return value
     if isinstance(value, str):
         token = value.lower().strip()
-        if token == "single":
-            token = CalibrationBasis.GLOBAL.value
         return CalibrationBasis(token)
     raise TypeError(f"Unsupported calibration basis value type: {type(value)}")
 
