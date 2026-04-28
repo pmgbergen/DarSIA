@@ -227,7 +227,7 @@ def resolve_time_data_selector(
     required: bool = True,
     warning_stacklevel: int = _DEFAULT_WARNING_STACKLEVEL,
 ) -> TimeData | None:
-    """Resolve a workflow selector to :class:`TimeData`.
+    """Resolve a workflow selector to ``TimeData``.
 
     Supports registry-key references and legacy inline selector tables.
     Legacy inline selector tables are still parsed but emit ``DeprecationWarning``.
