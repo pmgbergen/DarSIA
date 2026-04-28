@@ -167,7 +167,7 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
         sec={
             "thresholding": {
                 "formats": ["jpg", "npz"],
-                "layers": {
+                "layer": {
                     "gas": {
                         "mode": "saturation_g",
                         "threshold_min": 0.2,
@@ -247,7 +247,7 @@ def test_thresholding_supports_rescaled_layer_modes(tmp_path: Path) -> None:
         sec={
             "thresholding": {
                 "formats": ["npz"],
-                "layers": {
+                "layer": {
                     "rescaled": {
                         "mode": "rescaled_mass",
                         "threshold_min": 0.2,
@@ -326,7 +326,7 @@ def test_thresholding_applies_expert_knowledge_constraints(tmp_path: Path) -> No
         sec={
             "thresholding": {
                 "formats": ["npz"],
-                "layers": {
+                "layer": {
                     "gas": {
                         "mode": "saturation_g",
                         "threshold_min": 0.1,
