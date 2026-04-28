@@ -10,11 +10,11 @@ import darsia
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.basis import label_ids_from_image
 from darsia.presets.workflows.calibration.metadata import write_calibration_metadata
-from darsia.signals.color import ColorPathEmbedding
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.presets.workflows.utils.roi_visualization import draw_active_region
+from darsia.signals.color import ColorPathEmbedding
 from darsia.utils.standard_images import roi_to_mask
 
 logger = logging.getLogger(__name__)

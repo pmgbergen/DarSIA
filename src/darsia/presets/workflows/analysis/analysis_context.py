@@ -10,10 +10,6 @@ from warnings import warn
 
 import darsia
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
-from darsia.signals.color import (
-    ColorEmbeddingRuntime,
-    ColorPathEmbedding,
-)
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.time_data import TimeData
@@ -23,6 +19,10 @@ from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.restoration import build_restoration
 from darsia.presets.workflows.rig import Rig
+from darsia.signals.color import (
+    ColorEmbeddingRuntime,
+    ColorPathEmbedding,
+)
 
 if TYPE_CHECKING:
     pass

@@ -10,12 +10,12 @@ from darsia.presets.workflows.calibration.metadata import (
     read_calibration_metadata,
     validate_basis_metadata,
 )
-from darsia.signals.color import ColorPathEmbedding
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
 from darsia.presets.workflows.utils.images import load_images_with_cache
+from darsia.signals.color import ColorPathEmbedding
 
 logger = logging.getLogger(__name__)
 

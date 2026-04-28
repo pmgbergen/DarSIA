@@ -4,12 +4,6 @@ import numpy as np
 import pytest
 
 import darsia
-from darsia.presets.workflows.color_embedding import (
-    ColorChannelEmbedding,
-    ColorEmbeddingBasis,
-    ColorEmbeddingRuntime,
-    ColorRangeEmbedding,
-)
 from darsia.presets.workflows.config.color_embedding_registry import (
     ColorEmbeddingRegistry,
 )
@@ -18,6 +12,12 @@ from darsia.presets.workflows.mode_resolution import (
     resolve_mode_image,
 )
 from darsia.presets.workflows.segmentation_contours import SimpleSegmentation
+from darsia.signals.color import (
+    ColorChannelEmbedding,
+    ColorEmbeddingBasis,
+    ColorEmbeddingRuntime,
+    ColorRangeEmbedding,
+)
 
 
 def _optical_image(arr: np.ndarray) -> darsia.OpticalImage:

@@ -6,10 +6,10 @@ from dataclasses import dataclass
 from typing import Any
 
 import darsia
-from darsia.signals.color import ColorEmbeddingRuntime
 from darsia.presets.workflows.config.color_embedding_registry import (
     ColorEmbeddingRegistry,
 )
+from darsia.signals.color import ColorEmbeddingRuntime
 
 LEGACY_COLOR_TO_MASS_MODES = {
     "concentration_aq",
