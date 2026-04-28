@@ -8,9 +8,9 @@ from pathlib import Path
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.basis import CalibrationBasis
 from darsia.signals.color.color_embedding import (
     ColorEmbedding,
+    ColorEmbeddingBasis,
     ColorEmbeddingRuntime,
     ColorEmbeddingTransform,
     normalized_trichromatic,
@@ -65,7 +65,7 @@ class ColorRangeEmbedding(ColorEmbedding):
 
     embedding_id: str
     mode: darsia.ColorMode
-    basis: CalibrationBasis
+    basis: ColorEmbeddingBasis
     calibration_root: Path
     color_space: str
     ranges: list[tuple[float | None, float | None]]
@@ -77,7 +77,7 @@ class ColorRangeEmbedding(ColorEmbedding):
     def canonical_transform(
         self, runtime: ColorEmbeddingRuntime
     ) -> ColorEmbeddingTransform:
-        if self.basis != CalibrationBasis.GLOBAL:
+        if self.basis != ColorEmbeddingBasis.GLOBAL:
             raise NotImplementedError(
                 "Color range embedding currently only supports basis='global'."
             )

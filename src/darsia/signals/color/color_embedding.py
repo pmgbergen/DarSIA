@@ -4,24 +4,46 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.basis import CalibrationBasis, parse_calibration_basis
 
 if TYPE_CHECKING:
     from darsia.presets.workflows.rig import Rig
 
 
-ColorEmbeddingBasis = CalibrationBasis
+class ColorEmbeddingBasis(StrEnum):
+    """Label space used by color embedding, calibration, and analysis workflows."""
+
+    LABELS = "labels"
+    FACIES = "facies"
+    GLOBAL = "global"
 
 
 def parse_color_embedding_basis(
-    value: str | ColorEmbeddingBasis,
+    value: str | ColorEmbeddingBasis | None,
+    default: ColorEmbeddingBasis = ColorEmbeddingBasis.FACIES,
 ) -> ColorEmbeddingBasis:
-    return parse_calibration_basis(value)
+    """Parse user/config input into a :class:`ColorEmbeddingBasis`."""
+
+    if value is None:
+        return default
+    if isinstance(value, ColorEmbeddingBasis):
+        return value
+    if isinstance(value, str):
+        token = value.lower().strip()
+        return ColorEmbeddingBasis(token)
+    raise TypeError(f"Unsupported color embedding basis value type: {type(value)}")
+
+
+def calibration_basis_folder(basis: str | ColorEmbeddingBasis) -> str:
+    """Return standard folder suffix for basis-aware calibration artifacts."""
+
+    parsed = parse_color_embedding_basis(basis)
+    return f"from_{parsed.value}"
 
 
 @dataclass
