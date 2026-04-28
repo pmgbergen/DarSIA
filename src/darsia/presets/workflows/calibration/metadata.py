@@ -6,7 +6,10 @@ import json
 from pathlib import Path
 from warnings import warn
 
-from darsia.signals.color.color_embedding import ColorEmbeddingBasis, parse_color_embedding_basis
+from darsia.signals.color.color_embedding import (
+    ColorEmbeddingBasis,
+    parse_color_embedding_basis,
+)
 
 
 def write_calibration_metadata(

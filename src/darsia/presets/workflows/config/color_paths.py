@@ -10,6 +10,7 @@ from darsia.signals.color.color_embedding import (
     calibration_basis_folder,
     parse_color_embedding_basis,
 )
+
 from .data_registry import DataRegistry
 from .data_selection import resolve_path_selector, resolve_time_data_selector
 from .time_data import TimeData
