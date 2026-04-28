@@ -57,13 +57,13 @@ def _minimal_color_path_embedding_toml(extra: str = "", rois_line: str = "") -> 
         rois_line: A ``rois = ...`` line to inject (empty → key absent).
     """
     return textwrap.dedent(
-        f"""
-        [color.path.default]
-        baseline = "baseline_imgs"
-        data     = "cal_imgs"
-        {rois_line}
-        {extra}
-        """
+        f"""\
+[color.path.default]
+baseline = "baseline_imgs"
+data     = "cal_imgs"
+{rois_line}
+{extra}
+"""
     )
 
 
