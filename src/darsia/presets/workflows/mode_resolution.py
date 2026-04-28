@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import darsia
-from darsia.presets.workflows.color_embedding import ColorEmbeddingRuntime
+from darsia.signals.color import ColorEmbeddingRuntime
 from darsia.presets.workflows.config.color_embedding_registry import (
     ColorEmbeddingRegistry,
 )
