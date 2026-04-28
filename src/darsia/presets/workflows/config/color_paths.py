@@ -5,7 +5,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..basis import CalibrationBasis, calibration_basis_folder, parse_calibration_basis
+from darsia.signals.color.color_embedding import (
+    ColorEmbeddingBasis,
+    calibration_basis_folder,
+    parse_color_embedding_basis,
+)
 from .data_registry import DataRegistry
 from .data_selection import resolve_path_selector, resolve_time_data_selector
 from .time_data import TimeData
@@ -66,7 +70,7 @@ class ColorPathsConfig:
                        linear regression; pass the expanded spectrum as
                        ``ignore=`` *(default – preserves existing behaviour)*.
     """
-    basis: CalibrationBasis = CalibrationBasis.LABELS
+    basis: ColorEmbeddingBasis = ColorEmbeddingBasis.LABELS
     """Label-space basis used for calibration (`facies` or `labels`)."""
     histogram_weighting: str = "threshold"
     """Controls how histogram counts are used when fitting the colour path.
@@ -164,9 +168,9 @@ class ColorPathsConfig:
         self.reference_label = _get_key(
             sec, "reference_label", default=0, required=False, type_=int
         )
-        self.basis = parse_calibration_basis(
+        self.basis = parse_color_embedding_basis(
             _get_key(
-                sec, "basis", default=CalibrationBasis.LABELS.value, required=False
+                sec, "basis", default=ColorEmbeddingBasis.LABELS.value, required=False
             )
         )
 

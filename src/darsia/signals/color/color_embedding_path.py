@@ -6,11 +6,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import darsia
-from darsia.presets.workflows.basis import CalibrationBasis, calibration_basis_folder
 from darsia.signals.color.color_embedding import (
     ColorEmbedding,
+    ColorEmbeddingBasis,
     ColorEmbeddingRuntime,
     ColorEmbeddingTransform,
+    calibration_basis_folder,
 )
 
 
@@ -30,7 +31,7 @@ class ColorPathEmbedding(ColorEmbedding):
 
     embedding_id: str
     mode: darsia.ColorMode
-    basis: CalibrationBasis
+    basis: ColorEmbeddingBasis
     calibration_root: Path
     num_segments: int = 1
     ignore_labels: list[int] = field(default_factory=list)

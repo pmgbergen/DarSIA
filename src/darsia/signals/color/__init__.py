@@ -3,6 +3,7 @@ from darsia.signals.color.color_embedding import (
     ColorEmbeddingBasis,
     ColorEmbeddingRuntime,
     ColorEmbeddingTransform,
+    calibration_basis_folder,
     parse_color_embedding_basis,
 )
 from darsia.signals.color.color_embedding_channel import (
@@ -23,6 +24,7 @@ __all__ = [
     "ColorEmbeddingBasis",
     "ColorEmbeddingRuntime",
     "ColorEmbeddingTransform",
+    "calibration_basis_folder",
     "parse_color_embedding_basis",
     "ColorChannelEmbedding",
     "ColorChannelEmbeddingTransform",

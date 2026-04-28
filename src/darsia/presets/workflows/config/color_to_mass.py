@@ -6,7 +6,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from warnings import warn
 
-from ..basis import CalibrationBasis, calibration_basis_folder, parse_calibration_basis
+from darsia.signals.color.color_embedding import (
+    ColorEmbeddingBasis,
+    calibration_basis_folder,
+    parse_color_embedding_basis,
+)
 from .data_registry import DataRegistry
 from .data_selection import resolve_time_data_selector
 from .time_data import TimeData
@@ -30,7 +34,7 @@ class ColorToMassConfig:
     """Calibration data configuration."""
     calibration_folder: Path = field(default_factory=Path)
     """Path to the calibration folder."""
-    basis: CalibrationBasis = CalibrationBasis.LABELS
+    basis: ColorEmbeddingBasis = ColorEmbeddingBasis.LABELS
     """Label-space basis used for calibration (`facies` or `labels`)."""
     threshold: float = 0.2
     """Sensitivity threshold used when deactivating insensitive color paths."""
@@ -61,9 +65,9 @@ class ColorToMassConfig:
         # Mode and fluid
         self.mode = _get_key(sec, "mode", default="manual", required=False, type_=str)
         self.fluid = _get_key(sec, "fluid", default="co2", required=False, type_=str)
-        self.basis = parse_calibration_basis(
+        self.basis = parse_color_embedding_basis(
             _get_key(
-                sec, "basis", default=CalibrationBasis.LABELS.value, required=False
+                sec, "basis", default=ColorEmbeddingBasis.LABELS.value, required=False
             )
         )
         self.threshold = _get_key(

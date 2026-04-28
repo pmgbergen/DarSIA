@@ -6,13 +6,13 @@ import json
 from pathlib import Path
 from warnings import warn
 
-from darsia.presets.workflows.basis import CalibrationBasis, parse_calibration_basis
+from darsia.signals.color.color_embedding import ColorEmbeddingBasis, parse_color_embedding_basis
 
 
 def write_calibration_metadata(
     target: Path,
     *,
-    basis: CalibrationBasis,
+    basis: ColorEmbeddingBasis,
     label_ids: list[int],
     extra: dict | None = None,
 ) -> None:
@@ -39,7 +39,7 @@ def read_calibration_metadata(path: Path) -> dict | None:
 def validate_basis_metadata(
     *,
     metadata: dict | None,
-    expected_basis: CalibrationBasis,
+    expected_basis: ColorEmbeddingBasis,
     expected_label_ids: list[int],
     artifact: str,
     strict: bool = True,
@@ -60,7 +60,7 @@ def validate_basis_metadata(
             "and skipping strict basis compatibility check."
         )
     else:
-        found_basis = parse_calibration_basis(raw_basis)
+        found_basis = parse_color_embedding_basis(raw_basis)
         if found_basis != expected_basis:
             raise ValueError(
                 f"{artifact} calibration basis mismatch: expected "
