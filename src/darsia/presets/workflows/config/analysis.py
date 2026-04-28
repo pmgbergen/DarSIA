@@ -124,7 +124,7 @@ class AnalysisThresholdingConfig:
             validate_mode_syntax(
                 self.mode,
                 color_embedding_registry,
-                "analysis.thresholding.layers.{key}.mode",
+                "analysis.thresholding.layer.{key}.mode",
             )
             self.threshold_min = _get_key(sec, "threshold_min", required=False)
             self.threshold_max = _get_key(sec, "threshold_max", required=False)
@@ -138,47 +138,42 @@ class AnalysisThresholdingConfig:
                 and self.threshold_min > self.threshold_max
             ):
                 raise ValueError(
-                    f"analysis.thresholding.layers.{key} has threshold_min > threshold_max."
+                    f"analysis.thresholding.layer.{key} has threshold_min > threshold_max."
                 )
             if self.threshold_min is None and self.threshold_max is None:
                 raise ValueError(
-                    f"analysis.thresholding.layers.{key} must have at least one of "
+                    f"analysis.thresholding.layer.{key} must have at least one of "
                     "threshold_min or threshold_max."
                 )
 
             self.label = _get_key(sec, "label", required=False, default=key, type_=str)
             self.fill = _to_rgb(
                 _get_key(sec, "fill", required=False, default=self.fill),
-                f"analysis.thresholding.layers.{key}.fill",
+                f"analysis.thresholding.layer.{key}.fill",
             )
             self.stroke = _to_rgb(
                 _get_key(sec, "stroke", required=False, default=self.stroke),
-                f"analysis.thresholding.layers.{key}.stroke",
+                f"analysis.thresholding.layer.{key}.stroke",
             )
             self.fill_alpha = float(
                 _get_key(sec, "fill_alpha", required=False, default=self.fill_alpha)
             )
             if not (0.0 <= self.fill_alpha <= 1.0):
                 raise ValueError(
-                    f"analysis.thresholding.layers.{key}.fill_alpha must be in [0, 1]."
+                    f"analysis.thresholding.layer.{key}.fill_alpha must be in [0, 1]."
                 )
             self.stroke_width = int(
                 _get_key(sec, "stroke_width", required=False, default=self.stroke_width)
             )
             if self.stroke_width < 0:
                 raise ValueError(
-                    f"analysis.thresholding.layers.{key}.stroke_width must be >= 0."
+                    f"analysis.thresholding.layer.{key}.stroke_width must be >= 0."
                 )
 
             return self
 
     formats: list[str] = field(default_factory=lambda: ["jpg", "npz"])
     layers: dict[str, LayerConfig] = field(default_factory=dict)
-    color_embedding_id: str | None = None
-    modes: list[str] = field(
-        default_factory=lambda: ["concentration_aq", "saturation_g"]
-    )
-    thresholds: dict[str, float] = field(default_factory=dict)
     legend: AnalysisThresholdingLegendConfig = field(
         default_factory=AnalysisThresholdingLegendConfig
     )
@@ -192,10 +187,6 @@ class AnalysisThresholdingConfig:
         color_embedding_registry: ColorEmbeddingRegistry | None = None,
     ) -> "AnalysisThresholdingConfig":
         sub_sec = _get_section(sec, "thresholding")
-        color = _get_key(sub_sec, "color", required=False, type_=str)
-        self.color_embedding_id = (
-            color.strip() if isinstance(color, str) and color.strip() else None
-        )
 
         raw_formats = _get_key(sub_sec, "formats", required=False, default=self.formats)
         if not isinstance(raw_formats, list):
@@ -214,9 +205,9 @@ class AnalysisThresholdingConfig:
                 f"{', '.join(sorted(supported_formats))}."
             )
 
-        raw_layers = _get_key(sub_sec, "layers", required=False, default={})
+        raw_layers = _get_key(sub_sec, "layer", required=False, default={})
         if not isinstance(raw_layers, dict):
-            raise ValueError("analysis.thresholding.layers must be a table/dict.")
+            raise ValueError("analysis.thresholding.layer must be a table/dict.")
         self.layers = {}
         if len(raw_layers) > 0:
             for key in raw_layers.keys():
@@ -226,36 +217,6 @@ class AnalysisThresholdingConfig:
                     key=key,
                     color_embedding_registry=color_embedding_registry,
                 )
-        elif self.color_embedding_id is not None:
-            single_layer = {
-                "mode": f"color.{self.color_embedding_id}",
-                "threshold_min": _get_key(sub_sec, "threshold_min", required=False),
-                "threshold_max": _get_key(sub_sec, "threshold_max", required=False),
-                "label": _get_key(
-                    sub_sec,
-                    "label",
-                    required=False,
-                    default=self.color_embedding_id,
-                    type_=str,
-                ),
-                "fill": _get_key(
-                    sub_sec, "fill", required=False, default=(255, 255, 255)
-                ),
-                "stroke": _get_key(
-                    sub_sec, "stroke", required=False, default=(0, 0, 0)
-                ),
-                "fill_alpha": _get_key(
-                    sub_sec, "fill_alpha", required=False, default=0.35
-                ),
-                "stroke_width": _get_key(
-                    sub_sec, "stroke_width", required=False, default=2
-                ),
-            }
-            self.layers["default"] = self.LayerConfig().load(
-                single_layer,
-                key="default",
-                color_embedding_registry=color_embedding_registry,
-            )
         legend = _get_key(sub_sec, "legend", required=False, default={})
         if not isinstance(legend, dict):
             raise ValueError("analysis.thresholding.legend must be a table/dict.")

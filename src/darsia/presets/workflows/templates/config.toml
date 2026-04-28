@@ -180,7 +180,7 @@ format = "csv"
 # rescaled_mass, rescaled_saturation_g, rescaled_concentration_aq,
 # color.<id>
 formats = ["jpg", "npz"]
-[analysis.thresholding.layers.gas]
+[analysis.thresholding.layer.gas]
 mode = "saturation_g"
 threshold_min = 0.05
 #threshold_max = 0.15
@@ -189,7 +189,7 @@ fill = [255, 0, 0]
 stroke = [255, 255, 255]
 fill_alpha = 0.35
 stroke_width = 2
-[analysis.thresholding.layers.aq]
+[analysis.thresholding.layer.aq]
 mode = "concentration_aq"
 threshold_min = 0.05
 #threshold_max = 1.0
@@ -198,7 +198,7 @@ fill = [0, 0, 255]
 stroke = [255, 255, 255]
 fill_alpha = 0.35
 stroke_width = 2
-[analysis.thresholding.layers.red]
+[analysis.thresholding.layer.red]
 mode = "color.red_channel"
 threshold_min = 0.6
 label = "High red channel"
@@ -206,7 +206,7 @@ fill = [255, 255, 0]
 stroke = [255, 255, 255]
 fill_alpha = 0.2
 stroke_width = 1
-[analysis.thresholding.layers.green_hsv_band]
+[analysis.thresholding.layer.green_hsv_band]
 mode = "color.custom_range"
 threshold_min = 0.5
 label = "HSV green range"

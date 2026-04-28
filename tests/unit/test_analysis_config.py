@@ -73,13 +73,13 @@ def test_analysis_thresholding_layers_and_formats_are_loaded(tmp_path: Path) -> 
 [analysis]
 [analysis.thresholding]
 formats = ["jpg", "npz"]
-[analysis.thresholding.layers.gas]
+[analysis.thresholding.layer.gas]
 mode = "saturation_g"
 threshold_min = 0.15
 label = "Gas plume"
 fill = [255, 0, 0]
 stroke = [255, 255, 255]
-[analysis.thresholding.layers.aq]
+[analysis.thresholding.layer.aq]
 mode = "concentration_aq"
 threshold_max = 0.05
 label = "Aqueous plume"
@@ -140,7 +140,7 @@ def test_analysis_thresholding_rejects_invalid_formats(tmp_path: Path) -> None:
 [analysis]
 [analysis.thresholding]
 formats = ["jpg", "png"]
-[analysis.thresholding.layers.gas]
+[analysis.thresholding.layer.gas]
 mode = "saturation_g"
 threshold_min = 0.1
 """.strip(),
@@ -173,19 +173,19 @@ range = [[0.0, 1.0], [0.2, 0.8], [0.0, 1.0]]
 [analysis]
 
 [analysis.thresholding]
-[analysis.thresholding.layers.mass_rescaled]
+[analysis.thresholding.layer.mass_rescaled]
 mode = "rescaled_mass"
 threshold_min = 0.1
-[analysis.thresholding.layers.gas_rescaled]
+[analysis.thresholding.layer.gas_rescaled]
 mode = "rescaled_saturation_g"
 threshold_min = 0.1
-[analysis.thresholding.layers.aq_rescaled]
+[analysis.thresholding.layer.aq_rescaled]
 mode = "rescaled_concentration_aq"
 threshold_min = 0.1
-[analysis.thresholding.layers.red]
+[analysis.thresholding.layer.red]
 mode = "red_channel"
 threshold_min = 0.2
-[analysis.thresholding.layers.green_band]
+[analysis.thresholding.layer.green_band]
 mode = "green_band"
 threshold_min = 0.5
 """.strip(),
@@ -223,7 +223,7 @@ channel = "r"
 
 [analysis]
 [analysis.thresholding]
-[analysis.thresholding.layers.bad]
+[analysis.thresholding.layer.bad]
 mode = "red_channel"
 threshold_min = 0.1
 """.strip(),
@@ -232,7 +232,7 @@ threshold_min = 0.1
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Unsupported analysis.thresholding.layers.{key}.mode 'red_channel'. "
+            "Unsupported analysis.thresholding.layer.{key}.mode 'red_channel'. "
             "Supported modes are legacy mass modes, rescaled modes, and 'color.<id>' "
             "(defined under [color.*.*])."
         ),
