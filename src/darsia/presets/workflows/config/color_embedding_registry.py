@@ -52,11 +52,20 @@ def _resolve_selector(
             raise KeyError(f"{section}.{key}")
         return None
     selector = cfg[key]
+    if isinstance(selector, dict):
+        return resolve_time_data_selector(
+            cfg,
+            key,
+            section=section,
+            data=data,
+            data_registry=data_registry,
+            required=required,
+        )
     if isinstance(selector, list) and not all(
         isinstance(token, str) for token in selector
     ):
         raise ValueError(f"{section}.{key} selector lists must contain only strings.")
-    if not isinstance(selector, (str, list, dict)):
+    if not isinstance(selector, (str, list)):
         raise ValueError(
             f"{section}.{key} must be a selector key (str), list of selector keys, or "
             "inline table (dict)."
