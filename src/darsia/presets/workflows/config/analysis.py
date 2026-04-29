@@ -628,7 +628,9 @@ class AnalysisConfig:
 
         # Config to load analysis data – centralized selector resolution.
         try:
-            self.data = data_registry.resolve(sec.get("data"))
+            self.data = (
+                data_registry.resolve(sec.get("data")) if data_registry else None
+            )
         except KeyError:
             warn("No analysis data found. Use [analysis.data].")
             self.data = None

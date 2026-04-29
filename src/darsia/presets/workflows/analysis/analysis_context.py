@@ -19,10 +19,7 @@ from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.restoration import build_restoration
 from darsia.presets.workflows.rig import Rig
-from darsia.signals.color import (
-    ColorEmbeddingRuntime,
-    ColorPathEmbedding,
-)
+from darsia.signals.color import ColorEmbeddingRuntime, ColorPathEmbedding
 
 if TYPE_CHECKING:
     pass
@@ -140,7 +137,7 @@ def select_image_paths(
     elif hasattr(sub_config, "data") and isinstance(sub_config.data, (str, list)):
         # Resolve registry reference if sub_config.data is a (list of) raw registry key
         if data_registry is not None:
-            resolved = data_registry.resolve(sub_config.data)
+            resolved = data_registry.resolve(sub_config.data) if data_registry else None
             if len(resolved.image_paths) > 0:
                 image_paths = experiment.find_images_for_paths(
                     paths=resolved.image_paths
