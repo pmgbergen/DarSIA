@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 from warnings import warn
 
 from .data_registry import DataRegistry
-from .data_selection import resolve_time_data_selector
 from .time_data import TimeData
 from .utils import _get_key, _get_section, _get_section_from_toml
 
@@ -92,13 +91,8 @@ class CalibrationMassConfig:
         # This threshold is currently only meaningful for color-path embeddings.
         self.rois = _get_key(sec, "rois", default=[], required=False, type_=list)
         try:
-            self.data = resolve_time_data_selector(
-                sec,
-                "data",
-                section="calibration.mass",
-                data=data,
-                data_registry=data_registry,
-                required=True,
+            self.data = (
+                data_registry.resolve(sec.get("data")) if data_registry else None
             )
         except KeyError:
             warn("No data found for calibration.mass. Use [calibration.mass].data.")
