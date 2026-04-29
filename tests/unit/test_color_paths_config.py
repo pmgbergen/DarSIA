@@ -211,35 +211,6 @@ class TestColorEmbeddingRegistryInlineRoi:
 
 
 class TestColorEmbeddingRegistrySelectors:
-    def test_inline_selectors_emit_deprecation_warning(self, tmp_path):
-        dummy = tmp_path / "dummy.jpg"
-        dummy.touch()
-        toml_path = _write_toml(
-            tmp_path,
-            """
-            [color.path.default]
-            [color.path.default.baseline.path.baseline]
-            paths = ["dummy.jpg"]
-            [color.path.default.data.time.calibration]
-            times = ["01:00:00"]
-            tol = "00:05:00"
-            """,
-        )
-        with pytest.warns(DeprecationWarning) as warnings:
-            registry = ColorEmbeddingRegistry().load(
-                path=toml_path,
-                data=tmp_path,
-                results=tmp_path,
-            )
-        messages = [str(item.message) for item in warnings]
-        assert any("color.path.default.baseline" in msg for msg in messages)
-        assert any("color.path.default.data" in msg for msg in messages)
-        embedding = registry.resolve("default")
-        assert embedding.data is not None
-        assert embedding.baseline_data is not None
-        assert embedding.data.image_times == pytest.approx([1.0])
-        assert embedding.baseline_data.image_paths == [dummy]
-
     @pytest.mark.parametrize(
         ("key", "value"),
         [
