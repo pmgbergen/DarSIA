@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .data_registry import DataRegistry
-from .data_selection import resolve_time_data_selector
 from .format_registry import FormatRegistry
 from .roi_registry import RoiRegistry
 from .time_data import TimeData
@@ -51,15 +50,9 @@ class HelperRoiConfig:
                 f"Unsupported helper.roi.mode '{self.mode}'. Supported modes: "
                 f"{', '.join(sorted(self.SUPPORTED_MODES))}."
             )
-        self.data = resolve_time_data_selector(
-            sub_sec,
-            "data",
-            section="helper.roi",
-            data=data,
-            data_registry=data_registry,
-            required=True,
-        )
-        return self
+        _selector = sub_sec["data"]
+        self.data = data_registry.resolve(_selector)
+
 
 
 @dataclass
@@ -75,19 +68,9 @@ class HelperRoiViewerConfig:
         data: Path | None,
         data_registry: DataRegistry | None,
     ) -> "HelperRoiViewerConfig":
-        self.data = resolve_time_data_selector(
-            sec,
-            "data",
-            section="helper.roi_viewer",
-            data=data,
-            data_registry=data_registry,
-            required=True,
-        )
+        _selector = sec["data"]
+        self.data = data_registry.resolve(_selector)
         return self
-
-
-@dataclass
-class HelperResultsConfig:
     """Configuration for result reader helper."""
 
     data: TimeData | None = None
@@ -105,14 +88,8 @@ class HelperResultsConfig:
         format_registry: FormatRegistry | None,
         roi_registry: RoiRegistry | None,
     ) -> "HelperResultsConfig":
-        self.data = resolve_time_data_selector(
-            sec,
-            "data",
-            section="helper.results",
-            data=data,
-            data_registry=data_registry,
-            required=True,
-        )
+        _selector = sec["data"]
+        self.data = data_registry.resolve(_selector)
 
         self.mode = str(_get_key(sec, "mode", required=True, type_=str)).strip()
         if self.mode == "":

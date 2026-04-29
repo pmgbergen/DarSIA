@@ -11,7 +11,6 @@ from warnings import warn
 from darsia.presets.workflows.mode_resolution import validate_mode_syntax
 
 from .data_registry import DataRegistry
-from .data_selection import resolve_time_data_selector
 from .fingers import FingersConfig
 from .roi import RoiAndLabelConfig, RoiConfig
 from .segmentation import SegmentationConfig
@@ -629,14 +628,8 @@ class AnalysisConfig:
 
         # Config to load analysis data – centralized selector resolution.
         try:
-            self.data = resolve_time_data_selector(
-                sec,
-                "data",
-                section="analysis",
-                data=data,
-                data_registry=data_registry,
-                required=True,
-            )
+            _selector = sec["data"]
+            self.data = data_registry.resolve(_selector)
         except KeyError:
             warn("No analysis data found. Use [analysis.data].")
             self.data = None

@@ -13,7 +13,6 @@ from darsia.signals.color.color_embedding import (
 )
 
 from .data_registry import DataRegistry
-from .data_selection import resolve_time_data_selector
 from .time_data import TimeData
 from .utils import _get_key, _get_section_from_toml
 
@@ -78,14 +77,8 @@ class ColorToMassConfig:
 
         # Calibration data – centralized selector resolution.
         try:
-            self.data = resolve_time_data_selector(
-                sec,
-                "data",
-                section="color_to_mass",
-                data=data,
-                data_registry=data_registry,
-                required=True,
-            )
+            _selector = sec["data"]
+            self.data = data_registry.resolve(_selector)
         except KeyError:
             warn("No data found. Use [color_to_mass.data].")
             self.data = None

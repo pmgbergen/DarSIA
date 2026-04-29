@@ -6,7 +6,6 @@ from pathlib import Path
 from warnings import warn
 
 from .data_registry import DataRegistry
-from .data_selection import resolve_time_data_selector
 from .time_data import TimeData
 from .utils import _get_section_from_toml
 
@@ -52,14 +51,8 @@ class DownloadConfig:
 
         # Config to load download data
         try:
-            self.data = resolve_time_data_selector(
-                sec,
-                "data",
-                section="download",
-                data=data,
-                data_registry=data_registry,
-                required=True,
-            )
+            _selector = sec["data"]
+            self.data = data_registry.resolve(_selector)
         except KeyError:
             warn("No download data found. Use [download.data].")
             self.data = None
