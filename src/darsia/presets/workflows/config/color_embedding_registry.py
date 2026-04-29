@@ -16,7 +16,6 @@ from darsia.signals.color import (
     parse_color_embedding_basis,
 )
 
-from .data_selection import _resolve_selector
 from .utils import _convert_none, _get_section_from_toml, _validate_choice
 
 if TYPE_CHECKING:
@@ -89,20 +88,10 @@ def parse_color_path_embedding(
         histogram_weighting=histogram_weighting,
         calibration_mode=calibration_mode,
     )
-    embedding.baseline_data = _resolve_selector(
-        cfg,
-        "baseline",
-        section=f"color.path.{embedding_id}",
-        data=data,
-        data_registry=data_registry,
+    embedding.baseline_data = (
+        data_registry.resolve(cfg["baseline"]) if data_registry else None
     )
-    embedding.data = _resolve_selector(
-        cfg,
-        "data",
-        section=f"color.path.{embedding_id}",
-        data=data,
-        data_registry=data_registry,
-    )
+    embedding.data = data_registry.resolve(cfg["data"]) if data_registry else None
     if "roi" in cfg and isinstance(cfg["roi"], dict) and roi_registry is not None:
         from .roi import RoiAndLabelConfig, RoiConfig
 
