@@ -27,9 +27,9 @@ def _write_minimal_config(tmp_path: Path) -> Path:
     config.write_text(
         f"""
 [data]
-folder = "{data_folder}"
 baseline = "baseline.jpg"
-results = "{results_folder}"
+folder = "{data_folder.as_posix()}"
+results = "{results_folder.as_posix()}"
 """
     )
     return config
@@ -57,10 +57,10 @@ def test_export_calibration_bundle(tmp_path: Path):
     with zipfile.ZipFile(bundle, "r") as zf:
         names = set(zf.namelist())
         assert (
-            "calibration_bundle/my_colorpath/color_paths/from_labels/color_path_0.json"
+            "calibration/my_colorpath/color_paths/from_labels/color_path_0.json"
             in names
         )
-        manifest = json.loads(zf.read("calibration_bundle/manifest.json"))
+        manifest = json.loads(zf.read("calibration/manifest.json"))
         assert manifest["format_version"] == 2
         assert manifest["embeddings"] == ["my_colorpath"]
 

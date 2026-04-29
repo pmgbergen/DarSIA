@@ -80,9 +80,9 @@ def test_fluidflower_config_loads_format_registry(tmp_path: Path) -> None:
         tmp_path / "config.toml",
         f"""
 [data]
-folder = "{data_folder}"
+folder = "{data_folder.as_posix()}"
 baseline = "baseline.jpg"
-results = "{tmp_path / "results"}"
+results = "{(tmp_path / "results").as_posix()}"
 
 [format.npy.my_npy]
 dtype = "np.float32"
