@@ -29,7 +29,7 @@ def _collect_bundle_targets(
         rel = Path(member.filename)
         if rel.is_absolute() or ".." in rel.parts:
             raise ValueError(f"Unsafe archive member path: {member.filename}")
-        if not rel.parts or rel.parts[0] != "calibration_bundle":
+        if not rel.parts or rel.parts[0] != "calibration":
             continue
         rel = Path(*rel.parts[1:])
         if not rel.parts:
@@ -110,15 +110,15 @@ def export_calibration_bundle(
     results_root = config.data.results
 
     if bundle is None:
-        bundle_dir = results_root / "calibration" / "bundles"
+        bundle_dir = results_root / "calibration"
         bundle_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-        bundle = bundle_dir / f"calibration_bundle_{timestamp}.zip"
+        bundle = bundle_dir / f"calibration_{timestamp}.zip"
     else:
         bundle = Path(bundle)
         bundle.parent.mkdir(parents=True, exist_ok=True)
 
-    archive_root = Path("calibration_bundle")
+    archive_root = Path("calibration")
     with ZipFile(bundle, mode="w", compression=ZIP_DEFLATED) as zip_file:
         for embedding_folder in embedding_folders:
             for file_path in sorted(embedding_folder.rglob("*")):
