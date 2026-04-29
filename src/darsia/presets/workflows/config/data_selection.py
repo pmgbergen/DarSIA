@@ -92,6 +92,7 @@ def resolve_path_selector(
         )
     return resolved.image_paths
 
+
 # TODO Make this part of DataRegistry?
 def _resolve_selector(
     cfg: dict,
