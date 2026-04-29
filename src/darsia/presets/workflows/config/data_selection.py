@@ -1,5 +1,9 @@
 """Centralized helpers for resolving workflow data selectors."""
 
+# TODO: Get rid of this file, and use directly data_registry instead.
+# The only reason this exists is to support legacy inline selector tables,
+# but these should be phased out in favor of central registry definitions and references.
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -87,3 +91,36 @@ def resolve_path_selector(
             "(use [data.path.*] selectors)."
         )
     return resolved.image_paths
+
+# TODO Make this part of DataRegistry?
+def _resolve_selector(
+    cfg: dict,
+    key: str,
+    *,
+    section: str,
+    data: Path | None,
+    data_registry: DataRegistry | None,
+    required: bool = True,
+) -> TimeData | None:
+    if key not in cfg:
+        if required:
+            raise KeyError(f"{section}.{key}")
+        return None
+    selector = cfg[key]
+    if isinstance(selector, list) and not all(
+        isinstance(token, str) for token in selector
+    ):
+        raise ValueError(f"{section}.{key} selector lists must contain only strings.")
+    if not isinstance(selector, (str, list, dict)):
+        raise ValueError(
+            f"{section}.{key} must be a selector key (str), list of selector keys, or "
+            "inline table (dict)."
+        )
+    return resolve_time_data_selector(
+        cfg,
+        key,
+        section=section,
+        data=data,
+        data_registry=data_registry,
+        required=required,
+    )
