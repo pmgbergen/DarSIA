@@ -46,13 +46,13 @@ def test_fluidflower_config_loads_workflow_utils(tmp_path: Path) -> None:
     config_path.write_text(
         f"""
 [data]
-folder = "{data_folder}"
+folder = "{data_folder.as_posix()}"
 baseline = "baseline.jpg"
-results = "{tmp_path / "results"}"
+results = "{(tmp_path / "results").as_posix()}"
 
 [utils.calibration]
-export_bundle = "{tmp_path / "bundle_out.zip"}"
-import_bundle = "{tmp_path / "bundle_in.zip"}"
+export_bundle = "{(tmp_path / "bundle_out.zip").as_posix()}"
+import_bundle = "{(tmp_path / "bundle_in.zip").as_posix()}"
 """
     )
 
@@ -72,9 +72,9 @@ def test_fluidflower_config_loads_color_embedding_registry(tmp_path: Path) -> No
     config_path.write_text(
         f"""
 [data]
-folder = "{data_folder}"
+folder = "{data_folder.as_posix()}"
 baseline = "baseline.jpg"
-results = "{tmp_path / "results"}"
+results = "{(tmp_path / "results").as_posix()}"
 
 [color.channel.red_channel]
 mode = "absolute"

@@ -29,14 +29,14 @@ def _create_image(path: Path, mtime: float) -> None:
 def _base_config(tmp_path: Path) -> str:
     return f"""
 [data]
-folder = "{tmp_path / "images"}"
+folder = "{(tmp_path / "images").as_posix()}"
 baseline = "img_0001.JPG"
-results = "{tmp_path / "results"}"
+results = "{(tmp_path / "results").as_posix()}"
 
 [protocols]
-imaging = "{tmp_path / "protocols" / "imaging_protocol.csv"}"
-injection = "{tmp_path / "protocols" / "injection_protocol.csv"}"
-pressure_temperature = "{tmp_path / "protocols" / "pressure_temperature_protocol.csv"}"
+imaging = "{(tmp_path / "protocols" / "imaging_protocol.csv").as_posix()}"
+injection = "{(tmp_path / "protocols" / "injection_protocol.csv").as_posix()}"
+pressure_temperature = "{(tmp_path / "protocols" / "pressure_temperature_protocol.csv").as_posix()}"
 imaging_mode = "ctime"
 """
 
@@ -140,8 +140,8 @@ def test_protocol_config_supports_per_folder_imaging_mapping(tmp_path: Path) -> 
         config_path,
         f"""
 [protocols.imaging]
-"{folder_a}" = "{tmp_path / "protocols" / "imaging_a.csv"}"
-"{folder_b}" = ["{tmp_path / "protocols" / "imaging_b.xlsx"}", "Sheet1"]
+"{folder_a.as_posix()}" = "{(tmp_path / "protocols" / "imaging_a.csv").as_posix()}"
+"{folder_b.as_posix()}" = ["{(tmp_path / "protocols" / "imaging_b.xlsx").as_posix()}", "Sheet1"]
 """,
     )
 
@@ -166,18 +166,18 @@ def test_setup_imaging_protocol_with_multiple_folders(
         config_path,
         f"""
 [data]
-folders = ["{tmp_path / "images_a"}", "{tmp_path / "images_b"}"]
+folders = ["{(tmp_path / "images_a").as_posix()}", "{(tmp_path / "images_b").as_posix()}"]
 baseline = "img_0001.JPG"
-results = "{tmp_path / "results"}"
+results = "{(tmp_path / "results").as_posix()}"
 
 [protocols]
-injection = "{tmp_path / "protocols" / "injection_protocol.csv"}"
-pressure_temperature = "{tmp_path / "protocols" / "pressure_temperature_protocol.csv"}"
+injection = "{(tmp_path / "protocols" / "injection_protocol.csv").as_posix()}"
+pressure_temperature = "{(tmp_path / "protocols" / "pressure_temperature_protocol.csv").as_posix()}"
 imaging_mode = "ctime"
 
 [protocols.imaging]
-"{tmp_path / "images_a"}" = "{tmp_path / "protocols" / "imaging_a.csv"}"
-"{tmp_path / "images_b"}" = "{tmp_path / "protocols" / "imaging_b.csv"}"
+"{(tmp_path / "images_a").as_posix()}" = "{(tmp_path / "protocols" / "imaging_a.csv").as_posix()}"
+"{(tmp_path / "images_b").as_posix()}" = "{(tmp_path / "protocols" / "imaging_b.csv").as_posix()}"
 """,
     )
 
@@ -201,12 +201,12 @@ def test_setup_imaging_protocol_requires_mapping_for_multiple_folders(
         config_path,
         f"""
 [data]
-folders = ["{tmp_path / "images_a"}", "{tmp_path / "images_b"}"]
+folders = ["{(tmp_path / "images_a").as_posix()}", "{(tmp_path / "images_b").as_posix()}"]
 baseline = "img_0001.JPG"
-results = "{tmp_path / "results"}"
+results = "{(tmp_path / "results").as_posix()}"
 
 [protocols]
-imaging = "{tmp_path / "protocols" / "imaging_protocol.csv"}"
+imaging = "{(tmp_path / "protocols" / "imaging_protocol.csv").as_posix()}"
 imaging_mode = "ctime"
 """,
     )

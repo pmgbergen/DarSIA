@@ -2,12 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from darsia.signals.color import ColorEmbeddingBasis
 from darsia.presets.workflows.calibration.metadata import (
     read_calibration_metadata,
     validate_basis_metadata,
     write_calibration_metadata,
 )
+from darsia.signals.color import ColorEmbeddingBasis
 
 
 def test_write_and_read_metadata_roundtrip(tmp_path: Path):

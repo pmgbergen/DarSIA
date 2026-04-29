@@ -435,13 +435,13 @@ def test_resolve_utils_bundle_defaults(tmp_path: Path) -> None:
     config.write_text(
         f"""
 [data]
-folder = "{data_folder}"
+folder = "{data_folder.as_posix()}"
 baseline = "baseline.jpg"
-results = "{tmp_path / "results"}"
+results = "{(tmp_path / "results").as_posix()}"
 
 [utils.calibration]
-export_bundle = "{tmp_path / "export.zip"}"
-import_bundle = "{tmp_path / "import.zip"}"
+export_bundle = "{(tmp_path / "export.zip").as_posix()}"
+import_bundle = "{(tmp_path / "import.zip").as_posix()}"
 """
     )
     export_bundle, import_bundle = resolve_utils_bundle_defaults([str(config)])
