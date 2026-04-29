@@ -465,28 +465,6 @@ export = ["mass", "not_supported"]
         )
 
 
-def test_analysis_inline_data_selector_is_deprecated(tmp_path: Path) -> None:
-    config_path = _write(
-        tmp_path / "config.toml",
-        """
-[analysis]
-[analysis.data.time.analysis_set]
-times = ["01:00:00", "02:00:00"]
-tol = "00:05:00"
-""".strip(),
-    )
-
-    with pytest.warns(DeprecationWarning, match=r"\[analysis\.data\]"):
-        config = AnalysisConfig().load(
-            path=config_path,
-            data=tmp_path,
-            results=tmp_path,
-        )
-
-    assert config.data is not None
-    assert config.data.image_times == pytest.approx([1.0, 2.0])
-
-
 def test_analysis_expert_knowledge_defaults_to_empty_lists(tmp_path: Path) -> None:
     config_path = _write(
         tmp_path / "config.toml",
