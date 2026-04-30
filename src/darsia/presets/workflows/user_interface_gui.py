@@ -681,7 +681,7 @@ def _run_calibration_workflow(
         calibration_color_to_mass_analysis as c2m_analysis_module,
     )
     from darsia.presets.workflows.calibration.calibration_color_paths import (
-        calibration_color_paths,
+        calibration_color_paths_from_context,
         delete_calibration,
     )
 
@@ -705,7 +705,7 @@ def _run_calibration_workflow(
         )
         return
     if options["color_embedding"]:
-        calibration_color_paths(rig_cls, paths, options["show"])
+        calibration_color_paths_from_context(ctx, options["show"])
     if options["mass"] or options["default_mass"]:
         c2m_analysis_module.calibration_color_to_mass_analysis_from_context(
             ctx,
