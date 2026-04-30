@@ -254,23 +254,23 @@ class ConcentrationAnalysis:
         tic = time()
 
         # Provide possibility for tuning and inspection of intermediate results
-        self._inspect_diff(diff)
+        self._inspect(diff, title="Difference")
 
         # Extract monochromatic version and take difference wrt the baseline image
         signal = self._reduce_signal(diff)
 
         # Provide possibility for tuning and inspection of intermediate results
-        self._inspect_scalar_signal(signal)
+        self._inspect(signal, title="Scalar signal")
 
         # Clean signal
         clean_signal = self._clean_signal(signal)
 
         # Provide possibility for tuning and inspection of intermediate results
-        self._inspect_clean_signal(clean_signal)
+        self._inspect(clean_signal, title="Clean signal")
 
         # Balance signal (take into account possible heterogeneous effects)
         balanced_signal = self._balance_signal(clean_signal)
-        self._inspect_balanced_signal(balanced_signal)
+        self._inspect(balanced_signal, title="Balanced signal")
 
         logger.debug(f"processing: {time() - tic}")
 
@@ -279,18 +279,20 @@ class ConcentrationAnalysis:
         if self.first_restoration_then_model:
             tic = time()
             smooth_signal = self._restore_signal(balanced_signal)
+            self._inspect(smooth_signal, title="Restored signal")
             logger.debug(f"restoration: {time() - tic}")
             tic = time()
             concentration = self._convert_signal(smooth_signal, diff)
+            self._inspect(concentration, title="Concentration")
             logger.debug(f"conversion: {time() - tic}")
         else:
             tic = time()
             nonsmooth_concentration = self._convert_signal(balanced_signal, diff)
-            self._inspect_nonsmooth_concentration(nonsmooth_concentration)
+            self._inspect(nonsmooth_concentration, title="Nonsmooth concentration")
             logger.debug(f"conversion: {time() - tic}")
             tic = time()
             concentration = self._restore_signal(nonsmooth_concentration)
-            self._inspect_concentration(concentration)
+            self._inspect(concentration, title="Concentration")
             logger.debug(f"restoration: {time() - tic}")
 
         # Invoke plot
@@ -309,76 +311,16 @@ class ConcentrationAnalysis:
 
     # ! ---- Inspection routines for debugging ---- ! #
 
-    def _inspect_diff(self, img: np.ndarray) -> None:
+    def _inspect(self, img: np.ndarray, title: str) -> None:
         """Routine allowing for plotting of intermediate results.
         Requires overwrite.
 
         Args:
             img (np.ndarray): image
-
+            title (str): title for the plot
         """
         if self.verbosity >= 2:
-            plt.figure("Difference")
-            plt.imshow(img)
-
-    def _inspect_scalar_signal(self, img: np.ndarray) -> None:
-        """Routine allowing for plotting of intermediate results.
-        Requires overwrite.
-
-        Args:
-            img (np.ndarray): image
-
-        """
-        if self.verbosity >= 2:
-            plt.figure("Scalar signal")
-            plt.imshow(img)
-
-    def _inspect_clean_signal(self, img: np.ndarray) -> None:
-        """Routine allowing for plotting of intermediate results.
-        Requires overwrite.
-
-        Args:
-            img (np.ndarray): image
-
-        """
-        if self.verbosity >= 2:
-            plt.figure("Clean signal")
-            plt.imshow(img)
-
-    def _inspect_balanced_signal(self, img: np.ndarray) -> None:
-        """Routine allowing for plotting of intermediate results.
-        Requires overwrite.
-
-        Args:
-            img (np.ndarray): image
-
-        """
-        if self.verbosity >= 2:
-            plt.figure("Balanced signal")
-            plt.imshow(img)
-
-    def _inspect_nonsmooth_concentration(self, img: np.ndarray) -> None:
-        """Routine allowing for plotting of intermediate results.
-        Requires overwrite.
-
-        Args:
-            img (np.ndarray): image
-
-        """
-        if self.verbosity >= 2:
-            plt.figure("Nonsmooth concentration")
-            plt.imshow(img)
-
-    def _inspect_concentration(self, img: np.ndarray) -> None:
-        """Routine allowing for plotting of intermediate results.
-        Requires overwrite.
-
-        Args:
-            img (np.ndarray): image
-
-        """
-        if self.verbosity >= 2:
-            plt.figure("Concentration")
+            plt.figure(title)
             plt.imshow(img)
 
     # ! ---- Pre- and post-processing methods ---- ! #
