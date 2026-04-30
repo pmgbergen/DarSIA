@@ -82,7 +82,7 @@ class RestorationConfig:
         if self.method == "none":
             self.method = None
         if self.method not in ["volume_average", "tvd", None]:
-            raise ValueError(f"Invalid restoration method: {self.method}")
+            raise NotImplementedError(f"Invalid restoration method: {self.method}")
 
         # Allow to mask out certain regions from restoration.
         self.ignore = _get_key(sec, "ignore", default=[], required=False, type_=list)
