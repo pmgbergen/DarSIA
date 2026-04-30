@@ -7,11 +7,13 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 import darsia
-from darsia.presets.workflows.analysis.analysis_context import select_image_paths
+from darsia.presets.workflows.analysis.analysis_context import (
+    AnalysisContext,
+    select_image_paths,
+)
 from darsia.presets.workflows.basis import label_ids_from_image
 from darsia.presets.workflows.calibration.metadata import write_calibration_metadata
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
-from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.presets.workflows.utils.roi_visualization import draw_active_region
 from darsia.signals.color import ColorPathEmbedding
@@ -20,7 +22,9 @@ from darsia.utils.standard_images import roi_to_mask
 logger = logging.getLogger(__name__)
 
 
-def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> None:
+def calibration_color_paths_from_context(
+    ctx: AnalysisContext, show: bool = False
+) -> None:
     """Calibration of color paths for a given fluidflower class and configuration.
 
     Args:
@@ -28,11 +32,15 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
         path: The path to the configuration file.
         show: Whether to display plots during processing.
     """
+    # ! ---- LOAD FROM CONTEXT ----
 
-    config = FluidFlowerConfig(path, require_data=True, require_results=False)
-    config.check("rig", "data", "protocol", "color", "calibration.color")
+    config = ctx.config
+    experiment = ctx.experiment
+    fluidflower = ctx.fluidflower
+    calibration_image_paths = ctx.image_paths
 
     # Mypy type checking
+    config.check("rig", "data", "protocol", "color", "calibration.color")
     assert config.color is not None
     assert config.calibration is not None
     assert config.calibration.color is not None
@@ -43,12 +51,7 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
     assert config.protocol.injection is not None
     assert config.protocol.pressure_temperature is not None
 
-    # ! ---- LOAD EXPERIMENT ----
-    experiment = darsia.ProtocolledExperiment.init_from_config(config)
-
-    # ! ---- LOAD RIG ----
-    fluidflower = cls.load(config.rig.path)
-    fluidflower.load_experiment(experiment)
+    # ! ---- SELECT EMBEDDING AND LABELS ----
 
     embedding = config.calibration.color.color
     assert embedding is not None
@@ -60,13 +63,6 @@ def calibration_color_paths(cls: type[Rig], path: Path, show: bool = False) -> N
     selected_labels = embedding.get_labels(fluidflower)
 
     # ! ---- LOAD IMAGES ----
-
-    calibration_image_paths = select_image_paths(
-        config,
-        experiment,
-        all=False,
-        sub_config=embedding,
-    )
 
     # Cache baseline images for performance
     baseline_sub_config = SimpleNamespace(data=embedding.baseline_data)
