@@ -64,6 +64,7 @@ import_calibration_bundle = "/absolute/path/to/calibration_bundle.zip"
   - Currently supported:
     - `"boolean_porosity"` (ignore regions outside the boolean porosity mask)
     - `"image_porosity"` (ignore regions with non-positive image porosity)
+    - `"inner_labels"` (ignore band around labels boundaries)
 - `[restoration.options]`: method-specific options (for example TVD method/weights and
   volume-averaging `rev_size`).
 
