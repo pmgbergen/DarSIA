@@ -26,7 +26,7 @@ class TVDConfig:
             "isotropic bregman", "heterogeneous bregman".
         weight: Regularization weight. Either a float or one of the strings
             "porosity" (use fluidflower.image_porosity as heterogeneous weight)
-            or "boolean-porosity" (use fluidflower.boolean_porosity as heterogeneous
+            or "boolean_porosity" (use fluidflower.boolean_porosity as heterogeneous
             weight). When a string value is provided, "heterogeneous bregman" is
             automatically selected as the TVD method.
         max_num_iter: Maximum number of iterations.
@@ -39,7 +39,7 @@ class TVDConfig:
     method: Literal[
         "chambolle", "anisotropic bregman", "isotropic bregman", "heterogeneous bregman"
     ] = "chambolle"
-    weight: Union[float, Literal["porosity", "boolean-porosity"]] = 0.1
+    weight: Union[float, Literal["image_porosity", "boolean_porosity"]] = 0.1
     max_num_iter: int = 200
     eps: float = 2e-4
     omega: float = 1.0
@@ -72,18 +72,30 @@ class TVDConfig:
 class RestorationConfig:
     method: Literal["volume_average", "tvd"] | None = "volume_average"
     options: VolumeAveragingConfig | TVDConfig | None = None
+    ignore: list[str] = field(default_factory=list)
 
     def load(self, path: Path) -> "RestorationConfig":
         sec = _get_section_from_toml(path, "restoration")
-        self.method = _get_key(sec, "method", required=True, type_=str)
 
+        # Select and validate the restoration method.
+        self.method = _get_key(sec, "method", required=True, type_=str).lower()
+        if self.method == "none":
+            self.method = None
+        if self.method not in ["volume_average", "tvd", None]:
+            raise NotImplementedError(f"Invalid restoration method: {self.method}")
+
+        # Allow to mask out certain regions from restoration.
+        self.ignore = _get_key(sec, "ignore", default=[], required=False, type_=list)
+        if not all(isinstance(entry, str) for entry in self.ignore):
+            raise ValueError("restoration.ignore must be a list of strings.")
+
+        # Allow for method-specific options under an "options" subsection.
         options_sec = sec.get("options", {})
-        if self.method == "volume_average":
+        if self.method is None:
+            pass
+        elif self.method == "volume_average":
             self.options = VolumeAveragingConfig().load(options_sec)
         elif self.method == "tvd":
             self.options = TVDConfig().load(options_sec)
-        else:
-            raise NotImplementedError(
-                f"Restoration method {self.method} not supported."
-            )
+
         return self

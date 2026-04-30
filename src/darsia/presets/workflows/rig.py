@@ -403,6 +403,30 @@ class Rig:
 
         logger.info("Labels setup completed.")
 
+    def setup_inner_labels(self, log: Path | None = None) -> None:
+        """Define boolean mask which excludes the label boundaries."""
+        # Identify the boundary pixels.
+        boundary_mask = skimage.segmentation.find_boundaries(
+            self.labels.img, mode="outer", connectivity=1
+        )
+
+        # Extend the boundary pixels by a certain number of pixels (e.g., 2)
+        # to create a buffer zone.
+        # TODO: Allow for configuration of the buffer size and structuring element.
+        buffer_zone = skimage.morphology.binary_dilation(
+            boundary_mask, footprint=skimage.morphology.disk(2)
+        )
+
+        # Create a boolean mask where the inner labels (excluding the boundary)
+        # are True and the rest is False.
+        inner_labels = ~buffer_zone
+
+        self.inner_labels = darsia.Image(
+            inner_labels.astype(bool), **self.labels.metadata()
+        )
+        """Boolean mask for inner labels, excluding boundaries."""
+        self.inner_labels.show()
+
     def setup_facies(
         self, path: Path, apply_corrections: bool = False, log: Path | None = None
     ) -> None:
@@ -718,6 +742,11 @@ class Rig:
             log=log,
         )
 
+        # Setup inner labels
+        self.setup_inner_labels(
+            log=log,
+        )
+
         # Add facies
         if facies_path is not None:
             self.setup_facies(
@@ -924,6 +953,9 @@ class Rig:
         # Load labels information - corrections not needed assuming labels are aligned with
         # the corrected baseline.
         rig.setup_labels(path=folder / "labels.npz", apply_corrections=False)
+
+        # Setup inner labels information
+        rig.setup_inner_labels()
 
         # Load facies information - corrections not needed assuming facies are aligned with
         rig.setup_facies(path=folder / "facies.npz", apply_corrections=False)

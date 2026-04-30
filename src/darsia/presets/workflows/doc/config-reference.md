@@ -58,6 +58,16 @@ import_calibration_bundle = "/absolute/path/to/calibration_bundle.zip"
 ```
 - `[video]`: media utility config for protocol-time ordered MP4/GIF generation.
 
+## Restoration section
+- `method`: `volume_average` or `tvd`.
+- `ignore` (optional): list of named ignore masks applied in additive mode.
+  - Currently supported:
+    - `"boolean_porosity"` (ignore regions outside the boolean porosity mask)
+    - `"image_porosity"` (ignore regions with non-positive image porosity)
+    - `"inner_labels"` (ignore band around labels boundaries)
+- `[restoration.options]`: method-specific options (for example TVD method/weights and
+  volume-averaging `rev_size`).
+
 ## Shared data registry (recommended)
 Define reusable selections in top-level `[data]` subsections:
 - `[data.interval.<key>]`
