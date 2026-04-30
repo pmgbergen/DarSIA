@@ -4,7 +4,11 @@ from pathlib import Path
 import numpy as np
 
 import darsia
-from darsia.presets.workflows.analysis.analysis_context import select_image_paths
+from darsia.presets.workflows.analysis.analysis_context import (
+    AnalysisContext,
+    select_image_paths,
+)
+from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.basis import label_ids_from_image
 from darsia.presets.workflows.calibration.metadata import (
     read_calibration_metadata,
@@ -14,6 +18,7 @@ from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.heterogeneous_color_to_mass_analysis import (
     HeterogeneousColorToMassAnalysis,
 )
+from darsia.presets.workflows.restoration import build_restoration
 from darsia.presets.workflows.utils.images import load_images_with_cache
 from darsia.signals.color import ColorPathEmbedding
 
@@ -64,9 +69,8 @@ def _load_baseline_color_spectrum_for_color_to_mass(
     return baseline_color_spectrum
 
 
-def calibration_color_to_mass_analysis(
-    cls,
-    path: Path,
+def calibration_color_to_mass_analysis_from_context(
+    ctx: AnalysisContext,
     ref_path: Path | None = None,
     reset: bool = False,
     show: bool = False,
@@ -85,12 +89,17 @@ def calibration_color_to_mass_analysis(
         default: Whether to perform default calibration without interactive steps.
 
     """
-    # ! ---- LOAD RUN AND RIG ----
+    # ! ---- LOAD FROM CONTEXT ----
 
-    config = FluidFlowerConfig(path, require_data=True, require_results=False)
-    config.check("color", "rig", "data", "protocol", "calibration.mass")
+    config = ctx.config
+    experiment = ctx.experiment
+    fluidflower = ctx.fluidflower
+    restoration = ctx.restoration
+    expert_knowledge_adapter = ctx.expert_knowledge_adapter
+    calibration_image_paths = ctx.image_paths
 
     # Mypy type checking
+    config.check("color", "rig", "data", "protocol", "calibration.mass")
     assert config.data is not None
     assert config.protocol is not None
     assert config.color is not None
@@ -104,13 +113,6 @@ def calibration_color_to_mass_analysis(
         raise NotImplementedError(
             "calibration.mass currently supports only color path embeddings."
         )
-
-    # ! ---- LOAD EXPERIMENT ----
-    experiment = darsia.ProtocolledExperiment.init_from_config(config)
-
-    # ! ---- LOAD RIG ----
-    fluidflower = cls.load(config.rig.path)
-    fluidflower.load_experiment(experiment)
 
     # ! ---- LOAD COLOR PATHS ----
 
@@ -145,9 +147,6 @@ def calibration_color_to_mass_analysis(
     )
 
     # ! ---- LOAD IMAGES ----
-    calibration_image_paths = select_image_paths(
-        config, experiment, all=False, sub_config=mass_cfg
-    )
 
     # Cache calibration images for performance
     calibration_images: list[darsia.Image] = load_images_with_cache(
@@ -254,17 +253,6 @@ def calibration_color_to_mass_analysis(
         for label, color_path in color_paths.items()
     }
 
-    # ! ---- SIGNAL FUNCTIONS ---- ! #
-
-    # ! ---- POROSITY-INFORMED AVERAGING ---- ! #
-    # TODO: holes in the segmentation?
-    image_porosity = fluidflower.image_porosity
-    restoration = darsia.VolumeAveraging(
-        rev=darsia.REV(size=0.005, img=fluidflower.baseline),
-        mask=image_porosity,
-        # labels=fluidflower.labels,
-    )
-
     # ! ---- FROM COLOR PATH TO MASS ----
 
     experiment_start = experiment.experiment_start
@@ -301,6 +289,7 @@ def calibration_color_to_mass_analysis(
             geometry=fluidflower.geometry,
             restoration=restoration,
             basis=selected_basis,
+            expert_knowledge_adapter=expert_knowledge_adapter,
         )
         color_analysis.color_path_interpretation = color_path_interpretation
 
@@ -314,6 +303,7 @@ def calibration_color_to_mass_analysis(
             geometry=fluidflower.geometry,
             restoration=restoration,
             basis=selected_basis,
+            expert_knowledge_adapter=expert_knowledge_adapter,
         )
     else:
         # Start from scratch
@@ -356,6 +346,7 @@ def calibration_color_to_mass_analysis(
             restoration=restoration,
             ignore_labels=embedding.ignore_labels + ignore_labels,
             basis=selected_basis,
+            expert_knowledge_adapter=expert_knowledge_adapter,
         )
 
     # ! ---- INTERACTIVE CALIBRATION ---- ! #
