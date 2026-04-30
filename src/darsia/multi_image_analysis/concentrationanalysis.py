@@ -108,7 +108,7 @@ class ConcentrationAnalysis:
         self._diff_option = kwargs.get("diff option", "absolute")
         """Option for defining differences of images."""
 
-        self.first_restoration_then_model = kwargs.get("restoration -> model", True)
+        self.first_restoration_then_model = kwargs.get("restoration -> model", False)
         """Option for defining order of routines."""
 
         # Define a cleaning filter based on remaining images.
