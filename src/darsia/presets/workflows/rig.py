@@ -425,7 +425,6 @@ class Rig:
             inner_labels.astype(bool), **self.labels.metadata()
         )
         """Boolean mask for inner labels, excluding boundaries."""
-        self.inner_labels.show()
 
     def setup_facies(
         self, path: Path, apply_corrections: bool = False, log: Path | None = None
