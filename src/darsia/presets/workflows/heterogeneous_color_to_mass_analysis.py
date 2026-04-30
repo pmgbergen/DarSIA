@@ -69,7 +69,7 @@ class HeterogeneousColorToMassAnalysis:
         # Define general ConcentrationAnalysis.
         self.color_analysis = darsia.ConcentrationAnalysis(
             base=baseline if color_mode == darsia.ColorMode.RELATIVE else None,
-            restoration=restoration,
+            restoration=None,
             model=base_model,
             labels=labels,
             **config,
@@ -108,6 +108,8 @@ class HeterogeneousColorToMassAnalysis:
         )
 
         self.signal_model = darsia.ConcentrationAnalysis(
+            base=None,
+            restoration=restoration,
             model=signal_model,
             labels=labels,
             **config,
