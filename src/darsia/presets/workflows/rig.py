@@ -72,6 +72,14 @@ class Rig:
 
         # Setup (based on baseline image without any corrections applied)
         pre_baseline = darsia.imread(baseline_path)
+
+        if show_plot:
+            # Allows to visually check the baseline image before any corrections
+            # are applied, which is useful for debugging and understanding the
+            # impact of corrections.
+            plt.imshow(pre_baseline.img)
+            plt.show()
+
         self.setup_shape_corrections(
             pre_baseline=pre_baseline,
             corrections_config=corrections_config,
@@ -427,7 +435,11 @@ class Rig:
         """Boolean mask for inner labels, excluding boundaries."""
 
     def setup_facies(
-        self, path: Path, apply_corrections: bool = False, log: Path | None = None
+        self,
+        path: Path,
+        apply_corrections: bool = False,
+        log: Path | None = None,
+        show_plot: bool = False,
     ) -> None:
         """Setup facies.
 
@@ -469,6 +481,14 @@ class Rig:
             plt.title("Facies")
             plt.savefig(log / "facies.png", dpi=500)
             plt.close()
+
+        if show_plot:
+            # Display facies on top of baseline for visual inspection.
+            plt.figure()
+            plt.imshow(self.baseline.img)
+            plt.imshow(self.facies.img, alpha=0.5)
+            plt.title("Facies overlay on baseline")
+            plt.show()
 
         logger.info("Facies setup completed.")
 
@@ -726,6 +746,7 @@ class Rig:
             experiment,
             corrections_config=corrections_config,
             log=log,
+            show_plot=show_plot,
         )
 
         # Fetch depth map
@@ -752,6 +773,7 @@ class Rig:
                 path=facies_path,
                 apply_corrections=True,
                 log=log,
+                show_plot=show_plot,
             )
         else:
             self.facies = self.labels.copy()
