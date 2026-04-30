@@ -100,7 +100,7 @@ def build_restoration(
         image_porosity = fluidflower.image_porosity.copy()
         if active_mask is not None:
             image_porosity.img *= active_mask
-        restoration = darsia.VolumeAveraging(
+        return darsia.VolumeAveraging(
             rev=darsia.REV(size=rev_size, img=fluidflower.baseline),
             mask=image_porosity,
         )
@@ -137,7 +137,7 @@ def build_restoration(
             weight = np.multiply(weight, active_mask)
             tvd_method = "heterogeneous bregman"
 
-        restoration = darsia.TVD(
+        return darsia.TVD(
             method=tvd_method,
             weight=weight,
             max_num_iter=options.max_num_iter,
@@ -149,5 +149,3 @@ def build_restoration(
 
     else:
         raise NotImplementedError(f"Restoration method '{method}' not supported.")
-
-    return restoration
