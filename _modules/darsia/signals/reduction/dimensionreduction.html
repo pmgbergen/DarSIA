@@ -1,0 +1,557 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>darsia.signals.reduction.dimensionreduction &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/darsia/signals/reduction/dimensionreduction';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../../_static/searchtools.js"></script>
+    <script src="../../../../_static/language_data.js"></script>
+    <script src="../../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">darsia.signals.reduction.dimensionreduction</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for darsia.signals.reduction.dimensionreduction</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Dimension modification (reduction along axis and extrusion).</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">darsia</span>
+
+
+<div class="viewcode-block" id="AxisReduction">
+<a class="viewcode-back" href="../../../../source/signals/darsia.signals.reduction.html#darsia.signals.reduction.dimensionreduction.AxisReduction">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AxisReduction</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Object for reduction along a provided axis.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">axis</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;average&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            axis (int or str): numeric axis index (matrix indexing) or Cartesian axis</span>
+<span class="sd">            dim (int): dimension of the input image</span>
+<span class="sd">            mode (str): mode used in the reduction (&quot;average&quot;, &quot;sum&quot;, &quot;slice&quot;)</span>
+<span class="sd">            kwargs: additional arguments:</span>
+<span class="sd">                - &quot;slice_idx&quot; (int): index of the slice (only for mode &quot;slice&quot;)</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            NotImplementedError: if dim not 3.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Convert axis to numeric index</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="n">axis</span> <span class="ow">in</span> <span class="s2">&quot;xyz&quot;</span><span class="p">[:</span><span class="n">dim</span><span class="p">]</span>
+            <span class="n">index</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">interpret_indexing</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="s2">&quot;ijk&quot;</span><span class="p">[:</span><span class="n">dim</span><span class="p">])</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="n">axis</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dim</span><span class="p">)</span>
+            <span class="n">index</span> <span class="o">=</span> <span class="n">axis</span>
+            <span class="n">index_alpha</span> <span class="o">=</span> <span class="s2">&quot;ijk&quot;</span><span class="p">[:</span><span class="n">dim</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+            <span class="n">cartesian_index</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">interpret_indexing</span><span class="p">(</span><span class="n">index_alpha</span><span class="p">,</span> <span class="s2">&quot;xyz&quot;</span><span class="p">[:</span><span class="n">dim</span><span class="p">])</span>
+            <span class="n">axis</span> <span class="o">=</span> <span class="s2">&quot;xyz&quot;</span><span class="p">[</span><span class="n">cartesian_index</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">index</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Matrix index along which reduction is performed.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">axis</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="s2">&quot;xyz&quot;</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">axis</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Cartesian axis along which reduction is performed.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">mode</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mode.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">kwargs</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Additional arguments.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reduction routine.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (Image): nd image.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Image: (n-1)d image.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Manage update of indexing</span>
+        <span class="n">original_dim</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">space_dim</span>
+        <span class="n">original_axes</span> <span class="o">=</span> <span class="s2">&quot;xyz&quot;</span><span class="p">[:</span><span class="n">original_dim</span><span class="p">]</span>
+        <span class="n">original_indexing</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">indexing</span>
+
+        <span class="c1"># Safety checks</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">original_indexing</span> <span class="o">==</span> <span class="s2">&quot;ijk&quot;</span><span class="p">[:</span><span class="n">original_dim</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                <span class="s2">&quot;Only 3d case with standard matrix indexing supported.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">new_dim</span> <span class="o">=</span> <span class="n">original_dim</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">new_axes</span> <span class="o">=</span> <span class="s2">&quot;xyz&quot;</span><span class="p">[:</span><span class="n">new_dim</span><span class="p">]</span>
+        <span class="n">new_indexing</span> <span class="o">=</span> <span class="s2">&quot;ijk&quot;</span><span class="p">[:</span><span class="n">new_dim</span><span class="p">]</span>
+
+        <span class="n">interim_indexing</span> <span class="o">=</span> <span class="n">original_indexing</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">original_indexing</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">],</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Reduce the data</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;average&quot;</span><span class="p">,</span> <span class="s2">&quot;sum&quot;</span><span class="p">]:</span>
+            <span class="n">img_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;average&quot;</span><span class="p">:</span>
+                <span class="n">img_arr</span> <span class="o">/=</span> <span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;sum&quot;</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;slice&quot;</span><span class="p">:</span>
+            <span class="n">full_arr</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">full_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">moveaxis</span><span class="p">(</span><span class="n">full_arr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">full_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">moveaxis</span><span class="p">(</span><span class="n">full_arr</span><span class="p">,</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+            <span class="n">slice_idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;slice_idx&quot;</span><span class="p">]</span>
+            <span class="n">img_arr</span> <span class="o">=</span> <span class="n">full_arr</span><span class="p">[</span><span class="n">slice_idx</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+
+        <span class="c1"># Reduce dimensions</span>
+        <span class="n">new_dimensions</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">dimensions</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">new_dimensions</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Find coordinate of Cartesian &#39;origin&#39;, i.e., [xmin, ymin, zmin]</span>
+        <span class="n">min_corner</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">matrix_index</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">original_indexing</span><span class="p">):</span>
+            <span class="n">axis</span><span class="p">,</span> <span class="n">reverse_axis</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">interpret_indexing</span><span class="p">(</span><span class="n">matrix_index</span><span class="p">,</span> <span class="n">original_axes</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">reverse_axis</span><span class="p">:</span>
+                <span class="n">min_corner</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span> <span class="o">-=</span> <span class="n">img</span><span class="o">.</span><span class="n">dimensions</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+
+        <span class="c1"># Reduce to the reduced space</span>
+        <span class="n">new_min_corner</span> <span class="o">=</span> <span class="n">min_corner</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">new_min_corner</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axis</span><span class="p">)</span>
+
+        <span class="c1"># Determine reduced origin - init with reduced [xmin, ymin, zmin] and add</span>
+        <span class="c1"># dimensions following the same convention used in the definition of</span>
+        <span class="c1"># default_origin in Image.</span>
+        <span class="n">new_origin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">new_min_corner</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">new_index</span><span class="p">,</span> <span class="n">interim_matrix_index</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">interim_indexing</span><span class="p">):</span>
+            <span class="c1"># Fetch corresponding character index</span>
+            <span class="n">new_matrix_index</span> <span class="o">=</span> <span class="n">new_indexing</span><span class="p">[</span><span class="n">new_index</span><span class="p">]</span>
+
+            <span class="c1"># NOTE: The new index is assumed to correspond to new_indexing,</span>
+            <span class="c1"># uniquely defining the new axis.</span>
+            <span class="n">new_cartesian_index</span><span class="p">,</span> <span class="n">revert_axis</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">interpret_indexing</span><span class="p">(</span>
+                <span class="n">new_matrix_index</span><span class="p">,</span> <span class="n">new_axes</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">revert_axis</span><span class="p">:</span>
+                <span class="n">new_origin</span><span class="p">[</span><span class="n">new_cartesian_index</span><span class="p">]</span> <span class="o">+=</span> <span class="n">new_dimensions</span><span class="p">[</span><span class="n">new_index</span><span class="p">]</span>
+
+        <span class="c1"># Fetch and adapt metadata</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">metadata</span><span class="p">()</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;space_dim&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_dim</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;indexing&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_indexing</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_origin</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;dimensions&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_dimensions</span>
+
+        <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">img</span><span class="p">)(</span><span class="n">img</span><span class="o">=</span><span class="n">img_arr</span><span class="p">,</span> <span class="o">**</span><span class="n">metadata</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="reduce_axis">
+<a class="viewcode-back" href="../../../../source/signals/darsia.signals.reduction.html#darsia.signals.reduction.dimensionreduction.reduce_axis">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">reduce_axis</span><span class="p">(</span>
+    <span class="n">image</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="n">axis</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;average&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Utility function, essentially wrapping AxisReduction as a method.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (Image): nd image.</span>
+<span class="sd">        axis (int or str): numeric index (corresponding to matrix indexing) or</span>
+<span class="sd">            Cartesian axis</span>
+<span class="sd">        mode (str): mode used in the reduction (&quot;sum&quot;, &quot;scaled&quot;, &quot;slice&quot;)</span>
+<span class="sd">        kwargs: additional arguments:</span>
+<span class="sd">            - &quot;slice_idx&quot; (int): index of the slice (only for mode &quot;slice&quot;)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: (n-1)d image.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dim</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">space_dim</span>
+    <span class="n">reduction</span> <span class="o">=</span> <span class="n">AxisReduction</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">reduction</span><span class="p">(</span><span class="n">image</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="extrude_along_axis">
+<a class="viewcode-back" href="../../../../source/signals/darsia.signals.reduction.html#darsia.signals.reduction.dimensionreduction.extrude_along_axis">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">extrude_along_axis</span><span class="p">(</span><span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">num</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extrude 2d image to a 3d image.</span>
+
+<span class="sd">    NOTE: For now the extrusion is performed along the z axis.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (darsia.Image): 2d image</span>
+<span class="sd">        height (float): height of the extrusion</span>
+<span class="sd">        num (int): number of pixels per extruded axis</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        darsia.Image: 3d image</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Fetch data and extrude along 0-axis (z-axis)</span>
+    <span class="n">arr</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">img</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">arr_3d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num</span><span class="p">,</span> <span class="o">*</span><span class="n">shape</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">arr</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num</span><span class="p">):</span>
+        <span class="n">arr_3d</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span>
+
+    <span class="c1"># Update metadata</span>
+    <span class="n">meta</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">metadata</span><span class="p">()</span>
+    <span class="k">assert</span> <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;space_dim&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span>
+    <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;space_dim&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;dimensions&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">height</span><span class="p">,</span> <span class="o">*</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;dimensions&quot;</span><span class="p">]]</span>
+    <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;indexing&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ijk&quot;</span>
+    <span class="n">meta</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">height</span><span class="p">,</span> <span class="o">*</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;origin&quot;</span><span class="p">]]</span>
+
+    <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">img</span><span class="p">)(</span><span class="n">img</span><span class="o">=</span><span class="n">arr_3d</span><span class="p">,</span> <span class="o">**</span><span class="n">meta</span><span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
