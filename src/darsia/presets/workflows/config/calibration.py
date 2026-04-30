@@ -106,6 +106,7 @@ class CalibrationConfig:
 
     color: CalibrationColorConfig | None = None
     mass: CalibrationMassConfig | None = None
+    data: TimeData | None = None
 
     def load(
         self,
@@ -136,5 +137,13 @@ class CalibrationConfig:
             )
         except KeyError:
             self.mass = None
+
+        try:
+            self.data = (
+                data_registry.resolve(sec.get("data")) if data_registry else None
+            )
+        except KeyError:
+            warn("No data found for calibration. Use [calibration].data.")
+            self.data = None
 
         return self
