@@ -10,12 +10,13 @@ import argparse
 import logging
 from pathlib import Path
 
+from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_context
 from darsia.presets.workflows.calibration.calibration_color_paths import (
     calibration_color_paths,
     delete_calibration,
 )
 from darsia.presets.workflows.calibration.calibration_color_to_mass_analysis import (
-    calibration_color_to_mass_analysis,
+    calibration_color_to_mass_analysis_from_context,
 )
 from darsia.presets.workflows.rig import Rig
 
@@ -94,10 +95,18 @@ def preset_calibration(rig=Rig, **kwargs):
         )
 
     if args.mass or args.default_mass:
+        # Prepare shared context once for all analyses
+        ctx = prepare_analysis_context(
+            cls=rig,
+            path=args.config,
+            all=False,
+            require_color_to_mass=False,
+            section="calibration",
+            require_results=False,
+        )
         ref_config = Path(args.ref_config) if args.ref_config else None
-        calibration_color_to_mass_analysis(
-            rig,
-            args.config,
+        calibration_color_to_mass_analysis_from_context(
+            ctx,
             ref_path=ref_config,
             reset=args.reset,
             show=args.show,
