@@ -577,7 +577,7 @@ def format_workflow_start_message(
 ) -> str:
     """Format a detailed run-start message."""
     action_str = ", ".join(actions) if actions else "none"
-    config_str = ", ".join(str(path) for path in config_paths)
+    config_str = ", ".join(str(path.as_posix()) for path in config_paths)
     rig_str = rig_spec.strip() or "darsia.presets.workflows.rig:Rig"
     return (
         f"Starting {workflow} workflow. Actions: {action_str}. "
@@ -1031,7 +1031,7 @@ class WorkflowGUI:
             ("Protocol", self.setup_protocol),
             ("Rig", self.setup_rig),
             ("Delete rig", self.setup_delete),
-            ("Show plots", self.setup_show),
+            ("Show plots (option)", self.setup_show),
         ]:
             self.ttk.Checkbutton(self.setup_frame, text=label, variable=var).pack(
                 anchor=self.tk.W
@@ -1051,9 +1051,9 @@ class WorkflowGUI:
             ("Color embedding", self.cal_color_embedding),
             ("Mass", self.cal_mass),
             ("Default mass", self.cal_default_mass),
-            ("Reset", self.cal_reset),
-            ("Delete calibration", self.cal_delete),
-            ("Show plots", self.cal_show),
+            ("Delete all calibrations", self.cal_delete),
+            ("Reset mass calibration (option)", self.cal_reset),
+            ("Show plots (option)", self.cal_show),
         ]:
             self.ttk.Checkbutton(self.calibration_frame, text=label, variable=var).pack(
                 anchor=self.tk.W
@@ -1075,15 +1075,15 @@ class WorkflowGUI:
         self.an_show = self.tk.BooleanVar(value=False)
         self.an_stream = self.tk.BooleanVar(value=False)
         for label, var in [
-            ("All images", self.an_all),
             ("Cropping", self.an_crop),
             ("Segmentation", self.an_seg),
             ("Fingers", self.an_fingers),
             ("Mass", self.an_mass),
             ("Volume", self.an_volume),
             ("Thresholding", self.an_thresholding),
-            ("Show plots", self.an_show),
-            ("Enable streaming", self.an_stream),
+            ("All images (option)", self.an_all),
+            ("Show plots (option)", self.an_show),
+            ("Enable streaming (option)", self.an_stream),
         ]:
             self.ttk.Checkbutton(self.analysis_frame, text=label, variable=var).pack(
                 anchor=self.tk.W
@@ -1119,7 +1119,7 @@ class WorkflowGUI:
             ("ROI", self.helper_roi),
             ("ROI Viewer", self.helper_roi_viewer),
             ("ResultReader", self.helper_results),
-            ("Show plots", self.helper_show),
+            ("Show  (option)", self.helper_show),
         ]:
             self.ttk.Checkbutton(self.helper_frame, text=label, variable=var).pack(
                 anchor=self.tk.W
