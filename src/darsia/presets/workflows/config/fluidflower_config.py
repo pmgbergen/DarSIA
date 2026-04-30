@@ -268,6 +268,10 @@ class FluidFlowerConfig:
                     "No color embedding registry loaded. Use [color.path.*], "
                     "[color.range.*], or [color.channel.*]."
                 )
+        elif key == "calibration" and (not self.calibration):
+            raise ValueError(
+                "No color calibration entrypoint loaded. Use [calibration]."
+            )
         elif key == "calibration.color" and (
             not self.calibration or not self.calibration.color
         ):
@@ -315,6 +319,7 @@ class FluidFlowerConfig:
                 "analysis",
                 "analysis.data",
                 "analysis.segmentation",
+                "calibration",
                 "color",
                 "calibration.color",
                 "calibration.mass",
