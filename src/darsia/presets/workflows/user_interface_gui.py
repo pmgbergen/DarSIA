@@ -24,6 +24,7 @@ from pathlib import Path
 from queue import Empty, Full
 from typing import Any, Callable, Protocol, TypedDict
 
+from darsia.presets.workflows.analysis.analysis_context import prepare_analysis_context
 from darsia.presets.workflows.analysis.progress import (
     AnalysisProgressEvent,
     normalize_progress_event,
@@ -686,6 +687,17 @@ def _run_calibration_workflow(
 
     paths = normalize_paths(config_paths)
     rig_cls = resolve_rig_class(rig_spec)
+
+    # Prepare shared context once for all analyses
+    ctx = prepare_analysis_context(
+        cls=rig_cls,
+        path=paths,
+        all=False,
+        require_color_to_mass=False,
+        section="calibration",
+        require_results=False,
+    )
+
     if options["delete"]:
         delete_calibration(
             paths,
@@ -695,9 +707,8 @@ def _run_calibration_workflow(
     if options["color_embedding"]:
         calibration_color_paths(rig_cls, paths, options["show"])
     if options["mass"] or options["default_mass"]:
-        c2m_analysis_module.calibration_color_to_mass_analysis(
-            rig_cls,
-            paths,
+        c2m_analysis_module.calibration_color_to_mass_analysis_from_context(
+            ctx,
             reset=options["reset"],
             show=options["show"],
             default=options["default_mass"],
