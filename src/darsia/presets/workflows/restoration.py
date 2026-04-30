@@ -5,13 +5,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-
+import logging
 import darsia
 from darsia.presets.workflows.config.restoration import RestorationConfig
 
 if TYPE_CHECKING:
     from darsia.presets.workflows.rig import Rig
 
+logger = logging.getLogger(__name__)
 
 class RestorationMaskFactory:
     """Factory for predefined restoration ignore masks."""
@@ -21,6 +22,7 @@ class RestorationMaskFactory:
         self._ignore_mask_builders = {
             "image_porosity": self._image_porosity_ignore_mask,
             "boolean_porosity": self._boolean_porosity_ignore_mask,
+            "inner_labels": self._inner_labels_ignore_mask
         }
 
     def _image_porosity_ignore_mask(self) -> np.ndarray:
@@ -28,6 +30,9 @@ class RestorationMaskFactory:
 
     def _boolean_porosity_ignore_mask(self) -> np.ndarray:
         return ~self.fluidflower.boolean_porosity.img.astype(bool)
+
+    def _inner_labels_ignore_mask(self) -> np.ndarray:
+        return ~self.fluidflower.inner_labels.img.astype(bool)
 
     def build_ignore_mask(self, mask_names: list[str]) -> np.ndarray | None:
         if len(mask_names) == 0:
@@ -66,6 +71,11 @@ def build_restoration(
 
     """
     if restoration_config is None:
+        logger.info(
+            "No restoration configuration found. "
+            "See in the template config file for options under [restoration]. "
+            "Proceeding without restoration."
+        )
         return None
 
     method = restoration_config.method
@@ -104,14 +114,14 @@ def build_restoration(
         # "heterogeneous bregman" as the TVD method in those cases.
         tvd_method = options.method
         if isinstance(options.weight, str):
-            if options.weight == "porosity":
+            if options.weight == "image_porosity":
                 weight = fluidflower.image_porosity
-            elif options.weight == "boolean-porosity":
+            elif options.weight == "boolean_porosity":
                 weight = fluidflower.boolean_porosity
             else:
                 raise ValueError(
                     f"Unknown weight string '{options.weight}'. "
-                    "Valid string values are 'porosity' and 'boolean-porosity'. "
+                    "Valid string values are 'image_porosity' and 'boolean_porosity'. "
                     "For a scalar weight, provide a numeric value in the config."
                 )
             tvd_method = "heterogeneous bregman"
