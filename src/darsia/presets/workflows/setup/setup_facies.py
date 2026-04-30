@@ -44,7 +44,10 @@ def setup_facies(cls: Rig, path: Path, show: bool = False):
     facies = darsia.reassign_labels(labels, label_to_facies_map)
 
     # Sanity check - ids. Check that all facies ids are defined in props.
-    facies_props = pd.read_excel(config.facies.props)
+    if config.facies.props.suffix == ".xlsx":
+        facies_props = pd.read_excel(config.facies.props)
+    elif config.facies.props.suffix == ".csv":
+        facies_props = pd.read_csv(config.facies.props)
     facies_ids = facies_props["id"].tolist()
     for facies_id in np.unique(facies.img):
         assert (
