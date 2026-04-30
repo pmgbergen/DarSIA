@@ -403,25 +403,29 @@ class Rig:
 
         logger.info("Labels setup completed.")
 
-    def setup_inner_labels(
-        self, log: Path | None = None
-    ) -> None:
+    def setup_inner_labels(self, log: Path | None = None) -> None:
         """Define boolean mask which excludes the label boundaries."""
         # Identify the boundary pixels.
         boundary_mask = skimage.segmentation.find_boundaries(
             self.labels.img, mode="outer", connectivity=1
         )
 
-        # Extend the boundary pixels by a certain number of pixels (e.g., 2) to create a buffer zone.
-        buffer_zone = skimage.morphology.binary_dilation(boundary_mask, footprint=skimage.morphology.disk(2))
+        # Extend the boundary pixels by a certain number of pixels (e.g., 2)
+        # to create a buffer zone.
+        # TODO: Allow for configuration of the buffer size and structuring element.
+        buffer_zone = skimage.morphology.binary_dilation(
+            boundary_mask, footprint=skimage.morphology.disk(2)
+        )
 
-        # Create a boolean mask where the inner labels (excluding the boundary) are True and the rest is False.
+        # Create a boolean mask where the inner labels (excluding the boundary)
+        # are True and the rest is False.
         inner_labels = ~buffer_zone
 
-        self.inner_labels = darsia.Image(inner_labels.astype(bool), **self.labels.metadata())
+        self.inner_labels = darsia.Image(
+            inner_labels.astype(bool), **self.labels.metadata()
+        )
         """Boolean mask for inner labels, excluding boundaries."""
         self.inner_labels.show()
-
 
     def setup_facies(
         self, path: Path, apply_corrections: bool = False, log: Path | None = None

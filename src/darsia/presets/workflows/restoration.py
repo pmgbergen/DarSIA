@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
-import logging
+
 import darsia
 from darsia.presets.workflows.config.restoration import RestorationConfig
 
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
     from darsia.presets.workflows.rig import Rig
 
 logger = logging.getLogger(__name__)
+
 
 class RestorationMaskFactory:
     """Factory for predefined restoration ignore masks."""
@@ -22,7 +24,7 @@ class RestorationMaskFactory:
         self._ignore_mask_builders = {
             "image_porosity": self._image_porosity_ignore_mask,
             "boolean_porosity": self._boolean_porosity_ignore_mask,
-            "inner_labels": self._inner_labels_ignore_mask
+            "inner_labels": self._inner_labels_ignore_mask,
         }
 
     def _image_porosity_ignore_mask(self) -> np.ndarray:
