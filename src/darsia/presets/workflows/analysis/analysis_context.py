@@ -105,6 +105,8 @@ class AnalysisContext:
     color_embedding_runtime: ColorEmbeddingRuntime | None = None
 
 
+# NOTE: Used in multiple places (not only analysis).
+# Should be moved and made more robust in terms of output.
 def select_image_paths(
     config: FluidFlowerConfig,
     experiment: darsia.ProtocolledExperiment,
@@ -239,6 +241,9 @@ def prepare_analysis_context(
     path: Path | list[Path],
     all: bool = False,
     require_color_to_mass: bool = False,
+    section: str | None = "analysis",
+    require_results: bool = True,
+    require_data: bool = True,
 ) -> AnalysisContext:
     """Prepare common analysis context.
 
@@ -259,8 +264,10 @@ def prepare_analysis_context(
 
     """
     # ! ---- LOAD CONFIG ----
-    config = FluidFlowerConfig(path, require_results=True, require_data=True)
-    config.check("analysis", "protocol", "data", "rig")
+    config = FluidFlowerConfig(
+        path, require_results=require_results, require_data=require_data
+    )
+    config.check(section, "protocol", "data", "rig")
 
     # Mypy type checking
     assert config.rig is not None
@@ -277,11 +284,19 @@ def prepare_analysis_context(
     fluidflower.load_experiment(experiment)
 
     # ! ---- SELECT IMAGE PATHS ----
+
+    if section == "calibration" and config.calibration is not None:
+        sub_config = config.calibration
+    elif section == "analysis" and config.analysis is not None:
+        sub_config = config.analysis
+    else:
+        sub_config = None
+
     image_paths = select_image_paths(
         config,
         experiment,
         all=all,
-        sub_config=config.analysis,
+        sub_config=sub_config,
         data_registry=config.data.registry,
     )
 
