@@ -232,6 +232,7 @@ def _build_color_to_mass_analysis(
         restoration=restoration,
         basis=embedding.basis,
         expert_knowledge_adapter=expert_knowledge_adapter,
+        contour_smoother=config.analysis.mass.contour_smoother,
     )
     return color_to_mass_analysis
 

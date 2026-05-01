@@ -154,6 +154,7 @@ class SegmentationContours:
         alpha: list[float],
         values_config,
         linewidth: int = 2,
+        contour_smoother: darsia.ContourSmoother | None = None,
     ) -> darsia.Image:
         """Add contours to image based on segmentation of mass.
 
@@ -170,6 +171,7 @@ class SegmentationContours:
             contour_image = plot_contour_on_image(
                 img=contour_image,
                 mask=[mask],
+                contour_smoother=contour_smoother,
                 color=[color],
                 alpha=[alpha],
                 thickness=linewidth,
@@ -381,5 +383,6 @@ class SegmentationContours:
                 segmentation_config.alpha,
                 segmentation_config.values,
                 segmentation_config.linewidth,
+                segmentation_config.contour_smoother,
             )
         return contour_img
