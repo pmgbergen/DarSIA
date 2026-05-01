@@ -8,8 +8,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from warnings import warn
 
+import darsia
 from darsia.presets.workflows.mode_resolution import validate_mode_syntax
 
+from .contour_smoother import SavitzkyGolaySmootherConfig
 from .data_registry import DataRegistry
 from .fingers import FingersConfig
 from .roi import RoiAndLabelConfig, RoiConfig
@@ -304,6 +306,8 @@ class AnalysisMassConfig:
     """Optional selection of mass-analysis scalar fields exported to disk."""
     folder: Path = field(default_factory=Path)
     """Path to the results folder for mass analysis."""
+    contour_smoother: darsia.ContourSmoother | None = None
+    """Optional contour smoother for finger contours."""
 
     def load(
         self,
@@ -395,6 +399,29 @@ class AnalysisMassConfig:
             assert results is not None
             folder = results / "mass"
         self.folder = folder
+
+        # Load contour smoother
+        contour_smoother = _get_key(
+            sub_sec, "contour_smoother", required=False, default="none", type_=str
+        ).lower()
+        if contour_smoother == "none":
+            self.contour_smoother = None
+        else:
+            smoother_options_sec = sub_sec.get("contour_smoother_options", {})
+
+            if contour_smoother == "savitzky_golay":
+                smoother_options = SavitzkyGolaySmootherConfig().load(
+                    smoother_options_sec
+                )
+                self.contour_smoother = darsia.SavitzkyGolaySmoother(
+                    window_length=smoother_options.window_length,
+                    polyorder=smoother_options.polyorder,
+                )
+            else:
+                raise NotImplementedError(
+                    f"Unsupported contour smoother type: {contour_smoother}"
+                )
+
         return self
 
 

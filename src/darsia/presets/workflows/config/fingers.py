@@ -6,8 +6,10 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import darsia
 from darsia.presets.workflows.mode_resolution import validate_mode_syntax
 
+from .contour_smoother import SavitzkyGolaySmootherConfig
 from .roi import RoiConfig
 from .utils import _get_key, _get_section
 
@@ -28,6 +30,10 @@ class FingersConfig:
     """Threshold for segmentation."""
     roi: dict[str, RoiConfig] | None = None
     """ROIs for analysis."""
+    contour_smoother: darsia.ContourSmoother | None = None
+    """Optional contour smoother for finger contours."""
+    reduce_to_main_contour: bool = True
+    """Whether to reduce to main contour (e.g. for mass mode)."""
 
     def load(
         self,
@@ -61,6 +67,33 @@ class FingersConfig:
                     self.roi[key] = RoiConfig().load(_get_section(roi_sec, key))
             except KeyError:
                 self.roi = {}
+
+        # Load contour smoother
+        contour_smoother = _get_key(
+            sec, "contour_smoother", required=False, default="none", type_=str
+        ).lower()
+        if contour_smoother == "none":
+            self.contour_smoother = None
+        else:
+            smoother_options_sec = sec.get("contour_smoother_options", {})
+
+            if contour_smoother == "savitzky_golay":
+                smoother_options = SavitzkyGolaySmootherConfig().load(
+                    smoother_options_sec
+                )
+                self.contour_smoother = darsia.SavitzkyGolaySmoother(
+                    window_length=smoother_options.window_length,
+                    polyorder=smoother_options.polyorder,
+                )
+            else:
+                raise NotImplementedError(
+                    f"Unsupported contour smoother type: {contour_smoother}"
+                )
+
+        # Load reduce_to_main_contour
+        self.reduce_to_main_contour = _get_key(
+            sec, "reduce_to_main_contour", required=False, default=True, type_=bool
+        )
 
         return self
 
