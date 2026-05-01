@@ -240,7 +240,7 @@ class ContourAnalysis:
 
         # Fill all holes
         if fill_holes:
-            mask = ndi.binary_fill_holes(mask)
+            mask_roi_array = ndi.binary_fill_holes(mask_roi_array)
 
         self.coordinatesystem = mask_roi.coordinatesystem
         """Coordinate system of subimage."""
