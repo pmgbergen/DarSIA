@@ -68,7 +68,7 @@ def analysis_fingers_from_context(
         mode=fingers_config.mode, threshold=fingers_config.threshold
     )
     contour_analysis = ContourAnalysis(
-        smoother=fingers_config.smoother,
+        contour_smoother=fingers_config.contour_smoother,
         reduce_to_main_contour=fingers_config.reduce_to_main_contour,
     )
 

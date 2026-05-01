@@ -285,6 +285,7 @@ def calibration_color_to_mass_analysis_from_context(
             restoration=restoration,
             basis=selected_basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
+            contour_smoother=config.analysis.mass.contour_smoother,
         )
         color_analysis.color_path_interpretation = color_path_interpretation
 
@@ -299,6 +300,7 @@ def calibration_color_to_mass_analysis_from_context(
             restoration=restoration,
             basis=selected_basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
+            contour_smoother=config.analysis.mass.contour_smoother,
         )
     else:
         # Start from scratch
@@ -342,6 +344,7 @@ def calibration_color_to_mass_analysis_from_context(
             ignore_labels=embedding.ignore_labels + ignore_labels,
             basis=selected_basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
+            contour_smoother=config.analysis.mass.contour_smoother,
         )
 
     # ! ---- INTERACTIVE CALIBRATION ---- ! #
