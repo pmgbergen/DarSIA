@@ -28,7 +28,7 @@ def contour_length(
     img: darsia.Image,
     roi: darsia.CoordinateArray | None = None,
     values_of_interest: int | list[int] | None = None,
-    fill_holes: bool = True,
+    fill_holes: bool = False,
     verbosity: bool = False,
 ) -> float:
     """
@@ -156,7 +156,7 @@ class ContourAnalysis:
         img: darsia.Image,
         roi: darsia.CoordinateArray | None = None,
         values_of_interest: int | list[int] | None = None,
-        fill_holes: bool = True,
+        fill_holes: bool = False,
     ) -> None:
         """Read labeled image and restrict to values of interest.
 
@@ -218,7 +218,7 @@ class ContourAnalysis:
         img: darsia.Image,
         mask: darsia.Image,
         roi: darsia.CoordinateArray | None = None,
-        fill_holes: bool = True,
+        fill_holes: bool = False,
     ) -> None:
         """Read labeled image and restrict to values of interest.
 

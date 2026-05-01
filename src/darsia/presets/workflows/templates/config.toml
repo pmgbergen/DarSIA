@@ -258,6 +258,7 @@ mode = "concentration_aq" # Choose from std modes ("mass", "cconcentration_aq", 
 threshold = 0.01 # Choose sufficiently low.
 roi = ["storage"] # Choose such that the top boundary crosses the plume.
 reduce_to_main_contour = true # If true (default), removes all small features.
+fill_holes = false # If true, fills holes in segmentation masks before contour extraction.
 contour_smoother = "savitzky_golay" # If chosen (default), contours are smoothed.
 
 [analysis.fingers.contour_smoother_options]

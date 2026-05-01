@@ -34,6 +34,8 @@ class FingersConfig:
     """Optional contour smoother for finger contours."""
     reduce_to_main_contour: bool = True
     """Whether to reduce to main contour (e.g. for mass mode)."""
+    fill_holes: bool = False
+    """Whether to fill holes in finger segmentation masks before contour extraction."""
 
     def load(
         self,
@@ -93,6 +95,10 @@ class FingersConfig:
         # Load reduce_to_main_contour
         self.reduce_to_main_contour = _get_key(
             sec, "reduce_to_main_contour", required=False, default=True, type_=bool
+        )
+
+        self.fill_holes = _get_key(
+            sec, "fill_holes", required=False, default=self.fill_holes, type_=bool
         )
 
         return self

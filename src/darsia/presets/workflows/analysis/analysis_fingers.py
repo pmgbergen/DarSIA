@@ -165,7 +165,7 @@ def analysis_fingers_from_context(
                 img=img,
                 mask=segmentation,
                 roi=roi_config.roi,
-                fill_holes=True,
+                fill_holes=fingers_config.fill_holes,
             )
 
             # Extract contour
