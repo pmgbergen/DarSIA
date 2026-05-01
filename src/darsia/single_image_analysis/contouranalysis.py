@@ -286,11 +286,6 @@ class ContourAnalysis:
         if self.contour_smoother:
             contours = [self.contour_smoother(contour) for contour in contours]
 
-        # Fill contour and get a binary mask.
-        filled_mask = np.zeros_like(self.mask, dtype=bool)
-        for contour in contours:
-            cv2.drawContours(filled_mask, [contour], -1, 1, thickness=cv2.FILLED)
-
         return contours
 
     def length(self) -> float:
