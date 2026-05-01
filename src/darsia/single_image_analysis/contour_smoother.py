@@ -73,14 +73,18 @@ def _clip_window_length(window_length: int, n: int) -> int:
 
 
 class ContourSmoother(ABC):
-    """
-    Base interface for all contour smoothers.
-
-    Each smoother must implement:
-        __call__(contour) -> contour
-    """
+    """Base interface: call with an OpenCV contour and return an OpenCV contour."""
 
     def __call__(self, contour: Contour) -> Contour:
+        """Main entry point.
+
+        Args:
+            contour: OpenCV contour (N,1,2) or (N,2).
+
+        Returns:
+            Smoothed contour in OpenCV format (N,1,2) with integer coordinates.
+
+        """
         xy = _as_xy(contour)
         out_xy = self._smooth_xy(xy)
         # preserve integer contour output as default (OpenCV usually expects int32)
@@ -88,10 +92,19 @@ class ContourSmoother(ABC):
 
     @abstractmethod
     def _smooth_xy(self, xy: np.ndarray) -> np.ndarray:
-        pass
+        """Main method.
+
+        Args:
+            xy: Nx2 array of contour points as floats.
+
+        Returns:
+            Nx2 array of smoothed contour points as floats.
+
+        """
+        raise NotImplementedError
 
 
-class Pipeline(ContourSmoother):
+class ContourSmootherSequence(ContourSmoother):
     """Apply multiple smoothers in sequence."""
 
     def __init__(self, steps: Sequence[ContourSmoother]):
@@ -256,37 +269,6 @@ class GaussianSmoother(ContourSmoother):
 # ----------------------------
 # 4) Savitzky-Golay smoothing (requires scipy)
 # ----------------------------
-
-
-class ContourSmoother:
-    """
-    Base interface: call with an OpenCV contour and return an OpenCV contour.
-    """
-
-    def __call__(self, contour: np.ndarray) -> np.ndarray:
-        xy = self._as_xy(contour)
-        out_xy = self._smooth_xy(xy)
-        return self._as_contour(out_xy, dtype=np.int32)
-
-    def _smooth_xy(self, xy: np.ndarray) -> np.ndarray:
-        raise NotImplementedError
-
-    @staticmethod
-    def _as_xy(contour: np.ndarray) -> np.ndarray:
-        c = np.asarray(contour)
-        # OpenCV contour format: (N,1,2) -> convert to (N,2)
-        if c.ndim == 3 and c.shape[1] == 1 and c.shape[2] == 2:
-            c = c[:, 0, :]
-        if c.ndim != 2 or c.shape[1] != 2:
-            raise ValueError(f"Contour must be (N,1,2) or (N,2); got {c.shape}")
-        return c.astype(np.float64, copy=False)
-
-    @staticmethod
-    def _as_contour(xy: np.ndarray, dtype=np.int32) -> np.ndarray:
-        xy = np.asarray(xy)
-        if xy.ndim != 2 or xy.shape[1] != 2:
-            raise ValueError(f"xy must be Nx2; got {xy.shape}")
-        return xy.astype(dtype).reshape((-1, 1, 2))
 
 
 class SavitzkyGolaySmoother(ContourSmoother):
