@@ -139,7 +139,7 @@ class HeterogeneousColorToMassAnalysis:
         self.expert_knowledge_adapter = expert_knowledge_adapter
         """Optional adapter constraining saturation/concentration via expert ROIs."""
         self.contour_smoother = contour_smoother
-        """Optional contour smoother for better visualization of ROIs during manual calibration."""
+        """Optional contour smoother for better visualization of ROIs during calibration."""
 
     @property
     def labels(self) -> darsia.Image:
