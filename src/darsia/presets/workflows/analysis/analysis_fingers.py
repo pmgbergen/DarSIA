@@ -67,7 +67,11 @@ def analysis_fingers_from_context(
     segmentation_analysis = SimpleSegmentation(
         mode=fingers_config.mode, threshold=fingers_config.threshold
     )
-    contour_analysis = ContourAnalysis()
+    contour_analysis = ContourAnalysis(
+        contour_smoother=fingers_config.contour_smoother,
+        reduce_to_main_contour=fingers_config.reduce_to_main_contour,
+    )
+
     # Keep evolution state per ROI to prevent mixing path histories across ROIs.
     contour_evolution_analysis = {
         key: ContourEvolutionAnalysis() for key in fingers_config.roi
@@ -158,7 +162,10 @@ def analysis_fingers_from_context(
         for key, roi_config in fingers_config.roi.items():
             # Perform finger analysis if configured
             contour_analysis.load(
-                img, segmentation, roi=roi_config.roi, fill_holes=False
+                img=img,
+                mask=segmentation,
+                roi=roi_config.roi,
+                fill_holes=fingers_config.fill_holes,
             )
 
             # Extract contour

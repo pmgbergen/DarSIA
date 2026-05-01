@@ -140,6 +140,7 @@ data = "analysis_imgs"
 
 [analysis.mass]
 color = "my_colorpath"
+contour_smoother = "savitzky_golay" # If chosen (default), contours are smoothed.
 
 [analysis.expert_knowledge]
 # Optional ROI constraints (keys from top-level [roi.*]).
@@ -225,13 +226,44 @@ box_color = [0, 0, 0]
 box_alpha = 0.4
 box_padding = 10
 
-# Optional segmentation contours (single entry example):
-#[analysis.segmentation]
-#label = "CO2 contour"
-#mode = "rescaled_mass" # also supports mass, saturation_g, concentration_aq, rescaled_*
-#thresholds = [0.01, 0.03, 0.05]
-#color = [255, 0, 0]
-#alpha = [1.0, 1.0, 1.0]
+# Optional segmentation with per-layer styling and separate format outputs.
+[analysis.segmentation.aqueous]
+label = "CO2(aq)"
+mode = "concentration_aq"
+thresholds = [0.05, 0.1, 0.5, 0.9]
+color = [255, 113, 107]
+alpha = [0.6, 0.7, 0.9, 1.0]
+linewidth = 8
+show_values = true
+value_color = [255, 255, 255]
+value_size = 4
+value_alpha = 0.8
+value_density = 0.5
+value_min_distance_px = 35
+value_max_per_contour = 4
+value_format = "{:.2f}"
+contour_smoother = "savitzky_golay" # If chosen, contours are smoothed.
+
+[analysis.segmentation.gas]
+label = "CO2(g)"
+mode = "saturation_g"
+thresholds = [0.01, 0.05, 0.5]
+color = [30, 255, 90]
+alpha = [0.6, 0.9, 1.0]
+linewidth = 5
+contour_smoother = "savitzky_golay" # If chosen, contours are smoothed.
+
+[analysis.fingers]
+mode = "concentration_aq" # Choose from std modes ("mass", "cconcentration_aq", ...) or "id" among color.*.<id>.
+threshold = 0.01 # Choose sufficiently low.
+roi = ["storage"] # Choose such that the top boundary crosses the plume.
+reduce_to_main_contour = true # If true (default), removes all small features.
+fill_holes = false # If true, fills holes in segmentation masks before contour extraction.
+contour_smoother = "savitzky_golay" # If chosen (default), contours are smoothed.
+
+[analysis.fingers.contour_smoother_options]
+window_length = 21 # Default value; must be odd and >= 3.
+polyorder = 3 # Default value; must be < window_length.
 
 [video]
 

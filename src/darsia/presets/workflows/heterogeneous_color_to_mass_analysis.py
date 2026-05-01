@@ -47,6 +47,7 @@ class HeterogeneousColorToMassAnalysis:
         ignore_labels: list[int] | None = None,
         basis: ColorEmbeddingBasis = ColorEmbeddingBasis.LABELS,
         expert_knowledge_adapter: ExpertKnowledgeAdapter | None = None,
+        contour_smoother: darsia.ContourSmoother | None = None,
     ):
         base_model = darsia.CombinedModel(
             [
@@ -137,6 +138,8 @@ class HeterogeneousColorToMassAnalysis:
         """Label-space basis used during calibration."""
         self.expert_knowledge_adapter = expert_knowledge_adapter
         """Optional adapter constraining saturation/concentration via expert ROIs."""
+        self.contour_smoother = contour_smoother
+        """Optional contour smoother for better visualization of ROIs during calibration."""
 
     @property
     def labels(self) -> darsia.Image:
@@ -507,6 +510,7 @@ class HeterogeneousColorToMassAnalysis:
                     coarse_c_aq > 0.9,
                     coarse_s_g > 0.05,
                 ],
+                contour_smoother=self.contour_smoother,
                 color=[
                     (255, 0, 0),
                     (255, 0, 0),
@@ -1031,6 +1035,7 @@ class HeterogeneousColorToMassAnalysis:
                             coarse_c_aq > 0.9,
                             coarse_s_g > sliders_threshold[1].val,
                         ],
+                        contour_smoother=self.contour_smoother,
                         color=[
                             (255, 0, 0),
                             (255, 0, 0),
@@ -1208,6 +1213,7 @@ class HeterogeneousColorToMassAnalysis:
                             coarse_c_aq > 0.9,
                             coarse_s_g > sliders_threshold[1].val,
                         ],
+                        contour_smoother=self.contour_smoother,
                         color=[
                             (255, 0, 0),
                             (255, 0, 0),
@@ -1982,6 +1988,7 @@ class HeterogeneousColorToMassAnalysis:
                                 coarse_c_aq > 0.9,
                                 coarse_s_g > sliders_threshold[1].val,
                             ],
+                            contour_smoother=self.contour_smoother,
                             color=[
                                 (255, 0, 0),
                                 (255, 0, 0),
@@ -2125,6 +2132,7 @@ class HeterogeneousColorToMassAnalysis:
                                 coarse_c_aq > 0.9,
                                 coarse_s_g > sliders_threshold[1].val,
                             ],
+                            contour_smoother=self.contour_smoother,
                             color=[
                                 (255, 0, 0),
                                 (255, 0, 0),
@@ -2444,6 +2452,7 @@ class HeterogeneousColorToMassAnalysis:
                                 coarse_c_aq > 0.9,
                                 coarse_s_g > sliders_threshold[1].val,
                             ],
+                            contour_smoother=self.contour_smoother,
                             color=[
                                 (255, 0, 0),
                                 (255, 0, 0),
@@ -2833,6 +2842,7 @@ class HeterogeneousColorToMassAnalysis:
         restoration: darsia.Model | None = None,
         basis: ColorEmbeddingBasis = ColorEmbeddingBasis.LABELS,
         expert_knowledge_adapter: ExpertKnowledgeAdapter | None = None,
+        contour_smoother: darsia.ContourSmoother | None = None,
     ) -> "HeterogeneousColorToMassAnalysis":
         """Load the calibration data from json file.
 
@@ -2890,4 +2900,5 @@ class HeterogeneousColorToMassAnalysis:
             ignore_labels=ignore_labels,
             basis=parsed_basis,
             expert_knowledge_adapter=expert_knowledge_adapter,
+            contour_smoother=contour_smoother,
         )
