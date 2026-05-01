@@ -131,7 +131,12 @@ def _corners_of_roi(
 class ContourAnalysis:
     """Contour analysis object."""
 
-    def __init__(self, verbosity: bool = False) -> None:
+    def __init__(
+        self,
+        verbosity: bool = False,
+        contour_smoother: darsia.ContourSmoother | None = None,
+        reduce_to_main_contour: bool = False,
+    ) -> None:
         """Constructor.
 
         Args:
@@ -141,6 +146,10 @@ class ContourAnalysis:
 
         self.verbosity = verbosity
         """Vebosity flag."""
+        self.contour_smoother = contour_smoother
+        """Optional contour smoother for the contours determined from the mask."""
+        self.reduce_to_main_contour = reduce_to_main_contour
+        """Whether to reduce to main contour."""
 
     def load_labels(
         self,
@@ -262,9 +271,25 @@ class ContourAnalysis:
                 array of pixels.
 
         """
+        # Extract contours.
         contours, _ = cv2.findContours(
             skimage.img_as_ubyte(self.mask), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
         )
+
+        # Determine the main contour as the one with the largest area.
+        if self.reduce_to_main_contour and len(contours) > 0:
+            contour_areas = [cv2.contourArea(contour) for contour in contours]
+            main_contour_index = np.argmax(contour_areas)
+            contours = [contours[main_contour_index]]
+
+        # Smooth contours if smoother provided.
+        if self.contour_smoother:
+            contours = [self.contour_smoother(contour) for contour in contours]
+
+        # Fill contour and get a binary mask.
+        filled_mask = np.zeros_like(self.mask, dtype=bool)
+        for contour in contours:
+            cv2.drawContours(filled_mask, [contour], -1, 1, thickness=cv2.FILLED)
 
         return contours
 
