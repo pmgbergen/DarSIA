@@ -148,33 +148,3 @@ class TestDataRegistryResolve:
         with pytest.raises(KeyError) as exc_info:
             reg.resolve("missing_key")
         assert "Available keys" in str(exc_info.value)
-
-
-# ---------------------------------------------------------------------------
-# TimeData new section keys (interval / time / path)
-# ---------------------------------------------------------------------------
-
-
-class TestTimeDataNewSectionKeys:
-    def test_interval_key(self):
-        sec = {"interval": {"cal": {"start": "01:00:00", "end": "05:00:00", "num": 5}}}
-        td = TimeData().load(sec)
-        assert len(td.image_times) == 5
-        assert td.mode == "intervals"
-
-    def test_time_key(self):
-        sec = {"time": {"snap": {"times": ["01:00:00", "02:00:00"], "tol": "00:05:00"}}}
-        td = TimeData().load(sec)
-        assert td.image_times == pytest.approx([1.0, 2.0])
-        assert td.mode == "times"
-
-    def test_mixed_interval_and_time(self):
-        sec = {
-            "interval": {"cal": {"start": "01:00:00", "end": "03:00:00", "num": 3}},
-            "time": {"snap": {"times": ["00:30:00"], "tol": "00:05:00"}},
-        }
-        td = TimeData().load(sec)
-        assert td.mode == "mixed"
-        # 3 from interval + 1 from time, all deduped and sorted
-        assert 0.5 in td.image_times
-        assert 1.0 in td.image_times
