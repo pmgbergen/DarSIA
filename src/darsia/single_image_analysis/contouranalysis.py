@@ -637,8 +637,6 @@ class ContourEvolutionAnalysis:
 
         """
 
-        self.index = 0
-        """Index of the current time point."""
         self.peaks = {}
         """Dictionary storing peaks at different time points."""
         self.valleys = {}
@@ -649,6 +647,8 @@ class ContourEvolutionAnalysis:
         """List storing paths of valleys."""
         self.verbosity = verbosity
         """Verbosity flag."""
+        self.times = []
+        """Sorted list of time points."""
 
     def add(
         self, peaks: np.ndarray, valleys: np.ndarray, time: float | None = None
@@ -662,12 +662,23 @@ class ContourEvolutionAnalysis:
                 if None, index is used as time.
 
         """
-        self.peaks[self.index] = peaks.copy()
-        self.valleys[self.index] = valleys.copy()
-        self.time = time
-        self.index += 1
+        # Add time to self.times and sort
+        if time is None:
+            raise ValueError("Time cannot be None when adding peaks and valleys.")
+        self.times.append(time)
+        self.times.sort()
 
-        self.total_time = self.index
+        # Find the index of the new time point
+        index = self.times.index(time)
+
+        # Insert peaks and valleys at the correct index in self.peaks and self.valleys.
+        # May need to move existing entries to the right if the new time point is inserted in
+        # the middle of self.times.
+        self.peaks = {i + (i >= index): p for i, p in self.peaks.items()}
+        self.valleys = {i + (i >= index): v for i, v in self.valleys.items()}
+        self.peaks[index] = peaks.copy()
+        self.valleys[index] = valleys.copy()
+        self.total_time = len(self.times)
 
     def plot(
         self,
