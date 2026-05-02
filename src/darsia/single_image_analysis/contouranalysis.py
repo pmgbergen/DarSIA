@@ -151,68 +151,6 @@ class ContourAnalysis:
         self.reduce_to_main_contour = reduce_to_main_contour
         """Whether to reduce to main contour."""
 
-    def load_labels(
-        self,
-        img: darsia.Image,
-        roi: darsia.CoordinateArray | None = None,
-        values_of_interest: int | list[int] | None = None,
-        fill_holes: bool = False,
-    ) -> None:
-        """Read labeled image and restrict to values of interest.
-
-        Args:
-            img (Image): labeled image.
-            roi (array, optional): set of points defining a box.
-            values_of_interest (int, list of int, optional): label values of interest.
-            fill_holes (bool): flag controlling whether holes in labels are filles.
-
-        """
-
-        # Make copy of image and restrict to region of interest
-        img_roi = img.copy() if roi is None else cast(darsia.Image, img.subregion(roi))
-
-        # Extract boolean mask covering values of interest.
-        if img_roi.img.dtype == bool:
-            mask: np.ndarray = img_roi.img
-
-        elif img_roi.img.dtype in [np.uint8, np.int32, np.int64]:
-            assert values_of_interest is not None
-
-            # Check values of interest
-            mask = np.zeros(img_roi.img.shape[:2], dtype=bool)
-            if isinstance(values_of_interest, int):
-                mask[img_roi.img == values_of_interest] = True
-
-            elif isinstance(values_of_interest, list):
-                for value in values_of_interest:
-                    mask[img_roi.img == value] = True
-        else:
-            raise ValueError(f"Images with dtype {img_roi.img.dtype} not supported.")
-
-        # Fill all holes
-        if fill_holes:
-            mask = ndi.binary_fill_holes(mask)
-
-        self.coordinatesystem = img_roi.coordinatesystem
-        """Coordinate system of subimage."""
-
-        self.mask = mask
-        """Mask."""
-
-        self.roi = roi
-        """Region of interest."""
-
-        self.img = img_roi
-        """Subimage."""
-
-        # Plot masks and print contour length if requested.
-        if self.verbosity:
-            plt.figure("Restricted image")
-            plt.imshow(img_roi.img)
-            plt.figure("Mask for values of interest")
-            plt.imshow(mask)
-            plt.show()
-
     def load(
         self,
         img: darsia.Image,
