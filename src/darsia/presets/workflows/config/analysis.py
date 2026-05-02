@@ -622,6 +622,8 @@ class AnalysisCroppingConfig:
 class AnalysisConfig:
     data: TimeData | None = None
     """Analysis data configuration."""
+    random_traverse: bool = False
+    """Whether to randomly traverse the data."""
     formats: list[str] | None = None
     """Optional analysis-wide export format identifiers."""
     cropping: AnalysisCroppingConfig | None = None
@@ -661,6 +663,10 @@ class AnalysisConfig:
         except KeyError:
             warn("No analysis data found. Use [analysis.data].")
             self.data = None
+
+        self.random_traverse = _get_key(
+            sec, "random_traverse", required=False, default=False, type_=bool
+        )
 
         raw_formats = _get_key(sec, "formats", required=False, default=None)
         if raw_formats is None:

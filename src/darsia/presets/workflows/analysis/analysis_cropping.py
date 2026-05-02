@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import random
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -47,6 +48,9 @@ def analysis_cropping_from_context(
     assert ctx.config.data is not None
     assert ctx.config.analysis is not None
 
+    fluidflower = ctx.fluidflower
+    image_paths = ctx.image_paths
+
     cropping_config = ctx.config.analysis.cropping
     legacy_formats = cropping_config.formats if cropping_config is not None else ["jpg"]
     exporter = ImageExportFormats.from_analysis_config(
@@ -63,12 +67,22 @@ def analysis_cropping_from_context(
     plot_folder = ctx.config.data.results / "cropping"
     plot_folder.mkdir(parents=True, exist_ok=True)
 
+    # Loop over images
     step_started_at = time.monotonic()
-    image_total = len(ctx.image_paths)
-    for image_index, path in enumerate(ctx.image_paths, start=1):
+    image_total = len(image_paths)
+
+    # Random shuffle for faster preview of analysis.
+    if ctx.config.analysis.random_traverse:
+        random.shuffle(image_paths)
+
+    for image_index, path in enumerate(image_paths, start=1):
         image_started_at = time.monotonic()
         # Read image
-        img = ctx.fluidflower.read_image(path)
+        try:
+            img = fluidflower.read_image(path)
+        except Exception as e:
+            logger.error(f"Failed to read image '{path}': {e}")
+            continue
 
         # Convert image to darsia.OpticalImage
         img = darsia.OpticalImage(img.img, **img.metadata())
