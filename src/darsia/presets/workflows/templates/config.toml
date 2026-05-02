@@ -121,6 +121,7 @@ data = "calibration_imgs"
 
 [analysis]
 data = "analysis_imgs"
+random_traverse = true # If true, randomizes image order for faster preview of analysis. default: false.
 formats = ["npz_default", "jpg_preview"]
 
 [format.npz.npz_default]
