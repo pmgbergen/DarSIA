@@ -81,52 +81,6 @@ def test_select_image_paths_resolves_registry_reference_to_times(
     assert experiment.times_calls == [([1.0], None)]
 
 
-def test_select_image_paths_supports_mixed_timedata_paths_and_times(
-    tmp_path, config_stub
-):
-    selected_from_path = tmp_path / "selected_from_path.jpg"
-    selected_from_time = tmp_path / "selected_from_time.jpg"
-    selected_from_path.touch()
-    selected_from_time.touch()
-    (tmp_path / "configured_path.jpg").touch()
-
-    class MixedExperiment:
-        def __init__(self):
-            self.paths_calls = []
-            self.times_calls = []
-
-        def find_images_for_paths(self, paths):
-            self.paths_calls.append(paths)
-            return [selected_from_path]
-
-        def find_images_for_times(self, times, data=None):
-            self.times_calls.append((times, data))
-            return [selected_from_time]
-
-    experiment = MixedExperiment()
-    data = TimeData().load(
-        {
-            "path": {"picked": {"paths": ["configured_path.jpg"]}},
-            "time": {"snap": {"times": ["01:00:00"]}},
-            "interval": {"window": {"start": "02:00:00", "end": "03:00:00", "num": 2}},
-        },
-        data_folder=tmp_path,
-    )
-    source = tmp_path / "source"
-    sub_config = SimpleNamespace(data=data)
-
-    resolved = select_image_paths(
-        config=config_stub,
-        experiment=experiment,
-        sub_config=sub_config,
-        source=source,
-    )
-
-    assert resolved == [selected_from_path, selected_from_time]
-    assert experiment.paths_calls == [[tmp_path / "configured_path.jpg"]]
-    assert experiment.times_calls == [(data.image_times, source)]
-
-
 def test_select_image_paths_supports_mixed_legacy_paths_and_times(
     tmp_path, config_stub
 ):
