@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import random
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -211,10 +212,19 @@ def analysis_mass_from_context(
     # Loop over images and analyze
     step_started_at = time.monotonic()
     image_total = len(image_paths)
+
+    # Random shuffle for faster preview of analysis.
+    if config.analysis.random_traverse:
+        random.shuffle(image_paths)
+
     for image_index, path in enumerate(image_paths, start=1):
         image_started_at = time.monotonic()
+        try:
+            img = fluidflower.read_image(path)
+        except Exception as e:
+            logger.error(f"Failed to read image '{path}': {e}")
+            continue
         # Extract color signal and assign mass
-        img = fluidflower.read_image(path)
         mass_analysis_result = color_to_mass_analysis(img)
 
         # Log time
@@ -323,6 +333,9 @@ def analysis_mass_from_context(
         # Add row to DataFrame using pd.concat for better performance
         new_row = pd.DataFrame([row_data])
         mass_df = pd.concat([mass_df, new_row], ignore_index=True)
+
+        # Sort by time to ensure chronological order
+        mass_df.sort_values(by="time", inplace=True)
 
         # Save DataFrame to CSV after each image analysis
         mass_df.to_csv(csv_path, index=False)  # Log the current analysis results

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import random
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -186,11 +187,21 @@ def analysis_thresholding_from_context(
         fallback_formats=thresholding_config.formats,
     )
 
+    # Loop over images and apply thresholding for each layer. Pre-compute color-to-mass analysis
     step_started_at = time.monotonic()
     image_total = len(image_paths)
+
+    # Random shuffle for faster preview of analysis.
+    if ctx.config.analysis.random_traverse:
+        random.shuffle(image_paths)
+
     for image_index, path in enumerate(image_paths, start=1):
         image_started_at = time.monotonic()
-        img = fluidflower.read_image(path)
+        try:
+            img = fluidflower.read_image(path)
+        except Exception as e:
+            logger.error(f"Failed to read image '{path}': {e}")
+            continue
 
         # Perform color-to-mass analysis if any layer requires it, and cache results for
         # mode resolution.

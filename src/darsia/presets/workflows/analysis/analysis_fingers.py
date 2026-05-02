@@ -124,10 +124,15 @@ def analysis_fingers_from_context(
     # Loop over images and analyze
     step_started_at = monotonic()
     image_total = len(image_paths)
+
     for image_index, path in enumerate(image_paths, start=1):
         image_started_at = monotonic()
         # Extract color signal and assign mass
-        img = fluidflower.read_image(path)
+        try:
+            img = fluidflower.read_image(path)
+        except Exception as e:
+            logger.error(f"Failed to read image '{path}': {e}")
+            continue
         mass_analysis_result = (
             color_to_mass_analysis(img) if requires_color_to_mass else None
         )
