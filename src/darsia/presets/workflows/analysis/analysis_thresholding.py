@@ -187,7 +187,7 @@ def analysis_thresholding_from_context(
         fallback_formats=thresholding_config.formats,
     )
 
-    # Loop over images and apply thresholding for each layer. Pre-compute color-to-mass analysis
+    # Loop over images and apply thresholding for each layer.
     step_started_at = time.monotonic()
     image_total = len(image_paths)
 
