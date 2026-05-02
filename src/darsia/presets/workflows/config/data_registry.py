@@ -48,7 +48,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .time_data import ImagePathData, ImageTimeData, ImageTimeIntervalData, TimeData
+from .time_data import ImageTimeData, PathData, TimeData, ImageTimeIntervalData
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +112,7 @@ class DataRegistry:
             for key, entry in path_sec.items():
                 path_keys.add(key)
                 td = TimeData()
-                td.image_path_data = ImagePathData().load(
+                td.image_path_data = PathData().load(
                     {"path": {key: entry}}, data_folder
                 )
                 td._combine_data()

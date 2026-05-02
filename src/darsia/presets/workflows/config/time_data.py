@@ -140,7 +140,7 @@ class ImageTimeIntervalData:
 
 
 @dataclass
-class ImagePathData:
+class PathData:
     """Data specified as direct file paths."""
 
     paths: list[Path] = field(default_factory=list)
@@ -148,7 +148,7 @@ class ImagePathData:
 
     def load(
         self, sec: dict, data_folder: Path | list[Path] | None = None
-    ) -> "ImagePathData":
+    ) -> "PathData":
         """Load image paths from config section."""
         try:
             paths_sec = _get_section(sec, "path")
@@ -220,8 +220,8 @@ class TimeData:
     image_interval_data: ImageTimeIntervalData = field(
         default_factory=ImageTimeIntervalData
     )
-    """Time intervals."""
-    image_path_data: ImagePathData = field(default_factory=ImagePathData)
+    """Time intervals with time step."""
+    image_path_data: PathData = field(default_factory=PathData)
     """Direct file paths."""
 
     # Combined results
@@ -277,6 +277,7 @@ class TimeData:
 
         # Combine paths (if any)
         if has_paths:
+            self.image_path_data.validate()
             self.image_paths = self.image_path_data.paths.copy()
 
         # Combine times (remove duplicates and sort)
@@ -297,10 +298,6 @@ class TimeData:
                 f"{'intervals' if has_intervals else ''} "
                 f"(mode: {self.mode})"
             )
-
-        # Validate paths if they exist
-        if self.image_paths:
-            self.image_path_data.validate()
 
     def get_times_with_uncertainty(self) -> list[tuple[float, float]]:
         """Get all times with associated uncertainty."""
