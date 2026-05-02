@@ -133,11 +133,13 @@ def analysis_fingers_from_context(
         except Exception as e:
             logger.error(f"Failed to read image '{path}': {e}")
             continue
+
+        # Perform color-to-mass analysis if any layer requires it.
         mass_analysis_result = (
             color_to_mass_analysis(img) if requires_color_to_mass else None
         )
 
-        # Produce contour images
+        # Produce contour images.
         segmentation = segmentation_analysis(
             img,
             saturation_g=(
@@ -334,6 +336,8 @@ def analysis_fingers_from_context(
                             key,
                         )
                         speeds.append(float("nan"))
+                        velocities.append([float("nan"), float("nan")])
+                        vertical_speeds.append(float("nan"))
                         continue
                     vx = float(x_curr - x_prev) / dt
                     vy = float(y_curr - y_prev) / dt
