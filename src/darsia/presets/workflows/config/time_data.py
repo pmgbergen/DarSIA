@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class ImageTimeInterval:
+class TimeInterval:
     start: float
     """Start time of the interval, relative to experiment start, in hours."""
     end: float
@@ -107,7 +107,7 @@ class ImageTimeData:
 class ImageTimeIntervalData:
     """Data specified as time intervals."""
 
-    intervals: dict[str, ImageTimeInterval] = field(default_factory=dict)
+    intervals: dict[str, TimeInterval] = field(default_factory=dict)
     """Dictionary of time intervals keyed by interval name."""
 
     def load(self, sec: dict) -> "ImageTimeIntervalData":
@@ -123,7 +123,7 @@ class ImageTimeIntervalData:
                 num = _get_key(interval_data, "num", required=False, type_=int)
                 tol = _get_key(interval_data, "tol", required=False)
 
-                self.intervals[interval_key] = ImageTimeInterval(
+                self.intervals[interval_key] = TimeInterval(
                     start=start, end=end, step=step, num=num, tol=tol
                 )
         except KeyError:
@@ -357,7 +357,7 @@ def load_image_times(
         for interval_key in intervals_sec.keys():
             interval_data = intervals_sec[interval_key]
 
-            # Create ImageTimeInterval object
+            # Create TimeInterval object
             # Allow start/end/step to be either float or string (HH:MM:SS format)
             start = _get_key(interval_data, "start", required=True)
             end = _get_key(interval_data, "end", required=True)
@@ -366,7 +366,7 @@ def load_image_times(
             tol = _get_key(interval_data, "tol", required=False)
 
             # Create interval and generate times
-            interval = ImageTimeInterval(
+            interval = TimeInterval(
                 start=start, end=end, step=step, num=num, tol=tol
             )
             interval_times_with_uncertainty.extend(
