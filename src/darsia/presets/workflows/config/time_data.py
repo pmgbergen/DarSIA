@@ -232,26 +232,6 @@ class TimeData:
     mode: str = ""
     """Primary data mode used: 'times', 'intervals', 'paths', or 'mixed'."""
 
-    def load(self, sec: dict, data_folder: Path | None = None) -> "TimeData":
-        """Load all available data modes from config section.
-
-        Args:
-            sec: Configuration section dictionary
-            data_folder: Base folder for resolving relative paths
-
-        Returns:
-            self with all available data loaded
-        """
-        # Load all three modes
-        self.image_time_data.load(sec)
-        self.image_interval_data.load(sec)
-        self.image_path_data.load(sec, data_folder)
-
-        # Combine all data
-        self._combine_data()
-
-        return self
-
     def _combine_data(self) -> None:
         """Combine all loaded data modes."""
 
