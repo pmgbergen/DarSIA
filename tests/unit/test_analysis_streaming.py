@@ -210,7 +210,9 @@ def test_thresholding_writes_separated_formats_and_streams_layer_keys(
     ctx = SimpleNamespace(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
-            analysis=SimpleNamespace(thresholding=thresholding_config),
+            analysis=SimpleNamespace(
+                thresholding=thresholding_config, random_traverse=False
+            ),
         ),
         experiment=SimpleNamespace(
             injection_protocol=SimpleNamespace(injected_mass=lambda date=None, **_: 1.0)
@@ -305,7 +307,9 @@ def test_thresholding_supports_rescaled_layer_modes(tmp_path: Path) -> None:
     ctx = SimpleNamespace(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
-            analysis=SimpleNamespace(thresholding=thresholding_config),
+            analysis=SimpleNamespace(
+                thresholding=thresholding_config, random_traverse=False
+            ),
         ),
         experiment=SimpleNamespace(
             injection_protocol=SimpleNamespace(injected_mass=lambda date=None, **_: 1.0)
@@ -370,7 +374,9 @@ def test_thresholding_applies_expert_knowledge_constraints(tmp_path: Path) -> No
     ctx = SimpleNamespace(
         config=SimpleNamespace(
             data=SimpleNamespace(results=tmp_path),
-            analysis=SimpleNamespace(thresholding=thresholding_config),
+            analysis=SimpleNamespace(
+                thresholding=thresholding_config, random_traverse=False
+            ),
         ),
         experiment=SimpleNamespace(
             injection_protocol=SimpleNamespace(injected_mass=lambda date=None, **_: 1.0)
