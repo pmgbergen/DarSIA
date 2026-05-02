@@ -10,6 +10,7 @@ from typing import Optional
 
 import darsia
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
+from darsia.presets.workflows.config.time_data import TimeWindow
 
 
 # TODO rm.
@@ -138,6 +139,43 @@ class ProtocolledExperiment:
             if not self.is_blacklisted(path):
                 available_paths.append(path)
         return available_paths
+
+    def find_images_for_time_windows(
+        self,
+        windows: list[TimeWindow],
+        data: list[Path] | None = None,
+    ) -> list[Path]:
+        """Find image paths for given time windows since start of the experiment.
+
+        Args:
+            windows (list[TimeWindow]): Time windows to search for.
+            data (list[Path], optional): Pool of data paths to search in. If None,
+                uses the experiment's data pool.
+
+        """
+        source_paths = data or self.data
+
+        available_seconds, available_paths, _ = self._available_timeline(source_paths)
+
+        if not available_paths:
+            raise ValueError("No available images found in the specified paths.")
+
+        # Find selected paths within the time interval.
+        selected_paths: list[Path] = []
+        for window in windows:
+            start_in_seconds = window.start * 3600
+            end_in_seconds = window.end * 3600
+            selected_paths.extend(
+                p
+                for (sec, p) in zip(available_seconds, available_paths)
+                if start_in_seconds <= sec <= end_in_seconds
+            )
+
+        # Remove duplicates and sort by time.
+        selected_paths = list(dict.fromkeys(selected_paths))
+        selected_paths.sort(key=lambda p: self.get_datetime(p))
+
+        return selected_paths
 
     def find_images_for_times(
         self,
