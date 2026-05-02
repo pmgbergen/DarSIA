@@ -158,6 +158,10 @@ def select_image_paths(
         image_paths += experiment.find_images_for_paths(
             paths=sub_config.data.image_paths
         )
+        # Find images for time intervals.
+        image_paths += experiment.find_images_for_time_windows(
+            sub_config.data.image_windows, data=source
+        )
         image_paths += experiment.find_images_for_times(
             times=sub_config.data.image_times, data=source
         )

@@ -36,7 +36,7 @@ def _make_registry_with_roi(name: str = "my_roi") -> RoiRegistry:
 def _make_data_registry(tmp_path: Path) -> DataRegistry:
     """Return a DataRegistry with dummy baseline and calibration path entries.
 
-    Creates one dummy image file so ImagePathData validation passes.
+    Creates one dummy image file so PathData validation passes.
     """
     dummy = tmp_path / "dummy.jpg"
     dummy.touch()
