@@ -2,7 +2,6 @@
 
 # Add imports
 import logging
-import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -54,6 +53,25 @@ class TimeInterval:
     def generate_times_with_uncertainty(self) -> list[tuple[float, float]]:
         times = self.generate_times()
         return [(t, self.tol) for t in times]
+
+
+@dataclass
+class TimeWindow:
+    start: float
+    """Start time of the window, relative to experiment start, in hours."""
+    end: float
+    """End time of the window, relative to experiment start, in hours."""
+
+    def __init__(
+        self,
+        start: float | str,
+        end: float | str,
+        step: float | str | None = None,
+        num: int = 0,
+        tol: float | None = None,
+    ):
+        self.start = _convert_to_hours(start)
+        self.end = _convert_to_hours(end)
 
 
 @dataclass
@@ -109,6 +127,8 @@ class ImageTimeIntervalData:
 
     intervals: dict[str, TimeInterval] = field(default_factory=dict)
     """Dictionary of time intervals keyed by interval name."""
+    windows: dict[str, TimeWindow] = field(default_factory=dict)
+    """Dictionary of time windows keyed by window name."""
 
     def load(self, sec: dict) -> "ImageTimeIntervalData":
         """Load time intervals from config section."""
@@ -123,9 +143,15 @@ class ImageTimeIntervalData:
                 num = _get_key(interval_data, "num", required=False, type_=int)
                 tol = _get_key(interval_data, "tol", required=False)
 
-                self.intervals[interval_key] = TimeInterval(
-                    start=start, end=end, step=step, num=num, tol=tol
-                )
+                if num is None:
+                    self.windows[interval_key] = TimeWindow(
+                        start=start,
+                        end=end,
+                    )
+                else:
+                    self.intervals[interval_key] = TimeInterval(
+                        start=start, end=end, step=step, num=num, tol=tol
+                    )
         except KeyError:
             pass
 
@@ -229,6 +255,7 @@ class TimeData:
     """Combined list of image paths."""
     image_times: list[float] = field(default_factory=list)
     """Combined list of image times."""
+    image_windows: list[TimeWindow] = field(default_factory=list)
     mode: str = ""
     """Primary data mode used: 'times', 'intervals', 'paths', or 'mixed'."""
 
@@ -238,10 +265,11 @@ class TimeData:
         # Count how many modes have data
         has_times = len(self.image_time_data.times) > 0
         has_intervals = len(self.image_interval_data.intervals) > 0
+        has_windows = len(self.image_interval_data.windows) > 0
         has_paths = len(self.image_path_data.paths) > 0
 
         # Determine mode
-        mode_count = sum([has_times, has_intervals, has_paths])
+        mode_count = sum([has_times, has_intervals, has_windows, has_paths])
         if mode_count == 0:
             raise ValueError(
                 "No data specified. Use one of: 'time', " "'interval', or 'path'"
@@ -252,6 +280,8 @@ class TimeData:
             self.mode = "times"
         elif has_intervals:
             self.mode = "intervals"
+        elif has_windows:
+            self.mode = "windows"
         else:
             self.mode = "paths"
 
@@ -278,6 +308,10 @@ class TimeData:
                 f"{'intervals' if has_intervals else ''} "
                 f"(mode: {self.mode})"
             )
+
+        # Collect windows.
+        if has_windows:
+            self.image_windows = [w for w in self.image_interval_data.windows.values()]
 
     def get_times_with_uncertainty(self) -> list[tuple[float, float]]:
         """Get all times with associated uncertainty."""
