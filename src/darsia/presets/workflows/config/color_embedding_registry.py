@@ -115,7 +115,6 @@ def parse_color_range_embedding(
     data_registry: DataRegistry | None,
     roi_registry: RoiRegistry | None,
 ) -> ColorRangeEmbedding:
-
     mode = _parse_mode(
         cfg.get("mode", "absolute"), context=f"color.range.{embedding_id}"
     )
@@ -123,7 +122,7 @@ def parse_color_range_embedding(
     raw_range = cfg.get("range")
     if not isinstance(raw_range, list) or len(raw_range) != 3:
         raise ValueError(
-            f"color.range.{embedding_id}.range must be a list of 3 " "[min,max] bounds."
+            f"color.range.{embedding_id}.range must be a list of 3 [min,max] bounds."
         )
     ranges: list[tuple[float | None, float | None]] = []
     for i, bound in enumerate(raw_range):
