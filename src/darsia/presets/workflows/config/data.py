@@ -176,7 +176,11 @@ class DataConfig:
                 )
             except Exception as e:
                 logger.warning(f"Failed to load DataRegistry: {e}")
-                self.registry = None
+                raise ValueError(
+                    "Failed to load DataRegistry from [data] section. "
+                    "Ensure that any 'interval', 'time', and 'path' sub-sections are "
+                    "correctly formatted."
+                ) from e
         else:
             self.registry = None
 
