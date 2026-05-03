@@ -170,18 +170,15 @@ class SkeletonAnalysis:
                 np.zeros((0, 1, 2), dtype=int),
             )
 
-        # Continue with each contour separately.
-        leaves_pixels = np.zeros((0, 2), dtype=int)
-        junctions_pixels = np.zeros((0, 2), dtype=int)
-        base_pixels = np.zeros((0, 2), dtype=int)
-
         # Use networkx to convert the skeleton into a graph.
         skeleton_graph = nx.Graph()
+
+        # Add nodes.
         skeleton_pixels = np.argwhere(skeleton)
         for pixel in skeleton_pixels:
             skeleton_graph.add_node(tuple(pixel))
 
-        # Connect neighboring pixels in the graph.
+        # Add edges.
         for pixel in skeleton_graph.nodes:
             x, y = pixel
             potential_neighbors = [
@@ -204,12 +201,6 @@ class SkeletonAnalysis:
         # Make graph unidirected by removing self-loops and parallel edges.
         skeleton_graph = skeleton_graph.to_undirected()
 
-        # Remove very short branches - these are likely noise and can lead to spurious leaves
-        # and junctions.
-        for component in nx.connected_components(skeleton_graph):
-            if len(component) < min_branch_pixel_distance:
-                skeleton_graph.remove_nodes_from(component)
-
         # Identify all pixels that have min [:,0] value, i.e., the pixels that are closest to
         # the top of the image. These will be considered as part of the "top line" and not
         # as leaves or junctions, even if they have degree 1 or >2, respectively.
@@ -220,15 +211,22 @@ class SkeletonAnalysis:
                 min_row = np.min(rows)
                 top_line.append((min_row, col))
 
+        # Continue with each contour separately.
+        leaves_pixels = np.zeros((0, 2), dtype=int)
+        junctions_pixels = np.zeros((0, 2), dtype=int)
+        base_pixels = np.zeros((0, 2), dtype=int)
+
         # Determine leaves and junctions based on node degree.
         for node in skeleton_graph.nodes:
             degree = skeleton_graph.degree(node)
-            if degree == 1 and node not in top_line:
+            if degree == 1 and node[0] >= np.min(top_line, axis=0)[0]:
+                # Only try to exclude the top line, but not boundary fingers.
                 leaves_pixels = np.vstack((leaves_pixels, node))
-            elif degree > 2 and node not in top_line:
-                junctions_pixels = np.vstack((junctions_pixels, node))
-            elif degree > 2 and node in top_line:
-                base_pixels = np.vstack((base_pixels, node))
+            elif degree > 2:
+                if node not in top_line:
+                    junctions_pixels = np.vstack((junctions_pixels, node))
+                else:
+                    base_pixels = np.vstack((base_pixels, node))
 
         # Clean up - uniquify pixels if they are in a group. Touching junction_pixels
         # should be reduced to a single junction pixel, and the same for leaves_pixels.
@@ -243,39 +241,87 @@ class SkeletonAnalysis:
             # Then mark all pixels in the group as visited and repeat until all are visited.
             unvisited = pixels.copy()
             close_groups = []
-            while len(unvisited) > 0:
+            while True:
+                if len(unvisited) == 0:
+                    break
                 pixel = unvisited[0]
-                distance = nx.shortest_path_length(skeleton_graph, source=tuple(pixel))
-                close_pixels = unvisited[
-                    np.array([distance[tuple(p)] for p in unvisited])
-                    < max_group_pixel_distance
-                ]
+                manhatten_distance = np.linalg.norm(unvisited - pixel, ord=1, axis=1)
+                close_pixel_indices = np.where(
+                    manhatten_distance < max_group_pixel_distance
+                )[0]
+                close_pixels = unvisited[close_pixel_indices]
                 close_groups.append(close_pixels)
-                unvisited = np.array([p for p in unvisited if p not in close_pixels])
+                unvisited = np.delete(unvisited, close_pixel_indices, axis=0)
 
-            # Replace each group by the mean pixel of the group
+            # Replace each group by one representative.
             unique_pixels = []
             for group in close_groups:
-                print(group)
+                # Keep the pixel with lowest row index as representative of the group,
+                # to be consistent with the top line definition.
                 group_representative = group[0]
-                unique_pixels.append(group_representative)
+                for pixel in group:
+                    # Check if pixel is in top line and if so, keep it as representative.
+                    # Or pick the first in line.
+                    if tuple(pixel) in top_line:
+                        group_representative = pixel
+                        break
+                unique_pixels.append(tuple(group_representative))
+            assert len(unique_pixels) == len(
+                close_groups
+            ), "Each group should be represented by exactly one pixel."
             return np.array(unique_pixels)
 
-        leaves_pixels = uniquify_pixels(leaves_pixels)
-        junctions_pixels = uniquify_pixels(junctions_pixels)
+        # Group them altogether.
+        all_pixels = np.vstack((leaves_pixels, junctions_pixels, base_pixels))
+        all_pixels = uniquify_pixels(all_pixels)
 
-        # Sort peaks and valleys - no reason why the contours have been traversed not ordered.
-        arg_sorted_leaves_pixels = np.argsort(leaves_pixels[:, 0], axis=0)
-        arg_sorted_junctions_pixels = np.argsort(junctions_pixels[:, 0], axis=0)
-        arg_sorted_base_pixels = np.argsort(base_pixels[:, 0], axis=0)
+        # Distribute them into the three categories again, based on the original classification.
+        new_base_pixels = []
+        new_junctions_pixels = []
+        new_leaves_pixels = []
+        for pixel in all_pixels:
+            if any(np.allclose(pixel, b, atol=2) for b in base_pixels):
+                new_base_pixels.append(pixel)
+            elif any(np.allclose(pixel, j, atol=2) for j in junctions_pixels):
+                new_junctions_pixels.append(pixel)
+            elif any(np.allclose(pixel, l, atol=2) for l in leaves_pixels):
+                new_leaves_pixels.append(pixel)
+            else:
+                raise ValueError(
+                    f"Pixel {pixel} is not classified as leaf, junction, or base pixel."
+                )
 
-        sorted_leaves_pixels = leaves_pixels[arg_sorted_leaves_pixels]
-        sorted_junctions_pixels = junctions_pixels[arg_sorted_junctions_pixels]
-        sorted_base_pixels = base_pixels[arg_sorted_base_pixels]
+        base_pixels = np.array(new_base_pixels)
+        junctions_pixels = np.array(new_junctions_pixels)
+        leaves_pixels = np.array(new_leaves_pixels)
 
-        reshaped_leaves_pixels = np.reshape(sorted_leaves_pixels, (-1, 1, 2))
-        reshaped_junctions_pixels = np.reshape(sorted_junctions_pixels, (-1, 1, 2))
-        reshaped_base_pixels = np.reshape(sorted_base_pixels, (-1, 1, 2))
+        # Make sure we have not lost any pixels.
+        assert len(base_pixels) + len(junctions_pixels) + len(leaves_pixels) == len(
+            all_pixels
+        ), "Lost pixels during uniquification."
+
+        # Sort and reshape - allow for possibility that arrays are empty,
+        # in which case argsort will fail. In that case, just reshape without sorting.
+        if len(leaves_pixels) == 0:
+            reshaped_leaves_pixels = np.reshape(leaves_pixels, (-1, 1, 2))
+        else:
+            arg_sorted_leaves_pixels = np.argsort(leaves_pixels[:, 0], axis=0)
+            sorted_leaves_pixels = leaves_pixels[arg_sorted_leaves_pixels]
+            reshaped_leaves_pixels = np.reshape(sorted_leaves_pixels, (-1, 1, 2))
+
+        if len(junctions_pixels) == 0:
+            reshaped_junctions_pixels = np.reshape(junctions_pixels, (-1, 1, 2))
+        else:
+            arg_sorted_junctions_pixels = np.argsort(junctions_pixels[:, 0], axis=0)
+            sorted_junctions_pixels = junctions_pixels[arg_sorted_junctions_pixels]
+            reshaped_junctions_pixels = np.reshape(sorted_junctions_pixels, (-1, 1, 2))
+
+        if len(base_pixels) == 0:
+            reshaped_base_pixels = np.reshape(base_pixels, (-1, 1, 2))
+        else:
+            arg_sorted_base_pixels = np.argsort(base_pixels[:, 0], axis=0)
+            sorted_base_pixels = base_pixels[arg_sorted_base_pixels]
+            reshaped_base_pixels = np.reshape(sorted_base_pixels, (-1, 1, 2))
 
         return reshaped_leaves_pixels, reshaped_junctions_pixels, reshaped_base_pixels
 
