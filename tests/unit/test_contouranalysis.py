@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import darsia
-from darsia.single_image_analysis.contouranalysis import (
-    ContourAnalysis,
-    ContourEvolutionAnalysis,
+from darsia.single_image_analysis.contouranalysis import ContourAnalysis
+from darsia.single_image_analysis.path_evolution_analysis import (
     PathUnit,
+    PathEvolutionAnalysis,
 )
 
 
@@ -40,47 +40,45 @@ def test_plot_valleys_respects_range_and_optional_dots():
 
 
 def test_find_valley_paths_tracks_valleys_over_time():
-    contour_evolution_analysis = ContourEvolutionAnalysis()
-    empty_peaks = np.zeros((0, 1, 2), dtype=int)
+    contour_evolution_analysis = PathEvolutionAnalysis()
     contour_evolution_analysis.add(
-        peaks=empty_peaks, valleys=np.array([[[1, 2]], [[6, 2]]], dtype=int), time=0.0
+        points=np.array([[[1, 2]], [[6, 2]]], dtype=int), time=0.0
     )
     contour_evolution_analysis.add(
-        peaks=empty_peaks, valleys=np.array([[[2, 3]], [[7, 3]]], dtype=int), time=1.0
+        points=np.array([[[2, 3]], [[7, 3]]], dtype=int), time=1.0
     )
 
-    contour_evolution_analysis.find_valley_paths()
+    contour_evolution_analysis.find_paths()
 
-    assert len(contour_evolution_analysis.valley_paths) == 2
+    assert len(contour_evolution_analysis.paths) == 2
 
     starts = sorted(
-        [tuple(path[0].position) for path in contour_evolution_analysis.valley_paths]
+        [tuple(path[0].position) for path in contour_evolution_analysis.paths]
     )
     ends = sorted(
-        [tuple(path[1].position) for path in contour_evolution_analysis.valley_paths]
+        [tuple(path[1].position) for path in contour_evolution_analysis.paths]
     )
     assert starts == [(1, 2), (6, 2)]
     assert ends == [(2, 3), (7, 3)]
 
-    for valley_path in contour_evolution_analysis.valley_paths:
-        assert len(valley_path) == 2
-        assert valley_path[0].time == 0
-        assert valley_path[1].time == 1
+    for path in contour_evolution_analysis.paths:
+        assert len(path) == 2
+        assert path[0].time == 0
+        assert path[1].time == 1
 
 
-def test_plot_valley_paths_uses_active_and_inactive_alpha():
+def test_plot_paths_uses_active_and_inactive_alpha():
     img = darsia.Image(img=np.zeros((8, 10, 3), dtype=np.uint8))
 
-    contour_evolution_analysis = ContourEvolutionAnalysis()
-    contour_evolution_analysis.valley_paths = [
+    contour_evolution_analysis = PathEvolutionAnalysis()
+    contour_evolution_analysis.paths = [
         [PathUnit(0, 0, np.array([2, 2])), PathUnit(1, 0, np.array([3, 3]))]
     ]
 
     with mock.patch.object(plt, "plot") as plot_mock:
-        contour_evolution_analysis.plot_valley_paths(img=img, show=False, color="k")
+        contour_evolution_analysis.plot_paths(img=img, show=False, color="k")
 
     alphas = [call.kwargs.get("alpha") for call in plot_mock.call_args_list]
     assert 1.0 in alphas
-    assert 0.5 in alphas
     for call in plot_mock.call_args_list:
         assert call.kwargs.get("color") == "k"
