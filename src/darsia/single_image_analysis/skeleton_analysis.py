@@ -368,7 +368,6 @@ class SkeletonAnalysis:
         plt.imshow(img, zorder=0)
 
         try:
-
             # Display skeleton on top of original mask and contour mask for debugging.
             skeleton_coordinates = np.argwhere(skeleton)
             if len(skeleton_coordinates) > 0:
@@ -462,4 +461,3 @@ class SkeletonAnalysis:
             plt.show()
         else:
             plt.close()
-
