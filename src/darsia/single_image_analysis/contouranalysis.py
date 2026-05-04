@@ -7,7 +7,6 @@ This includes measuring lengths of contours, weighted sums (generalized mass ana
 from __future__ import annotations
 
 import logging
-from collections import namedtuple
 from pathlib import Path
 from typing import cast
 
@@ -17,7 +16,6 @@ import numpy as np
 import scipy.ndimage as ndi
 import skimage
 from scipy.signal import find_peaks
-from scipy.spatial import distance_matrix
 
 import darsia
 
