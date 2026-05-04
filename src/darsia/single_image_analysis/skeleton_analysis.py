@@ -132,7 +132,6 @@ class SkeletonAnalysis:
     def leaves_and_junctions(
         self,
         skeleton: np.ndarray | None,
-        min_branch_length: float = 0.05,
         max_group_distance: float = 0.01,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -140,9 +139,6 @@ class SkeletonAnalysis:
 
         Args:
             skeleton (np.ndarray): skeleton for which to determine leaves and junctions.
-            min_branch_length (float): minimum branch length in metric units;
-                branches shorter than this are removed before determining leaves and junctions,
-                as they are likely noise; default is 0.05.
             max_group_distance (float): maximum distance for grouping pixels in metric units;
                 default is 0.01.
 
@@ -153,9 +149,6 @@ class SkeletonAnalysis:
 
         """
         # Convert Euclidean distances to pixel distance
-        min_branch_pixel_distance = self.coordinatesystem.num_voxels(
-            min_branch_length, "x"
-        )
         max_group_pixel_distance = self.coordinatesystem.num_voxels(
             max_group_distance, "x"
         )
