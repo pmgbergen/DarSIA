@@ -235,18 +235,6 @@ def analysis_fingers_from_context(
             number_leaves = leaves.shape[0]
             number_junctions = junctions.shape[0]
             number_base_junctions = base_junctions.shape[0]
-            leaf_frequency = np.nan
-            leaf_wavelength = np.nan
-            if roi_width > 0:
-                leaf_frequency = float(number_leaves) / roi_width
-                if number_leaves > 0:
-                    leaf_wavelength = roi_width / float(number_leaves)
-            else:
-                logger.warning(
-                    "Skip leaf frequency/wavelength computation due to non-positive"
-                    " ROI width for ROI '%s'.",
-                    key,
-                )
 
             # Plot finger peaks and contours.
             tips_path = (results_folder / "tips" / key / f"{path.stem}").with_suffix(
@@ -549,8 +537,8 @@ def analysis_fingers_from_context(
                     if len(x_coords_sorted) > 1:
                         dist_x = np.diff(x_coords_sorted).tolist()
 
-                    # Compute lengths of active fingers at this time (using travel distance as a
-                    # proxy for length).
+                    # Compute lengths of active fingers at this time (using travel distance as
+                    # a proxy for length).
                     travel_distances_at_time = [
                         float(finger["travel_distance"]) for finger in active_paths
                     ]
@@ -582,22 +570,23 @@ def analysis_fingers_from_context(
 
                     # Count continuing paths.
                     current_origin = [finger["origin"] for finger in active_paths]
+                    num_continuing_paths = 0
                     if time_index > 0:
                         prev_active_paths = active_paths_by_time[category].get(
                             evolution_times[key][time_index - 1], []
                         )
                         prev_origin = [finger["origin"] for finger in prev_active_paths]
-
                         # Use np.allclose on origins to determine if any active paths at
                         # this time are continuations of paths from the previous time point.
                         for curr in current_origin:
-                            if any(
-                                np.allclose(curr, prev, atol=1e-10)
-                                for prev in prev_origin
-                            ):
-                                num_paths[category]["continuing"] += 1
+                            for prev in prev_origin:
+                                if np.allclose(curr, prev, atol=1e-10):
+                                    num_continuing_paths += 1
+                                    break
+                    num_paths[category]["continuing"] = num_continuing_paths
 
                     # Count ending paths.
+                    num_ending_paths = 0
                     if time_index < len(times) - 1:
                         next_active_paths = active_paths_by_time[category].get(
                             evolution_times[key][time_index + 1], []
@@ -609,7 +598,8 @@ def analysis_fingers_from_context(
                                 np.allclose(curr, next, atol=1e-10)
                                 for next in next_origin
                             ):
-                                num_paths[category]["ending"] += 1
+                                num_ending_paths += 1
+                    num_paths[category]["ending"] = num_ending_paths
 
                     # Conclude on number of new paths.
                     num_paths[category]["new"] = (
@@ -617,12 +607,15 @@ def analysis_fingers_from_context(
                         - num_paths[category]["continuing"]
                     )
 
+                    # NOTE: Use short name for style.
+                    tmp_num = num_new_paths_based_on_travel_distance
+
                     statistics[category][time] = {
                         "horizontal_distances": dist_x,
                         "travel_distances": travel_distances_at_time,
                         "speeds": speeds_at_time,
                         "vertical_speeds": speeds_y_at_time,
-                        "number_new_paths_based_on_travel_distance": num_new_paths_based_on_travel_distance,
+                        "number_new_paths_based_on_travel_distance": tmp_num,
                         "number_new_paths": num_paths[category]["new"],
                         "number_continuing_paths": num_paths[category]["continuing"],
                         "number_ending_paths": num_paths[category]["ending"],
@@ -661,6 +654,9 @@ def analysis_fingers_from_context(
                             "contour_length": contour_length,
                             "number_tips": number_tips,
                             "number_fjords": number_fjords,
+                            "number_leaves": number_leaves,
+                            "number_junctions": number_junctions,
+                            "number_base_junctions": number_base_junctions,
                             "roi_width": roi_width,
                             "finger_frequency": peak_frequency,
                             "finger_wavelength": peak_wavelength,
