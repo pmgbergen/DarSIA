@@ -201,6 +201,7 @@ class ContourAnalysis:
         #    # plt.imshow(mask)
         #    # plt.show()
 
+    @darsia.timing_decorator
     def contours(self) -> list[np.ndarray]:
         """Determine contour of loaded labeled image.
 
@@ -215,7 +216,7 @@ class ContourAnalysis:
         )
 
         # Determine the main contour as the one with the largest area.
-        if self.reduce_to_main_contour and len(contours) > 0:
+        if self.reduce_to_main_contour and len(contours) > 1:
             contour_areas = [cv2.contourArea(contour) for contour in contours]
             main_contour_index = np.argmax(contour_areas)
             contours = [contours[main_contour_index]]
@@ -398,6 +399,7 @@ class ContourAnalysis:
 
         return reshaped_peaks_pixels, reshaped_valleys_pixels
 
+    @darsia.timing_decorator
     def plot_peaks(
         self,
         img: darsia.Image,
