@@ -71,6 +71,7 @@ class PathEvolutionAnalysis:
         path: Path | None = None,
         show: bool = False,
         dpi: int = 1000,
+        **kwargs,
     ) -> None:
         if img is None:
             raise ValueError("img cannot be None when plotting paths.")
@@ -91,7 +92,13 @@ class PathEvolutionAnalysis:
             max_path_length = max(max_path_length, path_pos.shape[0])
 
         # Add paths
-        cmap = plt.cm.get_cmap("viridis")
+        color = kwargs.get("color", "viridis")
+        if color in plt.colormaps():
+            cmap = plt.cm.get_cmap(color)
+        else:
+            # Use a constant color if the provided color is not a valid colormap
+            cmap = lambda x: color
+        alpha = kwargs.get("alpha", 1.0)
         num_paths = len(self.paths)
         denominator = max(num_paths - 1, 1)
         for i, _path in enumerate(self.paths):
@@ -105,6 +112,7 @@ class PathEvolutionAnalysis:
                 path_pos[:, 1] + top_left_roi_pixel[1],
                 color=cmap(i / denominator),
                 linewidth=path_length / max_path_length * 2,
+                alpha=alpha,
             )
 
         # Turn off axis
