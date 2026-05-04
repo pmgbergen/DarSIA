@@ -230,7 +230,7 @@ def analysis_fingers_from_context(
             # Determine skeleton values.
             # TODO include in config.
             leaves, junctions, base_junctions = skeleton_analysis.leaves_and_junctions(
-                skeleton, min_branch_length=0.05, max_group_distance=0.01
+                skeleton, max_group_distance=0.01
             )
             number_leaves = leaves.shape[0]
             number_junctions = junctions.shape[0]
