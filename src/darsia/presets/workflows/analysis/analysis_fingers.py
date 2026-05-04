@@ -77,9 +77,11 @@ def analysis_fingers_from_context(
 
     # Keep evolution state per ROI to prevent mixing path histories across ROIs.
     evolution_times = {key: [] for key in fingers_config.roi}
-    peak_evolution_analysis = {
-        key: PathEvolutionAnalysis() for key in fingers_config.roi
-    }
+    evolution_analysis = {}
+    for key in ["peak", "leaf", "junction", "base_junction"]:
+        evolution_analysis[key] = {
+            key: PathEvolutionAnalysis() for key in fingers_config.roi
+        }
 
     # Data management.
     results_folder = ctx.config.analysis.fingers.folder
@@ -89,6 +91,15 @@ def analysis_fingers_from_context(
         (results_folder / "fjords" / key).mkdir(parents=True, exist_ok=True)
         (results_folder / "paths" / key).mkdir(parents=True, exist_ok=True)
         (results_folder / "skeleton" / key).mkdir(parents=True, exist_ok=True)
+        (results_folder / "skeleton-leaf-paths" / key).mkdir(
+            parents=True, exist_ok=True
+        )
+        (results_folder / "skeleton-junction-paths" / key).mkdir(
+            parents=True, exist_ok=True
+        )
+        (results_folder / "skeleton-base-junction-paths" / key).mkdir(
+            parents=True, exist_ok=True
+        )
 
     # DataFrame to store results.
     df = pd.DataFrame(
@@ -108,13 +119,14 @@ def analysis_fingers_from_context(
     )
 
     # Dictionary to collect path statistics for all ROIs.
-    peak_path_statistics = {}
-    peak_path_statistics["paths"] = {
-        key: {"roi": roi_config.roi.tolist()}
-        for key, roi_config in fingers_config.roi.items()
-    }
-    peak_path_statistics["times"] = []
-    peak_path_statistics["images"] = []
+    path_statistics = {}
+    for key in ["paths", "leaf_paths", "junction_paths", "base_junction_paths"]:
+        path_statistics[key] = {
+            key: {"roi": roi_config.roi.tolist()}
+            for key, roi_config in fingers_config.roi.items()
+        }
+    path_statistics["times"] = []
+    path_statistics["images"] = []
 
     # Config of plotting.
     # TODO enable control from config.
@@ -132,10 +144,6 @@ def analysis_fingers_from_context(
     # Loop over images and analyze
     step_started_at = monotonic()
     image_total = len(image_paths)
-
-    import random
-
-    # random.shuffle(image_paths)
 
     for image_index, path in enumerate(image_paths, start=1):
         image_started_at = monotonic()
@@ -175,8 +183,8 @@ def analysis_fingers_from_context(
 
         # Extract time from image.
         image_time = img.time
-        peak_path_statistics["times"].append(float(image_time))
-        peak_path_statistics["images"].append(path.name)
+        path_statistics["times"].append(float(image_time))
+        path_statistics["images"].append(path.name)
 
         # Contour and skeleton analysis.
         for key, roi_config in fingers_config.roi.items():
@@ -308,16 +316,61 @@ def analysis_fingers_from_context(
 
             # Update evolution analysis.
             evolution_times[key].append(float(img.time))
-            peak_evolution_analysis[key].add(points=peaks, time=img.time)
+            evolution_analysis["peak"][key].add(points=peaks, time=img.time)
+            # Need to flip row/col for skeleton points to match contour/skeleton images.
+            # Mainly for plotting.
+            flipped_leaves = np.array([[point[0][1], point[0][0]] for point in leaves])
+            flipped_junctions = np.array(
+                [[point[0][1], point[0][0]] for point in junctions]
+            )
+            flipped_base_junctions = np.array(
+                [[point[0][1], point[0][0]] for point in base_junctions]
+            )
+            evolution_analysis["leaf"][key].add(points=flipped_leaves, time=img.time)
+            evolution_analysis["junction"][key].add(
+                points=flipped_junctions, time=img.time
+            )
+            evolution_analysis["base_junction"][key].add(
+                points=flipped_base_junctions, time=img.time
+            )
+            for category in ["peak", "leaf", "junction", "base_junction"]:
+                evolution_analysis[category][key].find_paths()
 
             # Plotting.
             peak_paths_path = (
                 results_folder / "paths" / key / f"{path.stem}"
             ).with_suffix(".png")
-            peak_evolution_analysis[key].plot_paths(
+            evolution_analysis["peak"][key].plot_paths(
                 img,
                 roi=roi_config.roi,
                 path=peak_paths_path,
+                show=show,
+            )
+            leaf_paths_path = (
+                results_folder / "skeleton-leaf-paths" / key / f"{path.stem}"
+            ).with_suffix(".png")
+            evolution_analysis["leaf"][key].plot_paths(
+                img,
+                roi=roi_config.roi,
+                path=leaf_paths_path,
+                show=show,
+            )
+            junction_paths_path = (
+                results_folder / "skeleton-junction-paths" / key / f"{path.stem}"
+            ).with_suffix(".png")
+            evolution_analysis["junction"][key].plot_paths(
+                img,
+                roi=roi_config.roi,
+                path=junction_paths_path,
+                show=show,
+            )
+            base_junction_paths_path = (
+                results_folder / "skeleton-base-junction-paths" / key / f"{path.stem}"
+            ).with_suffix(".png")
+            evolution_analysis["base_junction"][key].plot_paths(
+                img,
+                roi=roi_config.roi,
+                path=base_junction_paths_path,
                 show=show,
             )
 
@@ -330,236 +383,271 @@ def analysis_fingers_from_context(
                 roi_top_left_col = int(np.min(roi_pixels[:, 1]))
 
             # Process paths to extract statistics.
-            peak_path_log = {}
-            active_peaks_by_time = {}
-            for peak_path in peak_evolution_analysis[key].paths:
-                if len(peak_path) == 0:
-                    continue
-
-                # Generate unique path ID based on start time and peak
-                # with suffix if needed to avoid duplicates.
-                start_unit = peak_path[0]
-                path_id = f"path_t{int(start_unit.time)}_p{int(start_unit.id)}"
-                path_id_base = path_id
-                suffix = 1
-                while path_id in peak_path_log:
-                    path_id = f"{path_id_base}_{suffix}"
-                    suffix += 1
-
-                # Collect times.
-                times = []
-                for unit in peak_path:
-                    time_index = int(unit.time)
-                    if 0 <= time_index < len(evolution_times[key]):
-                        unit_time = float(evolution_times[key][time_index])
-                    times.append(unit_time)
-
-                # Convert path coordinates from pixel to physical units and collect times.
-                coordinates = []
-                for unit in peak_path:
-                    # NOTE/TODO: Flip in row/col (see ContourAnalysis...)
-                    local_row = int(unit.position[1])
-                    local_col = int(unit.position[0])
-                    pixel_row = local_row + roi_top_left_row
-                    pixel_col = local_col + roi_top_left_col
-                    coordinate = img.coordinatesystem.coordinate(
-                        darsia.Voxel([pixel_row, pixel_col])
-                    )
-                    coordinates.append(coordinate.tolist())
-
-                if len(coordinates) == 0:
-                    continue
-
-                # Compute travel distances.
-                travel_distances = [0.0]
-                vertical_travel_distances = [0.0]
-                cumulative_length = 0.0
-                cummulative_vertical_length = 0.0
-                for index in range(1, len(coordinates)):
-                    x_prev, y_prev = coordinates[index - 1]
-                    x_curr, y_curr = coordinates[index]
-                    cumulative_length += float(
-                        np.hypot(x_curr - x_prev, y_curr - y_prev)
-                    )
-                    cummulative_vertical_length += float(np.abs(y_curr - y_prev))
-                    travel_distances.append(cumulative_length)
-                    vertical_travel_distances.append(cummulative_vertical_length)
-
-                # Compute speeds.
-                velocities = []
-                speeds = []
-                vertical_speeds = []
-                for index in range(1, len(coordinates)):
-                    x_prev, y_prev = coordinates[index - 1]
-                    x_curr, y_curr = coordinates[index]
-                    t_prev = times[index - 1]
-                    t_curr = times[index]
-                    dt = float(t_curr - t_prev)
-                    if dt <= 0:
-                        logger.warning(
-                            "Skip speed computation with non-positive dt=%s for ROI '%s'.",
-                            dt,
-                            key,
-                        )
-                        speeds.append(float("nan"))
-                        velocities.append([float("nan"), float("nan")])
-                        vertical_speeds.append(float("nan"))
+            path_log = {}
+            active_paths_by_time = {}
+            for category in ["peak", "leaf", "junction", "base_junction"]:
+                path_log[category] = {}
+                active_paths_by_time[category] = {}
+                for _path in evolution_analysis[category][key].paths:
+                    if len(_path) == 0:
                         continue
-                    vx = float(x_curr - x_prev) / dt
-                    vy = float(y_curr - y_prev) / dt
 
-                    velocities.append([vx, vy])
+                    # Generate unique path ID based on start time and peak
+                    # with suffix if needed to avoid duplicates.
+                    start_unit = _path[0]
+                    path_id = f"path_t{int(start_unit.time)}_p{int(start_unit.id)}"
+                    path_id_base = path_id
+                    suffix = 1
+                    while path_id in path_log[category]:
+                        path_id = f"{path_id_base}_{suffix}"
+                        suffix += 1
 
-                    speed = float(np.sqrt(vx**2 + vy**2))
-                    speeds.append(speed)
+                    # Collect times.
+                    times = []
+                    for unit in _path:
+                        time_index = int(unit.time)
+                        if 0 <= time_index < len(evolution_times[key]):
+                            unit_time = float(evolution_times[key][time_index])
+                        times.append(unit_time)
 
-                    vertical_speed = float(vy)
-                    vertical_speeds.append(vertical_speed)
+                    # Convert path coordinates from pixel to physical units and collect times.
+                    coordinates = []
+                    for unit in _path:
+                        # NOTE/TODO: Flip in row/col (see ContourAnalysis...)
+                        local_row = int(unit.position[1])
+                        local_col = int(unit.position[0])
+                        pixel_row = local_row + roi_top_left_row
+                        pixel_col = local_col + roi_top_left_col
+                        coordinate = img.coordinatesystem.coordinate(
+                            darsia.Voxel([pixel_row, pixel_col])
+                        )
+                        coordinates.append(coordinate.tolist())
 
-                # Sanity check on length of lists.
-                assert (
-                    len(times)
-                    == len(coordinates)
-                    == len(travel_distances)
-                    == len(vertical_travel_distances)
-                )
-                assert (
-                    len(velocities)
-                    == len(speeds)
-                    == len(vertical_speeds)
-                    == len(coordinates) - 1
-                )
+                    if len(coordinates) == 0:
+                        continue
 
-                # Collect path log for this path.
-                peak_path_log[path_id] = {
-                    "start": times[0],
-                    "end": times[-1],
-                    "time": times,
-                    "coordinates": coordinates,
-                    "velocities": velocities,
-                    "speed": speeds,
-                    "vertical_speed": vertical_speeds,
-                    "travel_distance": travel_distances,
-                    "vertical_travel_distance": vertical_travel_distances,
-                }
+                    # Compute travel distances.
+                    travel_distances = [0.0]
+                    vertical_travel_distances = [0.0]
+                    cumulative_length = 0.0
+                    cummulative_vertical_length = 0.0
+                    for index in range(1, len(coordinates)):
+                        x_prev, y_prev = coordinates[index - 1]
+                        x_curr, y_curr = coordinates[index]
+                        cumulative_length += float(
+                            np.hypot(x_curr - x_prev, y_curr - y_prev)
+                        )
+                        cummulative_vertical_length += float(np.abs(y_curr - y_prev))
+                        travel_distances.append(cumulative_length)
+                        vertical_travel_distances.append(cummulative_vertical_length)
 
-                # Aggregate active fingers by time for statistics.
-                for (x, _), time, travel_distance in zip(
-                    coordinates, times, travel_distances
-                ):
-                    active_peaks_by_time.setdefault(time, []).append(
-                        {
-                            "origin": (
-                                float(coordinates[0][0]),
-                                float(coordinates[0][1]),
-                                float(times[0]),
-                            ),
-                            "x": float(x),
-                            "travel_distance": float(travel_distance),
-                            "speed": float(speeds[-1]) if speeds else float("nan"),
-                            "vertical_speed": (
-                                float(vertical_speeds[-1])
-                                if vertical_speeds
-                                else float("nan")
-                            ),
-                        }
+                    # Compute speeds.
+                    velocities = []
+                    speeds = []
+                    vertical_speeds = []
+                    for index in range(1, len(coordinates)):
+                        x_prev, y_prev = coordinates[index - 1]
+                        x_curr, y_curr = coordinates[index]
+                        t_prev = times[index - 1]
+                        t_curr = times[index]
+                        dt = float(t_curr - t_prev)
+                        if dt <= 0:
+                            logger.warning(
+                                "Skip speed computation with non-positive dt=%s for ROI '%s'.",
+                                dt,
+                                key,
+                            )
+                            speeds.append(float("nan"))
+                            velocities.append([float("nan"), float("nan")])
+                            vertical_speeds.append(float("nan"))
+                            continue
+                        vx = float(x_curr - x_prev) / dt
+                        vy = float(y_curr - y_prev) / dt
+
+                        velocities.append([vx, vy])
+
+                        speed = float(np.sqrt(vx**2 + vy**2))
+                        speeds.append(speed)
+
+                        vertical_speed = float(vy)
+                        vertical_speeds.append(vertical_speed)
+
+                    # Sanity check on length of lists.
+                    assert (
+                        len(times)
+                        == len(coordinates)
+                        == len(travel_distances)
+                        == len(vertical_travel_distances)
+                    )
+                    assert (
+                        len(velocities)
+                        == len(speeds)
+                        == len(vertical_speeds)
+                        == len(coordinates) - 1
                     )
 
-            # Compute statistics for this ROI based on active fingers at each time.
+                    # Collect path log for this path.
+                    path_log[category][path_id] = {
+                        "start": times[0],
+                        "end": times[-1],
+                        "time": times,
+                        "coordinates": coordinates,
+                        "velocities": velocities,
+                        "speed": speeds,
+                        "vertical_speed": vertical_speeds,
+                        "travel_distance": travel_distances,
+                        "vertical_travel_distance": vertical_travel_distances,
+                    }
+
+                    # Aggregate active paths by time for statistics.
+                    for (x, _), time, travel_distance in zip(
+                        coordinates, times, travel_distances
+                    ):
+                        active_paths_by_time[category].setdefault(time, []).append(
+                            {
+                                "origin": (
+                                    float(coordinates[0][0]),
+                                    float(coordinates[0][1]),
+                                    float(times[0]),
+                                ),
+                                "x": float(x),
+                                "travel_distance": float(travel_distance),
+                                "speed": float(speeds[-1]) if speeds else float("nan"),
+                                "vertical_speed": (
+                                    float(vertical_speeds[-1])
+                                    if vertical_speeds
+                                    else float("nan")
+                                ),
+                            }
+                        )
+
+            # Compute statistics for this ROI based on active paths at each time.
+            times = sorted(path_statistics["times"])
             statistics = {}
-            times = set(active_peaks_by_time.keys())
-            num_active_peaks = 0
-            num_new_peaks = 0
-            num_continuing_peaks = 0
-            num_ending_peaks = 0
-            for time_index, time in enumerate(sorted(times)):
-                active_peaks = active_peaks_by_time[time]
-
-                # Num active fingers at this time.
-                num_active_peaks = len(active_peaks)
-
-                # Compute horizontal distances between active fingers at this time.
-                x_coords_sorted = sorted(float(finger["x"]) for finger in active_peaks)
-                dist_x = []
-                if len(x_coords_sorted) > 1:
-                    dist_x = np.diff(x_coords_sorted).tolist()
-
-                # Compute lengths of active fingers at this time (using travel distance as a
-                # proxy for length).
-                travel_distances_at_time = [
-                    float(finger["travel_distance"]) for finger in active_peaks
-                ]
-
-                # Compute the velocities of active fingers at this time
-                # (using the last velocity before or at this time).
-                speeds_at_time = [finger["speed"] for finger in active_peaks]
-                speeds_y_at_time = [finger["vertical_speed"] for finger in active_peaks]
-
-                # Count new fingers that have zero travel distance at this time
-                # (i.e., just appeared).
-                new_peaks = int(
-                    sum(
-                        np.isclose(length, 0.0, atol=1e-10)
-                        for length in travel_distances_at_time
-                    )
-                )
-
-                # Continue new fingers.
-                num_continuing_peaks = 0
-                current_origin = [finger["origin"] for finger in active_peaks]
-                if time_index > 0:
-                    prev_active_peaks = active_peaks_by_time.get(
-                        evolution_times[key][time_index - 1], []
-                    )
-                    prev_origin = [finger["origin"] for finger in prev_active_peaks]
-
-                    # Use np.allclose on origins to determine if any active fingers at this time are continuations of fingers from the previous time point.
-                    num_continuing_peaks = 0
-                    for curr in current_origin:
-                        if any(
-                            np.allclose(curr, prev, atol=1e-10) for prev in prev_origin
-                        ):
-                            num_continuing_peaks += 1
-
-                num_new_peaks = num_active_peaks - num_continuing_peaks
-
-                # Continue ending fingers.
-                num_ending_peaks = 0
-                if time_index < len(times) - 1:
-                    next_active_peaks = active_peaks_by_time.get(
-                        evolution_times[key][time_index + 1], []
-                    )
-
-                    next_origin = [finger["origin"] for finger in next_active_peaks]
-                    for curr in current_origin:
-                        if not any(
-                            np.allclose(curr, next, atol=1e-10) for next in next_origin
-                        ):
-                            num_ending_peaks += 1
-
-                statistics[time] = {
-                    "horizontal_distances": dist_x,
-                    "travel_distances": travel_distances_at_time,
-                    "speeds": speeds_at_time,
-                    "vertical_speeds": speeds_y_at_time,
-                    "number_new_units_based_on_travel_distance": new_peaks,
-                    "number_new_units": num_new_peaks,
-                    "number_continuing_units": num_continuing_peaks,
-                    "number_ending_units": num_ending_peaks,
-                    "number_active_units": num_active_peaks,
-                    "roi_width": roi_width,
-                    "frequency": peak_frequency,
-                    "wavelength": peak_wavelength,
-                    "contour_length": contour_length,
+            num_paths = {}
+            for category in ["peak", "leaf", "junction", "base_junction"]:
+                statistics[category] = {}
+                num_paths[category] = {
+                    "active": 0,
+                    "new": 0,
+                    "continuing": 0,
+                    "ending": 0,
                 }
-            peak_path_log["statistics"] = statistics
+            for time_index, time in enumerate(times):
+                for category in ["peak", "leaf", "junction", "base_junction"]:
+                    if time not in active_paths_by_time[category]:
+                        continue
+
+                    # Fetch active paths at this time for this category.
+                    active_paths = active_paths_by_time[category][time]
+
+                    # Compute horizontal distances between active fingers at this time.
+                    x_coords_sorted = sorted(
+                        float(finger["x"]) for finger in active_paths
+                    )
+                    dist_x = []
+                    if len(x_coords_sorted) > 1:
+                        dist_x = np.diff(x_coords_sorted).tolist()
+
+                    # Compute lengths of active fingers at this time (using travel distance as a
+                    # proxy for length).
+                    travel_distances_at_time = [
+                        float(finger["travel_distance"]) for finger in active_paths
+                    ]
+
+                    # Compute the velocities of active fingers at this time
+                    # (using the last velocity before or at this time).
+                    speeds_at_time = [
+                        finger["speed"]
+                        for finger in active_paths
+                        if not np.isnan(finger["speed"])
+                    ]
+                    speeds_y_at_time = [
+                        finger["vertical_speed"]
+                        for finger in active_paths
+                        if not np.isnan(finger["vertical_speed"])
+                    ]
+
+                    # Count new paths that have zero travel distance at this time
+                    # (i.e., just appeared).
+                    num_new_paths_based_on_travel_distance = int(
+                        sum(
+                            np.isclose(length, 0.0, atol=1e-10)
+                            for length in travel_distances_at_time
+                        )
+                    )
+
+                    # Count active paths at this time.
+                    num_paths[category]["active"] = len(active_paths)
+
+                    # Count continuing paths.
+                    current_origin = [finger["origin"] for finger in active_paths]
+                    if time_index > 0:
+                        prev_active_paths = active_paths_by_time[category].get(
+                            evolution_times[key][time_index - 1], []
+                        )
+                        prev_origin = [finger["origin"] for finger in prev_active_paths]
+
+                        # Use np.allclose on origins to determine if any active paths at
+                        # this time are continuations of paths from the previous time point.
+                        for curr in current_origin:
+                            if any(
+                                np.allclose(curr, prev, atol=1e-10)
+                                for prev in prev_origin
+                            ):
+                                num_paths[category]["continuing"] += 1
+
+                    # Count ending paths.
+                    if time_index < len(times) - 1:
+                        next_active_paths = active_paths_by_time[category].get(
+                            evolution_times[key][time_index + 1], []
+                        )
+
+                        next_origin = [finger["origin"] for finger in next_active_paths]
+                        for curr in current_origin:
+                            if not any(
+                                np.allclose(curr, next, atol=1e-10)
+                                for next in next_origin
+                            ):
+                                num_paths[category]["ending"] += 1
+
+                    # Conclude on number of new paths.
+                    num_paths[category]["new"] = (
+                        num_paths[category]["active"]
+                        - num_paths[category]["continuing"]
+                    )
+
+                    statistics[category][time] = {
+                        "horizontal_distances": dist_x,
+                        "travel_distances": travel_distances_at_time,
+                        "speeds": speeds_at_time,
+                        "vertical_speeds": speeds_y_at_time,
+                        "number_new_paths_based_on_travel_distance": num_new_paths_based_on_travel_distance,
+                        "number_new_paths": num_paths[category]["new"],
+                        "number_continuing_paths": num_paths[category]["continuing"],
+                        "number_ending_paths": num_paths[category]["ending"],
+                        "number_active_paths": num_paths[category]["active"],
+                        "roi_width": roi_width,
+                        "frequency": peak_frequency,
+                        "wavelength": peak_wavelength,
+                        "contour_length": contour_length,
+                    }
+
+            # Include statistics in path log.
+            for category in ["peak", "leaf", "junction", "base_junction"]:
+                path_log[category]["statistics"] = statistics[category]
 
             # Collect path log for this ROI into the overall statistics dictionary.
-            peak_path_statistics["paths"][key].update(peak_path_log)
+            path_statistics["paths"][key].update(path_log["peak"])
+            path_statistics["leaf_paths"][key].update(path_log["leaf"])
+            path_statistics["junction_paths"][key].update(path_log["junction"])
+            path_statistics["base_junction_paths"][key].update(
+                path_log["base_junction"]
+            )
 
             # Save overall path statistics for all ROIs to a single JSON file.
             with open(results_folder / "statistics.json", "w") as f:
-                json.dump(peak_path_statistics, f, indent=2)
+                json.dump(path_statistics, f, indent=2)
 
             # Save tabular statistics to DataFrame and CSV.
             df = pd.concat(
@@ -576,13 +664,44 @@ def analysis_fingers_from_context(
                             "roi_width": roi_width,
                             "finger_frequency": peak_frequency,
                             "finger_wavelength": peak_wavelength,
-                            "number_active_peaks": num_active_peaks,
-                            "number_new_peaks": num_new_peaks,
-                            "number_continuing_peaks": num_continuing_peaks,
-                            "number_ending_peaks": num_ending_peaks,
-                            # "number_splitting_fingers": num_new_junctions,
-                            # "number_merging_fingers": num_ending_junctions,
-                            # "number_active_split": num_active_junctions,
+                            # Finger counting based on peaks/contours.
+                            "number_fingers": num_paths["peak"]["active"],
+                            "number_new_fingers": num_paths["peak"]["new"],
+                            "number_continuing_fingers": num_paths["peak"][
+                                "continuing"
+                            ],
+                            "number_ending_fingers": num_paths["peak"]["ending"],
+                            # Finger counting based on skeleton leaves.
+                            "number_skeleton_leaves": num_paths["leaf"]["active"],
+                            "number_new_skeleton_leaves": num_paths["leaf"]["new"],
+                            "number_continuing_skeleton_leaves": num_paths["leaf"][
+                                "continuing"
+                            ],
+                            "number_ending_skeleton_leaves": num_paths["leaf"][
+                                "ending"
+                            ],
+                            # Number of base fingers based on skeleton base junctions.
+                            "number_base_fingers": num_paths["base_junction"]["active"],
+                            "number_new_base_fingers": num_paths["base_junction"][
+                                "new"
+                            ],
+                            "number_continuing_base_fingers": num_paths[
+                                "base_junction"
+                            ]["continuing"],
+                            "number_ending_base_fingers": num_paths["base_junction"][
+                                "ending"
+                            ],
+                            # Number of splitting fingers based on skeleton junctions.
+                            "number_splitting_fingers": num_paths["junction"]["active"],
+                            "number_new_splitting_fingers": num_paths["junction"][
+                                "new"
+                            ],
+                            "number_continuing_splitting_fingers": num_paths[
+                                "junction"
+                            ]["continuing"],
+                            "number_ending_splitting_fingers": num_paths["junction"][
+                                "ending"
+                            ],
                         },
                         index=[0],
                     ),
@@ -606,6 +725,20 @@ def analysis_fingers_from_context(
                 if skeleton_plot_raw is not None:
                     stream_images[f"fingers_skeleton_{key}"] = cv2.cvtColor(
                         skeleton_plot_raw, cv2.COLOR_BGR2RGB
+                    )
+                leaf_paths_plot_raw = cv2.imread(
+                    str(leaf_paths_path), cv2.IMREAD_UNCHANGED
+                )
+                if leaf_paths_plot_raw is not None:
+                    stream_images[f"fingers_leaf_paths_{key}"] = cv2.cvtColor(
+                        leaf_paths_plot_raw, cv2.COLOR_BGR2RGB
+                    )
+                junction_paths_plot_raw = cv2.imread(
+                    str(junction_paths_path), cv2.IMREAD_UNCHANGED
+                )
+                if junction_paths_plot_raw is not None:
+                    stream_images[f"fingers_junction_paths_{key}"] = cv2.cvtColor(
+                        junction_paths_plot_raw, cv2.COLOR_BGR2RGB
                     )
 
         if stream_images is not None:
