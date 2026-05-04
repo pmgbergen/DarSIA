@@ -1,0 +1,1007 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>darsia.single_image_analysis.contouranalysis &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/darsia/single_image_analysis/contouranalysis';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">darsia.single_image_analysis.contouranalysis</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for darsia.single_image_analysis.contouranalysis</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Module containing analysis tools for segmented images.</span>
+
+<span class="sd">This includes measuring lengths of contours, weighted sums (generalized mass analysis).</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ndi</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">skimage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.signal</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_peaks</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">darsia</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="contour_length">
+<a class="viewcode-back" href="../../../source/single_image_analysis/darsia.single_image_analysis.html#darsia.single_image_analysis.contouranalysis.contour_length">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">contour_length</span><span class="p">(</span>
+    <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+    <span class="n">roi</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">CoordinateArray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">values_of_interest</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">fill_holes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">verbosity</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculation of the contour length of a segmented region.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (darsia.Image): segmented image with boolean or integer values.</span>
+<span class="sd">        roi (np.ndarray): set of points, for which a bounding box defines a ROI.</span>
+<span class="sd">        values_of_interest (int or list of int): only active if integer-valued</span>
+<span class="sd">            image provided; defines the values of interest, i.e., which part</span>
+<span class="sd">            of the image is treated as active.</span>
+<span class="sd">        fill_holes (bool): flag controlling whether holes in the determined mask</span>
+<span class="sd">            are filled before the contour length is computed; if not, holes are</span>
+<span class="sd">            treated as contour; default is True.</span>
+<span class="sd">        verbosity (bool): flag controlling whether intermediate results are plotted;</span>
+<span class="sd">            default is False.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float: contour length in metric units based on the coordinate system of the</span>
+<span class="sd">            input image.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Make copy of image and restrict to region of interest</span>
+    <span class="n">img_roi</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="n">roi</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">cast</span><span class="p">(</span><span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="n">img</span><span class="o">.</span><span class="n">subregion</span><span class="p">(</span><span class="n">roi</span><span class="p">))</span>
+
+    <span class="c1"># Extract boolean mask covering pixels of interest.</span>
+    <span class="k">if</span> <span class="n">img_roi</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">values_of_interest</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">img_roi</span><span class="o">.</span><span class="n">img</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">img_roi</span><span class="o">.</span><span class="n">img</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values_of_interest</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="n">mask</span><span class="p">[</span><span class="n">img_roi</span><span class="o">.</span><span class="n">img</span> <span class="o">==</span> <span class="n">values_of_interest</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values_of_interest</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values_of_interest</span><span class="p">:</span>
+                    <span class="n">mask</span><span class="p">[</span><span class="n">img_roi</span><span class="o">.</span><span class="n">img</span> <span class="o">==</span> <span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">elif</span> <span class="n">img_roi</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">in</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">]:</span>
+        <span class="k">assert</span> <span class="n">values_of_interest</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">img_roi</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values_of_interest</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">mask</span><span class="p">[</span><span class="n">img_roi</span><span class="o">.</span><span class="n">img</span> <span class="o">==</span> <span class="n">values_of_interest</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values_of_interest</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values_of_interest</span><span class="p">:</span>
+                <span class="n">mask</span><span class="p">[</span><span class="n">img_roi</span><span class="o">.</span><span class="n">img</span> <span class="o">==</span> <span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Images with dtype </span><span class="si">{</span><span class="n">img_roi</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2"> not supported.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Fill all holes</span>
+    <span class="k">if</span> <span class="n">fill_holes</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">ndi</span><span class="o">.</span><span class="n">binary_fill_holes</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+
+    <span class="c1"># Obtain connected and covered regions and region properties</span>
+    <span class="n">label_img</span><span class="p">,</span> <span class="n">num_labels</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">return_num</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">props</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">regionprops</span><span class="p">(</span><span class="n">label_img</span><span class="p">)</span>
+
+    <span class="c1"># Determine the length of all contours and sum up</span>
+    <span class="n">contour_length</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">counter</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_labels</span><span class="p">):</span>
+        <span class="c1"># Add the perimeter for the region with label l+1 (0 is ignored in regionprops).</span>
+        <span class="n">contour_length</span> <span class="o">+=</span> <span class="n">props</span><span class="p">[</span><span class="n">counter</span><span class="p">]</span><span class="o">.</span><span class="n">perimeter</span>
+
+    <span class="c1"># Convert contour length from pixel units to metric units</span>
+    <span class="n">metric_contour_length</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">img_roi</span><span class="o">.</span><span class="n">coordinatesystem</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">contour_length</span><span class="p">))</span>
+
+    <span class="c1"># Plot masks and print contour length if requested.</span>
+    <span class="k">if</span> <span class="n">verbosity</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img_roi</span><span class="o">.</span><span class="n">img</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The contour length is </span><span class="si">{</span><span class="n">metric_contour_length</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">metric_contour_length</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_corners_of_roi</span><span class="p">(</span>
+    <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+    <span class="n">roi</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">CoordinateArray</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="c1"># Extract the top left pixel of the roi. NOTE: Need to swap for matplotlib,</span>
+    <span class="c1"># which uses (x, y) convention for pixels, while the image uses (row, column)</span>
+    <span class="c1"># convention.</span>
+    <span class="k">if</span> <span class="n">roi</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">roi_pixels</span> <span class="o">=</span> <span class="n">roi</span><span class="o">.</span><span class="n">to_voxel</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">coordinatesystem</span><span class="p">)</span>
+        <span class="n">top_left_roi_pixel</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">roi_pixels</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">roi_pixels</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])]</span>
+        <span class="n">bottom_right_roi_pixel</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">roi_pixels</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]),</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">roi_pixels</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]),</span>
+        <span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">top_left_roi_pixel</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">bottom_right_roi_pixel</span> <span class="o">=</span> <span class="p">[</span><span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+
+    <span class="k">return</span> <span class="n">top_left_roi_pixel</span><span class="p">,</span> <span class="n">bottom_right_roi_pixel</span>
+
+
+<div class="viewcode-block" id="ContourAnalysis">
+<a class="viewcode-back" href="../../../source/single_image_analysis/darsia.single_image_analysis.html#darsia.single_image_analysis.contouranalysis.ContourAnalysis">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ContourAnalysis</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Contour analysis object.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">verbosity</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">contour_smoother</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">ContourSmoother</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">reduce_to_main_contour</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Constructor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            verbosity (bool): Verbosity flag.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span> <span class="o">=</span> <span class="n">verbosity</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Vebosity flag.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">contour_smoother</span> <span class="o">=</span> <span class="n">contour_smoother</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Optional contour smoother for the contours determined from the mask.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reduce_to_main_contour</span> <span class="o">=</span> <span class="n">reduce_to_main_contour</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether to reduce to main contour.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ContourAnalysis.load">
+<a class="viewcode-back" href="../../../source/single_image_analysis/darsia.single_image_analysis.html#darsia.single_image_analysis.contouranalysis.ContourAnalysis.load">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">mask</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">roi</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">CoordinateArray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">fill_holes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read labeled image and restrict to values of interest.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (Image): labeled image.</span>
+<span class="sd">            roi (array, optional): set of points defining a box.</span>
+<span class="sd">            values_of_interest (int, list of int, optional): label values of interest.</span>
+<span class="sd">            fill_holes (bool): flag controlling whether holes in labels are filles.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Make copy of image and restrict to region of interest</span>
+        <span class="n">mask_roi</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">mask</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="n">roi</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">cast</span><span class="p">(</span><span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="n">mask</span><span class="o">.</span><span class="n">subregion</span><span class="p">(</span><span class="n">roi</span><span class="p">))</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Extract boolean mask covering values of interest.</span>
+        <span class="n">mask_roi_array</span> <span class="o">=</span> <span class="n">mask_roi</span><span class="o">.</span><span class="n">img</span>
+
+        <span class="c1"># Fill all holes</span>
+        <span class="k">if</span> <span class="n">fill_holes</span><span class="p">:</span>
+            <span class="n">mask_roi_array</span> <span class="o">=</span> <span class="n">ndi</span><span class="o">.</span><span class="n">binary_fill_holes</span><span class="p">(</span><span class="n">mask_roi_array</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">coordinatesystem</span> <span class="o">=</span> <span class="n">mask_roi</span><span class="o">.</span><span class="n">coordinatesystem</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Coordinate system of subimage.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask</span> <span class="o">=</span> <span class="n">mask_roi_array</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mask.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">roi</span> <span class="o">=</span> <span class="n">roi</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Region of interest.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">img</span> <span class="o">=</span> <span class="n">mask_roi</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Subimage.&quot;&quot;&quot;</span></div>
+
+
+        <span class="c1"># Plot masks and print contour length if requested.</span>
+        <span class="c1"># if self.verbosity:</span>
+        <span class="c1">#    mask_roi.show()</span>
+        <span class="c1">#    # plt.figure(&quot;Restricted image&quot;)</span>
+        <span class="c1">#    # plt.imshow(mask_roi.as.img)</span>
+        <span class="c1">#    # plt.figure(&quot;Mask for values of interest&quot;)</span>
+        <span class="c1">#    # plt.imshow(mask)</span>
+        <span class="c1">#    # plt.show()</span>
+
+<div class="viewcode-block" id="ContourAnalysis.contours">
+<a class="viewcode-back" href="../../../source/single_image_analysis/darsia.single_image_analysis.html#darsia.single_image_analysis.contouranalysis.ContourAnalysis.contours">[docs]</a>
+    <span class="nd">@darsia</span><span class="o">.</span><span class="n">timing_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">contours</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determine contour of loaded labeled image.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list[np.ndarray]: list of contours, where each contour is given as an</span>
+<span class="sd">                array of pixels.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Extract contours.</span>
+        <span class="n">contours</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">findContours</span><span class="p">(</span>
+            <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">),</span> <span class="n">cv2</span><span class="o">.</span><span class="n">RETR_TREE</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">CHAIN_APPROX_NONE</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Determine the main contour as the one with the largest area.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reduce_to_main_contour</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">contours</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">contour_areas</span> <span class="o">=</span> <span class="p">[</span><span class="n">cv2</span><span class="o">.</span><span class="n">contourArea</span><span class="p">(</span><span class="n">contour</span><span class="p">)</span> <span class="k">for</span> <span class="n">contour</span> <span class="ow">in</span> <span class="n">contours</span><span class="p">]</span>
+            <span class="n">main_contour_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">contour_areas</span><span class="p">)</span>
+            <span class="n">contours</span> <span class="o">=</span> <span class="p">[</span><span class="n">contours</span><span class="p">[</span><span class="n">main_contour_index</span><span class="p">]]</span>
+
+        <span class="c1"># Smooth contours if smoother provided.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">contour_smoother</span><span class="p">:</span>
+            <span class="n">contours</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">contour_smoother</span><span class="p">(</span><span class="n">contour</span><span class="p">)</span> <span class="k">for</span> <span class="n">contour</span> <span class="ow">in</span> <span class="n">contours</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">contours</span></div>
+
+
+<div class="viewcode-block" id="ContourAnalysis.length">
+<a class="viewcode-back" href="../../../source/single_image_analysis/darsia.single_image_analysis.html#darsia.single_image_analysis.contouranalysis.ContourAnalysis.length">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">length</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determine length of loaded labeled image.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: length of the interface between values of interest and others.</span>
+<span class="sd">                Output in metric units.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Determine the actual contour length of the different regions in</span>
+        <span class="c1"># the mask - includes boundary.</span>
+        <span class="n">contour_length_true</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_length_value</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">contour_length_false</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_length_value</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># Determine the lenght of the entire boundary.</span>
+        <span class="n">perimeter</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">perimeter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">roi</span><span class="p">)</span>
+
+        <span class="c1"># Venn diagram concept to determine the internal contour of the CO2.</span>
+        <span class="c1"># Cut values at 0, slightly negative values can occur e.g., when</span>
+        <span class="c1"># contour_length_co2 is very small due to a different evaluation</span>
+        <span class="c1"># routine for the contour length and the permiter of a box.</span>
+        <span class="n">interface_length</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+            <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">contour_length_true</span> <span class="o">+</span> <span class="n">contour_length_false</span> <span class="o">-</span> <span class="n">perimeter</span><span class="p">),</span> <span class="mf">0.0</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">interface_length</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_length_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Auxiliary function to determine the length of the contour</span>
+<span class="sd">        of the regions with presribed value within self.mask.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value (bool): value of interest.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: contour length.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Fix mask depending on the value of interest.</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask</span> <span class="k">if</span> <span class="n">value</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">)</span>
+
+        <span class="c1"># Obtain connected and covered regions and region properties</span>
+        <span class="n">label_img</span><span class="p">,</span> <span class="n">num_labels</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">return_num</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">props</span> <span class="o">=</span> <span class="n">skimage</span><span class="o">.</span><span class="n">measure</span><span class="o">.</span><span class="n">regionprops</span><span class="p">(</span><span class="n">label_img</span><span class="p">)</span>
+
+        <span class="c1"># Determine the length of all contours and sum up</span>
+        <span class="n">contour_length</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">counter</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_labels</span><span class="p">):</span>
+            <span class="c1"># Add the perimeter for the region with label l+1 (0 is ignored in regionprops).</span>
+            <span class="n">contour_length</span> <span class="o">+=</span> <span class="n">props</span><span class="p">[</span><span class="n">counter</span><span class="p">]</span><span class="o">.</span><span class="n">perimeter</span>
+
+        <span class="c1"># Convert contour length from pixel units to metric units</span>
+        <span class="n">metric_contour_length</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="nb">float</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinatesystem</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">contour_length</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">metric_contour_length</span>
+
+<div class="viewcode-block" id="ContourAnalysis.local_extrema">
+<a class="viewcode-back" href="../../../source/single_image_analysis/darsia.single_image_analysis.html#darsia.single_image_analysis.contouranalysis.ContourAnalysis.local_extrema">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">local_extrema</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">])</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Determine local extrema of the contour, where the extremality</span>
+<span class="sd">        is defined by a direction.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            contours (np.ndarray | None): contours to analyze. If None, contours are determined</span>
+<span class="sd">                from the mask; default is None.</span>
+<span class="sd">            direction (np.ndarray): direction vector with orientation</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            array: pixels of peaks.</span>
+<span class="sd">            array: pixels of valleys.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Sanity check</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">direction</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]))</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+            <span class="c1"># TODO extend to directions other than [0., -1.]</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;Currently only direction [0., -1.] supported, i.e., vertical direction &quot;&quot;&quot;</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;with peaks pointing downwards.&quot;&quot;&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Extract interface - extract the boundary</span>
+        <span class="n">contours</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">contours</span><span class="p">()</span>
+
+        <span class="c1"># Special case of no contour</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">contours</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="c1"># Continue with each contour separately.</span>
+        <span class="n">peaks_pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">valleys_pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">contour</span> <span class="ow">in</span> <span class="n">contours</span><span class="p">:</span>
+            <span class="c1"># Exclude pixels on the boundary</span>
+            <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="o">.</span><span class="n">shape</span>
+            <span class="n">left_boundary</span> <span class="o">=</span> <span class="n">contour</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="n">right_boundary</span> <span class="o">=</span> <span class="n">contour</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">cols</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">top_boundary</span> <span class="o">=</span> <span class="n">contour</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="n">bottom_boundary</span> <span class="o">=</span> <span class="n">contour</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">rows</span> <span class="o">-</span> <span class="mi">1</span>
+
+            <span class="n">boundary_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span>
+                        <span class="n">left_boundary</span><span class="p">,</span>
+                        <span class="n">right_boundary</span><span class="p">,</span>
+                    <span class="p">),</span>
+                    <span class="n">top_boundary</span><span class="p">,</span>
+                <span class="p">),</span>
+                <span class="n">bottom_boundary</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">inner_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">boundary_mask</span><span class="p">)</span>
+            <span class="n">inner_contour</span> <span class="o">=</span> <span class="n">contour</span><span class="p">[</span><span class="n">inner_mask</span><span class="p">]</span>
+
+            <span class="c1"># Extract the y-axis as signal</span>
+            <span class="c1"># FIXME depends on direction - in general rotation needed.</span>
+            <span class="n">contour_1d</span> <span class="o">=</span> <span class="n">inner_contour</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+
+            <span class="c1"># Apply light smoothing</span>
+            <span class="n">smooth_contour_1d</span> <span class="o">=</span> <span class="n">ndi</span><span class="o">.</span><span class="n">gaussian_filter1d</span><span class="p">(</span>
+                <span class="n">contour_1d</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">sigma</span><span class="o">=</span><span class="mi">10</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Peaks and valleys</span>
+            <span class="n">peaks_ind</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">find_peaks</span><span class="p">(</span><span class="n">smooth_contour_1d</span><span class="p">)</span>
+            <span class="n">valleys_ind</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">find_peaks</span><span class="p">(</span><span class="o">-</span><span class="n">smooth_contour_1d</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span><span class="p">:</span>
+                <span class="n">peaks_val</span> <span class="o">=</span> <span class="n">smooth_contour_1d</span><span class="p">[</span><span class="n">peaks_ind</span><span class="p">]</span>
+                <span class="n">valleys_val</span> <span class="o">=</span> <span class="n">smooth_contour_1d</span><span class="p">[</span><span class="n">valleys_ind</span><span class="p">]</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">smooth_contour_1d</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                    <span class="n">peaks_ind</span><span class="p">,</span>
+                    <span class="n">peaks_val</span><span class="p">,</span>
+                    <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;o&quot;</span><span class="p">,</span>
+                    <span class="n">markersize</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+                    <span class="n">markeredgecolor</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span>
+                    <span class="n">markerfacecolor</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span>
+                    <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;None&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                    <span class="n">valleys_ind</span><span class="p">,</span>
+                    <span class="n">valleys_val</span><span class="p">,</span>
+                    <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;o&quot;</span><span class="p">,</span>
+                    <span class="n">markersize</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+                    <span class="n">markeredgecolor</span><span class="o">=</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span>
+                    <span class="n">markerfacecolor</span><span class="o">=</span><span class="s2">&quot;purple&quot;</span><span class="p">,</span>
+                    <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;None&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+            <span class="c1"># Fetch pixels accounting for valleys and peaks</span>
+            <span class="n">_peaks_pixels</span> <span class="o">=</span> <span class="n">inner_contour</span><span class="p">[</span><span class="n">peaks_ind</span><span class="p">,</span> <span class="p">:]</span>
+            <span class="n">_valleys_pixels</span> <span class="o">=</span> <span class="n">inner_contour</span><span class="p">[</span><span class="n">valleys_ind</span><span class="p">,</span> <span class="p">:]</span>
+
+            <span class="n">peaks_pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">peaks_pixels</span><span class="p">,</span> <span class="n">_peaks_pixels</span><span class="p">))</span>
+            <span class="n">valleys_pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">valleys_pixels</span><span class="p">,</span> <span class="n">_valleys_pixels</span><span class="p">))</span>
+
+        <span class="c1"># Sort peaks and valleys - no reason why the contours have been traversed not ordered.</span>
+        <span class="n">arg_sorted_peaks_pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">peaks_pixels</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">arg_sorted_valleys_pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">valleys_pixels</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">sorted_peaks_pixels</span> <span class="o">=</span> <span class="n">peaks_pixels</span><span class="p">[</span><span class="n">arg_sorted_peaks_pixels</span><span class="p">]</span>
+        <span class="n">sorted_valleys_pixels</span> <span class="o">=</span> <span class="n">valleys_pixels</span><span class="p">[</span><span class="n">arg_sorted_valleys_pixels</span><span class="p">]</span>
+
+        <span class="n">reshaped_peaks_pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">sorted_peaks_pixels</span><span class="p">,</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">reshaped_valleys_pixels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">sorted_valleys_pixels</span><span class="p">,</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">plot_peaks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">img</span><span class="p">,</span> <span class="n">reshaped_peaks_pixels</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">reshaped_peaks_pixels</span><span class="p">,</span> <span class="n">reshaped_valleys_pixels</span></div>
+
+
+<div class="viewcode-block" id="ContourAnalysis.plot_peaks">
+<a class="viewcode-back" href="../../../source/single_image_analysis/darsia.single_image_analysis.html#darsia.single_image_analysis.contouranalysis.ContourAnalysis.plot_peaks">[docs]</a>
+    <span class="nd">@darsia</span><span class="o">.</span><span class="n">timing_decorator</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_peaks</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">peaks_pixels</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">roi</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">CoordinateArray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">contours</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">dpi</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot peaks on top of the provided image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (darsia.Image): image to plot on.</span>
+<span class="sd">            peaks_pixels (np.ndarray): pixels of peaks.</span>
+<span class="sd">            contours (list[np.ndarray], optional): contours to plot; if None, no contours are</span>
+<span class="sd">                plotted; default is None.</span>
+<span class="sd">            roi (darsia.CoordinateArray | None): region of interest. If provided, peaks are</span>
+<span class="sd">                translated to the top left corner of the ROI; default is None.</span>
+<span class="sd">            path (Path, optional): path to save the plot; if None, no saving is performed.</span>
+<span class="sd">            show (bool): flag controlling whether the plot is shown; default is True.</span>
+<span class="sd">            dpi (int): dots per inch for the saved plot; default is 1000.</span>
+<span class="sd">            **kwargs: additional keyword arguments for plotting.</span>
+<span class="sd">                - color (str): color for the peaks; default is &quot;r&quot;.</span>
+<span class="sd">                - size (int): size for the peaks; default is 20.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Extract the top left pixel of the roi. NOTE: Need to swap for matplotlib,</span>
+        <span class="c1"># which uses (x, y) convention for pixels, while the image uses (row, column)</span>
+        <span class="c1"># convention.</span>
+        <span class="n">top_left_roi_pixel</span><span class="p">,</span> <span class="n">bottom_right_roi_pixel</span> <span class="o">=</span> <span class="n">_corners_of_roi</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">roi</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;Original image with peaks&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">contours</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">contour</span> <span class="ow">in</span> <span class="n">contours</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                    <span class="n">contour</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">contour</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="n">c</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;contour_color&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">),</span>
+                    <span class="n">linewidth</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;contour_linewidth&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+            <span class="c1"># Translate pixels to the top left corner of the ROI</span>
+            <span class="n">peaks_pixels</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">peaks_pixels</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;peak_color&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">),</span>
+            <span class="n">s</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;peak_size&quot;</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;plot_boundary&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                    <span class="n">bottom_right_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">bottom_right_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="n">linewidth</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;boundary_linewidth&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                    <span class="n">edgecolor</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;boundary_color&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">),</span>
+                    <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;highlight_roi&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="c1"># Add dark overlay to the area outside the ROI</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">(</span>
+                    <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                    <span class="n">bottom_right_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">bottom_right_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;white&quot;</span><span class="p">,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;png&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span><span class="p">,</span> <span class="n">pad_inches</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">show</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ContourAnalysis.number_peaks">
+<a class="viewcode-back" href="../../../source/single_image_analysis/darsia.single_image_analysis.html#darsia.single_image_analysis.contouranalysis.ContourAnalysis.number_peaks">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">number_peaks</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determine number of peaks.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: number of peaks.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">peaks_pixels</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_extrema</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">peaks_pixels</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ContourAnalysis.plot_valleys">
+<a class="viewcode-back" href="../../../source/single_image_analysis/darsia.single_image_analysis.html#darsia.single_image_analysis.contouranalysis.ContourAnalysis.plot_valleys">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_valleys</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">valleys_pixels</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">roi</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">CoordinateArray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">contours</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">dpi</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot valleys on top of the provided image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (darsia.Image): image to plot on.</span>
+<span class="sd">            valleys_pixels (np.ndarray): pixels of valleys.</span>
+<span class="sd">            contours (list[np.ndarray], optional): contours to plot; if None, no contours are</span>
+<span class="sd">                plotted; default is None.</span>
+<span class="sd">            roi (darsia.CoordinateArray | None): region of interest. If provided, valleys are</span>
+<span class="sd">                translated to the top left corner of the ROI; default is None.</span>
+<span class="sd">            path (Path, optional): path to save the plot; if None, no saving is performed.</span>
+<span class="sd">            show (bool): flag controlling whether the plot is shown; default is True.</span>
+<span class="sd">            dpi (int): dots per inch for the saved plot; default is 1000.</span>
+<span class="sd">            **kwargs: additional keyword arguments for plotting.</span>
+<span class="sd">                - valley_color (str): color for valley lines; default is &quot;c&quot;.</span>
+<span class="sd">                - valley_linewidth (float): line width for valley lines; default is 1.</span>
+<span class="sd">                - y_min (float): lower y-limit for valley lines; default is top of ROI.</span>
+<span class="sd">                - y_max (float): upper y-limit for valley lines; default is bottom of ROI.</span>
+<span class="sd">                - plot_valley_dots (bool): if True, valley dots are added; default is False.</span>
+<span class="sd">                - valley_dot_color (str): color for valley dots; default is valley_color.</span>
+<span class="sd">                - valley_dot_size (float): dot size for valley dots; default is 20.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">top_left_roi_pixel</span><span class="p">,</span> <span class="n">bottom_right_roi_pixel</span> <span class="o">=</span> <span class="n">_corners_of_roi</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">roi</span><span class="p">)</span>
+        <span class="n">y_min</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;y_min&quot;</span><span class="p">,</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">y_max</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;y_max&quot;</span><span class="p">,</span> <span class="n">bottom_right_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">valley_color</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;valley_color&quot;</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Make sure the y_min/y_max are within the image bounds</span>
+        <span class="n">y_min</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">y_min</span><span class="p">)</span>
+        <span class="n">y_max</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">y_max</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;Original image with valleys&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="p">)</span>
+
+        <span class="c1"># Match image dimensions</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># Inverted because image y-axis is top-down</span>
+
+        <span class="k">if</span> <span class="n">contours</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">contour</span> <span class="ow">in</span> <span class="n">contours</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                    <span class="n">contour</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">contour</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="n">c</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;contour_color&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">),</span>
+                    <span class="n">linewidth</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;contour_linewidth&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="p">)</span>
+
+        <span class="n">valley_x</span> <span class="o">=</span> <span class="n">valleys_pixels</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">vlines</span><span class="p">(</span>
+            <span class="n">valley_x</span><span class="p">,</span>
+            <span class="n">y_min</span><span class="p">,</span>
+            <span class="n">y_max</span><span class="p">,</span>
+            <span class="n">colors</span><span class="o">=</span><span class="n">valley_color</span><span class="p">,</span>
+            <span class="n">linewidth</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;valley_linewidth&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;plot_valley_dots&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+                <span class="n">valley_x</span><span class="p">,</span>
+                <span class="n">valleys_pixels</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="n">c</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;valley_dot_color&quot;</span><span class="p">,</span> <span class="n">valley_color</span><span class="p">),</span>
+                <span class="n">s</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;valley_dot_size&quot;</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;plot_boundary&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                    <span class="n">bottom_right_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">bottom_right_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="n">linewidth</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;boundary_linewidth&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                    <span class="n">edgecolor</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;boundary_color&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">),</span>
+                    <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;highlight_roi&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">(</span>
+                    <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                    <span class="n">bottom_right_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">bottom_right_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">top_left_roi_pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;white&quot;</span><span class="p">,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;png&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span><span class="p">,</span> <span class="n">pad_inches</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">show</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ContourAnalysis.number_valleys">
+<a class="viewcode-back" href="../../../source/single_image_analysis/darsia.single_image_analysis.html#darsia.single_image_analysis.contouranalysis.ContourAnalysis.number_valleys">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">number_valleys</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determine number of valleys.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: number of valleys.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">valleys_pixels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_extrema</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">valleys_pixels</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

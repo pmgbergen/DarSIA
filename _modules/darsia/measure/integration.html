@@ -1,0 +1,837 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>darsia.measure.integration &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/darsia/measure/integration';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">darsia.measure.integration</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for darsia.measure.integration</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Module collecting tools for geometric integration.</span>
+
+<span class="sd">Various versions of the general algorithm are provided, taking into account width,</span>
+<span class="sd">height and depth of pixels.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">darsia</span>
+
+
+<div class="viewcode-block" id="Geometry">
+<a class="viewcode-back" href="../../../source/measure/darsia.measure.html#darsia.measure.integration.Geometry">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Geometry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class containing information of the geometry.</span>
+
+<span class="sd">    Also allows for geometrical integration.</span>
+
+<span class="sd">    Example:</span>
+
+<span class="sd">    dimensions = {&quot;width&quot;: 1., &quot;height&quot;: 2., &quot;depth&quot;: 0.1}</span>
+<span class="sd">    shape = (20,10)</span>
+<span class="sd">    geometry = darsia.Geometry(shape, **dimensions)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">space_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">num_voxels</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">dimensions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            space_dim (int): spatial dimensions of the geometry.</span>
+<span class="sd">            shape (tuple of int): shape of voxelization of the geometry.</span>
+<span class="sd">            dimensions (list, optional): dimensions of the entire geometry.</span>
+<span class="sd">            voxel_size (list, optional): dimensions of single voxel.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span> <span class="o">=</span> <span class="n">space_dim</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Spatial dimension of geometry.&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_voxels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">num_voxels</span><span class="p">[:</span><span class="n">space_dim</span><span class="p">])</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of voxels in each spatial direction.&quot;&quot;&quot;</span>
+
+        <span class="c1"># NOTE: dimensions overrules voxel_size for retrieving dimensions</span>
+        <span class="c1"># of geometry and voxels.</span>
+        <span class="k">if</span> <span class="n">dimensions</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">voxel_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">voxel_size</span> <span class="o">=</span> <span class="n">voxel_size</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Dimensions of a single voxel.&quot;&quot;&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dimensions</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">num_voxels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxel_size</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span><span class="p">)</span>
+            <span class="p">]</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Dimensions of geometry.&quot;&quot;&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dimensions</span> <span class="o">=</span> <span class="n">dimensions</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">voxel_size</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dimensions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_voxels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span><span class="p">)</span>
+            <span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">voxel_volume</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">voxel_size</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Volume (area in 2d) of a single voxel.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cached_voxel_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxel_volume</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal copy of the voxel volume for efficient integration.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_cached_voxel_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fetched_shape</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Prepare cached voxel volume for data with a specific spatial shape.&quot;&quot;&quot;</span>
+        <span class="n">scaling</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_voxels</span><span class="p">,</span> <span class="n">fetched_shape</span><span class="p">))</span>
+
+        <span class="c1"># Resize the voxel volumes using conservative resizing.</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">voxel_volume</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="n">cached_shape</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cached_voxel_volume</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="n">i</span> <span class="o">==</span> <span class="n">j</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">fetched_shape</span><span class="p">,</span> <span class="n">cached_shape</span><span class="p">)]):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Incompatible data format only supported in 2d.&quot;</span><span class="p">)</span>
+
+                <span class="c1"># To cover the most general case, a weighted sum is required. The weight is</span>
+                <span class="c1"># essentially provided by the voxel volume. Due to a possible spatial</span>
+                <span class="c1"># variability however, reshaping and rescaling is required. In ordert to</span>
+                <span class="c1"># increase efficiency use a cache, assuming frequently similar data as input.</span>
+                <span class="c1"># In the case, a fixed (scalar) depth had been provided, the base class can be</span>
+                <span class="c1"># utilized. Otherwise, a more involved reshape of the effective volume is</span>
+                <span class="c1"># required.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cached_voxel_volume</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">voxel_volume</span><span class="p">,</span>
+                        <span class="nb">tuple</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">fetched_shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])),</span>
+                        <span class="n">interpolation</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">INTER_AREA</span><span class="p">,</span>  <span class="c1"># conservative.</span>
+                    <span class="p">)</span>
+                    <span class="o">*</span> <span class="n">scaling</span>
+                <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Scalar case.</span>
+            <span class="k">if</span> <span class="nb">all</span><span class="p">([</span><span class="n">i</span> <span class="o">==</span> <span class="n">j</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">fetched_shape</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_voxels</span><span class="p">)]):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cached_voxel_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxel_volume</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Incompatible data format only supported in 2d.&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cached_voxel_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxel_volume</span> <span class="o">*</span> <span class="n">scaling</span>
+
+<div class="viewcode-block" id="Geometry.integrate">
+<a class="viewcode-back" href="../../../source/measure/darsia.measure.html#darsia.measure.integration.Geometry.integrate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">integrate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Integrate data over the entire geometry.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data (np.ndarray): data attached to voxels.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float or array: integral of data over geometry, array if time series and/or</span>
+<span class="sd">                non-scalar data is provided.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: In dimensions other than 2, if data and geometry incompatible</span>
+<span class="sd">                and reshape is needed.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># ! ---- Make sure that the geometry is compatible with the provided data</span>
+
+        <span class="c1"># Fetch data</span>
+        <span class="n">fetched_data</span> <span class="o">=</span> <span class="n">data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="k">else</span> <span class="n">data</span><span class="o">.</span><span class="n">img</span>
+        <span class="n">fetched_shape</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">fetched_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">ExtensiveImage</span><span class="p">):</span>
+            <span class="n">extensive_sum</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">img</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span><span class="p">):</span>
+                <span class="n">extensive_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">extensive_sum</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">extensive_sum</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_cached_voxel_volume</span><span class="p">(</span><span class="n">fetched_shape</span><span class="p">)</span>
+
+        <span class="c1"># ! ---- Perform spatial integration</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="n">weighted_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cached_voxel_volume</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">):</span>
+            <span class="n">weighted_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cached_voxel_volume</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">img</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Data type not supported.&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span><span class="p">):</span>
+            <span class="n">weighted_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weighted_sum</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">weighted_sum</span></div>
+
+
+<div class="viewcode-block" id="Geometry.make_extensive">
+<a class="viewcode-back" href="../../../source/measure/darsia.measure.html#darsia.measure.integration.Geometry.make_extensive">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">make_extensive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">ExtensiveImage</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert intensive values to integrated per-cell values on geometry grid.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data (darsia.Image): image of intensive values.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            darsia.ExtensiveImage: extensive image represented on geometry voxelization.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: if data is not an image, dimensions are incompatible, or</span>
+<span class="sd">                incompatible reshaping is requested in dimensions other than 2.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Data type not supported.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="o">.</span><span class="n">space_dim</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Incompatible space dimensions for image and geometry.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">dimensions</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dimensions</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Image and geometry need to cover the same physical dimensions.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">fetched_shape</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_cached_voxel_volume</span><span class="p">(</span><span class="n">fetched_shape</span><span class="p">)</span>
+
+        <span class="n">weighted_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cached_voxel_volume</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">img</span><span class="p">)</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">metadata</span><span class="p">()</span>
+        <span class="c1"># Remove &quot;type&quot; as it is informational only and not an __init__ argument.</span>
+        <span class="n">metadata</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">weighted_sum_image</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">ExtensiveImage</span><span class="p">(</span><span class="n">weighted_sum</span><span class="p">,</span> <span class="o">**</span><span class="n">metadata</span><span class="p">)</span>
+
+        <span class="c1"># If required, map weighted values conservatively to the geometry grid.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="n">i</span> <span class="o">==</span> <span class="n">j</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">fetched_shape</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_voxels</span><span class="p">)]):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Incompatible data format only supported in 2d.&quot;</span><span class="p">)</span>
+
+            <span class="n">weighted_sum_image</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span>
+                <span class="n">weighted_sum_image</span><span class="p">,</span>
+                <span class="n">shape</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_voxels</span><span class="p">[:</span><span class="mi">2</span><span class="p">]),</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">weighted_sum_image</span></div>
+
+
+<div class="viewcode-block" id="Geometry.normalize">
+<a class="viewcode-back" href="../../../source/measure/darsia.measure.html#darsia.measure.integration.Geometry.normalize">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">normalize</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="n">img_ref</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="n">return_ratio</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Normalize image with respect to another one, such that both have the same</span>
+<span class="sd">        integral.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (darsia.Image): image to be rescaled</span>
+<span class="sd">            img_ref (darsia.Image): reference image</span>
+<span class="sd">            return_ratio (bool): flag controlling whether the ratio between reference</span>
+<span class="sd">                and original integrals is returned</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            darsia.Image: rescaled image</span>
+<span class="sd">            np.ndarray, optional: ratio between reference and original integrals</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">integral_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">img_ref</span><span class="p">)</span>
+        <span class="n">integral</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+        <span class="n">ratio</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">integral_ref</span><span class="p">,</span> <span class="n">integral</span><span class="p">)</span>
+        <span class="n">rescaled_img</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">weight</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">ratio</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">return_ratio</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">rescaled_img</span><span class="p">,</span> <span class="n">ratio</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">rescaled_img</span></div>
+
+
+<div class="viewcode-block" id="Geometry.subregion">
+<a class="viewcode-back" href="../../../source/measure/darsia.measure.html#darsia.measure.integration.Geometry.subregion">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">subregion</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">roi</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">CoordinateArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Geometry&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract subregion of the geometry.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            roi (darsia.CoordinateArray): region of interest.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Geometry: subregion geometry.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Compute new dimensions</span>
+        <span class="n">new_dimensions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span><span class="p">):</span>
+            <span class="n">length</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">new_dimensions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
+
+        <span class="c1"># Compute new number of voxels</span>
+        <span class="n">new_num_voxels</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span><span class="p">):</span>
+            <span class="n">length</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">roi</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">voxel_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxel_size</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">new_num_voxels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">length</span> <span class="o">/</span> <span class="n">voxel_size</span><span class="p">)))</span>
+
+        <span class="c1"># Create sub-geometry</span>
+        <span class="k">return</span> <span class="n">Geometry</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span><span class="p">,</span>
+            <span class="n">new_num_voxels</span><span class="p">,</span>
+            <span class="n">new_dimensions</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="WeightedGeometry">
+<a class="viewcode-back" href="../../../source/measure/darsia.measure.html#darsia.measure.integration.WeightedGeometry">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">WeightedGeometry</span><span class="p">(</span><span class="n">Geometry</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Geometry with weighted volume.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">weight</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">space_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">num_voxels</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">dimensions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructor for extruded two-dimensional geometry.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            weight (float or array): weight compatible with geometry.</span>
+<span class="sd">            space_dim (int): see Geometry.</span>
+<span class="sd">            num_voxels (tuple): see Geometry.</span>
+<span class="sd">            dimensions (list): see Geometry.</span>
+<span class="sd">            voxel_size (list): see Geometry.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: if weight has wrong dimensions.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">space_dim</span><span class="p">,</span> <span class="n">num_voxels</span><span class="p">,</span> <span class="n">dimensions</span><span class="p">,</span> <span class="n">voxel_size</span><span class="p">)</span>
+
+        <span class="c1"># Sanity check</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">weight</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">weight</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Weight must have the same number of dimensions as the geometry.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Add weight</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="n">weight</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">weight</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="k">else</span> <span class="n">weight</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Weight of the geometry, can be a scalar or an array.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">voxel_volume</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">voxel_volume</span><span class="p">,</span> <span class="n">weight</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Effective voxel volume in 3d.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cached_voxel_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxel_volume</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Internal copy of the voxel volume for efficient integration.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="WeightedGeometry.subregion">
+<a class="viewcode-back" href="../../../source/measure/darsia.measure.html#darsia.measure.integration.WeightedGeometry.subregion">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">subregion</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">roi</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">CoordinateArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;WeightedGeometry&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract subregion of the geometry.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            roi (darsia.CoordinateArray): region of interest.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            WeightedGeometry: subregion geometry.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Extract sub-geometry using base class method</span>
+        <span class="n">sub_geometry</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">subregion</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span>
+
+        <span class="c1"># Extract weight</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="n">weight_image</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">,</span> <span class="n">dimensions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dimensions</span><span class="p">,</span> <span class="n">space_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">space_dim</span>
+            <span class="p">)</span>
+            <span class="n">sub_weight_image</span> <span class="o">=</span> <span class="n">weight_image</span><span class="o">.</span><span class="n">subregion</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span>
+            <span class="n">sub_weight</span> <span class="o">=</span> <span class="n">sub_weight_image</span><span class="o">.</span><span class="n">img</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sub_weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span>
+
+        <span class="c1"># Create sub-weighted geometry</span>
+        <span class="k">return</span> <span class="n">WeightedGeometry</span><span class="p">(</span>
+            <span class="n">sub_weight</span><span class="p">,</span>
+            <span class="n">sub_geometry</span><span class="o">.</span><span class="n">space_dim</span><span class="p">,</span>
+            <span class="nb">list</span><span class="p">(</span><span class="n">sub_weight</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span>
+            <span class="n">sub_geometry</span><span class="o">.</span><span class="n">dimensions</span><span class="p">,</span>
+            <span class="n">sub_geometry</span><span class="o">.</span><span class="n">voxel_size</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ExtrudedGeometry">
+<a class="viewcode-back" href="../../../source/measure/darsia.measure.html#darsia.measure.integration.ExtrudedGeometry">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExtrudedGeometry</span><span class="p">(</span><span class="n">WeightedGeometry</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;One or two-dimensional geometry extruded to three dimensions.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">expansion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">space_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">num_voxels</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">dimensions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructor for extruded two-dimensional geometry.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            expansion (float or array): effective depth/area of 1d/2d geometry.</span>
+<span class="sd">            space_dim (int): see Geometry.</span>
+<span class="sd">            num_voxels (tuple): see Geometry.</span>
+<span class="sd">            dimensions (list): see Geometry.</span>
+<span class="sd">            voxel_size (list): see Geometry.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: if spatial dimension not 2.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">=</span> <span class="n">expansion</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">expansion</span><span class="p">,</span> <span class="n">space_dim</span><span class="p">,</span> <span class="n">num_voxels</span><span class="p">,</span> <span class="n">dimensions</span><span class="p">,</span> <span class="n">voxel_size</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="PorousGeometry">
+<a class="viewcode-back" href="../../../source/measure/darsia.measure.html#darsia.measure.integration.PorousGeometry">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PorousGeometry</span><span class="p">(</span><span class="n">WeightedGeometry</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class containing information of a porous geometry.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">porosity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">space_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">num_voxels</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">dimensions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructor for extruded two-dimensional geometry.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            porosity (float or array): porosity.</span>
+<span class="sd">            space_dim (int): see Geometry.</span>
+<span class="sd">            num_voxels (tuple): see Geometry.</span>
+<span class="sd">            dimensions (list): see Geometry.</span>
+<span class="sd">            voxel_size (list): see Geometry.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">porosity</span> <span class="o">=</span> <span class="n">porosity</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">porosity</span><span class="p">,</span> <span class="n">space_dim</span><span class="p">,</span> <span class="n">num_voxels</span><span class="p">,</span> <span class="n">dimensions</span><span class="p">,</span> <span class="n">voxel_size</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ExtrudedPorousGeometry">
+<a class="viewcode-back" href="../../../source/measure/darsia.measure.html#darsia.measure.integration.ExtrudedPorousGeometry">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExtrudedPorousGeometry</span><span class="p">(</span><span class="n">WeightedGeometry</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class containing information of a porous geometry.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">porosity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">depth</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">space_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">num_voxels</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">dimensions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">voxel_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructor for extruded, porous, two-dimensional geometry.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            porosity (float or array): porosity.</span>
+<span class="sd">            depth (float or array): effective depth.</span>
+<span class="sd">            space_dim (int): see Geometry.</span>
+<span class="sd">            num_voxels (tuple): see Geometry.</span>
+<span class="sd">            dimensions (list): see Geometry.</span>
+<span class="sd">            voxel_size (list): see Geometry.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">porosity</span> <span class="o">=</span> <span class="n">porosity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">=</span> <span class="n">depth</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">porosity</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">depth</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">):</span>
+            <span class="n">integrated_porosity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">porosity</span><span class="o">.</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">.</span><span class="n">img</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">depth</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">):</span>
+            <span class="n">integrated_porosity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">porosity</span><span class="p">,</span> <span class="n">depth</span><span class="o">.</span><span class="n">img</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">porosity</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">):</span>
+            <span class="n">integrated_porosity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">porosity</span><span class="o">.</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">integrated_porosity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">porosity</span><span class="p">,</span> <span class="n">depth</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">integrated_porosity</span><span class="p">,</span> <span class="n">space_dim</span><span class="p">,</span> <span class="n">num_voxels</span><span class="p">,</span> <span class="n">dimensions</span><span class="p">,</span> <span class="n">voxel_size</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="ExtrudedPorousGeometry.update">
+<a class="viewcode-back" href="../../../source/measure/darsia.measure.html#darsia.measure.integration.ExtrudedPorousGeometry.update">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update effective depth and recompute weighted volume.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            depth (float or array): effective depth.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">=</span> <span class="n">depth</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">porosity</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">depth</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">):</span>
+            <span class="n">integrated_porosity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">porosity</span><span class="o">.</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="o">.</span><span class="n">img</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">depth</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">):</span>
+            <span class="n">integrated_porosity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">porosity</span><span class="p">,</span> <span class="n">depth</span><span class="o">.</span><span class="n">img</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">porosity</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">):</span>
+            <span class="n">integrated_porosity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">porosity</span><span class="o">.</span><span class="n">img</span><span class="p">,</span> <span class="n">depth</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">integrated_porosity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">porosity</span><span class="p">,</span> <span class="n">depth</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">voxel_volume</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">voxel_volume</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">,</span> <span class="n">integrated_porosity</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cached_voxel_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">voxel_volume</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="n">integrated_porosity</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

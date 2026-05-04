@@ -1,0 +1,1067 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>darsia.multi_image_analysis.imageregistration &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/darsia/multi_image_analysis/imageregistration';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">darsia.multi_image_analysis.imageregistration</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for darsia.multi_image_analysis.imageregistration</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Module containing a diffeomorphic image registration tool.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">skimage</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">darsia</span>
+
+
+<div class="viewcode-block" id="DiffeomorphicImageRegistration">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DiffeomorphicImageRegistration</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class to detect the deformation between different images.</span>
+
+<span class="sd">    After all, DiffeomorphicImageRegistration is a wrapper using TranslationAnalysis.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img_dst</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Constructor for DiffeomorphicImageRegistration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dst (darsia.Image): reference image which is supposed to be fixed in the analysis,</span>
+<span class="sd">                serves as destination object.</span>
+<span class="sd">            optional keyword arguments:</span>
+<span class="sd">                N_patches (list of two int): number of patches in x and y direction</span>
+<span class="sd">                rel_overlap (float): relative overlap in each direction, related to the</span>
+<span class="sd">                patch size</span>
+<span class="sd">                max_features (int) maximal number of features in thefeature detection</span>
+<span class="sd">                tol (float): tolerance</span>
+<span class="sd">                mask (np.ndarray, optional): roi in which features are considered.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Create translation estimator</span>
+        <span class="n">max_features</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_features&quot;</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+        <span class="n">tol</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tol&quot;</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">translation_estimator</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">TranslationEstimator</span><span class="p">(</span><span class="n">max_features</span><span class="p">,</span> <span class="n">tol</span><span class="p">)</span>
+
+        <span class="c1"># Create translation analysis tool, and use the baseline image as reference point</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">N_patches</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;N_patches&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rel_overlap</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rel_overlap&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">mask_dst</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mask_dst&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span> <span class="o">=</span> <span class="n">darsia</span><span class="o">.</span><span class="n">TranslationAnalysis</span><span class="p">(</span>
+            <span class="n">img_dst</span><span class="p">,</span>
+            <span class="n">N_patches</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">N_patches</span><span class="p">,</span>
+            <span class="n">rel_overlap</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rel_overlap</span><span class="p">,</span>
+            <span class="n">translation_estimator</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">translation_estimator</span><span class="p">,</span>
+            <span class="n">mask</span><span class="o">=</span><span class="n">mask_dst</span><span class="p">,</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="DiffeomorphicImageRegistration.update_dst">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.update_dst">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_dst</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img_dst</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update of dst image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dst (np.ndarray): image array</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="o">.</span><span class="n">update_base</span><span class="p">(</span><span class="n">img_dst</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DiffeomorphicImageRegistration.deduct">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.deduct">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">deduct</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">diffeomorphic_image_registration</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1">#: DiffeomorphicImageRegistration</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Effectviely copy from external DiffeomorphicImageRegistration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            diffeomorphic_image_registration (darsia.DiffeomorphicImageRegistration):</span>
+<span class="sd">                Diffeomorphic image registration object holding a translation analysis.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># The displacement is stored in the translation analysis as callable.</span>
+        <span class="c1"># Thus, the current translation analysis has to be updated.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="o">.</span><span class="n">deduct_translation_analysis</span><span class="p">(</span>
+            <span class="n">diffeomorphic_image_registration</span><span class="o">.</span><span class="n">translation_analysis</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DiffeomorphicImageRegistration.add">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.add">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">diffeomorphic_image_registration</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1">#: DiffeomorphicImageRegistration</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the store translation by adding the translation</span>
+<span class="sd">        of an external diffeomorphic image registration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            diffeomorphic_image_registration (darsia.DiffeomorphicImageRegistration):</span>
+<span class="sd">                Diffeomorphic image registraton object holding a translation analysis.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># The displacement is stored in the translation analysis as callable.</span>
+        <span class="c1"># Thus, the current translation analysis has to be updated.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="o">.</span><span class="n">add_translation_analysis</span><span class="p">(</span>
+            <span class="n">diffeomorphic_image_registration</span><span class="o">.</span><span class="n">translation_analysis</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">return_transformed_dst</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Image registration routine.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (darsia.Image): test image</span>
+<span class="sd">            mask (np.ndaray): active mask</span>
+<span class="sd">            return_transformed_dst (bool): flag whether the transform is also applied</span>
+<span class="sd">                to dst (inversely)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            darsia.Image: transformed test image</span>
+<span class="sd">            darsia.Image: transformed reference image #TODO?</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">transformed_img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span>
+
+        <span class="c1"># Return results</span>
+        <span class="k">if</span> <span class="n">return_transformed_dst</span><span class="p">:</span>
+            <span class="n">transformed_dst</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">transformed_img</span><span class="p">,</span> <span class="n">transformed_dst</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">transformed_img</span>
+
+<div class="viewcode-block" id="DiffeomorphicImageRegistration.call_with_output">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.call_with_output">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">call_with_output</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">plot_patch_translation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">return_patch_translation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Determine the deformation pattern and apply diffeomorphism to the image</span>
+<span class="sd">        aiming at matching the reference/destination (dst) image.</span>
+
+<span class="sd">        This in the end only a wrapper for the translation analysis.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (darsia.Image): test image</span>
+<span class="sd">            reverse (bool): flag whether the translation is understood as from the</span>
+<span class="sd">                test image to the dst image, or reversed. The default is the</span>
+<span class="sd">                former.</span>
+<span class="sd">            plot_patch_translation (bool): flag controlling whether the displacement is also</span>
+<span class="sd">                visualized as vector field.</span>
+<span class="sd">            return_patch_translation (bool): flag controlling whether the displacement</span>
+<span class="sd">                in the patch centers is returned in the sense of img to dst,</span>
+<span class="sd">                complying to the plot; default is False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">transformed_img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">return_patch_translation</span><span class="p">:</span>
+            <span class="n">patch_translation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="o">.</span><span class="n">return_patch_translation</span><span class="p">(</span>
+                <span class="kc">False</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">plot_patch_translation</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="o">.</span><span class="n">plot_translation</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">return_patch_translation</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">transformed_img</span><span class="p">,</span> <span class="n">patch_translation</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">transformed_img</span></div>
+
+
+<div class="viewcode-block" id="DiffeomorphicImageRegistration.evaluate">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.evaluate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">coords</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Patches</span><span class="p">],</span>
+        <span class="n">reverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">units</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;metric&quot;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate diffeormorphism in arbitrary points.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            coords (np.ndarray, or darsia.Patches): coordinate array with shape num_pts x 2,</span>
+<span class="sd">                or alternatively num_rows_pts x num_cols_pts x 2, identifying points in a</span>
+<span class="sd">                mesh/patched image, or equivalently patch.</span>
+<span class="sd">            reverse (bool): flag whether the translation is understood as from the</span>
+<span class="sd">                test image to the baseline image, or reversed. The default is the</span>
+<span class="sd">                former latter.</span>
+<span class="sd">            units (str): input and output units; &quot;metric&quot; default; otherwise assumed</span>
+<span class="sd">                to be &quot;pixel&quot;.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: deformation vectors for all coordinates.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Reshape coords using a num_pts x 2 format.</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Patches</span><span class="p">):</span>
+            <span class="n">coords</span> <span class="o">=</span> <span class="n">coords</span><span class="o">.</span><span class="n">global_centers_cartesian</span>
+
+        <span class="k">assert</span> <span class="n">coords</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span>
+        <span class="n">coords_shape</span> <span class="o">=</span> <span class="n">coords</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">coords</span> <span class="o">=</span> <span class="n">coords</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Convert coordinates to pixels with reverse matrix indexing,</span>
+        <span class="c1"># if provided in metric units.</span>
+        <span class="k">if</span> <span class="n">units</span> <span class="o">==</span> <span class="s2">&quot;metric&quot;</span><span class="p">:</span>
+            <span class="n">base</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="o">.</span><span class="n">base</span>
+            <span class="n">pixel_coords</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">coordinatesystem</span><span class="o">.</span><span class="n">voxel</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span>
+            <span class="n">pixel_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">pixel_coords</span><span class="p">)</span>  <span class="c1"># Reverse matrix ind.</span>
+
+        <span class="k">elif</span> <span class="n">units</span> <span class="o">==</span> <span class="s2">&quot;pixel&quot;</span><span class="p">:</span>
+            <span class="n">pixel_coords</span> <span class="o">=</span> <span class="n">coords</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span>
+
+        <span class="c1"># Interpolate at provided values - expect reverse matrix indexing</span>
+        <span class="n">translation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="o">.</span><span class="n">translation</span><span class="p">(</span><span class="n">pixel_coords</span><span class="p">)</span>
+
+        <span class="c1"># Flip, if required</span>
+        <span class="k">if</span> <span class="n">reverse</span><span class="p">:</span>
+            <span class="n">translation</span> <span class="o">*=</span> <span class="o">-</span><span class="mf">1.0</span>
+
+        <span class="c1"># Collect results, use ordering of components consistent with matrix</span>
+        <span class="c1"># indexing (i.e. flip of components needed)</span>
+        <span class="n">displacement</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">translation</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">translation</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+
+        <span class="c1"># Convert to metric units if required; for pixels, use matrix indexing.</span>
+        <span class="k">if</span> <span class="n">units</span> <span class="o">==</span> <span class="s2">&quot;metric&quot;</span><span class="p">:</span>
+            <span class="n">displacement</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">coordinatesystem</span><span class="o">.</span><span class="n">coordinate_vector</span><span class="p">(</span><span class="n">displacement</span><span class="p">)</span>
+
+        <span class="c1"># Reshape to format used at input</span>
+        <span class="k">return</span> <span class="n">displacement</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">coords_shape</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DiffeomorphicImageRegistration.apply">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.apply">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="n">reverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply computed transformation onto arbitrary image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (np.ndarray or darsia.Image): image</span>
+<span class="sd">            reverse (bool): flag whether the translation is understood as from the</span>
+<span class="sd">                test image to the baseline image, or reversed. The default is the</span>
+<span class="sd">                latter.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray, optional: transformed image, if input is array; no output otherwise</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Load the image into translation_analysis</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="o">.</span><span class="n">load_image</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+
+        <span class="c1"># Apply the transformation, stored in translation_analysis</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="o">.</span><span class="n">translate_image</span><span class="p">(</span><span class="n">reverse</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DiffeomorphicImageRegistration.plot">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.plot">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">scaling</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plots diffeomorphism.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            scaling (float): scaling for vectors.</span>
+<span class="sd">            mask (darsia.Image, optional): active set.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Wrapper for translation_analysis.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="o">.</span><span class="n">plot_translation</span><span class="p">(</span>
+            <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">scaling</span><span class="o">=</span><span class="n">scaling</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DiffeomorphicImageRegistration.displacement">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.DiffeomorphicImageRegistration.displacement">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">displacement</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return displacement in metric units on all pixels.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Define coordinates for each pixel</span>
+        <span class="n">Ny</span><span class="p">,</span> <span class="n">Nx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="c1"># Nz = 1</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">Nx</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">Ny</span><span class="p">)</span>
+        <span class="n">X_pixel</span><span class="p">,</span> <span class="n">Y_pixel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+        <span class="c1"># Transform coordinates into the right format (vector)</span>
+        <span class="n">pixel_vector</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">X_pixel</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">Y_pixel</span><span class="p">))))</span>
+        <span class="c1"># Reshape coords using a num_pts x 2 format.</span>
+        <span class="n">pixel_coords</span> <span class="o">=</span> <span class="n">pixel_vector</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Interpolate at provided values - expect reverse matrix indexing</span>
+        <span class="n">tic</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">translation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="o">.</span><span class="n">translation</span><span class="p">(</span><span class="n">pixel_coords</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;translation evaluation: </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">tic</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1">#        # Flip, if required</span>
+        <span class="c1">#        if reverse:</span>
+        <span class="c1">#            translation *= -1.0</span>
+
+        <span class="c1"># results, use ardering of components consistent with matrix indexing</span>
+        <span class="n">displacement</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">translation</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">translation</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+
+        <span class="c1"># Convert to metric units</span>
+        <span class="n">tic</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">displacement</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">translation_analysis</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">coordinatesystem</span><span class="o">.</span><span class="n">coordinate_vector</span><span class="p">(</span>
+                <span class="n">displacement</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;coordinate system: </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">tic</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Cache</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">displacement</span> <span class="o">=</span> <span class="n">displacement</span>
+
+        <span class="k">return</span> <span class="n">displacement</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="MultiscaleDiffeomorphicImageRegistration">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MultiscaleDiffeomorphicImageRegistration</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class for multiscale diffeomorphic image registration</span>
+<span class="sd">    being capable of tracking larger deformations.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img_dst</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]],</span>
+        <span class="n">mask_dst</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">total_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            img_dst (darsia.Image): reference image which is supposed to be</span>
+<span class="sd">                fixed in the analysis, serves as destination object.</span>
+<span class="sd">            config (list of config): hierrachy of config dictionaries.</span>
+<span class="sd">            mask_dst (np.ndarray): active mask</span>
+<span class="sd">            total_config (dict): parameters for image registration for the</span>
+<span class="sd">                overall image registration.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Cache inputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">img_dst</span> <span class="o">=</span> <span class="n">img_dst</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask_dst</span> <span class="o">=</span> <span class="n">mask_dst</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span>
+            <span class="p">[</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">config</span><span class="p">))]</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_levels</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="c1"># Make sure to have a fine config for the final image registration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">total_config</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">total_config</span>
+
+        <span class="c1"># Cache verbosity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;verbosity&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">return_transformed_dst</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>  <span class="c1"># TODO typing.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Image registration routine.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (Image): test image</span>
+<span class="sd">            mask (np.ndaray): active mask</span>
+<span class="sd">            return_transformed_dst (bool): flag whether the transform is also applied</span>
+<span class="sd">                to dst (inversely)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Image: transformed test image</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Store inputs</span>
+        <span class="n">transformed_img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">transformed_mask</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span> <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">mask</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Initialize combined image registration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">combined_image_registration</span> <span class="o">=</span> <span class="n">DiffeomorphicImageRegistration</span><span class="p">(</span>
+            <span class="n">transformed_img</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">total_config</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Multi level approach succesively updating the combined image registration</span>
+        <span class="k">for</span> <span class="n">level</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_levels</span><span class="p">):</span>
+            <span class="c1"># Determine deformation for current level</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">image_registration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_single_level_iteration</span><span class="p">(</span>
+                <span class="n">transformed_img</span><span class="p">,</span> <span class="n">transformed_mask</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="n">level</span><span class="p">]</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Update inputs</span>
+            <span class="k">if</span> <span class="n">level</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">combined_image_registration</span><span class="o">.</span><span class="n">deduct</span><span class="p">(</span><span class="n">image_registration</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">combined_image_registration</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">image_registration</span><span class="p">)</span>
+            <span class="n">transformed_mask</span> <span class="o">=</span> <span class="n">image_registration</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">transformed_mask</span><span class="p">)</span>
+            <span class="n">transformed_img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_image_registration</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+
+        <span class="c1"># Return results</span>
+        <span class="k">if</span> <span class="n">return_transformed_dst</span><span class="p">:</span>
+            <span class="n">transformed_dst</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_image_registration</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dst</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">transformed_img</span><span class="p">,</span> <span class="n">transformed_dst</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">transformed_img</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_single_level_iteration</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="n">DiffeomorphicImageRegistration</span><span class="p">]:</span>  <span class="c1"># TODO typing</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;One iteration of multiscale image registration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (darsia.Image): test image</span>
+<span class="sd">            mask (np.ndarray): active mask</span>
+<span class="sd">            config (dict): parameters for image registration</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            darsia.Image: transformed image</span>
+<span class="sd">            darsia.DiffeomorphicImageRegistration: resulting image registration</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Find image registration</span>
+        <span class="n">image_registration</span> <span class="o">=</span> <span class="n">DiffeomorphicImageRegistration</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">img_dst</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mask_dst</span><span class="p">,</span> <span class="o">**</span><span class="n">config</span>
+        <span class="p">)</span>
+
+        <span class="n">plot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span> <span class="o">&gt;=</span> <span class="mi">2</span>
+        <span class="n">transformed_img</span><span class="p">,</span> <span class="n">patch_translation</span> <span class="o">=</span> <span class="n">image_registration</span><span class="o">.</span><span class="n">call_with_output</span><span class="p">(</span>
+            <span class="n">img</span><span class="p">,</span> <span class="n">plot_patch_translation</span><span class="o">=</span><span class="n">plot</span><span class="p">,</span> <span class="n">return_patch_translation</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbosity</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">&quot;comparison&quot;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span>
+                <span class="n">skimage</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">compare_images</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">img_dst</span><span class="o">.</span><span class="n">img</span><span class="p">,</span> <span class="n">transformed_img</span><span class="o">.</span><span class="n">img</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;blend&quot;</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">transformed_img</span><span class="p">,</span> <span class="n">image_registration</span>
+
+<div class="viewcode-block" id="MultiscaleDiffeomorphicImageRegistration.apply">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration.apply">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="n">reverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply computed transformation onto arbitrary image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (np.ndarray or darsia.Image): image</span>
+<span class="sd">            reverse (bool): flag whether the translation is understood as from the</span>
+<span class="sd">                test image to the baseline image, or reversed. The default is the</span>
+<span class="sd">                latter.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray, optional: transformed image, if input is array; no output otherwise</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;combined_image_registration&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Construct the deformation first.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_image_registration</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">reverse</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MultiscaleDiffeomorphicImageRegistration.plot">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration.plot">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">scaling</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plot the dislacement stored in the current image registration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            scaling (float): scaling parameter to controll the length of the arrows.</span>
+<span class="sd">            mask (np.ndarray): active mask</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;combined_image_registration&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Construct the deformation first.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">combined_image_registration</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">scaling</span><span class="o">=</span><span class="n">scaling</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MultiscaleDiffeomorphicImageRegistration.evaluate">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.MultiscaleDiffeomorphicImageRegistration.evaluate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">coords</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Patches</span><span class="p">],</span>
+        <span class="n">reverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">units</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;metric&quot;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;See evaluate in DiffeomorphicImageRegistration.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined_image_registration</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">reverse</span><span class="p">,</span> <span class="n">units</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># ! ---- Administrator of Image Registration algorithms</span>
+
+
+<div class="viewcode-block" id="ImageRegistration">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.ImageRegistration">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ImageRegistration</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img_dst</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Constructor for DiffeomorphicImageRegistration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dst (darsia.Image): reference image which is supposed to be fixed in the analysis,</span>
+<span class="sd">                serves as destination object.</span>
+<span class="sd">            optional keyword arguments:</span>
+<span class="sd">                N_patches (list of two int, or lits of such): number of patches in x and</span>
+<span class="sd">                    y direction</span>
+<span class="sd">                rel_overlap (float, or list of such): relative overlap in each direction,</span>
+<span class="sd">                    related to the patch size</span>
+<span class="sd">                max_features (int, or list of such) maximal number of features in the</span>
+<span class="sd">                    feature detection</span>
+<span class="sd">                tol (float, or list of such): tolerance</span>
+<span class="sd">                mask (np.ndarray, optional): roi in which features are considered.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">method</span> <span class="ow">in</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;multilevel&quot;</span><span class="p">,</span> <span class="s2">&quot;onelevel&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Fetch keyword arguments</span>
+        <span class="n">N_patches</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;N_patches&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">max_features</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_features&quot;</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+        <span class="n">tol</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tol&quot;</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>
+        <span class="n">rel_overlap</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rel_overlap&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">mask_dst</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mask_dst&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">verbosity</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;verbosity&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Method provided through N_patches</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">method</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;multilevel&quot;</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">N_patches</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">N_patches</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="nb">list</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">N_patches</span><span class="p">))])</span>
+                <span class="k">else</span> <span class="s2">&quot;onelevel&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;multilevel&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">N_patches</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">N_patches</span> <span class="o">=</span> <span class="p">[</span><span class="n">N_patches</span><span class="p">]</span>
+            <span class="n">num_levels</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">N_patches</span><span class="p">)</span>
+
+            <span class="c1"># Check compatibility</span>
+            <span class="n">compatibility</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">max_features</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="n">max_features</span> <span class="o">=</span> <span class="n">num_levels</span> <span class="o">*</span> <span class="p">[</span><span class="n">max_features</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">compatibility</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">compatibility</span>
+                    <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">max_features</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+                    <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">max_features</span><span class="p">)</span> <span class="o">==</span> <span class="n">num_levels</span>
+                <span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tol</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+                <span class="n">tol</span> <span class="o">=</span> <span class="n">num_levels</span> <span class="o">*</span> <span class="p">[</span><span class="n">tol</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">compatibility</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">compatibility</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tol</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">tol</span><span class="p">)</span> <span class="o">==</span> <span class="n">num_levels</span>
+                <span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rel_overlap</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+                <span class="n">rel_overlap</span> <span class="o">=</span> <span class="n">num_levels</span> <span class="o">*</span> <span class="p">[</span><span class="n">rel_overlap</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">compatibility</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">compatibility</span>
+                    <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rel_overlap</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+                    <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">rel_overlap</span><span class="p">)</span> <span class="o">==</span> <span class="n">num_levels</span>
+                <span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">compatibility</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Input for the multilevel image registration is not compatible.&quot;</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Prepare hierarchy of config dictionaries</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;N_patches&quot;</span><span class="p">:</span> <span class="n">N_patches</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                    <span class="s2">&quot;max_features&quot;</span><span class="p">:</span> <span class="n">max_features</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                    <span class="s2">&quot;tol&quot;</span><span class="p">:</span> <span class="n">tol</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                    <span class="s2">&quot;rel_overlap&quot;</span><span class="p">:</span> <span class="n">rel_overlap</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="p">}</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_levels</span><span class="p">)</span>
+            <span class="p">]</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">image_registration</span> <span class="o">=</span> <span class="n">MultiscaleDiffeomorphicImageRegistration</span><span class="p">(</span>
+                <span class="n">img_dst</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">mask_dst</span><span class="p">,</span> <span class="n">verbosity</span><span class="o">=</span><span class="n">verbosity</span>
+            <span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;onelevel&quot;</span><span class="p">:</span>
+
+            <span class="c1"># Extract possibly the first value from list, if list is provided</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">N_patches</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span>
+                <span class="p">[</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">N_patches</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="nb">list</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">N_patches</span><span class="p">))]</span>
+            <span class="p">):</span>
+                <span class="n">N_patches</span> <span class="o">=</span> <span class="n">N_patches</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">max_features</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">max_features</span> <span class="o">=</span> <span class="n">max_features</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tol</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">tol</span> <span class="o">=</span> <span class="n">tol</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rel_overlap</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">rel_overlap</span> <span class="o">=</span> <span class="n">rel_overlap</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="c1"># Construct feasible config</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;N_patches&quot;</span><span class="p">:</span> <span class="n">N_patches</span><span class="p">,</span>
+                <span class="s2">&quot;max_features&quot;</span><span class="p">:</span> <span class="n">max_features</span><span class="p">,</span>
+                <span class="s2">&quot;tol&quot;</span><span class="p">:</span> <span class="n">tol</span><span class="p">,</span>
+                <span class="s2">&quot;rel_overlap&quot;</span><span class="p">:</span> <span class="n">rel_overlap</span><span class="p">,</span>
+                <span class="s2">&quot;mask&quot;</span><span class="p">:</span> <span class="n">mask_dst</span><span class="p">,</span>
+                <span class="s2">&quot;verbosity&quot;</span><span class="p">:</span> <span class="n">verbosity</span><span class="p">,</span>
+            <span class="p">}</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">image_registration</span> <span class="o">=</span> <span class="n">DiffeomorphicImageRegistration</span><span class="p">(</span><span class="n">img_dst</span><span class="p">,</span> <span class="o">**</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Method </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2"> is not implemented for ImageRegistration.&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span>
+        <span class="n">mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">return_transformed_dst</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_registration</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">return_transformed_dst</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ImageRegistration.apply">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.ImageRegistration.apply">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">,</span> <span class="n">reverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply computed transformation onto arbitrary image.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            img (np.ndarray or darsia.Image): image</span>
+<span class="sd">            reverse (bool): flag whether the translation is understood as from the</span>
+<span class="sd">                test image to the baseline image, or reversed. The default is the</span>
+<span class="sd">                latter.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray, optional: transformed image, if input is array; no output otherwise</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_registration</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">reverse</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ImageRegistration.plot">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.ImageRegistration.plot">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scaling</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">darsia</span><span class="o">.</span><span class="n">Image</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plot the dislacement stored in the current image registration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            scaling (float): scaling parameter to controll the length of the arrows.</span>
+<span class="sd">            mask (np.ndarray): active mask</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">image_registration</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">scaling</span><span class="o">=</span><span class="n">scaling</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ImageRegistration.evaluate">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.imageregistration.ImageRegistration.evaluate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">coords</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">darsia</span><span class="o">.</span><span class="n">Patches</span><span class="p">],</span>
+        <span class="n">reverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">units</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;metric&quot;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;See evaluate in DiffeomorphicImageRegistration.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_registration</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">coords</span><span class="p">,</span> <span class="n">reverse</span><span class="p">,</span> <span class="n">units</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

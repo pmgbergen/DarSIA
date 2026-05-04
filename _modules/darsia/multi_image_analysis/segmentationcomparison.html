@@ -1,0 +1,1091 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>darsia.multi_image_analysis.segmentationcomparison &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/darsia/multi_image_analysis/segmentationcomparison';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../source/darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">darsia.multi_image_analysis.segmentationcomparison</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for darsia.multi_image_analysis.segmentationcomparison</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Class for comparing segmented images.</span>
+
+<span class="sd">The object contain information about the different segmentations</span>
+<span class="sd">as well as methods for comparing them and visualizing the result.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.patches</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mpatches</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">skimage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.cm</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_cmap</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">darsia</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">da</span>
+
+
+<div class="viewcode-block" id="SegmentationComparison">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SegmentationComparison</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class for comparing segmented images.</span>
+
+<span class="sd">    Routines for comparing segmentations and creating visualizations of the comparison.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        number_of_segmented_images (int): Number of segmented images that one compares</span>
+<span class="sd">        segmentation_names (list[str]): list of names for each of the segmentations.</span>
+<span class="sd">            Will affect legends in plots.</span>
+<span class="sd">        components (list): list of values the different (active) components in the</span>
+<span class="sd">            segmentations. As of now, up to two are allowed for and the default values</span>
+<span class="sd">            are 1 and 2.</span>
+<span class="sd">        component_names (list[str]): list of names for each of the components. Will</span>
+<span class="sd">            be visual in legends.</span>
+<span class="sd">        gray_colors (np.ndarray): array of base gray colors (in RGB space) that accounts</span>
+<span class="sd">            for different overlapping segmentations of different components.</span>
+<span class="sd">        colors (np.ndarray): color values for the different unique segmentations.</span>
+<span class="sd">            Default is created from a colormap (matplotlib) depending on the amount of</span>
+<span class="sd">            present segmentations.</span>
+<span class="sd">        color_dictionary (dict): dictionary relating all of the different colors to</span>
+<span class="sd">            different overlapping segmentation situations.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number_of_segmented_images</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructor of compare segmentations class.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            number_of_segmented_images (int): Number of segmentations to be compared</span>
+<span class="sd">            Optional keyword arguments (kwargs):</span>
+<span class="sd">                segmentation_names (list): list of names for the different segmented</span>
+<span class="sd">                    images. So far only used in legends and color dictionary.</span>
+<span class="sd">                components (list): list of the different components that are</span>
+<span class="sd">                    considered in the segmented images. So far only two are allowed</span>
+<span class="sd">                    to be provided.</span>
+<span class="sd">                component_names (list):  list of names for the different components.</span>
+<span class="sd">                    So far only used in legends, and color dictionary.</span>
+<span class="sd">                gray_colors (np.ndarray): array of three different scales of</span>
+<span class="sd">                    gray (in RGB format), one for each of the different combinations of</span>
+<span class="sd">                    components in the segmentations.</span>
+<span class="sd">                colors (np.ndarray): Array of different colors that should</span>
+<span class="sd">                    indicate unique components in each segmentation.</span>
+<span class="sd">                light_scaling (float): Indicate how much lighter the second</span>
+<span class="sd">                    component should be scaled in its unique color.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span> <span class="o">=</span> <span class="n">number_of_segmented_images</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">segmentation_names</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span>
+            <span class="s2">&quot;segmentation_names&quot;</span><span class="p">,</span>
+            <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Segmentation </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span><span class="p">)],</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Define components</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;components&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">component_names</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span>
+            <span class="s2">&quot;component_names&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Component 0&quot;</span><span class="p">,</span> <span class="s2">&quot;Component 1&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Define gray colors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gray_colors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span>
+            <span class="s2">&quot;gray_colors&quot;</span><span class="p">,</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">90</span><span class="p">,</span> <span class="mi">90</span><span class="p">,</span> <span class="mi">90</span><span class="p">],</span> <span class="p">[</span><span class="mi">150</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">150</span><span class="p">],</span> <span class="p">[</span><span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">200</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Define unique colors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">light_scaling</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;light_scaling&quot;</span><span class="p">,</span> <span class="mf">1.1</span><span class="p">)</span>
+        <span class="c1"># If set of colors are not provided create it with matplotlib colormap.</span>
+        <span class="k">if</span> <span class="s2">&quot;colors&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">colormap</span> <span class="o">=</span> <span class="n">get_cmap</span><span class="p">(</span><span class="s2">&quot;Spectral&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span><span class="p">):</span>
+                <span class="n">rgba</span> <span class="o">=</span> <span class="mi">255</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="n">colormap</span><span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span> <span class="o">*</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">))[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+                <span class="p">)</span>
+                <span class="n">rgbalight</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">trunc</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">light_scaling</span> <span class="o">*</span> <span class="n">rgba</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">rgba</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">rgbalight</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Assert that there are a sufficient amount of colors</span>
+            <span class="n">colors_pre</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;colors&quot;</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="n">colors_pre</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span>
+            <span class="n">colors_light</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">trunc</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">light_scaling</span> <span class="o">*</span> <span class="n">colors_pre</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">uint8</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">colors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">colors_pre</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">colors_light</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="c1"># self.colors = np.hstack((colors_pre, colors_light))</span>
+
+        <span class="c1"># Create dictionary with colors and associated situations. Used for legends.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">color_dictionary</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Adding information about colors that represent unique apperances for each</span>
+        <span class="c1"># segmented image and each component</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">light_scaling</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1e-6</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">color_dictionary</span><span class="p">[</span>
+                    <span class="sa">f</span><span class="s2">&quot;Unique apperance of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">component_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; in </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">segmentation_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">color_dictionary</span><span class="p">[</span>
+                    <span class="sa">f</span><span class="s2">&quot;Unique apperance of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">component_names</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; in </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">segmentation_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">color_dictionary</span><span class="p">[</span>
+                    <span class="sa">f</span><span class="s2">&quot;Unique apperance of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">segmentation_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">color_dictionary</span><span class="p">[</span>
+                    <span class="sa">f</span><span class="s2">&quot;Unique apperance of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">segmentation_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># Adding information regarding gray colors and overlapping components of</span>
+        <span class="c1"># different segmentations.</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gray_colors</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">gray_colors</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gray_colors</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">gray_colors</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">color_dictionary</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Segmentations overlap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gray_colors</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">color_dictionary</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Segmentations overlap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gray_colors</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">color_dictionary</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Segmentations overlap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gray_colors</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">color_dictionary</span><span class="p">[</span>
+                <span class="sa">f</span><span class="s2">&quot;Overlapping segmentations in </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">component_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gray_colors</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">color_dictionary</span><span class="p">[</span>
+                <span class="sa">f</span><span class="s2">&quot;Overlapping segmentations in </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">component_names</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gray_colors</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">color_dictionary</span><span class="p">[</span>
+                <span class="sa">f</span><span class="s2">&quot;Segmentations overlap with different components.&quot;</span>
+            <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gray_colors</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="n">segmentations</span><span class="p">,</span>
+        <span class="n">plot_result</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Comparison of segmentations.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            segmentations (asterisk argument): Allows to provide an arbitraty</span>
+<span class="sd">                number of segmented numpy arrays or da.Images of integers to be compared</span>
+<span class="sd">            Optional keyword arguments (kwargs):</span>
+<span class="sd">                plot_result (bool): plots the result with matplotlib if True,</span>
+<span class="sd">                    default is False.</span>
+<span class="sd">                roi (Union[tuple, np.ndarray]): roi where the segmentations should be</span>
+<span class="sd">                    compared, default is the maximal roi that fits in all segmentations.</span>
+<span class="sd">                    Should be provided in pixel coordinates using matrix indexing, either</span>
+<span class="sd">                    as a tuple of slices, or an array of corner points.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Define number of segmentations</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">segmentations</span><span class="p">)</span>
+
+        <span class="c1"># Checks whether roi is provided and if it is as a tuple (of slices)</span>
+        <span class="c1"># or an array of corner points</span>
+        <span class="k">if</span> <span class="s2">&quot;roi&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">roi_input</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;roi&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roi_input</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                <span class="n">roi</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="n">roi_input</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roi_input</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="n">roi</span> <span class="o">=</span> <span class="n">da</span><span class="o">.</span><span class="n">bounding_box</span><span class="p">(</span><span class="n">roi_input</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roi_input</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">roi</span> <span class="o">=</span> <span class="n">da</span><span class="o">.</span><span class="n">bounding_box</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">roi_input</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">roi_input</span><span class="p">)</span><span class="si">}</span><span class="s2"> is not a valid type for roi. Please provide it as&quot;</span>
+                    <span class="s2">&quot; a tuple of slices, or an array or list of corner points&quot;</span>
+                <span class="p">)</span>
+            <span class="n">return_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">roi</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">roi</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">roi</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">roi</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">3</span><span class="p">,),</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># If roi is not provided the largest roi that fits all segmentations are chosen.</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">seg</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">]):</span>
+                <span class="n">rows</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">seg</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">])</span>
+                <span class="n">cols</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">seg</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">])</span>
+            <span class="k">elif</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">seg</span><span class="p">,</span> <span class="n">da</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">]):</span>
+                <span class="n">rows</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">seg</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">])</span>
+                <span class="n">cols</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">seg</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">])</span>
+            <span class="n">roi</span> <span class="o">=</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">rows</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">cols</span><span class="p">))</span>
+            <span class="n">return_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">3</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+
+        <span class="c1"># Determine whether segmentations are arrays of darsia images.</span>
+        <span class="c1"># They should all be the same.</span>
+        <span class="k">if</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">seg</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">]):</span>
+            <span class="n">segmentation_arrays</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">segmentations</span>
+        <span class="k">elif</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">seg</span><span class="p">,</span> <span class="n">da</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">]):</span>
+            <span class="n">segmentation_arrays</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">seg</span><span class="o">.</span><span class="n">img</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                <span class="s2">&quot;Segmentation types are not allowed. They should&quot;</span>
+                <span class="s2">&quot;all be the same, and either arrays, or darsia images.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Enter gray everywhere there are ovelaps of different segmentations</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span><span class="p">):</span>
+                <span class="c1"># Overlap of components</span>
+                <span class="k">for</span> <span class="n">c_num</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">):</span>
+                    <span class="n">return_image</span><span class="p">[</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span>
+                            <span class="n">segmentation_arrays</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">roi</span><span class="p">]</span> <span class="o">==</span> <span class="n">c</span><span class="p">,</span>
+                            <span class="n">segmentation_arrays</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">roi</span><span class="p">]</span> <span class="o">==</span> <span class="n">c</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gray_colors</span><span class="p">[</span><span class="n">c_num</span><span class="p">]</span>
+
+        <span class="c1"># Overlap of different components. Note that it also writes wherever</span>
+        <span class="c1"># segmentation_arrays[i][roi] is a non active component, but that case</span>
+        <span class="c1"># should be overwritten when checking for unique apperances.</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span><span class="p">):</span>
+                <span class="n">return_image</span><span class="p">[</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">segmentation_arrays</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">roi</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">),</span>
+                        <span class="n">segmentation_arrays</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">roi</span><span class="p">]</span> <span class="o">!=</span> <span class="n">segmentation_arrays</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">roi</span><span class="p">],</span>
+                    <span class="p">)</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gray_colors</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># Determine locations (and make modifications to return image) of unique components</span>
+        <span class="k">for</span> <span class="n">c_num</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span><span class="p">):</span>
+                <span class="n">unique_apperance</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">segmentation_arrays</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">roi</span><span class="p">]</span> <span class="o">==</span> <span class="n">c</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">filter</span><span class="p">(</span>
+                    <span class="k">lambda</span> <span class="n">j</span><span class="p">:</span> <span class="n">j</span> <span class="o">!=</span> <span class="n">k</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_segmented_images</span><span class="p">)</span>
+                <span class="p">):</span>
+                    <span class="n">unique_apperance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span>
+                        <span class="n">unique_apperance</span><span class="p">,</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">segmentation_arrays</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">roi</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">components</span><span class="p">)</span>
+                        <span class="p">),</span>
+                    <span class="p">)</span>
+                <span class="n">return_image</span><span class="p">[</span><span class="n">unique_apperance</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">colors</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">c_num</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">plot_result</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">return_image</span><span class="p">,</span> <span class="s2">&quot;Comparison&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">return_image</span>
+
+<div class="viewcode-block" id="SegmentationComparison.compare_segmentations_binary_array">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.compare_segmentations_binary_array">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compare_segmentations_binary_array</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">segmentations</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compares segmentations and returns an an array</span>
+<span class="sd">        with pixels that containing an array of 1s and 0s depending on</span>
+<span class="sd">        which segmentations are present there. At the current state it</span>
+<span class="sd">        does not distinguish between the different kind of components,</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            *segmentations (tuple[np.ndarray, ...]): The segmentations to be compared.</span>
+<span class="sd">            **kwargs: Optional keyword arguments.</span>
+<span class="sd">                roi (Union[tuple, np.ndarray]): roi where the segmentations should be</span>
+<span class="sd">                    compared, default is the maximal roi that fits in all segmentations.</span>
+<span class="sd">                    Should be provided in pixel coordinates using matrix indexing, either</span>
+<span class="sd">                    as a tuple of slices, or an array of corner points.</span>
+<span class="sd">                components (tuple[int, ...]): The components that should be recognized in</span>
+<span class="sd">                    the segmentations, default is [1,2].</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># NOTE: At the moment both components are counted as the same.</span>
+
+        <span class="c1"># Checks whether roi is provided and if it is as a tuple (of slices)</span>
+        <span class="c1"># or an array of corner points</span>
+        <span class="k">if</span> <span class="s2">&quot;roi&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">roi_input</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;roi&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roi_input</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                <span class="n">roi</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="n">roi_input</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roi_input</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="n">roi</span> <span class="o">=</span> <span class="n">da</span><span class="o">.</span><span class="n">bounding_box</span><span class="p">(</span><span class="n">roi_input</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">roi_input</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">roi</span> <span class="o">=</span> <span class="n">da</span><span class="o">.</span><span class="n">bounding_box</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">roi_input</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">roi_input</span><span class="p">)</span><span class="si">}</span><span class="s2"> is not a valid type for roi. Please provide it as&quot;</span>
+                    <span class="s2">&quot; a tuple of slices, or an array or list of corner points&quot;</span>
+                <span class="p">)</span>
+            <span class="n">return_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">roi</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">roi</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">roi</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">roi</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+                <span class="o">+</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">segmentations</span><span class="p">),),</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># If roi is not provided the largest roi that fits all segmentations are chosen.</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">seg</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">]):</span>
+                <span class="n">rows</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">seg</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">])</span>
+                <span class="n">cols</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">seg</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">])</span>
+            <span class="k">elif</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">seg</span><span class="p">,</span> <span class="n">da</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">]):</span>
+                <span class="n">rows</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">seg</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">])</span>
+                <span class="n">cols</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">seg</span><span class="o">.</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">])</span>
+            <span class="n">roi</span> <span class="o">=</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">rows</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">cols</span><span class="p">))</span>
+            <span class="n">return_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">segmentations</span><span class="p">),),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Determine whether segmentations are arrays of darsia images.</span>
+        <span class="c1"># They should all be the same.</span>
+        <span class="k">if</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">seg</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">]):</span>
+            <span class="n">segmentation_arrays</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">segmentations</span>
+        <span class="k">elif</span> <span class="nb">all</span><span class="p">([</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">seg</span><span class="p">,</span> <span class="n">da</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">]):</span>
+            <span class="n">segmentation_arrays</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="n">seg</span><span class="o">.</span><span class="n">img</span> <span class="k">for</span> <span class="n">seg</span> <span class="ow">in</span> <span class="n">segmentations</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                <span class="s2">&quot;Segmentation types are not allowed. They should&quot;</span>
+                <span class="s2">&quot;all be the same, and either arrays, or darsia images.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Extract components</span>
+        <span class="n">components</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;components&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+
+        <span class="c1"># Go through segmentations and enter 1 in correct position at the</span>
+        <span class="c1"># pixels where they are present</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">segmentations</span><span class="p">)):</span>
+            <span class="n">k_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">segmentations</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+            <span class="n">k_arr</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">return_image</span><span class="p">[</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span>
+                    <span class="n">segmentation_arrays</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">roi</span><span class="p">]</span> <span class="o">==</span> <span class="n">components</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="n">segmentation_arrays</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">roi</span><span class="p">]</span> <span class="o">==</span> <span class="n">components</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="p">)</span>
+            <span class="p">]</span> <span class="o">+=</span> <span class="n">k_arr</span>
+
+        <span class="k">return</span> <span class="n">return_image</span></div>
+
+
+<div class="viewcode-block" id="SegmentationComparison.get_combinations">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.get_combinations">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_combinations</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">segmentation_numbers</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">num_segmentations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a list of all possible combinations of segmentations.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            num_segmentations (int, optional): Number of segmentations. Defaults to 5.</span>
+<span class="sd">            *segmentation_numbers (tuple[int, ...]): The segmentation numbers that</span>
+<span class="sd">                should be included in the combinations. Defaults to ().</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list[list[int]]: List of all possible combinations of segmentations.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Create an empty list of all possible combinations of segmentations</span>
+        <span class="n">combinations</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Create the base of a full combination</span>
+        <span class="n">base</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">num_segmentations</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ubyte</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+        <span class="c1"># Create a list of the segmentations that should be included in the combinations</span>
+        <span class="n">segs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_segmentations</span><span class="p">)</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">segmentation_numbers</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Create a recursive function that loops through all possible combinations</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">loop_rec_bool</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">tmp</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">max</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+                        <span class="n">tmp</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                        <span class="n">tmp</span><span class="p">[</span><span class="n">segs</span><span class="p">[</span><span class="n">n</span><span class="p">]]</span> <span class="o">=</span> <span class="n">i</span>
+                        <span class="n">loop_rec_bool</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">tmp</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+                        <span class="n">tmp</span><span class="p">[</span><span class="n">segs</span><span class="p">[</span><span class="n">n</span><span class="p">]]</span> <span class="o">=</span> <span class="n">i</span>
+                        <span class="n">loop_rec_bool</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">tmp</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">max</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+                        <span class="n">tmp</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                        <span class="n">tmp</span><span class="p">[</span><span class="n">segs</span><span class="p">[</span><span class="n">n</span><span class="p">]]</span> <span class="o">=</span> <span class="n">i</span>
+                        <span class="n">combinations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tmp</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+                        <span class="n">tmp</span><span class="p">[</span><span class="n">segs</span><span class="p">[</span><span class="n">n</span><span class="p">]]</span> <span class="o">=</span> <span class="n">i</span>
+                        <span class="n">combinations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tmp</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">combinations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">base</span><span class="p">)</span>
+
+        <span class="c1"># Loop through all possible combinations</span>
+        <span class="n">loop_rec_bool</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">segs</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">combinations</span></div>
+
+
+<div class="viewcode-block" id="SegmentationComparison.plot">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.plot">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">figure_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Comparison&quot;</span><span class="p">,</span>
+        <span class="n">legend_anchor</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.7</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plots the provided image (should be a comparison of segmentations) with</span>
+<span class="sd">        matplotlib.pyplot&#39;s imshow and prints a legend with colors from the image</span>
+<span class="sd">        and dictionary</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (np.ndarray): image with comparison of segmentations.</span>
+<span class="sd">            figure_name (str): Figure name.</span>
+<span class="sd">            legend_anchor (tuple): tuple of coordinates (x,y) in Euclidean</span>
+<span class="sd">                style that determines legend anchor.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figure_name</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="n">unique_colors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_unique_colors</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="n">patches</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_legend_patches</span><span class="p">(</span><span class="n">unique_colors</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span>
+            <span class="n">handles</span><span class="o">=</span><span class="n">patches</span><span class="p">,</span> <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="n">legend_anchor</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">borderaxespad</span><span class="o">=</span><span class="mf">0.0</span>
+        <span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_legend_patches</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">unique_colors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">custom_legend_text</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Function that extracts information from the color dictionary and creates</span>
+<span class="sd">        legend entries depending on provided colors.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            unique_colors (np.ndarray): numpy array of color values whose</span>
+<span class="sd">                information should be extracted from the color dictionary.</span>
+<span class="sd">            custom_legend_text (Optional[list[str]]): in case it is desirable</span>
+<span class="sd">                to customize legend.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            patches (list): patches suitable for legend in matplotlib.pyplot.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># create a patch (proxy artist) for every color</span>
+        <span class="k">if</span> <span class="n">custom_legend_text</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">patches</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">mpatches</span><span class="o">.</span><span class="n">Patch</span><span class="p">(</span>
+                    <span class="n">color</span><span class="o">=</span><span class="n">c</span> <span class="o">/</span> <span class="mi">255</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_key</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">color_dictionary</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">unique_colors</span>
+            <span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">custom_legend_text</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">unique_colors</span><span class="p">)</span>
+            <span class="n">patches</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">mpatches</span><span class="o">.</span><span class="n">Patch</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">c</span> <span class="o">/</span> <span class="mi">255</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">custom_legend_text</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">unique_colors</span><span class="p">)</span>
+            <span class="p">]</span>
+        <span class="k">return</span> <span class="n">patches</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_unique_colors</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given an image it extracts the unique color values (except background color)</span>
+<span class="sd">        and returns them as an array.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (np.ndarray): image array.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            array of unique colors in input image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">flat_im</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">flat_im</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">void</span><span class="p">,</span> <span class="n">flat_im</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">itemsize</span> <span class="o">*</span> <span class="n">flat_im</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">return_counts</span><span class="p">:</span>
+            <span class="n">unique</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">u</span> <span class="o">=</span> <span class="n">unique</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">flat_im</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">flat_im</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">u</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">counts</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">u</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">flat_im</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">flat_im</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">u</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_sort_colors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">colors</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Function for sorting an array of colors and setting gray colors</span>
+<span class="sd">        to the end of the array.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            colors (np.ndarray): array of colors values.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Sorted array of color values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sorted_colors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span>
+        <span class="n">end_counter</span> <span class="o">=</span> <span class="n">colors</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">start_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">colors</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="ow">and</span> <span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">c</span><span class="p">[</span><span class="mi">2</span><span class="p">]):</span>
+                <span class="n">sorted_colors</span><span class="p">[</span><span class="n">end_counter</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span>
+                <span class="n">end_counter</span> <span class="o">-=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">sorted_colors</span><span class="p">[</span><span class="n">start_counter</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span>
+                <span class="n">start_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">sorted_colors</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_post_process_image</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">unique_colors</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">opacity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">contour_thickness</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Routine for post processing the image, removing background,</span>
+<span class="sd">        drawing contours and applying opacity.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            image (np.ndarray): image array with comparison of segmentations.</span>
+<span class="sd">            unique_colors (np.ndarray): array of unique color values found</span>
+<span class="sd">                in image. If it is not provided it will find them</span>
+<span class="sd">                (but this takes some extra seconds).</span>
+<span class="sd">            opacity (float): opacity value for the colors in the image.</span>
+<span class="sd">            contour_thickness (int): thickness of the contours in the</span>
+<span class="sd">                return image.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            processed image with drawn contours, opacity in the interior</span>
+<span class="sd">            of the distinct colors, and a removed background.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Gray version of image</span>
+        <span class="n">image_gray</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2GRAY</span><span class="p">)</span>
+
+        <span class="c1"># Compute alpha (array that is 0 for all black colors in gray image)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">threshold</span><span class="p">(</span><span class="n">image_gray</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">THRESH_BINARY</span><span class="p">)</span>
+
+        <span class="c1"># Scale alpha array with input opacity and return to correct np.uint8 format.</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">opacity</span> <span class="o">*</span> <span class="n">alpha</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+
+        <span class="c1"># Create rgba image with background removed and opacity applied elsewhere</span>
+        <span class="n">b</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">r</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+        <span class="n">rgba</span> <span class="o">=</span> <span class="p">[</span><span class="n">b</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">alpha</span><span class="p">]</span>
+        <span class="n">im_new</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">rgba</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+
+        <span class="c1"># Go over all distinct colors in the image and draw contours</span>
+        <span class="k">if</span> <span class="n">unique_colors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">colors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_unique_colors</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+            <span class="n">colors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sort_colors</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">colors</span> <span class="o">=</span> <span class="n">unique_colors</span>
+
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">colors</span><span class="p">:</span>
+            <span class="n">colored_region</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">image</span> <span class="o">==</span> <span class="n">c</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">contours</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">findContours</span><span class="p">(</span>
+                <span class="n">skimage</span><span class="o">.</span><span class="n">img_as_ubyte</span><span class="p">(</span><span class="n">colored_region</span><span class="p">),</span>
+                <span class="n">cv2</span><span class="o">.</span><span class="n">RETR_TREE</span><span class="p">,</span>
+                <span class="n">cv2</span><span class="o">.</span><span class="n">CHAIN_APPROX_SIMPLE</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">cl</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="n">cl</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span>
+            <span class="n">ct</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">cl</span><span class="p">)</span>
+            <span class="n">im_new</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">drawContours</span><span class="p">(</span>
+                <span class="n">im_new</span><span class="p">,</span> <span class="n">contours</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">ct</span><span class="p">,</span> <span class="n">thickness</span><span class="o">=</span><span class="n">contour_thickness</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">im_new</span>
+
+<div class="viewcode-block" id="SegmentationComparison.plot_overlay_segmentation">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.plot_overlay_segmentation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_overlay_segmentation</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">comparison_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">base_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">figure_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Comparison&quot;</span><span class="p">,</span>
+        <span class="n">opacity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">,</span>
+        <span class="n">legend_anchor</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+        <span class="n">custom_legend</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">mpatches</span><span class="o">.</span><span class="n">Patch</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">custom_legend_text</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plots a comparison image overlayed a base image using matplotlib.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            comparison_image (np.ndarray): The image containing comparison of segmentations.</span>
+<span class="sd">            base_image (np.ndarray): The base image that is to be overlayed.</span>
+<span class="sd">            figure_name (str): Figure name.</span>
+<span class="sd">            opacity (float): Tha opacity value for the comparison image.</span>
+<span class="sd">            legend_anchor (tuple): tuple of coordinates (x,y) in euclidean style that</span>
+<span class="sd">                determines legend anchor.</span>
+<span class="sd">            custom_legend (Optional[list[mpatches.Patch]]): in case it is desirable to create</span>
+<span class="sd">                a custom legend.</span>
+<span class="sd">            custom_legend_text (Optional[list[str]]): in case it is desirable</span>
+<span class="sd">                to customize legend.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Get unique colors and sort them</span>
+        <span class="n">unique_colors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_unique_colors</span><span class="p">(</span><span class="n">comparison_image</span><span class="p">)</span>
+        <span class="n">unique_colors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sort_colors</span><span class="p">(</span><span class="n">unique_colors</span><span class="p">)</span>
+
+        <span class="c1"># Process the comparison image</span>
+        <span class="n">processed_comparison_image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_post_process_image</span><span class="p">(</span>
+            <span class="n">comparison_image</span><span class="p">,</span>
+            <span class="n">unique_colors</span><span class="o">=</span><span class="n">unique_colors</span><span class="p">,</span>
+            <span class="n">opacity</span><span class="o">=</span><span class="n">opacity</span><span class="p">,</span>
+            <span class="n">contour_thickness</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Scale base image to be of same size with comparison image</span>
+        <span class="n">base_image</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span>
+            <span class="n">base_image</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">processed_comparison_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">processed_comparison_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Create figure with legend</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figure_name</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">base_image</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">processed_comparison_image</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">custom_legend_text</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">custom_legend</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">patches</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_legend_patches</span><span class="p">(</span><span class="n">unique_colors</span><span class="o">=</span><span class="n">unique_colors</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">custom_legend</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">patches</span> <span class="o">=</span> <span class="n">custom_legend</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">patches</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_legend_patches</span><span class="p">(</span>
+                <span class="n">unique_colors</span><span class="o">=</span><span class="n">unique_colors</span><span class="p">,</span> <span class="n">custom_legend_text</span><span class="o">=</span><span class="n">custom_legend_text</span>
+            <span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span>
+            <span class="n">handles</span><span class="o">=</span><span class="n">patches</span><span class="p">,</span> <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="n">legend_anchor</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">borderaxespad</span><span class="o">=</span><span class="mf">0.0</span>
+        <span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SegmentationComparison.color_fractions">
+<a class="viewcode-back" href="../../../source/multi_image_analysis/darsia.multi_image_analysis.html#darsia.multi_image_analysis.segmentationcomparison.SegmentationComparison.color_fractions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">color_fractions</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">comparison_image</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">colors</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">depth_map</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns color fractions.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            comparison_image (np.ndarray): Comparison of segmentations</span>
+<span class="sd">            colors (np.ndarray): array of color values in the comparison image</span>
+<span class="sd">            depth_map (np.ndarray, optional): depth map for the image</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (dict): Dictionary relating each color to the fraction of</span>
+<span class="sd">                the number of pixels that the color occupies and the</span>
+<span class="sd">                total number of occupied pixels in the image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Create empty list for color fractions</span>
+        <span class="n">fractions</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Get unique colors</span>
+        <span class="k">if</span> <span class="n">colors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">colors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_unique_colors</span><span class="p">(</span><span class="n">comparison_image</span><span class="p">)</span>
+
+        <span class="c1"># Get depth map</span>
+        <span class="k">if</span> <span class="n">depth_map</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">depth_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">comparison_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+
+        <span class="c1"># Check if depth map and comparison image have the same shape</span>
+        <span class="k">assert</span> <span class="n">depth_map</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">comparison_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># Get total number of pixels weighted by depth</span>
+        <span class="n">total_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">comparison_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">total_image</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">comparison_image</span> <span class="o">!=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">total_colored</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">depth_map</span> <span class="o">*</span> <span class="n">total_image</span><span class="p">)</span>
+
+        <span class="c1"># get weighted number of pixels for each color</span>
+        <span class="n">weighted_colors</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">colors</span><span class="p">:</span>
+            <span class="c1"># Get only the pixels of color c</span>
+            <span class="n">only_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">comparison_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">only_c</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">comparison_image</span> <span class="o">==</span> <span class="n">c</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+
+            <span class="c1"># weight the pixels by depth and sum</span>
+            <span class="n">weighted_color</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">only_c</span> <span class="o">*</span> <span class="n">depth_map</span><span class="p">)</span>
+
+            <span class="c1"># Append to fractions</span>
+            <span class="n">fractions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">weighted_color</span> <span class="o">/</span> <span class="n">total_colored</span><span class="p">)</span>
+            <span class="n">weighted_colors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">weighted_color</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">weighted_colors</span><span class="p">,</span> <span class="n">fractions</span><span class="p">,</span> <span class="n">colors</span><span class="p">,</span> <span class="n">total_colored</span><span class="p">,</span> <span class="n">depth_map</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns key from dictionary and provided value.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            val: value in the dictionary</span>
+<span class="sd">            dictionary (dict): dictionary where key matching</span>
+<span class="sd">                to val is searched for</span>
+
+<span class="sd">        returns</span>
+<span class="sd">            key in dictionary</span>
+
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">dictionary</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">key</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;key corresponding to </span><span class="si">{</span><span class="n">val</span><span class="si">}</span><span class="s2"> doesn&#39;t exist in dictionary&quot;</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,1217 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Shape corrections (darsia.corrections.shape) &#8212; DarSIA 1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
+
+    <script src="../../_static/documentation_options.js?v=2882ecd3"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'source/corrections/darsia.corrections.shape';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">DarSIA 1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../darsia.html">
+    DarSIA - Darcy Scale Image Analysis toolbox (darsia)
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Shape corrections (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape</span></code>)</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-darsia.corrections.shape">
+<span id="shape-corrections-darsia-corrections-shape"></span><h1>Shape corrections (<a class="reference internal" href="#module-darsia.corrections.shape" title="darsia.corrections.shape"><code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape</span></code></a>)<a class="headerlink" href="#module-darsia.corrections.shape" title="Link to this heading">#</a></h1>
+<p>Shape corrections target geometrical transformations as translations, rotations,
+but also locally varying bulge and stretch as well as general deformation resulting
+from direct comparison with a reference image.</p>
+<section id="module-darsia.corrections.shape.curvature">
+<span id="curvature-correction-darsia-corrections-shape-curvature"></span><h2>Curvature correction (<a class="reference internal" href="#module-darsia.corrections.shape.curvature" title="darsia.corrections.shape.curvature"><code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape.curvature</span></code></a>)<a class="headerlink" href="#module-darsia.corrections.shape.curvature" title="Link to this heading">#</a></h2>
+<p>Module containing polynomical Curvature correction.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">CurvatureCorrection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="darsia.corrections.basecorrection.html#darsia.corrections.basecorrection.BaseCorrection" title="darsia.corrections.basecorrection.BaseCorrection"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCorrection</span></code></a></p>
+<p>Polynomial curvature correction.</p>
+<p>Contains routines for setting up the curvature correction, as well as applying
+it to images.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.config">
+<span class="sig-name descname"><span class="pre">config</span></span><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.config" title="Link to this definition">#</a></dt>
+<dd><p>config dictionary for curvture correction.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">Circumstantial</span> <span class="pre">attributes</span></span></dt>
+<dd><p>reference_image (np.ndarray): image matrix of the reference image.
+current_image (np.ndarray): image matrix of the updated reference image.
+width (float): physical width of reference image.
+height (float): physical height of reference image.
+in_meters (bool): True if width/height is in meters.
+Ny (int): number of pixels in vertical direction in reference image.
+Nx (int): number of pixels in horizontal direction in reference image.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.bulge_correction">
+<span class="sig-name descname"><span class="pre">bulge_correction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">top</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bottom</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.bulge_correction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.bulge_correction" title="Link to this definition">#</a></dt>
+<dd><p>Bulge correction</p>
+<p>Corrects bulging of image, depending on the amount of pixels that the
+image is bulged inwards on each side.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>left</strong> (<em>int</em>) – amount of bulged pixels on the left side of the image.</p></li>
+<li><p><strong>right</strong> (<em>int</em>) – amount of bulged pixels on the right side of the image.</p></li>
+<li><p><strong>top</strong> (<em>int</em>) – amount of bulged pixels on the top of the image.</p></li>
+<li><p><strong>bottom</strong> (<em>int</em>) – amount of bulged pixels on the bottom of the image.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.compute_bulge">
+<span class="sig-name descname"><span class="pre">compute_bulge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.compute_bulge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.compute_bulge" title="Link to this definition">#</a></dt>
+<dd><p>Compute the bulge parameters depending on the maximum number of pixels
+that the image has been displaced on each side.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – image array, basis for the computation.</p></li>
+<li><p><strong>kwargs</strong> (<em>optional keyword arguments</em>) – <dl class="simple">
+<dt>“left” (int): the maximum number of pixels that the image</dt><dd><p>has been displaced on the left side</p>
+</dd>
+<dt>”right” (int): the maximum number of pixels that the image</dt><dd><p>has been displaced on the right side</p>
+</dd>
+<dt>”top” (int): the maximum number of pixels that the image</dt><dd><p>has been displaced on the top</p>
+</dd>
+<dt>”bottom” (int): the maximum number of pixels that the image</dt><dd><p>has been displaced on the bottom</p>
+</dd>
+</dl>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.compute_stretch">
+<span class="sig-name descname"><span class="pre">compute_stretch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.compute_stretch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.compute_stretch" title="Link to this definition">#</a></dt>
+<dd><p>Compute the stretch parameters depending on the stretch center,
+and a known translation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – image array, basis for the computation.</p></li>
+<li><p><strong>kwargs</strong> (<em>optional keyword arguments</em>) – “point_source” (list): point that has been translated.
+“point_destination” (list): the ought to be position.
+“stretch_center” (list): the stretch center.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.correct_array">
+<span class="sig-name descname"><span class="pre">correct_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.correct_array"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.correct_array" title="Link to this definition">#</a></dt>
+<dd><p>Call method of the curvature correction.</p>
+<p>Applies the curvature correction to a provided image, and returns the
+corrected image as an array. If set in the constructor, the image
+will be resized in the first step.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>img</strong> (<em>np.ndarray</em>) – image array</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>curvature corrected image.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.correct_metadata">
+<span class="sig-name descname"><span class="pre">correct_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.correct_metadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.correct_metadata" title="Link to this definition">#</a></dt>
+<dd><p>Extract metadata from the config file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>metadata</strong> (<em>dict</em><em>, </em><em>optional</em>) – metadata dictionary to be updated. Defaults to {}.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>metadata</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.crop">
+<span class="sig-name descname"><span class="pre">crop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">corner_points</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.crop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.crop" title="Link to this definition">#</a></dt>
+<dd><p>Crop the image along the corners of the image.</p>
+<p>The four corner points of the image should be provided, and this method
+will update the config file and modify the current image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>corner_points</strong> (<em>VoxelArray</em>) – list of the corner points. Preferably the list
+should be ordered starting from the upper left corner
+and going counter clockwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.load">
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.load" title="Link to this definition">#</a></dt>
+<dd><p>Load the curvature correction from a file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>Path</em>) – path to the file</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.pre_bulge_correction">
+<span class="sig-name descname"><span class="pre">pre_bulge_correction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.pre_bulge_correction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.pre_bulge_correction" title="Link to this definition">#</a></dt>
+<dd><p>Initialize the curvature correction by forcing all stright lines
+to curve inwards and not outwards.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>kwargs</strong> (<em>optional keyword arguments</em>) – <dl class="simple">
+<dt>“horizontal_bulge” (float): parameter for the curvature correction related to</dt><dd><p>the horizontal bulge of the image.</p>
+</dd>
+<dt>”horizontal_center_offset” (int): offset in terms of pixel of the image center</dt><dd><p>in x-direction, as compared to the numerical center</p>
+</dd>
+<dt>vertical_bulge (float): parameter for the curvature correction related to the</dt><dd><p>vertical bulge of the image.</p>
+</dd>
+<dt>”vertical_center_offset” (int): offset in terms of pixel of the image center in</dt><dd><p>y-direction, as compared to the numerical center</p>
+</dd>
+</dl>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.read_config_from_file">
+<span class="sig-name descname"><span class="pre">read_config_from_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.read_config_from_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.read_config_from_file" title="Link to this definition">#</a></dt>
+<dd><p>Reads a json-file to the config disctionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>Path</em>) – path to the json-file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.return_image">
+<span class="sig-name descname"><span class="pre">return_image</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.return_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.return_image" title="Link to this definition">#</a></dt>
+<dd><p>Returns the current image as a darsia image width provided width and height.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.save" title="Link to this definition">#</a></dt>
+<dd><p>Save the curvature correction to a file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>Path</em>) – path to the file</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.setup_config">
+<span class="sig-name descname"><span class="pre">setup_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.setup_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.setup_config" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.show_image">
+<span class="sig-name descname"><span class="pre">show_image</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.show_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.show_image" title="Link to this definition">#</a></dt>
+<dd><p>Shows the current image using matplotlib.pyplot</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.simple_curvature_correction">
+<span class="sig-name descname"><span class="pre">simple_curvature_correction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.simple_curvature_correction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.simple_curvature_correction" title="Link to this definition">#</a></dt>
+<dd><p>General routine for applying stretch and bulge transforms. This routine
+in contrast to __call__ does always use the keyword arguments and constructs
+the transformation instead of using cached values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em>) – image array</p></li>
+<li><p><strong>kwargs</strong> (<em>optional keyword arguments</em>) – see _transform_coordinates for more details.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>corrected image</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.stretch_correction">
+<span class="sig-name descname"><span class="pre">stretch_correction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point_source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_destination</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stretch_center</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.stretch_correction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.stretch_correction" title="Link to this definition">#</a></dt>
+<dd><p>Stretch correction.</p>
+<p>Stretches the image depending on the displacement of a
+single point (point source &lt;–&gt; point_destination) and
+an undisplaced point (stretch_center)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>&quot;point_source&quot;</strong> (<em>list</em>) – point that has been translated.</p></li>
+<li><p><strong>&quot;point_destination&quot;</strong> (<em>list</em>) – the ought to be position.</p></li>
+<li><p><strong>&quot;stretch_center&quot;</strong> (<em>list</em>) – the stretch center.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.write_config_to_file">
+<span class="sig-name descname"><span class="pre">write_config_to_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#CurvatureCorrection.write_config_to_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.write_config_to_file" title="Link to this definition">#</a></dt>
+<dd><p>Writes the config dictionary to a json-file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>Path</em>) – path to the json file</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.CurvatureCorrection.temporary_image">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">temporary_image</span></span><a class="headerlink" href="#darsia.corrections.shape.curvature.CurvatureCorrection.temporary_image" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.load_curvature_correction_config_from_dict">
+<span class="sig-name descname"><span class="pre">load_curvature_correction_config_from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sec</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#load_curvature_correction_config_from_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.load_curvature_correction_config_from_dict" title="Link to this definition">#</a></dt>
+<dd><p>Load curvature correction config from a dictionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>Path</em>) – path to the toml file.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>config dictionary for curvature correction.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="generated/darsia.corrections.color.colorcorrection.html#darsia.corrections.color.colorcorrection.ColorCorrection.config" title="darsia.corrections.color.colorcorrection.ColorCorrection.config">config</a> (dict)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darsia.corrections.shape.curvature.load_curvature_correction_config_from_toml">
+<span class="sig-name descname"><span class="pre">load_curvature_correction_config_from_toml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/curvature.html#load_curvature_correction_config_from_toml"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.curvature.load_curvature_correction_config_from_toml" title="Link to this definition">#</a></dt>
+<dd><p>Load curvature correction config from a toml file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>Path</em>) – path to the toml file.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>config dictionary for curvature correction.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="generated/darsia.corrections.color.colorcorrection.html#darsia.corrections.color.colorcorrection.ColorCorrection.config" title="darsia.corrections.color.colorcorrection.ColorCorrection.config">config</a> (dict)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-darsia.corrections.shape.deformation">
+<span id="local-deformation-correction-darsia-corrections-shape-deformation"></span><h2>Local deformation correction (<a class="reference internal" href="#module-darsia.corrections.shape.deformation" title="darsia.corrections.shape.deformation"><code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape.deformation</span></code></a>)<a class="headerlink" href="#module-darsia.corrections.shape.deformation" title="Link to this heading">#</a></h2>
+<p>Module containing a local deformation correction.</p>
+<p>This is essentially a correction object through wrappping
+<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.DiffeomorphicImageRegistration</span></code>.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.corrections.shape.deformation.DeformationCorrection">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DeformationCorrection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/deformation.html#DeformationCorrection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.deformation.DeformationCorrection" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="darsia.corrections.basecorrection.html#darsia.corrections.basecorrection.BaseCorrection" title="darsia.corrections.basecorrection.BaseCorrection"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCorrection</span></code></a></p>
+<p>Patch-wise defined deformation correction defined through image registration.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.corrections.shape.deformation.DeformationCorrection.base">
+<span class="sig-name descname"><span class="pre">base</span></span><a class="headerlink" href="#darsia.corrections.shape.deformation.DeformationCorrection.base" title="Link to this definition">#</a></dt>
+<dd><p>reference (baseline) image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>darsia.Image</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.deformation.DeformationCorrection.correct_array">
+<span class="sig-name descname"><span class="pre">correct_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/deformation.html#DeformationCorrection.correct_array"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.deformation.DeformationCorrection.correct_array" title="Link to this definition">#</a></dt>
+<dd><p>Main routine for aligning image with baseline image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>img</strong> (<em>np.ndarray</em>) – input image, to be aligned.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>aligned image array.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.deformation.DeformationCorrection.correct_metadata">
+<span class="sig-name descname"><span class="pre">correct_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.corrections.shape.deformation.DeformationCorrection.correct_metadata" title="Link to this definition">#</a></dt>
+<dd><p>Correction routine on metadata level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>metadata</strong> (<em>dict</em>) – metadata dictionary.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>corrected metadata dictionary.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.deformation.DeformationCorrection.load">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.corrections.shape.deformation.DeformationCorrection.load" title="Link to this definition">#</a></dt>
+<dd><p>Load the correction from a file.</p>
+<p>The method should load a npz file, containing the class name and
+required data for loading the correction from file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>str</em>) – path to the file</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.deformation.DeformationCorrection.save">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.corrections.shape.deformation.DeformationCorrection.save" title="Link to this definition">#</a></dt>
+<dd><p>Save the correction to a file.</p>
+<p>The method should store a npz file, continaing the class name and
+required data for loading the correction from file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>str</em>) – path to the file</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-darsia.corrections.shape.drift">
+<span id="drift-correction-darsia-corrections-shape-drift"></span><h2>Drift correction (<a class="reference internal" href="#module-darsia.corrections.shape.drift" title="darsia.corrections.shape.drift"><code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape.drift</span></code></a>)<a class="headerlink" href="#module-darsia.corrections.shape.drift" title="Link to this heading">#</a></h2>
+<p>Module containing objects to align images with respect to a baseline image.</p>
+<p>The alignment is based on feature detection. It is possible to use segments of the image.
+Finally, corrections are based on single, global translation.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.corrections.shape.drift.DriftCorrection">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">DriftCorrection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/drift.html#DriftCorrection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.drift.DriftCorrection" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="darsia.corrections.basecorrection.html#darsia.corrections.basecorrection.BaseCorrection" title="darsia.corrections.basecorrection.BaseCorrection"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCorrection</span></code></a></p>
+<p>Class for drift correction of images wrt. a baseline image.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.drift.DriftCorrection.correct_array">
+<span class="sig-name descname"><span class="pre">correct_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/drift.html#DriftCorrection.correct_array"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.drift.DriftCorrection.correct_array" title="Link to this definition">#</a></dt>
+<dd><p>Main routine for aligning image with baseline image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em>) – input image, to be aligned.</p></li>
+<li><p><strong>roi</strong> (<em>2-tuple</em><em> of </em><em>slices</em><em>, </em><em>optional</em>) – ROI to be applied to img; if None
+the cached roi is used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>aligned image array.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.drift.DriftCorrection.correct_metadata">
+<span class="sig-name descname"><span class="pre">correct_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.corrections.shape.drift.DriftCorrection.correct_metadata" title="Link to this definition">#</a></dt>
+<dd><p>Correction routine on metadata level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>metadata</strong> (<em>dict</em>) – metadata dictionary.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>corrected metadata dictionary.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.drift.DriftCorrection.load">
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/drift.html#DriftCorrection.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.drift.DriftCorrection.load" title="Link to this definition">#</a></dt>
+<dd><p>Load the drift correction from a file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.drift.DriftCorrection.return_config">
+<span class="sig-name descname"><span class="pre">return_config</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/drift.html#DriftCorrection.return_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.drift.DriftCorrection.return_config" title="Link to this definition">#</a></dt>
+<dd><p>Return config file for the drift correction.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.drift.DriftCorrection.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/drift.html#DriftCorrection.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.drift.DriftCorrection.save" title="Link to this definition">#</a></dt>
+<dd><p>Save the drift correction to a file.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.corrections.shape.drift.DriftCorrection.base">
+<span class="sig-name descname"><span class="pre">base</span></span><a class="headerlink" href="#darsia.corrections.shape.drift.DriftCorrection.base" title="Link to this definition">#</a></dt>
+<dd><p>Base image array.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.corrections.shape.drift.DriftCorrection.translation_estimator">
+<span class="sig-name descname"><span class="pre">translation_estimator</span></span><a class="headerlink" href="#darsia.corrections.shape.drift.DriftCorrection.translation_estimator" title="Link to this definition">#</a></dt>
+<dd><p>Detection of effective translation based on feature detection.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-darsia.corrections.shape.piecewiseperspective">
+<span id="piecewise-perspective-transformation-darsia-corrections-shape-piecewiseperspective"></span><h2>Piecewise perspective transformation (<a class="reference internal" href="#module-darsia.corrections.shape.piecewiseperspective" title="darsia.corrections.shape.piecewiseperspective"><code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape.piecewiseperspective</span></code></a>)<a class="headerlink" href="#module-darsia.corrections.shape.piecewiseperspective" title="Link to this heading">#</a></h2>
+<p>Module defining how to determine and apply patch-wise defined perspective transform.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.corrections.shape.piecewiseperspective.PiecewisePerspectiveTransform">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">PiecewisePerspectiveTransform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/piecewiseperspective.html#PiecewisePerspectiveTransform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.piecewiseperspective.PiecewisePerspectiveTransform" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Globally constant, patch-wise defined perspective transform.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.piecewiseperspective.PiecewisePerspectiveTransform.find_and_warp">
+<span class="sig-name descname"><span class="pre">find_and_warp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patches</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">displacement</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/piecewiseperspective.html#PiecewisePerspectiveTransform.find_and_warp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.piecewiseperspective.PiecewisePerspectiveTransform.find_and_warp" title="Link to this definition">#</a></dt>
+<dd><p>Continuously transform entire image via patchwise perspective transform.</p>
+<p>Perspective transforms determined by the function evaluation in all
+corners of each patch results in continuous transformations.
+Hence, stiching together the transformed images results in
+an image without overlap and gaps.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>patches</strong> (<em>darsia.Patches</em>) – patched image</p></li>
+<li><p><strong>displacement</strong> (<em>Callable</em>) – relative deformation map; assumed to be continuous</p></li>
+<li><p><strong>reverse</strong> (<em>bool</em>) – flag whether displacement is applied with negative weight</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>transformed image</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>darsia.Image</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-darsia.corrections.shape.rotation">
+<span id="rotation-correction-darsia-corrections-shape-rotation"></span><h2>Rotation correction (<a class="reference internal" href="#module-darsia.corrections.shape.rotation" title="darsia.corrections.shape.rotation"><code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape.rotation</span></code></a>)<a class="headerlink" href="#module-darsia.corrections.shape.rotation" title="Link to this heading">#</a></h2>
+<p>Module containing objects useful for correcting images wrt rotations</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.corrections.shape.rotation.RotationCorrection">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">RotationCorrection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">anchor</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/rotation.html#RotationCorrection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.rotation.RotationCorrection" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="darsia.corrections.basecorrection.html#darsia.corrections.basecorrection.BaseCorrection" title="darsia.corrections.basecorrection.BaseCorrection"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCorrection</span></code></a></p>
+<p>Rotation correction.</p>
+<p>Rotations are defined as combination of multiple basic rotations. In 2d, a single
+basic rotation is sufficient. In 3d, although three are available, two are
+sufficient.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.corrections.shape.rotation.RotationCorrection.dim">
+<span class="sig-name descname"><span class="pre">dim</span></span><a class="headerlink" href="#darsia.corrections.shape.rotation.RotationCorrection.dim" title="Link to this definition">#</a></dt>
+<dd><p>ambient dimension</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.corrections.shape.rotation.RotationCorrection.anchor">
+<span class="sig-name descname"><span class="pre">anchor</span></span><a class="headerlink" href="#darsia.corrections.shape.rotation.RotationCorrection.anchor" title="Link to this definition">#</a></dt>
+<dd><p>voxel coordinates of anchor</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array or list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.corrections.shape.rotation.RotationCorrection.rotation">
+<span class="sig-name descname"><span class="pre">rotation</span></span><a class="headerlink" href="#darsia.corrections.shape.rotation.RotationCorrection.rotation" title="Link to this definition">#</a></dt>
+<dd><p>rotation matrix</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.corrections.shape.rotation.RotationCorrection.rotation_inv">
+<span class="sig-name descname"><span class="pre">rotation_inv</span></span><a class="headerlink" href="#darsia.corrections.shape.rotation.RotationCorrection.rotation_inv" title="Link to this definition">#</a></dt>
+<dd><p>inverted rotation matrix</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.rotation.RotationCorrection.correct_array">
+<span class="sig-name descname"><span class="pre">correct_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/rotation.html#RotationCorrection.correct_array"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.rotation.RotationCorrection.correct_array" title="Link to this definition">#</a></dt>
+<dd><p>Main routine: Application of inherent rotation to provided image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>img</strong> (<em>array</em>) – image</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>rotated image</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.rotation.RotationCorrection.correct_metadata">
+<span class="sig-name descname"><span class="pre">correct_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.corrections.shape.rotation.RotationCorrection.correct_metadata" title="Link to this definition">#</a></dt>
+<dd><p>Correction routine on metadata level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>metadata</strong> (<em>dict</em>) – metadata dictionary.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>corrected metadata dictionary.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.rotation.RotationCorrection.load">
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/rotation.html#RotationCorrection.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.rotation.RotationCorrection.load" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.rotation.RotationCorrection.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/rotation.html#RotationCorrection.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.rotation.RotationCorrection.save" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-darsia.corrections.shape.translation">
+<span id="translation-correction-darsia-corrections-shape-translation"></span><h2>Translation correction (<a class="reference internal" href="#module-darsia.corrections.shape.translation" title="darsia.corrections.shape.translation"><code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape.translation</span></code></a>)<a class="headerlink" href="#module-darsia.corrections.shape.translation" title="Link to this heading">#</a></h2>
+<p>Module defining estimator for translation between ROIs and corresponding correction.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.corrections.shape.translation.TranslationCorrection">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">TranslationCorrection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/translation.html#TranslationCorrection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.translation.TranslationCorrection" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="darsia.corrections.basecorrection.html#darsia.corrections.basecorrection.BaseCorrection" title="darsia.corrections.basecorrection.BaseCorrection"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCorrection</span></code></a></p>
+<p>Translation correction based on user-input global translation.</p>
+<p>Translation is provided as array or path to numpy array.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.translation.TranslationCorrection.correct_array">
+<span class="sig-name descname"><span class="pre">correct_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/translation.html#TranslationCorrection.correct_array"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.translation.TranslationCorrection.correct_array" title="Link to this definition">#</a></dt>
+<dd><p>Main routine. Perform translation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>img</strong> (<em>np.ndarray</em>) – image to be corrected.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Corrected image</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.translation.TranslationCorrection.correct_metadata">
+<span class="sig-name descname"><span class="pre">correct_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#darsia.corrections.shape.translation.TranslationCorrection.correct_metadata" title="Link to this definition">#</a></dt>
+<dd><p>Correction routine on metadata level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>metadata</strong> (<em>dict</em>) – metadata dictionary.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>corrected metadata dictionary.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.translation.TranslationCorrection.load">
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/translation.html#TranslationCorrection.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.translation.TranslationCorrection.load" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.translation.TranslationCorrection.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/translation.html#TranslationCorrection.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.translation.TranslationCorrection.save" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.corrections.shape.translation.TranslationCorrection.active">
+<span class="sig-name descname"><span class="pre">active</span></span><a class="headerlink" href="#darsia.corrections.shape.translation.TranslationCorrection.active" title="Link to this definition">#</a></dt>
+<dd><p>Flag controlling whether the correction is active.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darsia.corrections.shape.translation.TranslationCorrection.translation">
+<span class="sig-name descname"><span class="pre">translation</span></span><a class="headerlink" href="#darsia.corrections.shape.translation.TranslationCorrection.translation" title="Link to this definition">#</a></dt>
+<dd><p>Translation map/array.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="darsia.corrections.shape.translation.TranslationEstimator">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">TranslationEstimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_features</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_percent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/translation.html#TranslationEstimator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.translation.TranslationEstimator" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Estimator of translation to align images based on feature detection.</p>
+<p>Estimation is performed by restriction to ROIs.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.translation.TranslationEstimator.find_effective_translation">
+<span class="sig-name descname"><span class="pre">find_effective_translation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_dst</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi_src</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi_dst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_src</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_dst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_matches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/translation.html#TranslationEstimator.find_effective_translation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.translation.TranslationEstimator.find_effective_translation" title="Link to this definition">#</a></dt>
+<dd><p>Find translation to align two images through feature matching.</p>
+<p>All lengths are measured in number of pixels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img_src</strong> (<em>np.ndarray</em>) – source image</p></li>
+<li><p><strong>img_dst</strong> (<em>np.ndarray</em>) – destination image</p></li>
+<li><p><strong>roi_src</strong> (<em>tuple</em><em> of </em><em>slices</em>) – region of interested associated to the source image</p></li>
+<li><p><strong>roi_dst</strong> (<em>tuple</em><em> of </em><em>slices</em>) – region of interested associated to the destination image</p></li>
+<li><p><strong>mask_src</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – boolean mask detecting considered pixels in
+the analysis; if None, all pixels are considered.</p></li>
+<li><p><strong>mask_dst</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – boolean mask detecting considered pixels in
+the analysis; if None, all pixels are considered.</p></li>
+<li><p><strong>plot_matches</strong> (<em>bool</em>) – flag controlling whether the matching features are plotted;
+useful for debugging; default value is False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>transformation matrix operating on pixel coordinates using reverse</dt><dd><p>matrix indexing</p>
+</dd>
+</dl>
+<p>bool: flag indicating whether the procedure was successful</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darsia.corrections.shape.translation.TranslationEstimator.match_roi">
+<span class="sig-name descname"><span class="pre">match_roi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_dst</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi_src</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi_dst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_matches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/darsia/corrections/shape/translation.html#TranslationEstimator.match_roi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darsia.corrections.shape.translation.TranslationEstimator.match_roi" title="Link to this definition">#</a></dt>
+<dd><p>Align two images through feature matching in provided ROIs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img_src</strong> (<em>np.ndarray</em><em> or </em><em>darsia.Image</em>) – source image</p></li>
+<li><p><strong>img_dst</strong> (<em>np.ndarray</em><em> or </em><em>darsia.Image</em>) – destination image</p></li>
+<li><p><strong>roi_src</strong> (<em>tuple</em><em> of </em><em>slices</em>) – region of interested associated to the source image</p></li>
+<li><p><strong>roi_dst</strong> (<em>tuple</em><em> of </em><em>slices</em>) – region of interested associated to the destination image
+translation</p></li>
+<li><p><strong>plot_matches</strong> (<em>bool</em>) – flag controlling whether the matching features are plotted;
+useful for debugging; default value is False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>aligned source image, if input of type array</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.corrections.shape.curvature">Curvature correction (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape.curvature</span></code>)</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.config"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.config</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.bulge_correction"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.bulge_correction()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.compute_bulge"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.compute_bulge()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.compute_stretch"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.compute_stretch()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.correct_array"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.correct_array()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.correct_metadata"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.correct_metadata()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.crop"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.crop()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.load"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.load()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.pre_bulge_correction"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.pre_bulge_correction()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.read_config_from_file"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.read_config_from_file()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.return_image"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.return_image()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.save"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.save()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.setup_config"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.setup_config()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.show_image"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.show_image()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.simple_curvature_correction"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.simple_curvature_correction()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.stretch_correction"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.stretch_correction()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.write_config_to_file"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.write_config_to_file()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.CurvatureCorrection.temporary_image"><code class="docutils literal notranslate"><span class="pre">CurvatureCorrection.temporary_image</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.load_curvature_correction_config_from_dict"><code class="docutils literal notranslate"><span class="pre">load_curvature_correction_config_from_dict()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.curvature.load_curvature_correction_config_from_toml"><code class="docutils literal notranslate"><span class="pre">load_curvature_correction_config_from_toml()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.corrections.shape.deformation">Local deformation correction (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape.deformation</span></code>)</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.deformation.DeformationCorrection"><code class="docutils literal notranslate"><span class="pre">DeformationCorrection</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.deformation.DeformationCorrection.base"><code class="docutils literal notranslate"><span class="pre">DeformationCorrection.base</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.deformation.DeformationCorrection.correct_array"><code class="docutils literal notranslate"><span class="pre">DeformationCorrection.correct_array()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.deformation.DeformationCorrection.correct_metadata"><code class="docutils literal notranslate"><span class="pre">DeformationCorrection.correct_metadata()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.deformation.DeformationCorrection.load"><code class="docutils literal notranslate"><span class="pre">DeformationCorrection.load()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.deformation.DeformationCorrection.save"><code class="docutils literal notranslate"><span class="pre">DeformationCorrection.save()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.corrections.shape.drift">Drift correction (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape.drift</span></code>)</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.drift.DriftCorrection"><code class="docutils literal notranslate"><span class="pre">DriftCorrection</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.drift.DriftCorrection.correct_array"><code class="docutils literal notranslate"><span class="pre">DriftCorrection.correct_array()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.drift.DriftCorrection.correct_metadata"><code class="docutils literal notranslate"><span class="pre">DriftCorrection.correct_metadata()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.drift.DriftCorrection.load"><code class="docutils literal notranslate"><span class="pre">DriftCorrection.load()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.drift.DriftCorrection.return_config"><code class="docutils literal notranslate"><span class="pre">DriftCorrection.return_config()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.drift.DriftCorrection.save"><code class="docutils literal notranslate"><span class="pre">DriftCorrection.save()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.drift.DriftCorrection.base"><code class="docutils literal notranslate"><span class="pre">DriftCorrection.base</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.drift.DriftCorrection.translation_estimator"><code class="docutils literal notranslate"><span class="pre">DriftCorrection.translation_estimator</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.corrections.shape.piecewiseperspective">Piecewise perspective transformation (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape.piecewiseperspective</span></code>)</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.piecewiseperspective.PiecewisePerspectiveTransform"><code class="docutils literal notranslate"><span class="pre">PiecewisePerspectiveTransform</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.piecewiseperspective.PiecewisePerspectiveTransform.find_and_warp"><code class="docutils literal notranslate"><span class="pre">PiecewisePerspectiveTransform.find_and_warp()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.corrections.shape.rotation">Rotation correction (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape.rotation</span></code>)</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.rotation.RotationCorrection"><code class="docutils literal notranslate"><span class="pre">RotationCorrection</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.rotation.RotationCorrection.dim"><code class="docutils literal notranslate"><span class="pre">RotationCorrection.dim</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.rotation.RotationCorrection.anchor"><code class="docutils literal notranslate"><span class="pre">RotationCorrection.anchor</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.rotation.RotationCorrection.rotation"><code class="docutils literal notranslate"><span class="pre">RotationCorrection.rotation</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.rotation.RotationCorrection.rotation_inv"><code class="docutils literal notranslate"><span class="pre">RotationCorrection.rotation_inv</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.rotation.RotationCorrection.correct_array"><code class="docutils literal notranslate"><span class="pre">RotationCorrection.correct_array()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.rotation.RotationCorrection.correct_metadata"><code class="docutils literal notranslate"><span class="pre">RotationCorrection.correct_metadata()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.rotation.RotationCorrection.load"><code class="docutils literal notranslate"><span class="pre">RotationCorrection.load()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.rotation.RotationCorrection.save"><code class="docutils literal notranslate"><span class="pre">RotationCorrection.save()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darsia.corrections.shape.translation">Translation correction (<code class="xref py py-mod docutils literal notranslate"><span class="pre">darsia.corrections.shape.translation</span></code>)</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.translation.TranslationCorrection"><code class="docutils literal notranslate"><span class="pre">TranslationCorrection</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.translation.TranslationCorrection.correct_array"><code class="docutils literal notranslate"><span class="pre">TranslationCorrection.correct_array()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.translation.TranslationCorrection.correct_metadata"><code class="docutils literal notranslate"><span class="pre">TranslationCorrection.correct_metadata()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.translation.TranslationCorrection.load"><code class="docutils literal notranslate"><span class="pre">TranslationCorrection.load()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.translation.TranslationCorrection.save"><code class="docutils literal notranslate"><span class="pre">TranslationCorrection.save()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.translation.TranslationCorrection.active"><code class="docutils literal notranslate"><span class="pre">TranslationCorrection.active</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.translation.TranslationCorrection.translation"><code class="docutils literal notranslate"><span class="pre">TranslationCorrection.translation</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.translation.TranslationEstimator"><code class="docutils literal notranslate"><span class="pre">TranslationEstimator</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.translation.TranslationEstimator.find_effective_translation"><code class="docutils literal notranslate"><span class="pre">TranslationEstimator.find_effective_translation()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darsia.corrections.shape.translation.TranslationEstimator.match_roi"><code class="docutils literal notranslate"><span class="pre">TranslationEstimator.match_roi()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, Jakub Wiktor Both, Jan Martin Nordbotten, Erlend Storvik.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
