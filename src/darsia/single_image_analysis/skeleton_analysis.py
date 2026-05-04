@@ -280,11 +280,11 @@ class SkeletonAnalysis:
         new_junctions_pixels = []
         new_leaves_pixels = []
         for pixel in all_pixels:
-            if any(np.allclose(pixel, b, atol=2) for b in base_pixels):
+            if any(np.allclose(pixel, _b, atol=2) for _b in base_pixels):
                 new_base_pixels.append(pixel)
-            elif any(np.allclose(pixel, j, atol=2) for j in junctions_pixels):
+            elif any(np.allclose(pixel, _j, atol=2) for _j in junctions_pixels):
                 new_junctions_pixels.append(pixel)
-            elif any(np.allclose(pixel, l, atol=2) for l in leaves_pixels):
+            elif any(np.allclose(pixel, _l, atol=2) for _l in leaves_pixels):
                 new_leaves_pixels.append(pixel)
             else:
                 raise ValueError(
