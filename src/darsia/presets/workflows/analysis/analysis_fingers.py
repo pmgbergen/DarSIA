@@ -27,10 +27,9 @@ from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import SimpleSegmentation
-from darsia.single_image_analysis.contouranalysis import (
-    ContourAnalysis,
-    ContourEvolutionAnalysis,
-)
+from darsia.single_image_analysis.contouranalysis import ContourAnalysis
+from darsia.single_image_analysis.path_evolution_analysis import PathEvolutionAnalysis
+from darsia.single_image_analysis.skeleton_analysis import SkeletonAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -71,12 +70,16 @@ def analysis_fingers_from_context(
         contour_smoother=fingers_config.contour_smoother,
         reduce_to_main_contour=fingers_config.reduce_to_main_contour,
     )
+    skeleton_analysis = SkeletonAnalysis(
+        contour_smoother=fingers_config.contour_smoother,
+        reduce_to_main_contour=fingers_config.reduce_to_main_contour,
+    )
 
     # Keep evolution state per ROI to prevent mixing path histories across ROIs.
-    contour_evolution_analysis = {
-        key: ContourEvolutionAnalysis() for key in fingers_config.roi
+    evolution_times = {key: [] for key in fingers_config.roi}
+    peak_evolution_analysis = {
+        key: PathEvolutionAnalysis() for key in fingers_config.roi
     }
-    contour_evolution_times = {key: [] for key in fingers_config.roi}
 
     # Data management.
     results_folder = ctx.config.analysis.fingers.folder
@@ -85,6 +88,7 @@ def analysis_fingers_from_context(
         (results_folder / "tips" / key).mkdir(parents=True, exist_ok=True)
         (results_folder / "fjords" / key).mkdir(parents=True, exist_ok=True)
         (results_folder / "paths" / key).mkdir(parents=True, exist_ok=True)
+        (results_folder / "skeleton" / key).mkdir(parents=True, exist_ok=True)
 
     # DataFrame to store results.
     df = pd.DataFrame(
@@ -95,20 +99,22 @@ def analysis_fingers_from_context(
             "contour_length",
             "number_tips",
             "number_fjords",
+            "number_skeleton_leaves",
+            "number_skeleton_junctions",
             "roi_width",
-            "tip_frequency",
-            "tip_wavelength",
+            "finger_frequency",
+            "finger_wavelength",
         ]
     )
 
     # Dictionary to collect path statistics for all ROIs.
-    path_statistics = {}
-    path_statistics["paths"] = {
+    peak_path_statistics = {}
+    peak_path_statistics["paths"] = {
         key: {"roi": roi_config.roi.tolist()}
         for key, roi_config in fingers_config.roi.items()
     }
-    path_statistics["times"] = []
-    path_statistics["images"] = []
+    peak_path_statistics["times"] = []
+    peak_path_statistics["images"] = []
 
     # Config of plotting.
     # TODO enable control from config.
@@ -120,10 +126,16 @@ def analysis_fingers_from_context(
     boundary_color = "y"
     boundary_linewidth = 2
     highlight_roi = False
+    skeleton_color = "w"
+    skeleton_linewidth = 1
 
     # Loop over images and analyze
     step_started_at = monotonic()
     image_total = len(image_paths)
+
+    import random
+
+    # random.shuffle(image_paths)
 
     for image_index, path in enumerate(image_paths, start=1):
         image_started_at = monotonic()
@@ -163,9 +175,10 @@ def analysis_fingers_from_context(
 
         # Extract time from image.
         image_time = img.time
-        path_statistics["times"].append(float(image_time))
-        path_statistics["images"].append(path.name)
+        peak_path_statistics["times"].append(float(image_time))
+        peak_path_statistics["images"].append(path.name)
 
+        # Contour and skeleton analysis.
         for key, roi_config in fingers_config.roi.items():
             # Perform finger analysis if configured
             contour_analysis.load(
@@ -175,8 +188,17 @@ def analysis_fingers_from_context(
                 fill_holes=fingers_config.fill_holes,
             )
 
-            # Extract contour
+            # Perform skeleton analysis if configured
+            skeleton_analysis.load(
+                img=img,
+                mask=segmentation,
+                roi=roi_config.roi,
+                fill_holes=fingers_config.fill_holes,
+            )
+
+            # Extract contour and skeleton data.
             contours = contour_analysis.contours()
+            skeleton = skeleton_analysis.skeleton(contours)
 
             # Determine various contour values.
             contour_length = contour_analysis.length()
@@ -184,15 +206,36 @@ def analysis_fingers_from_context(
             number_tips = contour_analysis.number_peaks()
             number_fjords = contour_analysis.number_valleys()
             roi_width = float(np.abs(roi_config.roi[1, 0] - roi_config.roi[0, 0]))
-            tip_frequency = np.nan
-            tip_wavelength = np.nan
+            peak_frequency = np.nan
+            peak_wavelength = np.nan
             if roi_width > 0:
-                tip_frequency = float(number_tips) / roi_width
+                peak_frequency = float(number_tips) / roi_width
                 if number_tips > 0:
-                    tip_wavelength = roi_width / float(number_tips)
+                    peak_wavelength = roi_width / float(number_tips)
             else:
                 logger.warning(
                     "Skip frequency/wavelength computation due to non-positive"
+                    " ROI width for ROI '%s'.",
+                    key,
+                )
+
+            # Determine skeleton values.
+            # TODO include in config.
+            leaves, junctions, base_junctions = skeleton_analysis.leaves_and_junctions(
+                skeleton, min_branch_length=0.05, max_group_distance=0.01
+            )
+            number_leaves = leaves.shape[0]
+            number_junctions = junctions.shape[0]
+            number_base_junctions = base_junctions.shape[0]
+            leaf_frequency = np.nan
+            leaf_wavelength = np.nan
+            if roi_width > 0:
+                leaf_frequency = float(number_leaves) / roi_width
+                if number_leaves > 0:
+                    leaf_wavelength = roi_width / float(number_leaves)
+            else:
+                logger.warning(
+                    "Skip leaf frequency/wavelength computation due to non-positive"
                     " ROI width for ROI '%s'.",
                     key,
                 )
@@ -237,21 +280,44 @@ def analysis_fingers_from_context(
                 },
             )
 
-            # Update evolution analysis.
-            contour_evolution_analysis[key].add(
-                peaks=peaks, valleys=valleys, time=img.time
+            # Plot skeleton with leaves and junctions.
+            skeleton_path = (
+                results_folder / "skeleton" / key / f"{path.stem}"
+            ).with_suffix(".png")
+
+            skeleton_analysis.plot_skeleton(
+                img=img,
+                skeleton=skeleton,
+                leaves=leaves,
+                junctions=junctions,
+                base_junctions=base_junctions,
+                roi=roi_config.roi,
+                path=skeleton_path,
+                show=show,
+                **{
+                    "skeleton_color": skeleton_color,
+                    "skeleton_linewidth": skeleton_linewidth,
+                    "leaf_color": "g",
+                    "leaf_size": 20,
+                    "junction_color": "m",
+                    "junction_size": 20,
+                    "base_junction_color": "b",
+                    "base_junction_size": 20,
+                },
             )
-            contour_evolution_analysis[key].find_paths()
-            contour_evolution_times[key].append(float(img.time))
+
+            # Update evolution analysis.
+            evolution_times[key].append(float(img.time))
+            peak_evolution_analysis[key].add(points=peaks, time=img.time)
 
             # Plotting.
-            paths_path = (results_folder / "paths" / key / f"{path.stem}").with_suffix(
-                ".png"
-            )
-            contour_evolution_analysis[key].plot_paths(
+            peak_paths_path = (
+                results_folder / "paths" / key / f"{path.stem}"
+            ).with_suffix(".png")
+            peak_evolution_analysis[key].plot_paths(
                 img,
                 roi=roi_config.roi,
-                path=paths_path,
+                path=peak_paths_path,
                 show=show,
             )
 
@@ -264,33 +330,33 @@ def analysis_fingers_from_context(
                 roi_top_left_col = int(np.min(roi_pixels[:, 1]))
 
             # Process paths to extract statistics.
-            path_log = {}
-            active_fingers_by_time = {}
-            for finger_path in contour_evolution_analysis[key].paths:
-                if len(finger_path) == 0:
+            peak_path_log = {}
+            active_peaks_by_time = {}
+            for peak_path in peak_evolution_analysis[key].paths:
+                if len(peak_path) == 0:
                     continue
 
                 # Generate unique path ID based on start time and peak
                 # with suffix if needed to avoid duplicates.
-                start_unit = finger_path[0]
-                path_id = f"path_t{int(start_unit.time)}_p{int(start_unit.peak)}"
+                start_unit = peak_path[0]
+                path_id = f"path_t{int(start_unit.time)}_p{int(start_unit.id)}"
                 path_id_base = path_id
                 suffix = 1
-                while path_id in path_log:
+                while path_id in peak_path_log:
                     path_id = f"{path_id_base}_{suffix}"
                     suffix += 1
 
                 # Collect times.
                 times = []
-                for unit in finger_path:
+                for unit in peak_path:
                     time_index = int(unit.time)
-                    if 0 <= time_index < len(contour_evolution_times[key]):
-                        unit_time = float(contour_evolution_times[key][time_index])
+                    if 0 <= time_index < len(evolution_times[key]):
+                        unit_time = float(evolution_times[key][time_index])
                     times.append(unit_time)
 
                 # Convert path coordinates from pixel to physical units and collect times.
                 coordinates = []
-                for unit in finger_path:
+                for unit in peak_path:
                     # NOTE/TODO: Flip in row/col (see ContourAnalysis...)
                     local_row = int(unit.position[1])
                     local_col = int(unit.position[0])
@@ -365,7 +431,7 @@ def analysis_fingers_from_context(
                 )
 
                 # Collect path log for this path.
-                path_log[path_id] = {
+                peak_path_log[path_id] = {
                     "start": times[0],
                     "end": times[-1],
                     "time": times,
@@ -381,8 +447,13 @@ def analysis_fingers_from_context(
                 for (x, _), time, travel_distance in zip(
                     coordinates, times, travel_distances
                 ):
-                    active_fingers_by_time.setdefault(time, []).append(
+                    active_peaks_by_time.setdefault(time, []).append(
                         {
+                            "origin": (
+                                float(coordinates[0][0]),
+                                float(coordinates[0][1]),
+                                float(times[0]),
+                            ),
                             "x": float(x),
                             "travel_distance": float(travel_distance),
                             "speed": float(speeds[-1]) if speeds else float("nan"),
@@ -396,13 +467,19 @@ def analysis_fingers_from_context(
 
             # Compute statistics for this ROI based on active fingers at each time.
             statistics = {}
-            for time in sorted(active_fingers_by_time):
-                active_fingers = active_fingers_by_time[time]
+            times = set(active_peaks_by_time.keys())
+            num_active_peaks = 0
+            num_new_peaks = 0
+            num_continuing_peaks = 0
+            num_ending_peaks = 0
+            for time_index, time in enumerate(sorted(times)):
+                active_peaks = active_peaks_by_time[time]
+
+                # Num active fingers at this time.
+                num_active_peaks = len(active_peaks)
 
                 # Compute horizontal distances between active fingers at this time.
-                x_coords_sorted = sorted(
-                    float(finger["x"]) for finger in active_fingers
-                )
+                x_coords_sorted = sorted(float(finger["x"]) for finger in active_peaks)
                 dist_x = []
                 if len(x_coords_sorted) > 1:
                     dist_x = np.diff(x_coords_sorted).tolist()
@@ -410,46 +487,79 @@ def analysis_fingers_from_context(
                 # Compute lengths of active fingers at this time (using travel distance as a
                 # proxy for length).
                 travel_distances_at_time = [
-                    float(finger["travel_distance"]) for finger in active_fingers
+                    float(finger["travel_distance"]) for finger in active_peaks
                 ]
 
                 # Compute the velocities of active fingers at this time
                 # (using the last velocity before or at this time).
-                speeds_at_time = [finger["speed"] for finger in active_fingers]
-                speeds_y_at_time = [
-                    finger["vertical_speed"] for finger in active_fingers
-                ]
+                speeds_at_time = [finger["speed"] for finger in active_peaks]
+                speeds_y_at_time = [finger["vertical_speed"] for finger in active_peaks]
 
                 # Count new fingers that have zero travel distance at this time
                 # (i.e., just appeared).
-                new_fingers = int(
+                new_peaks = int(
                     sum(
                         np.isclose(length, 0.0, atol=1e-10)
                         for length in travel_distances_at_time
                     )
                 )
 
+                # Continue new fingers.
+                num_continuing_peaks = 0
+                current_origin = [finger["origin"] for finger in active_peaks]
+                if time_index > 0:
+                    prev_active_peaks = active_peaks_by_time.get(
+                        evolution_times[key][time_index - 1], []
+                    )
+                    prev_origin = [finger["origin"] for finger in prev_active_peaks]
+
+                    # Use np.allclose on origins to determine if any active fingers at this time are continuations of fingers from the previous time point.
+                    num_continuing_peaks = 0
+                    for curr in current_origin:
+                        if any(
+                            np.allclose(curr, prev, atol=1e-10) for prev in prev_origin
+                        ):
+                            num_continuing_peaks += 1
+
+                num_new_peaks = num_active_peaks - num_continuing_peaks
+
+                # Continue ending fingers.
+                num_ending_peaks = 0
+                if time_index < len(times) - 1:
+                    next_active_peaks = active_peaks_by_time.get(
+                        evolution_times[key][time_index + 1], []
+                    )
+
+                    next_origin = [finger["origin"] for finger in next_active_peaks]
+                    for curr in current_origin:
+                        if not any(
+                            np.allclose(curr, next, atol=1e-10) for next in next_origin
+                        ):
+                            num_ending_peaks += 1
+
                 statistics[time] = {
                     "horizontal_distances": dist_x,
                     "travel_distances": travel_distances_at_time,
-                    "finger_speeds": speeds_at_time,
-                    "finger_vertical_speeds": speeds_y_at_time,
-                    "new_fingers": new_fingers,
-                    "number_fingers": len(active_fingers),
-                    "contour_length": contour_length,
+                    "speeds": speeds_at_time,
+                    "vertical_speeds": speeds_y_at_time,
+                    "number_new_units_based_on_travel_distance": new_peaks,
+                    "number_new_units": num_new_peaks,
+                    "number_continuing_units": num_continuing_peaks,
+                    "number_ending_units": num_ending_peaks,
+                    "number_active_units": num_active_peaks,
                     "roi_width": roi_width,
-                    "tip_frequency": tip_frequency,
-                    "tip_wavelength": tip_wavelength,
+                    "frequency": peak_frequency,
+                    "wavelength": peak_wavelength,
+                    "contour_length": contour_length,
                 }
-
-            path_log["statistics"] = statistics
+            peak_path_log["statistics"] = statistics
 
             # Collect path log for this ROI into the overall statistics dictionary.
-            path_statistics["paths"][key].update(path_log)
+            peak_path_statistics["paths"][key].update(peak_path_log)
 
             # Save overall path statistics for all ROIs to a single JSON file.
             with open(results_folder / "statistics.json", "w") as f:
-                json.dump(path_statistics, f, indent=2)
+                json.dump(peak_path_statistics, f, indent=2)
 
             # Save tabular statistics to DataFrame and CSV.
             df = pd.concat(
@@ -464,10 +574,15 @@ def analysis_fingers_from_context(
                             "number_tips": number_tips,
                             "number_fjords": number_fjords,
                             "roi_width": roi_width,
-                            "tip_frequency": tip_frequency,
-                            "tip_wavelength": tip_wavelength,
-                            # "number_merged_paths": ...,
-                            # "number_new_paths": ...,
+                            "finger_frequency": peak_frequency,
+                            "finger_wavelength": peak_wavelength,
+                            "number_active_peaks": num_active_peaks,
+                            "number_new_peaks": num_new_peaks,
+                            "number_continuing_peaks": num_continuing_peaks,
+                            "number_ending_peaks": num_ending_peaks,
+                            # "number_splitting_fingers": num_new_junctions,
+                            # "number_merging_fingers": num_ending_junctions,
+                            # "number_active_split": num_active_junctions,
                         },
                         index=[0],
                     ),
@@ -482,10 +597,15 @@ def analysis_fingers_from_context(
                     stream_images[f"fingers_tips_{key}"] = cv2.cvtColor(
                         tips_plot_raw, cv2.COLOR_BGR2RGB
                     )
-                paths_plot_raw = cv2.imread(str(paths_path), cv2.IMREAD_UNCHANGED)
+                paths_plot_raw = cv2.imread(str(peak_paths_path), cv2.IMREAD_UNCHANGED)
                 if paths_plot_raw is not None:
                     stream_images[f"fingers_paths_{key}"] = cv2.cvtColor(
                         paths_plot_raw, cv2.COLOR_BGR2RGB
+                    )
+                skeleton_plot_raw = cv2.imread(str(skeleton_path), cv2.IMREAD_UNCHANGED)
+                if skeleton_plot_raw is not None:
+                    stream_images[f"fingers_skeleton_{key}"] = cv2.cvtColor(
+                        skeleton_plot_raw, cv2.COLOR_BGR2RGB
                     )
 
         if stream_images is not None:
