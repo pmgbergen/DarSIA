@@ -593,11 +593,15 @@ def analysis_fingers_from_context(
                         )
 
                         next_origin = [finger["origin"] for finger in next_active_paths]
+                        # Use np.allclose on origins to determine if any active paths at
+                        # this time are continuations of paths from the previous time point.
                         for curr in current_origin:
-                            if not any(
-                                np.allclose(curr, next, atol=1e-10)
-                                for next in next_origin
-                            ):
+                            no_match = True
+                            for next in next_origin:
+                                if np.allclose(curr, next, atol=1e-10):
+                                    no_match = False
+                                    break
+                            if no_match:
                                 num_ending_paths += 1
                     num_paths[category]["ending"] = num_ending_paths
 
