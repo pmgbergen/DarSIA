@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from collections import namedtuple
 from pathlib import Path
 from typing import cast
 
@@ -13,7 +12,6 @@ import networkx as nx
 import numpy as np
 import scipy.ndimage as ndi
 import skimage
-from scipy.spatial import distance_matrix
 
 import darsia
 
@@ -275,7 +273,8 @@ class SkeletonAnalysis:
         all_pixels = np.vstack((leaves_pixels, junctions_pixels, base_pixels))
         all_pixels = uniquify_pixels(all_pixels)
 
-        # Distribute them into the three categories again, based on the original classification.
+        # Distribute them into the three categories again, based on the original
+        # classification.
         new_base_pixels = []
         new_junctions_pixels = []
         new_leaves_pixels = []
