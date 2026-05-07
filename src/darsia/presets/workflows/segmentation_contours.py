@@ -108,6 +108,32 @@ class SimpleSegmentation:
         return mask
 
 
+class GradientBasedSegmentation(SimpleSegmentation):
+    def extract_mask(
+        self, img: darsia.ScalarImage, thresholds: list[float] | None
+    ) -> list[darsia.ScalarImage]:
+        """Extract phase based on gradient magnitude thresholding."""
+        # Compute gradient magnitude using Sobel operator
+        grad_x = cv2.Sobel(img.img.astype(np.float32), cv2.CV_32F, 1, 0, ksize=3)
+        grad_y = cv2.Sobel(img.img.astype(np.float32), cv2.CV_32F, 0, 1, ksize=3)
+        grad_magnitude = cv2.magnitude(grad_x, grad_y)
+
+        # Determine the maximum gradient magnitude for automatic thresholding if not provided
+        if thresholds is None:
+            max_grad = grad_magnitude.max()
+            thresholds = [max_grad]  # [max_grad * 0.5, max_grad * 0.75, max_grad]
+
+        # Use the same thresholding logic as in SimpleSegmentation
+        masks = []
+        for i in range(len(thresholds)):
+            lower = thresholds[i]
+            next = i + 1
+            upper = thresholds[next] if next < len(thresholds) else float("inf")
+            mask = (grad_magnitude >= lower) & (grad_magnitude <= upper)
+            masks.append(darsia.ScalarImage(img=mask, **img.metadata()))
+        return masks
+
+
 class SegmentationContours:
     """Threshold based segmentation analysis."""
 
