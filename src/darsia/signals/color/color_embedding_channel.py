@@ -89,10 +89,14 @@ class ColorChannelEmbedding(ColorEmbedding):
             channel=self.channel,
             mode=self.mode,
             baseline=runtime.rig.baseline,
-            mask_embedding_transform=self.mask_embedding.canonical_transform(runtime)
-            if self.mask_embedding is not None
-            else None,
-            restoration=build_restoration(self.restoration_config, runtime.rig)
-            if self.restoration_config is not None
-            else None,
+            mask_embedding_transform=(
+                self.mask_embedding.canonical_transform(runtime)
+                if self.mask_embedding is not None
+                else None
+            ),
+            restoration=(
+                build_restoration(self.restoration_config, runtime.rig)
+                if self.restoration_config is not None
+                else None
+            ),
         )
