@@ -27,8 +27,8 @@ from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import (
-    SimpleSegmentation,
     GradientBasedSegmentation,
+    SimpleSegmentation,
 )
 from darsia.single_image_analysis.contouranalysis import ContourAnalysis
 from darsia.single_image_analysis.path_evolution_analysis import PathEvolutionAnalysis
@@ -292,16 +292,16 @@ def analysis_fingers_from_context(
             # Gradient based contour values if configured.
             if fingers_config.include_gradient_based_analysis:
                 # Determine various contour values.
-                gradient_based_contour_length = gradient_based_contour_analysis.length()
-                gradient_based_peaks, gradient_based_valleys = (
+                # gradient_based_contour_length = gradient_based_contour_analysis.length()
+                gradient_based_peaks, _ = (
                     gradient_based_contour_analysis.local_extrema()
                 )
-                gradient_based_number_tips = (
-                    gradient_based_contour_analysis.number_peaks()
-                )
-                gradient_based_number_fjords = (
-                    gradient_based_contour_analysis.number_valleys()
-                )
+                # gradient_based_number_tips = (
+                #     gradient_based_contour_analysis.number_peaks()
+                # )
+                # gradient_based_number_fjords = (
+                #     gradient_based_contour_analysis.number_valleys()
+                # )
 
             # Plot finger peaks and contours.
             tips_path = (results_folder / "tips" / key / f"{path.stem}").with_suffix(
@@ -839,7 +839,8 @@ def analysis_fingers_from_context(
                             "number_ending_splitting_fingers": num_paths["junction"][
                                 "ending"
                             ],
-                            # Finger counting based on gradient-based peaks/contours if configured.
+                            # Finger counting based on gradient-based peaks/contours if
+                            # configured.
                             "number_interface_fingers": num_paths["interface"][
                                 "active"
                             ],
