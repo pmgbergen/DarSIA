@@ -26,7 +26,10 @@ from darsia.presets.workflows.analysis.progress import (
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.rig import Rig
-from darsia.presets.workflows.segmentation_contours import SimpleSegmentation
+from darsia.presets.workflows.segmentation_contours import (
+    SimpleSegmentation,
+    GradientBasedSegmentation,
+)
 from darsia.single_image_analysis.contouranalysis import ContourAnalysis
 from darsia.single_image_analysis.path_evolution_analysis import PathEvolutionAnalysis
 from darsia.single_image_analysis.skeleton_analysis import SkeletonAnalysis
@@ -74,11 +77,19 @@ def analysis_fingers_from_context(
         contour_smoother=fingers_config.contour_smoother,
         reduce_to_main_contour=fingers_config.reduce_to_main_contour,
     )
+    if fingers_config.include_gradient_based_analysis:
+        gradient_based_segmentation_analysis = GradientBasedSegmentation(
+            mode=fingers_config.gradient_mode, threshold=fingers_config.threshold
+        )
+        gradient_based_contour_analysis = ContourAnalysis(
+            contour_smoother=fingers_config.contour_smoother,
+            reduce_to_main_contour=fingers_config.reduce_to_main_contour,
+        )
 
     # Keep evolution state per ROI to prevent mixing path histories across ROIs.
     evolution_times = {key: [] for key in fingers_config.roi}
     evolution_analysis = {}
-    for key in ["peak", "leaf", "junction", "base_junction"]:
+    for key in ["peak", "leaf", "junction", "base_junction", "interface"]:
         evolution_analysis[key] = {
             key: PathEvolutionAnalysis() for key in fingers_config.roi
         }
@@ -100,6 +111,9 @@ def analysis_fingers_from_context(
         (results_folder / "skeleton-base-junction-paths" / key).mkdir(
             parents=True, exist_ok=True
         )
+        (results_folder / "interface" / key).mkdir(parents=True, exist_ok=True)
+        (results_folder / "interface-contour" / key).mkdir(parents=True, exist_ok=True)
+        (results_folder / "interface-paths" / key).mkdir(parents=True, exist_ok=True)
 
     # DataFrame to store results.
     df = pd.DataFrame(
@@ -120,7 +134,13 @@ def analysis_fingers_from_context(
 
     # Dictionary to collect path statistics for all ROIs.
     path_statistics = {}
-    for key in ["paths", "leaf_paths", "junction_paths", "base_junction_paths"]:
+    for key in [
+        "paths",
+        "leaf_paths",
+        "junction_paths",
+        "base_junction_paths",
+        "interface_paths",
+    ]:
         path_statistics[key] = {
             key: {"roi": roi_config.roi.tolist()}
             for key, roi_config in fingers_config.roi.items()
@@ -174,12 +194,34 @@ def analysis_fingers_from_context(
             color_embedding_runtime=getattr(ctx, "color_embedding_runtime", None),
         )
 
+        # Extract gradient-based segmentation if configured.
+        if fingers_config.include_gradient_based_analysis:
+            gradient_based_segmentation = gradient_based_segmentation_analysis(
+                img,
+                saturation_g=(
+                    mass_analysis_result.saturation_g if mass_analysis_result else None
+                ),
+                concentration_aq=(
+                    mass_analysis_result.concentration_aq
+                    if mass_analysis_result
+                    else None
+                ),
+                mass=mass_analysis_result.mass if mass_analysis_result else None,
+                mass_analysis_result=mass_analysis_result,
+                color_embedding_registry=getattr(ctx.config, "color", None),
+                color_embedding_runtime=getattr(ctx, "color_embedding_runtime", None),
+            )
+
         stream_images: dict[str, Any] | None = None
         if stream_callback is not None:
             stream_images = {
                 "fingers_source_image": img,
                 "fingers_segmentation": segmentation,
             }
+            if fingers_config.include_gradient_based_analysis:
+                stream_images["fingers_gradient_based_segmentation"] = (
+                    gradient_based_segmentation
+                )
 
         # Extract time from image.
         image_time = img.time
@@ -196,6 +238,15 @@ def analysis_fingers_from_context(
                 fill_holes=fingers_config.fill_holes,
             )
 
+            # Perform contour analysis on gradient-based segmentation if configured.
+            if fingers_config.include_gradient_based_analysis:
+                gradient_based_contour_analysis.load(
+                    img=img,
+                    mask=gradient_based_segmentation,
+                    roi=roi_config.roi,
+                    fill_holes=fingers_config.fill_holes,
+                )
+
             # Perform skeleton analysis if configured
             skeleton_analysis.load(
                 img=img,
@@ -207,6 +258,8 @@ def analysis_fingers_from_context(
             # Extract contour and skeleton data.
             contours = contour_analysis.contours()
             skeleton = skeleton_analysis.skeleton(contours)
+            if fingers_config.include_gradient_based_analysis:
+                gradient_based_contours = gradient_based_contour_analysis.contours()
 
             # Determine various contour values.
             contour_length = contour_analysis.length()
@@ -235,6 +288,20 @@ def analysis_fingers_from_context(
             number_leaves = leaves.shape[0]
             number_junctions = junctions.shape[0]
             number_base_junctions = base_junctions.shape[0]
+
+            # Gradient based contour values if configured.
+            if fingers_config.include_gradient_based_analysis:
+                # Determine various contour values.
+                gradient_based_contour_length = gradient_based_contour_analysis.length()
+                gradient_based_peaks, gradient_based_valleys = (
+                    gradient_based_contour_analysis.local_extrema()
+                )
+                gradient_based_number_tips = (
+                    gradient_based_contour_analysis.number_peaks()
+                )
+                gradient_based_number_fjords = (
+                    gradient_based_contour_analysis.number_valleys()
+                )
 
             # Plot finger peaks and contours.
             tips_path = (results_folder / "tips" / key / f"{path.stem}").with_suffix(
@@ -276,6 +343,50 @@ def analysis_fingers_from_context(
                 },
             )
 
+            if fingers_config.include_gradient_based_analysis:
+                gradient_path = (
+                    results_folder / "interface" / key / f"{path.stem}"
+                ).with_suffix(".png")
+                gradient_based_contour_analysis.plot_peaks(
+                    img,
+                    gradient_based_peaks,
+                    roi_config.roi,
+                    contours=gradient_based_contours,
+                    path=gradient_path,
+                    show=show,
+                    **{
+                        "peak_color": peak_color,
+                        "peak_size": peak_size,
+                        "contour_color": contour_color,
+                        "contour_linewidth": contour_linewidth,
+                        "plot_boundary": plot_boundary,
+                        "boundary_color": boundary_color,
+                        "boundary_linewidth": boundary_linewidth,
+                        "highlight_roi": highlight_roi,
+                    },
+                )
+                gradient_path = (
+                    results_folder / "interface-contour" / key / f"{path.stem}"
+                ).with_suffix(".png")
+                gradient_based_contour_analysis.plot_peaks(
+                    img,
+                    gradient_based_peaks,
+                    roi_config.roi,
+                    contours=gradient_based_contours,
+                    path=gradient_path,
+                    show=show,
+                    **{
+                        "peak_color": peak_color,
+                        "peak_size": 0,
+                        "contour_color": contour_color,
+                        "contour_linewidth": contour_linewidth,
+                        "plot_boundary": plot_boundary,
+                        "boundary_color": boundary_color,
+                        "boundary_linewidth": boundary_linewidth,
+                        "highlight_roi": highlight_roi,
+                    },
+                )
+
             # Plot skeleton with leaves and junctions.
             skeleton_path = (
                 results_folder / "skeleton" / key / f"{path.stem}"
@@ -305,6 +416,13 @@ def analysis_fingers_from_context(
             # Update evolution analysis.
             evolution_times[key].append(float(img.time))
             evolution_analysis["peak"][key].add(points=peaks, time=img.time)
+
+            if fingers_config.include_gradient_based_analysis:
+                print(gradient_based_peaks)
+                evolution_analysis["interface"][key].add(
+                    points=gradient_based_peaks, time=img.time
+                )
+
             # Need to flip row/col for skeleton points to match contour/skeleton images.
             # Mainly for plotting.
             flipped_leaves = np.array([[point[0][1], point[0][0]] for point in leaves])
@@ -321,7 +439,7 @@ def analysis_fingers_from_context(
             evolution_analysis["base_junction"][key].add(
                 points=flipped_base_junctions, time=img.time
             )
-            for category in ["peak", "leaf", "junction", "base_junction"]:
+            for category in ["peak", "leaf", "junction", "base_junction", "interface"]:
                 evolution_analysis[category][key].find_paths()
 
             # Plotting.
@@ -334,6 +452,18 @@ def analysis_fingers_from_context(
                 path=peak_paths_path,
                 show=show,
             )
+
+            if fingers_config.include_gradient_based_analysis:
+                gradient_paths_path = (
+                    results_folder / "interface-paths" / key / f"{path.stem}"
+                ).with_suffix(".png")
+                evolution_analysis["interface"][key].plot_paths(
+                    img,
+                    roi=roi_config.roi,
+                    path=gradient_paths_path,
+                    show=show,
+                )
+
             leaf_paths_path = (
                 results_folder / "skeleton-leaf-paths" / key / f"{path.stem}"
             ).with_suffix(".png")
@@ -373,7 +503,7 @@ def analysis_fingers_from_context(
             # Process paths to extract statistics.
             path_log = {}
             active_paths_by_time = {}
-            for category in ["peak", "leaf", "junction", "base_junction"]:
+            for category in ["peak", "leaf", "junction", "base_junction", "interface"]:
                 path_log[category] = {}
                 active_paths_by_time[category] = {}
                 for _path in evolution_analysis[category][key].paths:
@@ -513,7 +643,7 @@ def analysis_fingers_from_context(
             times = sorted(path_statistics["times"])
             statistics = {}
             num_paths = {}
-            for category in ["peak", "leaf", "junction", "base_junction"]:
+            for category in ["peak", "leaf", "junction", "base_junction", "interface"]:
                 statistics[category] = {}
                 num_paths[category] = {
                     "active": 0,
@@ -522,7 +652,13 @@ def analysis_fingers_from_context(
                     "ending": 0,
                 }
             for time_index, time in enumerate(times):
-                for category in ["peak", "leaf", "junction", "base_junction"]:
+                for category in [
+                    "peak",
+                    "leaf",
+                    "junction",
+                    "base_junction",
+                    "interface",
+                ]:
                     if time not in active_paths_by_time[category]:
                         continue
 
@@ -631,7 +767,7 @@ def analysis_fingers_from_context(
                     }
 
             # Include statistics in path log.
-            for category in ["peak", "leaf", "junction", "base_junction"]:
+            for category in ["peak", "leaf", "junction", "base_junction", "interface"]:
                 path_log[category]["statistics"] = statistics[category]
 
             # Collect path log for this ROI into the overall statistics dictionary.
@@ -641,6 +777,7 @@ def analysis_fingers_from_context(
             path_statistics["base_junction_paths"][key].update(
                 path_log["base_junction"]
             )
+            path_statistics["interface_paths"][key].update(path_log["interface"])
 
             # Save overall path statistics for all ROIs to a single JSON file.
             with open(results_folder / "statistics.json", "w") as f:
@@ -702,6 +839,19 @@ def analysis_fingers_from_context(
                             "number_ending_splitting_fingers": num_paths["junction"][
                                 "ending"
                             ],
+                            # Finger counting based on gradient-based peaks/contours if configured.
+                            "number_interface_fingers": num_paths["interface"][
+                                "active"
+                            ],
+                            "number_new_interface_fingers": num_paths["interface"][
+                                "new"
+                            ],
+                            "number_continuing_interface_fingers": num_paths[
+                                "interface"
+                            ]["continuing"],
+                            "number_ending_interface_fingers": num_paths["interface"][
+                                "ending"
+                            ],
                         },
                         index=[0],
                     ),
@@ -739,6 +889,13 @@ def analysis_fingers_from_context(
                 if junction_paths_plot_raw is not None:
                     stream_images[f"fingers_junction_paths_{key}"] = cv2.cvtColor(
                         junction_paths_plot_raw, cv2.COLOR_BGR2RGB
+                    )
+                interface_tips_plot_raw = cv2.imread(
+                    str(gradient_path), cv2.IMREAD_UNCHANGED
+                )
+                if interface_tips_plot_raw is not None:
+                    stream_images[f"fingers_interface_tips_{key}"] = cv2.cvtColor(
+                        interface_tips_plot_raw, cv2.COLOR_BGR2RGB
                     )
 
         if stream_images is not None:
