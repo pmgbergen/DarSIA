@@ -8,6 +8,8 @@ from pathlib import Path
 import numpy as np
 
 import darsia
+from darsia.presets.workflows.config.restoration import RestorationConfig
+from darsia.presets.workflows.restoration import build_restoration
 from darsia.signals.color.color_embedding import (
     ColorEmbedding,
     ColorEmbeddingBasis,
@@ -21,8 +23,6 @@ from darsia.signals.color.color_embedding_range import (
     ColorRangeEmbedding,
     ColorRangeEmbeddingTransform,
 )
-from darsia.presets.workflows.config.restoration import RestorationConfig
-from darsia.presets.workflows.restoration import build_restoration
 
 
 @dataclass
