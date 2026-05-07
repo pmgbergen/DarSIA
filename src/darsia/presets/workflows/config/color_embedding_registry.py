@@ -180,6 +180,26 @@ def parse_color_channel_embedding(
     for key in ["color_space", "channel"]:
         if key not in cfg:
             raise ValueError(f"color.channel.{embedding_id}.{key} is required.")
+    mask_embedding: ColorRangeEmbedding | None = None
+    if "mask" in cfg:
+        if not isinstance(cfg["mask"], dict):
+            raise ValueError(f"color.channel.{embedding_id}.mask must be a table.")
+        mask_embedding = parse_color_range_embedding(
+            cfg=cfg["mask"],
+            embedding_id=f"{embedding_id}_mask",
+            color_root=calibration_root,
+            data=data,
+            data_registry=data_registry,
+            roi_registry=roi_registry,
+        )
+    if "restoration" in cfg:
+        if not isinstance(cfg["restoration"], dict):
+            raise ValueError(
+                f"color.channel.{embedding_id}.restoration must be a table."
+            )
+        from .restoration import RestorationConfig
+
+        restoration_config = RestorationConfig().load(cfg["restoration"])
     embedding = ColorChannelEmbedding(
         embedding_id=embedding_id,
         mode=mode,
@@ -187,6 +207,8 @@ def parse_color_channel_embedding(
         calibration_root=calibration_root,
         color_space=str(cfg["color_space"]).upper().strip(),
         channel=str(cfg["channel"]).lower().strip(),
+        mask_embedding=mask_embedding,
+        restoration_config=restoration_config if "restoration" in cfg else None,
     )
     return embedding
 
