@@ -36,6 +36,12 @@ class FingersConfig:
     """Whether to reduce to main contour (e.g. for mass mode)."""
     fill_holes: bool = False
     """Whether to fill holes in finger segmentation masks before contour extraction."""
+    include_skeleton_analysis: bool = False
+    """Whether to include skeleton analysis in the fingers workflow."""
+    include_gradient_based_analysis: bool = False
+    """Whether to include gradient-based analysis in the fingers workflow."""
+    gradient_mode: str | None = None
+    """Mode for gradient-based analysis, if included."""
 
     def load(
         self,
@@ -100,6 +106,35 @@ class FingersConfig:
         self.fill_holes = _get_key(
             sec, "fill_holes", required=False, default=self.fill_holes, type_=bool
         )
+
+        self.include_skeleton_analysis = _get_key(
+            sec,
+            "include_skeleton_analysis",
+            required=False,
+            default=self.include_skeleton_analysis,
+            type_=bool,
+        )
+
+        self.include_gradient_based_analysis = _get_key(
+            sec,
+            "include_gradient_based_analysis",
+            required=False,
+            default=self.include_gradient_based_analysis,
+            type_=bool,
+        )
+
+        if self.include_gradient_based_analysis:
+            self.gradient_mode = _get_key(
+                sec,
+                "gradient_mode",
+                required=True,
+                type_=str,
+            )
+            validate_mode_syntax(
+                self.gradient_mode,
+                color_embedding_registry,
+                "analysis.fingers.gradient_mode",
+            )
 
         return self
 
