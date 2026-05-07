@@ -365,7 +365,7 @@ def analysis_fingers_from_context(
                         "highlight_roi": highlight_roi,
                     },
                 )
-                gradient_path = (
+                gradient_path_contour = (
                     results_folder / "interface-contour" / key / f"{path.stem}"
                 ).with_suffix(".png")
                 gradient_based_contour_analysis.plot_peaks(
@@ -373,7 +373,7 @@ def analysis_fingers_from_context(
                     gradient_based_peaks,
                     roi_config.roi,
                     contours=gradient_based_contours,
-                    path=gradient_path,
+                    path=gradient_path_contour,
                     show=show,
                     **{
                         "peak_color": peak_color,
