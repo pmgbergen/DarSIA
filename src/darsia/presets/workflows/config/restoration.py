@@ -74,8 +74,11 @@ class RestorationConfig:
     options: VolumeAveragingConfig | TVDConfig | None = None
     ignore: list[str] = field(default_factory=list)
 
-    def load(self, path: Path) -> "RestorationConfig":
-        sec = _get_section_from_toml(path, "restoration")
+    def load(self, path: Path | dict) -> "RestorationConfig":
+        if isinstance(path, dict):
+            sec = path
+        else:
+            sec = _get_section_from_toml(path, "restoration")
 
         # Select and validate the restoration method.
         self.method = _get_key(sec, "method", required=True, type_=str).lower()
