@@ -26,15 +26,88 @@ from darsia.presets.workflows.analysis.progress import (
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.rig import Rig
-from darsia.presets.workflows.segmentation_contours import (
-    GradientBasedSegmentation,
+from darsia.presets.workflows.segmentation_contours import (  # GradientBasedSegmentation,
     SimpleSegmentation,
 )
-from darsia.single_image_analysis.contouranalysis import ContourAnalysis
+from darsia.single_image_analysis.contouranalysis import (
+    ContourAnalysis,
+    _corners_of_roi,
+)
 from darsia.single_image_analysis.path_evolution_analysis import PathEvolutionAnalysis
 from darsia.single_image_analysis.skeleton_analysis import SkeletonAnalysis
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_lower_arc(contour: np.ndarray) -> np.ndarray:
+    """
+    Extract the lower arc of a circle-like contour.
+
+    Finds the leftmost and rightmost points, then keeps only the arc
+    connecting them via the bottom (higher row indices = lower y-values visually).
+    Removes the upper arc.
+
+    Args:
+        contour: OpenCV contour format (N, 1, 2)
+
+    Returns:
+        Lower arc contour in same format (N, 1, 2)
+    """
+    # Convert from (N, 1, 2) to (N, 2) for easier indexing
+    contour_2d = contour.squeeze()
+
+    if len(contour_2d.shape) == 1:
+        return contour  # Single point, return as-is
+
+    cols = contour_2d[:, 0].astype(float)
+    rows = contour_2d[:, 1].astype(float)
+
+    # Find leftmost and rightmost points
+    left_idx = np.argmin(cols)
+    right_idx = np.argmax(cols)
+
+    # Get the two possible arcs connecting left → right
+    if left_idx < right_idx:
+        # Direct path: left → right
+        arc1_indices = np.arange(left_idx, right_idx + 1)
+        # Wraparound path: right → end + start → left
+        arc2_indices = np.concatenate(
+            [np.arange(right_idx, len(cols)), np.arange(0, left_idx + 1)]
+        )
+    else:
+        # Direct path: right → left
+        arc1_indices = np.arange(right_idx, left_idx + 1)
+        # Wraparound path: left → end + start → right
+        arc2_indices = np.concatenate(
+            [np.arange(left_idx, len(cols)), np.arange(0, right_idx + 1)]
+        )
+
+    # The "lower" arc has higher mean row value (lower visually = higher row indices)
+    arc1_rows = rows[arc1_indices]
+    arc2_rows = rows[arc2_indices]
+
+    mean_row_arc1 = np.mean(arc1_rows)
+    mean_row_arc2 = np.mean(arc2_rows)
+
+    # Select the arc with higher mean row (visually lower = larger row indices)
+    if mean_row_arc1 > mean_row_arc2:
+        lower_indices = arc1_indices
+    else:
+        lower_indices = arc2_indices
+
+    # Extract lower arc and sort by column for clean output
+    lower_cols = cols[lower_indices]
+    lower_rows = rows[lower_indices]
+
+    sort_idx = np.argsort(lower_cols)
+    lower_cols_sorted = lower_cols[sort_idx]
+    lower_rows_sorted = lower_rows[sort_idx]
+
+    # Convert back to (N, 1, 2) format
+    lower_arc = np.column_stack([lower_cols_sorted, lower_rows_sorted]).astype(np.int32)
+    lower_arc = lower_arc.reshape(-1, 1, 2)
+
+    return lower_arc
 
 
 def analysis_fingers_from_context(
@@ -78,8 +151,10 @@ def analysis_fingers_from_context(
         reduce_to_main_contour=fingers_config.reduce_to_main_contour,
     )
     if fingers_config.include_gradient_based_analysis:
-        gradient_based_segmentation_analysis = GradientBasedSegmentation(
-            mode=fingers_config.gradient_mode, threshold=fingers_config.threshold
+        # gradient_based_segmentation_analysis = GradientBasedSegmentation(
+        gradient_based_segmentation_analysis = SimpleSegmentation(
+            mode=fingers_config.gradient_mode,
+            threshold=0.5,  # fingers_config.threshold
         )
         gradient_based_contour_analysis = ContourAnalysis(
             contour_smoother=fingers_config.contour_smoother,
@@ -89,7 +164,7 @@ def analysis_fingers_from_context(
     # Keep evolution state per ROI to prevent mixing path histories across ROIs.
     evolution_times = {key: [] for key in fingers_config.roi}
     evolution_analysis = {}
-    for key in ["peak", "leaf", "junction", "base_junction", "interface"]:
+    for key in ["peak", "fjord", "leaf", "junction", "base_junction", "interface"]:
         evolution_analysis[key] = {
             key: PathEvolutionAnalysis() for key in fingers_config.roi
         }
@@ -113,6 +188,9 @@ def analysis_fingers_from_context(
         )
         (results_folder / "interface" / key).mkdir(parents=True, exist_ok=True)
         (results_folder / "interface-contour" / key).mkdir(parents=True, exist_ok=True)
+        (results_folder / "interface-contour-npy" / key).mkdir(
+            parents=True, exist_ok=True
+        )
         (results_folder / "interface-paths" / key).mkdir(parents=True, exist_ok=True)
 
     # DataFrame to store results.
@@ -136,6 +214,7 @@ def analysis_fingers_from_context(
     path_statistics = {}
     for key in [
         "paths",
+        "fjord_paths",
         "leaf_paths",
         "junction_paths",
         "base_junction_paths",
@@ -260,6 +339,9 @@ def analysis_fingers_from_context(
             skeleton = skeleton_analysis.skeleton(contours)
             if fingers_config.include_gradient_based_analysis:
                 gradient_based_contours = gradient_based_contour_analysis.contours()
+                lower_gradient_based_contours = [
+                    _extract_lower_arc(contour) for contour in gradient_based_contours
+                ]
 
             # Determine various contour values.
             contour_length = contour_analysis.length()
@@ -351,13 +433,14 @@ def analysis_fingers_from_context(
                     img,
                     gradient_based_peaks,
                     roi_config.roi,
-                    contours=gradient_based_contours,
+                    contours=lower_gradient_based_contours,
                     path=gradient_path,
                     show=show,
                     **{
                         "peak_color": peak_color,
                         "peak_size": peak_size,
                         "contour_color": contour_color,
+                        "contour_alpha": 0.5,
                         "contour_linewidth": contour_linewidth,
                         "plot_boundary": plot_boundary,
                         "boundary_color": boundary_color,
@@ -372,7 +455,7 @@ def analysis_fingers_from_context(
                     img,
                     gradient_based_peaks,
                     roi_config.roi,
-                    contours=gradient_based_contours,
+                    contours=lower_gradient_based_contours,
                     path=gradient_path_contour,
                     show=show,
                     **{
@@ -380,11 +463,43 @@ def analysis_fingers_from_context(
                         "peak_size": 0,
                         "contour_color": contour_color,
                         "contour_linewidth": contour_linewidth,
+                        "contour_alpha": 0.5,
                         "plot_boundary": plot_boundary,
                         "boundary_color": boundary_color,
                         "boundary_linewidth": boundary_linewidth,
                         "highlight_roi": highlight_roi,
                     },
+                )
+
+                # Export the lower_gradient_based_contours as .npy for potential further
+                # analysis.
+                gradient_contour_npy_path = (
+                    results_folder / "interface-contour-npy" / key / f"{path.stem}"
+                ).with_suffix(".npy")
+                top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(
+                    fluidflower.baseline, roi_config.roi
+                )
+                # Stack translated contour, use top_left_roi_pixel for translation.
+                # NOTE: Need to flip order due to origin from cv2.
+                correct_contour = [
+                    np.stack(
+                        [
+                            contour[:, 0, 1] + top_left_roi_pixel[1],
+                            contour[:, 0, 0] + top_left_roi_pixel[0],
+                        ],
+                        axis=-1,
+                    )
+                    for contour in lower_gradient_based_contours
+                ]
+                # Convert the voxel coordinates back to physical coordinates for export.
+                lower_gradient_based_contours_physics = [
+                    img.coordinatesystem.coordinate(contour.squeeze()).astype(
+                        np.float32
+                    )
+                    for contour in correct_contour
+                ]
+                np.save(
+                    gradient_contour_npy_path, lower_gradient_based_contours_physics
                 )
 
             # Plot skeleton with leaves and junctions.
@@ -416,9 +531,9 @@ def analysis_fingers_from_context(
             # Update evolution analysis.
             evolution_times[key].append(float(img.time))
             evolution_analysis["peak"][key].add(points=peaks, time=img.time)
+            evolution_analysis["fjord"][key].add(points=valleys, time=img.time)
 
             if fingers_config.include_gradient_based_analysis:
-                print(gradient_based_peaks)
                 evolution_analysis["interface"][key].add(
                     points=gradient_based_peaks, time=img.time
                 )
@@ -439,7 +554,14 @@ def analysis_fingers_from_context(
             evolution_analysis["base_junction"][key].add(
                 points=flipped_base_junctions, time=img.time
             )
-            for category in ["peak", "leaf", "junction", "base_junction", "interface"]:
+            for category in [
+                "peak",
+                "fjord",
+                "leaf",
+                "junction",
+                "base_junction",
+                "interface",
+            ]:
                 evolution_analysis[category][key].find_paths()
 
             # Plotting.
@@ -503,7 +625,14 @@ def analysis_fingers_from_context(
             # Process paths to extract statistics.
             path_log = {}
             active_paths_by_time = {}
-            for category in ["peak", "leaf", "junction", "base_junction", "interface"]:
+            for category in [
+                "peak",
+                "fjord",
+                "leaf",
+                "junction",
+                "base_junction",
+                "interface",
+            ]:
                 path_log[category] = {}
                 active_paths_by_time[category] = {}
                 for _path in evolution_analysis[category][key].paths:
@@ -643,7 +772,14 @@ def analysis_fingers_from_context(
             times = sorted(path_statistics["times"])
             statistics = {}
             num_paths = {}
-            for category in ["peak", "leaf", "junction", "base_junction", "interface"]:
+            for category in [
+                "peak",
+                "fjord",
+                "leaf",
+                "junction",
+                "base_junction",
+                "interface",
+            ]:
                 statistics[category] = {}
                 num_paths[category] = {
                     "active": 0,
@@ -767,11 +903,19 @@ def analysis_fingers_from_context(
                     }
 
             # Include statistics in path log.
-            for category in ["peak", "leaf", "junction", "base_junction", "interface"]:
+            for category in [
+                "peak",
+                "fjord",
+                "leaf",
+                "junction",
+                "base_junction",
+                "interface",
+            ]:
                 path_log[category]["statistics"] = statistics[category]
 
             # Collect path log for this ROI into the overall statistics dictionary.
             path_statistics["paths"][key].update(path_log["peak"])
+            path_statistics["fjord_paths"][key].update(path_log["fjord"])
             path_statistics["leaf_paths"][key].update(path_log["leaf"])
             path_statistics["junction_paths"][key].update(path_log["junction"])
             path_statistics["base_junction_paths"][key].update(
