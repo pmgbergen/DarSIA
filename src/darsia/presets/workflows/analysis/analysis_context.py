@@ -268,7 +268,9 @@ def prepare_analysis_context(
             "helper"), ignored when ``sub_config`` is provided.
         require_results: Whether the config must include results paths.
         require_data: Whether the config must include data paths.
-        sub_config: Optional config object to pass to image selection directly.
+        sub_config: Optional config object to pass to image selection directly
+            (for example ``config.analysis``, ``config.calibration``,
+            ``config.helper``, or ``config.helper.color``).
 
     Returns:
         AnalysisContext with all common objects initialized.
