@@ -8,6 +8,8 @@ from pathlib import Path
 import numpy as np
 
 import darsia
+from darsia.presets.workflows.config.restoration import RestorationConfig
+from darsia.presets.workflows.restoration import build_restoration
 from darsia.signals.color.color_embedding import (
     ColorEmbedding,
     ColorEmbeddingBasis,
@@ -26,6 +28,7 @@ class ColorRangeEmbeddingTransform(ColorEmbeddingTransform):
     ranges: list[tuple[float | None, float | None]]
     mode: darsia.ColorMode
     baseline: darsia.Image | None
+    restoration: darsia.VolumeAveraging | darsia.TVD | None = None
 
     def __call__(self, image: darsia.Image) -> darsia.ScalarImage:
         trichromatic, color_space = normalized_trichromatic(
@@ -56,7 +59,14 @@ class ColorRangeEmbeddingTransform(ColorEmbeddingTransform):
                     values >= float(lower), values <= float(upper)
                 )
             mask = np.logical_and(mask, component_mask)
-        return to_scalar_image(image, mask.astype(np.float32))
+
+        scalar_image = to_scalar_image(image, mask.astype(np.float32))
+
+        # Apply restoration if provided.
+        if self.restoration is not None:
+            scalar_image = self.restoration(scalar_image)
+
+        return scalar_image
 
 
 @dataclass
@@ -69,6 +79,7 @@ class ColorRangeEmbedding(ColorEmbedding):
     calibration_root: Path
     color_space: str
     ranges: list[tuple[float | None, float | None]]
+    restoration_config: RestorationConfig | None = None
 
     @property
     def config_file(self) -> Path:
@@ -86,4 +97,9 @@ class ColorRangeEmbedding(ColorEmbedding):
             ranges=self.ranges,
             mode=self.mode,
             baseline=runtime.rig.baseline,
+            restoration=(
+                build_restoration(self.restoration_config, runtime.rig)
+                if self.restoration_config is not None
+                else None
+            ),
         )
