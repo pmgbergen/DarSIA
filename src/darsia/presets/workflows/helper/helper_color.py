@@ -48,8 +48,9 @@ def _scale_for_display(arr: np.ndarray) -> np.ndarray:
 
 
 def _clamp_range(limits: tuple[float, float], max_value: int) -> tuple[int, int]:
-    start = int(np.floor(max(0.0, min(limits))))
-    stop = int(np.ceil(min(float(max_value), max(limits))))
+    low, high = sorted(limits)
+    start = int(np.floor(max(0.0, low)))
+    stop = int(np.ceil(min(float(max_value), high)))
     return start, stop
 
 
