@@ -37,6 +37,77 @@ from darsia.single_image_analysis.skeleton_analysis import SkeletonAnalysis
 logger = logging.getLogger(__name__)
 
 
+def _extract_lower_arc(contour: np.ndarray) -> np.ndarray:
+    """
+    Extract the lower arc of a circle-like contour.
+
+    Finds the leftmost and rightmost points, then keeps only the arc
+    connecting them via the bottom (higher row indices = lower y-values visually).
+    Removes the upper arc.
+
+    Args:
+        contour: OpenCV contour format (N, 1, 2)
+
+    Returns:
+        Lower arc contour in same format (N, 1, 2)
+    """
+    # Convert from (N, 1, 2) to (N, 2) for easier indexing
+    contour_2d = contour.squeeze()
+
+    if len(contour_2d.shape) == 1:
+        return contour  # Single point, return as-is
+
+    cols = contour_2d[:, 0].astype(float)
+    rows = contour_2d[:, 1].astype(float)
+
+    # Find leftmost and rightmost points
+    left_idx = np.argmin(cols)
+    right_idx = np.argmax(cols)
+
+    # Get the two possible arcs connecting left → right
+    if left_idx < right_idx:
+        # Direct path: left → right
+        arc1_indices = np.arange(left_idx, right_idx + 1)
+        # Wraparound path: right → end + start → left
+        arc2_indices = np.concatenate(
+            [np.arange(right_idx, len(cols)), np.arange(0, left_idx + 1)]
+        )
+    else:
+        # Direct path: right → left
+        arc1_indices = np.arange(right_idx, left_idx + 1)
+        # Wraparound path: left → end + start → right
+        arc2_indices = np.concatenate(
+            [np.arange(left_idx, len(cols)), np.arange(0, right_idx + 1)]
+        )
+
+    # The "lower" arc has higher mean row value (lower visually = higher row indices)
+    arc1_rows = rows[arc1_indices]
+    arc2_rows = rows[arc2_indices]
+
+    mean_row_arc1 = np.mean(arc1_rows)
+    mean_row_arc2 = np.mean(arc2_rows)
+
+    # Select the arc with higher mean row (visually lower = larger row indices)
+    if mean_row_arc1 > mean_row_arc2:
+        lower_indices = arc1_indices
+    else:
+        lower_indices = arc2_indices
+
+    # Extract lower arc and sort by column for clean output
+    lower_cols = cols[lower_indices]
+    lower_rows = rows[lower_indices]
+
+    sort_idx = np.argsort(lower_cols)
+    lower_cols_sorted = lower_cols[sort_idx]
+    lower_rows_sorted = lower_rows[sort_idx]
+
+    # Convert back to (N, 1, 2) format
+    lower_arc = np.column_stack([lower_cols_sorted, lower_rows_sorted]).astype(np.int32)
+    lower_arc = lower_arc.reshape(-1, 1, 2)
+
+    return lower_arc
+
+
 def analysis_fingers_from_context(
     ctx: AnalysisContext,
     show: bool = False,
@@ -78,8 +149,10 @@ def analysis_fingers_from_context(
         reduce_to_main_contour=fingers_config.reduce_to_main_contour,
     )
     if fingers_config.include_gradient_based_analysis:
-        gradient_based_segmentation_analysis = GradientBasedSegmentation(
-            mode=fingers_config.gradient_mode, threshold=fingers_config.threshold
+        # gradient_based_segmentation_analysis = GradientBasedSegmentation(
+        gradient_based_segmentation_analysis = SimpleSegmentation(
+            mode=fingers_config.gradient_mode,
+            threshold=0.5,  # fingers_config.threshold
         )
         gradient_based_contour_analysis = ContourAnalysis(
             contour_smoother=fingers_config.contour_smoother,
@@ -113,6 +186,9 @@ def analysis_fingers_from_context(
         )
         (results_folder / "interface" / key).mkdir(parents=True, exist_ok=True)
         (results_folder / "interface-contour" / key).mkdir(parents=True, exist_ok=True)
+        (results_folder / "interface-contour-npy" / key).mkdir(
+            parents=True, exist_ok=True
+        )
         (results_folder / "interface-paths" / key).mkdir(parents=True, exist_ok=True)
 
     # DataFrame to store results.
@@ -260,6 +336,9 @@ def analysis_fingers_from_context(
             skeleton = skeleton_analysis.skeleton(contours)
             if fingers_config.include_gradient_based_analysis:
                 gradient_based_contours = gradient_based_contour_analysis.contours()
+                lower_gradient_based_contours = [
+                    _extract_lower_arc(contour) for contour in gradient_based_contours
+                ]
 
             # Determine various contour values.
             contour_length = contour_analysis.length()
@@ -351,13 +430,14 @@ def analysis_fingers_from_context(
                     img,
                     gradient_based_peaks,
                     roi_config.roi,
-                    contours=gradient_based_contours,
+                    contours=lower_gradient_based_contours,
                     path=gradient_path,
                     show=show,
                     **{
                         "peak_color": peak_color,
                         "peak_size": peak_size,
                         "contour_color": contour_color,
+                        "contour_alpha": 0.5,
                         "contour_linewidth": contour_linewidth,
                         "plot_boundary": plot_boundary,
                         "boundary_color": boundary_color,
@@ -372,7 +452,7 @@ def analysis_fingers_from_context(
                     img,
                     gradient_based_peaks,
                     roi_config.roi,
-                    contours=gradient_based_contours,
+                    contours=lower_gradient_based_contours,
                     path=gradient_path_contour,
                     show=show,
                     **{
@@ -380,6 +460,7 @@ def analysis_fingers_from_context(
                         "peak_size": 0,
                         "contour_color": contour_color,
                         "contour_linewidth": contour_linewidth,
+                        "contour_alpha": 0.5,
                         "plot_boundary": plot_boundary,
                         "boundary_color": boundary_color,
                         "boundary_linewidth": boundary_linewidth,
