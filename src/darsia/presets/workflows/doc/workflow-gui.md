@@ -12,7 +12,7 @@ The GUI is additive: it does not replace CLI workflow modules.
 - Switch GUI mode between Config Editor, Dashboard, Batch Monitor, and Streaming monitor
 - Switch visual theme (System/Light/Dark) with optional `sv_ttk` support
 - Run setup/calibration/analysis/comparison/actions
-- Run helper actions (ROI helper)
+- Run helper actions (ROI, ROI viewer, color, results)
 - Run utils actions: download/cache data, export/import calibration bundle, protocol-time media generation (MP4/GIF)
 - Enable analysis streaming from Analysis and inspect latest streamed images by key
 - Monitor live analysis batch progress (text + progress bar) independently of image streaming
@@ -27,6 +27,7 @@ The GUI is additive: it does not replace CLI workflow modules.
 - `ROI`: launch interactive ROI helper from `[helper.roi]` config.
 - `ROI Viewer`: launch interactive ROI viewer for registry entries from
   `[helper.roi_viewer]` or shorthand `[helper] data = [...]`.
+- `Color`: launch interactive RGB/HSV histogram viewer from `[helper.color]`.
 - `Result Viewer`: launch interactive scalar result browsing from `[helper.results]`.
 - `Show plots`: parity option with other workflow tabs.
 

@@ -159,6 +159,10 @@ data = "analysis_imgs"
 # ROI Viewer data selection. Supports `all` / `none` / single ROI key selector in UI.
 data = "analysis_imgs"
 
+[helper.color]
+# Color helper data selection from [data.*] registry.
+data = "analysis_imgs"
+
 [helper.results]
 # ResultReader input selection from [data.*] registry.
 data = "analysis_imgs"
