@@ -215,7 +215,7 @@ def make_coordinate(pts: Union[list, np.ndarray]) -> Union[Coordinate, Coordinat
             1,
             2,
             3,
-        ], "only support 1d, 2d, 3d"
+        ], f"only support 1d, 2d, 3d, received {pts.shape}"
         return CoordinateArray(pts)
 
 
@@ -243,7 +243,7 @@ def make_voxel(
             1,
             2,
             3,
-        ], "only support 1d, 2d, 3d"
+        ], f"only support 1d, 2d, 3d, received {pts.shape}"
         return VoxelArray(pts_array, matrix_indexing=matrix_indexing)
 
 
@@ -272,7 +272,7 @@ def make_voxel_center(
             1,
             2,
             3,
-        ], "only support 1d, 2d, 3d"
+        ], f"only support 1d, 2d, 3d, received {pts.shape}"
         return VoxelCenterArray(pts_array, matrix_indexing=matrix_indexing)
 
 
