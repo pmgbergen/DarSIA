@@ -145,6 +145,14 @@ def parse_color_range_embedding(
     )
     if "color_space" not in cfg:
         raise ValueError(f"color.range.{embedding_id}.color_space is required.")
+    if "restoration" in cfg:
+        if not isinstance(cfg["restoration"], dict):
+            raise ValueError(
+                f"color.channel.{embedding_id}.restoration must be a table."
+            )
+        from .restoration import RestorationConfig
+
+        restoration_config = RestorationConfig().load(cfg["restoration"])
     embedding = ColorRangeEmbedding(
         embedding_id=embedding_id,
         mode=mode,
@@ -152,6 +160,7 @@ def parse_color_range_embedding(
         calibration_root=calibration_root,
         color_space=str(cfg["color_space"]).upper().strip(),
         ranges=ranges,
+        restoration_config=restoration_config if "restoration" in cfg else None,
     )
     return embedding
 
