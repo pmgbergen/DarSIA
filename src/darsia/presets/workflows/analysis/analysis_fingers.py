@@ -27,7 +27,7 @@ from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.segmentation_contours import (
-    GradientBasedSegmentation,
+    # GradientBasedSegmentation,
     SimpleSegmentation,
 )
 from darsia.single_image_analysis.contouranalysis import (
@@ -36,7 +36,6 @@ from darsia.single_image_analysis.contouranalysis import (
 )
 from darsia.single_image_analysis.path_evolution_analysis import PathEvolutionAnalysis
 from darsia.single_image_analysis.skeleton_analysis import SkeletonAnalysis
-
 
 logger = logging.getLogger(__name__)
 
@@ -472,7 +471,8 @@ def analysis_fingers_from_context(
                     },
                 )
 
-                # Export the lower_gradient_based_contours as .npy for potential further analysis.
+                # Export the lower_gradient_based_contours as .npy for potential further
+                # analysis.
                 gradient_contour_npy_path = (
                     results_folder / "interface-contour-npy" / key / f"{path.stem}"
                 ).with_suffix(".npy")
@@ -534,7 +534,6 @@ def analysis_fingers_from_context(
             evolution_analysis["peak"][key].add(points=peaks, time=img.time)
 
             if fingers_config.include_gradient_based_analysis:
-                print(gradient_based_peaks)
                 evolution_analysis["interface"][key].add(
                     points=gradient_based_peaks, time=img.time
                 )
