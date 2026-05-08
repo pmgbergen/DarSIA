@@ -26,8 +26,7 @@ from darsia.presets.workflows.analysis.progress import (
 from darsia.presets.workflows.analysis.streaming import publish_stream_images
 from darsia.presets.workflows.mode_resolution import mode_requires_color_to_mass
 from darsia.presets.workflows.rig import Rig
-from darsia.presets.workflows.segmentation_contours import (
-    # GradientBasedSegmentation,
+from darsia.presets.workflows.segmentation_contours import (  # GradientBasedSegmentation,
     SimpleSegmentation,
 )
 from darsia.single_image_analysis.contouranalysis import (
@@ -480,11 +479,12 @@ def analysis_fingers_from_context(
                     fluidflower.baseline, roi_config.roi
                 )
                 # Stack translated contour, use top_left_roi_pixel for translation.
+                # NOTE: Need to flip order due to origin from cv2.
                 correct_contour = [
                     np.stack(
                         [
-                            contour[:, 0, 0] + top_left_roi_pixel[0],
                             contour[:, 0, 1] + top_left_roi_pixel[1],
+                            contour[:, 0, 0] + top_left_roi_pixel[0],
                         ],
                         axis=-1,
                     )
@@ -497,8 +497,6 @@ def analysis_fingers_from_context(
                     )
                     for contour in correct_contour
                 ]
-
-                print(lower_gradient_based_contours_physics)
                 np.save(
                     gradient_contour_npy_path, lower_gradient_based_contours_physics
                 )
