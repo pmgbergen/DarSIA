@@ -47,14 +47,16 @@ def _scale_for_display(arr: np.ndarray) -> np.ndarray:
     return arr
 
 
+def _clamp_range(limits: tuple[float, float], max_value: int) -> tuple[int, int]:
+    start = int(np.floor(max(0.0, min(limits))))
+    stop = int(np.ceil(min(float(max_value), max(limits))))
+    return start, stop
+
+
 def _view_slices(ax, shape: tuple[int, int]) -> tuple[slice, slice]:
     rows, cols = shape
-    xlim = ax.get_xlim()
-    ylim = ax.get_ylim()
-    col_start = int(np.floor(max(0.0, min(xlim))))
-    col_stop = int(np.ceil(min(float(cols), max(xlim))))
-    row_start = int(np.floor(max(0.0, min(ylim))))
-    row_stop = int(np.ceil(min(float(rows), max(ylim))))
+    col_start, col_stop = _clamp_range(ax.get_xlim(), cols)
+    row_start, row_stop = _clamp_range(ax.get_ylim(), rows)
     if col_stop <= col_start or row_stop <= row_start:
         return slice(0, rows), slice(0, cols)
     return slice(row_start, row_stop), slice(col_start, col_stop)
@@ -170,14 +172,14 @@ def launch_color_helper(
 
     prev_btn = Button(prev_ax, "Prev")
     next_btn = Button(next_ax, "Next")
-    rgb_btn = Button(rgb_ax, "RGB")
-    hsv_btn = Button(hsv_ax, "HSV")
+    space_rgb_btn = Button(rgb_ax, "RGB")
+    space_hsv_btn = Button(hsv_ax, "HSV")
     rel_btn = Button(rel_ax, "Absolute/Relative")
 
     prev_btn.on_clicked(_on_prev)
     next_btn.on_clicked(_on_next)
-    rgb_btn.on_clicked(_on_rgb)
-    hsv_btn.on_clicked(_on_hsv)
+    space_rgb_btn.on_clicked(_on_rgb)
+    space_hsv_btn.on_clicked(_on_hsv)
     rel_btn.on_clicked(_on_relative)
 
     _render()

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from warnings import warn
 
 import darsia
@@ -249,7 +249,7 @@ def prepare_analysis_context(
     section: str | None = "analysis",
     require_results: bool = True,
     require_data: bool = True,
-    sub_config=None,
+    sub_config: Any | None = None,
 ) -> AnalysisContext:
     """Prepare common analysis context.
 
