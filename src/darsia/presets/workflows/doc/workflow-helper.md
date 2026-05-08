@@ -5,6 +5,7 @@ Module: `darsia.presets.workflows.user_interface_helper`
 ## Main flags
 - `--roi`
 - `--roi-viewer`
+- `--color`
 - `--results`
 - `--config`
 - `--show`
@@ -16,6 +17,9 @@ python -m darsia.presets.workflows.user_interface_helper --roi --config /abs/pat
 
 ## Notes
 - Configure helper behavior in `[helper.roi]`.
+- Configure color helper in `[helper.color]`:
+  - `data`: selector key(s) from top-level `[data.*]` registry
+  - if omitted, falls back to `[helper] data = ["data_key"]`
 - Configure ROI viewer with either:
   - `[helper.roi_viewer] data = ["data_key"]`, or
   - shorthand `[helper] data = ["data_key"]`.
@@ -38,3 +42,8 @@ python -m darsia.presets.workflows.user_interface_helper --roi --config /abs/pat
   - loading scalar results from `npz` and `csv`
   - previous/next navigation (buttons and image click)
   - per-image stats overlay: min, max, sum, and Rig-geometry integral
+- Color helper supports:
+  - RGB/HSV histogram toggles
+  - absolute vs. relative (image minus baseline) display
+  - Next/Prev navigation
+  - histogram recomputation on zoom/pan and image changes
