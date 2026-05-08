@@ -116,9 +116,7 @@ def launch_color_helper(
             min_val = float(np.nanmin(channel))
             max_val = float(np.nanmax(channel))
             if np.isclose(min_val, max_val):
-                delta = (
-                    1.0 if min_val == 0 else abs(min_val) * HISTOGRAM_RANGE_PADDING
-                )
+                delta = 1.0 if min_val == 0 else abs(min_val) * HISTOGRAM_RANGE_PADDING
                 min_val -= delta
                 max_val += delta
             ax_hist.hist(
@@ -196,7 +194,9 @@ def launch_color_helper(
     plt.show()
 
 
-def helper_color(rig_cls: type[Rig], path: Path | list[Path], show: bool = False) -> None:
+def helper_color(
+    rig_cls: type[Rig], path: Path | list[Path], show: bool = False
+) -> None:
     if show:
         logger.info(
             "helper_color received show=True. Interactive color helper always opens."
