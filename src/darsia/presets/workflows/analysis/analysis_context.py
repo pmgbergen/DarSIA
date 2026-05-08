@@ -264,8 +264,9 @@ def prepare_analysis_context(
         path: Path or list of paths to config files.
         all: Whether to use all images.
         require_color_to_mass: Whether to initialize the color-to-mass pipeline.
-        section: Config section name for image selection ("analysis", "calibration",
-            "helper"), ignored when ``sub_config`` is provided.
+        section: Config section name for validation and default image selection
+            ("analysis", "calibration", "helper"). When ``sub_config`` is provided,
+            section is only used for validation and not for selecting the sub-config.
         require_results: Whether the config must include results paths.
         require_data: Whether the config must include data paths.
         sub_config: Optional config object to pass to image selection directly
