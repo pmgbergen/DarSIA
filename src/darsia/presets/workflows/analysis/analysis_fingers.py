@@ -30,9 +30,13 @@ from darsia.presets.workflows.segmentation_contours import (
     GradientBasedSegmentation,
     SimpleSegmentation,
 )
-from darsia.single_image_analysis.contouranalysis import ContourAnalysis
+from darsia.single_image_analysis.contouranalysis import (
+    ContourAnalysis,
+    _corners_of_roi,
+)
 from darsia.single_image_analysis.path_evolution_analysis import PathEvolutionAnalysis
 from darsia.single_image_analysis.skeleton_analysis import SkeletonAnalysis
+
 
 logger = logging.getLogger(__name__)
 
@@ -466,6 +470,37 @@ def analysis_fingers_from_context(
                         "boundary_linewidth": boundary_linewidth,
                         "highlight_roi": highlight_roi,
                     },
+                )
+
+                # Export the lower_gradient_based_contours as .npy for potential further analysis.
+                gradient_contour_npy_path = (
+                    results_folder / "interface-contour-npy" / key / f"{path.stem}"
+                ).with_suffix(".npy")
+                top_left_roi_pixel, bottom_right_roi_pixel = _corners_of_roi(
+                    fluidflower.baseline, roi_config.roi
+                )
+                # Stack translated contour, use top_left_roi_pixel for translation.
+                correct_contour = [
+                    np.stack(
+                        [
+                            contour[:, 0, 0] + top_left_roi_pixel[0],
+                            contour[:, 0, 1] + top_left_roi_pixel[1],
+                        ],
+                        axis=-1,
+                    )
+                    for contour in lower_gradient_based_contours
+                ]
+                # Convert the voxel coordinates back to physical coordinates for export.
+                lower_gradient_based_contours_physics = [
+                    img.coordinatesystem.coordinate(contour.squeeze()).astype(
+                        np.float32
+                    )
+                    for contour in correct_contour
+                ]
+
+                print(lower_gradient_based_contours_physics)
+                np.save(
+                    gradient_contour_npy_path, lower_gradient_based_contours_physics
                 )
 
             # Plot skeleton with leaves and junctions.
