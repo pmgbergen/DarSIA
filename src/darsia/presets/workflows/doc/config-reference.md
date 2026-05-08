@@ -15,7 +15,7 @@ This is the user-facing map of workflow TOML sections currently loaded by `Fluid
 - `[calibration]`: calibration entrypoints (`[calibration.color]`, `[calibration.mass]`).
 - `[analysis]`: analysis data and feature-specific subsections.
 - `[format]`: named export-format presets for analysis image outputs.
-- `[helper]`: optional helper workflows (currently ROI helper).
+- `[helper]`: optional helper workflows (ROI, ROI viewer, results, color).
 - `[download]`: download utility config (optional).
 - `[utils]`: optional utility defaults (calibration bundle import/export paths).
 
@@ -160,6 +160,10 @@ Outputs are written to `<type>_<identifier>` subfolders (for example `jpg_4k`).
   - `rescaled_saturation_g`
   - `rescaled_concentration_aq`
   - `data`: selector key or keys resolved from top-level `[data.*]` registry.
+- `[helper.color]`: interactive color histogram helper.
+  - `data`: selector key(s) resolved from top-level `[data.*]` registry.
+  - if omitted, falls back to `[helper] data = ["data_key"]`.
+  - supports RGB/HSV histograms and absolute/relative display.
 - `[helper.roi_viewer]`: interactive ROI viewer for ROI registry entries.
   - `data`: selector key or keys resolved from top-level `[data.*]` registry.
   - ROI selector in the viewer supports `all`, `none`, and each ROI registry key.

@@ -249,6 +249,7 @@ def prepare_analysis_context(
     section: str | None = "analysis",
     require_results: bool = True,
     require_data: bool = True,
+    sub_config=None,
 ) -> AnalysisContext:
     """Prepare common analysis context.
 
@@ -263,6 +264,11 @@ def prepare_analysis_context(
         path: Path or list of paths to config files.
         all: Whether to use all images.
         require_color_to_mass: Whether to initialize the color-to-mass pipeline.
+        section: Config section name for image selection ("analysis", "calibration",
+            "helper"), ignored when ``sub_config`` is provided.
+        require_results: Whether the config must include results paths.
+        require_data: Whether the config must include data paths.
+        sub_config: Optional config object to pass to image selection directly.
 
     Returns:
         AnalysisContext with all common objects initialized.
@@ -272,14 +278,22 @@ def prepare_analysis_context(
     config = FluidFlowerConfig(
         path, require_results=require_results, require_data=require_data
     )
-    config.check(section, "protocol", "data", "rig")
+    if section in {"analysis", "calibration"}:
+        config.check(section, "protocol", "data", "rig")
+    else:
+        config.check("protocol", "data", "rig")
 
     # Mypy type checking
     assert config.rig is not None
     assert config.rig.path is not None
     assert config.data is not None
     assert config.protocol is not None
-    assert config.analysis is not None
+    if section == "analysis" and config.analysis is None:
+        raise ValueError("Analysis context requires an [analysis] section.")
+    if section == "helper" and config.helper is None:
+        raise ValueError("Helper context requires a [helper] section.")
+    if require_color_to_mass and config.analysis is None:
+        raise ValueError("Color-to-mass initialization requires [analysis].")
 
     # ! ---- LOAD EXPERIMENT ----
     experiment = darsia.ProtocolledExperiment.init_from_config(config)
@@ -290,12 +304,15 @@ def prepare_analysis_context(
 
     # ! ---- SELECT IMAGE PATHS ----
 
-    if section == "calibration" and config.calibration is not None:
-        sub_config = config.calibration
-    elif section == "analysis" and config.analysis is not None:
-        sub_config = config.analysis
-    else:
-        sub_config = None
+    if sub_config is None:
+        if section == "calibration" and config.calibration is not None:
+            sub_config = config.calibration
+        elif section == "analysis" and config.analysis is not None:
+            sub_config = config.analysis
+        elif section == "helper" and config.helper is not None:
+            sub_config = config.helper
+        else:
+            sub_config = None
 
     image_paths = select_image_paths(
         config,

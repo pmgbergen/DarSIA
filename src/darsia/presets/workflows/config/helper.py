@@ -157,12 +157,36 @@ class HelperResultsConfig:
 
 
 @dataclass
+class HelperColorConfig:
+    """Configuration for color helper."""
+
+    data: TimeData | None = None
+
+    def load(
+        self,
+        sec: dict,
+        *,
+        data: Path | None,
+        data_registry: DataRegistry | None,
+        helper_data: TimeData | None = None,
+    ) -> "HelperColorConfig":
+        del data
+        if "data" in sec and data_registry is not None:
+            self.data = data_registry.resolve(sec.get("data"))
+        else:
+            self.data = helper_data
+        return self
+
+
+@dataclass
 class HelperConfig:
     """Configuration for helper workflows."""
 
+    data: TimeData | None = None
     roi: HelperRoiConfig | None = None
     roi_viewer: HelperRoiViewerConfig | None = None
     results: HelperResultsConfig | None = None
+    color: HelperColorConfig | None = None
 
     def load(
         self,
@@ -174,6 +198,10 @@ class HelperConfig:
         roi_registry: RoiRegistry | None = None,
     ) -> "HelperConfig":
         sec = _get_section_from_toml(path, "helper")
+        if "data" in sec and data_registry is not None:
+            self.data = data_registry.resolve(sec.get("data"))
+        else:
+            self.data = None
         try:
             self.roi = HelperRoiConfig().load(
                 sec,
@@ -208,5 +236,14 @@ class HelperConfig:
                 data_registry=data_registry,
                 format_registry=format_registry,
                 roi_registry=roi_registry,
+            )
+
+        self.color = None
+        if "color" in sec:
+            self.color = HelperColorConfig().load(
+                _get_section(sec, "color"),
+                data=data,
+                data_registry=data_registry,
+                helper_data=self.data,
             )
         return self
