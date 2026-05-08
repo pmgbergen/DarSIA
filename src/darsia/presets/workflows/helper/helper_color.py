@@ -17,6 +17,7 @@ from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.utils.images import load_images_with_cache
 
 logger = logging.getLogger(__name__)
+HISTOGRAM_RANGE_PADDING = 0.1
 
 
 def _to_rgb_array(image: darsia.Image) -> np.ndarray:
@@ -85,8 +86,10 @@ def launch_color_helper(
         return _scale_for_display(raw)
 
     def _hist_data(raw: np.ndarray) -> np.ndarray:
+        """Return channel data for histograms; HSV expects normalized RGB input."""
         if state["space"] == "hsv":
-            return rgb_to_hsv(_normalize_unit(raw))
+            normalized = _normalize_unit(raw)
+            return rgb_to_hsv(normalized)
         return raw
 
     def _update_hist() -> None:
@@ -112,7 +115,9 @@ def launch_color_helper(
             min_val = float(np.nanmin(channel))
             max_val = float(np.nanmax(channel))
             if np.isclose(min_val, max_val):
-                delta = 1.0 if min_val == 0 else abs(min_val) * 0.1
+                delta = (
+                    1.0 if min_val == 0 else abs(min_val) * HISTOGRAM_RANGE_PADDING
+                )
                 min_val -= delta
                 max_val += delta
             ax_hist.hist(
