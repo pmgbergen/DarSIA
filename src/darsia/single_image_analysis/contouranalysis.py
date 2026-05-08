@@ -441,6 +441,7 @@ class ContourAnalysis:
                     contour[:, 0, 1] + top_left_roi_pixel[1],
                     c=kwargs.get("contour_color", "w"),
                     linewidth=kwargs.get("contour_linewidth", 1),
+                    alpha=kwargs.get("contour_alpha", 1.0),
                 )
         plt.scatter(
             # Translate pixels to the top left corner of the ROI
