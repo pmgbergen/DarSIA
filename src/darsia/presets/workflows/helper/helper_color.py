@@ -182,6 +182,7 @@ def launch_color_helper(
     space_rgb_btn.on_clicked(_on_rgb)
     space_hsv_btn.on_clicked(_on_hsv)
     rel_btn.on_clicked(_on_relative)
+    state["buttons"] = [prev_btn, next_btn, space_rgb_btn, space_hsv_btn, rel_btn]
 
     _render()
     plt.show()
