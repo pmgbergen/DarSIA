@@ -176,16 +176,15 @@ def launch_color_helper(
 
     prev_btn = Button(prev_ax, "Prev")
     next_btn = Button(next_ax, "Next")
-    space_rgb_btn = Button(rgb_ax, "RGB")
-    space_hsv_btn = Button(hsv_ax, "HSV")
+    rgb_btn = Button(rgb_ax, "RGB")
+    hsv_btn = Button(hsv_ax, "HSV")
     rel_btn = Button(rel_ax, "Absolute/Relative")
 
     prev_btn.on_clicked(_on_prev)
     next_btn.on_clicked(_on_next)
-    space_rgb_btn.on_clicked(_on_rgb)
-    space_hsv_btn.on_clicked(_on_hsv)
+    rgb_btn.on_clicked(_on_rgb)
+    hsv_btn.on_clicked(_on_hsv)
     rel_btn.on_clicked(_on_relative)
-    state["buttons"] = [prev_btn, next_btn, space_rgb_btn, space_hsv_btn, rel_btn]
 
     _render()
     plt.show()
