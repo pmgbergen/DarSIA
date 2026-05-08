@@ -214,6 +214,7 @@ def analysis_fingers_from_context(
     path_statistics = {}
     for key in [
         "paths",
+        "fjord_paths",
         "leaf_paths",
         "junction_paths",
         "base_junction_paths",
