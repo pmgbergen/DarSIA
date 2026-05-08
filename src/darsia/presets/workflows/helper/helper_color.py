@@ -54,10 +54,10 @@ def _clamp_range(limits: tuple[float, float], max_value: int) -> tuple[int, int]
     return start, stop
 
 
-def _view_slices(ax, shape: tuple[int, int]) -> tuple[slice, slice]:
+def _view_slices(image_ax, shape: tuple[int, int]) -> tuple[slice, slice]:
     rows, cols = shape
-    col_start, col_stop = _clamp_range(ax.get_xlim(), cols)
-    row_start, row_stop = _clamp_range(ax.get_ylim(), rows)
+    col_start, col_stop = _clamp_range(image_ax.get_xlim(), cols)
+    row_start, row_stop = _clamp_range(image_ax.get_ylim(), rows)
     if col_stop <= col_start or row_stop <= row_start:
         return slice(0, rows), slice(0, cols)
     return slice(row_start, row_stop), slice(col_start, col_stop)
@@ -162,8 +162,11 @@ def launch_color_helper(
         state["relative"] = not state["relative"]
         _render()
 
-    ax_img.callbacks.connect("xlim_changed", lambda _: _update_hist())
-    ax_img.callbacks.connect("ylim_changed", lambda _: _update_hist())
+    def _on_view_changed(_: object) -> None:
+        _update_hist()
+
+    ax_img.callbacks.connect("xlim_changed", _on_view_changed)
+    ax_img.callbacks.connect("ylim_changed", _on_view_changed)
 
     prev_ax = fig.add_axes([0.58, 0.05, 0.10, 0.08])
     next_ax = fig.add_axes([0.70, 0.05, 0.10, 0.08])
