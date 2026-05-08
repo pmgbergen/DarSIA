@@ -164,7 +164,7 @@ def analysis_fingers_from_context(
     # Keep evolution state per ROI to prevent mixing path histories across ROIs.
     evolution_times = {key: [] for key in fingers_config.roi}
     evolution_analysis = {}
-    for key in ["peak", "leaf", "junction", "base_junction", "interface"]:
+    for key in ["peak", "fjord", "leaf", "junction", "base_junction", "interface"]:
         evolution_analysis[key] = {
             key: PathEvolutionAnalysis() for key in fingers_config.roi
         }
@@ -530,6 +530,7 @@ def analysis_fingers_from_context(
             # Update evolution analysis.
             evolution_times[key].append(float(img.time))
             evolution_analysis["peak"][key].add(points=peaks, time=img.time)
+            evolution_analysis["fjord"][key].add(points=valleys, time=img.time)
 
             if fingers_config.include_gradient_based_analysis:
                 evolution_analysis["interface"][key].add(
@@ -552,7 +553,14 @@ def analysis_fingers_from_context(
             evolution_analysis["base_junction"][key].add(
                 points=flipped_base_junctions, time=img.time
             )
-            for category in ["peak", "leaf", "junction", "base_junction", "interface"]:
+            for category in [
+                "peak",
+                "fjord",
+                "leaf",
+                "junction",
+                "base_junction",
+                "interface",
+            ]:
                 evolution_analysis[category][key].find_paths()
 
             # Plotting.
@@ -616,7 +624,14 @@ def analysis_fingers_from_context(
             # Process paths to extract statistics.
             path_log = {}
             active_paths_by_time = {}
-            for category in ["peak", "leaf", "junction", "base_junction", "interface"]:
+            for category in [
+                "peak",
+                "fjord",
+                "leaf",
+                "junction",
+                "base_junction",
+                "interface",
+            ]:
                 path_log[category] = {}
                 active_paths_by_time[category] = {}
                 for _path in evolution_analysis[category][key].paths:
@@ -756,7 +771,14 @@ def analysis_fingers_from_context(
             times = sorted(path_statistics["times"])
             statistics = {}
             num_paths = {}
-            for category in ["peak", "leaf", "junction", "base_junction", "interface"]:
+            for category in [
+                "peak",
+                "fjord",
+                "leaf",
+                "junction",
+                "base_junction",
+                "interface",
+            ]:
                 statistics[category] = {}
                 num_paths[category] = {
                     "active": 0,
@@ -880,11 +902,19 @@ def analysis_fingers_from_context(
                     }
 
             # Include statistics in path log.
-            for category in ["peak", "leaf", "junction", "base_junction", "interface"]:
+            for category in [
+                "peak",
+                "fjord",
+                "leaf",
+                "junction",
+                "base_junction",
+                "interface",
+            ]:
                 path_log[category]["statistics"] = statistics[category]
 
             # Collect path log for this ROI into the overall statistics dictionary.
             path_statistics["paths"][key].update(path_log["peak"])
+            path_statistics["fjord_paths"][key].update(path_log["fjord"])
             path_statistics["leaf_paths"][key].update(path_log["leaf"])
             path_statistics["junction_paths"][key].update(path_log["junction"])
             path_statistics["base_junction_paths"][key].update(
