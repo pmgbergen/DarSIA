@@ -14,6 +14,8 @@ from darsia.presets.workflows.analysis import analysis_mass as analysis_mass_mod
 from darsia.presets.workflows.analysis.analysis_mass import analysis_mass_from_context
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.config.roi import RoiConfig
+import pytest
+pytestmark = pytest.mark.fast
 
 
 def _make_co2_mass_analysis(shape: tuple[int, int]) -> CO2MassAnalysis:

@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from darsia.presets.workflows.config.colorrange import ColorRangeConfig
+pytestmark = pytest.mark.fast
 
 
 def _write(path: Path, content: str) -> Path:

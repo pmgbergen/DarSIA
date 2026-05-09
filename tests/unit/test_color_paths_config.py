@@ -6,6 +6,9 @@ from pathlib import Path
 import pytest
 
 from darsia.presets.workflows.config.color_embedding_registry import (
+
+pytestmark = pytest.mark.fast
+
     ColorEmbeddingRegistry,
 )
 from darsia.presets.workflows.config.data_registry import DataRegistry

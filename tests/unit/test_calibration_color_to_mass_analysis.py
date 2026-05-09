@@ -4,6 +4,9 @@ from pathlib import Path
 import pytest
 
 from darsia.presets.workflows.calibration.calibration_color_to_mass_analysis import (
+
+pytestmark = pytest.mark.fast
+
     _load_baseline_color_spectrum_for_color_to_mass,
 )
 

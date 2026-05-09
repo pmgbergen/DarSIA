@@ -86,6 +86,12 @@ darsia = ["py.typed"]
 # ── pytest (migrated from setup.cfg [tool:pytest]) ───────────────────────────
 [tool.pytest.ini_options]
 python_files = ["tests/*.py"]
+addopts = '-m "not slow"'
+markers = [
+  "fast: unit tests with very short runtime",
+  "integration: multi-component tests with moderate runtime",
+  "slow: long-running or regression tests",
+]
 
 # ── Black ─────────────────────────────────────────────────────────────────────
 [tool.black]

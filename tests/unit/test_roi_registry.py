@@ -4,6 +4,7 @@ import pytest
 
 from darsia.presets.workflows.config.roi import RoiConfig
 from darsia.presets.workflows.config.roi_registry import RoiRegistry
+pytestmark = pytest.mark.fast
 
 
 class TestRoiRegistryRegister:

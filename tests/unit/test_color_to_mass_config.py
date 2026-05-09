@@ -7,6 +7,8 @@ from darsia.presets.workflows.config.color_to_mass import ColorToMassConfig
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.roi import RoiConfig
 from darsia.presets.workflows.config.roi_registry import RoiRegistry
+import pytest
+pytestmark = pytest.mark.fast
 
 
 def _write_toml(tmp_path: Path, content: str) -> Path:

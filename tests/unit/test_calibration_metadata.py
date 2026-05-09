@@ -3,6 +3,9 @@ from pathlib import Path
 import pytest
 
 from darsia.presets.workflows.calibration.metadata import (
+
+pytestmark = pytest.mark.fast
+
     read_calibration_metadata,
     validate_basis_metadata,
     write_calibration_metadata,

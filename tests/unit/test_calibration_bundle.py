@@ -5,6 +5,9 @@ from pathlib import Path
 import pytest
 
 from darsia.presets.workflows.utils.calibration_bundle import (
+
+pytestmark = pytest.mark.fast
+
     export_calibration_bundle,
     import_calibration_bundle,
     preview_calibration_bundle_import_conflicts,

@@ -4,6 +4,9 @@ import pytest
 import darsia
 from darsia.presets.workflows.config.roi import RoiConfig
 from darsia.presets.workflows.helper.helper_roi_viewer import (
+
+pytestmark = pytest.mark.fast
+
     _build_roi_selection_masks,
     _compute_coarse_shape,
     _preload_coarse_images,

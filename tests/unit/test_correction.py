@@ -8,6 +8,7 @@ import pytest
 import skimage
 
 import darsia
+pytestmark = pytest.mark.fast
 
 
 def read_test_image(img_id: str) -> tuple[np.ndarray, dict]:

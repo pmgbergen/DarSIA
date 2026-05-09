@@ -7,6 +7,9 @@ import pytest
 
 import darsia
 from darsia.presets.workflows.config.corrections import (
+
+pytestmark = pytest.mark.fast
+
     ColorCorrectionConfig,
     CorrectionsConfig,
     IlluminationCorrectionConfig,

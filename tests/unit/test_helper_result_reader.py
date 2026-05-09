@@ -6,6 +6,10 @@ import numpy as np
 import darsia
 from darsia.presets.workflows.config.format_registry import FormatRegistry
 from darsia.presets.workflows.helper.helper_result_reader import (
+import pytest
+
+pytestmark = pytest.mark.fast
+
     _collect_result_files,
     _compute_statistics,
     _resolve_result_format,

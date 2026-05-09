@@ -4,6 +4,7 @@ import pytest
 
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.format_registry import FormatRegistry
+pytestmark = pytest.mark.fast
 
 
 def _write(path: Path, content: str) -> Path:

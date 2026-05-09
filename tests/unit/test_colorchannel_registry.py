@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from darsia.presets.workflows.config.colorchannel_registry import ColorChannelRegistry
+pytestmark = pytest.mark.fast
 
 
 def _write_config(path: Path, content: str) -> Path:

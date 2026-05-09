@@ -3,6 +3,8 @@
 import numpy as np
 
 import darsia
+import pytest
+pytestmark = pytest.mark.fast
 
 
 def test_make_coordinate():

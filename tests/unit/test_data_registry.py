@@ -4,6 +4,7 @@ import pytest
 
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.time_data import TimeData
+pytestmark = pytest.mark.fast
 
 # ---------------------------------------------------------------------------
 # DataRegistry tests

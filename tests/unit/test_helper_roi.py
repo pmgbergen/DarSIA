@@ -6,6 +6,10 @@ import numpy as np
 
 import darsia
 from darsia.presets.workflows.helper.helper_roi import (
+import pytest
+
+pytestmark = pytest.mark.fast
+
     _box_from_rectangle_selection,
     _box_from_zoom_limits,
     _corners_from_box,

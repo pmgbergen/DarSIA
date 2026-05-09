@@ -6,6 +6,7 @@ import pytest
 from darsia.presets.workflows.analysis.analysis_context import select_image_paths
 from darsia.presets.workflows.config.data_registry import DataRegistry
 from darsia.presets.workflows.config.time_data import TimeData
+pytestmark = pytest.mark.fast
 
 
 class FakeExperiment:

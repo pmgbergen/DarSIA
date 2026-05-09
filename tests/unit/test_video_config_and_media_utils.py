@@ -8,6 +8,9 @@ import pytest
 
 from darsia.presets.workflows.config.video import VideoConfig
 from darsia.presets.workflows.utils.utils_media import (
+
+pytestmark = pytest.mark.fast
+
     _apply_overlay,
     _protocol_sort_frames,
 )

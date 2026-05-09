@@ -5,6 +5,9 @@ import pytest
 
 import darsia
 from darsia.presets.workflows.config.color_embedding_registry import (
+
+pytestmark = pytest.mark.fast
+
     ColorEmbeddingRegistry,
 )
 from darsia.presets.workflows.mode_resolution import (

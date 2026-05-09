@@ -9,6 +9,8 @@ from darsia import make_coordinate
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter
 from darsia.presets.workflows.analysis.scalar_products import analysis_scalar_products
 from darsia.presets.workflows.config.roi import RoiConfig
+import pytest
+pytestmark = pytest.mark.fast
 
 
 def _mass_result(mass_value: float) -> darsia.SimpleMassAnalysisResults:

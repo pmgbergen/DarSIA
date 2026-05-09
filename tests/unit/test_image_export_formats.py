@@ -7,6 +7,8 @@ import numpy as np
 import darsia
 from darsia.presets.workflows.analysis.image_export_formats import ImageExportFormats
 from darsia.presets.workflows.config.format_registry import FormatRegistry
+import pytest
+pytestmark = pytest.mark.fast
 
 
 def _write(path: Path, content: str) -> Path:

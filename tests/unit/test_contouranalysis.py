@@ -6,6 +6,10 @@ import numpy as np
 import darsia
 from darsia.single_image_analysis.contouranalysis import ContourAnalysis
 from darsia.single_image_analysis.path_evolution_analysis import (
+import pytest
+
+pytestmark = pytest.mark.fast
+
     PathUnit,
     PathEvolutionAnalysis,
 )

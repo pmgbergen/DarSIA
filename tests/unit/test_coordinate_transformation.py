@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 import darsia
+pytestmark = pytest.mark.fast
 
 
 def test_coordinate_transformation_identity_2d():
