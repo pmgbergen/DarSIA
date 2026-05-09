@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 
 import darsia
+pytestmark = pytest.mark.fast
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -5,6 +5,8 @@
 import numpy as np
 
 import darsia
+import pytest
+pytestmark = pytest.mark.fast
 
 
 def test_scalar_weight_3d():

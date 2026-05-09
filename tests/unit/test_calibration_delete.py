@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 
 from darsia.presets.workflows.calibration import calibration_color_paths as module
+import pytest
+pytestmark = pytest.mark.fast
 
 
 def _mock_config(calibration_root_1, calibration_root_2, cache):

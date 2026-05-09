@@ -6,6 +6,8 @@ import numpy as np
 import darsia
 from darsia.presets.workflows.config.segmentation import SegmentationConfig
 from darsia.presets.workflows.segmentation_contours import SegmentationContours
+import pytest
+pytestmark = pytest.mark.fast
 
 
 def _make_test_images() -> tuple[darsia.OpticalImage, darsia.ScalarImage]:

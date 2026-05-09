@@ -12,6 +12,7 @@ import pytest
 from deepdiff import DeepDiff
 
 import darsia
+pytestmark = pytest.mark.fast
 
 
 def test_initialize_image_without_meta():

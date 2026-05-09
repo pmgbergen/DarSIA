@@ -11,6 +11,9 @@ from PIL import Image
 
 from darsia.presets.workflows.config.protocol import ProtocolConfig
 from darsia.presets.workflows.setup.setup_protocols import (
+
+pytestmark = pytest.mark.fast
+
     preview_protocol_setup_conflicts,
     setup_imaging_protocol,
 )

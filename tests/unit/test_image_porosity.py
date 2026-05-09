@@ -8,6 +8,7 @@ import pytest
 import darsia
 from darsia.presets.workflows.config.image_porosity import ImagePorosityConfig
 from darsia.presets.workflows.rig import Rig
+pytestmark = pytest.mark.fast
 
 # ---------------------------------------------------------------------------
 # Helpers

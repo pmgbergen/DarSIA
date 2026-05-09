@@ -3,6 +3,8 @@
 import numpy as np
 
 import darsia
+import pytest
+pytestmark = pytest.mark.fast
 
 # ! ---- 2d version ----
 

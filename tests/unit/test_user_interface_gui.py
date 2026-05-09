@@ -11,6 +11,9 @@ import pytest
 from darsia.presets.workflows.analysis.progress import normalize_progress_event
 from darsia.presets.workflows.rig import Rig
 from darsia.presets.workflows.user_interface_gui import (
+
+pytestmark = pytest.mark.fast
+
     _run_helper_workflow,
     _run_utils_workflow,
     abort_process,

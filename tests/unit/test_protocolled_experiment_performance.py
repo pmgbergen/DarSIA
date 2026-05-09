@@ -7,6 +7,8 @@ import pandas as pd
 
 from darsia.experiment.experiment import ProtocolledExperiment
 from darsia.experiment.protocols import ImagingProtocol
+import pytest
+pytestmark = pytest.mark.slow
 
 
 def _write_injection_protocol(path: Path, start: datetime) -> None:

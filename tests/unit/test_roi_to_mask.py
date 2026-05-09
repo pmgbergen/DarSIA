@@ -7,6 +7,7 @@ import darsia
 from darsia import make_coordinate
 from darsia.presets.workflows.config.roi import RoiConfig
 from darsia.utils.standard_images import roi_to_mask
+pytestmark = pytest.mark.fast
 
 
 def _make_scalar_image(rows: int = 10, cols: int = 20) -> darsia.ScalarImage:

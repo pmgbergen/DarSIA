@@ -9,6 +9,10 @@ import numpy as np
 import darsia
 from darsia import make_coordinate
 from darsia.presets.workflows.analysis.analysis_thresholding import (
+import pytest
+
+pytestmark = pytest.mark.fast
+
     analysis_thresholding_from_context,
 )
 from darsia.presets.workflows.analysis.expert_knowledge import ExpertKnowledgeAdapter

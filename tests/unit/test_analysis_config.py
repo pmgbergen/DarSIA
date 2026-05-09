@@ -5,6 +5,9 @@ import pytest
 
 from darsia.presets.workflows.config.analysis import AnalysisConfig
 from darsia.presets.workflows.config.color_embedding_registry import (
+
+pytestmark = pytest.mark.fast
+
     ColorEmbeddingRegistry,
 )
 from darsia.presets.workflows.config.data_registry import DataRegistry

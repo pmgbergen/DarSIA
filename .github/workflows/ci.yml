@@ -62,7 +62,7 @@ jobs:
 
     - name: pytest
       if: ${{always()}}
-      run: pytest
+      run: pytest -m "fast or integration or slow"
 
   build-without-petsc:
     runs-on: ubuntu-latest
@@ -104,4 +104,4 @@ jobs:
 
     - name: pytest
       if: ${{always()}}
-      run: pytest
+      run: pytest -m "fast or integration or slow"

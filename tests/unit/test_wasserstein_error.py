@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 import darsia
+pytestmark = pytest.mark.slow
 
 """
 Analytical solution to the Wasserstein distance problem for

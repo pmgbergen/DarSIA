@@ -3,6 +3,7 @@
 import matplotlib
 import numpy as np
 import pytest
+pytestmark = pytest.mark.fast
 
 matplotlib.use("Agg")  # non-interactive backend for tests
 

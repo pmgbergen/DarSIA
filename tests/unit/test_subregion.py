@@ -5,6 +5,8 @@
 import numpy as np
 
 import darsia
+import pytest
+pytestmark = pytest.mark.fast
 
 
 def test_time_interval_scalar_image_2d():

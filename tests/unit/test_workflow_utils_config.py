@@ -2,6 +2,8 @@ from pathlib import Path
 
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 from darsia.presets.workflows.config.workflow_utils import WorkflowUtilsConfig
+import pytest
+pytestmark = pytest.mark.fast
 
 
 def test_workflow_utils_config_load_flat_keys(tmp_path: Path) -> None:

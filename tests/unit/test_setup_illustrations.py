@@ -8,6 +8,8 @@ import pandas as pd
 from darsia.presets.workflows.setup import setup_depth as setup_depth_module
 from darsia.presets.workflows.setup import setup_facies as setup_facies_module
 from darsia.presets.workflows.setup import setup_labeling as setup_labeling_module
+import pytest
+pytestmark = pytest.mark.fast
 
 
 @dataclass

@@ -5,6 +5,9 @@ import pytest
 
 import darsia
 from darsia.presets.workflows.config.restoration import (
+
+pytestmark = pytest.mark.fast
+
     RestorationConfig,
     TVDConfig,
     VolumeAveragingConfig,

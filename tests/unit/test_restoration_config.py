@@ -5,6 +5,9 @@ from pathlib import Path
 import pytest
 
 from darsia.presets.workflows.config.restoration import (
+
+pytestmark = pytest.mark.fast
+
     RestorationConfig,
     TVDConfig,
     VolumeAveragingConfig,

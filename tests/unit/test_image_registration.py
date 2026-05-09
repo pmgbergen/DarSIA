@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 
 import darsia
+pytestmark = pytest.mark.fast
 
 
 def read_test_image(img_id: str) -> tuple[Optional[np.ndarray], Optional[dict], bool]:

@@ -20,6 +20,7 @@ import pytest
 
 from darsia.presets.fluidflower.fluidflowerco2analysis import FluidFlowerCO2Analysis
 from darsia.presets.fluidflower.fluidflowerrig import FluidFlowerRig
+pytestmark = pytest.mark.slow
 
 # ! ---- (Minimal) FluidFlower CO2 analysis
 
