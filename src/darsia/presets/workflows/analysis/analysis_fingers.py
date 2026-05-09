@@ -747,7 +747,7 @@ def analysis_fingers_from_context(
                     }
 
                     # Aggregate active paths by time for statistics.
-                    for (x, _), time, travel_distance in zip(
+                    for (x, y), time, travel_distance in zip(
                         coordinates, times, travel_distances
                     ):
                         active_paths_by_time[category].setdefault(time, []).append(
@@ -758,6 +758,7 @@ def analysis_fingers_from_context(
                                     float(times[0]),
                                 ),
                                 "x": float(x),
+                                "coordinate": [float(x), float(y)],
                                 "travel_distance": float(travel_distance),
                                 "speed": float(speeds[-1]) if speeds else float("nan"),
                                 "vertical_speed": (
@@ -808,6 +809,11 @@ def analysis_fingers_from_context(
                     dist_x = []
                     if len(x_coords_sorted) > 1:
                         dist_x = np.diff(x_coords_sorted).tolist()
+
+                    # Collect coordinates of active fingers at this time.
+                    coordinates_at_time = [
+                        finger["coordinate"] for finger in active_paths
+                    ]
 
                     # Compute lengths of active fingers at this time (using travel distance as
                     # a proxy for length).
@@ -888,6 +894,7 @@ def analysis_fingers_from_context(
 
                     statistics[category][time] = {
                         "horizontal_distances": dist_x,
+                        "coordinates": coordinates_at_time,
                         "travel_distances": travel_distances_at_time,
                         "speeds": speeds_at_time,
                         "vertical_speeds": speeds_y_at_time,
