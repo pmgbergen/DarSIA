@@ -320,6 +320,8 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
             if reset:
                 self.characteristic_colors = []
                 self.concentrations = []
+            
+            print("order of the points to define : center of the blob, edge of the blob in the thicker sand part, then the 2 diferent sands with 0 tracer")
 
             for i, mask in enumerate(darsia.Masks(self.labels)):
 
