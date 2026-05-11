@@ -287,7 +287,7 @@ def calibrate_from_samples(
         width: int = 25,
         num_clusters: int = 5,
         reset: bool = False,
-        calib_points
+        calib_points,
     ) -> None:
         """
         Use last caliration image to define support points.
