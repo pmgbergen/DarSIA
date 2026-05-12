@@ -283,7 +283,7 @@ class ContourAnalysis:
         return metric_contour_length
 
     def local_extrema(
-        self, direction=np.array([0.0, -1.0])
+        self, direction=np.array([0.0, -1.0]), contours: list[np.ndarray] | None = None
     ) -> tuple[np.ndarray, np.ndarray]:
         """
         Determine local extrema of the contour, where the extremality
@@ -293,6 +293,8 @@ class ContourAnalysis:
             contours (np.ndarray | None): contours to analyze. If None, contours are determined
                 from the mask; default is None.
             direction (np.ndarray): direction vector with orientation
+            # TODO do not allow for contours as input, make Contour analysis. Provide
+            # possiblility to use contour as input in a different way.
 
         Returns:
             array: pixels of peaks.
@@ -308,7 +310,8 @@ class ContourAnalysis:
             )
 
         # Extract interface - extract the boundary
-        contours = self.contours()
+        if contours is None:
+            contours = self.contours()
 
         # Special case of no contour
         if len(contours) == 0:
