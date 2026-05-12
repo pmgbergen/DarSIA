@@ -49,7 +49,10 @@ def build_parser_for_setup():
         "--calibration-bundle",
         type=str,
         default=None,
-        help="Path to calibration bundle zip. Used as output for export and input for import.",
+        help=(
+            "Path to calibration bundle zip or folder. Used as output for export and "
+            "input for import."
+        ),
     )
     parser.add_argument(
         "--calibration-target",
@@ -100,7 +103,8 @@ def preset_utils():
     if args.import_calibration:
         if args.calibration_bundle is None:
             raise ValueError(
-                "Import requires --calibration-bundle pointing to a zip file."
+                "Import requires --calibration-bundle pointing to a zip file or "
+                "folder."
             )
         target = (
             Path(args.calibration_target)
