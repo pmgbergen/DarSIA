@@ -1008,13 +1008,14 @@ def analysis_fingers_from_context(
                     stream_images[f"fingers_junction_paths_{key}"] = cv2.cvtColor(
                         junction_paths_plot_raw, cv2.COLOR_BGR2RGB
                     )
-                interface_tips_plot_raw = cv2.imread(
-                    str(gradient_path), cv2.IMREAD_UNCHANGED
-                )
-                if interface_tips_plot_raw is not None:
-                    stream_images[f"fingers_interface_tips_{key}"] = cv2.cvtColor(
-                        interface_tips_plot_raw, cv2.COLOR_BGR2RGB
+                if fingers_config.include_gradient_based_analysis:
+                    interface_tips_plot_raw = cv2.imread(
+                        str(gradient_path), cv2.IMREAD_UNCHANGED
                     )
+                    if interface_tips_plot_raw is not None:
+                        stream_images[f"fingers_interface_tips_{key}"] = cv2.cvtColor(
+                            interface_tips_plot_raw, cv2.COLOR_BGR2RGB
+                        )
 
         if stream_images is not None:
             publish_stream_images(
