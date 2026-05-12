@@ -161,10 +161,23 @@ def analysis_fingers_from_context(
             reduce_to_main_contour=fingers_config.reduce_to_main_contour,
         )
 
+    categories = ["peak", "fjord", "leaf", "junction", "base_junction"]
+    if fingers_config.include_gradient_based_analysis:
+        categories.append("interface")
+    path_categories = [
+        "paths",
+        "fjord_paths",
+        "leaf_paths",
+        "junction_paths",
+        "base_junction_paths",
+    ]
+    if fingers_config.include_gradient_based_analysis:
+        path_categories.append("interface_paths")
+
     # Keep evolution state per ROI to prevent mixing path histories across ROIs.
     evolution_times = {key: [] for key in fingers_config.roi}
     evolution_analysis = {}
-    for key in ["peak", "fjord", "leaf", "junction", "base_junction", "interface"]:
+    for key in categories:
         evolution_analysis[key] = {
             key: PathEvolutionAnalysis() for key in fingers_config.roi
         }
@@ -186,12 +199,17 @@ def analysis_fingers_from_context(
         (results_folder / "skeleton-base-junction-paths" / key).mkdir(
             parents=True, exist_ok=True
         )
-        (results_folder / "interface" / key).mkdir(parents=True, exist_ok=True)
-        (results_folder / "interface-contour" / key).mkdir(parents=True, exist_ok=True)
-        (results_folder / "interface-contour-npy" / key).mkdir(
-            parents=True, exist_ok=True
-        )
-        (results_folder / "interface-paths" / key).mkdir(parents=True, exist_ok=True)
+        if fingers_config.include_gradient_based_analysis:
+            (results_folder / "interface" / key).mkdir(parents=True, exist_ok=True)
+            (results_folder / "interface-contour" / key).mkdir(
+                parents=True, exist_ok=True
+            )
+            (results_folder / "interface-contour-npy" / key).mkdir(
+                parents=True, exist_ok=True
+            )
+            (results_folder / "interface-paths" / key).mkdir(
+                parents=True, exist_ok=True
+            )
 
     # DataFrame to store results.
     df = pd.DataFrame(
@@ -212,14 +230,7 @@ def analysis_fingers_from_context(
 
     # Dictionary to collect path statistics for all ROIs.
     path_statistics = {}
-    for key in [
-        "paths",
-        "fjord_paths",
-        "leaf_paths",
-        "junction_paths",
-        "base_junction_paths",
-        "interface_paths",
-    ]:
+    for key in path_categories:
         path_statistics[key] = {
             key: {"roi": roi_config.roi.tolist()}
             for key, roi_config in fingers_config.roi.items()
@@ -554,14 +565,7 @@ def analysis_fingers_from_context(
             evolution_analysis["base_junction"][key].add(
                 points=flipped_base_junctions, time=img.time
             )
-            for category in [
-                "peak",
-                "fjord",
-                "leaf",
-                "junction",
-                "base_junction",
-                "interface",
-            ]:
+            for category in categories:
                 evolution_analysis[category][key].find_paths()
 
             # Plotting.
@@ -625,14 +629,7 @@ def analysis_fingers_from_context(
             # Process paths to extract statistics.
             path_log = {}
             active_paths_by_time = {}
-            for category in [
-                "peak",
-                "fjord",
-                "leaf",
-                "junction",
-                "base_junction",
-                "interface",
-            ]:
+            for category in categories:
                 path_log[category] = {}
                 active_paths_by_time[category] = {}
                 for _path in evolution_analysis[category][key].paths:
@@ -773,14 +770,7 @@ def analysis_fingers_from_context(
             times = sorted(path_statistics["times"])
             statistics = {}
             num_paths = {}
-            for category in [
-                "peak",
-                "fjord",
-                "leaf",
-                "junction",
-                "base_junction",
-                "interface",
-            ]:
+            for category in categories:
                 statistics[category] = {}
                 num_paths[category] = {
                     "active": 0,
@@ -789,13 +779,7 @@ def analysis_fingers_from_context(
                     "ending": 0,
                 }
             for time_index, time in enumerate(times):
-                for category in [
-                    "peak",
-                    "leaf",
-                    "junction",
-                    "base_junction",
-                    "interface",
-                ]:
+                for category in categories:
                     if time not in active_paths_by_time[category]:
                         continue
 
@@ -910,14 +894,7 @@ def analysis_fingers_from_context(
                     }
 
             # Include statistics in path log.
-            for category in [
-                "peak",
-                "fjord",
-                "leaf",
-                "junction",
-                "base_junction",
-                "interface",
-            ]:
+            for category in categories:
                 path_log[category]["statistics"] = statistics[category]
 
             # Collect path log for this ROI into the overall statistics dictionary.
@@ -928,83 +905,72 @@ def analysis_fingers_from_context(
             path_statistics["base_junction_paths"][key].update(
                 path_log["base_junction"]
             )
-            path_statistics["interface_paths"][key].update(path_log["interface"])
+            if fingers_config.include_gradient_based_analysis:
+                path_statistics["interface_paths"][key].update(path_log["interface"])
 
             # Save overall path statistics for all ROIs to a single JSON file.
             with open(results_folder / "statistics.json", "w") as f:
                 json.dump(path_statistics, f, indent=2)
 
             # Save tabular statistics to DataFrame and CSV.
+            _data = {
+                "time": img.time,
+                "key": key,
+                "image": path.name,
+                "contour_length": contour_length,
+                "number_tips": number_tips,
+                "number_fjords": number_fjords,
+                "number_leaves": number_leaves,
+                "number_junctions": number_junctions,
+                "number_base_junctions": number_base_junctions,
+                "roi_width": roi_width,
+                "finger_frequency": peak_frequency,
+                "finger_wavelength": peak_wavelength,
+                # Finger counting based on peaks/contours.
+                "number_fingers": num_paths["peak"]["active"],
+                "number_new_fingers": num_paths["peak"]["new"],
+                "number_continuing_fingers": num_paths["peak"]["continuing"],
+                "number_ending_fingers": num_paths["peak"]["ending"],
+                # Finger counting based on skeleton leaves.
+                "number_skeleton_leaves": num_paths["leaf"]["active"],
+                "number_new_skeleton_leaves": num_paths["leaf"]["new"],
+                "number_continuing_skeleton_leaves": num_paths["leaf"]["continuing"],
+                "number_ending_skeleton_leaves": num_paths["leaf"]["ending"],
+                # Number of base fingers based on skeleton base junctions.
+                "number_base_fingers": num_paths["base_junction"]["active"],
+                "number_new_base_fingers": num_paths["base_junction"]["new"],
+                "number_continuing_base_fingers": num_paths["base_junction"][
+                    "continuing"
+                ],
+                "number_ending_base_fingers": num_paths["base_junction"]["ending"],
+                # Number of splitting fingers based on skeleton junctions.
+                "number_splitting_fingers": num_paths["junction"]["active"],
+                "number_new_splitting_fingers": num_paths["junction"]["new"],
+                "number_continuing_splitting_fingers": num_paths["junction"][
+                    "continuing"
+                ],
+                "number_ending_splitting_fingers": num_paths["junction"]["ending"],
+            }
+            if fingers_config.include_gradient_based_analysis:
+                _data.update(
+                    {
+                        # Finger counting based on gradient-based peaks/contours if
+                        # configured.
+                        "number_interface_fingers": num_paths["interface"]["active"],
+                        "number_new_interface_fingers": num_paths["interface"]["new"],
+                        "number_continuing_interface_fingers": num_paths["interface"][
+                            "continuing"
+                        ],
+                        "number_ending_interface_fingers": num_paths["interface"][
+                            "ending"
+                        ],
+                    }
+                )
             df = pd.concat(
                 [
                     df,
                     pd.DataFrame(
-                        {
-                            "time": img.time,
-                            "key": key,
-                            "image": path.name,
-                            "contour_length": contour_length,
-                            "number_tips": number_tips,
-                            "number_fjords": number_fjords,
-                            "number_leaves": number_leaves,
-                            "number_junctions": number_junctions,
-                            "number_base_junctions": number_base_junctions,
-                            "roi_width": roi_width,
-                            "finger_frequency": peak_frequency,
-                            "finger_wavelength": peak_wavelength,
-                            # Finger counting based on peaks/contours.
-                            "number_fingers": num_paths["peak"]["active"],
-                            "number_new_fingers": num_paths["peak"]["new"],
-                            "number_continuing_fingers": num_paths["peak"][
-                                "continuing"
-                            ],
-                            "number_ending_fingers": num_paths["peak"]["ending"],
-                            # Finger counting based on skeleton leaves.
-                            "number_skeleton_leaves": num_paths["leaf"]["active"],
-                            "number_new_skeleton_leaves": num_paths["leaf"]["new"],
-                            "number_continuing_skeleton_leaves": num_paths["leaf"][
-                                "continuing"
-                            ],
-                            "number_ending_skeleton_leaves": num_paths["leaf"][
-                                "ending"
-                            ],
-                            # Number of base fingers based on skeleton base junctions.
-                            "number_base_fingers": num_paths["base_junction"]["active"],
-                            "number_new_base_fingers": num_paths["base_junction"][
-                                "new"
-                            ],
-                            "number_continuing_base_fingers": num_paths[
-                                "base_junction"
-                            ]["continuing"],
-                            "number_ending_base_fingers": num_paths["base_junction"][
-                                "ending"
-                            ],
-                            # Number of splitting fingers based on skeleton junctions.
-                            "number_splitting_fingers": num_paths["junction"]["active"],
-                            "number_new_splitting_fingers": num_paths["junction"][
-                                "new"
-                            ],
-                            "number_continuing_splitting_fingers": num_paths[
-                                "junction"
-                            ]["continuing"],
-                            "number_ending_splitting_fingers": num_paths["junction"][
-                                "ending"
-                            ],
-                            # Finger counting based on gradient-based peaks/contours if
-                            # configured.
-                            "number_interface_fingers": num_paths["interface"][
-                                "active"
-                            ],
-                            "number_new_interface_fingers": num_paths["interface"][
-                                "new"
-                            ],
-                            "number_continuing_interface_fingers": num_paths[
-                                "interface"
-                            ]["continuing"],
-                            "number_ending_interface_fingers": num_paths["interface"][
-                                "ending"
-                            ],
-                        },
+                        _data,
                         index=[0],
                     ),
                 ],
