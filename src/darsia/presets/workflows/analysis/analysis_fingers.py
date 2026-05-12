@@ -375,8 +375,8 @@ def analysis_fingers_from_context(
             if fingers_config.include_gradient_based_analysis:
                 # Determine various contour values.
                 # gradient_based_contour_length = gradient_based_contour_analysis.length()
-                gradient_based_peaks, _ = (
-                    gradient_based_contour_analysis.local_extrema()
+                gradient_based_peaks, _ = gradient_based_contour_analysis.local_extrema(
+                    contours=lower_gradient_based_contours
                 )
                 # gradient_based_number_tips = (
                 #     gradient_based_contour_analysis.number_peaks()
