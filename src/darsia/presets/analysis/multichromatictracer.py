@@ -283,7 +283,7 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
     def calibrate_from_samples(
             self,
             calibration_image,
-            samples,
+            calib_points,
             mask: Optional[darsia.Image] = None,
             width: int = 25,
             num_clusters: int = 5,
