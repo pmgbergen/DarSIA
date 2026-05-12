@@ -325,7 +325,7 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
             for i, mask in enumerate(darsia.Masks(self.labels)):
 
                 #hardcodes the location of the samples instead of asking the user to click on the image
-                samples = calib_points[i]
+                samples = calib_points
                 """
                 # Define characteristic points and corresponding data values
                 print("Define samples")
