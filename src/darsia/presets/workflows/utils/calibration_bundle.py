@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import logging
 import shutil
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
-from zipfile import ZIP_DEFLATED, ZipFile
+from zipfile import ZIP_DEFLATED, ZipFile, is_zipfile
 
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 
@@ -21,24 +22,119 @@ def _calibration_color_root(config: FluidFlowerConfig) -> Path:
     return config.data.results / "calibration" / "color"
 
 
-def _collect_bundle_targets(
-    zip_file: ZipFile, destination_root: Path
+@dataclass(frozen=True)
+class _BundleEntry:
+    source: str | Path
+    rel_path: Path
+    source_kind: Literal["zip", "file"]
+
+
+def _sanitize_rel_path(rel: Path, source_label: str) -> Path:
+    if rel.is_absolute() or ".." in rel.parts:
+        raise ValueError(f"Unsafe bundle entry path in {source_label}: {rel}")
+    return rel
+
+
+def _normalize_bundle_rel_paths(
+    members: list[tuple[str, Path]],
+    *,
+    default_embedding: str | None,
+    source_label: str,
 ) -> list[tuple[str, Path]]:
-    targets: list[tuple[str, Path]] = []
-    for member in zip_file.infolist():
-        rel = Path(member.filename)
-        if rel.is_absolute() or ".." in rel.parts:
-            raise ValueError(f"Unsafe archive member path: {member.filename}")
-        if not rel.parts or rel.parts[0] != "calibration":
-            continue
-        rel = Path(*rel.parts[1:])
-        if not rel.parts:
-            continue
-        dst = destination_root / rel
+    safe_members: list[tuple[str, Path]] = []
+    for name, rel in members:
+        rel = _sanitize_rel_path(rel, source_label)
+        if rel.parts:
+            safe_members.append((name, rel))
+    if not safe_members:
+        raise ValueError(f"Calibration bundle contains no files: {source_label}")
+
+    prefixes = [("calibration", "color"), ("calibration",), ("color",)]
+    stripped_members: list[tuple[str, Path]] = []
+    for prefix in prefixes:
+        prefix_matches: list[tuple[str, Path]] = []
+        for name, rel in safe_members:
+            if rel.parts[: len(prefix)] == prefix:
+                stripped = Path(*rel.parts[len(prefix) :])
+                if stripped.parts:
+                    prefix_matches.append((name, stripped))
+        if prefix_matches:
+            stripped_members = prefix_matches
+            break
+    if not stripped_members:
+        stripped_members = list(safe_members)
+
+    manifest = Path("manifest.json")
+    payload = [(name, rel) for name, rel in stripped_members if rel != manifest]
+    extra = [(name, rel) for name, rel in stripped_members if rel == manifest]
+    if not payload:
+        raise ValueError(
+            f"Calibration bundle contains no calibration entries: {source_label}"
+        )
+    if any(len(rel.parts) >= 2 for _, rel in payload):
+        payload = [(name, rel) for name, rel in payload if len(rel.parts) >= 2]
+    else:
+        if default_embedding:
+            payload = [
+                (name, Path(default_embedding) / rel) for name, rel in payload
+            ]
+        else:
+            raise ValueError(
+                "Calibration bundle must contain embedding folders (for example "
+                "'calibration/color/<id>/...')."
+            )
+    return payload + extra
+
+
+def _bundle_entries(bundle: Path) -> list[_BundleEntry]:
+    if bundle.is_dir():
+        members = [
+            (str(path.relative_to(bundle)), path.relative_to(bundle))
+            for path in bundle.rglob("*")
+            if path.is_file()
+        ]
+        normalized = _normalize_bundle_rel_paths(
+            members, default_embedding=bundle.name, source_label=str(bundle)
+        )
+        return [
+            _BundleEntry(
+                source=bundle / Path(name),
+                rel_path=rel,
+                source_kind="file",
+            )
+            for name, rel in normalized
+        ]
+
+    if not bundle.exists():
+        raise FileNotFoundError(f"Calibration bundle not found: {bundle}")
+    if not is_zipfile(bundle):
+        raise ValueError(
+            f"Calibration bundle must be a zip file or directory: {bundle}"
+        )
+    with ZipFile(bundle, mode="r") as zip_file:
+        members = [
+            (info.filename, Path(info.filename))
+            for info in zip_file.infolist()
+            if not info.is_dir()
+        ]
+    normalized = _normalize_bundle_rel_paths(
+        members, default_embedding=bundle.stem, source_label=str(bundle)
+    )
+    return [
+        _BundleEntry(source=name, rel_path=rel, source_kind="zip")
+        for name, rel in normalized
+    ]
+
+
+def _collect_bundle_targets(
+    bundle: Path, destination_root: Path
+) -> list[tuple[_BundleEntry, Path]]:
+    targets: list[tuple[_BundleEntry, Path]] = []
+    for entry in _bundle_entries(bundle):
+        dst = destination_root / entry.rel_path
         if not dst.resolve().is_relative_to(destination_root.resolve()):
-            raise ValueError(f"Unsafe archive member path: {member.filename}")
-        if not member.is_dir():
-            targets.append((member.filename, dst))
+            raise ValueError(f"Unsafe bundle entry path: {entry.rel_path}")
+        targets.append((entry, dst))
     return targets
 
 
@@ -75,16 +171,13 @@ def preview_calibration_bundle_import_conflicts(
     """Preview destination files that would be overwritten during import."""
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
     bundle = Path(bundle)
-    if not bundle.exists():
-        raise FileNotFoundError(f"Calibration bundle not found: {bundle}")
 
     target_root = (
         _calibration_color_root(config)
         if target_folder is None
         else Path(target_folder)
     )
-    with ZipFile(bundle, mode="r") as zip_file:
-        targets = _collect_bundle_targets(zip_file, target_root)
+    targets = _collect_bundle_targets(bundle, target_root)
     return sorted({dst for _, dst in targets if dst.exists()})
 
 
@@ -118,7 +211,7 @@ def export_calibration_bundle(
         bundle = Path(bundle)
         bundle.parent.mkdir(parents=True, exist_ok=True)
 
-    archive_root = Path("calibration")
+    archive_root = Path("calibration") / "color"
     with ZipFile(bundle, mode="w", compression=ZIP_DEFLATED) as zip_file:
         for embedding_folder in embedding_folders:
             for file_path in sorted(embedding_folder.rglob("*")):
@@ -152,11 +245,9 @@ def import_calibration_bundle(
     overwrite: bool = False,
     conflict_action: Literal["error", "overwrite_all", "skip_all"] | None = None,
 ) -> dict[str, Path]:
-    """Import a calibration bundle and provide config-ready path mapping."""
+    """Import a calibration bundle (zip or folder) and provide config-ready paths."""
     config = FluidFlowerConfig(path, require_data=False, require_results=False)
     bundle = Path(bundle)
-    if not bundle.exists():
-        raise FileNotFoundError(f"Calibration bundle not found: {bundle}")
 
     destination_root = (
         _calibration_color_root(config)
@@ -173,21 +264,29 @@ def import_calibration_bundle(
         raise ValueError(f"Unsupported conflict action: {conflict_action}")
     action = conflict_action or ("overwrite_all" if overwrite else "error")
 
-    with ZipFile(bundle, mode="r") as zip_file:
-        targets = _collect_bundle_targets(zip_file, destination_root)
-        conflicts = [dst for _, dst in targets if dst.exists()]
-        if conflicts and action == "error":
-            raise FileExistsError(
-                f"Calibration import would overwrite existing file: {conflicts[0]}. "
-                "Use overwrite=True/conflict_action='overwrite_all' or "
-                "conflict_action='skip_all'."
-            )
-        for member_name, dst in targets:
+    targets = _collect_bundle_targets(bundle, destination_root)
+    conflicts = [dst for _, dst in targets if dst.exists()]
+    if conflicts and action == "error":
+        raise FileExistsError(
+            f"Calibration import would overwrite existing file: {conflicts[0]}. "
+            "Use overwrite=True/conflict_action='overwrite_all' or "
+            "conflict_action='skip_all'."
+        )
+
+    if bundle.is_dir():
+        for entry, dst in targets:
             if dst.exists() and action == "skip_all":
                 continue
             dst.parent.mkdir(parents=True, exist_ok=True)
-            with zip_file.open(member_name) as src, dst.open("wb") as out:
-                shutil.copyfileobj(src, out)
+            shutil.copy2(Path(entry.source), dst)
+    else:
+        with ZipFile(bundle, mode="r") as zip_file:
+            for entry, dst in targets:
+                if dst.exists() and action == "skip_all":
+                    continue
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                with zip_file.open(str(entry.source)) as src, dst.open("wb") as out:
+                    shutil.copyfileobj(src, out)
 
     embedding_ids = sorted([p.name for p in destination_root.iterdir() if p.is_dir()])
     snippet_path = _write_config_snippet(destination_root, embedding_ids)
