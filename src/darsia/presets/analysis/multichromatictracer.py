@@ -326,6 +326,13 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
 
                 #hardcodes the location of the samples instead of asking the user to click on the image
                 samples = calib_points[i]
+                """
+                # Define characteristic points and corresponding data values
+                print("Define samples")
+                assistant = darsia.BoxSelectionAssistant(
+                calibration_image, background=mask, width=width
+                )
+                samples = assistant()"""
 
                 print("Define associated concentration values")
                 # Ask for concentration values from user
