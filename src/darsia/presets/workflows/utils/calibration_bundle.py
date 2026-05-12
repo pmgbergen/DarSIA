@@ -29,9 +29,9 @@ class _BundleEntry:
     source_kind: Literal["zip", "file"]
 
 
-def _sanitize_rel_path(rel: Path, source_label: str) -> Path:
+def _sanitize_rel_path(rel: Path, source_description: str) -> Path:
     if rel.is_absolute() or ".." in rel.parts:
-        raise ValueError(f"Unsafe bundle entry path in {source_label}: {rel}")
+        raise ValueError(f"Unsafe bundle entry path in {source_description}: {rel}")
     return rel
 
 
@@ -39,15 +39,17 @@ def _normalize_bundle_rel_paths(
     members: list[tuple[str, Path]],
     *,
     default_embedding: str | None,
-    source_label: str,
+    source_description: str,
 ) -> list[tuple[str, Path]]:
     safe_members: list[tuple[str, Path]] = []
     for name, rel in members:
-        rel = _sanitize_rel_path(rel, source_label)
+        rel = _sanitize_rel_path(rel, source_description)
         if rel.parts:
             safe_members.append((name, rel))
     if not safe_members:
-        raise ValueError(f"Calibration bundle contains no files: {source_label}")
+        raise ValueError(
+            f"Calibration bundle contains no files: {source_description}"
+        )
 
     prefixes = [("calibration", "color"), ("calibration",), ("color",)]
     stripped_members: list[tuple[str, Path]] = []
@@ -69,7 +71,7 @@ def _normalize_bundle_rel_paths(
     extra = [(name, rel) for name, rel in stripped_members if rel == manifest]
     if not payload:
         raise ValueError(
-            f"Calibration bundle contains no calibration entries: {source_label}"
+            f"Calibration bundle contains no calibration entries: {source_description}"
         )
     if any(len(rel.parts) >= 2 for _, rel in payload):
         payload = [(name, rel) for name, rel in payload if len(rel.parts) >= 2]
@@ -88,13 +90,15 @@ def _normalize_bundle_rel_paths(
 
 def _bundle_entries(bundle: Path) -> list[_BundleEntry]:
     if bundle.is_dir():
-        members = [
-            (str(path.relative_to(bundle)), path.relative_to(bundle))
-            for path in bundle.rglob("*")
-            if path.is_file()
-        ]
+        members: list[tuple[str, Path]] = []
+        for path in bundle.rglob("*"):
+            if path.is_file():
+                rel_path = path.relative_to(bundle)
+                members.append((str(rel_path), rel_path))
         normalized = _normalize_bundle_rel_paths(
-            members, default_embedding=bundle.name, source_label=str(bundle)
+            members,
+            default_embedding=bundle.name,
+            source_description=str(bundle),
         )
         return [
             _BundleEntry(
@@ -118,11 +122,13 @@ def _bundle_entries(bundle: Path) -> list[_BundleEntry]:
             if not info.is_dir()
         ]
     normalized = _normalize_bundle_rel_paths(
-        members, default_embedding=bundle.stem, source_label=str(bundle)
+        members,
+        default_embedding=bundle.stem,
+        source_description=str(bundle),
     )
     return [
-        _BundleEntry(source=name, rel_path=rel, source_kind="zip")
-        for name, rel in normalized
+        _BundleEntry(source=member_name, rel_path=rel, source_kind="zip")
+        for member_name, rel in normalized
     ]
 
 
