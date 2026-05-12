@@ -14,6 +14,7 @@ from zipfile import ZIP_DEFLATED, ZipFile, is_zipfile
 from darsia.presets.workflows.config.fluidflower_config import FluidFlowerConfig
 
 logger = logging.getLogger(__name__)
+_SANITIZE_ROOT = Path("/__darsia_bundle_root__")
 
 
 def _calibration_color_root(config: FluidFlowerConfig) -> Path:
@@ -32,9 +33,8 @@ class _BundleEntry:
 def _sanitize_rel_path(rel: Path, source_description: str) -> Path:
     if rel.is_absolute():
         raise ValueError(f"Unsafe bundle entry path in {source_description}: {rel}")
-    root = Path("/__darsia_bundle_root__")
-    resolved = (root / rel).resolve()
-    if not resolved.is_relative_to(root):
+    resolved = (_SANITIZE_ROOT / rel).resolve()
+    if not resolved.is_relative_to(_SANITIZE_ROOT):
         raise ValueError(f"Unsafe bundle entry path in {source_description}: {rel}")
     return rel
 
@@ -293,6 +293,10 @@ def import_calibration_bundle(
         for entry, dst in targets:
             if dst.exists() and action == "skip_all":
                 continue
+            if entry.source_kind != "file":
+                raise ValueError(
+                    f"Unexpected bundle entry type for directory import: {entry}"
+                )
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(Path(entry.source), dst)
     else:
@@ -300,6 +304,10 @@ def import_calibration_bundle(
             for entry, dst in targets:
                 if dst.exists() and action == "skip_all":
                     continue
+                if entry.source_kind != "zip":
+                    raise ValueError(
+                        f"Unexpected bundle entry type for zip import: {entry}"
+                    )
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 with zip_file.open(str(entry.source)) as src, dst.open("wb") as out:
                     shutil.copyfileobj(src, out)
