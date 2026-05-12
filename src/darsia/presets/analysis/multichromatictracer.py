@@ -283,7 +283,7 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
     def calibrate_from_samples(
             self,
             calibration_image,
-            calib_points,
+            samples,
             mask: Optional[darsia.Image] = None,
             width: int = 25,
             num_clusters: int = 5,
@@ -321,8 +321,7 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
                 self.characteristic_colors = []
                 self.concentrations = []
             
-            print("order of the points to define : center of the blob, edge of the blob in the thicker sand part, then the 2 diferent sands with 0 tracer")
-
+            
             for i, mask in enumerate(darsia.Masks(self.labels)):
 
                 #hardcodes the location of the samples instead of asking the user to click on the image
