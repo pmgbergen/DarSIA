@@ -30,7 +30,11 @@ class _BundleEntry:
 
 
 def _sanitize_rel_path(rel: Path, source_description: str) -> Path:
-    if rel.is_absolute() or ".." in rel.parts:
+    if rel.is_absolute():
+        raise ValueError(f"Unsafe bundle entry path in {source_description}: {rel}")
+    root = Path("/__darsia_bundle_root__")
+    resolved = (root / rel).resolve()
+    if not resolved.is_relative_to(root):
         raise ValueError(f"Unsafe bundle entry path in {source_description}: {rel}")
     return rel
 
@@ -133,8 +137,8 @@ def _bundle_entries(bundle: Path) -> list[_BundleEntry]:
         source_description=str(bundle),
     )
     return [
-        _BundleEntry(source=member_name, rel_path=rel, source_kind="zip")
-        for member_name, rel in normalized
+        _BundleEntry(source=zip_member_path, rel_path=rel, source_kind="zip")
+        for zip_member_path, rel in normalized
     ]
 
 
