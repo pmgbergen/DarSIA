@@ -82,8 +82,8 @@ def _normalize_bundle_rel_paths(
             ]
         else:
             raise ValueError(
-                "Calibration bundle must contain embedding folders (for example "
-                "'calibration/color/<id>/...')."
+                "Calibration bundle must contain embedding folders, for example "
+                "'calibration/color/<id>/...'."
             )
     return payload + extra
 
@@ -91,8 +91,14 @@ def _normalize_bundle_rel_paths(
 def _bundle_entries(bundle: Path) -> list[_BundleEntry]:
     if bundle.is_dir():
         members: list[tuple[str, Path]] = []
+        root_resolved = bundle.resolve()
         for path in bundle.rglob("*"):
             if path.is_file():
+                resolved = path.resolve()
+                if not resolved.is_relative_to(root_resolved):
+                    raise ValueError(
+                        f"Unsafe bundle entry path in {bundle}: {path}"
+                    )
                 rel_path = path.relative_to(bundle)
                 members.append((str(rel_path), rel_path))
         normalized = _normalize_bundle_rel_paths(
