@@ -80,6 +80,7 @@ def extract_characteristic_data(
     # Analyze patches separately
     for i, p in enumerate(samples):
         # Control patch dimension
+        print(len(p))
         assert len(p) == 2, "Patch must be 2d"
 
         # Cluster analysis for extracting dominant data/colors
