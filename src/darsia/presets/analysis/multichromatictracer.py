@@ -282,6 +282,7 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
 
     def calibrate_from_samples(
             self,
+            counter,
             calibration_image,
             calib_points,
             mask: Optional[darsia.Image] = None,
@@ -326,7 +327,7 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
 
                 #hardcodes the location of the samples instead of asking the user to click on the image
                 samples = calib_points[i]["samples"]
-                concentrations = calib_points[i]["concentration"][n]   
+                concentrations = calib_points[i]["concentration"][counter]   
                 # n accounts for the number of the image getting processed
 
                 # Fetch characteristic colors from samples
