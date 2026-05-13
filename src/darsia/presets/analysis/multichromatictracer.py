@@ -326,7 +326,8 @@ class MultichromaticTracerAnalysis(darsia.ConcentrationAnalysis):
 
                 #hardcodes the location of the samples instead of asking the user to click on the image
                 samples = calib_points[i]["samples"]
-                concentrations = calib_points[i]["concentration"]
+                concentrations = calib_points[i]["concentration"][n]   
+                # n accounts for the number of the image getting processed
 
                 # Fetch characteristic colors from samples
                 # Apply concentration analysis modulo the model and the restoration
