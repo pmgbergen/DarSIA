@@ -787,9 +787,21 @@ def analysis_fingers_from_context(
                     active_paths = active_paths_by_time[category][time]
 
                     # Compute horizontal distances between active fingers at this time.
-                    x_coords_sorted = sorted(
-                        float(finger["x"]) for finger in active_paths
+                    pixel_positions = (
+                        evolution_analysis[category][key]
+                        .points[time_index]
+                        .reshape(-1, 2)
+                        .copy()
+                    )  # Reshape to (N, 2) and copy to avoid modifying original
+                    pixel_positions[:, 0] += roi_top_left_row
+                    pixel_positions[:, 1] += roi_top_left_col
+                    # Flip as postions come from cv2 contours/skeletons with (row, col)
+                    # order but coordinatesystem expects (x, y).
+                    pixel_positions = pixel_positions[:, ::-1]
+                    coordinate_positions = img.coordinatesystem.coordinate(
+                        darsia.Voxel(pixel_positions)
                     )
+                    x_coords_sorted = np.sort(coordinate_positions[:, 0])
                     dist_x = []
                     if len(x_coords_sorted) > 1:
                         dist_x = np.diff(x_coords_sorted).tolist()
