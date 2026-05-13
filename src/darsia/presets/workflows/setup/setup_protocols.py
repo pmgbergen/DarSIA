@@ -268,7 +268,10 @@ def setup_imaging_protocol(
         end = pd.to_datetime(imaging_df["datetime"]).max().to_pydatetime()
         if folder / baseline_filename in files:
             if overall_start is not None:
-                raise ValueError("Baseline image not unique.")
+                logger.warning(
+                    "Baseline image not unique - using the first occurrence."
+                )
+                break
             logger.info(
                 "Baseline image %s found in %s; using its timestamp as overall start time.",
                 baseline_filename,
@@ -282,7 +285,6 @@ def setup_imaging_protocol(
                 .to_pydatetime()
             )
             overall_start = baseline_time
-        # overall_start = start if overall_start is None else min(overall_start, start)
         overall_end = end if overall_end is None else max(overall_end, end)
 
     assert (
