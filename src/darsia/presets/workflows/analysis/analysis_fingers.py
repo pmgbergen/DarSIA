@@ -98,13 +98,9 @@ def _extract_lower_arc(contour: np.ndarray) -> np.ndarray:
     # Extract lower arc and sort by column for clean output
     lower_cols = cols[lower_indices]
     lower_rows = rows[lower_indices]
-
-    sort_idx = np.argsort(lower_cols)
-    lower_cols_sorted = lower_cols[sort_idx]
-    lower_rows_sorted = lower_rows[sort_idx]
+    lower_arc = np.column_stack([lower_cols, lower_rows]).astype(np.int32)
 
     # Convert back to (N, 1, 2) format
-    lower_arc = np.column_stack([lower_cols_sorted, lower_rows_sorted]).astype(np.int32)
     lower_arc = lower_arc.reshape(-1, 1, 2)
 
     return lower_arc
