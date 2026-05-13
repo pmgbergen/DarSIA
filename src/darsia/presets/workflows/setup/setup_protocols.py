@@ -247,6 +247,9 @@ def setup_imaging_protocol(
     overall_start: datetime | None = None
     overall_end: datetime | None = None
     suffix = config.data.baseline.suffix
+    baseline_filename = (
+        config.data.baseline.name if config.data.baseline is not None else None
+    )
     for folder, imaging_path in imaging_targets.items():
         files = sorted(
             folder / name for name in os.listdir(folder) if name.endswith(suffix)
@@ -261,13 +264,33 @@ def setup_imaging_protocol(
         _write_csv(imaging_df, imaging_path)
         logger.info("Saved imaging protocol CSV to %s", imaging_path)
 
-        start = pd.to_datetime(imaging_df["datetime"]).min().to_pydatetime()
+        # start = pd.to_datetime(imaging_df["datetime"]).min().to_pydatetime()
         end = pd.to_datetime(imaging_df["datetime"]).max().to_pydatetime()
-        overall_start = start if overall_start is None else min(overall_start, start)
+        if folder / baseline_filename in files:
+            if overall_start is not None:
+                raise ValueError("Baseline image not unique.")
+            logger.info(
+                "Baseline image %s found in %s; using its timestamp as overall start time.",
+                baseline_filename,
+                folder,
+            )
+            baseline_time = (
+                pd.to_datetime(
+                    imaging_df.loc[imaging_df["path"] == baseline_filename, "datetime"]
+                )
+                .iloc[0]
+                .to_pydatetime()
+            )
+            overall_start = baseline_time
+        # overall_start = start if overall_start is None else min(overall_start, start)
         overall_end = end if overall_end is None else max(overall_end, end)
 
-    assert overall_start is not None
-    assert overall_end is not None
+    assert (
+        overall_start is not None
+    ), "No baseline image found; cannot determine overall start time."
+    assert (
+        overall_end is not None
+    ), "No imaging data found; cannot determine overall end time."
     if injection_path is not None:
         _write_injection_template(injection_path, overall_start, overall_end)
         logger.info("Saved injection protocol CSV template to %s", injection_path)
